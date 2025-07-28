@@ -1,3 +1,4 @@
+
 // src/hooks/use-auth.tsx
 'use client';
 
@@ -11,12 +12,14 @@ interface AuthContextType {
   currentUser: AppUser | null;
   firebaseUser: FirebaseUser | null;
   loading: boolean;
+  setCurrentUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   currentUser: null,
   firebaseUser: null,
   loading: true,
+  setCurrentUser: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -31,8 +34,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (user) {
         setFirebaseUser(user);
         const appUser = users.find(u => u.email.toLowerCase() === user.email?.toLowerCase());
+
         if (appUser) {
-           setCurrentUser(appUser);
+           setCurrentUser({
+            ...appUser,
+            name: user.displayName || appUser.name,
+            avatarUrl: user.photoURL || appUser.avatarUrl,
+           });
         } else {
            setCurrentUser(null);
         }
@@ -47,13 +55,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (!loading && !firebaseUser && pathname !== '/login') {
+    if (!loading && !currentUser && pathname !== '/login') {
       router.push('/login');
     }
-  }, [loading, firebaseUser, pathname, router]);
+  }, [loading, currentUser, pathname, router]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, firebaseUser, loading }}>
+    <AuthContext.Provider value={{ currentUser, firebaseUser, loading, setCurrentUser }}>
       {loading ? <div className="flex h-screen items-center justify-center">Authenticating...</div> : children}
     </AuthContext.Provider>
   );
