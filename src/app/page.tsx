@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { AppWindow, CheckCircle, Clock, FolderKanban, GanttChart, Users } from 'lucide-react';
-import { currentUser, User, spaces as allSpaces, Space, projects as allProjects, tasks as allTasks, slackMeetingLogs as allLogs, timeEntries as allTimeEntries } from '@/lib/data';
+import { currentUser, User, spaces as allSpaces, Space, projects as allProjects, tasks as allTasks, slackMeetingLogs as allLogs, timeEntries as allTimeEntries, users as allUsers } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
 import TaskBoard from '@/components/dashboard/task-board';
@@ -37,8 +37,8 @@ export default function DashboardPage() {
   const projectsInSpace = allProjects.filter(p => p.space_id === activeSpaceId);
   const tasksInSpace = allTasks.filter(t => projectsInSpace.some(p => p.id === t.project_id));
   const usersInSpace = activeSpace.members.map(memberId => {
-    return currentUser // This is not ideal, should be a lookup. For now, it works.
-  });
+    return allUsers.find(u => u.id === memberId)!
+  }).filter(Boolean);
   const timeEntriesInSpace = allTimeEntries.filter(te => projectsInSpace.some(p => p.id === te.project_id));
   const meetingLogsInSpace = allLogs.filter(log => log.project_id === null || projectsInSpace.some(p => p.id === log.project_id));
 
