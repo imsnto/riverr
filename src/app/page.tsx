@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { AppWindow, CheckCircle, Clock, FolderKanban, GanttChart, Settings, Users } from 'lucide-react';
-import { User, spaces as allSpaces, Space, projects as allProjects, tasks as allTasks, slackMeetingLogs as allLogs, timeEntries as allTimeEntries, users as allUsers } from '@/lib/data';
+import { User, spaces as initialSpaces, Space, projects as initialProjects, tasks as initialTasks, slackMeetingLogs as initialLogs, timeEntries as initialTimeEntries, users as initialUsers } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
 import TaskBoard from '@/components/dashboard/task-board';
@@ -27,6 +27,9 @@ export default function DashboardPage() {
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   
+  const [allUsers, setAllUsers] = useState<User[]>(initialUsers);
+  const [allSpaces, setAllSpaces] = useState<Space[]>(initialSpaces);
+  
   if (!currentUser) {
     return <div className="flex justify-center items-center h-screen">Authenticating...</div>;
   }
@@ -42,15 +45,23 @@ export default function DashboardPage() {
       setActiveSpaceId(newSpace.id);
     }
   };
+  
+  // This effect ensures that if the active space is removed, we switch to a valid one.
+  React.useEffect(() => {
+    if (!allSpaces.find(s => s.id === activeSpaceId)) {
+        const firstUserSpace = allSpaces.find(s => s.members.includes(currentUser.id));
+        setActiveSpaceId(firstUserSpace?.id || '');
+    }
+  }, [allSpaces, activeSpaceId, currentUser.id]);
 
   // Filter data based on active space
-  const projectsInSpace = allProjects.filter(p => p.space_id === activeSpaceId);
-  const tasksInSpace = allTasks.filter(t => projectsInSpace.some(p => p.id === t.project_id));
+  const projectsInSpace = initialProjects.filter(p => p.space_id === activeSpaceId);
+  const tasksInSpace = initialTasks.filter(t => projectsInSpace.some(p => p.id === t.project_id));
   const usersInSpace = activeSpace ? activeSpace.members.map(memberId => {
     return allUsers.find(u => u.id === memberId)!
   }).filter(Boolean) : [];
-  const timeEntriesInSpace = allTimeEntries.filter(te => projectsInSpace.some(p => p.id === te.project_id));
-  const meetingLogsInSpace = allLogs.filter(log => log.project_id === null || projectsInSpace.some(p => p.id === log.project_id));
+  const timeEntriesInSpace = initialTimeEntries.filter(te => projectsInSpace.some(p => p.id === te.project_id));
+  const meetingLogsInSpace = initialLogs.filter(log => log.project_id === null || projectsInSpace.some(p => p.id === log.project_id));
 
 
   if (!activeSpace) {
@@ -59,7 +70,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background font-body">
-      <Header activeSpace={activeSpace} onSpaceChange={handleSpaceChange} />
+      <Header activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={allSpaces} />
       <div className="flex flex-1">
         <aside className="hidden w-64 flex-col border-r bg-card p-4 md:flex">
           <nav className="flex flex-col gap-2">
@@ -124,10 +135,10 @@ export default function DashboardPage() {
                       <TabsTrigger value="users">Users</TabsTrigger>
                     </TabsList>
                     <TabsContent value="spaces">
-                      <SpaceSettings allSpaces={allSpaces} allUsers={allUsers} />
+                      <SpaceSettings allSpaces={allSpaces} allUsers={allUsers} setSpaces={setAllSpaces} />
                     </TabsContent>
                     <TabsContent value="users">
-                      <UserSettings allUsers={allUsers} />
+                      <UserSettings allUsers={allUsers} allSpaces={allSpaces} onUsersChange={setAllUsers} onSpacesChange={setAllSpaces} />
                     </TabsContent>
                   </Tabs>
               </TabsContent>

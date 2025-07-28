@@ -2,13 +2,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { User } from '@/lib/data';
+import { User, Space } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Plus, Edit, Trash2, Mail } from 'lucide-react';
+import { MoreHorizontal, Plus, Edit, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import InviteUserDialog from './invite-user-dialog';
@@ -20,28 +20,62 @@ const getInitials = (name: string) => {
 
 interface UserSettingsProps {
     allUsers: User[];
+    allSpaces: Space[];
+    onUsersChange: (users: User[]) => void;
+    onSpacesChange: (spaces: Space[]) => void;
 }
 
-export default function UserSettings({ allUsers: initialUsers }: UserSettingsProps) {
-  const [users, setUsers] = useState<User[]>(initialUsers);
+interface InviteFormValues {
+    email: string;
+    role: 'Admin' | 'Member';
+    spaces: string[];
+}
+
+export default function UserSettings({ allUsers, allSpaces, onUsersChange, onSpacesChange }: UserSettingsProps) {
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleAddUser = (email: string) => {
-    // In a real app, this would trigger an invitation flow and update a database.
-    // For this prototype, we are just showing a success message.
-    // To add a user permanently, you must modify the src/lib/data.ts file.
+  const handleAddUser = (values: InviteFormValues) => {
+    const newUser: User = {
+        id: `user-${Date.now()}`,
+        name: values.email.split('@')[0], // Default name from email
+        email: values.email,
+        role: values.role,
+        slack_id: '',
+        avatarUrl: `https://placehold.co/100x100?text=${values.email[0].toUpperCase()}`
+    };
+
+    onUsersChange([...allUsers, newUser]);
+    
+    const updatedSpaces = allSpaces.map(space => {
+        if (values.spaces.includes(space.id)) {
+            return {
+                ...space,
+                members: [...space.members, newUser.id]
+            }
+        }
+        return space;
+    });
+    onSpacesChange(updatedSpaces);
+
     toast({
-        title: 'Invitation Sent (Simulated)',
-        description: `${email} has been sent an invitation.`
+        title: 'User Added',
+        description: `${values.email} has been added to the system and selected spaces.`
     });
   }
 
   const handleRemoveUser = (userId: string) => {
-    setUsers(users.filter(u => u.id !== userId));
+    onUsersChange(allUsers.filter(u => u.id !== userId));
+    // Also remove from spaces
+    const updatedSpaces = allSpaces.map(space => ({
+      ...space,
+      members: space.members.filter(memberId => memberId !== userId)
+    }));
+    onSpacesChange(updatedSpaces);
+
     toast({
-        title: 'User Removed (Simulated)',
-        description: 'The user has been removed from the UI, but this is not permanent.'
+        title: 'User Removed',
+        description: 'The user has been removed from the system.'
     })
   }
 
@@ -71,7 +105,7 @@ export default function UserSettings({ allUsers: initialUsers }: UserSettingsPro
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {users.map(user => (
+                    {allUsers.map(user => (
                         <TableRow key={user.id}>
                             <TableCell>
                                 <div className="flex items-center gap-3">
@@ -99,7 +133,7 @@ export default function UserSettings({ allUsers: initialUsers }: UserSettingsPro
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem>
+                                        <DropdownMenuItem disabled>
                                             <Edit className="mr-2 h-4 w-4" />
                                             Edit Role
                                         </DropdownMenuItem>
@@ -121,6 +155,7 @@ export default function UserSettings({ allUsers: initialUsers }: UserSettingsPro
             isOpen={isInviteDialogOpen}
             onOpenChange={setIsInviteDialogOpen}
             onInvite={handleAddUser}
+            allSpaces={allSpaces}
         />
     </>
   );

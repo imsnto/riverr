@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Space, User, spaces as allSpacesData, users as allUsersData } from '@/lib/data';
+import { Space, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import SpaceFormDialog from './space-form-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 const getInitials = (name: string) => {
   return name.split(' ').map(n => n[0]).join('');
@@ -17,13 +18,14 @@ const getInitials = (name: string) => {
 interface SpaceSettingsProps {
     allSpaces: Space[];
     allUsers: User[];
+    setSpaces: (spaces: Space[]) => void;
 }
 
-export default function SpaceSettings({ allSpaces: initialSpaces, allUsers }: SpaceSettingsProps) {
-  const [spaces, setSpaces] = useState<Space[]>(initialSpaces);
+export default function SpaceSettings({ allSpaces, allUsers, setSpaces }: SpaceSettingsProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
   const { toast } = useToast();
+  const { currentUser } = useAuth();
 
   const handleCreateNew = () => {
     setSelectedSpace(null);
@@ -36,16 +38,16 @@ export default function SpaceSettings({ allSpaces: initialSpaces, allUsers }: Sp
   };
   
   const handleDelete = (spaceId: string) => {
-    setSpaces(spaces.filter(s => s.id !== spaceId));
+    setSpaces(allSpaces.filter(s => s.id !== spaceId));
     toast({ title: 'Space Deleted', description: 'The space has been successfully deleted.' });
   }
 
   const handleSave = (spaceData: Space) => {
     if (selectedSpace) {
-      setSpaces(spaces.map(s => s.id === spaceData.id ? spaceData : s));
+      setSpaces(allSpaces.map(s => s.id === spaceData.id ? spaceData : s));
       toast({ title: 'Space Updated', description: 'The space has been successfully updated.' });
     } else {
-      setSpaces([...spaces, { ...spaceData, id: `space-${Date.now()}` }]);
+      setSpaces([...allSpaces, { ...spaceData, id: `space-${Date.now()}`, members: [currentUser!.id] }]);
       toast({ title: 'Space Created', description: 'The space has been successfully created.' });
     }
   };
@@ -67,7 +69,7 @@ export default function SpaceSettings({ allSpaces: initialSpaces, allUsers }: Sp
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {spaces.map(space => {
+            {allSpaces.map(space => {
               const members = space.members.map(id => allUsers.find(u => u.id === id)).filter(Boolean) as User[];
               return (
                 <div key={space.id} className="border p-4 rounded-lg flex justify-between items-center">

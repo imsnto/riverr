@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { spaces as allSpaces, Space } from '@/lib/data';
+import { Space } from '@/lib/data';
 import { LifeBuoy, LogOut, User, ChevronsUpDown, Check } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
@@ -38,8 +38,9 @@ function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProp
           role="combobox"
           aria-expanded={open}
           className="w-[200px] justify-between"
+          disabled={!activeSpace}
         >
-          {activeSpace.name}
+          {activeSpace ? activeSpace.name : "Select a space"}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -61,7 +62,7 @@ function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProp
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      activeSpace.id === space.id ? "opacity-100" : "opacity-0"
+                      activeSpace?.id === space.id ? "opacity-100" : "opacity-0"
                     )}
                   />
                   {space.name}
@@ -76,7 +77,7 @@ function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProp
 }
 
 
-export default function Header({ activeSpace, onSpaceChange }: { activeSpace: Space; onSpaceChange: (spaceId: string) => void; }) {
+export default function Header({ activeSpace, onSpaceChange, allSpaces }: { activeSpace: Space; onSpaceChange: (spaceId: string) => void; allSpaces: Space[] }) {
   const { currentUser } = useAuth();
   const router = useRouter();
 
