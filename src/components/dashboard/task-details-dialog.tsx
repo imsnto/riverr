@@ -2,18 +2,68 @@
 'use client';
 
 import React from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Task, users, projects, Comment } from '@/lib/data';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Task, users, projects, Comment, Activity, User, timeEntries } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
-import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Separator } from '../ui/separator';
+import { ScrollArea } from '../ui/scroll-area';
+import { Bot, Calendar, Check, CircleDot, Clock, Flag, Hash, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
 }
+
+interface DetailRowProps {
+    icon: React.ElementType;
+    label: string;
+    children: React.ReactNode;
+}
+const DetailRow: React.FC<DetailRowProps> = ({ icon: Icon, label, children }) => (
+    <div className="grid grid-cols-3 items-center gap-2">
+        <div className="col-span-1 flex items-center gap-2 text-muted-foreground">
+            <Icon className="h-4 w-4" />
+            <span className="text-sm">{label}</span>
+        </div>
+        <div className="col-span-2">{children}</div>
+    </div>
+);
+
+
+const ActivityItem = ({ activity, allUsers }: { activity: Activity; allUsers: User[] }) => {
+    const user = allUsers.find(u => u.id === activity.user_id);
+    const renderContent = () => {
+        switch (activity.type) {
+            case 'status_change':
+                return (
+                    <p><span className="font-semibold">{user?.name}</span> changed status from <Badge variant="outline">{activity.from}</Badge> to <Badge variant="outline">{activity.to}</Badge></p>
+                );
+            case 'comment':
+                return (
+                    <p><span className="font-semibold">{user?.name}</span> left a comment.</p>
+                )
+            default:
+                return null;
+        }
+    }
+    return (
+        <div className="flex items-start gap-3">
+            <Avatar className="h-6 w-6 mt-1">
+                <AvatarImage src={user?.avatarUrl} alt={user?.name} />
+                <AvatarFallback>{user ? getInitials(user.name) : 'U'}</AvatarFallback>
+            </Avatar>
+            <div className="text-sm">
+                {renderContent()}
+                <p className="text-xs text-muted-foreground">{new Date(activity.timestamp).toLocaleString()}</p>
+            </div>
+        </div>
+    )
+}
+
 
 interface TaskDetailsDialogProps {
     task: Task;
@@ -23,97 +73,210 @@ interface TaskDetailsDialogProps {
 }
 
 export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdateTask }: TaskDetailsDialogProps) {
-    const assignee = users.find(u => u.id === task.assigned_to);
     const project = projects.find(p => p.id === task.project_id);
+    const totalTimeTracked = timeEntries
+      .filter(t => t.task_id === task.id)
+      .reduce((acc, entry) => acc + entry.duration, 0);
 
     const handleAddComment = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const form = e.target as HTMLFormElement;
         const commentInput = form.elements.namedItem('comment') as HTMLTextAreaElement;
         const newComment: Comment = {
+            id: `comment-${Date.now()}`,
             user_id: 'user-1', // Assuming current user is adding comment
             comment: commentInput.value,
             timestamp: new Date().toISOString(),
         };
-        const updatedTask = { ...task, comments: [...task.comments, newComment] };
+        const newActivity: Activity = {
+            id: `act-${Date.now()}`,
+            user_id: 'user-1',
+            timestamp: new Date().toISOString(),
+            type: 'comment',
+            comment_id: newComment.id,
+        }
+        const updatedTask = { 
+            ...task, 
+            comments: [...task.comments, newComment],
+            activities: [...task.activities, newActivity]
+        };
         onUpdateTask(updatedTask);
         form.reset();
     };
 
-    const handleAssigneeChange = (userId: string) => {
-        onUpdateTask({ ...task, assigned_to: userId });
+    const handleFieldChange = (field: keyof Task, value: any) => {
+        let newActivity: Activity | undefined = undefined;
+        if (field === 'status') {
+            newActivity = {
+                id: `act-${Date.now()}`,
+                user_id: 'user-1',
+                timestamp: new Date().toISOString(),
+                type: 'status_change',
+                from: task.status,
+                to: value,
+            };
+        }
+        
+        const updatedTask = {
+             ...task,
+             [field]: value,
+             ...(newActivity ? { activities: [...task.activities, newActivity] } : {})
+        };
+        onUpdateTask(updatedTask);
     }
+    
+    const sortedActivities = [...task.activities, ...task.comments.map(c => ({
+        id: `activity-comment-${c.id}`,
+        user_id: c.user_id,
+        timestamp: c.timestamp,
+        type: 'comment' as const,
+        comment_id: c.id
+    }))].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle>{task.name}</DialogTitle>
-                    <DialogDescription>
-                        in <Badge variant="outline">{project?.name}</Badge>
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label className="text-right">Status</Label>
-                        <div className="col-span-3">
-                            <Badge>{task.status}</Badge>
+            <DialogContent className="max-w-4xl h-[90vh]">
+                <div className="grid grid-cols-3 h-full">
+                    {/* Left Panel: Task Details */}
+                    <div className="col-span-2 p-6 flex flex-col gap-6 overflow-y-auto">
+                        <DialogHeader className="gap-4">
+                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Button variant="outline" size="sm">
+                                    <CircleDot className="mr-2" /> Task
+                                </Button>
+                                <span>{task.id}</span>
+                                <Button variant="ghost" size="sm">
+                                    <Bot className="mr-2" /> Ask AI
+                                </Button>
+                           </div>
+                           <DialogTitle className="text-2xl">{task.name}</DialogTitle>
+                           <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 text-primary-foreground">
+                                <Bot className="h-5 w-5 text-primary" />
+                                <p className="text-sm font-medium text-primary">Ask Brain to <a href="#" className="underline">create a summary</a> · <a href="#" className="underline">generate subtasks</a> · <a href="#" className="underline">find similar tasks</a> · <a href="#" className="underline">or ask about this task</a></p>
+                           </div>
+                        </DialogHeader>
+
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                            <DetailRow icon={CircleDot} label="Status">
+                                <Select value={task.status} onValueChange={(value) => handleFieldChange('status', value)}>
+                                    <SelectTrigger className="h-8">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Backlog">Backlog</SelectItem>
+                                        <SelectItem value="In Progress">In Progress</SelectItem>
+                                        <SelectItem value="Review">Review</SelectItem>
+                                        <SelectItem value="Done">Done</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </DetailRow>
+                             <DetailRow icon={Users} label="Assignees">
+                                <Select value={task.assigned_to} onValueChange={(value) => handleFieldChange('assigned_to', value)}>
+                                    <SelectTrigger className="h-8">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {users.map(user => (
+                                        <SelectItem key={user.id} value={user.id}>
+                                          <div className="flex items-center gap-2">
+                                            <Avatar className="h-5 w-5">
+                                              <AvatarImage src={user.avatarUrl} alt={user.name} />
+                                              <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                                            </Avatar>
+                                            {user.name}
+                                          </div>
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                </Select>
+                            </DetailRow>
+                            <DetailRow icon={Calendar} label="Dates">
+                                <div className="flex items-center gap-2 text-sm">
+                                    <span>{new Date(task.due_date).toLocaleDateString()}</span>
+                                    <ArrowRight className="h-4 w-4 text-muted-foreground"/>
+                                    <span>{new Date(task.due_date).toLocaleDateString()}</span>
+                                </div>
+                            </DetailRow>
+                             <DetailRow icon={Flag} label="Priority">
+                                <Select value={task.priority || 'null'} onValueChange={(value) => handleFieldChange('priority', value === 'null' ? null : value)}>
+                                    <SelectTrigger className="h-8">
+                                        <SelectValue placeholder="Set priority" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="null">No Priority</SelectItem>
+                                        <SelectItem value="Low">Low</SelectItem>
+                                        <SelectItem value="Medium">Medium</SelectItem>
+                                        <SelectItem value="High">High</SelectItem>
+                                        <SelectItem value="Urgent">Urgent</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </DetailRow>
+                             <DetailRow icon={Clock} label="Time Estimate">
+                                <p className="text-sm">{task.time_estimate ? `${task.time_estimate}h` : 'Empty'}</p>
+                            </DetailRow>
+                             <DetailRow icon={Zap} label="Sprint Points">
+                                 <p className="text-sm">{task.sprint_points ? `${task.sprint_points}` : 'Empty'}</p>
+                            </DetailRow>
+                            <DetailRow icon={Clock} label="Track Time">
+                                <p className="text-sm font-medium">{totalTimeTracked}h</p>
+                            </DetailRow>
+                             <DetailRow icon={Tag} label="Tags">
+                                <p className="text-sm">Empty</p>
+                            </DetailRow>
+                            <DetailRow icon={LinkIcon} label="Relationships">
+                                <p className="text-sm">Empty</p>
+                            </DetailRow>
+                        </div>
+
+                        <Separator />
+
+                        <div>
+                            <p className="text-sm text-muted-foreground">{task.description}</p>
                         </div>
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="assignee-select" className="text-right">Assignee</Label>
-                        <div className="col-span-3">
-                            <Select onValueChange={handleAssigneeChange} defaultValue={task.assigned_to}>
-                                <SelectTrigger id="assignee-select" className="w-[200px]">
-                                    <SelectValue placeholder="Select a user" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {users.map(user => (
-                                        <SelectItem key={user.id} value={user.id}>
-                                            <div className="flex items-center gap-2">
-                                                <Avatar className="h-6 w-6">
+
+                    {/* Right Panel: Activity & Comments */}
+                    <div className="col-span-1 border-l bg-card flex flex-col">
+                        <div className="p-4 border-b">
+                            <div className="flex justify-between items-center">
+                                <p className="font-semibold">Activity</p>
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Search className="h-4 w-4" />
+                                    <Users className="h-4 w-4" />
+                                </div>
+                            </div>
+                        </div>
+                        <ScrollArea className="flex-1">
+                            <div className="p-4 space-y-4">
+                                {sortedActivities.map(activity => {
+                                    if (activity.type === 'comment' && activity.comment_id) {
+                                        const comment = task.comments.find(c => c.id === activity.comment_id);
+                                        const user = users.find(u => u.id === activity.user_id);
+                                        if (!comment || !user) return null;
+                                        return (
+                                             <div key={activity.id} className="flex items-start gap-3">
+                                                <Avatar className="h-8 w-8">
                                                     <AvatarImage src={user.avatarUrl} alt={user.name} />
                                                     <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
                                                 </Avatar>
-                                                <span>{user.name}</span>
+                                                <div className="flex-1 rounded-md border bg-background p-3">
+                                                    <div className="flex justify-between items-center">
+                                                        <p className="font-semibold text-sm">{user.name}</p>
+                                                        <p className="text-xs text-muted-foreground">{new Date(comment.timestamp).toLocaleDateString()}</p>
+                                                    </div>
+                                                    <p className="text-sm text-muted-foreground mt-1">{comment.comment}</p>
+                                                </div>
                                             </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label className="text-right">Due Date</Label>
-                        <div className="col-span-3">
-                            {new Date(task.due_date).toLocaleDateString()}
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-4 items-start gap-4">
-                        <Label className="text-right pt-2">Description</Label>
-                        <p className="col-span-3 text-sm text-muted-foreground">{task.description}</p>
-                    </div>
-                    <div className="grid grid-cols-4 items-start gap-4">
-                        <Label className="text-right pt-2">Comments</Label>
-                        <div className="col-span-3 space-y-4">
-                            {task.comments.map((comment, index) => {
-                                const commentUser = users.find(u => u.id === comment.user_id);
-                                return (
-                                    <div key={index} className="flex items-start gap-2">
-                                        <Avatar className="h-8 w-8">
-                                            <AvatarImage src={commentUser?.avatarUrl} alt={commentUser?.name} />
-                                            <AvatarFallback>{commentUser ? getInitials(commentUser.name) : 'U'}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <p className="font-medium text-sm">{commentUser?.name}</p>
-                                            <p className="text-sm text-muted-foreground">{comment.comment}</p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                             <form onSubmit={handleAddComment} className="flex flex-col gap-2">
-                                <Textarea name="comment" placeholder="Add a comment..." required />
-                                <Button type="submit" size="sm" className="self-end">Post Comment</Button>
+                                        )
+                                    }
+                                    return <ActivityItem key={activity.id} activity={activity} allUsers={users} />;
+                                })}
+                            </div>
+                        </ScrollArea>
+                        <div className="p-4 border-t">
+                            <form onSubmit={handleAddComment} className="relative">
+                                <Textarea name="comment" placeholder="Write a comment..." required className="pr-20" />
+                                <Button type="submit" size="sm" className="absolute right-2 bottom-2">Send</Button>
                             </form>
                         </div>
                     </div>

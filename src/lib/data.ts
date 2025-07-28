@@ -25,10 +25,28 @@ export interface Task {
   status: "Backlog" | "In Progress" | "Review" | "Done";
   assigned_to: string;
   due_date: string;
+  priority: "Low" | "Medium" | "High" | "Urgent" | null;
+  sprint_points: number | null;
+  tags: string[];
+  time_estimate: number | null; // in hours
+  relationships: string[]; // e.g., parent task, related tasks
+  activities: Activity[];
   comments: Comment[];
 }
 
+export interface Activity {
+  id: string;
+  user_id: string;
+  timestamp: string;
+  type: "status_change" | "comment" | "assignee_change";
+  from?: string;
+  to?: string;
+  comment_id?: string;
+}
+
+
 export interface Comment {
+  id: string;
   user_id: string;
   comment: string;
   timestamp: string;
@@ -85,8 +103,16 @@ export const tasks: Task[] = [
     status: 'In Progress',
     assigned_to: 'user-2',
     due_date: '2024-08-15T23:59:59Z',
+    priority: 'High',
+    sprint_points: 8,
+    tags: ['UI', 'Figma'],
+    time_estimate: 16,
+    relationships: [],
+    activities: [
+      { id: 'act-1', user_id: 'user-1', timestamp: '2024-07-20T16:48:00Z', type: 'status_change', from: 'Backlog', to: 'In Progress'},
+    ],
     comments: [
-      { user_id: 'user-1', comment: 'How is this going?', timestamp: '2024-08-01T10:00:00Z' },
+      { id: 'comment-1', user_id: 'user-1', comment: 'How is this going?', timestamp: '2024-08-01T10:00:00Z' },
     ],
   },
   {
@@ -97,6 +123,12 @@ export const tasks: Task[] = [
     status: 'Backlog',
     assigned_to: 'user-1',
     due_date: '2024-08-20T23:59:59Z',
+    priority: 'Medium',
+    sprint_points: 5,
+    tags: ['React', 'Web'],
+    time_estimate: 24,
+    relationships: [],
+    activities: [],
     comments: [],
   },
   {
@@ -107,6 +139,12 @@ export const tasks: Task[] = [
     status: 'Done',
     assigned_to: 'user-3',
     due_date: '2024-07-30T23:59:59Z',
+    priority: null,
+    sprint_points: null,
+    tags: [],
+    time_estimate: null,
+    relationships: [],
+    activities: [],
     comments: [],
   },
   {
@@ -117,6 +155,12 @@ export const tasks: Task[] = [
     status: 'Review',
     assigned_to: 'user-4',
     due_date: '2024-08-10T23:59:59Z',
+    priority: 'High',
+    sprint_points: 3,
+    tags: [],
+    time_estimate: 8,
+    relationships: [],
+    activities: [],
     comments: [],
   },
   {
@@ -127,6 +171,12 @@ export const tasks: Task[] = [
     status: 'In Progress',
     assigned_to: 'user-1',
     due_date: '2024-08-25T23:59:59Z',
+    priority: 'Medium',
+    sprint_points: 5,
+    tags: [],
+    time_estimate: 12,
+    relationships: [],
+    activities: [],
     comments: [],
   },
 ];
