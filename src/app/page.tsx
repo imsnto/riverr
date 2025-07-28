@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
-import { AppWindow, CheckCircle, Clock, FolderKanban, GanttChart, Users } from 'lucide-react';
+import { AppWindow, CheckCircle, Clock, FolderKanban, GanttChart, Settings, Users } from 'lucide-react';
 import { currentUser, User, spaces as allSpaces, Space, projects as allProjects, tasks as allTasks, slackMeetingLogs as allLogs, timeEntries as allTimeEntries, users as allUsers } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
@@ -12,11 +12,14 @@ import Timer from '@/components/dashboard/timer';
 import MeetingReview from '@/components/dashboard/meeting-review';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import SpaceSettings from '@/components/dashboard/space-settings';
+import UserSettings from '@/components/dashboard/user-settings';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: GanttChart },
   { id: 'tasks', label: 'Task Board', icon: FolderKanban },
   { id: 'timesheets', label: 'Team Timesheets', icon: Users, adminOnly: true },
+  { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
 ];
 
 export default function DashboardPage() {
@@ -36,15 +39,15 @@ export default function DashboardPage() {
   // Filter data based on active space
   const projectsInSpace = allProjects.filter(p => p.space_id === activeSpaceId);
   const tasksInSpace = allTasks.filter(t => projectsInSpace.some(p => p.id === t.project_id));
-  const usersInSpace = activeSpace.members.map(memberId => {
+  const usersInSpace = activeSpace ? activeSpace.members.map(memberId => {
     return allUsers.find(u => u.id === memberId)!
-  }).filter(Boolean);
+  }).filter(Boolean) : [];
   const timeEntriesInSpace = allTimeEntries.filter(te => projectsInSpace.some(p => p.id === te.project_id));
   const meetingLogsInSpace = allLogs.filter(log => log.project_id === null || projectsInSpace.some(p => p.id === log.project_id));
 
 
   if (!activeSpace) {
-     return <div className="flex justify-center items-center h-screen">You are not a member of any space.</div>
+     return <div className="flex justify-center items-center h-screen">You are not a member of any space. Create or get an invite to a space to begin.</div>
   }
 
   return (
@@ -103,6 +106,23 @@ export default function DashboardPage() {
             {currentUser.role === 'Admin' && (
               <TabsContent value="timesheets">
                 <TeamTimesheets timeEntries={timeEntriesInSpace} projects={projectsInSpace} tasks={tasksInSpace} space={activeSpace} />
+              </TabsContent>
+            )}
+            {currentUser.role === 'Admin' && (
+              <TabsContent value="settings">
+                 <h1 className="text-2xl font-bold mb-4">Settings</h1>
+                 <Tabs defaultValue="spaces" className="w-full">
+                    <TabsList>
+                      <TabsTrigger value="spaces">Spaces</TabsTrigger>
+                      <TabsTrigger value="users">Users</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="spaces">
+                      <SpaceSettings allSpaces={allSpaces} allUsers={allUsers} />
+                    </TabsContent>
+                    <TabsContent value="users">
+                      <UserSettings allUsers={allUsers} />
+                    </TabsContent>
+                  </Tabs>
               </TabsContent>
             )}
           </Tabs>
