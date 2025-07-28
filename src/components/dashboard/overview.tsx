@@ -3,9 +3,10 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Project, Task, TimeEntry, currentUser } from '@/lib/data';
+import { Project, Task, TimeEntry } from '@/lib/data';
 import { CheckCircle, Clock, FolderKanban } from 'lucide-react';
 import ProjectDetailsDialog from './project-details-dialog';
+import { useAuth } from '@/hooks/use-auth';
 
 interface OverviewProps {
   projects: Project[];
@@ -15,6 +16,9 @@ interface OverviewProps {
 
 export default function Overview({ projects, tasks, timeEntries }: OverviewProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const { currentUser } = useAuth();
+
+  if (!currentUser) return null;
 
   const userProjects = projects.filter(p => p.members.includes(currentUser.id));
   const userTasks = tasks.filter(t => t.assigned_to === currentUser.id);

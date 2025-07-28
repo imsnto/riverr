@@ -5,14 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Play, Square, TimerIcon } from 'lucide-react';
-import { Task, currentUser } from '@/lib/data';
+import { Task } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 interface TimerProps {
   tasks: Task[];
 }
 
 export default function Timer({ tasks }: TimerProps) {
+  const { currentUser } = useAuth();
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
@@ -62,6 +64,8 @@ export default function Timer({ tasks }: TimerProps) {
     const s = (seconds % 60).toString().padStart(2, '0');
     return `${h}:${m}:${s}`;
   };
+
+  if (!currentUser) return null;
 
   const userTasks = tasks.filter(t => t.assigned_to === currentUser.id && t.status !== 'Done');
 

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { AppWindow, CheckCircle, Clock, FolderKanban, GanttChart, Settings, Users } from 'lucide-react';
-import { currentUser, User, spaces as allSpaces, Space, projects as allProjects, tasks as allTasks, slackMeetingLogs as allLogs, timeEntries as allTimeEntries, users as allUsers } from '@/lib/data';
+import { User, spaces as allSpaces, Space, projects as allProjects, tasks as allTasks, slackMeetingLogs as allLogs, timeEntries as allTimeEntries, users as allUsers } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
 import TaskBoard from '@/components/dashboard/task-board';
@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
+import { useAuth } from '@/hooks/use-auth';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: GanttChart },
@@ -23,7 +24,13 @@ const NAV_ITEMS = [
 ];
 
 export default function DashboardPage() {
+  const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+  
+  if (!currentUser) {
+    return <div className="flex justify-center items-center h-screen">Authenticating...</div>;
+  }
+  
   const userSpaces = allSpaces.filter(s => s.members.includes(currentUser.id));
   const [activeSpaceId, setActiveSpaceId] = useState(userSpaces[0]?.id || '');
 

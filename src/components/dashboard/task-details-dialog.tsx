@@ -3,7 +3,7 @@
 
 import React, { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Task, users, projects, Comment, Activity, User, timeEntries, currentUser, Attachment } from '@/lib/data';
+import { Task, users, projects, Comment, Activity, User, timeEntries, Attachment } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -14,6 +14,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Bot, Calendar, CircleDot, Clock, Flag, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight, Paperclip, File, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
@@ -75,8 +76,11 @@ interface TaskDetailsDialogProps {
 
 export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdateTask }: TaskDetailsDialogProps) {
     const { toast } = useToast();
+    const { currentUser } = useAuth();
     const [attachments, setAttachments] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    if (!currentUser) return null;
 
     const project = projects.find(p => p.id === task.project_id);
     const totalTimeTracked = timeEntries

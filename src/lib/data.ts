@@ -100,9 +100,6 @@ export const users: User[] = [
   { id: 'user-4', name: 'Diana', email: 'diana@example.com', role: 'Admin', slack_id: 'UFGHJI', avatarUrl: 'https://placehold.co/100x100' },
 ];
 
-export const currentUser = users[0]; // Alice is the current user (Admin)
-// export const currentUser = users[1]; // Bob is the current user (Member)
-
 export const spaces: Space[] = [
   { id: 'space-1', name: 'Work', members: ['user-1', 'user-2', 'user-3', 'user-4'] },
   { id: 'space-2', name: 'Personal', members: ['user-1'] },

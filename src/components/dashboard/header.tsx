@@ -10,12 +10,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { currentUser, spaces as allSpaces, Space } from '@/lib/data';
+import { spaces as allSpaces, Space } from '@/lib/data';
 import { LifeBuoy, LogOut, Settings, ChevronsUpDown, Check } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
 import React from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { signOut, auth } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
 
 interface SpaceSwitcherProps {
   spaces: Space[];
@@ -73,9 +76,20 @@ function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProp
 
 
 export default function Header({ activeSpace, onSpaceChange }: { activeSpace: Space; onSpaceChange: (spaceId: string) => void; }) {
+  const { currentUser } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/login');
+  }
+
   const getInitials = (name: string) => {
+    if (!name) return '';
     return name.split(' ').map(n => n[0]).join('');
   }
+  
+  if (!currentUser) return null;
 
   const userSpaces = allSpaces.filter(space => space.members.includes(currentUser.id));
 
@@ -111,7 +125,7 @@ export default function Header({ activeSpace, onSpaceChange }: { activeSpace: Sp
               <span>Support</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
             </DropdownMenuItem>

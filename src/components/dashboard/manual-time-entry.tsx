@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Project, Task, currentUser } from '@/lib/data';
+import { Project, Task } from '@/lib/data';
 import { Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 interface ManualTimeEntryProps {
   projects: Project[];
@@ -17,6 +18,9 @@ interface ManualTimeEntryProps {
 
 export default function ManualTimeEntry({ projects, tasks }: ManualTimeEntryProps) {
   const { toast } = useToast();
+  const { currentUser } = useAuth();
+  
+  if (!currentUser) return null;
 
   const userProjects = projects.filter(p => p.members.includes(currentUser.id));
 
