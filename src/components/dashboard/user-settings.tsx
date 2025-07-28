@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -13,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import InviteUserDialog from './invite-user-dialog';
 
 const getInitials = (name: string) => {
+  if (!name) return '';
   return name.split(' ').map(n => n[0]).join('');
 };
 
@@ -27,7 +29,7 @@ export default function UserSettings({ allUsers: initialUsers }: UserSettingsPro
 
   const handleAddUser = (email: string) => {
     // In a real app, this would trigger an invitation flow.
-    // Here, we'll just add a placeholder user.
+    // Here, we'll just add a placeholder user to simulate the invite.
     const newUser: User = {
         id: `user-${Date.now()}`,
         name: email.split('@')[0],
@@ -38,8 +40,8 @@ export default function UserSettings({ allUsers: initialUsers }: UserSettingsPro
     };
     setUsers([...users, newUser]);
     toast({
-        title: 'User Invited',
-        description: `${email} has been invited to join.`
+        title: 'User Added',
+        description: `${email} has been added to the system.`
     });
   }
 
