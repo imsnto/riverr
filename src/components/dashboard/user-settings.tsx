@@ -28,28 +28,20 @@ export default function UserSettings({ allUsers: initialUsers }: UserSettingsPro
   const { toast } = useToast();
 
   const handleAddUser = (email: string) => {
-    // In a real app, this would trigger an invitation flow.
-    // Here, we'll just add a placeholder user to simulate the invite.
-    const newUser: User = {
-        id: `user-${Date.now()}`,
-        name: email.split('@')[0],
-        email: email,
-        role: 'Member',
-        slack_id: '',
-        avatarUrl: `https://placehold.co/100x100?text=${email[0].toUpperCase()}`
-    };
-    setUsers([...users, newUser]);
+    // In a real app, this would trigger an invitation flow and update a database.
+    // For this prototype, we are just showing a success message.
+    // To add a user permanently, you must modify the src/lib/data.ts file.
     toast({
-        title: 'User Added',
-        description: `${email} has been added to the system.`
+        title: 'Invitation Sent (Simulated)',
+        description: `${email} has been sent an invitation.`
     });
   }
 
   const handleRemoveUser = (userId: string) => {
     setUsers(users.filter(u => u.id !== userId));
     toast({
-        title: 'User Removed',
-        description: 'The user has been removed successfully.'
+        title: 'User Removed (Simulated)',
+        description: 'The user has been removed from the UI, but this is not permanent.'
     })
   }
 

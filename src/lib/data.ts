@@ -98,6 +98,7 @@ export const users: User[] = [
   { id: 'user-2', name: 'Bob', email: 'bob@example.com', role: 'Member', slack_id: 'U67890', avatarUrl: 'https://placehold.co/100x100' },
   { id: 'user-3', name: 'Charlie', email: 'charlie@example.com', role: 'Member', slack_id: 'UABCDE', avatarUrl: 'https://placehold.co/100x100' },
   { id: 'user-4', name: 'Diana', email: 'diana@example.com', role: 'Admin', slack_id: 'UFGHJI', avatarUrl: 'https://placehold.co/100x100' },
+  { id: 'user-5', name: 'Brad', email: 'brad@bespokethreads.com', role: 'Member', slack_id: '', avatarUrl: 'https://placehold.co/100x100' },
 ];
 
 export const spaces: Space[] = [
