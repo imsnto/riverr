@@ -1,9 +1,9 @@
 
 'use client';
 
-import React from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Task, users, projects, Comment, Activity, User, timeEntries, currentUser } from '@/lib/data';
+import React, { useRef, useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Task, users, projects, Comment, Activity, User, timeEntries, currentUser, Attachment } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -11,8 +11,9 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
-import { Bot, Calendar, CircleDot, Clock, Flag, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight } from 'lucide-react';
+import { Bot, Calendar, CircleDot, Clock, Flag, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight, Paperclip, File, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
@@ -73,6 +74,10 @@ interface TaskDetailsDialogProps {
 }
 
 export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdateTask }: TaskDetailsDialogProps) {
+    const { toast } = useToast();
+    const [attachments, setAttachments] = useState<File[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const project = projects.find(p => p.id === task.project_id);
     const totalTimeTracked = timeEntries
       .filter(t => t.task_id === task.id)
@@ -82,11 +87,30 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         e.preventDefault();
         const form = e.target as HTMLFormElement;
         const commentInput = form.elements.namedItem('comment') as HTMLTextAreaElement;
+        const commentText = commentInput.value;
+
+        if (!commentText && attachments.length === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Empty Comment',
+                description: 'Please write a comment or add an attachment.',
+            });
+            return;
+        }
+
+        const newAttachments: Attachment[] = attachments.map(file => ({
+            id: `att-${Date.now()}-${Math.random()}`,
+            name: file.name,
+            url: URL.createObjectURL(file), // In a real app, this would be an upload URL
+            type: file.type.startsWith('image/') ? 'image' : 'file',
+        }))
+
         const newComment: Comment = {
             id: `comment-${Date.now()}`,
             user_id: currentUser.id,
-            comment: commentInput.value,
+            comment: commentText,
             timestamp: new Date().toISOString(),
+            attachments: newAttachments,
         };
         const newActivity: Activity = {
             id: `act-${Date.now()}`,
@@ -95,18 +119,25 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
             type: 'comment',
             comment_id: newComment.id,
         }
+        
+        let updatedActivities = [...task.activities];
+        if (newComment.comment || newComment.attachments?.length) {
+            updatedActivities.push(newActivity);
+        }
+
         const updatedTask = { 
             ...task, 
             comments: [...task.comments, newComment],
-            activities: [...task.activities, newActivity]
+            activities: updatedActivities,
         };
         onUpdateTask(updatedTask);
         form.reset();
+        setAttachments([]);
     };
 
     const handleFieldChange = (field: keyof Task, value: any) => {
         let newActivity: Activity | undefined = undefined;
-        if (field === 'status') {
+        if (field === 'status' && task.status !== value) {
             newActivity = {
                 id: `act-${Date.now()}`,
                 user_id: currentUser.id,
@@ -126,6 +157,12 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
     }
     
     const sortedActivities = [...task.activities].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files) {
+          setAttachments(prev => [...prev, ...Array.from(event.target.files!)]);
+        }
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -266,7 +303,17 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                                         <p className="font-semibold text-sm">{user.name}</p>
                                                         <p className="text-xs text-muted-foreground">{new Date(comment.timestamp).toLocaleDateString()}</p>
                                                     </div>
-                                                    <p className="text-sm text-muted-foreground mt-1">{comment.comment}</p>
+                                                    {comment.comment && <p className="text-sm text-muted-foreground mt-1">{comment.comment}</p>}
+                                                    {comment.attachments && comment.attachments.length > 0 && (
+                                                        <div className="mt-2 space-y-2">
+                                                            {comment.attachments.map(att => (
+                                                                <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline bg-primary/10 p-2 rounded-md">
+                                                                {att.type === 'image' ? <ImageIcon className="h-4 w-4" /> : <File className="h-4 w-4" />}
+                                                                <span>{att.name}</span>
+                                                                </a>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         )
@@ -276,9 +323,40 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                             </div>
                         </ScrollArea>
                         <div className="p-4 border-t">
+                             {attachments.length > 0 && (
+                                <div className="mb-2 space-y-2">
+                                    {attachments.map((file, i) => (
+                                    <div key={i} className="flex items-center justify-between gap-2 text-sm bg-muted p-2 rounded-md">
+                                        <div className="flex items-center gap-2 overflow-hidden">
+                                            {file.type.startsWith('image/') ? <ImageIcon className="h-4 w-4 flex-shrink-0" /> : <File className="h-4 w-4 flex-shrink-0" />}
+                                            <span className="truncate">{file.name}</span>
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}
+                                        >
+                                        &times;
+                                        </Button>
+                                    </div>
+                                    ))}
+                                </div>
+                            )}
                             <form onSubmit={handleAddComment} className="relative">
-                                <Textarea name="comment" placeholder="Write a comment..." required className="pr-20" />
-                                <Button type="submit" size="sm" className="absolute right-2 bottom-2">Send</Button>
+                                <Textarea name="comment" placeholder="Write a comment..." className="pr-20" />
+                                <div className="absolute right-2 bottom-2 flex gap-1">
+                                    <input
+                                        type="file"
+                                        multiple
+                                        ref={fileInputRef}
+                                        className="hidden"
+                                        onChange={handleFileSelect}
+                                    />
+                                    <Button type="button" size="sm" variant="ghost" onClick={() => fileInputRef.current?.click()}>
+                                        <Paperclip className="h-4 w-4" />
+                                    </Button>
+                                    <Button type="submit" size="sm">Send</Button>
+                                </div>
                             </form>
                         </div>
                     </div>
@@ -287,5 +365,3 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         </Dialog>
     );
 }
-
-    

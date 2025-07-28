@@ -44,12 +44,19 @@ export interface Activity {
   comment_id?: string;
 }
 
+export interface Attachment {
+  id: string;
+  name: string;
+  url: string;
+  type: 'image' | 'file';
+}
 
 export interface Comment {
   id: string;
   user_id: string;
   comment: string;
   timestamp: string;
+  attachments?: Attachment[];
 }
 
 export interface TimeEntry {
@@ -110,9 +117,18 @@ export const tasks: Task[] = [
     relationships: [],
     activities: [
       { id: 'act-1', user_id: 'user-1', timestamp: '2024-07-20T16:48:00Z', type: 'status_change', from: 'Backlog', to: 'In Progress'},
+      { id: 'act-2', user_id: 'user-1', timestamp: '2024-08-01T10:00:00Z', type: 'comment', comment_id: 'comment-1' },
     ],
     comments: [
-      { id: 'comment-1', user_id: 'user-1', comment: 'How is this going?', timestamp: '2024-08-01T10:00:00Z' },
+      { 
+        id: 'comment-1',
+        user_id: 'user-1',
+        comment: 'How is this going? Can you upload the latest designs?',
+        timestamp: '2024-08-01T10:00:00Z',
+        attachments: [
+          { id: 'att-1', name: 'wireframe-v1.png', url: 'https://placehold.co/600x400.png', type: 'image' }
+        ]
+      },
     ],
   },
   {
