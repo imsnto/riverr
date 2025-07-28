@@ -24,7 +24,7 @@ export default function LoginPage() {
         throw new Error('Could not retrieve email from Google Sign-In.');
       }
       
-      const appUser = users.find(u => u.email === user.email);
+      const appUser = users.find(u => u.email.toLowerCase() === user.email!.toLowerCase());
 
       if (appUser) {
         router.push('/');
