@@ -9,6 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
@@ -39,6 +40,10 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         form.reset();
     };
 
+    const handleAssigneeChange = (userId: string) => {
+        onUpdateTask({ ...task, assigned_to: userId });
+    }
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl">
@@ -56,15 +61,26 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                         </div>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label className="text-right">Assignee</Label>
-                        <div className="col-span-3 flex items-center gap-2">
-                           {assignee && <>
-                                <Avatar className="h-6 w-6">
-                                    <AvatarImage src={assignee.avatarUrl} alt={assignee.name} />
-                                    <AvatarFallback>{getInitials(assignee.name)}</AvatarFallback>
-                                </Avatar>
-                                <span>{assignee.name}</span>
-                           </>}
+                        <Label htmlFor="assignee-select" className="text-right">Assignee</Label>
+                        <div className="col-span-3">
+                            <Select onValueChange={handleAssigneeChange} defaultValue={task.assigned_to}>
+                                <SelectTrigger id="assignee-select" className="w-[200px]">
+                                    <SelectValue placeholder="Select a user" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {users.map(user => (
+                                        <SelectItem key={user.id} value={user.id}>
+                                            <div className="flex items-center gap-2">
+                                                <Avatar className="h-6 w-6">
+                                                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                                                    <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                                                </Avatar>
+                                                <span>{user.name}</span>
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">

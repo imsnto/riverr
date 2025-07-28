@@ -11,14 +11,19 @@ import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import NewTaskDialog from './new-task-dialog';
 import TaskDetailsDialog from './task-details-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
 }
 
-const TaskCard = ({ task, onClick, isDragging }: { task: Task, onClick: () => void, isDragging: boolean }) => {
+const TaskCard = ({ task, onUpdateTask, onClick, isDragging }: { task: Task, onUpdateTask: (task: Task) => void, onClick: () => void, isDragging: boolean }) => {
   const assignee = users.find(u => u.id === task.assigned_to);
   const project = projects.find(p => p.id === task.project_id);
+
+  const handleAssigneeChange = (userId: string) => {
+    onUpdateTask({ ...task, assigned_to: userId });
+  };
 
   return (
     <Card
@@ -41,12 +46,25 @@ const TaskCard = ({ task, onClick, isDragging }: { task: Task, onClick: () => vo
         <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
       </CardContent>
       <CardFooter className="flex justify-between items-center p-4 pt-0">
-        {assignee && (
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={assignee.avatarUrl} alt={assignee.name} />
-            <AvatarFallback>{getInitials(assignee.name)}</AvatarFallback>
-          </Avatar>
-        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" className="h-8 w-8 p-0 rounded-full">
+                {assignee && (
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={assignee.avatarUrl} alt={assignee.name} />
+                    <AvatarFallback>{getInitials(assignee.name)}</AvatarFallback>
+                  </Avatar>
+                )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent onClick={(e) => e.stopPropagation()} align="start">
+            {users.map(user => (
+              <DropdownMenuItem key={user.id} onSelect={() => handleAssigneeChange(user.id)}>
+                {user.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <span className="text-xs text-muted-foreground">Due: {new Date(task.due_date).toLocaleDateString()}</span>
       </CardFooter>
     </Card>
@@ -91,7 +109,10 @@ export default function TaskBoard() {
 
   const handleUpdateTask = (updatedTask: Task) => {
     setTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task));
-    setSelectedTask(null);
+    // Also update the selected task if it's the one being edited
+    if (selectedTask && selectedTask.id === updatedTask.id) {
+      setSelectedTask(updatedTask);
+    }
   }
 
   return (
@@ -122,7 +143,12 @@ export default function TaskBoard() {
                     onDragStart={(e) => handleDragStart(e, task.id)}
                     onDragEnd={handleDragEnd}
                   >
-                    <TaskCard task={task} onClick={() => setSelectedTask(task)} isDragging={draggedTask === task.id} />
+                    <TaskCard 
+                      task={task} 
+                      onClick={() => setSelectedTask(task)} 
+                      onUpdateTask={handleUpdateTask}
+                      isDragging={draggedTask === task.id} 
+                    />
                   </div>
                 ))}
             </div>
