@@ -1,0 +1,90 @@
+
+'use client';
+
+import React from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Project, tasks, users } from '@/lib/data';
+import { Badge } from '../ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
+import { ScrollArea } from '../ui/scroll-area';
+
+const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('');
+}
+
+interface ProjectDetailsDialogProps {
+    project: Project;
+    isOpen: boolean;
+    onOpenChange: (isOpen: boolean) => void;
+}
+
+export default function ProjectDetailsDialog({ project, isOpen, onOpenChange }: ProjectDetailsDialogProps) {
+    const projectTasks = tasks.filter(t => t.project_id === project.id);
+    const projectMembers = users.filter(u => project.members.includes(u.id));
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-4">
+                        {project.name}
+                        <Badge>{project.status}</Badge>
+                    </DialogTitle>
+                    <DialogDescription>
+                        Created by {users.find(u => u.id === project.created_by)?.name || 'Unknown'}
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid md:grid-cols-3 gap-6 py-4">
+                    <div className="md:col-span-2">
+                        <h3 className="font-semibold mb-2">Tasks ({projectTasks.length})</h3>
+                        <ScrollArea className="h-72 rounded-md border">
+                            <div className="p-4 space-y-3">
+                                {projectTasks.length > 0 ? projectTasks.map(task => {
+                                    const assignee = users.find(u => u.id === task.assigned_to);
+                                    return (
+                                        <div key={task.id} className="p-3 rounded-md border bg-card/50">
+                                            <div className="flex justify-between items-start">
+                                                <p className="font-medium text-sm">{task.name}</p>
+                                                <Badge variant={task.status === 'Done' ? 'default' : 'secondary'}>{task.status}</Badge>
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                                                {assignee && (
+                                                    <>
+                                                        <Avatar className="h-5 w-5">
+                                                            <AvatarImage src={assignee.avatarUrl} alt={assignee.name} />
+                                                            <AvatarFallback>{getInitials(assignee.name)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <span>{assignee.name}</span>
+                                                    </>
+                                                )}
+                                                <span>· Due {new Date(task.due_date).toLocaleDateString()}</span>
+                                            </div>
+                                        </div>
+                                    )
+                                }) : <p className="text-sm text-muted-foreground text-center py-8">No tasks for this project yet.</p>}
+                            </div>
+                        </ScrollArea>
+                    </div>
+                    <div>
+                        <h3 className="font-semibold mb-2">Members ({projectMembers.length})</h3>
+                        <div className="space-y-3">
+                            {projectMembers.map(member => (
+                                <div key={member.id} className="flex items-center gap-3">
+                                    <Avatar className="h-9 w-9">
+                                        <AvatarImage src={member.avatarUrl} alt={member.name} />
+                                        <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="text-sm font-medium">{member.name}</p>
+                                        <p className="text-xs text-muted-foreground">{member.email}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+

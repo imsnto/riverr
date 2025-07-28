@@ -3,25 +3,28 @@
 
 import React, { useState, DragEvent } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { tasks as initialTasks, users, projects, Task } from '@/lib/data';
+import { tasks as initialTasks, users, projects, Task, Project } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
+import NewTaskDialog from './new-task-dialog';
+import TaskDetailsDialog from './task-details-dialog';
 
 const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
 }
 
-const TaskCard = ({ task, isDragging }: { task: Task, isDragging: boolean }) => {
+const TaskCard = ({ task, onClick, isDragging }: { task: Task, onClick: () => void, isDragging: boolean }) => {
   const assignee = users.find(u => u.id === task.assigned_to);
   const project = projects.find(p => p.id === task.project_id);
 
   return (
     <Card
+      onClick={onClick}
       className={cn(
-        "mb-4 bg-card hover:shadow-md transition-shadow duration-200",
+        "mb-4 bg-card hover:shadow-md transition-shadow duration-200 cursor-pointer",
         isDragging && "opacity-50 ring-2 ring-primary"
       )}
     >
@@ -53,6 +56,8 @@ const TaskCard = ({ task, isDragging }: { task: Task, isDragging: boolean }) => 
 export default function TaskBoard() {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
+  const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const columns: Task['status'][] = ['Backlog', 'In Progress', 'Review', 'Done'];
 
@@ -78,11 +83,26 @@ export default function TaskBoard() {
 
   const handleDragEnd = () => {
     setDraggedTask(null);
+  };
+
+  const handleAddTask = (newTask: Task) => {
+    setTasks(prevTasks => [...prevTasks, newTask]);
+  };
+
+  const handleUpdateTask = (updatedTask: Task) => {
+    setTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task));
+    setSelectedTask(null);
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">Task Board</h1>
+    <>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Task Board</h1>
+        <Button onClick={() => setIsNewTaskDialogOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          New Task
+        </Button>
+      </div>
       <div className="flex gap-6 overflow-x-auto pb-4">
         {columns.map(status => (
           <div
@@ -102,13 +122,28 @@ export default function TaskBoard() {
                     onDragStart={(e) => handleDragStart(e, task.id)}
                     onDragEnd={handleDragEnd}
                   >
-                    <TaskCard task={task} isDragging={draggedTask === task.id} />
+                    <TaskCard task={task} onClick={() => setSelectedTask(task)} isDragging={draggedTask === task.id} />
                   </div>
                 ))}
             </div>
           </div>
         ))}
       </div>
-    </div>
+      <NewTaskDialog 
+        isOpen={isNewTaskDialogOpen}
+        onOpenChange={setIsNewTaskDialogOpen}
+        onTaskAdd={handleAddTask}
+      />
+      {selectedTask && (
+        <TaskDetailsDialog
+          task={selectedTask}
+          isOpen={!!selectedTask}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setSelectedTask(null);
+          }}
+          onUpdateTask={handleUpdateTask}
+        />
+      )}
+    </>
   );
 }
