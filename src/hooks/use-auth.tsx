@@ -28,31 +28,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setFirebaseUser(user);
       if (user) {
-        // In a real app, you might fetch user profile from your database
-        const appUser = users.find(u => u.email === user.email);
-        
-        // This is important: if the user is not in the system, we should treat them as not logged in
+        setFirebaseUser(user);
+        const appUser = users.find(u => u.email.toLowerCase() === user.email?.toLowerCase());
         if (appUser) {
            setCurrentUser(appUser);
         } else {
-           // User is authenticated with Firebase but not in our system.
-           // The login page will handle showing the error.
-           // Here, we ensure they don't have access to the main app.
            setCurrentUser(null);
-           if (pathname !== '/login') {
-             router.push('/login');
-           }
         }
       } else {
+        setFirebaseUser(null);
         setCurrentUser(null);
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [pathname, router]);
+  }, []);
 
   useEffect(() => {
     if (!loading && !firebaseUser && pathname !== '/login') {
@@ -62,7 +54,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{ currentUser, firebaseUser, loading }}>
-      {loading ? <div className="flex h-screen items-center justify-center">Loading...</div> : children}
+      {loading ? <div className="flex h-screen items-center justify-center">Authenticating...</div> : children}
     </AuthContext.Provider>
   );
 };
