@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Task, users, projects, Comment, Activity, User, timeEntries } from '@/lib/data';
+import { Task, users, projects, Comment, Activity, User, timeEntries, currentUser } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -11,7 +11,7 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
-import { Bot, Calendar, Check, CircleDot, Clock, Flag, Hash, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight } from 'lucide-react';
+import { Bot, Calendar, CircleDot, Clock, Flag, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const getInitials = (name: string) => {
@@ -84,13 +84,13 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         const commentInput = form.elements.namedItem('comment') as HTMLTextAreaElement;
         const newComment: Comment = {
             id: `comment-${Date.now()}`,
-            user_id: 'user-1', // Assuming current user is adding comment
+            user_id: currentUser.id,
             comment: commentInput.value,
             timestamp: new Date().toISOString(),
         };
         const newActivity: Activity = {
             id: `act-${Date.now()}`,
-            user_id: 'user-1',
+            user_id: currentUser.id,
             timestamp: new Date().toISOString(),
             type: 'comment',
             comment_id: newComment.id,
@@ -109,7 +109,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         if (field === 'status') {
             newActivity = {
                 id: `act-${Date.now()}`,
-                user_id: 'user-1',
+                user_id: currentUser.id,
                 timestamp: new Date().toISOString(),
                 type: 'status_change',
                 from: task.status,
@@ -125,13 +125,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         onUpdateTask(updatedTask);
     }
     
-    const sortedActivities = [...task.activities, ...task.comments.map(c => ({
-        id: `activity-comment-${c.id}`,
-        user_id: c.user_id,
-        timestamp: c.timestamp,
-        type: 'comment' as const,
-        comment_id: c.id
-    }))].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const sortedActivities = [...task.activities].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -141,7 +135,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                     <div className="col-span-2 p-6 flex flex-col gap-6 overflow-y-auto">
                         <DialogHeader className="gap-4">
                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Button variant="outline" size="sm">
+                                <Button variant="outline" size="sm" className="pointer-events-none">
                                     <CircleDot className="mr-2" /> Task
                                 </Button>
                                 <span>{task.id}</span>
@@ -173,7 +167,15 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                              <DetailRow icon={Users} label="Assignees">
                                 <Select value={task.assigned_to} onValueChange={(value) => handleFieldChange('assigned_to', value)}>
                                     <SelectTrigger className="h-8">
-                                        <SelectValue />
+                                        <SelectValue asChild>
+                                           <div className="flex items-center gap-2">
+                                            <Avatar className="h-5 w-5">
+                                              <AvatarImage src={users.find(u=>u.id === task.assigned_to)?.avatarUrl} />
+                                              <AvatarFallback>{getInitials(users.find(u=>u.id === task.assigned_to)?.name || '')}</AvatarFallback>
+                                            </Avatar>
+                                            {users.find(u=>u.id === task.assigned_to)?.name}
+                                          </div>
+                                        </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                       {users.map(user => (
@@ -191,7 +193,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                 </Select>
                             </DetailRow>
                             <DetailRow icon={Calendar} label="Dates">
-                                <div className="flex items-center gap-2 text-sm">
+                                <div className="flex items-center gap-2 text-sm h-8">
                                     <span>{new Date(task.due_date).toLocaleDateString()}</span>
                                     <ArrowRight className="h-4 w-4 text-muted-foreground"/>
                                     <span>{new Date(task.due_date).toLocaleDateString()}</span>
@@ -212,19 +214,19 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                 </Select>
                             </DetailRow>
                              <DetailRow icon={Clock} label="Time Estimate">
-                                <p className="text-sm">{task.time_estimate ? `${task.time_estimate}h` : 'Empty'}</p>
+                                <p className="text-sm h-8 flex items-center">{task.time_estimate ? `${task.time_estimate}h` : 'Empty'}</p>
                             </DetailRow>
                              <DetailRow icon={Zap} label="Sprint Points">
-                                 <p className="text-sm">{task.sprint_points ? `${task.sprint_points}` : 'Empty'}</p>
+                                 <p className="text-sm h-8 flex items-center">{task.sprint_points ? `${task.sprint_points}` : 'Empty'}</p>
                             </DetailRow>
                             <DetailRow icon={Clock} label="Track Time">
-                                <p className="text-sm font-medium">{totalTimeTracked}h</p>
+                                <p className="text-sm font-medium h-8 flex items-center">{totalTimeTracked}h</p>
                             </DetailRow>
                              <DetailRow icon={Tag} label="Tags">
-                                <p className="text-sm">Empty</p>
+                                <p className="text-sm h-8 flex items-center">Empty</p>
                             </DetailRow>
                             <DetailRow icon={LinkIcon} label="Relationships">
-                                <p className="text-sm">Empty</p>
+                                <p className="text-sm h-8 flex items-center">Empty</p>
                             </DetailRow>
                         </div>
 
@@ -285,3 +287,5 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         </Dialog>
     );
 }
+
+    
