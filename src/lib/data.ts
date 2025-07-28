@@ -94,7 +94,7 @@ export interface SlackMeetingLog {
 // MOCK DATA
 
 export const users: User[] = [
-  { id: 'user-1', name: 'Alice', email: 'alice@example.com', role: 'Admin', slack_id: 'U12345', avatarUrl: 'https://placehold.co/100x100' },
+  { id: 'user-1', name: 'Brad', email: 'Brad@riverr.app', role: 'Admin', slack_id: 'U12345', avatarUrl: 'https://placehold.co/100x100' },
   { id: 'user-2', name: 'Bob', email: 'bob@example.com', role: 'Member', slack_id: 'U67890', avatarUrl: 'https://placehold.co/100x100' },
   { id: 'user-3', name: 'Charlie', email: 'charlie@example.com', role: 'Member', slack_id: 'UABCDE', avatarUrl: 'https://placehold.co/100x100' },
   { id: 'user-4', name: 'Diana', email: 'diana@example.com', role: 'Admin', slack_id: 'UFGHJI', avatarUrl: 'https://placehold.co/100x100' },
