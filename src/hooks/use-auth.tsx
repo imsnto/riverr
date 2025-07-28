@@ -1,4 +1,3 @@
-
 // src/hooks/use-auth.tsx
 'use client';
 
@@ -38,6 +37,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
            setCurrentUser(appUser);
         } else {
            setCurrentUser(null);
+           // If user is not in our list, but is logged in via Google, sign them out.
+           auth.signOut();
         }
       } else {
         setCurrentUser(null);
@@ -64,6 +65,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (needsUpdate) {
         setCurrentUser(prevUser => {
           if (!prevUser) return null;
+          // Create a new object to ensure state update
           return {
             ...prevUser,
             name: googleName || prevUser.name,
@@ -81,4 +83,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};
