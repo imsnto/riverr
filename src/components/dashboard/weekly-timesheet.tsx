@@ -2,7 +2,7 @@
 'use client'
 
 import React, { useState } from 'react';
-import { timeEntries, projects, tasks as initialTasks, users, Task } from '@/lib/data';
+import { TimeEntry, Project, Task, users as allUsers } from '@/lib/data';
 import { ChevronLeft, ChevronRight, MoreHorizontal, Dot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -10,14 +10,17 @@ import TaskDetailsDialog from './task-details-dialog';
 
 interface WeeklyTimesheetProps {
   userId: string;
+  timeEntries: TimeEntry[];
+  projects: Project[];
+  tasks: Task[];
 }
 
-export default function WeeklyTimesheet({ userId }: WeeklyTimesheetProps) {
+export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: initialTasks }: WeeklyTimesheetProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const userTimeEntries = timeEntries.filter(entry => entry.user_id === userId);
-  const user = users.find(u => u.id === userId);
+  const user = allUsers.find(u => u.id === userId);
   
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const dates = [6, 7, 8, 9, 10, 11, 12].map(d => `Jul ${d}`);
@@ -54,7 +57,8 @@ export default function WeeklyTimesheet({ userId }: WeeklyTimesheetProps) {
 
   const handleTaskClick = (task: Task | undefined) => {
     if (task) {
-      setSelectedTask(task);
+      const fullTask = initialTasks.find(t => t.id === task.id);
+      if(fullTask) setSelectedTask(fullTask);
     }
   };
 
@@ -146,4 +150,3 @@ export default function WeeklyTimesheet({ userId }: WeeklyTimesheetProps) {
     </>
   );
 }
-

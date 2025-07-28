@@ -10,18 +10,79 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { currentUser } from '@/lib/data';
-import { LifeBuoy, LogOut, Settings } from 'lucide-react';
+import { currentUser, spaces as allSpaces, Space } from '@/lib/data';
+import { LifeBuoy, LogOut, Settings, ChevronsUpDown, Check } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { cn } from '@/lib/utils';
+import React from 'react';
 
-export default function Header() {
+interface SpaceSwitcherProps {
+  spaces: Space[];
+  activeSpace: Space;
+  onSpaceChange: (spaceId: string) => void;
+}
+
+function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProps) {
+  const [open, setOpen] = React.useState(false)
+
+  return (
+     <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-[200px] justify-between"
+        >
+          {activeSpace.name}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] p-0">
+        <Command>
+          <CommandInput placeholder="Search space..." />
+          <CommandList>
+            <CommandEmpty>No space found.</CommandEmpty>
+            <CommandGroup>
+              {spaces.map((space) => (
+                <CommandItem
+                  key={space.id}
+                  value={space.id}
+                  onSelect={(currentValue) => {
+                    onSpaceChange(currentValue)
+                    setOpen(false)
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      activeSpace.id === space.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {space.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+
+export default function Header({ activeSpace, onSpaceChange }: { activeSpace: Space; onSpaceChange: (spaceId: string) => void; }) {
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
   }
 
+  const userSpaces = allSpaces.filter(space => space.members.includes(currentUser.id));
+
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-card px-4 md:px-8">
       <div>
-        {/* Can add breadcrumbs or other nav elements here */}
+        <SpaceSwitcher spaces={userSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />
       </div>
       <div className="flex items-center gap-4">
         <DropdownMenu>

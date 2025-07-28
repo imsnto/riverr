@@ -16,7 +16,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { projects, users, Task } from '@/lib/data';
+import { users, Task, Project } from '@/lib/data';
 
 const taskSchema = z.object({
   name: z.string().min(1, 'Task name is required'),
@@ -33,9 +33,10 @@ interface NewTaskDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onTaskAdd: (task: Task) => void;
+  projects: Project[];
 }
 
-export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd }: NewTaskDialogProps) {
+export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, projects }: NewTaskDialogProps) {
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
@@ -53,7 +54,14 @@ export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd }: NewTa
       id: `task-${Date.now()}`,
       ...values,
       due_date: values.due_date.toISOString(),
+      priority: null,
+      sprint_points: null,
+      tags: [],
+      time_estimate: null,
+      relationships: [],
+      activities: [],
       comments: [],
+      attachments: [],
     };
     onTaskAdd(newTask);
     form.reset();

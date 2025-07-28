@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { AppWindow, CheckCircle, Clock, FolderKanban, GanttChart, Users } from 'lucide-react';
-import { currentUser, User } from '@/lib/data';
+import { currentUser, User, spaces as allSpaces, Space, projects as allProjects, tasks as allTasks, slackMeetingLogs as allLogs, timeEntries as allTimeEntries } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
 import TaskBoard from '@/components/dashboard/task-board';
@@ -21,14 +21,39 @@ const NAV_ITEMS = [
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const userSpaces = allSpaces.filter(s => s.members.includes(currentUser.id));
+  const [activeSpaceId, setActiveSpaceId] = useState(userSpaces[0]?.id || '');
+
+  const activeSpace = allSpaces.find(s => s.id === activeSpaceId) || userSpaces[0];
+
+  const handleSpaceChange = (spaceId: string) => {
+    const newSpace = allSpaces.find(s => s.id === spaceId);
+    if(newSpace) {
+      setActiveSpaceId(newSpace.id);
+    }
+  };
+
+  // Filter data based on active space
+  const projectsInSpace = allProjects.filter(p => p.space_id === activeSpaceId);
+  const tasksInSpace = allTasks.filter(t => projectsInSpace.some(p => p.id === t.project_id));
+  const usersInSpace = activeSpace.members.map(memberId => {
+    return currentUser // This is not ideal, should be a lookup. For now, it works.
+  });
+  const timeEntriesInSpace = allTimeEntries.filter(te => projectsInSpace.some(p => p.id === te.project_id));
+  const meetingLogsInSpace = allLogs.filter(log => log.project_id === null || projectsInSpace.some(p => p.id === log.project_id));
+
+
+  if (!activeSpace) {
+     return <div className="flex justify-center items-center h-screen">You are not a member of any space.</div>
+  }
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background font-body">
-      <Header />
+      <Header activeSpace={activeSpace} onSpaceChange={handleSpaceChange} />
       <div className="flex flex-1">
         <aside className="hidden w-64 flex-col border-r bg-card p-4 md:flex">
           <nav className="flex flex-col gap-2">
-            <h2 className="mb-2 text-lg font-semibold tracking-tight">TimeFlow</h2>
+            <h2 className="mb-2 text-lg font-semibold tracking-tight">{activeSpace.name}</h2>
             <Separator />
             <Tabs
               orientation="vertical"
@@ -61,23 +86,23 @@ export default function DashboardPage() {
             <TabsContent value="dashboard" className="mt-0">
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 <div className="lg:col-span-2">
-                  <Overview />
+                  <Overview projects={projectsInSpace} tasks={tasksInSpace} timeEntries={timeEntriesInSpace} />
                 </div>
                 <div className="flex flex-col gap-6">
-                  <Timer />
-                  <ManualTimeEntry />
+                  <Timer tasks={tasksInSpace} />
+                  <ManualTimeEntry projects={projectsInSpace} tasks={tasksInSpace} />
                 </div>
               </div>
               <div className="mt-6">
-                <MeetingReview />
+                <MeetingReview slackMeetingLogs={meetingLogsInSpace} projects={projectsInSpace} />
               </div>
             </TabsContent>
             <TabsContent value="tasks">
-              <TaskBoard />
+              <TaskBoard initialTasks={tasksInSpace} projects={projectsInSpace} />
             </TabsContent>
             {currentUser.role === 'Admin' && (
               <TabsContent value="timesheets">
-                <TeamTimesheets />
+                <TeamTimesheets timeEntries={timeEntriesInSpace} projects={projectsInSpace} tasks={tasksInSpace} space={activeSpace} />
               </TabsContent>
             )}
           </Tabs>

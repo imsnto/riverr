@@ -4,7 +4,7 @@ import React, { useState, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { slackMeetingLogs, projects, users, adminMappings, SlackMeetingLog } from '@/lib/data';
+import { users, adminMappings, SlackMeetingLog, Project } from '@/lib/data';
 import { Bot, Calendar, Clock, Loader2, Tag } from 'lucide-react';
 import { suggestProjectFromMeeting } from '@/ai/flows/suggest-project-from-meeting';
 import { useToast } from '@/hooks/use-toast';
@@ -20,7 +20,12 @@ interface SuggestionState {
   };
 }
 
-export default function MeetingReview() {
+interface MeetingReviewProps {
+  slackMeetingLogs: SlackMeetingLog[];
+  projects: Project[];
+}
+
+export default function MeetingReview({ slackMeetingLogs, projects }: MeetingReviewProps) {
   const unassignedMeetings = slackMeetingLogs.filter(log => !log.project_id);
   const [suggestions, setSuggestions] = useState<SuggestionState>({});
   const [isPending, startTransition] = useTransition();

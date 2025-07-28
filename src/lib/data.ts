@@ -1,4 +1,10 @@
 // DATA STRUCTURES
+export interface Space {
+  id: string;
+  name: string;
+  members: string[];
+}
+
 export interface User {
   id: string;
   name: string;
@@ -10,6 +16,7 @@ export interface User {
 
 export interface Project {
   id: string;
+  space_id: string;
   name: string;
   status: "Active" | "Archived" | "On Hold";
   created_by: string;
@@ -32,6 +39,7 @@ export interface Task {
   relationships: string[]; // e.g., parent task, related tasks
   activities: Activity[];
   comments: Comment[];
+  attachments?: Attachment[];
 }
 
 export interface Activity {
@@ -84,6 +92,7 @@ export interface SlackMeetingLog {
 }
 
 // MOCK DATA
+
 export const users: User[] = [
   { id: 'user-1', name: 'Alice', email: 'alice@example.com', role: 'Admin', slack_id: 'U12345', avatarUrl: 'https://placehold.co/100x100' },
   { id: 'user-2', name: 'Bob', email: 'bob@example.com', role: 'Member', slack_id: 'U67890', avatarUrl: 'https://placehold.co/100x100' },
@@ -94,11 +103,18 @@ export const users: User[] = [
 export const currentUser = users[0]; // Alice is the current user (Admin)
 // export const currentUser = users[1]; // Bob is the current user (Member)
 
+export const spaces: Space[] = [
+  { id: 'space-1', name: 'Work', members: ['user-1', 'user-2', 'user-3', 'user-4'] },
+  { id: 'space-2', name: 'Personal', members: ['user-1'] },
+  { id: 'space-3', name: 'Side Hustle', members: ['user-1', 'user-4'] },
+]
+
 export const projects: Project[] = [
-  { id: 'proj-1', name: 'Website Redesign', status: 'Active', created_by: 'user-1', members: ['user-1', 'user-2'], slack_channel_id: 'C111' },
-  { id: 'proj-2', name: 'Mobile App Development', status: 'Active', created_by: 'user-4', members: ['user-1', 'user-3', 'user-4'], slack_channel_id: 'C222' },
-  { id: 'proj-3', name: 'API Integration', status: 'On Hold', created_by: 'user-1', members: ['user-2', 'user-3'] },
-  { id: 'proj-4', name: 'Marketing Campaign', status: 'Archived', created_by: 'user-4', members: ['user-4'] },
+  { id: 'proj-1', space_id: 'space-1', name: 'Website Redesign', status: 'Active', created_by: 'user-1', members: ['user-1', 'user-2'], slack_channel_id: 'C111' },
+  { id: 'proj-2', space_id: 'space-1', name: 'Mobile App Development', status: 'Active', created_by: 'user-4', members: ['user-1', 'user-3', 'user-4'], slack_channel_id: 'C222' },
+  { id: 'proj-3', space_id: 'space-1', name: 'API Integration', status: 'On Hold', created_by: 'user-1', members: ['user-2', 'user-3'] },
+  { id: 'proj-4', space_id: 'space-2', name: 'Personal Website', status: 'Active', created_by: 'user-1', members: ['user-1'] },
+  { id: 'proj-5', space_id: 'space-3', name: 'New SaaS Concept', status: 'Active', created_by: 'user-4', members: ['user-1', 'user-4'] },
 ];
 
 export const tasks: Task[] = [
@@ -130,6 +146,9 @@ export const tasks: Task[] = [
         ]
       },
     ],
+    attachments: [
+      { id: 'att-1', name: 'wireframe-v1.png', url: 'https://placehold.co/600x400.png', type: 'image' }
+    ]
   },
   {
     id: 'task-2',
@@ -146,6 +165,7 @@ export const tasks: Task[] = [
     relationships: [],
     activities: [],
     comments: [],
+    attachments: []
   },
   {
     id: 'task-3',
@@ -162,6 +182,7 @@ export const tasks: Task[] = [
     relationships: [],
     activities: [],
     comments: [],
+    attachments: []
   },
   {
     id: 'task-4',
@@ -178,6 +199,7 @@ export const tasks: Task[] = [
     relationships: [],
     activities: [],
     comments: [],
+    attachments: []
   },
   {
     id: 'task-5',
@@ -194,6 +216,7 @@ export const tasks: Task[] = [
     relationships: [],
     activities: [],
     comments: [],
+    attachments: []
   },
 ];
 

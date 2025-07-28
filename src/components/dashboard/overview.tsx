@@ -3,11 +3,17 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { projects, tasks, timeEntries, currentUser, Project } from '@/lib/data';
+import { Project, Task, TimeEntry, currentUser } from '@/lib/data';
 import { CheckCircle, Clock, FolderKanban } from 'lucide-react';
 import ProjectDetailsDialog from './project-details-dialog';
 
-export default function Overview() {
+interface OverviewProps {
+  projects: Project[];
+  tasks: Task[];
+  timeEntries: TimeEntry[];
+}
+
+export default function Overview({ projects, tasks, timeEntries }: OverviewProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   const userProjects = projects.filter(p => p.members.includes(currentUser.id));

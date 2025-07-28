@@ -5,10 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Play, Square, TimerIcon } from 'lucide-react';
-import { tasks, currentUser } from '@/lib/data';
+import { Task, currentUser } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
-export default function Timer() {
+interface TimerProps {
+  tasks: Task[];
+}
+
+export default function Timer({ tasks }: TimerProps) {
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);

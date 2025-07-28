@@ -3,7 +3,7 @@
 
 import React, { useState, DragEvent } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { tasks as initialTasks, users, projects, Task, Project } from '@/lib/data';
+import { users, Task, Project } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { MoreHorizontal, Plus } from 'lucide-react';
@@ -17,9 +17,8 @@ const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
 }
 
-const TaskCard = ({ task, onUpdateTask, onClick, isDragging }: { task: Task, onUpdateTask: (task: Task) => void, onClick: () => void, isDragging: boolean }) => {
+const TaskCard = ({ task, project, onUpdateTask, onClick, isDragging }: { task: Task, project?: Project, onUpdateTask: (task: Task) => void, onClick: () => void, isDragging: boolean }) => {
   const assignee = users.find(u => u.id === task.assigned_to);
-  const project = projects.find(p => p.id === task.project_id);
 
   const handleAssigneeChange = (userId: string) => {
     onUpdateTask({ ...task, assigned_to: userId });
@@ -71,11 +70,20 @@ const TaskCard = ({ task, onUpdateTask, onClick, isDragging }: { task: Task, onU
   );
 };
 
-export default function TaskBoard() {
+interface TaskBoardProps {
+  initialTasks: Task[];
+  projects: Project[];
+}
+
+export default function TaskBoard({ initialTasks, projects }: TaskBoardProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  React.useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
 
   const columns: Task['status'][] = ['Backlog', 'In Progress', 'Review', 'Done'];
 
@@ -109,7 +117,6 @@ export default function TaskBoard() {
 
   const handleUpdateTask = (updatedTask: Task) => {
     setTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task));
-    // Also update the selected task if it's the one being edited
     if (selectedTask && selectedTask.id === updatedTask.id) {
       setSelectedTask(updatedTask);
     }
@@ -145,6 +152,7 @@ export default function TaskBoard() {
                   >
                     <TaskCard 
                       task={task} 
+                      project={projects.find(p => p.id === task.project_id)}
                       onClick={() => setSelectedTask(task)} 
                       onUpdateTask={handleUpdateTask}
                       isDragging={draggedTask === task.id} 
@@ -159,6 +167,7 @@ export default function TaskBoard() {
         isOpen={isNewTaskDialogOpen}
         onOpenChange={setIsNewTaskDialogOpen}
         onTaskAdd={handleAddTask}
+        projects={projects}
       />
       {selectedTask && (
         <TaskDetailsDialog

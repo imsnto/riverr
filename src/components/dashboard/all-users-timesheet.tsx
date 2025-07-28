@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { timeEntries, users, User } from '@/lib/data';
+import { TimeEntry, User } from '@/lib/data';
 import { ChevronLeft, ChevronRight, DollarSign, Tag, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -13,9 +13,11 @@ const getInitials = (name: string) => {
 
 interface AllUsersTimesheetProps {
   onUserSelect: (userId: string) => void;
+  users: User[];
+  timeEntries: TimeEntry[];
 }
 
-export default function AllUsersTimesheet({ onUserSelect }: AllUsersTimesheetProps) {
+export default function AllUsersTimesheet({ onUserSelect, users, timeEntries }: AllUsersTimesheetProps) {
   // This is a simplified version. A real app would use a date library for date management.
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const dates = [13, 14, 15, 16, 17, 18, 19].map(d => `Jul ${d}`);

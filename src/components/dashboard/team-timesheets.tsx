@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { users } from '@/lib/data';
+import { users as allUsers, Project, Task, TimeEntry, Space } from '@/lib/data';
 import WeeklyTimesheet from './weekly-timesheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -15,11 +15,19 @@ const getInitials = (name: string) => {
 
 type ViewMode = 'all-users' | 'single-user';
 
-export default function TeamTimesheets() {
-  const [selectedUserId, setSelectedUserId] = useState(users[0].id);
+interface TeamTimesheetsProps {
+  space: Space;
+  projects: Project[];
+  tasks: Task[];
+  timeEntries: TimeEntry[];
+}
+
+export default function TeamTimesheets({ space, projects, tasks, timeEntries }: TeamTimesheetsProps) {
+  const usersInSpace = allUsers.filter(u => space.members.includes(u.id));
+  const [selectedUserId, setSelectedUserId] = useState(usersInSpace[0].id);
   const [viewMode, setViewMode] = useState<ViewMode>('all-users');
 
-  const selectedUser = users.find(u => u.id === selectedUserId) || users[0];
+  const selectedUser = usersInSpace.find(u => u.id === selectedUserId) || usersInSpace[0];
 
   const handleUserSelectAndSwitchView = (userId: string) => {
     setSelectedUserId(userId);
@@ -46,7 +54,7 @@ export default function TeamTimesheets() {
                   </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                  {users.map(user => (
+                  {usersInSpace.map(user => (
                       <SelectItem key={user.id} value={user.id}>
                            <div className="flex items-center gap-2">
                               <Avatar className="h-6 w-6">
@@ -62,7 +70,12 @@ export default function TeamTimesheets() {
         </div>
         <Card>
           <CardContent className="p-0">
-            <WeeklyTimesheet userId={selectedUserId} />
+            <WeeklyTimesheet 
+              userId={selectedUserId}
+              timeEntries={timeEntries}
+              projects={projects}
+              tasks={tasks} 
+             />
           </CardContent>
         </Card>
       </div>
@@ -70,6 +83,10 @@ export default function TeamTimesheets() {
   }
 
   return (
-     <AllUsersTimesheet onUserSelect={handleUserSelectAndSwitchView} />
+     <AllUsersTimesheet 
+        onUserSelect={handleUserSelectAndSwitchView}
+        timeEntries={timeEntries}
+        users={usersInSpace}
+      />
   )
 }
