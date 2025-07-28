@@ -31,21 +31,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setFirebaseUser(user);
       if (user) {
-        setFirebaseUser(user);
         const appUser = users.find(u => u.email.toLowerCase() === user.email?.toLowerCase());
-
         if (appUser) {
-           setCurrentUser({
-            ...appUser,
-            name: user.displayName || appUser.name,
-            avatarUrl: user.photoURL || appUser.avatarUrl,
-           });
+           setCurrentUser(appUser);
         } else {
            setCurrentUser(null);
         }
       } else {
-        setFirebaseUser(null);
         setCurrentUser(null);
       }
       setLoading(false);
@@ -59,6 +53,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       router.push('/login');
     }
   }, [loading, currentUser, pathname, router]);
+
+  useEffect(() => {
+    if (firebaseUser && currentUser) {
+      const googleName = firebaseUser.displayName;
+      const googleAvatar = firebaseUser.photoURL;
+      
+      const needsUpdate = (googleName && googleName !== currentUser.name) || (googleAvatar && googleAvatar !== currentUser.avatarUrl);
+
+      if (needsUpdate) {
+        setCurrentUser(prevUser => {
+          if (!prevUser) return null;
+          return {
+            ...prevUser,
+            name: googleName || prevUser.name,
+            avatarUrl: googleAvatar || prevUser.avatarUrl,
+          };
+        });
+      }
+    }
+  }, [firebaseUser, currentUser]);
 
   return (
     <AuthContext.Provider value={{ currentUser, firebaseUser, loading, setCurrentUser }}>
