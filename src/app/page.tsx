@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import React, { useState, useEffect } from 'react';
@@ -59,27 +60,21 @@ function DashboardContent() {
       if (firebaseUser && !appUser) {
         let user = await getUserByEmail(firebaseUser.email!);
         if (!user) {
-          // Create user if it's the default admin email
-          if (firebaseUser.email === 'brad@riverr.app') {
+            // User does not exist, create one
             const newUserInfo: Omit<User, 'id'> = {
-              name: firebaseUser.displayName || 'Brad',
-              email: firebaseUser.email!,
-              role: 'Admin',
-              slack_id: 'U12345',
-              avatarUrl: firebaseUser.photoURL || `https://placehold.co/100x100?text=B`,
+                name: firebaseUser.displayName || 'New User',
+                email: firebaseUser.email!,
+                role: 'Member', // Default role
+                slack_id: '',
+                avatarUrl: firebaseUser.photoURL || `https://placehold.co/100x100.png`,
             };
             user = await addUser(newUserInfo);
-          } else {
-             // This case should be handled by invite logic later, for now we block
-             auth.signOut();
-             return;
-          }
         }
         setAppUser(user);
       }
     };
     manageAppUser();
-  }, [firebaseUser, appUser, setAppUser]);
+  }, [firebaseUser, setAppUser]);
 
 
   useEffect(() => {
@@ -253,3 +248,4 @@ export default function DashboardPage() {
         </AuthGuard>
     )
 }
+
