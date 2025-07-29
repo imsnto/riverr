@@ -12,11 +12,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 function LoginContent() {
   const [error, setError] = useState<string | null>(null);
-  const { status } = useAuth();
+  const { status, currentUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    // Show error from URL if present
     const errorParam = searchParams.get('error');
     if (errorParam) {
       setError(decodeURIComponent(errorParam));
@@ -24,6 +25,7 @@ function LoginContent() {
   }, [searchParams]);
 
   useEffect(() => {
+    // If user is authenticated, redirect to dashboard
     if (status === 'authenticated') {
       router.push('/');
     }
@@ -33,26 +35,26 @@ function LoginContent() {
     setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
-      // The onAuthStateChanged listener in AuthProvider will handle the redirect
+      // onAuthStateChanged in AuthProvider will handle the rest
     } catch (error: any) {
       if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
         console.error('Error signing in with Google', error);
-        const errorMessage = error.message || 'An unexpected error occurred during sign-in.';
-        // This is where we can redirect with a generic error if needed, but for now we set local state.
-        setError(errorMessage);
+        setError(error.message || 'An unexpected error occurred during sign-in.');
       }
     }
   };
   
+  // Show a loading state while we check auth status
   if (status === 'loading') {
     return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
   }
 
-  // Prevent flicker of login page if already authenticated and redirecting
-  if (status === 'authenticated') {
+  // If already authenticated, show a redirecting message to avoid page flicker
+  if (status === 'authenticated' && currentUser) {
     return <div className="flex h-screen items-center justify-center">Redirecting...</div>;
   }
-
+  
+  // Render the login form if unauthenticated
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background">
       <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">

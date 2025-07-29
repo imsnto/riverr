@@ -44,7 +44,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // This handles the 'unauthenticated' case while the redirect is in flight
+  // This prevents a flash of the login page while redirecting
   return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
 }
 
