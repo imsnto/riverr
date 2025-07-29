@@ -1,9 +1,8 @@
 // src/app/login/page.tsx
 'use client';
 
-import { auth, googleProvider, signInWithPopup, signOut } from '@/lib/firebase';
+import { auth, googleProvider, signInWithPopup } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
 import { GanttChart } from 'lucide-react';
 import { useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -26,11 +25,11 @@ export default function LoginPage() {
       }
     }
   };
-  
+
   if (status === 'loading') {
     return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
   }
-  
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background">
       <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">

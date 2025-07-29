@@ -72,6 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           } else {
             // Not in DB and not invited
             await signOut(auth);
+            setCurrentUser(null);
             setStatus('unauthenticated');
           }
         }
@@ -94,11 +95,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [status, pathname, router]);
   
+  const value = { currentUser, status, setCurrentUser };
+  
   if (status === 'loading' && pathname !== '/login') {
     return <div className="flex h-screen items-center justify-center">Authenticating...</div>
   }
-
-  const value = { currentUser, status, setCurrentUser };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

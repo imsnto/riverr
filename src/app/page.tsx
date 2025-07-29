@@ -88,9 +88,9 @@ export default function DashboardPage() {
     return <div className="flex justify-center items-center h-screen">Loading dashboard...</div>;
   }
   
-  if (!currentUser) {
-    // This case should be handled by the AuthProvider redirect, but as a fallback:
-    return <div className="flex justify-center items-center h-screen">Redirecting to login...</div>;
+  if (status !== 'authenticated' || !currentUser) {
+    // This case is handled by AuthProvider, but as a fallback.
+    return null;
   }
   
   const userSpaces = allSpaces.filter(s => s.members.includes(currentUser.id));
