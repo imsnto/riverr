@@ -48,6 +48,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  // This handles the 'unauthenticated' case while the redirect is in flight
   return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
 }
 
@@ -81,7 +82,8 @@ function DashboardContent() {
       }
     }
     loadData();
-  }, [currentUser]); // Removed activeSpaceId from dependency array to prevent re-triggering
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser]); 
 
   useEffect(() => {
     async function loadSpaceData() {
@@ -128,7 +130,7 @@ function DashboardContent() {
   }
 
   // A specific loading state for when the initial user/space data is being fetched
-  if (isLoading && !activeSpace) {
+  if (isLoading && (!activeSpace || allUsers.length === 0)) {
     return <div className="flex justify-center items-center h-screen">Loading your spaces...</div>;
   }
 
@@ -195,7 +197,7 @@ function DashboardContent() {
             </TabsContent>
             {currentUser.role === 'Admin' && (
               <TabsContent value="timesheets">
-                 {isLoading ? <div className="flex justify-center items-center h-full">Loading timesheets...</div> : <TeamTimesheets timeEntries={timeEntries} projects={projects} tasks={tasks} space={activeSpace} />}
+                 {isLoading ? <div className="flex justify-center items-center h-full">Loading timesheets...</div> : <TeamTimesheets timeEntries={timeEntries} projects={projects} tasks={tasks} space={activeSpace} allUsers={allUsers} />}
               </TabsContent>
             )}
             {currentUser.role === 'Admin' && (

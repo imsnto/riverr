@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { users as allUsers, Project, Task, TimeEntry, Space } from '@/lib/data';
+import { Project, Task, TimeEntry, Space, User } from '@/lib/data';
 import WeeklyTimesheet from './weekly-timesheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -17,24 +18,29 @@ type ViewMode = 'all-users' | 'single-user';
 
 interface TeamTimesheetsProps {
   space: Space;
+  allUsers: User[];
   projects: Project[];
   tasks: Task[];
   timeEntries: TimeEntry[];
 }
 
-export default function TeamTimesheets({ space, projects, tasks, timeEntries }: TeamTimesheetsProps) {
+export default function TeamTimesheets({ space, allUsers, projects, tasks, timeEntries }: TeamTimesheetsProps) {
   const usersInSpace = allUsers.filter(u => space.members.includes(u.id));
-  const [selectedUserId, setSelectedUserId] = useState(usersInSpace[0].id);
+  const [selectedUserId, setSelectedUserId] = useState(usersInSpace.length > 0 ? usersInSpace[0].id : '');
   const [viewMode, setViewMode] = useState<ViewMode>('all-users');
 
-  const selectedUser = usersInSpace.find(u => u.id === selectedUserId) || usersInSpace[0];
+  const selectedUser = usersInSpace.find(u => u.id === selectedUserId) || (usersInSpace.length > 0 ? usersInSpace[0] : null);
 
   const handleUserSelectAndSwitchView = (userId: string) => {
     setSelectedUserId(userId);
     setViewMode('single-user');
   };
+  
+  if (usersInSpace.length === 0) {
+    return <div className="text-center p-8">No users in this space.</div>;
+  }
 
-  if (viewMode === 'single-user') {
+  if (viewMode === 'single-user' && selectedUser) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-4">

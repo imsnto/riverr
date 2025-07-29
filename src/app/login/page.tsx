@@ -19,7 +19,7 @@ function LoginContent() {
   useEffect(() => {
     const errorParam = searchParams.get('error');
     if (errorParam) {
-      setError(errorParam);
+      setError(decodeURIComponent(errorParam));
     }
   }, [searchParams]);
 
@@ -37,8 +37,9 @@ function LoginContent() {
     } catch (error: any) {
       if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
         console.error('Error signing in with Google', error);
-        setError(error.message || 'An unexpected error occurred during sign-in.');
-        router.push(`/login?error=${encodeURIComponent(error.message || 'An unexpected error occurred during sign-in.')}`);
+        const errorMessage = error.message || 'An unexpected error occurred during sign-in.';
+        // No need to push to router here, the AuthProvider handles unauthorized users.
+        setError(errorMessage);
       }
     }
   };
