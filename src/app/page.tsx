@@ -2,7 +2,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, Clock, FolderKanban, GanttChart, Settings, Users } from 'lucide-react';
+import { FolderKanban, GanttChart, Settings, Users } from 'lucide-react';
 import { User, Space, Project, Task, SlackMeetingLog, TimeEntry } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
@@ -27,7 +27,7 @@ const NAV_ITEMS = [
 ];
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { status, currentUser } = useAuth();
+  const { status } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -37,10 +37,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   }, [status, router]);
 
   if (status === 'loading') {
-    return <div className="flex justify-center items-center h-screen">Loading dashboard...</div>;
+    return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
   }
 
-  if (status === 'authenticated' && currentUser) {
+  if (status === 'authenticated') {
     return <>{children}</>;
   }
 
@@ -78,7 +78,7 @@ function DashboardContent() {
       }
     }
     loadData();
-  }, [currentUser]);
+  }, [currentUser, activeSpaceId]);
 
   useEffect(() => {
     async function loadSpaceData() {

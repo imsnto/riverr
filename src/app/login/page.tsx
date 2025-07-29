@@ -1,17 +1,33 @@
-// src/app/login/page.tsx
+
 'use client';
 
 import { auth, googleProvider, signInWithPopup } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { GanttChart } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function LoginPage() {
+function LoginContent() {
   const [error, setError] = useState<string | null>(null);
   const { status } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      setError(errorParam);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.push('/');
+    }
+  }, [status, router]);
 
   const handleGoogleSignIn = async () => {
     setError(null);
@@ -25,9 +41,13 @@ export default function LoginPage() {
       }
     }
   };
-
+  
   if (status === 'loading') {
     return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
+  }
+
+  if (status === 'authenticated') {
+    return <div className="flex h-screen items-center justify-center">Redirecting...</div>;
   }
 
   return (
@@ -57,4 +77,13 @@ export default function LoginPage() {
       </div>
     </div>
   );
+}
+
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
+  )
 }
