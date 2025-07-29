@@ -12,7 +12,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 function LoginContent() {
   const [error, setError] = useState<string | null>(null);
-  const { status } = useAuth();
+  const { status, currentUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -33,7 +33,6 @@ function LoginContent() {
     setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
-      // The useAuth hook will handle redirection on successful login.
     } catch (error: any) {
       if (error.code !== 'auth/popup-closed-by-user') {
         console.error('Error signing in with Google', error);
@@ -46,6 +45,7 @@ function LoginContent() {
     return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
   }
 
+  // Prevent flicker of login page if already authenticated
   if (status === 'authenticated') {
     return <div className="flex h-screen items-center justify-center">Redirecting...</div>;
   }

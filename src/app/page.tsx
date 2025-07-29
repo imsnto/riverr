@@ -47,7 +47,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return null;
 }
 
-
 function DashboardContent() {
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');

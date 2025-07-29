@@ -21,16 +21,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
-  const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // User is signed in with Firebase, now check our DB
+        setStatus('loading');
         let appUser = await getUserByEmail(firebaseUser.email!);
 
         if (appUser) {
-          // User exists in our DB.
           const googleName = firebaseUser.displayName;
           const googleAvatar = firebaseUser.photoURL;
           let userChanged = false;
@@ -52,10 +50,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setStatus('authenticated');
 
         } else {
-          // New user, check for an invite
           const invite = await getInvite(firebaseUser.email!);
           if (invite) {
-            // Found invite, create a new user in our DB
             const newUser: Omit<AppUser, 'id'> = {
               name: firebaseUser.displayName || firebaseUser.email!.split('@')[0],
               email: firebaseUser.email!,
@@ -65,27 +61,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             };
             const createdUser = await addUser(newUser);
             await addMemberToSpaces(invite.spaces, createdUser.id);
-            await deleteInvite(firebaseUser.email!); // Clean up invite
+            await deleteInvite(firebaseUser.email!);
             
             setCurrentUser(createdUser);
             setStatus('authenticated');
           } else {
-            // No invite, unauthorized user. Sign them out.
             await auth.signOut();
             setCurrentUser(null);
             setStatus('unauthenticated');
-            router.push('/login?error=You are not an authorized user. Please contact an administrator to get access.');
           }
         }
       } else {
-        // No firebase user is signed in.
         setCurrentUser(null);
         setStatus('unauthenticated');
       }
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ currentUser, status, setCurrentUser }}>
