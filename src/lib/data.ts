@@ -1,3 +1,4 @@
+
 // DATA STRUCTURES
 export interface Space {
   id: string;
@@ -100,25 +101,18 @@ export interface SlackMeetingLog {
 // MOCK DATA - This data can be used to seed the database.
 
 export const users: User[] = [
-  { id: 'user-1', name: 'Brad', email: 'brad@riverr.app', role: 'Admin', slack_id: 'U12345', avatarUrl: 'https://placehold.co/100x100' },
-  { id: 'user-2', name: 'Bob', email: 'bob@example.com', role: 'Member', slack_id: 'U67890', avatarUrl: 'https://placehold.co/100x100' },
-  { id: 'user-3', name: 'Charlie', email: 'charlie@example.com', role: 'Member', slack_id: 'UABCDE', avatarUrl: 'https://placehold.co/100x100' },
-  { id: 'user-4', name: 'Diana', email: 'diana@example.com', role: 'Admin', slack_id: 'UFGHJI', avatarUrl: 'https://placehold.co/100x100' },
-  { id: 'bradmiller148@gmail.com', name: 'Brad Miller', email: 'bradmiller148@gmail.com', role: 'Member', slack_id: '', avatarUrl: 'https://placehold.co/100x100' },
+  { id: 'user-1', name: 'Brad', email: 'brad@riverr.app', role: 'Admin', slack_id: 'U12345', avatarUrl: 'https://placehold.co/100x100' }
 ];
 
 export const spaces: Space[] = [
-  { id: 'space-1', name: 'Work', members: ['user-1', 'user-2', 'user-3', 'user-4'] },
-  { id: 'space-2', name: 'Personal', members: ['user-1'] },
-  { id: 'space-3', name: 'Side Hustle', members: ['user-1', 'user-4'] },
+  { id: 'space-1', name: 'Work', members: ['user-1'] },
+  { id: 'space-2', name: 'Personal', members: ['user-1'] }
 ]
 
 export const projects: Project[] = [
-  { id: 'proj-1', space_id: 'space-1', name: 'Website Redesign', status: 'Active', created_by: 'user-1', members: ['user-1', 'user-2'], slack_channel_id: 'C111' },
-  { id: 'proj-2', space_id: 'space-1', name: 'Mobile App Development', status: 'Active', created_by: 'user-4', members: ['user-1', 'user-3', 'user-4'], slack_channel_id: 'C222' },
-  { id: 'proj-3', space_id: 'space-1', name: 'API Integration', status: 'On Hold', created_by: 'user-1', members: ['user-2', 'user-3'] },
+  { id: 'proj-1', space_id: 'space-1', name: 'Website Redesign', status: 'Active', created_by: 'user-1', members: ['user-1'], slack_channel_id: 'C111' },
+  { id: 'proj-2', space_id: 'space-1', name: 'Mobile App Development', status: 'Active', created_by: 'user-1', members: ['user-1'], slack_channel_id: 'C222' },
   { id: 'proj-4', space_id: 'space-2', name: 'Personal Website', status: 'Active', created_by: 'user-1', members: ['user-1'] },
-  { id: 'proj-5', space_id: 'space-3', name: 'New SaaS Concept', status: 'Active', created_by: 'user-4', members: ['user-1', 'user-4'] },
 ];
 
 export const tasks: Task[] = [
@@ -128,7 +122,7 @@ export const tasks: Task[] = [
     name: 'Design home page mockups',
     description: 'Create high-fidelity mockups in Figma for the new website homepage.',
     status: 'In Progress',
-    assigned_to: 'user-2',
+    assigned_to: 'user-1',
     due_date: '2024-08-15T23:59:59Z',
     priority: 'High',
     sprint_points: 8,
@@ -172,40 +166,6 @@ export const tasks: Task[] = [
     attachments: []
   },
   {
-    id: 'task-3',
-    project_id: 'proj-2',
-    name: 'Setup push notification service',
-    description: 'Integrate with OneSignal for push notifications.',
-    status: 'Done',
-    assigned_to: 'user-3',
-    due_date: '2024-07-30T23:59:59Z',
-    priority: null,
-    sprint_points: null,
-    tags: [],
-    time_estimate: null,
-    relationships: [],
-    activities: [],
-    comments: [],
-    attachments: []
-  },
-  {
-    id: 'task-4',
-    project_id: 'proj-2',
-    name: 'Implement login screen UI',
-    description: 'Build the login and registration screens based on the wireframes.',
-    status: 'Review',
-    assigned_to: 'user-4',
-    due_date: '2024-08-10T23:59:59Z',
-    priority: 'High',
-    sprint_points: 3,
-    tags: [],
-    time_estimate: 8,
-    relationships: [],
-    activities: [],
-    comments: [],
-    attachments: []
-  },
-  {
     id: 'task-5',
     project_id: 'proj-2',
     name: 'User profile page',
@@ -226,8 +186,6 @@ export const tasks: Task[] = [
 
 export const timeEntries: TimeEntry[] = [
   { id: 'time-1', user_id: 'user-1', project_id: 'proj-2', task_id: 'task-5', start_time: '2024-08-05T09:00:00Z', end_time: '2024-08-05T11:00:00Z', duration: 2, source: 'Timer', notes: 'Worked on profile page layout.' },
-  { id: 'time-2', user_id: 'user-2', project_id: 'proj-1', task_id: 'task-1', start_time: '2024-08-05T10:00:00Z', end_time: '2024-08-05T14:00:00Z', duration: 4, source: 'Manual', notes: 'Finalized mockup revisions.' },
-  { id: 'time-3', user_id: 'user-3', project_id: 'proj-2', task_id: 'task-3', start_time: '2024-07-29T13:00:00Z', end_time: '2024-07-29T16:30:00Z', duration: 3.5, source: 'Timer', notes: '' },
   { id: 'time-4', user_id: 'user-1', project_id: 'proj-1', start_time: '2024-08-04T14:00:00Z', end_time: '2024-08-04T15:00:00Z', duration: 1, source: 'Slack', notes: 'Project sync meeting' },
 ];
 
@@ -244,7 +202,7 @@ export const slackMeetingLogs: SlackMeetingLog[] = [
   },
   {
     id: 'slack-2',
-    user_id: 'user-2',
+    user_id: 'user-1',
     project_id: null,
     channel_id: 'C999',
     channel_name: 'general-chatter',
@@ -269,3 +227,5 @@ export const adminMappings = {
   'C111': 'proj-1', // #proj-website-redesign
   'C222': 'proj-2', // #mobile-app-dev
 };
+
+    
