@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import { AppWindow, CheckCircle, Clock, FolderKanban, GanttChart, Settings, Users } from 'lucide-react';
+import { CheckCircle, Clock, FolderKanban, GanttChart, Settings, Users } from 'lucide-react';
 import { User, Space, Project, Task, SlackMeetingLog, TimeEntry } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
@@ -84,11 +84,11 @@ export default function DashboardPage() {
     loadSpaceData();
   }, [activeSpaceId]);
   
-  if (status === 'loading' || (status === 'authenticated' && isLoading)) {
+  if (status === 'loading' || !currentUser) {
     return <div className="flex justify-center items-center h-screen">Loading dashboard...</div>;
   }
   
-  if (status !== 'authenticated' || !currentUser) {
+  if (status !== 'authenticated') {
     // This case is handled by AuthProvider, but as a fallback.
     return null;
   }
@@ -106,6 +106,10 @@ export default function DashboardPage() {
 
   if (userSpaces.length === 0) {
      return <div className="flex justify-center items-center h-screen">You are not a member of any space. Contact an admin.</div>
+  }
+
+  if (isLoading && status === 'authenticated') {
+    return <div className="flex justify-center items-center h-screen">Loading data...</div>;
   }
 
   return (
