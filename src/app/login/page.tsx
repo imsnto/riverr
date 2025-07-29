@@ -5,10 +5,10 @@ import { auth, googleProvider, signInWithPopup, signOut } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { GanttChart } from 'lucide-react';
-import { users } from '@/lib/data';
 import { useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { getUserByEmail } from '@/lib/db';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,17 +24,16 @@ export default function LoginPage() {
         throw new Error('Could not retrieve email from Google Sign-In.');
       }
       
-      const appUser = users.find(u => u.email.toLowerCase() === user.email!.toLowerCase());
+      // The useAuth hook will handle redirection and user creation.
+      // We just need to trigger the sign-in. The hook does the rest.
+      // A successful sign-in will trigger the onAuthStateChanged listener in the hook.
+      // If the user is not in the db, the hook will sign them out.
+      // So, we don't need to check for appUser here anymore.
+      // The router push will be handled by the auth provider.
 
-      if (appUser) {
-        router.push('/');
-      } else {
-        await signOut(auth);
-        setError('You are not an authorized user. Please contact an administrator to get access.');
-      }
     } catch (error: any) {
-      console.error('Error signing in with Google', error);
-      if(error.code !== 'auth/popup-closed-by-user') {
+      if (error.code !== 'auth/popup-closed-by-user') {
+        console.error('Error signing in with Google', error);
         setError(error.message || 'An unexpected error occurred during sign-in.');
       }
     }
