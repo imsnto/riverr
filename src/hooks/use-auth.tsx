@@ -1,4 +1,4 @@
-// src/hooks/use-auth.tsx
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
@@ -30,6 +30,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         let appUser = await getUserByEmail(firebaseUser.email!);
 
         if (appUser) {
+          // User exists, update info if needed
           const googleName = firebaseUser.displayName;
           const googleAvatar = firebaseUser.photoURL;
           let userChanged = false;
@@ -46,7 +47,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
           setCurrentUser(appUser);
           setStatus('authenticated');
+
         } else {
+          // New user, check for an invite
           const invite = await getInvite(firebaseUser.email!);
           if (invite) {
             const newUser: Omit<AppUser, 'id'> = {
@@ -62,12 +65,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setCurrentUser(createdUser);
             setStatus('authenticated');
           } else {
+            // No invite, unauthorized
             await auth.signOut();
             setCurrentUser(null);
             setStatus('unauthenticated');
           }
         }
       } else {
+        // No firebase user
         setCurrentUser(null);
         setStatus('unauthenticated');
       }
@@ -76,30 +81,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (status === 'unauthenticated' && pathname !== '/login') {
-      router.push('/login');
-    }
-    if (status === 'authenticated' && pathname === '/login') {
-      router.push('/');
-    }
-  }, [status, pathname, router]);
-
   const value = { currentUser, status, setCurrentUser };
-
-  if (status === 'loading') {
-    return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
-  }
   
-  // Prevent rendering children on login page if unauthenticated
-  if (status === 'unauthenticated' && pathname !== '/login') {
-    return null; // or a loading spinner, but null is fine as it will redirect
-  }
-  
-  if (status === 'authenticated' && pathname === '/login') {
-    return null; // still loading the main page
+  if (pathname === '/login') {
+    if (status === 'authenticated') {
+      router.push('/');
+      return <div className="flex h-screen items-center justify-center">Redirecting...</div>
+    }
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
   }
 
+  // For all other pages, AuthGuard will handle logic
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 

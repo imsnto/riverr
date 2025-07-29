@@ -1,3 +1,4 @@
+
 'use client'
 
 import React, { useState, useEffect } from 'react';
@@ -16,6 +17,7 @@ import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
 import { useAuth } from '@/hooks/use-auth';
 import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers } from '@/lib/db';
+import { useRouter } from 'next/navigation';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: GanttChart },
@@ -24,8 +26,30 @@ const NAV_ITEMS = [
   { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
 ];
 
-export default function DashboardPage() {
-  const { currentUser, status } = useAuth();
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { status, currentUser } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+
+  if (status === 'loading') {
+    return <div className="flex justify-center items-center h-screen">Loading dashboard...</div>;
+  }
+
+  if (status === 'authenticated' && currentUser) {
+    return <>{children}</>;
+  }
+
+  return null;
+}
+
+
+function DashboardContent() {
+  const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   
   const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -39,7 +63,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function loadData() {
-      if (currentUser && status === 'authenticated') {
+      if (currentUser) {
         setIsLoading(true);
         const [users, spaces] = await Promise.all([dbGetAllUsers(), dbGetAllSpaces()]);
         setAllUsers(users);
@@ -54,7 +78,7 @@ export default function DashboardPage() {
       }
     }
     loadData();
-  }, [currentUser, status]);
+  }, [currentUser]);
 
   useEffect(() => {
     async function loadSpaceData() {
@@ -84,13 +108,8 @@ export default function DashboardPage() {
     loadSpaceData();
   }, [activeSpaceId]);
   
-  if (status === 'loading' || !currentUser) {
-    return <div className="flex justify-center items-center h-screen">Loading dashboard...</div>;
-  }
-  
-  if (status !== 'authenticated') {
-    // This case is handled by AuthProvider, but as a fallback.
-    return null;
+  if (!currentUser) {
+    return null; // Should be handled by AuthGuard
   }
   
   const userSpaces = allSpaces.filter(s => s.members.includes(currentUser.id));
@@ -108,7 +127,7 @@ export default function DashboardPage() {
      return <div className="flex justify-center items-center h-screen">You are not a member of any space. Contact an admin.</div>
   }
 
-  if (isLoading && status === 'authenticated') {
+  if (isLoading) {
     return <div className="flex justify-center items-center h-screen">Loading data...</div>;
   }
 
@@ -192,4 +211,13 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+}
+
+
+export default function DashboardPage() {
+    return (
+        <AuthGuard>
+            <DashboardContent />
+        </AuthGuard>
+    )
 }
