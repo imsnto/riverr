@@ -78,7 +78,7 @@ function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProp
 
 
 export default function Header({ activeSpace, onSpaceChange, allSpaces }: { activeSpace: Space; onSpaceChange: (spaceId: string) => void; allSpaces: Space[] }) {
-  const { currentUser } = useAuth();
+  const { appUser } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -91,7 +91,7 @@ export default function Header({ activeSpace, onSpaceChange, allSpaces }: { acti
     return name.split(' ').map(n => n[0]).join('');
   }
   
-  if (!currentUser) {
+  if (!appUser) {
     return (
        <header className="sticky top-0 z-10 flex h-16 items-center justify-end border-b bg-card px-4 md:px-8">
         <p>Loading user...</p>
@@ -109,16 +109,16 @@ export default function Header({ activeSpace, onSpaceChange, allSpaces }: { acti
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
               <Avatar className="h-10 w-10">
-                <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
+                <AvatarImage src={appUser.avatarUrl} alt={appUser.name} />
+                <AvatarFallback>{getInitials(appUser.name)}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{currentUser.name}</p>
-                <p className="text-xs leading-none text-muted-foreground">{currentUser.email}</p>
+                <p className="text-sm font-medium leading-none">{appUser.name}</p>
+                <p className="text-xs leading-none text-muted-foreground">{appUser.email}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

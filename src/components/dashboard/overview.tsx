@@ -16,13 +16,13 @@ interface OverviewProps {
 
 export default function Overview({ projects, tasks, timeEntries }: OverviewProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const { currentUser } = useAuth();
+  const { appUser } = useAuth();
 
-  if (!currentUser) return null;
+  if (!appUser) return null;
 
-  const userProjects = projects.filter(p => p.members.includes(currentUser.id));
-  const userTasks = tasks.filter(t => t.assigned_to === currentUser.id);
-  const userTimeEntries = timeEntries.filter(t => t.user_id === currentUser.id);
+  const userProjects = projects.filter(p => p.members.includes(appUser.id));
+  const userTasks = tasks.filter(t => t.assigned_to === appUser.id);
+  const userTimeEntries = timeEntries.filter(t => t.user_id === appUser.id);
 
   const totalHoursLogged = userTimeEntries.reduce((acc, entry) => acc + entry.duration, 0);
 

@@ -17,15 +17,15 @@ const getInitials = (name: string) => {
 };
 
 export default function ProfilePage() {
-    const { currentUser, setCurrentUser } = useAuth();
+    const { appUser, setAppUser } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
     
-    const [name, setName] = useState(currentUser?.name || '');
-    const [avatar, setAvatar] = useState(currentUser?.avatarUrl || '');
+    const [name, setName] = useState(appUser?.name || '');
+    const [avatar, setAvatar] = useState(appUser?.avatarUrl || '');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    if (!currentUser) {
+    if (!appUser) {
         return <div className="flex justify-center items-center h-screen">Loading...</div>;
     }
 
@@ -41,13 +41,14 @@ export default function ProfilePage() {
     };
     
     const handleSaveChanges = () => {
-        if (currentUser) {
+        if (appUser) {
             const updatedUser = {
-                ...currentUser,
+                ...appUser,
                 name: name,
                 avatarUrl: avatar,
             };
-            setCurrentUser(updatedUser);
+            setAppUser(updatedUser);
+            // Here you would also update the user in your database
             toast({
                 title: 'Profile Updated',
                 description: 'Your profile has been successfully updated.',
@@ -89,7 +90,7 @@ export default function ProfilePage() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
-                        <Input id="email" type="email" value={currentUser.email} disabled />
+                        <Input id="email" type="email" value={appUser.email} disabled />
                         <p className="text-xs text-muted-foreground">You cannot change your email address.</p>
                     </div>
                 </CardContent>

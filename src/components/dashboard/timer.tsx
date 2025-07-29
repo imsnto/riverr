@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -14,7 +15,7 @@ interface TimerProps {
 }
 
 export default function Timer({ tasks }: TimerProps) {
-  const { currentUser } = useAuth();
+  const { appUser } = useAuth();
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
@@ -65,9 +66,9 @@ export default function Timer({ tasks }: TimerProps) {
     return `${h}:${m}:${s}`;
   };
 
-  if (!currentUser) return null;
+  if (!appUser) return null;
 
-  const userTasks = tasks.filter(t => t.assigned_to === currentUser.id && t.status !== 'Done');
+  const userTasks = tasks.filter(t => t.assigned_to === appUser.id && t.status !== 'Done');
 
   return (
     <Card>

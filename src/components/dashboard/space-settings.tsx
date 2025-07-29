@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -25,7 +26,7 @@ export default function SpaceSettings({ allSpaces, allUsers, setSpaces }: SpaceS
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
   const { toast } = useToast();
-  const { currentUser } = useAuth();
+  const { appUser } = useAuth();
 
   const handleCreateNew = () => {
     setSelectedSpace(null);
@@ -47,7 +48,7 @@ export default function SpaceSettings({ allSpaces, allUsers, setSpaces }: SpaceS
       setSpaces(allSpaces.map(s => s.id === spaceData.id ? spaceData : s));
       toast({ title: 'Space Updated', description: 'The space has been successfully updated.' });
     } else {
-      setSpaces([...allSpaces, { ...spaceData, id: `space-${Date.now()}`, members: [currentUser!.id] }]);
+      setSpaces([...allSpaces, { ...spaceData, id: `space-${Date.now()}`, members: [appUser!.id] }]);
       toast({ title: 'Space Created', description: 'The space has been successfully created.' });
     }
   };

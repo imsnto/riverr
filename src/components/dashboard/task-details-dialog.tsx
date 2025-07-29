@@ -76,11 +76,11 @@ interface TaskDetailsDialogProps {
 
 export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdateTask }: TaskDetailsDialogProps) {
     const { toast } = useToast();
-    const { currentUser } = useAuth();
+    const { appUser } = useAuth();
     const [attachments, setAttachments] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
-    if (!currentUser) return null;
+    if (!appUser) return null;
 
     const project = projects.find(p => p.id === task.project_id);
     const totalTimeTracked = timeEntries
@@ -111,14 +111,14 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
 
         const newComment: Comment = {
             id: `comment-${Date.now()}`,
-            user_id: currentUser.id,
+            user_id: appUser.id,
             comment: commentText,
             timestamp: new Date().toISOString(),
             attachments: newAttachments,
         };
         const newActivity: Activity = {
             id: `act-${Date.now()}`,
-            user_id: currentUser.id,
+            user_id: appUser.id,
             timestamp: new Date().toISOString(),
             type: 'comment',
             comment_id: newComment.id,
@@ -144,7 +144,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         if (field === 'status' && task.status !== value) {
             newActivity = {
                 id: `act-${Date.now()}`,
-                user_id: currentUser.id,
+                user_id: appUser.id,
                 timestamp: new Date().toISOString(),
                 type: 'status_change',
                 from: task.status,

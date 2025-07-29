@@ -1,3 +1,4 @@
+
 // src/lib/db.ts
 import {
   getFirestore,
@@ -26,20 +27,19 @@ export const getUser = async (userId: string): Promise<User | null> => {
 };
 
 export const getUserByEmail = async (email: string): Promise<User | null> => {
-    const q = query(collection(db, 'users'), where('email', '==', email));
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-        const userDoc = querySnapshot.docs[0];
+    const userRef = doc(db, 'users', email);
+    const userDoc = await getDoc(userRef);
+    if (userDoc.exists()) {
         return { id: userDoc.id, ...userDoc.data() } as User;
     }
     return null;
 }
 
 export const addUser = async (user: Omit<User, 'id'>): Promise<User> => {
-  // Use email as the document ID for simplicity and to prevent duplicates
   const userRef = doc(db, 'users', user.email);
   await setDoc(userRef, user);
-  return { id: user.email, ...user };
+  const newUserDoc = await getDoc(userRef);
+  return { id: newUserDoc.id, ...newUserDoc.data() } as User;
 };
 
 export const updateUser = async (userId: string, data: Partial<User>): Promise<void> => {
@@ -48,7 +48,6 @@ export const updateUser = async (userId: string, data: Partial<User>): Promise<v
 
 // --- Invite Management ---
 export const addInvite = async (invite: Invite): Promise<void> => {
-    // Use email as doc id to prevent duplicate invites
     const inviteRef = doc(db, 'invites', invite.email);
     await setDoc(inviteRef, invite);
 }

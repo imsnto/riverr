@@ -16,7 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
 import { useAuth } from '@/hooks/use-auth';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getUserByEmail, addUser } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -37,12 +37,11 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // This prevents a flash of the login page while redirecting
   return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
 }
 
 function DashboardContent() {
-  const { currentUser } = useAuth();
+  const { firebaseUser, appUser, setAppUser } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   
   const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -54,15 +53,44 @@ function DashboardContent() {
   const [activeSpaceId, setActiveSpaceId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Fetch or create App User
+  useEffect(() => {
+    const manageAppUser = async () => {
+      if (firebaseUser && !appUser) {
+        let user = await getUserByEmail(firebaseUser.email!);
+        if (!user) {
+          // Create user if it's the default admin email
+          if (firebaseUser.email === 'brad@riverr.app') {
+            const newUserInfo: Omit<User, 'id'> = {
+              name: firebaseUser.displayName || 'Brad',
+              email: firebaseUser.email!,
+              role: 'Admin',
+              slack_id: 'U12345',
+              avatarUrl: firebaseUser.photoURL || `https://placehold.co/100x100?text=B`,
+            };
+            user = await addUser(newUserInfo);
+          } else {
+             // This case should be handled by invite logic later, for now we block
+             auth.signOut();
+             return;
+          }
+        }
+        setAppUser(user);
+      }
+    };
+    manageAppUser();
+  }, [firebaseUser, appUser, setAppUser]);
+
+
   useEffect(() => {
     async function loadData() {
-      if (currentUser) {
+      if (appUser) {
         setIsLoading(true);
         const [users, spaces] = await Promise.all([dbGetAllUsers(), dbGetAllSpaces()]);
         setAllUsers(users);
         setAllSpaces(spaces);
         
-        const userSpaces = spaces.filter(s => s.members.includes(currentUser.id));
+        const userSpaces = spaces.filter(s => s.members.includes(appUser.id));
         if (userSpaces.length > 0 && !activeSpaceId) {
           setActiveSpaceId(userSpaces[0].id);
         } else if (userSpaces.length === 0) {
@@ -72,7 +100,7 @@ function DashboardContent() {
     }
     loadData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser]); 
+  }, [appUser]); 
 
   useEffect(() => {
     async function loadSpaceData() {
@@ -102,12 +130,11 @@ function DashboardContent() {
     loadSpaceData();
   }, [activeSpaceId]);
   
-  if (!currentUser) {
-    // This case should be handled by AuthGuard. Returning a loader here is a fallback.
+  if (!appUser) {
     return <div className="flex h-screen items-center justify-center">Loading user data...</div>;
   }
   
-  const userSpaces = allSpaces.filter(s => s.members.includes(currentUser.id));
+  const userSpaces = allSpaces.filter(s => s.members.includes(appUser.id));
   const activeSpace = allSpaces.find(s => s.id === activeSpaceId) || userSpaces[0];
   
   const handleSpaceChange = (spaceId: string) => {
@@ -118,7 +145,6 @@ function DashboardContent() {
     return <div className="flex justify-center items-center h-screen">Loading space...</div>
   }
 
-  // A specific loading state for when the initial user/space data is being fetched
   if (isLoading && (!activeSpace || allUsers.length === 0)) {
     return <div className="flex justify-center items-center h-screen">Loading your spaces...</div>;
   }
@@ -143,7 +169,7 @@ function DashboardContent() {
             >
               <TabsList className="flex h-auto flex-col items-start justify-start gap-1 bg-transparent p-0">
                 {NAV_ITEMS.map(item => {
-                  if (item.adminOnly && currentUser.role !== 'Admin') {
+                  if (item.adminOnly && appUser.role !== 'Admin') {
                     return null;
                   }
                   return (
@@ -184,12 +210,12 @@ function DashboardContent() {
             <TabsContent value="tasks">
               {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard initialTasks={tasks} projects={projects} />}
             </TabsContent>
-            {currentUser.role === 'Admin' && (
+            {appUser.role === 'Admin' && (
               <TabsContent value="timesheets">
                  {isLoading ? <div className="flex justify-center items-center h-full">Loading timesheets...</div> : <TeamTimesheets timeEntries={timeEntries} projects={projects} tasks={tasks} space={activeSpace} allUsers={allUsers} />}
               </TabsContent>
             )}
-            {currentUser.role === 'Admin' && (
+            {appUser.role === 'Admin' && (
               <TabsContent value="settings">
                  <h1 className="text-2xl font-bold mb-4">Settings</h1>
                  <Tabs defaultValue="spaces" className="w-full">

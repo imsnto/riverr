@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -18,11 +19,11 @@ interface ManualTimeEntryProps {
 
 export default function ManualTimeEntry({ projects, tasks }: ManualTimeEntryProps) {
   const { toast } = useToast();
-  const { currentUser } = useAuth();
+  const { appUser } = useAuth();
   
-  if (!currentUser) return null;
+  if (!appUser) return null;
 
-  const userProjects = projects.filter(p => p.members.includes(currentUser.id));
+  const userProjects = projects.filter(p => p.members.includes(appUser.id));
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
