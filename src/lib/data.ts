@@ -14,6 +14,12 @@ export interface User {
   avatarUrl: string;
 }
 
+export interface Invite {
+  email: string;
+  role: "Admin" | "Member";
+  spaces: string[]; // array of space IDs
+}
+
 export interface Project {
   id: string;
   space_id: string;
@@ -91,15 +97,14 @@ export interface SlackMeetingLog {
   suggested_project_id?: string;
 }
 
-// MOCK DATA
+// MOCK DATA - This data can be used to seed the database.
 
 export const users: User[] = [
   { id: 'user-1', name: 'Brad', email: 'Brad@riverr.app', role: 'Admin', slack_id: 'U12345', avatarUrl: 'https://placehold.co/100x100' },
   { id: 'user-2', name: 'Bob', email: 'bob@example.com', role: 'Member', slack_id: 'U67890', avatarUrl: 'https://placehold.co/100x100' },
   { id: 'user-3', name: 'Charlie', email: 'charlie@example.com', role: 'Member', slack_id: 'UABCDE', avatarUrl: 'https://placehold.co/100x100' },
   { id: 'user-4', name: 'Diana', email: 'diana@example.com', role: 'Admin', slack_id: 'UFGHJI', avatarUrl: 'https://placehold.co/100x100' },
-  { id: 'user-5', name: 'Brad', email: 'brad@bespokethreads.com', role: 'Member', slack_id: '', avatarUrl: 'https://placehold.co/100x100' },
-  { id: 'user-6', name: 'Brad Miller', email: 'bradmiller148@gmail.com', role: 'Member', slack_id: '', avatarUrl: 'https://placehold.co/100x100' },
+  { id: 'bradmiller148@gmail.com', name: 'Brad Miller', email: 'bradmiller148@gmail.com', role: 'Member', slack_id: '', avatarUrl: 'https://placehold.co/100x100' },
 ];
 
 export const spaces: Space[] = [

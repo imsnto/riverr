@@ -1,8 +1,8 @@
 
 'use client';
 
-import React, { useState } from 'react';
-import { User, Space } from '@/lib/data';
+import React, { useState, useEffect } from 'react';
+import { User, Space, Invite } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,18 +12,12 @@ import { MoreHorizontal, Plus, Edit, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import InviteUserDialog from './invite-user-dialog';
+import { getAllUsers, addInvite, getAllSpaces } from '@/lib/db';
 
 const getInitials = (name: string) => {
   if (!name) return '';
   return name.split(' ').map(n => n[0]).join('');
 };
-
-interface UserSettingsProps {
-    allUsers: User[];
-    allSpaces: Space[];
-    onUsersChange: (users: User[]) => void;
-    onSpacesChange: (spaces: Space[]) => void;
-}
 
 interface InviteFormValues {
     email: string;
@@ -31,52 +25,66 @@ interface InviteFormValues {
     spaces: string[];
 }
 
-export default function UserSettings({ allUsers, allSpaces, onUsersChange, onSpacesChange }: UserSettingsProps) {
+export default function UserSettings() {
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [allSpaces, setAllSpaces] = useState<Space[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleAddUser = (values: InviteFormValues) => {
-    const newUser: User = {
-        id: `user-${Date.now()}`,
-        name: values.email.split('@')[0], // Default name from email
-        email: values.email,
-        role: values.role,
-        slack_id: '',
-        avatarUrl: `https://placehold.co/100x100?text=${values.email[0].toUpperCase()}`
-    };
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      const [users, spaces] = await Promise.all([getAllUsers(), getAllSpaces()]);
+      setAllUsers(users);
+      setAllSpaces(spaces);
+      setLoading(false);
+    }
+    fetchData();
+  }, [])
 
-    onUsersChange([...allUsers, newUser]);
-    
-    const updatedSpaces = allSpaces.map(space => {
-        if (values.spaces.includes(space.id)) {
-            return {
-                ...space,
-                members: [...space.members, newUser.id]
-            }
-        }
-        return space;
-    });
-    onSpacesChange(updatedSpaces);
-
-    toast({
-        title: 'User Added',
-        description: `${values.email} has been added to the system and selected spaces.`
-    });
+  const handleInviteUser = async (values: InviteFormValues) => {
+    try {
+        const newInvite: Invite = {
+            email: values.email,
+            role: values.role,
+            spaces: values.spaces
+        };
+        await addInvite(newInvite);
+        toast({
+            title: 'User Invited',
+            description: `${values.email} has been invited. They will get access once they sign in.`
+        });
+    } catch (error) {
+        console.error("Error inviting user: ", error);
+        toast({
+            variant: 'destructive',
+            title: 'Invite Failed',
+            description: 'Could not send the invitation. Please try again.'
+        });
+    }
   }
 
   const handleRemoveUser = (userId: string) => {
-    onUsersChange(allUsers.filter(u => u.id !== userId));
-    // Also remove from spaces
+    // This would involve database calls to remove user and update spaces
+    // For now, it just updates the local state for demonstration
+    const updatedUsers = allUsers.filter(u => u.id !== userId);
+    setAllUsers(updatedUsers);
+    
     const updatedSpaces = allSpaces.map(space => ({
       ...space,
       members: space.members.filter(memberId => memberId !== userId)
     }));
-    onSpacesChange(updatedSpaces);
+    setAllSpaces(updatedSpaces);
 
     toast({
         title: 'User Removed',
         description: 'The user has been removed from the system.'
     })
+  }
+
+  if (loading) {
+    return <div>Loading settings...</div>
   }
 
   return (
@@ -154,7 +162,7 @@ export default function UserSettings({ allUsers, allSpaces, onUsersChange, onSpa
         <InviteUserDialog 
             isOpen={isInviteDialogOpen}
             onOpenChange={setIsInviteDialogOpen}
-            onInvite={handleAddUser}
+            onInvite={handleInviteUser}
             allSpaces={allSpaces}
         />
     </>
