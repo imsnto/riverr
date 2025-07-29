@@ -31,8 +31,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Only redirect if the status is definitively unauthenticated.
-    // The 'loading' state will be handled by the return statement below.
     if (status === 'unauthenticated') {
       router.push('/login');
     }
@@ -42,8 +40,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
   }
   
-  // If authenticated, render the children. If unauthenticated, it will redirect,
-  // so we can return null or a loading spinner.
   if (status === 'authenticated') {
     return <>{children}</>;
   }

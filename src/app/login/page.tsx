@@ -38,7 +38,7 @@ function LoginContent() {
       if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
         console.error('Error signing in with Google', error);
         const errorMessage = error.message || 'An unexpected error occurred during sign-in.';
-        // No need to push to router here, the AuthProvider handles unauthorized users.
+        // This is where we can redirect with a generic error if needed, but for now we set local state.
         setError(errorMessage);
       }
     }

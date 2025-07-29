@@ -6,7 +6,6 @@ import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { User as AppUser, users as mockUsers } from '@/lib/data';
 import { getUserByEmail, addUser, getInvite, deleteInvite, updateUser, addMemberToSpaces } from '@/lib/db';
-import { useRouter, useSearchParams } from 'next/navigation';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -21,7 +20,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
-  const router = useRouter();
   
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -77,13 +75,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             } else {
               // No user, no invite. This is an unauthorized user.
               await auth.signOut();
-              // The state change to unauthenticated will be caught by the effect below
             }
           }
         } catch (error) {
           console.error("Auth error:", error);
           await auth.signOut();
-          setStatus('unauthenticated');
         }
       } else {
         // No user is signed in to Firebase
