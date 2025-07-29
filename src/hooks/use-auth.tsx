@@ -24,45 +24,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [status, setStatus] = useState<AuthStatus>('loading');
   
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      setFirebaseUser(fbUser);
-      if (fbUser) {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setFirebaseUser(user);
+      if (user) {
+        // User is signed in with Firebase, now check our app's database
         try {
-          // Check if user exists in our DB
-          let appUser = await getUserByEmail(fbUser.email!);
-          
-          if (!appUser && fbUser.email === 'brad@riverr.app') {
-            // If it's the default user, create them
+          let appUser = await getUserByEmail(user.email!);
+
+          if (!appUser && user.email === 'brad@riverr.app') {
             const newUserInfo: Omit<AppUser, 'id'> = {
-              name: fbUser.displayName || 'Brad',
-              email: fbUser.email!,
+              name: user.displayName || 'Brad',
+              email: user.email!,
               role: 'Admin',
               slack_id: 'U12345',
-              avatarUrl: fbUser.photoURL || `https://placehold.co/100x100?text=B`,
+              avatarUrl: user.photoURL || `https://placehold.co/100x100?text=B`,
             };
             appUser = await addUser(newUserInfo);
           }
-
+          
           if (appUser) {
             setCurrentUser(appUser);
             setStatus('authenticated');
           } else {
-            // This is a valid Firebase user, but not in our app's DB
-            // and not the default admin. We should sign them out.
-            await auth.signOut();
-            setCurrentUser(null);
-            setFirebaseUser(null);
-            setStatus('unauthenticated');
+             // If user is not in DB and not the default admin, they are not authorized.
+             await auth.signOut();
+             setCurrentUser(null);
+             setStatus('unauthenticated');
           }
         } catch (error) {
-           console.error("Error during auth state change:", error);
-           await auth.signOut();
-           setCurrentUser(null);
-           setFirebaseUser(null);
-           setStatus('unauthenticated');
+          console.error("Auth error:", error);
+          await auth.signOut();
+          setCurrentUser(null);
+          setStatus('unauthenticated');
         }
       } else {
-        // No firebase user
+        // No user is signed in with Firebase
         setCurrentUser(null);
         setStatus('unauthenticated');
       }
