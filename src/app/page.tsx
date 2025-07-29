@@ -16,8 +16,9 @@ import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
 import { useAuth } from '@/hooks/use-auth';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, addUser, getUser } from '@/lib/db';
 import { useRouter } from 'next/navigation';
+import { users as mockUsers } from '@/lib/data';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
@@ -41,7 +42,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 function Dashboard() {
-  const { appUser } = useAuth();
+  const { firebaseUser, appUser, setAppUser } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   
   const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -54,25 +55,52 @@ function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function loadData() {
-      if (appUser) {
+    async function loadInitialData() {
+        if (!firebaseUser) return;
         setIsLoading(true);
-        const [users, spaces] = await Promise.all([dbGetAllUsers(), dbGetAllSpaces()]);
-        setAllUsers(users);
-        setAllSpaces(spaces);
-        
-        const userSpaces = spaces.filter(s => s.members.includes(appUser.id));
-        if (userSpaces.length > 0) {
-          setActiveSpaceId(userSpaces[0].id);
-        } else if (spaces.length > 0) {
-          setActiveSpaceId(spaces[0].id);
-        } else {
-          setIsLoading(false);
+
+        let currentUser = appUser;
+        if (!currentUser) {
+            let userDoc = await getUser(firebaseUser.uid);
+            if (!userDoc) {
+                 const mockUser = mockUsers.find(u => u.email === firebaseUser.email);
+                 if (mockUser) {
+                    const newUserInfo: Omit<User, 'id'> = {
+                        name: firebaseUser.displayName || 'New User',
+                        email: firebaseUser.email!,
+                        role: mockUser.role,
+                        slack_id: '',
+                        avatarUrl: firebaseUser.photoURL || `https://placehold.co/100x100.png`,
+                    };
+                    userDoc = await addUser(newUserInfo, firebaseUser.uid);
+                    setAppUser(userDoc); // Set the newly created user in context
+                 }
+            } else {
+                 setAppUser(userDoc);
+            }
+            currentUser = userDoc;
         }
-      }
+
+        if (currentUser) {
+            const [users, spaces] = await Promise.all([dbGetAllUsers(), dbGetAllSpaces()]);
+            setAllUsers(users);
+            setAllSpaces(spaces);
+            
+            const userSpaces = spaces.filter(s => s.members.includes(currentUser!.id));
+            if (userSpaces.length > 0) {
+              setActiveSpaceId(userSpaces[0].id);
+            } else if (spaces.length > 0) {
+              setActiveSpaceId(spaces[0].id);
+            } else {
+              setIsLoading(false);
+            }
+        } else {
+            // This case should ideally not be hit if auth guard is working
+             setIsLoading(false);
+        }
     }
-    loadData();
-  }, [appUser]); 
+    loadInitialData();
+  }, [firebaseUser, appUser, setAppUser]); 
 
   useEffect(() => {
     async function loadSpaceData() {

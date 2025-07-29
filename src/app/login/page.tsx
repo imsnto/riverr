@@ -33,6 +33,7 @@ function LoginContent() {
     setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
+      // The onAuthStateChanged listener in AuthProvider will handle the redirect
     } catch (error: any) {
       if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
         console.error('Error signing in with Google', error);
@@ -41,12 +42,8 @@ function LoginContent() {
     }
   };
   
-  if (status === 'loading') {
+  if (status === 'loading' || status === 'authenticated') {
     return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
-  }
-
-  if (status === 'authenticated') {
-    return <div className="flex h-screen items-center justify-center">Redirecting to dashboard...</div>;
   }
   
   return (

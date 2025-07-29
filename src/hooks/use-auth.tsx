@@ -5,8 +5,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { User as AppUser } from '@/lib/data';
-import { getUser, addUser } from '@/lib/db';
-import { users as mockUsers } from '@/lib/data';
+import { getUser, addUser, getUserByEmail } from '@/lib/db';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -29,46 +28,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setFirebaseUser(user);
-        // This is the key change: We only attempt to get the app user *after* onAuthStateChanged has given us a user.
-        try {
-            let appUserDoc = await getUser(user.uid);
-
-            if (!appUserDoc) {
-                // If user is not in DB, check if they are an authorized mock user
-                const mockUser = mockUsers.find(u => u.email === user.email);
-                if (mockUser) {
-                    console.log("Creating new user from mock data in AuthProvider");
-                    const newUserInfo: Omit<AppUser, 'id'> = {
-                        name: user.displayName || 'New User',
-                        email: user.email!,
-                        role: mockUser.role,
-                        slack_id: '',
-                        avatarUrl: user.photoURL || `https://placehold.co/100x100.png`,
-                    };
-                    appUserDoc = await addUser(newUserInfo, user.uid);
-                }
-            }
-            
-            if (appUserDoc) {
-                setAppUser(appUserDoc);
-                setStatus('authenticated');
-            } else {
-                // This case means the user signed in with Google but is not in our mock data.
-                console.error("Unauthorized user:", user.email);
-                await auth.signOut(); // Sign them out
-                setAppUser(null);
-                setFirebaseUser(null);
-                setStatus('unauthenticated');
-            }
-        } catch (error) {
-            console.error("Error fetching user data, client might be offline or other issues.", error);
-            // We'll treat this as a loading state for now, maybe retry logic is needed for production
-            // For now, let's just log it and stay in 'loading' or go to 'unauthenticated'
-             await auth.signOut();
-             setAppUser(null);
-             setFirebaseUser(null);
-             setStatus('unauthenticated');
+        const appUserDoc = await getUser(user.uid);
+        if (appUserDoc) {
+          setAppUser(appUserDoc);
         }
+        setStatus('authenticated');
       } else {
         setFirebaseUser(null);
         setAppUser(null);
@@ -81,7 +45,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const handleSignOut = async () => {
     await auth.signOut();
-    // State will be updated by the onAuthStateChanged listener
   }
 
   return (
