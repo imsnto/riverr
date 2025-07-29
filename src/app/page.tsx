@@ -1,5 +1,4 @@
 
-
 'use client'
 
 import React, { useState, useEffect } from 'react';
@@ -17,9 +16,9 @@ import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
 import { useAuth } from '@/hooks/use-auth';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getUserByEmail, addUser, getUser } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, addUser, getUser } from '@/lib/db';
 import { useRouter } from 'next/navigation';
-import { users as mockUsers, spaces as mockSpaces } from '@/lib/data';
+import { users as mockUsers } from '@/lib/data';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
@@ -42,7 +41,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
 }
 
-function DashboardContent() {
+function Dashboard() {
   const { firebaseUser, appUser, setAppUser } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   
@@ -55,38 +54,34 @@ function DashboardContent() {
   const [activeSpaceId, setActiveSpaceId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch or create App User
+  // Effect to manage the App User (fetch or create)
   useEffect(() => {
     const manageAppUser = async () => {
-      if (firebaseUser) {
-        // Try to get user from DB
+      if (firebaseUser && !appUser) {
         let user = await getUser(firebaseUser.uid);
-        
-        // If user doesn't exist, check mock data and create them
         if (!user) {
           const mockUser = mockUsers.find(u => u.email === firebaseUser.email);
           if (mockUser) {
-             const newUserInfo: Omit<User, 'id'> = {
-                name: firebaseUser.displayName || 'New User',
-                email: firebaseUser.email!,
-                role: mockUser.role,
-                slack_id: '',
-                avatarUrl: firebaseUser.photoURL || `https://placehold.co/100x100.png`,
+            const newUserInfo: Omit<User, 'id'> = {
+              name: firebaseUser.displayName || 'New User',
+              email: firebaseUser.email!,
+              role: mockUser.role,
+              slack_id: '',
+              avatarUrl: firebaseUser.photoURL || `https://placehold.co/100x100.png`,
             };
             user = await addUser(newUserInfo, firebaseUser.uid);
           }
         }
-        
         if (user) {
           setAppUser(user);
         } else {
-            // This case should be handled gracefully, maybe sign out
-            console.error("User not found in DB and not in mock data.");
+          console.error("Could not find or create an app user.");
+          // Handle unauthorized case if necessary, e.g., sign out
         }
       }
     };
     manageAppUser();
-  }, [firebaseUser, setAppUser]);
+  }, [firebaseUser, appUser, setAppUser]);
 
 
   useEffect(() => {
@@ -100,14 +95,12 @@ function DashboardContent() {
         const userSpaces = spaces.filter(s => s.members.includes(appUser.id));
         if (userSpaces.length > 0 && !activeSpaceId) {
           setActiveSpaceId(userSpaces[0].id);
-        } else if (userSpaces.length === 0) {
-          // If the user belongs to no spaces, check if there's a default space
-          const defaultSpace = spaces.find(s => s.id === 'space-1');
-          if (defaultSpace) {
-            setActiveSpaceId(defaultSpace.id);
-          } else {
-            setIsLoading(false);
-          }
+        } else if (userSpaces.length > 0) {
+          setActiveSpaceId(userSpaces[0].id);
+        } else if (spaces.length > 0) {
+          setActiveSpaceId(spaces[0].id);
+        } else {
+          setIsLoading(false);
         }
       }
     }
@@ -154,12 +147,8 @@ function DashboardContent() {
     setActiveSpaceId(spaceId);
   };
   
-  if (isLoading && (!activeSpace || allUsers.length === 0)) {
+  if (isLoading && !activeSpace) {
     return <div className="flex justify-center items-center h-screen">Loading your workspace...</div>;
-  }
-
-  if (allSpaces.length === 0 && !isLoading) {
-     return <div className="flex justify-center items-center h-screen">No spaces have been created yet. Contact an admin.</div>
   }
   
   return (
@@ -258,7 +247,7 @@ const NAV_ITEMS = [
 export default function DashboardPage() {
     return (
         <AuthGuard>
-            <DashboardContent />
+            <Dashboard />
         </AuthGuard>
     )
 }

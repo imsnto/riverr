@@ -5,7 +5,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { User as AppUser } from '@/lib/data';
-import { getUserByEmail, addUser } from '@/lib/db';
+import { getUser, addUser } from '@/lib/db';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -25,9 +25,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [status, setStatus] = useState<AuthStatus>('loading');
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setFirebaseUser(user);
+        const appUserDoc = await getUser(user.uid);
+        if (appUserDoc) {
+          setAppUser(appUserDoc);
+        }
         setStatus('authenticated');
       } else {
         setFirebaseUser(null);
