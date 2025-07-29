@@ -31,6 +31,8 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    // Only redirect if the status is definitively unauthenticated.
+    // The 'loading' state will be handled by the return statement below.
     if (status === 'unauthenticated') {
       router.push('/login');
     }
@@ -39,12 +41,14 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   if (status === 'loading') {
     return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
   }
-
+  
+  // If authenticated, render the children. If unauthenticated, it will redirect,
+  // so we can return null or a loading spinner.
   if (status === 'authenticated') {
     return <>{children}</>;
   }
 
-  return null;
+  return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
 }
 
 function DashboardContent() {
@@ -77,7 +81,7 @@ function DashboardContent() {
       }
     }
     loadData();
-  }, [currentUser, activeSpaceId]);
+  }, [currentUser]); // Removed activeSpaceId from dependency array to prevent re-triggering
 
   useEffect(() => {
     async function loadSpaceData() {
@@ -108,9 +112,8 @@ function DashboardContent() {
   }, [activeSpaceId]);
   
   if (!currentUser) {
-    // This case is handled by AuthGuard, which shows a loading screen or redirects.
-    // Returning null here prevents a flash of unstyled content.
-    return null; 
+    // This case should be handled by AuthGuard. Returning a loader here is a fallback.
+    return <div className="flex h-screen items-center justify-center">Loading user data...</div>;
   }
   
   const userSpaces = allSpaces.filter(s => s.members.includes(currentUser.id));
@@ -124,14 +127,15 @@ function DashboardContent() {
     return <div className="flex justify-center items-center h-screen">Loading space...</div>
   }
 
+  // A specific loading state for when the initial user/space data is being fetched
+  if (isLoading && !activeSpace) {
+    return <div className="flex justify-center items-center h-screen">Loading your spaces...</div>;
+  }
+
   if (userSpaces.length === 0 && !isLoading) {
      return <div className="flex justify-center items-center h-screen">You are not a member of any space. Contact an admin.</div>
   }
-
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-screen">Loading data...</div>;
-  }
-
+  
   return (
     <div className="flex min-h-screen w-full flex-col bg-background font-body">
       <Header activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={userSpaces} />
@@ -169,25 +173,29 @@ function DashboardContent() {
         <main className="flex-1 overflow-auto p-4 md:p-8">
           <Tabs value={activeTab}>
             <TabsContent value="dashboard" className="mt-0">
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <div className="lg:col-span-2">
-                  <Overview projects={projects} tasks={tasks} timeEntries={timeEntries} />
-                </div>
-                <div className="flex flex-col gap-6">
-                  <Timer tasks={tasks} />
-                  <ManualTimeEntry projects={projects} tasks={tasks} />
-                </div>
-              </div>
-              <div className="mt-6">
-                <MeetingReview slackMeetingLogs={meetingLogs} projects={projects} />
-              </div>
+               {isLoading ? <div className="flex justify-center items-center h-full">Loading dashboard...</div> : 
+               <>
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-2">
+                      <Overview projects={projects} tasks={tasks} timeEntries={timeEntries} />
+                    </div>
+                    <div className="flex flex-col gap-6">
+                      <Timer tasks={tasks} />
+                      <ManualTimeEntry projects={projects} tasks={tasks} />
+                    </div>
+                  </div>
+                  <div className="mt-6">
+                    <MeetingReview slackMeetingLogs={meetingLogs} projects={projects} />
+                  </div>
+                </>
+              }
             </TabsContent>
             <TabsContent value="tasks">
-              <TaskBoard initialTasks={tasks} projects={projects} />
+              {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard initialTasks={tasks} projects={projects} />}
             </TabsContent>
             {currentUser.role === 'Admin' && (
               <TabsContent value="timesheets">
-                <TeamTimesheets timeEntries={timeEntries} projects={projects} tasks={tasks} space={activeSpace} />
+                 {isLoading ? <div className="flex justify-center items-center h-full">Loading timesheets...</div> : <TeamTimesheets timeEntries={timeEntries} projects={projects} tasks={tasks} space={activeSpace} />}
               </TabsContent>
             )}
             {currentUser.role === 'Admin' && (
@@ -199,10 +207,10 @@ function DashboardContent() {
                       <TabsTrigger value="users">Users</TabsTrigger>
                     </TabsList>
                     <TabsContent value="spaces">
-                      <SpaceSettings allSpaces={allSpaces} allUsers={allUsers} setSpaces={setAllSpaces} />
+                     {isLoading ? <div className="flex justify-center items-center h-full">Loading spaces...</div> : <SpaceSettings allSpaces={allSpaces} allUsers={allUsers} setSpaces={setAllSpaces} />}
                     </TabsContent>
                     <TabsContent value="users">
-                      <UserSettings />
+                     {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings />}
                     </TabsContent>
                   </Tabs>
               </TabsContent>

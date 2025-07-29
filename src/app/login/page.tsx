@@ -38,6 +38,7 @@ function LoginContent() {
       if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
         console.error('Error signing in with Google', error);
         setError(error.message || 'An unexpected error occurred during sign-in.');
+        router.push(`/login?error=${encodeURIComponent(error.message || 'An unexpected error occurred during sign-in.')}`);
       }
     }
   };
@@ -46,7 +47,7 @@ function LoginContent() {
     return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
   }
 
-  // Prevent flicker of login page if already authenticated
+  // Prevent flicker of login page if already authenticated and redirecting
   if (status === 'authenticated') {
     return <div className="flex h-screen items-center justify-center">Redirecting...</div>;
   }
