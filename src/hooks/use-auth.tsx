@@ -4,15 +4,14 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth, signOut } from '@/lib/firebase';
-import { User as AppUser, Invite } from '@/lib/data';
-import { getUserByEmail, addUser, getInvite, deleteInvite, updateSpace } from '@/lib/db';
+import { User as AppUser } from '@/lib/data';
+import { getUserByEmail, addUser, getInvite, deleteInvite, updateUser, addMemberToSpaces } from '@/lib/db';
 import { usePathname, useRouter } from 'next/navigation';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
 interface AuthContextType {
   currentUser: AppUser | null;
-  firebaseUser: FirebaseUser | null;
   status: AuthStatus;
   setCurrentUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
 }
@@ -20,22 +19,20 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setFirebaseUser(user);
-      if (user && user.email) {
-        let appUser = await getUserByEmail(user.email);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser && firebaseUser.email) {
+        let appUser = await getUserByEmail(firebaseUser.email);
 
         if (appUser) {
-          // User exists in DB
-          const googleName = user.displayName;
-          const googleAvatar = user.photoURL;
+          // User exists in DB, check for updates from Google profile
+          const googleName = firebaseUser.displayName;
+          const googleAvatar = firebaseUser.photoURL;
           let userChanged = false;
 
           if (googleName && googleName !== appUser.name) {
@@ -47,40 +44,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             userChanged = true;
           }
 
-          setCurrentUser(appUser);
           if (userChanged) {
-            // In a real app, you would update the user document in the DB here
+            await updateUser(appUser.id, { name: appUser.name, avatarUrl: appUser.avatarUrl });
           }
+          
+          setCurrentUser(appUser);
           setStatus('authenticated');
+
         } else {
           // User does not exist in DB, check for an invite
-          const invite = await getInvite(user.email);
-          if(invite) {
+          const invite = await getInvite(firebaseUser.email);
+          if (invite) {
             // Create user from invite
-            const newUser: Omit<User, 'id'> = {
-              name: user.displayName || user.email.split('@')[0],
-              email: user.email,
+            const newUser: Omit<AppUser, 'id'> = {
+              name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+              email: firebaseUser.email,
               role: invite.role,
               slack_id: '',
-              avatarUrl: user.photoURL || `https://placehold.co/100x100?text=${user.email[0].toUpperCase()}`,
+              avatarUrl: firebaseUser.photoURL || `https://placehold.co/100x100?text=${firebaseUser.email[0].toUpperCase()}`,
             };
             const createdUser = await addUser(newUser);
+            await addMemberToSpaces(invite.spaces, createdUser.id);
+            await deleteInvite(firebaseUser.email);
             
-            // Add user to invited spaces
-            for (const spaceId of invite.spaces) {
-                // This part needs a proper implementation of adding a member to a space in the db
-                // For now, we assume it's handled or we can add a db function for it.
-            }
-            
-            await deleteInvite(user.email);
             setCurrentUser(createdUser);
             setStatus('authenticated');
-
           } else {
-             // Not in DB and not invited
-            setCurrentUser(null);
-            setStatus('unauthenticated');
+            // Not in DB and not invited
             await signOut(auth);
+            setStatus('unauthenticated');
           }
         }
       } else {
@@ -101,12 +93,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       router.push('/');
     }
   }, [status, pathname, router]);
-
-  const value = { currentUser, firebaseUser, status, setCurrentUser };
   
-  if (status === 'loading') {
+  if (status === 'loading' && pathname !== '/login') {
     return <div className="flex h-screen items-center justify-center">Authenticating...</div>
   }
+
+  const value = { currentUser, status, setCurrentUser };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

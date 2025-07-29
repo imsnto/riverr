@@ -8,29 +8,17 @@ import { GanttChart } from 'lucide-react';
 import { useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import { getUserByEmail } from '@/lib/db';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const { status } = useAuth();
 
   const handleGoogleSignIn = async () => {
     setError(null);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-
-      if (!user.email) {
-        throw new Error('Could not retrieve email from Google Sign-In.');
-      }
-      
-      // The useAuth hook will handle redirection and user creation.
-      // We just need to trigger the sign-in. The hook does the rest.
-      // A successful sign-in will trigger the onAuthStateChanged listener in the hook.
-      // If the user is not in the db, the hook will sign them out.
-      // So, we don't need to check for appUser here anymore.
-      // The router push will be handled by the auth provider.
-
+      await signInWithPopup(auth, googleProvider);
+      // The useAuth hook will handle redirection on successful login.
     } catch (error: any) {
       if (error.code !== 'auth/popup-closed-by-user') {
         console.error('Error signing in with Google', error);
@@ -38,7 +26,11 @@ export default function LoginPage() {
       }
     }
   };
-
+  
+  if (status === 'loading') {
+    return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
+  }
+  
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background">
       <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
@@ -60,7 +52,7 @@ export default function LoginPage() {
                 </AlertDescription>
             </Alert>
         )}
-        <Button onClick={handleGoogleSignIn}>
+        <Button onClick={handleGoogleSignIn} disabled={status === 'loading'}>
           Sign in with Google
         </Button>
       </div>

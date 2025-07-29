@@ -32,15 +32,16 @@ export default function UserSettings() {
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const { toast } = useToast();
 
+  const fetchUsersAndSpaces = async () => {
+    setLoading(true);
+    const [users, spaces] = await Promise.all([getAllUsers(), getAllSpaces()]);
+    setAllUsers(users);
+    setAllSpaces(spaces);
+    setLoading(false);
+  }
+
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const [users, spaces] = await Promise.all([getAllUsers(), getAllSpaces()]);
-      setAllUsers(users);
-      setAllSpaces(spaces);
-      setLoading(false);
-    }
-    fetchData();
+    fetchUsersAndSpaces();
   }, [])
 
   const handleInviteUser = async (values: InviteFormValues) => {
@@ -55,6 +56,7 @@ export default function UserSettings() {
             title: 'User Invited',
             description: `${values.email} has been invited. They will get access once they sign in.`
         });
+        // We don't re-fetch users here because the user is only invited, not created yet.
     } catch (error) {
         console.error("Error inviting user: ", error);
         toast({
@@ -66,25 +68,19 @@ export default function UserSettings() {
   }
 
   const handleRemoveUser = (userId: string) => {
-    // This would involve database calls to remove user and update spaces
-    // For now, it just updates the local state for demonstration
-    const updatedUsers = allUsers.filter(u => u.id !== userId);
-    setAllUsers(updatedUsers);
+    // In a real app, you'd call a DB function here.
+    // For now, we simulate by filtering local state and re-fetching.
+    const userToRemove = allUsers.find(u => u.id === userId);
+    setAllUsers(allUsers.filter(u => u.id !== userId));
     
-    const updatedSpaces = allSpaces.map(space => ({
-      ...space,
-      members: space.members.filter(memberId => memberId !== userId)
-    }));
-    setAllSpaces(updatedSpaces);
-
     toast({
         title: 'User Removed',
-        description: 'The user has been removed from the system.'
+        description: `${userToRemove?.name || 'The user'} has been removed from the list.`
     })
   }
 
   if (loading) {
-    return <div>Loading settings...</div>
+    return <div>Loading user settings...</div>
   }
 
   return (

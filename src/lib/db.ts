@@ -11,6 +11,8 @@ import {
   query,
   where,
   deleteDoc,
+  writeBatch,
+  arrayUnion
 } from 'firebase/firestore';
 import { auth } from './firebase';
 import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Invite } from './data';
@@ -39,6 +41,10 @@ export const addUser = async (user: Omit<User, 'id'>): Promise<User> => {
   await setDoc(userRef, user);
   return { id: user.email, ...user };
 };
+
+export const updateUser = async (userId: string, data: Partial<User>): Promise<void> => {
+    await updateDoc(doc(db, 'users', userId), data);
+}
 
 // --- Invite Management ---
 export const addInvite = async (invite: Invite): Promise<void> => {
@@ -76,6 +82,15 @@ export const addSpace = async (space: Omit<Space, 'id'>) => {
 
 export const updateSpace = async (spaceId: string, data: Partial<Space>): Promise<void> => {
     await updateDoc(doc(db, 'spaces', spaceId), data);
+}
+
+export const addMemberToSpaces = async (spaceIds: string[], userId: string): Promise<void> => {
+    const batch = writeBatch(db);
+    spaceIds.forEach(spaceId => {
+        const spaceRef = doc(db, 'spaces', spaceId);
+        batch.update(spaceRef, { members: arrayUnion(userId) });
+    });
+    await batch.commit();
 }
 
 export const deleteSpace = async (spaceId: string): Promise<void> => {
@@ -125,9 +140,19 @@ export const getTimeEntriesInSpace = async (projectIds: string[]): Promise<TimeE
 // --- Slack Meeting Log Management ---
 export const getSlackMeetingLogsInSpace = async (projectIds: string[]): Promise<SlackMeetingLog[]> => {
     if (projectIds.length === 0) return [];
-    const q = query(collection(db, 'slack_meeting_logs'), where('project_id', 'in', [...projectIds, null]));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SlackMeetingLog));
+    // This query needs to also fetch logs where project_id is null
+    const logsWithProject = query(collection(db, 'slack_meeting_logs'), where('project_id', 'in', projectIds));
+    const logsWithoutProject = query(collection(db, 'slack_meeting_logs'), where('project_id', '==', null));
+    
+    const [withProjectSnapshot, withoutProjectSnapshot] = await Promise.all([
+      getDocs(logsWithProject),
+      getDocs(logsWithoutProject)
+    ]);
+    
+    const logs1 = withProjectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SlackMeetingLog));
+    const logs2 = withoutProjectSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SlackMeetingLog));
+
+    return [...logs1, ...logs2];
 }
 
 // --- Generic User Data ---

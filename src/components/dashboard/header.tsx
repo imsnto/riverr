@@ -91,14 +91,18 @@ export default function Header({ activeSpace, onSpaceChange, allSpaces }: { acti
     return name.split(' ').map(n => n[0]).join('');
   }
   
-  if (!currentUser) return null;
-
-  const userSpaces = allSpaces.filter(space => space.members.includes(currentUser.id));
+  if (!currentUser) {
+    return (
+       <header className="sticky top-0 z-10 flex h-16 items-center justify-end border-b bg-card px-4 md:px-8">
+        <p>Loading user...</p>
+       </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-card px-4 md:px-8">
       <div>
-        <SpaceSwitcher spaces={userSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />
+        {activeSpace && <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />}
       </div>
       <div className="flex items-center gap-4">
         <DropdownMenu>
