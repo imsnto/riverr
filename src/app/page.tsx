@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import React, { useState, useEffect } from 'react';
@@ -18,13 +19,6 @@ import UserSettings from '@/components/dashboard/user-settings';
 import { useAuth } from '@/hooks/use-auth';
 import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers } from '@/lib/db';
 import { useRouter } from 'next/navigation';
-
-const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: GanttChart },
-  { id: 'tasks', label: 'Task Board', icon: FolderKanban },
-  { id: 'timesheets', label: 'Team Timesheets', icon: Users, adminOnly: true },
-  { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
-];
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
@@ -220,6 +214,12 @@ function DashboardContent() {
   );
 }
 
+const NAV_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', icon: GanttChart },
+  { id: 'tasks', label: 'Task Board', icon: FolderKanban },
+  { id: 'timesheets', label: 'Team Timesheets', icon: Users, adminOnly: true },
+  { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
+];
 
 export default function DashboardPage() {
     return (

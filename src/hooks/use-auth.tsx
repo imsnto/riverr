@@ -4,9 +4,9 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { User as AppUser, users as mockUsers } from '@/lib/data';
-import { getUserByEmail, addUser, getInvite, deleteInvite, updateUser, addMemberToSpaces } from '@/lib/db';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { User as AppUser } from '@/lib/data';
+import { getUserByEmail, addUser } from '@/lib/db';
+import { useRouter } from 'next/navigation';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -28,55 +28,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (firebaseUser) {
         // User is signed in with Firebase, now verify with our DB
         try {
-          // Check if user exists in our DB
           let appUser = await getUserByEmail(firebaseUser.email!);
 
           if (!appUser) {
-            // If user doesn't exist, check for an invite or if they are a mock user
-            const invite = await getInvite(firebaseUser.email!);
-            const mockUser = mockUsers.find(u => u.email === firebaseUser.email!);
-            
-            const canBeCreated = invite || mockUser;
-
-            if (canBeCreated) {
-               const newUserInfo = invite || mockUser!;
-               const newUser: Omit<AppUser, 'id'> = {
-                 name: firebaseUser.displayName || newUserInfo.name || firebaseUser.email!,
-                 email: firebaseUser.email!,
-                 role: newUserInfo.role,
-                 slack_id: newUserInfo.slack_id || '',
-                 avatarUrl: firebaseUser.photoURL || `https://placehold.co/100x100?text=${firebaseUser.email![0].toUpperCase()}`,
+            // If user doesn't exist, check if it's our default user.
+            if (firebaseUser.email === 'brad@riverr.app') {
+               const newUserInfo: Omit<AppUser, 'id'> = {
+                 name: firebaseUser.displayName || 'Brad',
+                 email: firebaseUser.email,
+                 role: 'Admin',
+                 slack_id: 'U12345',
+                 avatarUrl: firebaseUser.photoURL || `https://placehold.co/100x100?text=B`,
                };
-               appUser = await addUser(newUser);
-              
-               if(invite) {
-                 await addMemberToSpaces(invite.spaces, appUser.id);
-                 await deleteInvite(firebaseUser.email!);
-               }
+               appUser = await addUser(newUserInfo);
             }
           }
 
           if (appUser) {
-             // Sync display name and avatar from Google if they've changed
-            if ((firebaseUser.displayName && firebaseUser.displayName !== appUser.name) || (firebaseUser.photoURL && firebaseUser.photoURL !== appUser.avatarUrl)) {
-                const updatedInfo = {
-                    name: firebaseUser.displayName || appUser.name,
-                    avatarUrl: firebaseUser.photoURL || appUser.avatarUrl
-                };
-                await updateUser(appUser.id, updatedInfo);
-                appUser = { ...appUser, ...updatedInfo };
-            }
             setCurrentUser(appUser);
             setStatus('authenticated');
           } else {
-            // User is authenticated with Firebase, but not authorized in our system
             await auth.signOut();
             setCurrentUser(null);
             setStatus('unauthenticated');
-            router.push('/login?error=' + encodeURIComponent('You are not an authorized user. Please contact an administrator to get access.'));
+            router.push('/login?error=' + encodeURIComponent('You are not an authorized user.'));
           }
         } catch (error) {
-          console.error("Authentication error during DB check:", error);
+          console.error("Authentication error:", error);
           await auth.signOut();
           setCurrentUser(null);
           setStatus('unauthenticated');
@@ -89,8 +67,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [router]);
 
   return (
     <AuthContext.Provider value={{ currentUser, status, setCurrentUser }}>
