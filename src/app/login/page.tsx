@@ -12,7 +12,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 function LoginContent() {
   const [error, setError] = useState<string | null>(null);
-  const { status, currentUser } = useAuth();
+  const { status } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -33,8 +33,9 @@ function LoginContent() {
     setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
+      // The onAuthStateChanged listener in AuthProvider will handle the redirect
     } catch (error: any) {
-      if (error.code !== 'auth/popup-closed-by-user') {
+      if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
         console.error('Error signing in with Google', error);
         setError(error.message || 'An unexpected error occurred during sign-in.');
       }

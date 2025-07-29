@@ -108,12 +108,14 @@ function DashboardContent() {
   }, [activeSpaceId]);
   
   if (!currentUser) {
-    return null; // Should be handled by AuthGuard
+    // This case is handled by AuthGuard, which shows a loading screen or redirects.
+    // Returning null here prevents a flash of unstyled content.
+    return null; 
   }
   
   const userSpaces = allSpaces.filter(s => s.members.includes(currentUser.id));
   const activeSpace = allSpaces.find(s => s.id === activeSpaceId) || userSpaces[0];
-
+  
   const handleSpaceChange = (spaceId: string) => {
     setActiveSpaceId(spaceId);
   };
@@ -122,7 +124,7 @@ function DashboardContent() {
     return <div className="flex justify-center items-center h-screen">Loading space...</div>
   }
 
-  if (userSpaces.length === 0) {
+  if (userSpaces.length === 0 && !isLoading) {
      return <div className="flex justify-center items-center h-screen">You are not a member of any space. Contact an admin.</div>
   }
 
