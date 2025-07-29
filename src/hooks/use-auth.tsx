@@ -5,34 +5,46 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { User as AppUser } from '@/lib/data';
+import { getUserByEmail, addUser } from '@/lib/db';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
-  status: AuthStatus;
   appUser: AppUser | null;
+  status: AuthStatus;
   setAppUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [status, setStatus] = useState<AuthStatus>('loading');
   const [appUser, setAppUser] = useState<AppUser | null>(null);
+  const [status, setStatus] = useState<AuthStatus>('loading');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setFirebaseUser(user);
-      setStatus(user ? 'authenticated' : 'unauthenticated');
+      if (user) {
+        setFirebaseUser(user);
+        setStatus('authenticated');
+      } else {
+        setFirebaseUser(null);
+        setAppUser(null);
+        setStatus('unauthenticated');
+      }
     });
 
     return () => unsubscribe();
   }, []);
 
+  const handleSignOut = async () => {
+    await auth.signOut();
+  }
+
   return (
-    <AuthContext.Provider value={{ firebaseUser, status, appUser, setAppUser }}>
+    <AuthContext.Provider value={{ firebaseUser, appUser, status, setAppUser, signOut: handleSignOut }}>
       {children}
     </AuthContext.Provider>
   );

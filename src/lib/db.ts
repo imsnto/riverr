@@ -23,20 +23,21 @@ const db = getFirestore();
 // --- User Management ---
 export const getUser = async (userId: string): Promise<User | null> => {
   const userDoc = await getDoc(doc(db, 'users', userId));
-  return userDoc.exists() ? (userDoc.data() as User) : null;
+  return userDoc.exists() ? ({ id: userDoc.id, ...userDoc.data() } as User) : null;
 };
 
 export const getUserByEmail = async (email: string): Promise<User | null> => {
-    const userRef = doc(db, 'users', email);
-    const userDoc = await getDoc(userRef);
-    if (userDoc.exists()) {
+    const q = query(collection(db, 'users'), where('email', '==', email));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
         return { id: userDoc.id, ...userDoc.data() } as User;
     }
     return null;
 }
 
-export const addUser = async (user: Omit<User, 'id'>): Promise<User> => {
-  const userRef = doc(db, 'users', user.email);
+export const addUser = async (user: Omit<User, 'id'>, uid: string): Promise<User> => {
+  const userRef = doc(db, 'users', uid);
   await setDoc(userRef, user);
   const newUserDoc = await getDoc(userRef);
   return { id: newUserDoc.id, ...newUserDoc.data() } as User;

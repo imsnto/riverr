@@ -17,8 +17,9 @@ import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
 import { useAuth } from '@/hooks/use-auth';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getUserByEmail, addUser } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getUserByEmail, addUser, getUser } from '@/lib/db';
 import { useRouter } from 'next/navigation';
+import { users as mockUsers, spaces as mockSpaces } from '@/lib/data';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
@@ -57,20 +58,31 @@ function DashboardContent() {
   // Fetch or create App User
   useEffect(() => {
     const manageAppUser = async () => {
-      if (firebaseUser && !appUser) {
-        let user = await getUserByEmail(firebaseUser.email!);
+      if (firebaseUser) {
+        // Try to get user from DB
+        let user = await getUser(firebaseUser.uid);
+        
+        // If user doesn't exist, check mock data and create them
         if (!user) {
-            // User does not exist, create one
-            const newUserInfo: Omit<User, 'id'> = {
+          const mockUser = mockUsers.find(u => u.email === firebaseUser.email);
+          if (mockUser) {
+             const newUserInfo: Omit<User, 'id'> = {
                 name: firebaseUser.displayName || 'New User',
                 email: firebaseUser.email!,
-                role: 'Member', // Default role
+                role: mockUser.role,
                 slack_id: '',
                 avatarUrl: firebaseUser.photoURL || `https://placehold.co/100x100.png`,
             };
-            user = await addUser(newUserInfo);
+            user = await addUser(newUserInfo, firebaseUser.uid);
+          }
         }
-        setAppUser(user);
+        
+        if (user) {
+          setAppUser(user);
+        } else {
+            // This case should be handled gracefully, maybe sign out
+            console.error("User not found in DB and not in mock data.");
+        }
       }
     };
     manageAppUser();
@@ -89,7 +101,13 @@ function DashboardContent() {
         if (userSpaces.length > 0 && !activeSpaceId) {
           setActiveSpaceId(userSpaces[0].id);
         } else if (userSpaces.length === 0) {
-          setIsLoading(false);
+          // If the user belongs to no spaces, check if there's a default space
+          const defaultSpace = spaces.find(s => s.id === 'space-1');
+          if (defaultSpace) {
+            setActiveSpaceId(defaultSpace.id);
+          } else {
+            setIsLoading(false);
+          }
         }
       }
     }
@@ -130,27 +148,23 @@ function DashboardContent() {
   }
   
   const userSpaces = allSpaces.filter(s => s.members.includes(appUser.id));
-  const activeSpace = allSpaces.find(s => s.id === activeSpaceId) || userSpaces[0];
+  const activeSpace = allSpaces.find(s => s.id === activeSpaceId) || userSpaces[0] || allSpaces[0];
   
   const handleSpaceChange = (spaceId: string) => {
     setActiveSpaceId(spaceId);
   };
   
-  if (userSpaces.length > 0 && !activeSpace) {
-    return <div className="flex justify-center items-center h-screen">Loading space...</div>
-  }
-
   if (isLoading && (!activeSpace || allUsers.length === 0)) {
-    return <div className="flex justify-center items-center h-screen">Loading your spaces...</div>;
+    return <div className="flex justify-center items-center h-screen">Loading your workspace...</div>;
   }
 
-  if (userSpaces.length === 0 && !isLoading) {
-     return <div className="flex justify-center items-center h-screen">You are not a member of any space. Contact an admin.</div>
+  if (allSpaces.length === 0 && !isLoading) {
+     return <div className="flex justify-center items-center h-screen">No spaces have been created yet. Contact an admin.</div>
   }
   
   return (
     <div className="flex min-h-screen w-full flex-col bg-background font-body">
-      <Header activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={userSpaces} />
+      <Header activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={userSpaces.length > 0 ? userSpaces : allSpaces} />
       <div className="flex flex-1">
         <aside className="hidden w-64 flex-col border-r bg-card p-4 md:flex">
           <nav className="flex flex-col gap-2">
@@ -248,4 +262,3 @@ export default function DashboardPage() {
         </AuthGuard>
     )
 }
-
