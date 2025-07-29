@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { User as AppUser } from '@/lib/data';
+import { User as AppUser, users as mockUsers } from '@/lib/data';
 import { getUserByEmail, addUser, getInvite, deleteInvite, updateUser, addMemberToSpaces } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 
@@ -22,18 +22,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
   
-  // No router here to prevent hook order issues. Router will be used in consumers.
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // User is signed in to Firebase, now check our DB
         setStatus('loading');
         try {
           let appUser = await getUserByEmail(firebaseUser.email!);
 
           if (appUser) {
-            // User exists in our DB
+            // User exists in our DB, update if necessary
             const googleName = firebaseUser.displayName;
             const googleAvatar = firebaseUser.photoURL;
             let userChanged = false;
@@ -54,32 +51,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setCurrentUser(appUser);
             setStatus('authenticated');
           } else {
-            // User does not exist in our DB, check for an invite
+            // User does not exist, check for an invite or if they are a mock user
             const invite = await getInvite(firebaseUser.email!);
-            if (invite) {
-              // User has a valid invite, create a new user account
+            const mockUser = mockUsers.find(u => u.email === firebaseUser.email!);
+            
+            if (invite || mockUser) {
+              // User has a valid invite OR is a pre-defined mock user, create a new user account
+              const newUserInfo = invite || mockUser!;
               const newUser: Omit<AppUser, 'id'> = {
-                name: firebaseUser.displayName || firebaseUser.email!.split('@')[0],
+                name: firebaseUser.displayName || newUserInfo.name,
                 email: firebaseUser.email!,
-                role: invite.role,
-                slack_id: '',
+                role: newUserInfo.role,
+                slack_id: newUserInfo.slack_id || '',
                 avatarUrl: firebaseUser.photoURL || `https://placehold.co/100x100?text=${firebaseUser.email![0].toUpperCase()}`,
               };
               const createdUser = await addUser(newUser);
-              await addMemberToSpaces(invite.spaces, createdUser.id);
-              await deleteInvite(firebaseUser.email!);
+              
+              if(invite) {
+                await addMemberToSpaces(invite.spaces, createdUser.id);
+                await deleteInvite(firebaseUser.email!);
+              }
               
               setCurrentUser(createdUser);
               setStatus('authenticated');
             } else {
               // No user, no invite. This is an unauthorized user.
-              await auth.signOut(); // Sign out from Firebase
-              // The onAuthStateChanged will trigger again with null, leading to 'unauthenticated'
+              await auth.signOut();
             }
           }
         } catch (error) {
           console.error("Auth error:", error);
-          await auth.signOut(); // Sign out on error
+          await auth.signOut();
         }
       } else {
         // No user is signed in to Firebase
