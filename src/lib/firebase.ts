@@ -1,20 +1,14 @@
-// src/lib/firebase.ts
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 
-const firebaseConfig = {
-  "projectId": "timeflow-6i3eo",
-  "appId": "1:209410404537:web:bb2b7ff8376f1149e42b68",
-  "storageBucket": "timeflow-6i3eo.firebasestorage.app",
-  "apiKey": "AIzaSyAzD2lBIiXFdlngOKolF6NKmCeyyuxoZOw",
-  "authDomain": "timeflow-6i3eo.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "209410404537"
-};
+// src/lib/firebase.ts
+import { getApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { firebaseApp } from '@/lib/firebase-init';
 
 // Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const app = firebaseApp;
 const auth = getAuth(app);
+const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
-export { auth, googleProvider, signInWithPopup, signOut };
+export { app, auth, db, googleProvider, signInWithPopup, signOut };

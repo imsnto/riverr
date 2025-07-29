@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import React, { useState, useEffect } from 'react';
@@ -57,11 +58,14 @@ function Dashboard() {
   // Effect to manage the App User (fetch or create)
   useEffect(() => {
     const manageAppUser = async () => {
+      // Only run if we have a firebaseUser but not an appUser yet
       if (firebaseUser && !appUser) {
         let user = await getUser(firebaseUser.uid);
         if (!user) {
+          // If user is not in DB, check if they are in the mock data
           const mockUser = mockUsers.find(u => u.email === firebaseUser.email);
           if (mockUser) {
+            console.log("Creating new user from mock data");
             const newUserInfo: Omit<User, 'id'> = {
               name: firebaseUser.displayName || 'New User',
               email: firebaseUser.email!,
@@ -75,7 +79,7 @@ function Dashboard() {
         if (user) {
           setAppUser(user);
         } else {
-          console.error("Could not find or create an app user.");
+          console.error("Could not find or create an app user. User is not in mock data.");
           // Handle unauthorized case if necessary, e.g., sign out
         }
       }
@@ -93,11 +97,10 @@ function Dashboard() {
         setAllSpaces(spaces);
         
         const userSpaces = spaces.filter(s => s.members.includes(appUser.id));
-        if (userSpaces.length > 0 && !activeSpaceId) {
-          setActiveSpaceId(userSpaces[0].id);
-        } else if (userSpaces.length > 0) {
+        if (userSpaces.length > 0) {
           setActiveSpaceId(userSpaces[0].id);
         } else if (spaces.length > 0) {
+          // Fallback for users not in any space yet
           setActiveSpaceId(spaces[0].id);
         } else {
           setIsLoading(false);
@@ -105,7 +108,6 @@ function Dashboard() {
       }
     }
     loadData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appUser]); 
 
   useEffect(() => {

@@ -1,7 +1,6 @@
 
 // src/lib/db.ts
 import {
-  getFirestore,
   collection,
   getDocs,
   doc,
@@ -15,10 +14,8 @@ import {
   writeBatch,
   arrayUnion
 } from 'firebase/firestore';
-import { auth } from './firebase';
+import { db } from './firebase';
 import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Invite } from './data';
-
-const db = getFirestore();
 
 // --- User Management ---
 export const getUser = async (userId: string): Promise<User | null> => {

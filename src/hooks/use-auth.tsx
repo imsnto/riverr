@@ -32,7 +32,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (appUserDoc) {
           setAppUser(appUserDoc);
         }
-        setStatus('authenticated');
+        // This status will be set regardless of whether the app user is found yet.
+        // The UI will handle logic based on whether appUser is null or not.
+        setStatus('authenticated'); 
       } else {
         setFirebaseUser(null);
         setAppUser(null);
