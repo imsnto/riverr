@@ -1,5 +1,4 @@
 
-
 'use client'
 
 import React, { useState, useEffect } from 'react';
@@ -17,9 +16,8 @@ import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
 import { useAuth } from '@/hooks/use-auth';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, addUser, getUser } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers } from '@/lib/db';
 import { useRouter } from 'next/navigation';
-import { users as mockUsers } from '@/lib/data';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
@@ -43,7 +41,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 function Dashboard() {
-  const { firebaseUser, appUser, setAppUser } = useAuth();
+  const { appUser } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   
   const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -54,39 +52,6 @@ function Dashboard() {
   const [meetingLogs, setMeetingLogs] = useState<SlackMeetingLog[]>([]);
   const [activeSpaceId, setActiveSpaceId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-
-  // Effect to manage the App User (fetch or create)
-  useEffect(() => {
-    const manageAppUser = async () => {
-      // Only run if we have a firebaseUser but not an appUser yet
-      if (firebaseUser && !appUser) {
-        let user = await getUser(firebaseUser.uid);
-        if (!user) {
-          // If user is not in DB, check if they are in the mock data
-          const mockUser = mockUsers.find(u => u.email === firebaseUser.email);
-          if (mockUser) {
-            console.log("Creating new user from mock data");
-            const newUserInfo: Omit<User, 'id'> = {
-              name: firebaseUser.displayName || 'New User',
-              email: firebaseUser.email!,
-              role: mockUser.role,
-              slack_id: '',
-              avatarUrl: firebaseUser.photoURL || `https://placehold.co/100x100.png`,
-            };
-            user = await addUser(newUserInfo, firebaseUser.uid);
-          }
-        }
-        if (user) {
-          setAppUser(user);
-        } else {
-          console.error("Could not find or create an app user. User is not in mock data.");
-          // Handle unauthorized case if necessary, e.g., sign out
-        }
-      }
-    };
-    manageAppUser();
-  }, [firebaseUser, appUser, setAppUser]);
-
 
   useEffect(() => {
     async function loadData() {
@@ -100,7 +65,6 @@ function Dashboard() {
         if (userSpaces.length > 0) {
           setActiveSpaceId(userSpaces[0].id);
         } else if (spaces.length > 0) {
-          // Fallback for users not in any space yet
           setActiveSpaceId(spaces[0].id);
         } else {
           setIsLoading(false);
