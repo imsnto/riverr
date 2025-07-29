@@ -1,5 +1,4 @@
 
-
 'use client'
 
 import React, { useState, useEffect } from 'react';
@@ -134,7 +133,7 @@ function DashboardContent() {
       <div className="flex flex-1">
         <aside className="hidden w-64 flex-col border-r bg-card p-4 md:flex">
           <nav className="flex flex-col gap-2">
-            <h2 className="mb-2 text-lg font-semibold tracking-tight">{activeSpace.name}</h2>
+            <h2 className="mb-2 text-lg font-semibold tracking-tight">{activeSpace?.name}</h2>
             <Separator />
             <Tabs
               orientation="vertical"

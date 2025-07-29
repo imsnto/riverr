@@ -76,7 +76,7 @@ function LoginContent() {
                 </AlertDescription>
             </Alert>
         )}
-        <Button onClick={handleGoogleSignIn} disabled={status === 'loading'}>
+        <Button onClick={handleGoogleSignIn}>
           Sign in with Google
         </Button>
       </div>
