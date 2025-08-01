@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Hash, Lock } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 function Dashboard() {
@@ -120,121 +121,125 @@ function Dashboard() {
   }
   
   return (
-    <div className="flex h-screen w-full flex-col bg-background font-body">
-      <Header activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={userSpaces.length > 0 ? userSpaces : allSpaces} appUser={appUser} />
-      <div className="flex flex-1 overflow-hidden">
-        {/* Primary Sidebar */}
-        <aside className="hidden w-64 flex-col border-r bg-card p-4 md:flex">
-          <nav className="flex flex-col gap-2">
-            <h2 className="mb-2 text-lg font-semibold tracking-tight">{activeSpace?.name}</h2>
-            <Separator />
-             <div className="mt-4">
-                 {NAV_ITEMS.map(item => {
-                  if (item.adminOnly && appUser.role !== 'Admin') {
-                    return null;
-                  }
-                  return (
-                    <Button
-                      key={item.id}
-                      variant="ghost"
-                      onClick={() => setActiveTab(item.id)}
-                      className={cn(
-                        "w-full justify-start gap-2 px-3 py-2 text-left",
-                        activeTab === item.id && 'bg-primary/10 text-primary'
-                      )}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {item.label}
-                    </Button>
-                  );
-                })}
-             </div>
-          </nav>
-        </aside>
-        
-        {/* Secondary Sidebar (for Channels) */}
-        {activeTab === 'channels' && (
-          <aside className="w-80 border-r flex flex-col bg-card">
-              <div className="p-4 border-b">
-                <h2 className="text-lg font-semibold">Channels</h2>
-              </div>
-              <ScrollArea>
-                <div className="p-2">
-                  {channels.map(channel => (
-                    <Button
-                      key={channel.id}
-                      variant="ghost"
-                      className={cn(
-                        'w-full justify-start gap-2',
-                        activeChannelId === channel.id && 'bg-primary/10 text-primary'
-                      )}
-                      onClick={() => setActiveChannelId(channel.id)}
-                    >
-                      {channel.is_private ? <Lock className="h-4 w-4" /> : <Hash className="h-4 w-4" />}
-                      {channel.name}
-                    </Button>
-                  ))}
-                </div>
-              </ScrollArea>
+    <TooltipProvider>
+      <div className="flex h-screen w-full flex-col bg-background font-body">
+        <Header activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={userSpaces.length > 0 ? userSpaces : allSpaces} appUser={appUser} />
+        <div className="flex flex-1 overflow-hidden">
+          {/* Primary Sidebar */}
+          <aside className="hidden w-20 flex-col items-center border-r bg-card p-4 md:flex">
+            <nav className="flex flex-col items-center gap-4">
+              {NAV_ITEMS.map(item => {
+                if (item.adminOnly && appUser.role !== 'Admin') {
+                  return null;
+                }
+                return (
+                  <Tooltip key={item.id} delayDuration={0}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setActiveTab(item.id)}
+                        className={cn(
+                          "w-10 h-10 rounded-lg",
+                          activeTab === item.id && 'bg-primary/10 text-primary'
+                        )}
+                      >
+                        <item.icon className="h-5 w-5" />
+                        <span className="sr-only">{item.label}</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p>{item.label}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </nav>
           </aside>
-        )}
+          
+          {/* Secondary Sidebar (for Channels) */}
+          {activeTab === 'channels' && (
+            <aside className="w-80 border-r flex flex-col bg-card">
+                <div className="p-4 border-b">
+                  <h2 className="text-lg font-semibold">Channels</h2>
+                </div>
+                <ScrollArea>
+                  <div className="p-2">
+                    {channels.map(channel => (
+                      <Button
+                        key={channel.id}
+                        variant="ghost"
+                        className={cn(
+                          'w-full justify-start gap-2',
+                          activeChannelId === channel.id && 'bg-primary/10 text-primary'
+                        )}
+                        onClick={() => setActiveChannelId(channel.id)}
+                      >
+                        {channel.is_private ? <Lock className="h-4 w-4" /> : <Hash className="h-4 w-4" />}
+                        {channel.name}
+                      </Button>
+                    ))}
+                  </div>
+                </ScrollArea>
+            </aside>
+          )}
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto p-4 md:p-8">
-            {activeTab === 'dashboard' && (
-               isLoading ? <div className="flex justify-center items-center h-full">Loading dashboard...</div> : 
-               <>
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    <div className="lg:col-span-2">
-                      <Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} />
+          {/* Main Content */}
+          <main className="flex-1 overflow-auto p-4 md:p-8">
+              {activeTab === 'dashboard' && (
+                isLoading ? <div className="flex justify-center items-center h-full">Loading dashboard...</div> : 
+                <>
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                      <div className="lg:col-span-2">
+                        <Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} />
+                      </div>
+                      <div className="flex flex-col gap-6">
+                        <Timer tasks={tasks} appUser={appUser} />
+                        <ManualTimeEntry projects={projects} tasks={tasks} appUser={appUser}/>
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-6">
-                      <Timer tasks={tasks} appUser={appUser} />
-                      <ManualTimeEntry projects={projects} tasks={tasks} appUser={appUser}/>
+                    <div className="mt-6">
+                      <MeetingReview slackMeetingLogs={meetingLogs} projects={projects} />
                     </div>
-                  </div>
-                  <div className="mt-6">
-                    <MeetingReview slackMeetingLogs={meetingLogs} projects={projects} />
-                  </div>
-                </>
-              )
-            }
-             {activeTab === 'channels' && (
-              isLoading ? <div className="flex justify-center items-center h-full">Loading channels...</div> : 
-              <ChannelsView 
-                channels={channels}
-                messages={messages} 
-                allUsers={allUsers} 
-                activeChannelId={activeChannelId}
-                setMessages={setMessages}
-              />
-            )}
-            {activeTab === 'tasks' && (
-              isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard initialTasks={tasks} projects={projects} />
-            )}
-            {appUser.role === 'Admin' && activeTab === 'timesheets' && (
-                 isLoading ? <div className="flex justify-center items-center h-full">Loading timesheets...</div> : <TeamTimesheets timeEntries={timeEntries} projects={projects} tasks={tasks} space={activeSpace} allUsers={allUsers} />
-            )}
-            {appUser.role === 'Admin' && activeTab === 'settings' && (
-                 <>
-                    <h1 className="text-2xl font-bold mb-4">Settings</h1>
-                    <Tabs defaultValue="spaces" className="w-full">
-                        <TabsList>
-                        <TabsTrigger value="spaces">Spaces</TabsTrigger>
-                        <TabsTrigger value="users">Users</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="spaces">
-                        {isLoading ? <div className="flex justify-center items-center h-full">Loading spaces...</div> : <SpaceSettings allSpaces={allSpaces} allUsers={allUsers} setSpaces={setAllSpaces} appUser={appUser} />}
-                        </TabsContent>
-                        <TabsContent value="users">
-                        {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings />}
-                        </TabsContent>
-                    </Tabs>
-                 </>
-            )}
-        </main>
+                  </>
+                )
+              }
+              {activeTab === 'channels' && (
+                isLoading ? <div className="flex justify-center items-center h-full">Loading channels...</div> : 
+                <ChannelsView 
+                  channels={channels}
+                  messages={messages} 
+                  allUsers={allUsers} 
+                  activeChannelId={activeChannelId}
+                  setMessages={setMessages}
+                />
+              )}
+              {activeTab === 'tasks' && (
+                isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard initialTasks={tasks} projects={projects} />
+              )}
+              {appUser.role === 'Admin' && activeTab === 'timesheets' && (
+                  isLoading ? <div className="flex justify-center items-center h-full">Loading timesheets...</div> : <TeamTimesheets timeEntries={timeEntries} projects={projects} tasks={tasks} space={activeSpace} allUsers={allUsers} />
+              )}
+              {appUser.role === 'Admin' && activeTab === 'settings' && (
+                  <>
+                      <h1 className="text-2xl font-bold mb-4">Settings</h1>
+                      <Tabs defaultValue="spaces" className="w-full">
+                          <TabsList>
+                          <TabsTrigger value="spaces">Spaces</TabsTrigger>
+                          <TabsTrigger value="users">Users</TabsTrigger>
+                          </TabsList>
+                          <TabsContent value="spaces">
+                          {isLoading ? <div className="flex justify-center items-center h-full">Loading spaces...</div> : <SpaceSettings allSpaces={allSpaces} allUsers={allUsers} setSpaces={setAllSpaces} appUser={appUser} />}
+                          </TabsContent>
+                          <TabsContent value="users">
+                          {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings />}
+                          </TabsContent>
+                      </Tabs>
+                  </>
+              )}
+          </main>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
 
@@ -251,5 +256,3 @@ export default function RootPage() {
         <Dashboard />
     )
 }
-
-    
