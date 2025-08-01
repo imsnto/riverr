@@ -97,7 +97,7 @@ function Dashboard() {
             const [tasksInSpace, timeEntriesInSpace, meetingLogsInSpace] = await Promise.all([
                 dbGetTasks(projectIds),
                 dbGetTimeEntries(projectIds),
-                dbGetSlackMeetingLogsInSpace(projectIds),
+                dbGetSlackLogs(projectIds),
             ]);
             setTasks(tasksInSpace);
             setTimeEntries(timeEntriesInSpace);
@@ -111,7 +111,7 @@ function Dashboard() {
       }
     }
     loadSpaceData();
-  }, [activeSpaceId, activeChannelId]);
+  }, [activeSpaceId]);
   
   const handleOpenCreateTaskDialog = (message: Message) => {
     setSelectedMessageForTask(message);
@@ -312,7 +312,7 @@ function Dashboard() {
             channelMembers={channels.find(c => c.id === selectedMessageForTask.channel_id)?.members.map(id => {
                 const user = allUsers.find(u => u.id === id);
                 return { id: user!.id, name: user!.name };
-            }).filter(Boolean) || []}
+            }).filter(Boolean) as User[]}
             projects={projects.map(p => ({ id: p.id, name: p.name }))}
             onTaskCreated={handleTaskCreated}
         />
