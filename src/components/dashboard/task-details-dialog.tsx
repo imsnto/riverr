@@ -92,7 +92,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         const commentInput = form.elements.namedItem('comment') as HTMLTextAreaElement;
         const commentText = commentInput.value;
 
-        if (!commentText && attachments.length === 0) {
+        if (!commentText.trim() && attachments.length === 0) {
             toast({
                 variant: 'destructive',
                 title: 'Empty Comment',
@@ -124,7 +124,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         }
         
         let updatedActivities = [...task.activities];
-        if (newComment.comment || newComment.attachments?.length) {
+        if (newComment.comment || (newComment.attachments && newComment.attachments.length > 0)) {
             updatedActivities.push(newActivity);
         }
 
@@ -325,7 +325,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                 })}
                             </div>
                         </ScrollArea>
-                        <div className="p-4 border-t">
+                        <div className="p-4 border-t bg-card">
                              {attachments.length > 0 && (
                                 <div className="mb-2 space-y-2">
                                     {attachments.map((file, i) => (
@@ -346,7 +346,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                 </div>
                             )}
                             <form onSubmit={handleAddComment} className="relative">
-                                <Textarea name="comment" placeholder="Write a comment..." className="pr-20" />
+                                <Textarea name="comment" placeholder="Write a comment..." className="pr-24" />
                                 <div className="absolute right-2 bottom-2 flex gap-1">
                                     <input
                                         type="file"
@@ -355,7 +355,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                         className="hidden"
                                         onChange={handleFileSelect}
                                     />
-                                    <Button type="button" size="sm" variant="ghost" onClick={() => fileInputRef.current?.click()}>
+                                    <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
                                         <Paperclip className="h-4 w-4" />
                                     </Button>
                                     <Button type="submit" size="sm">Send</Button>

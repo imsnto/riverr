@@ -1,14 +1,14 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Channel, Message, User } from '@/lib/data';
+import React, { useState, useEffect, useRef } from 'react';
+import { Channel, Message, User, Attachment } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Send, MessageCircleMore, MoreHorizontal } from 'lucide-react';
+import { Send, MessageCircleMore, MoreHorizontal, Paperclip, File, ImageIcon } from 'lucide-react';
 import { addMessage } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -49,6 +49,8 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
   const [isTagging, setIsTagging] = useState(false);
   const [tagQuery, setTagQuery] = useState('');
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const activeChannel = channels.find(c => c.id === activeChannelId);
   const channelMessages = messages.filter(m => m.channel_id === activeChannelId);
@@ -76,7 +78,14 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !activeChannelId || !appUser) return;
+    if ((!newMessage.trim() && attachments.length === 0) || !activeChannelId || !appUser) return;
+    
+    const newAttachments: Attachment[] = attachments.map(file => ({
+        id: `att-${Date.now()}-${Math.random()}`,
+        name: file.name,
+        url: URL.createObjectURL(file), // In a real app, this would be an upload URL
+        type: file.type.startsWith('image/') ? 'image' : 'file',
+    }));
 
     const optimisticMessage: Message = {
       id: `temp-${Date.now()}`,
@@ -84,10 +93,12 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
       user_id: appUser.id,
       content: newMessage,
       timestamp: new Date().toISOString(),
+      attachments: newAttachments,
     }
     
     setMessages(prev => [...prev, optimisticMessage]);
     setNewMessage('');
+    setAttachments([]);
     setIsTagging(false);
 
     try {
@@ -96,6 +107,7 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
             user_id: appUser.id,
             content: newMessage,
             timestamp: new Date().toISOString(),
+            attachments: newAttachments,
         });
         setMessages(prev => prev.map(m => m.id === optimisticMessage.id ? savedMessage : m));
     } catch(err) {
@@ -105,6 +117,13 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
         // Optionally, show a toast notification for the error
     }
   };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      setAttachments(prev => [...prev, ...Array.from(event.target.files!)]);
+    }
+  };
+
 
   const filteredMembers = channelMembers.filter(member => 
     member.name.toLowerCase().includes(tagQuery.toLowerCase()) && member.id !== appUser?.id
@@ -144,7 +163,17 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
                           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
-                      <p className="text-sm">{renderMessageContent(message.content, allUsers)}</p>
+                      {message.content && <p className="text-sm">{renderMessageContent(message.content, allUsers)}</p>}
+                      {message.attachments && message.attachments.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                            {message.attachments.map(att => (
+                                <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline bg-primary/10 p-2 rounded-md max-w-xs">
+                                {att.type === 'image' ? <ImageIcon className="h-4 w-4" /> : <File className="h-4 w-4" />}
+                                <span className="truncate">{att.name}</span>
+                                </a>
+                            ))}
+                        </div>
+                      )}
                     </div>
                      <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity", { "opacity-100": hoveredMessageId === message.id })}>
                         <DropdownMenu>
@@ -167,6 +196,25 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
             </div>
           </ScrollArea>
           <div className="p-4 border-t bg-card">
+            {attachments.length > 0 && (
+                <div className="mb-2 space-y-2">
+                    {attachments.map((file, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 text-sm bg-muted p-2 rounded-md">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                            {file.type.startsWith('image/') ? <ImageIcon className="h-4 w-4 flex-shrink-0" /> : <File className="h-4 w-4 flex-shrink-0" />}
+                            <span className="truncate">{file.name}</span>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}
+                        >
+                        &times;
+                        </Button>
+                    </div>
+                    ))}
+                </div>
+            )}
             <Popover open={isTagging} onOpenChange={setIsTagging}>
                 <PopoverTrigger asChild>
                     <form onSubmit={handleSendMessage} className="relative">
@@ -175,12 +223,24 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
                         value={newMessage}
                         onChange={handleInputChange}
                         placeholder={`Message #${activeChannel.name}`}
-                        className="pr-12"
+                        className="pr-20"
                         autoComplete="off"
                       />
-                      <Button type="submit" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
-                        <Send className="h-4 w-4" />
-                      </Button>
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2 flex">
+                        <input
+                            type="file"
+                            multiple
+                            ref={fileInputRef}
+                            className="hidden"
+                            onChange={handleFileSelect}
+                        />
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
+                            <Paperclip className="h-4 w-4" />
+                        </Button>
+                        <Button type="submit" size="icon" className="h-8 w-8">
+                            <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </form>
                 </PopoverTrigger>
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
