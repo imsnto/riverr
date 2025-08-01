@@ -8,7 +8,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Send, MessageCircleMore, MoreHorizontal, Paperclip, File, ImageIcon } from 'lucide-react';
+import { Send, MessageCircleMore, Paperclip, File, ImageIcon, SmilePlus, MessageSquare, MoreHorizontal } from 'lucide-react';
 import { addMessage } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -180,17 +180,25 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
                         </div>
                       )}
                     </div>
-                     <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity", { "opacity-100": hoveredMessageId === message.id })}>
-                        <DropdownMenu>
+                     <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-card border rounded-full px-2 py-1", { "opacity-100": hoveredMessageId === message.id })}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <SmilePlus className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <MessageSquare className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onCreateTask(message)}>
+                            <MessageCircleMore className="h-4 w-4" />
+                        </Button>
+                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Button variant="ghost" size="icon" className="h-7 w-7">
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
-                                <DropdownMenuItem onClick={() => onCreateTask(message)}>
-                                    <MessageCircleMore className="mr-2 h-4 w-4" />
-                                    <span>Create Task from Thread</span>
+                                <DropdownMenuItem>
+                                    <span>More actions...</span>
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
