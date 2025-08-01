@@ -16,7 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
 import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers } from '@/lib/db';
-import { useAuth, AuthProvider } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-auth';
 
 
 function Dashboard() {
@@ -192,8 +192,6 @@ const NAV_ITEMS = [
 
 export default function RootPage() {
     return (
-        <AuthProvider>
-            <Dashboard />
-        </AuthProvider>
+        <Dashboard />
     )
 }
