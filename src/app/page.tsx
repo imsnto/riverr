@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FolderKanban, GanttChart, MessageSquare, Settings, Users } from 'lucide-react';
+import { FolderKanban, GanttChart, MessageSquare, Settings, Users, MessageCircleMore } from 'lucide-react';
 import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Hash, Lock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import CreateTaskFromThreadDialog from '@/components/dashboard/create-task-from-thread-dialog';
 
 
 function Dashboard() {
@@ -41,6 +42,9 @@ function Dashboard() {
   const [activeSpaceId, setActiveSpaceId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
+
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
 
   useEffect(() => {
     async function loadInitialData() {
@@ -105,6 +109,24 @@ function Dashboard() {
     loadSpaceData();
   }, [activeSpaceId, activeChannelId]);
   
+  const handleOpenCreateTaskDialog = (message: Message) => {
+    setSelectedMessage(message);
+    setIsCreateTaskOpen(true);
+  }
+
+  const handleTaskCreated = (newTask: Task) => {
+    setTasks(prev => [...prev, newTask]);
+    // Potentially add a confirmation message back to the channel
+    const confirmationMessage: Message = {
+      id: `msg-system-${Date.now()}`,
+      channel_id: newTask.id, // This should be the channel id from the original message
+      user_id: 'system', // or appUser.id
+      content: `✅ Task created: "${newTask.name}"`,
+      timestamp: new Date().toISOString(),
+    };
+    // setMessages(prev => [...prev, confirmationMessage]);
+  }
+
   if (!appUser) {
     return <div className="flex h-screen items-center justify-center">Loading user data...</div>;
   }
@@ -211,6 +233,7 @@ function Dashboard() {
                   allUsers={allUsers} 
                   activeChannelId={activeChannelId}
                   setMessages={setMessages}
+                  onCreateTask={handleOpenCreateTaskDialog}
                 />
               )}
               {activeTab === 'tasks' && (
@@ -239,6 +262,16 @@ function Dashboard() {
           </main>
         </div>
       </div>
+      {isCreateTaskOpen && selectedMessage && (
+        <CreateTaskFromThreadDialog 
+            isOpen={isCreateTaskOpen}
+            onOpenChange={setIsCreateTaskOpen}
+            message={selectedMessage}
+            channelMembers={channels.find(c => c.id === selectedMessage.channel_id)?.members.map(id => allUsers.find(u => u.id === id)!) || []}
+            projects={projects}
+            onTaskCreated={handleTaskCreated}
+        />
+      )}
     </TooltipProvider>
   );
 }

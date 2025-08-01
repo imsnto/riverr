@@ -8,11 +8,12 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Send } from 'lucide-react';
+import { Send, MessageCircleMore, MoreHorizontal } from 'lucide-react';
 import { addMessage } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command } from '@/components/ui/command';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 const getInitials = (name: string) => {
   if (!name) return '';
@@ -39,13 +40,15 @@ interface ChannelsViewProps {
   allUsers: User[];
   activeChannelId: string | null;
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  onCreateTask: (message: Message) => void;
 }
 
-export default function ChannelsView({ channels, messages, allUsers, activeChannelId, setMessages }: ChannelsViewProps) {
+export default function ChannelsView({ channels, messages, allUsers, activeChannelId, setMessages, onCreateTask }: ChannelsViewProps) {
   const { appUser } = useAuth();
   const [newMessage, setNewMessage] = useState('');
   const [isTagging, setIsTagging] = useState(false);
   const [tagQuery, setTagQuery] = useState('');
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
 
   const activeChannel = channels.find(c => c.id === activeChannelId);
   const channelMessages = messages.filter(m => m.channel_id === activeChannelId);
@@ -120,16 +123,21 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
             <p className="text-sm text-muted-foreground">{activeChannel.description}</p>
           </div>
           <ScrollArea className="flex-1">
-            <div className="p-4 space-y-4">
+            <div className="p-4 space-y-1">
               {channelMessages.map(message => {
                 const user = allUsers.find(u => u.id === message.user_id);
                 return (
-                  <div key={message.id} className="flex items-start gap-3">
+                  <div 
+                    key={message.id} 
+                    className="flex items-start gap-3 group p-2 rounded-md hover:bg-accent/50"
+                    onMouseEnter={() => setHoveredMessageId(message.id)}
+                    onMouseLeave={() => setHoveredMessageId(null)}
+                  >
                     <Avatar>
                       <AvatarImage src={user?.avatarUrl} />
                       <AvatarFallback>{user ? getInitials(user.name) : '?'}</AvatarFallback>
                     </Avatar>
-                    <div>
+                    <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">{user?.name}</span>
                         <span className="text-xs text-muted-foreground">
@@ -137,6 +145,21 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
                         </span>
                       </div>
                       <p className="text-sm">{renderMessageContent(message.content, allUsers)}</p>
+                    </div>
+                     <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity", { "opacity-100": hoveredMessageId === message.id })}>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem onClick={() => onCreateTask(message)}>
+                                    <MessageCircleMore className="mr-2 h-4 w-4" />
+                                    <span>Create Task from Thread</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                   </div>
                 );
