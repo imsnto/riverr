@@ -4,7 +4,7 @@
  *
  * - createTaskFromThread - A function that creates a task from a thread.
  * - CreateTaskFromThreadInput - The input type for the createTaskFromThread function.
- * - CreateTaskFromThreadOutput - The return type for the createTaskFromThread function.
+ * - CreateTaskFrom-ThreadOutput - The return type for the createTaskFromThread function.
  */
 
 import {ai} from '@/ai/genkit';
