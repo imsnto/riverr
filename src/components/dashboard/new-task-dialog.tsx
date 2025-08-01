@@ -24,7 +24,7 @@ const taskSchema = z.object({
   project_id: z.string().min(1, 'Project is required'),
   assigned_to: z.string().min(1, 'Assignee is required'),
   due_date: z.date(),
-  status: z.enum(['Backlog', 'In Progress', 'Review', 'Done']),
+  status: z.string().min(1, "Status is required"),
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
@@ -34,9 +34,10 @@ interface NewTaskDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   onTaskAdd: (task: Task) => void;
   projects: Project[];
+  statuses: string[];
 }
 
-export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, projects }: NewTaskDialogProps) {
+export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, projects, statuses }: NewTaskDialogProps) {
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
@@ -45,7 +46,7 @@ export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, project
       project_id: '',
       assigned_to: '',
       due_date: new Date(),
-      status: 'Backlog',
+      status: statuses[0] || '',
     },
   });
 
@@ -64,9 +65,18 @@ export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, project
       attachments: [],
     };
     onTaskAdd(newTask);
-    form.reset();
+    form.reset({ ...form.formState.defaultValues, status: statuses[0] || ''});
     onOpenChange(false);
   };
+  
+  React.useEffect(() => {
+    if (statuses.length > 0) {
+        form.reset({
+            ...form.formState.defaultValues,
+            status: statuses[0],
+        })
+    }
+  }, [statuses, form])
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -185,6 +195,30 @@ export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, project
                       />
                     </PopoverContent>
                   </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a status" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {statuses.map(status => (
+                        <SelectItem key={status} value={status}>
+                          {status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

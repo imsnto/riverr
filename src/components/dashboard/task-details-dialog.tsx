@@ -71,9 +71,10 @@ interface TaskDetailsDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     onUpdateTask: (task: Task) => void;
+    statuses: string[];
 }
 
-export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdateTask }: TaskDetailsDialogProps) {
+export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdateTask, statuses }: TaskDetailsDialogProps) {
     const { toast } = useToast();
     const appUser = users.find(u => u.email === 'brad@riverr.app');
     const [attachments, setAttachments] = useState<File[]>([]);
@@ -197,10 +198,9 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Backlog">Backlog</SelectItem>
-                                        <SelectItem value="In Progress">In Progress</SelectItem>
-                                        <SelectItem value="Review">Review</SelectItem>
-                                        <SelectItem value="Done">Done</SelectItem>
+                                        {statuses.map(status => (
+                                            <SelectItem key={status} value={status}>{status}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </DetailRow>
