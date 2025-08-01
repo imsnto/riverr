@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Creates a task draft from a message thread.
@@ -9,12 +10,15 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { User, Project } from '@/lib/data';
+
+// Note: We don't use the full User/Project objects here, just what the AI needs.
+const SimplifiedUserSchema = z.object({ id: z.string(), name: z.string() });
+const SimplifiedProjectSchema = z.object({ id: z.string(), name: z.string() });
 
 const CreateTaskFromThreadInputSchema = z.object({
   threadContent: z.string().describe('The full content of the message thread.'),
-  channelMembers: z.array(z.custom<User>()).describe('A list of members in the channel to help suggest assignees.'),
-  projects: z.array(z.custom<Project>()).describe('A list of available projects to associate the task with.'),
+  channelMembers: z.array(SimplifiedUserSchema).describe('A list of members in the channel to help suggest assignees.'),
+  projects: z.array(SimplifiedProjectSchema).describe('A list of available projects to associate the task with.'),
 });
 export type CreateTaskFromThreadInput = z.infer<typeof CreateTaskFromThreadInputSchema>;
 

@@ -65,10 +65,13 @@ export default function CreateTaskFromThreadDialog({
     if (isOpen) {
       startTransition(async () => {
         try {
+          const simplifiedMembers = channelMembers.map(m => ({ id: m.id, name: m.name }));
+          const simplifiedProjects = projects.map(p => ({ id: p.id, name: p.name }));
+
           const result = await createTaskFromThread({
             threadContent: message.content,
-            channelMembers: channelMembers,
-            projects: projects,
+            channelMembers: simplifiedMembers,
+            projects: simplifiedProjects,
           });
           form.reset({
             name: result.title,
@@ -79,6 +82,7 @@ export default function CreateTaskFromThreadDialog({
             priority: result.suggestedPriority,
           });
         } catch (error) {
+          console.error("AI suggestion failed:", error);
           toast({
             variant: 'destructive',
             title: 'AI Suggestion Failed',
@@ -154,7 +158,7 @@ export default function CreateTaskFromThreadDialog({
                   <FormItem>
                     <FormLabel>Task Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Design new logo" {...field} />
+                      <Input placeholder="e.g., Design new logo" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -167,7 +171,7 @@ export default function CreateTaskFromThreadDialog({
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Provide a brief description of the task." {...field} rows={4}/>
+                      <Textarea placeholder="Provide a brief description of the task." {...field} value={field.value || ''} rows={4}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -180,7 +184,7 @@ export default function CreateTaskFromThreadDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Project</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value || ''}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a project" />
@@ -204,7 +208,7 @@ export default function CreateTaskFromThreadDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Assign To</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value || ''}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a user" />
@@ -256,7 +260,7 @@ export default function CreateTaskFromThreadDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Priority</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value || undefined}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Set priority" />
