@@ -96,16 +96,35 @@ export default function TaskBoard({ initialTasks, projects }: TaskBoardProps) {
     e.preventDefault();
   };
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>, newStatus: Task['status']) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>, newStatus: Task['status'], targetTaskId?: string) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
-        task.id === taskId ? { ...task, status: newStatus } : task
-      )
-    );
+    const draggedTask = tasks.find(t => t.id === taskId);
+
+    if (!draggedTask) return;
+
+    // A copy of tasks that we can mutate
+    let newTasks = tasks.filter(t => t.id !== taskId);
+    
+    const updatedTask = { ...draggedTask, status: newStatus };
+
+    if (targetTaskId) {
+        const targetIndex = newTasks.findIndex(t => t.id === targetTaskId);
+        if (targetIndex !== -1) {
+            newTasks.splice(targetIndex, 0, updatedTask);
+        } else {
+            // Failsafe: if target not found, add to end of status column
+            newTasks.push(updatedTask);
+        }
+    } else {
+        // Dropped on an empty column
+        newTasks.push(updatedTask);
+    }
+    
+    setTasks(newTasks);
     setDraggedTask(null);
   };
+
 
   const handleDragEnd = () => {
     setDraggedTask(null);
@@ -149,6 +168,10 @@ export default function TaskBoard({ initialTasks, projects }: TaskBoardProps) {
                     draggable
                     onDragStart={(e) => handleDragStart(e, task.id)}
                     onDragEnd={handleDragEnd}
+                    onDrop={(e) => {
+                        e.stopPropagation(); // prevent column drop from firing
+                        handleDrop(e, status, task.id);
+                    }}
                   >
                     <TaskCard 
                       task={task} 
