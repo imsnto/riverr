@@ -12,6 +12,7 @@ import { Send } from 'lucide-react';
 import { addMessage } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command } from '@/components/ui/command';
 
 const getInitials = (name: string) => {
   if (!name) return '';
