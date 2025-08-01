@@ -243,10 +243,9 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
           {linkedTask && taskStatus && (
             <div className="mt-2">
                  <Badge 
-                    className={cn(taskStatus.colorClass)}
                     style={{ 
-                        backgroundColor: `hsl(var(${taskStatus.colorClass}))`, 
-                        color: `hsl(var(${taskStatus.textColorClass}))`
+                        backgroundColor: taskStatus.color,
+                        color: 'white' // A simple default, might need adjustment for light colors
                     }}
                  >
                     <CheckCircle2 className="h-3 w-3 mr-1.5" />
@@ -419,5 +418,3 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
     </div>
   );
 }
-
-    

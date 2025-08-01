@@ -28,8 +28,7 @@ import {
 
 export interface Status {
     name: string;
-    colorClass: string;
-    textColorClass: string;
+    color: string;
 }
 
 const getInitials = (name: string) => {
@@ -37,16 +36,20 @@ const getInitials = (name: string) => {
 }
 
 const STATUS_COLORS = [
-    { name: 'Gray', colorClass: '--muted', textColorClass: '--muted-foreground' },
-    { name: 'Blue', colorClass: '--primary', textColorClass: '--primary-foreground' },
-    { name: 'Green', colorClass: 'bg-green-500', textColorClass: 'text-white' },
-    { name: 'Yellow', colorClass: 'bg-yellow-500', textColorClass: 'text-black' },
-    { name: 'Orange', colorClass: 'bg-orange-500', textColorClass: 'text-white' },
-    { name: 'Red', colorClass: '--destructive', textColorClass: '--destructive-foreground' },
-    { name: 'Purple', colorClass: 'bg-purple-500', textColorClass: 'text-white' },
+    { name: 'Gray', color: 'hsl(var(--muted-foreground))' },
+    { name: 'Blue', color: 'hsl(var(--primary))' },
+    { name: 'Green', color: '#22c55e' },
+    { name: 'Yellow', color: '#eab308' },
+    { name: 'Orange', color: '#f97316' },
+    { name: 'Red', color: 'hsl(var(--destructive))' },
+    { name: 'Purple', color: '#8b5cf6' },
+    { name: 'Pink', color: '#ec4899' },
+    { name: 'Indigo', color: '#6366f1' },
+    { name: 'Teal', color: '#14b8a6' },
 ];
 
-const TaskCard = ({ task, project, onUpdateTask, onClick, isDragging, statusColor }: { task: Task, project?: Project, onUpdateTask: (task: Task) => void, onClick: () => void, isDragging: boolean, statusColor: string }) => {
+
+const TaskCard = ({ task, project, onUpdateTask, onClick, isDragging }: { task: Task, project?: Project, onUpdateTask: (task: Task) => void, onClick: () => void, isDragging: boolean }) => {
   const assignee = users.find(u => u.id === task.assigned_to);
 
   const handleAssigneeChange = (userId: string) => {
@@ -108,10 +111,10 @@ interface TaskBoardProps {
 }
 
 const defaultStatuses: Status[] = [
-    { name: 'Backlog', colorClass: '--muted', textColorClass: '--muted-foreground' },
-    { name: 'In Progress', colorClass: '--primary', textColorClass: '--primary-foreground' },
-    { name: 'Review', colorClass: '--accent', textColorClass: '--accent-foreground' },
-    { name: 'Done', colorClass: '--destructive', textColorClass: '--destructive-foreground' },
+    { name: 'Backlog', color: 'hsl(var(--muted-foreground))' },
+    { name: 'In Progress', color: 'hsl(var(--primary))' },
+    { name: 'Review', color: 'hsl(var(--accent))' },
+    { name: 'Done', color: 'hsl(var(--destructive))' },
 ]
 
 export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, onUpdateStatuses }: TaskBoardProps) {
@@ -184,7 +187,8 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, on
   const handleAddTask = (newTask: Task) => {
     onUpdateTasks([...tasks, newTask]);
     if (!statuses.find(s => s.name === newTask.status)) {
-        onUpdateStatuses([...statuses, { name: newTask.status, colorClass: '--muted', textColorClass: '--muted-foreground' }]);
+        const randomColor = STATUS_COLORS[statuses.length % STATUS_COLORS.length];
+        onUpdateStatuses([...statuses, { name: newTask.status, color: randomColor.color }]);
     }
   };
 
@@ -198,7 +202,7 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, on
   const handleAddNewColumn = () => {
     const newStatusName = `New Status ${statuses.length + 1}`;
     const randomColor = STATUS_COLORS[statuses.length % STATUS_COLORS.length];
-    onUpdateStatuses([...statuses, { name: newStatusName, colorClass: randomColor.colorClass, textColorClass: randomColor.textColorClass }]);
+    onUpdateStatuses([...statuses, { name: newStatusName, color: randomColor.color }]);
   }
 
   const handleRenameColumn = (oldName: string) => {
@@ -226,8 +230,8 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, on
     onUpdateStatuses(statuses.filter(s => s.name !== columnToDelete));
   }
 
-  const handleChangeColor = (statusName: string, color: {colorClass: string, textColorClass: string}) => {
-    onUpdateStatuses(statuses.map(s => s.name === statusName ? { ...s, colorClass: color.colorClass, textColorClass: color.textColorClass } : s));
+  const handleChangeColor = (statusName: string, color: string) => {
+    onUpdateStatuses(statuses.map(s => s.name === statusName ? { ...s, color: color } : s));
   }
 
   return (
@@ -265,7 +269,7 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, on
                     <div className="flex items-center gap-2">
                         <span 
                             className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: `hsl(var(${status.colorClass}))` }}
+                            style={{ backgroundColor: status.color }}
                         />
                         <h2 className="text-lg font-semibold">{status.name}</h2>
                     </div>
@@ -288,12 +292,17 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, on
                             </DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
                                 <DropdownMenuSubContent>
+                                    <div className="grid grid-cols-5 gap-2 p-2 w-48">
                                     {STATUS_COLORS.map(color => (
-                                        <DropdownMenuItem key={color.name} onClick={() => handleChangeColor(status.name, color)}>
-                                            <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: color.colorClass.startsWith('--') ? `hsl(var(${color.colorClass}))` : color.colorClass }}></div>
-                                            {color.name}
-                                        </DropdownMenuItem>
+                                        <button
+                                            key={color.name}
+                                            onClick={() => handleChangeColor(status.name, color.color)}
+                                            className="w-6 h-6 rounded-full border"
+                                            style={{ backgroundColor: color.color }}
+                                            aria-label={color.name}
+                                        />
                                     ))}
+                                    </div>
                                 </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                         </DropdownMenuSub>
@@ -346,7 +355,6 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, on
                       onClick={() => setSelectedTask(task)} 
                       onUpdateTask={handleUpdateTask}
                       isDragging={draggedTask === task.id}
-                      statusColor={status.colorClass}
                     />
                   </div>
                 ))}
