@@ -1,5 +1,6 @@
 
 
+
 // src/lib/db.ts
 import {
   collection,
@@ -133,6 +134,21 @@ export const getSlackMeetingLogsInSpace = async (projectIds: string[]): Promise<
     const logsWithoutProject = mockData.slackMeetingLogs.filter(log => log.project_id === null);
     
     return [...logsWithProject, ...logsWithoutProject];
+}
+
+// --- Channel & Message Management ---
+export const getChannelsInSpace = async (spaceId: string): Promise<mockData.Channel[]> => {
+    return mockData.channels.filter(c => c.space_id === spaceId);
+}
+
+export const getMessagesInChannel = async (channelId: string): Promise<mockData.Message[]> => {
+    return mockData.messages.filter(m => m.channel_id === channelId);
+}
+
+export const addMessage = async(message: Omit<mockData.Message, 'id'>): Promise<mockData.Message> => {
+    const newMessage = { ...message, id: `msg-${Date.now()}` };
+    mockData.messages.push(newMessage);
+    return newMessage;
 }
 
 // --- Generic User Data ---

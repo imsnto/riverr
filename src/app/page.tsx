@@ -2,8 +2,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FolderKanban, GanttChart, Settings, Users } from 'lucide-react';
-import { User, Space, Project, Task, SlackMeetingLog, TimeEntry } from '@/lib/data';
+import { FolderKanban, GanttChart, MessageSquare, Settings, Users } from 'lucide-react';
+import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
 import TaskBoard from '@/components/dashboard/task-board';
@@ -15,8 +15,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
+import ChannelsView from '@/components/dashboard/channels-view';
 
 
 function Dashboard() {
@@ -30,6 +31,8 @@ function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [meetingLogs, setMeetingLogs] = useState<SlackMeetingLog[]>([]);
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [activeSpaceId, setActiveSpaceId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -58,23 +61,32 @@ function Dashboard() {
     async function loadSpaceData() {
       if (activeSpaceId) {
         setIsLoading(true);
-        const projectsInSpace = await dbGetProjects(activeSpaceId);
+        const [projectsInSpace, channelsInSpace] = await Promise.all([
+            dbGetProjects(activeSpaceId),
+            dbGetChannels(activeSpaceId),
+        ]);
         setProjects(projectsInSpace);
+        setChannels(channelsInSpace);
 
         const projectIds = projectsInSpace.map(p => p.id);
-        if (projectIds.length > 0) {
-            const [tasksInSpace, timeEntriesInSpace, meetingLogsInSpace] = await Promise.all([
-                dbGetTasks(projectIds),
-                dbGetTimeEntries(projectIds),
-                dbGetSlackLogs(projectIds)
+        const channelIds = channelsInSpace.map(c => c.id);
+
+        if (projectIds.length > 0 || channelIds.length > 0) {
+            const [tasksInSpace, timeEntriesInSpace, meetingLogsInSpace, messagesInSpace] = await Promise.all([
+                projectIds.length > 0 ? dbGetTasks(projectIds) : Promise.resolve([]),
+                projectIds.length > 0 ? dbGetTimeEntries(projectIds) : Promise.resolve([]),
+                projectIds.length > 0 ? dbGetSlackLogs(projectIds) : Promise.resolve([]),
+                channelIds.length > 0 ? Promise.all(channelIds.map(dbGetMessages)).then(res => res.flat()) : Promise.resolve([]),
             ]);
             setTasks(tasksInSpace);
             setTimeEntries(timeEntriesInSpace);
             setMeetingLogs(meetingLogsInSpace);
+            setMessages(messagesInSpace);
         } else {
             setTasks([]);
             setTimeEntries([]);
             setMeetingLogs([]);
+            setMessages([]);
         }
         setIsLoading(false);
       }
@@ -151,6 +163,9 @@ function Dashboard() {
                 </>
               }
             </TabsContent>
+             <TabsContent value="channels">
+              {isLoading ? <div className="flex justify-center items-center h-full">Loading channels...</div> : <ChannelsView channels={channels} messages={messages} allUsers={allUsers} />}
+            </TabsContent>
             <TabsContent value="tasks">
               {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard initialTasks={tasks} projects={projects} />}
             </TabsContent>
@@ -186,6 +201,7 @@ function Dashboard() {
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: GanttChart },
   { id: 'tasks', label: 'Task Board', icon: FolderKanban },
+  { id: 'channels', label: 'Channels', icon: MessageSquare },
   { id: 'timesheets', label: 'Team Timesheets', icon: Users, adminOnly: true },
   { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
 ];

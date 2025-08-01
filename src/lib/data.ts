@@ -1,4 +1,5 @@
 
+
 // DATA STRUCTURES
 export interface Space {
   id: string;
@@ -98,6 +99,25 @@ export interface SlackMeetingLog {
   suggested_project_id?: string;
 }
 
+export interface Channel {
+  id: string;
+  space_id: string;
+  name: string;
+  description: string;
+  is_private: boolean;
+  members: string[];
+}
+
+export interface Message {
+  id: string;
+  channel_id: string;
+  user_id: string;
+  content: string;
+  timestamp: string;
+  thread_id?: string;
+}
+
+
 // MOCK DATA - This data can be used to seed the database.
 
 export const users: User[] = [
@@ -140,7 +160,7 @@ export const tasks: Task[] = [
       { id: 'act-2', user_id: 'user-1', timestamp: '2024-08-01T10:00:00Z', type: 'comment', comment_id: 'comment-1' },
     ],
     comments: [
-      { 
+      {
         id: 'comment-1',
         user_id: 'user-1',
         comment: 'How is this going? Can you upload the latest designs?',
@@ -319,3 +339,21 @@ export const adminMappings = {
   'C333': 'proj-3', // #api-integration
   'C444': 'proj-5', // #marketing-campaign
 };
+
+export const channels: Channel[] = [
+  { id: 'chan-1', space_id: 'space-1', name: 'general', description: 'General announcements and discussions for the Work space.', is_private: false, members: ['user-1', 'user-2', 'user-3', 'user-4'] },
+  { id: 'chan-2', space_id: 'space-1', name: 'proj-website-redesign', description: 'Discussions related to the website redesign project.', is_private: false, members: ['user-1', 'user-2'] },
+  { id: 'chan-3', space_id: 'space-1', name: 'random', description: 'For water cooler conversations and memes.', is_private: false, members: ['user-1', 'user-2', 'user-3', 'user-4'] },
+  { id: 'chan-4', space_id: 'space-1', name: 'design-critiques', description: 'Private channel for the design team.', is_private: true, members: ['user-1', 'user-2'] },
+  { id: 'chan-5', space_id: 'space-2', name: 'weekend-plans', description: 'What\'s everyone up to this weekend?', is_private: false, members: ['user-1', 'user-4'] },
+  { id: 'chan-6', space_id: 'space-3', name: 'client-comms', description: 'Official communication with Client X.', is_private: false, members: ['user-2', 'user-3'] },
+];
+
+export const messages: Message[] = [
+  { id: 'msg-1', channel_id: 'chan-1', user_id: 'user-1', content: 'Welcome to the Work space!', timestamp: '2024-08-01T09:00:00Z' },
+  { id: 'msg-2', channel_id: 'chan-2', user_id: 'user-2', content: 'Hey @Brad, can you look at the latest mockups for the homepage?', timestamp: '2024-08-01T10:30:00Z' },
+  { id: 'msg-3', channel_id: 'chan-2', user_id: 'user-1', content: 'Sure, taking a look now. They look great!', timestamp: '2024-08-01T10:32:00Z' },
+  { id: 'msg-4', channel_id: 'chan-3', user_id: 'user-3', content: 'Has anyone seen that new cat video? It\'s hilarious.', timestamp: '2024-08-01T11:00:00Z' },
+  { id: 'msg-5', channel_id: 'chan-5', user_id: 'user-4', content: 'I\'m going hiking this weekend, can\'t wait!', timestamp: '2024-08-02T14:00:00Z' },
+  { id: 'msg-6', channel_id: 'chan-6', user_id: 'user-2', content: 'Just sent the weekly update to Client X.', timestamp: '2024-08-03T17:00:00Z' },
+];
