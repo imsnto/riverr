@@ -47,17 +47,17 @@ Analyze the following thread content:
 ---
 
 Based on the conversation, generate a task with the following properties:
-- **Task Title:** Create a short, clear title that summarizes the main action item.
-- **Description:** Write a summary of the conversation, focusing on the problem and the required actions.
-- **Suggested Assignee:** From the provided list of channel members, identify the best person to assign this task to. This is often the person being asked a question, who is mentioned by name, or who volunteers.
-- **Suggested Project:** From the provided list of projects, determine the most relevant project for this task based on the conversation's context.
+- **Task Title:** Create a short, clear title that summarizes the main action item. If no clear action is present, use the first few words of the thread.
+- **Description:** Write a summary of the conversation, focusing on the problem and the required actions. Include the original thread content for reference.
+- **Suggested Assignee:** From the provided list of channel members, identify the best person to assign this task to. This is often the person being asked a question, who is mentioned by name, or who volunteers. Use the user's 'id' field for 'suggestedAssigneeId'. If no one is mentioned, leave it empty.
+- **Suggested Project:** From the provided list of projects, determine the most relevant project for this task based on the conversation's context. Use the project's 'id' field for 'suggestedProjectId'. If no project seems relevant, leave it empty.
 - **Due Date:** If the conversation mentions a deadline (e.g., "by Friday," "end of day," "next week"), infer the specific date and provide it in ISO format.
 - **Priority:** Based on the language used (e.g., "ASAP," "urgent," "blocker"), suggest a priority level. Default to 'Medium' if no urgency is implied.
 
-Here are the available channel members:
+Here are the available channel members (use their 'id' for the suggestion):
 {{{JSON.stringify channelMembers}}}
 
-Here are the available projects:
+Here are the available projects (use their 'id' for the suggestion):
 {{{JSON.stringify projects}}}
 
 Provide your response in the requested JSON format.
