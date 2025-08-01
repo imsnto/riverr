@@ -25,6 +25,7 @@ import { Hash, Lock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import CreateTaskFromThreadDialog from '@/components/dashboard/create-task-from-thread-dialog';
 import ThreadView from '@/components/dashboard/thread-view';
+import AllThreadsView from '@/components/dashboard/all-threads-view';
 
 
 function Dashboard() {
@@ -47,6 +48,8 @@ function Dashboard() {
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [selectedMessageForTask, setSelectedMessageForTask] = useState<Message | null>(null);
   const [activeThread, setActiveThread] = useState<Message | null>(null);
+
+  const [channelsViewMode, setChannelsViewMode] = useState<'channel' | 'all-threads'>('channel');
 
 
   useEffect(() => {
@@ -148,6 +151,9 @@ function Dashboard() {
     return <div className="flex justify-center items-center h-screen">Loading your workspace...</div>;
   }
   
+  const userThreads = messages.filter(m => m.thread_id && messages.find(p => p.id === m.thread_id)?.user_id === appUser.id);
+  const hasUnreadThreads = userThreads.length > 0; // Simplified for now
+
   return (
     <TooltipProvider>
       <div className="flex h-screen w-full flex-col bg-background font-body">
@@ -192,6 +198,26 @@ function Dashboard() {
                 </div>
                 <ScrollArea>
                   <div className="p-2">
+                    <Button
+                        variant="ghost"
+                        className={cn(
+                          'w-full justify-start gap-2',
+                          channelsViewMode === 'all-threads' && 'bg-primary/10 text-primary',
+                          hasUnreadThreads && "font-bold"
+                        )}
+                        onClick={() => {
+                            setChannelsViewMode('all-threads');
+                            setActiveChannelId(null);
+                            setActiveThread(null);
+                        }}
+                      >
+                         <div className="flex items-center gap-2">
+                            <MessageCircleMore className="h-4 w-4" />
+                            <span>Threads</span>
+                          </div>
+                          {hasUnreadThreads && <span className="ml-auto h-2 w-2 rounded-full bg-accent-foreground" />}
+                      </Button>
+                      <Separator className="my-2" />
                     {channels.map(channel => {
                       const hasMention = messages.some(
                         m => m.channel_id === channel.id && m.content.includes(`@${appUser.name}`)
@@ -204,10 +230,11 @@ function Dashboard() {
                         variant="ghost"
                         className={cn(
                           'w-full justify-start gap-2',
-                          activeChannelId === channel.id && 'bg-primary/10 text-primary',
+                          activeChannelId === channel.id && channelsViewMode === 'channel' && 'bg-primary/10 text-primary',
                           isUnread && "font-bold"
                         )}
                         onClick={() => {
+                            setChannelsViewMode('channel');
                             setActiveChannelId(channel.id);
                             setActiveThread(null);
                         }}
@@ -250,15 +277,24 @@ function Dashboard() {
                 <div className="flex flex-1">
                   <div className="flex-1 overflow-y-auto">
                     {isLoading ? <div className="flex justify-center items-center h-full">Loading channels...</div> : 
-                    <ChannelsView 
-                      channels={channels}
-                      messages={messages} 
-                      allUsers={allUsers} 
-                      activeChannelId={activeChannelId}
-                      setMessages={setMessages}
-                      onCreateTask={handleOpenCreateTaskDialog}
-                      onViewThread={setActiveThread}
-                    />
+                     channelsViewMode === 'channel' ? (
+                        <ChannelsView 
+                        channels={channels}
+                        messages={messages} 
+                        allUsers={allUsers} 
+                        activeChannelId={activeChannelId}
+                        setMessages={setMessages}
+                        onCreateTask={handleOpenCreateTaskDialog}
+                        onViewThread={setActiveThread}
+                        />
+                     ) : (
+                        <AllThreadsView
+                          messages={messages}
+                          allUsers={allUsers}
+                          onViewThread={setActiveThread}
+                          appUser={appUser}
+                        />
+                     )
                   }
                   </div>
                   {activeThread && (
@@ -312,7 +348,7 @@ function Dashboard() {
             channelMembers={channels.find(c => c.id === selectedMessageForTask.channel_id)?.members.map(id => {
                 const user = allUsers.find(u => u.id === id);
                 return { id: user!.id, name: user!.name };
-            }).filter(Boolean) as User[]}
+            }).filter(Boolean) as {id: string, name: string}[]}
             projects={projects.map(p => ({ id: p.id, name: p.name }))}
             onTaskCreated={handleTaskCreated}
         />

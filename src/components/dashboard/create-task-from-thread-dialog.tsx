@@ -16,7 +16,7 @@ import { Calendar as CalendarIcon, Loader2, Bot } from 'lucide-react';
 import { Calendar } from '../ui/calendar';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { User, Project, Message, Task } from '@/lib/data';
+import { Message, Task } from '@/lib/data';
 import { createTaskFromThread } from '@/ai/flows/create-task-from-thread';
 import { useToast } from '@/hooks/use-toast';
 import { addTask } from '@/lib/db';
@@ -36,8 +36,8 @@ interface CreateTaskFromThreadDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   message: Message;
-  channelMembers: User[];
-  projects: Project[];
+  channelMembers: { id: string; name: string }[];
+  projects: { id: string; name: string }[];
   onTaskCreated: (task: Task) => void;
 }
 
@@ -65,13 +65,10 @@ export default function CreateTaskFromThreadDialog({
     if (isOpen) {
       startTransition(async () => {
         try {
-          const simplifiedMembers = channelMembers.map(m => ({ id: m.id, name: m.name }));
-          const simplifiedProjects = projects.map(p => ({ id: p.id, name: p.name }));
-
           const result = await createTaskFromThread({
             threadContent: message.content,
-            channelMembers: simplifiedMembers,
-            projects: simplifiedProjects,
+            channelMembers,
+            projects,
           });
           form.reset({
             name: result.title,
