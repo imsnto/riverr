@@ -158,7 +158,7 @@ function Dashboard() {
           
           {/* Secondary Sidebar (for Channels) */}
           {activeTab === 'channels' && (
-            <aside className="w-80 border-r flex flex-col bg-card">
+            <aside className="w-64 border-r flex flex-col bg-card">
                 <div className="p-4 border-b">
                   <h2 className="text-lg font-semibold">Channels</h2>
                 </div>
