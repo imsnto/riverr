@@ -106,7 +106,6 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
             channel_id: activeChannelId,
             user_id: appUser.id,
             content: newMessage,
-            timestamp: new Date().toISOString(),
             attachments: newAttachments,
         });
         setMessages(prev => prev.map(m => m.id === optimisticMessage.id ? savedMessage : m));
