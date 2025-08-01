@@ -7,9 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
-import { Separator } from '../ui/separator';
 import { cn } from '@/lib/utils';
-import { Hash, Lock, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { addMessage } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -21,15 +20,15 @@ interface ChannelsViewProps {
   channels: Channel[];
   messages: Message[];
   allUsers: User[];
+  activeChannelId: string | null;
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
 }
 
-export default function ChannelsView({ channels: initialChannels, messages: initialMessages, allUsers }: ChannelsViewProps) {
+export default function ChannelsView({ channels, messages, allUsers, activeChannelId, setMessages }: ChannelsViewProps) {
   const { appUser } = useAuth();
-  const [activeChannelId, setActiveChannelId] = useState<string | null>(initialChannels.length > 0 ? initialChannels[0].id : null);
-  const [messages, setMessages] = useState(initialMessages);
   const [newMessage, setNewMessage] = useState('');
 
-  const activeChannel = initialChannels.find(c => c.id === activeChannelId);
+  const activeChannel = channels.find(c => c.id === activeChannelId);
   const channelMessages = messages.filter(m => m.channel_id === activeChannelId);
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -63,86 +62,63 @@ export default function ChannelsView({ channels: initialChannels, messages: init
     }
   };
 
-  if (initialChannels.length === 0) {
+  if (channels.length === 0) {
     return <div className="flex h-full items-center justify-center text-muted-foreground">No channels in this space.</div>;
   }
 
   return (
-    <div className="flex h-[calc(100vh-10rem)] border rounded-lg">
-      <div className="w-1/4 border-r flex flex-col">
-        <div className="p-4 border-b">
-          <h2 className="text-lg font-semibold">Channels</h2>
-        </div>
-        <ScrollArea>
-          <div className="p-2">
-            {initialChannels.map(channel => (
-              <Button
-                key={channel.id}
-                variant="ghost"
-                className={cn(
-                  'w-full justify-start gap-2',
-                  activeChannelId === channel.id && 'bg-primary/10 text-primary'
-                )}
-                onClick={() => setActiveChannelId(channel.id)}
-              >
-                {channel.is_private ? <Lock className="h-4 w-4" /> : <Hash className="h-4 w-4" />}
-                {channel.name}
-              </Button>
-            ))}
+    <div className="flex flex-col h-full">
+      {activeChannel ? (
+        <>
+          <div className="p-4 border-b">
+            <h3 className="text-lg font-semibold">#{activeChannel.name}</h3>
+            <p className="text-sm text-muted-foreground">{activeChannel.description}</p>
           </div>
-        </ScrollArea>
-      </div>
-      <div className="flex-1 flex flex-col">
-        {activeChannel ? (
-          <>
-            <div className="p-4 border-b">
-              <h3 className="text-lg font-semibold">#{activeChannel.name}</h3>
-              <p className="text-sm text-muted-foreground">{activeChannel.description}</p>
-            </div>
-            <ScrollArea className="flex-1">
-              <div className="p-4 space-y-4">
-                {channelMessages.map(message => {
-                  const user = allUsers.find(u => u.id === message.user_id);
-                  return (
-                    <div key={message.id} className="flex items-start gap-3">
-                      <Avatar>
-                        <AvatarImage src={user?.avatarUrl} />
-                        <AvatarFallback>{user ? getInitials(user.name) : '?'}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">{user?.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <p className="text-sm">{message.content}</p>
+          <ScrollArea className="flex-1">
+            <div className="p-4 space-y-4">
+              {channelMessages.map(message => {
+                const user = allUsers.find(u => u.id === message.user_id);
+                return (
+                  <div key={message.id} className="flex items-start gap-3">
+                    <Avatar>
+                      <AvatarImage src={user?.avatarUrl} />
+                      <AvatarFallback>{user ? getInitials(user.name) : '?'}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{user?.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                       </div>
+                      <p className="text-sm">{message.content}</p>
                     </div>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-            <div className="p-4 border-t">
-              <form onSubmit={handleSendMessage} className="relative">
-                <Input
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder={`Message #${activeChannel.name}`}
-                  className="pr-12"
-                />
-                <Button type="submit" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
-                  <Send className="h-4 w-4" />
-                </Button>
-              </form>
+                  </div>
+                );
+              })}
             </div>
-          </>
-        ) : (
-          <div className="flex h-full items-center justify-center text-muted-foreground">
-            Select a channel to start messaging
+          </ScrollArea>
+          <div className="p-4 border-t bg-card">
+            <form onSubmit={handleSendMessage} className="relative">
+              <Input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder={`Message #${activeChannel.name}`}
+                className="pr-12"
+              />
+              <Button type="submit" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
+                <Send className="h-4 w-4" />
+              </Button>
+            </form>
           </div>
-        )}
-      </div>
+        </>
+      ) : (
+        <div className="flex h-full items-center justify-center text-muted-foreground">
+          Select a channel to start messaging
+        </div>
+      )}
     </div>
   );
 }
+
+    
