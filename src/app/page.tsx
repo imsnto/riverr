@@ -6,7 +6,7 @@ import { FolderKanban, GanttChart, MessageSquare, Settings, Users, MessageCircle
 import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
-import TaskBoard from '@/components/dashboard/task-board';
+import TaskBoard, { Status } from '@/components/dashboard/task-board';
 import TeamTimesheets from '@/components/dashboard/team-timesheets';
 import ManualTimeEntry from '@/components/dashboard/manual-time-entry';
 import Timer from '@/components/dashboard/timer';
@@ -51,6 +51,7 @@ function Dashboard() {
   const [readThreadIds, setReadThreadIds] = useState<Set<string>>(new Set());
 
   const [channelsViewMode, setChannelsViewMode] = useState<'channel' | 'all-threads'>('channel');
+  const [statuses, setStatuses] = useState<Status[]>([]);
 
 
   useEffect(() => {
@@ -301,6 +302,7 @@ function Dashboard() {
                         setMessages={setMessages}
                         onCreateTask={handleOpenCreateTaskDialog}
                         onViewThread={handleViewThread}
+                        statuses={statuses}
                         />
                      ) : (
                         <AllThreadsView
@@ -328,7 +330,7 @@ function Dashboard() {
               )}
               {activeTab === 'tasks' && (
                 <div className="p-4 md:p-8">
-                {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard tasks={tasks} onUpdateTasks={setTasks} projects={projects} />}
+                {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard tasks={tasks} onUpdateTasks={setTasks} projects={projects} statuses={statuses} onUpdateStatuses={setStatuses} />}
                 </div>
               )}
               {appUser.role === 'Admin' && activeTab === 'timesheets' && (
@@ -386,5 +388,9 @@ export default function RootPage() {
         <Dashboard />
     )
 }
+
+    
+
+    
 
     

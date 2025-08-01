@@ -6,12 +6,12 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { users, Task, Project } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { MoreHorizontal, Plus, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Plus, Edit, Trash2, Palette } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import NewTaskDialog from './new-task-dialog';
 import TaskDetailsDialog from './task-details-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '../ui/dropdown-menu';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -23,15 +23,29 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
+export interface Status {
+    name: string;
+    colorClass: string;
+    textColorClass: string;
+}
 
 const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
 }
 
-const TaskCard = ({ task, project, onUpdateTask, onClick, isDragging }: { task: Task, project?: Project, onUpdateTask: (task: Task) => void, onClick: () => void, isDragging: boolean }) => {
+const STATUS_COLORS = [
+    { name: 'Gray', colorClass: 'bg-gray-500', textColorClass: 'text-white' },
+    { name: 'Blue', colorClass: 'bg-blue-500', textColorClass: 'text-white' },
+    { name: 'Green', colorClass: 'bg-green-500', textColorClass: 'text-white' },
+    { name: 'Yellow', colorClass: 'bg-yellow-500', textColorClass: 'text-black' },
+    { name: 'Orange', colorClass: 'bg-orange-500', textColorClass: 'text-white' },
+    { name: 'Red', colorClass: 'bg-red-500', textColorClass: 'text-white' },
+    { name: 'Purple', colorClass: 'bg-purple-500', textColorClass: 'text-white' },
+];
+
+const TaskCard = ({ task, project, onUpdateTask, onClick, isDragging, statusColor }: { task: Task, project?: Project, onUpdateTask: (task: Task) => void, onClick: () => void, isDragging: boolean, statusColor: string }) => {
   const assignee = users.find(u => u.id === task.assigned_to);
 
   const handleAssigneeChange = (userId: string) => {
@@ -88,16 +102,30 @@ interface TaskBoardProps {
   tasks: Task[];
   onUpdateTasks: (tasks: Task[]) => void;
   projects: Project[];
+  statuses: Status[];
+  onUpdateStatuses: (statuses: Status[]) => void;
 }
 
-export default function TaskBoard({ tasks, onUpdateTasks, projects }: TaskBoardProps) {
-  const [columns, setColumns] = useState<string[]>(['Backlog', 'In Progress', 'Review', 'Done']);
+const defaultStatuses: Status[] = [
+    { name: 'Backlog', colorClass: '--muted', textColorClass: '--muted-foreground' },
+    { name: 'In Progress', colorClass: '--primary', textColorClass: '--primary-foreground' },
+    { name: 'Review', colorClass: '--accent', textColorClass: '--accent-foreground' },
+    { name: 'Done', colorClass: '--destructive', textColorClass: '--destructive-foreground' },
+]
+
+export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, onUpdateStatuses }: TaskBoardProps) {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    if (statuses.length === 0) {
+        onUpdateStatuses(defaultStatuses);
+    }
+  }, [statuses, onUpdateStatuses])
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, taskId: string) => {
     e.dataTransfer.setData('taskId', taskId);
@@ -111,23 +139,36 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects }: TaskBoardP
   const handleDrop = (e: DragEvent<HTMLDivElement>, newStatus: string, targetTaskId?: string) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
-    const draggedTask = tasks.find(t => t.id === taskId);
+    const draggedTaskItem = tasks.find(t => t.id === taskId);
 
-    if (!draggedTask) return;
+    if (!draggedTaskItem) return;
 
     let newTasks = tasks.filter(t => t.id !== taskId);
     
-    const updatedTask = { ...draggedTask, status: newStatus };
+    const updatedTask = { ...draggedTaskItem, status: newStatus };
 
     if (targetTaskId) {
         const targetIndex = newTasks.findIndex(t => t.id === targetTaskId);
         if (targetIndex !== -1) {
             newTasks.splice(targetIndex, 0, updatedTask);
         } else {
-            newTasks.push(updatedTask);
+            // Fallback if target task not found after filter
+             const statusTasks = newTasks.filter(t => t.status === newStatus);
+             const lastTaskOfStatus = statusTasks[statusTasks.length -1];
+             if(lastTaskOfStatus) {
+                newTasks.splice(newTasks.findIndex(t => t.id === lastTaskOfStatus.id) + 1, 0, updatedTask);
+             } else {
+                newTasks.push(updatedTask)
+             }
         }
     } else {
-        newTasks.push(updatedTask);
+        const statusTasks = newTasks.filter(t => t.status === newStatus);
+        const lastTaskOfStatus = statusTasks[statusTasks.length -1];
+        if(lastTaskOfStatus) {
+           newTasks.splice(newTasks.findIndex(t => t.id === lastTaskOfStatus.id) + 1, 0, updatedTask);
+        } else {
+           newTasks.push(updatedTask)
+        }
     }
     
     onUpdateTasks(newTasks);
@@ -141,8 +182,8 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects }: TaskBoardP
 
   const handleAddTask = (newTask: Task) => {
     onUpdateTasks([...tasks, newTask]);
-    if (!columns.includes(newTask.status)) {
-        setColumns([...columns, newTask.status]);
+    if (!statuses.find(s => s.name === newTask.status)) {
+        onUpdateStatuses([...statuses, { name: newTask.status, colorClass: '--muted', textColorClass: '--muted-foreground' }]);
     }
   };
 
@@ -154,8 +195,9 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects }: TaskBoardP
   }
 
   const handleAddNewColumn = () => {
-    const newStatusName = `New Status ${columns.length + 1}`;
-    setColumns([...columns, newStatusName]);
+    const newStatusName = `New Status ${statuses.length + 1}`;
+    const randomColor = STATUS_COLORS[statuses.length % STATUS_COLORS.length];
+    onUpdateStatuses([...statuses, { name: newStatusName, colorClass: randomColor.colorClass, textColorClass: randomColor.textColorClass }]);
   }
 
   const handleRenameColumn = (oldName: string) => {
@@ -163,24 +205,28 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects }: TaskBoardP
         setEditingColumn(null);
         return;
     }
-    if (columns.includes(newColumnName)) {
+    if (statuses.find(s => s.name === newColumnName)) {
         toast({ variant: 'destructive', title: 'Status name already exists.'});
         return;
     }
     onUpdateTasks(tasks.map(t => t.status === oldName ? { ...t, status: newColumnName } : t));
-    setColumns(columns.map(c => c === oldName ? newColumnName : c));
+    onUpdateStatuses(statuses.map(s => s.name === oldName ? { ...s, name: newColumnName } : s));
     setEditingColumn(null);
     setNewColumnName("");
   }
 
   const handleDeleteColumn = (columnToDelete: string) => {
-    if (columns.length <= 1) {
+    if (statuses.length <= 1) {
         toast({ variant: 'destructive', title: 'Cannot delete the last column.'});
         return;
     }
-    const defaultColumn = columns.find(c => c !== columnToDelete)!;
-    onUpdateTasks(tasks.map(t => t.status === columnToDelete ? { ...t, status: defaultColumn } : t));
-    setColumns(columns.filter(c => c !== columnToDelete));
+    const defaultColumn = statuses.find(s => s.name !== columnToDelete)!;
+    onUpdateTasks(tasks.map(t => t.status === columnToDelete ? { ...t, status: defaultColumn.name } : t));
+    onUpdateStatuses(statuses.filter(s => s.name !== columnToDelete));
+  }
+
+  const handleChangeColor = (statusName: string, color: {colorClass: string, textColorClass: string}) => {
+    onUpdateStatuses(statuses.map(s => s.name === statusName ? { ...s, colorClass: color.colorClass, textColorClass: color.textColorClass } : s));
   }
 
   return (
@@ -193,25 +239,35 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects }: TaskBoardP
         </Button>
       </div>
       <div className="flex gap-6 overflow-x-auto pb-4">
-        {columns.map(status => (
+        {statuses.map(status => (
           <div
-            key={status}
+            key={status.name}
             className="flex-shrink-0 w-80"
             onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, status)}
+            onDrop={(e) => { 
+                if (tasks.filter(t => t.status === status.name).length === 0) {
+                    handleDrop(e, status.name);
+                }
+            }}
           >
             <div className="flex justify-between items-center mb-4 px-1">
-                 {editingColumn === status ? (
+                 {editingColumn === status.name ? (
                     <Input 
-                        defaultValue={status}
+                        defaultValue={status.name}
                         onChange={(e) => setNewColumnName(e.target.value)}
-                        onBlur={() => handleRenameColumn(status)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleRenameColumn(status)}}
+                        onBlur={() => handleRenameColumn(status.name)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleRenameColumn(status.name)}}
                         autoFocus
                         className="h-8"
                     />
                 ) : (
-                    <h2 className="text-lg font-semibold">{status}</h2>
+                    <div className="flex items-center gap-2">
+                        <span 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: `hsl(var(${status.colorClass}))` }}
+                        />
+                        <h2 className="text-lg font-semibold">{status.name}</h2>
+                    </div>
                 )}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -220,25 +276,44 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects }: TaskBoardP
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => { setEditingColumn(status); setNewColumnName(status); }}>
+                        <DropdownMenuItem onClick={() => { setEditingColumn(status.name); setNewColumnName(status.name); }}>
                             <Edit className="mr-2 h-4 w-4" /> Rename
                         </DropdownMenuItem>
+
+                        <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                                <Palette className="mr-2 h-4 w-4" />
+                                <span>Change Color</span>
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuPortal>
+                                <DropdownMenuSubContent>
+                                    {STATUS_COLORS.map(color => (
+                                        <DropdownMenuItem key={color.name} onClick={() => handleChangeColor(status.name, color)}>
+                                            <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: color.colorClass }}></div>
+                                            {color.name}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                        </DropdownMenuSub>
+
+                        <DropdownMenuSeparator />
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                    <Trash2 className="mr-2 h-4 w-4 text-destructive" /> <span className="text-destructive">Delete</span>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" /> <span>Delete</span>
                                 </DropdownMenuItem>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
                                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    This will delete the "{status}" column. All tasks in this column will be moved to the first column. This action cannot be undone.
+                                    This will delete the "{status.name}" column. All tasks in this column will be moved to the first column. This action cannot be undone.
                                 </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteColumn(status)}>Continue</AlertDialogAction>
+                                <AlertDialogAction onClick={() => handleDeleteColumn(status.name)} className={cn(buttonVariants({ variant: "destructive" }))}>Continue</AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
@@ -248,7 +323,7 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects }: TaskBoardP
             </div>
             <div className="bg-primary/5 rounded-lg p-2 min-h-[500px]">
               {tasks
-                .filter(task => task.status === status)
+                .filter(task => task.status === status.name)
                 .map(task => (
                   <div
                     key={task.id}
@@ -257,7 +332,11 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects }: TaskBoardP
                     onDragEnd={handleDragEnd}
                     onDrop={(e) => {
                         e.stopPropagation();
-                        handleDrop(e, status, task.id);
+                        handleDrop(e, status.name, task.id);
+                    }}
+                     onDragOver={(e) => {
+                        e.preventDefault();
+                        // This allows dropping ON the item
                     }}
                   >
                     <TaskCard 
@@ -265,7 +344,8 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects }: TaskBoardP
                       project={projects.find(p => p.id === task.project_id)}
                       onClick={() => setSelectedTask(task)} 
                       onUpdateTask={handleUpdateTask}
-                      isDragging={draggedTask === task.id} 
+                      isDragging={draggedTask === task.id}
+                      statusColor={status.colorClass}
                     />
                   </div>
                 ))}
@@ -283,7 +363,7 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects }: TaskBoardP
         onOpenChange={setIsNewTaskDialogOpen}
         onTaskAdd={handleAddTask}
         projects={projects}
-        statuses={columns}
+        statuses={statuses.map(s => s.name)}
       />
       {selectedTask && (
         <TaskDetailsDialog
@@ -293,9 +373,11 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects }: TaskBoardP
             if (!isOpen) setSelectedTask(null);
           }}
           onUpdateTask={handleUpdateTask}
-          statuses={columns}
+          statuses={statuses.map(s => s.name)}
         />
       )}
     </>
   );
 }
+
+    

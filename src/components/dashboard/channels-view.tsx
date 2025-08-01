@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command } from '@/components/ui/command';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { Badge } from '../ui/badge';
+import { Status } from './task-board';
 
 const getInitials = (name: string) => {
   if (!name) return '';
@@ -46,9 +47,10 @@ interface ChannelsViewProps {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   onCreateTask: (message: Message) => void;
   onViewThread: (message: Message) => void;
+  statuses: Status[];
 }
 
-export default function ChannelsView({ channels, messages, allUsers, tasks, activeChannelId, setMessages, onCreateTask, onViewThread }: ChannelsViewProps) {
+export default function ChannelsView({ channels, messages, allUsers, tasks, activeChannelId, setMessages, onCreateTask, onViewThread, statuses }: ChannelsViewProps) {
   const { appUser } = useAuth();
   const [newMessage, setNewMessage] = useState('');
   const [isTagging, setIsTagging] = useState(false);
@@ -201,6 +203,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
     const repliers = allUsers.filter(u => replierIds.includes(u.id));
 
     const linkedTask = message.linked_task_id ? tasks.find(t => t.id === message.linked_task_id) : null;
+    const taskStatus = linkedTask ? statuses.find(s => s.name === linkedTask.status) : null;
 
     return (
         <div 
@@ -237,9 +240,15 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
                 ))}
             </div>
           )}
-          {linkedTask && (
+          {linkedTask && taskStatus && (
             <div className="mt-2">
-                <Badge variant="secondary">
+                 <Badge 
+                    className={cn(taskStatus.colorClass)}
+                    style={{ 
+                        backgroundColor: `hsl(var(${taskStatus.colorClass}))`, 
+                        color: `hsl(var(${taskStatus.textColorClass}))`
+                    }}
+                 >
                     <CheckCircle2 className="h-3 w-3 mr-1.5" />
                     Task: {linkedTask.name} is <span className="font-semibold ml-1">{linkedTask.status}</span>
                 </Badge>
@@ -410,3 +419,5 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
     </div>
   );
 }
+
+    
