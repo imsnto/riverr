@@ -328,7 +328,7 @@ function Dashboard() {
               )}
               {activeTab === 'tasks' && (
                 <div className="p-4 md:p-8">
-                {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard initialTasks={tasks} projects={projects} />}
+                {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard tasks={tasks} onUpdateTasks={setTasks} projects={projects} />}
                 </div>
               )}
               {appUser.role === 'Admin' && activeTab === 'timesheets' && (

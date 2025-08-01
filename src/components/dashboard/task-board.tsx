@@ -85,12 +85,12 @@ const TaskCard = ({ task, project, onUpdateTask, onClick, isDragging }: { task: 
 };
 
 interface TaskBoardProps {
-  initialTasks: Task[];
+  tasks: Task[];
+  onUpdateTasks: (tasks: Task[]) => void;
   projects: Project[];
 }
 
-export default function TaskBoard({ initialTasks, projects }: TaskBoardProps) {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+export default function TaskBoard({ tasks, onUpdateTasks, projects }: TaskBoardProps) {
   const [columns, setColumns] = useState<string[]>(['Backlog', 'In Progress', 'Review', 'Done']);
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
@@ -98,11 +98,6 @@ export default function TaskBoard({ initialTasks, projects }: TaskBoardProps) {
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
   const { toast } = useToast();
-
-  React.useEffect(() => {
-    setTasks(initialTasks);
-  }, [initialTasks]);
-
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, taskId: string) => {
     e.dataTransfer.setData('taskId', taskId);
@@ -135,7 +130,7 @@ export default function TaskBoard({ initialTasks, projects }: TaskBoardProps) {
         newTasks.push(updatedTask);
     }
     
-    setTasks(newTasks);
+    onUpdateTasks(newTasks);
     setDraggedTask(null);
   };
 
@@ -145,14 +140,14 @@ export default function TaskBoard({ initialTasks, projects }: TaskBoardProps) {
   };
 
   const handleAddTask = (newTask: Task) => {
-    setTasks(prevTasks => [...prevTasks, newTask]);
+    onUpdateTasks([...tasks, newTask]);
     if (!columns.includes(newTask.status)) {
         setColumns([...columns, newTask.status]);
     }
   };
 
   const handleUpdateTask = (updatedTask: Task) => {
-    setTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task));
+    onUpdateTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task));
     if (selectedTask && selectedTask.id === updatedTask.id) {
       setSelectedTask(updatedTask);
     }
@@ -172,7 +167,7 @@ export default function TaskBoard({ initialTasks, projects }: TaskBoardProps) {
         toast({ variant: 'destructive', title: 'Status name already exists.'});
         return;
     }
-    setTasks(tasks.map(t => t.status === oldName ? { ...t, status: newColumnName } : t));
+    onUpdateTasks(tasks.map(t => t.status === oldName ? { ...t, status: newColumnName } : t));
     setColumns(columns.map(c => c === oldName ? newColumnName : c));
     setEditingColumn(null);
     setNewColumnName("");
@@ -184,7 +179,7 @@ export default function TaskBoard({ initialTasks, projects }: TaskBoardProps) {
         return;
     }
     const defaultColumn = columns.find(c => c !== columnToDelete)!;
-    setTasks(tasks.map(t => t.status === columnToDelete ? { ...t, status: defaultColumn } : t));
+    onUpdateTasks(tasks.map(t => t.status === columnToDelete ? { ...t, status: defaultColumn } : t));
     setColumns(columns.filter(c => c !== columnToDelete));
   }
 
