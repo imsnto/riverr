@@ -43,9 +43,10 @@ interface ChannelsViewProps {
   activeChannelId: string | null;
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   onCreateTask: (message: Message) => void;
+  onViewThread: (message: Message) => void;
 }
 
-export default function ChannelsView({ channels, messages, allUsers, activeChannelId, setMessages, onCreateTask }: ChannelsViewProps) {
+export default function ChannelsView({ channels, messages, allUsers, activeChannelId, setMessages, onCreateTask, onViewThread }: ChannelsViewProps) {
   const { appUser } = useAuth();
   const [newMessage, setNewMessage] = useState('');
   const [isTagging, setIsTagging] = useState(false);
@@ -55,6 +56,14 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTo(0, scrollAreaRef.current.scrollHeight);
+    }
+  }, [messages, activeChannelId]);
 
   const activeChannel = channels.find(c => c.id === activeChannelId);
   const channelMessages = messages.filter(m => m.channel_id === activeChannelId && !m.thread_id);
@@ -184,7 +193,9 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
   const renderMessage = (message: Message) => {
     const user = allUsers.find(u => u.id === message.user_id);
     const threadReplies = messages.filter(m => m.thread_id === message.id);
-    
+    const replierIds = [...new Set(threadReplies.map(r => r.user_id))];
+    const repliers = allUsers.filter(u => replierIds.includes(u.id));
+
     return (
         <div 
         key={message.id} 
@@ -230,21 +241,19 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
             </div>
           )}
            {threadReplies.length > 0 && (
-             <div className="mt-2">
-                {threadReplies.slice(0,2).map(reply => {
-                    const replyUser = allUsers.find(u => u.id === reply.user_id);
-                    return (
-                        <div key={reply.id} className="flex items-center gap-1.5">
-                            <Avatar className="h-4 w-4">
-                                <AvatarImage src={replyUser?.avatarUrl} />
-                                <AvatarFallback>{replyUser ? getInitials(replyUser.name) : '?'}</AvatarFallback>
-                            </Avatar>
-                        </div>
-                    )
-                })}
-                <Button variant="link" size="sm" className="h-auto p-0" onClick={() => handleReplyClick(message)}>
+             <div className="mt-2 flex items-center gap-2">
+                <div className="flex -space-x-2">
+                    {repliers.slice(0,3).map(replyUser => (
+                        <Avatar key={replyUser.id} className="h-5 w-5 border-2 border-background">
+                            <AvatarImage src={replyUser?.avatarUrl} />
+                            <AvatarFallback>{replyUser ? getInitials(replyUser.name) : '?'}</AvatarFallback>
+                        </Avatar>
+                    ))}
+                </div>
+                <Button variant="link" size="sm" className="h-auto p-0 text-primary" onClick={() => onViewThread(message)}>
                     {threadReplies.length} {threadReplies.length > 1 ? 'replies' : 'reply'}
                 </Button>
+                <span className="text-xs text-muted-foreground">Last reply today at {new Date(threadReplies[threadReplies.length-1].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
              </div>
            )}
         </div>
@@ -296,7 +305,7 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
             <h3 className="text-lg font-semibold">#{activeChannel.name}</h3>
             <p className="text-sm text-muted-foreground">{activeChannel.description}</p>
           </div>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1" ref={scrollAreaRef}>
             <div className="p-4 space-y-1">
               {channelMessages.map(renderMessage)}
             </div>

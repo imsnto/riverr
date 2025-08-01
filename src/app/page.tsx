@@ -24,6 +24,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Hash, Lock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import CreateTaskFromThreadDialog from '@/components/dashboard/create-task-from-thread-dialog';
+import ThreadView from '@/components/dashboard/thread-view';
 
 
 function Dashboard() {
@@ -44,7 +45,9 @@ function Dashboard() {
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
 
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [selectedMessageForTask, setSelectedMessageForTask] = useState<Message | null>(null);
+  const [activeThread, setActiveThread] = useState<Message | null>(null);
+
 
   useEffect(() => {
     async function loadInitialData() {
@@ -107,10 +110,10 @@ function Dashboard() {
       }
     }
     loadSpaceData();
-  }, [activeSpaceId, activeChannelId]);
+  }, [activeSpaceId]);
   
   const handleOpenCreateTaskDialog = (message: Message) => {
-    setSelectedMessage(message);
+    setSelectedMessageForTask(message);
     setIsCreateTaskOpen(true);
   }
 
@@ -136,6 +139,8 @@ function Dashboard() {
   
   const handleSpaceChange = (spaceId: string) => {
     setActiveSpaceId(spaceId);
+    setActiveThread(null);
+    setActiveChannelId(null);
   };
   
   if (isLoading && !activeSpace) {
@@ -194,7 +199,10 @@ function Dashboard() {
                           'w-full justify-start gap-2',
                           activeChannelId === channel.id && 'bg-primary/10 text-primary'
                         )}
-                        onClick={() => setActiveChannelId(channel.id)}
+                        onClick={() => {
+                            setActiveChannelId(channel.id);
+                            setActiveThread(null);
+                        }}
                       >
                         {channel.is_private ? <Lock className="h-4 w-4" /> : <Hash className="h-4 w-4" />}
                         {channel.name}
@@ -206,9 +214,10 @@ function Dashboard() {
           )}
 
           {/* Main Content */}
-          <main className="flex-1 overflow-auto p-4 md:p-8">
+          <main className={cn("flex-1 overflow-auto", activeTab === 'channels' && "flex")}>
               {activeTab === 'dashboard' && (
-                isLoading ? <div className="flex justify-center items-center h-full">Loading dashboard...</div> : 
+                <div className="p-4 md:p-8">
+                {isLoading ? <div className="flex justify-center items-center h-full">Loading dashboard...</div> : 
                 <>
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                       <div className="lg:col-span-2">
@@ -223,27 +232,49 @@ function Dashboard() {
                       <MeetingReview slackMeetingLogs={meetingLogs} projects={projects} />
                     </div>
                   </>
-                )
-              }
+                }
+                </div>
+              )}
               {activeTab === 'channels' && (
-                isLoading ? <div className="flex justify-center items-center h-full">Loading channels...</div> : 
-                <ChannelsView 
-                  channels={channels}
-                  messages={messages} 
-                  allUsers={allUsers} 
-                  activeChannelId={activeChannelId}
-                  setMessages={setMessages}
-                  onCreateTask={handleOpenCreateTaskDialog}
-                />
+                <div className="flex flex-1">
+                  <div className="flex-1 overflow-y-auto">
+                    {isLoading ? <div className="flex justify-center items-center h-full">Loading channels...</div> : 
+                    <ChannelsView 
+                      channels={channels}
+                      messages={messages} 
+                      allUsers={allUsers} 
+                      activeChannelId={activeChannelId}
+                      setMessages={setMessages}
+                      onCreateTask={handleOpenCreateTaskDialog}
+                      onViewThread={setActiveThread}
+                    />
+                  }
+                  </div>
+                  {activeThread && (
+                      <div className="w-[440px] border-l flex flex-col">
+                        <ThreadView
+                          thread={activeThread}
+                          messages={messages}
+                          allUsers={allUsers}
+                          setMessages={setMessages}
+                          onClose={() => setActiveThread(null)}
+                        />
+                      </div>
+                  )}
+                </div>
               )}
               {activeTab === 'tasks' && (
-                isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard initialTasks={tasks} projects={projects} />
+                <div className="p-4 md:p-8">
+                {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard initialTasks={tasks} projects={projects} />}
+                </div>
               )}
               {appUser.role === 'Admin' && activeTab === 'timesheets' && (
-                  isLoading ? <div className="flex justify-center items-center h-full">Loading timesheets...</div> : <TeamTimesheets timeEntries={timeEntries} projects={projects} tasks={tasks} space={activeSpace} allUsers={allUsers} />
+                  <div className="p-4 md:p-8">
+                  {isLoading ? <div className="flex justify-center items-center h-full">Loading timesheets...</div> : <TeamTimesheets timeEntries={timeEntries} projects={projects} tasks={tasks} space={activeSpace} allUsers={allUsers} />}
+                  </div>
               )}
               {appUser.role === 'Admin' && activeTab === 'settings' && (
-                  <>
+                  <div className="p-4 md:p-8">
                       <h1 className="text-2xl font-bold mb-4">Settings</h1>
                       <Tabs defaultValue="spaces" className="w-full">
                           <TabsList>
@@ -257,17 +288,17 @@ function Dashboard() {
                           {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings />}
                           </TabsContent>
                       </Tabs>
-                  </>
+                  </div>
               )}
           </main>
         </div>
       </div>
-      {isCreateTaskOpen && selectedMessage && (
+      {isCreateTaskOpen && selectedMessageForTask && (
         <CreateTaskFromThreadDialog 
             isOpen={isCreateTaskOpen}
             onOpenChange={setIsCreateTaskOpen}
-            message={selectedMessage}
-            channelMembers={channels.find(c => c.id === selectedMessage.channel_id)?.members.map(id => allUsers.find(u => u.id === id)!) || []}
+            message={selectedMessageForTask}
+            channelMembers={channels.find(c => c.id === selectedMessageForTask.channel_id)?.members.map(id => allUsers.find(u => u.id === id)!).filter(Boolean) || []}
             projects={projects}
             onTaskCreated={handleTaskCreated}
         />
@@ -289,5 +320,3 @@ export default function RootPage() {
         <Dashboard />
     )
 }
-
-    
