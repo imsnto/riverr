@@ -7,7 +7,7 @@ import { users, Task, Project } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { MoreHorizontal, Plus, Edit, Trash2, Palette } from 'lucide-react';
-import { Button } from '../ui/button';
+import { Button, buttonVariants } from '../ui/button';
 import { cn } from '@/lib/utils';
 import NewTaskDialog from './new-task-dialog';
 import TaskDetailsDialog from './task-details-dialog';
@@ -23,6 +23,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
 export interface Status {
@@ -36,12 +37,12 @@ const getInitials = (name: string) => {
 }
 
 const STATUS_COLORS = [
-    { name: 'Gray', colorClass: 'bg-gray-500', textColorClass: 'text-white' },
-    { name: 'Blue', colorClass: 'bg-blue-500', textColorClass: 'text-white' },
+    { name: 'Gray', colorClass: '--muted', textColorClass: '--muted-foreground' },
+    { name: 'Blue', colorClass: '--primary', textColorClass: '--primary-foreground' },
     { name: 'Green', colorClass: 'bg-green-500', textColorClass: 'text-white' },
     { name: 'Yellow', colorClass: 'bg-yellow-500', textColorClass: 'text-black' },
     { name: 'Orange', colorClass: 'bg-orange-500', textColorClass: 'text-white' },
-    { name: 'Red', colorClass: 'bg-red-500', textColorClass: 'text-white' },
+    { name: 'Red', colorClass: '--destructive', textColorClass: '--destructive-foreground' },
     { name: 'Purple', colorClass: 'bg-purple-500', textColorClass: 'text-white' },
 ];
 
@@ -289,7 +290,7 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, on
                                 <DropdownMenuSubContent>
                                     {STATUS_COLORS.map(color => (
                                         <DropdownMenuItem key={color.name} onClick={() => handleChangeColor(status.name, color)}>
-                                            <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: color.colorClass }}></div>
+                                            <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: color.colorClass.startsWith('--') ? `hsl(var(${color.colorClass}))` : color.colorClass }}></div>
                                             {color.name}
                                         </DropdownMenuItem>
                                     ))}
@@ -379,5 +380,3 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, on
     </>
   );
 }
-
-    
