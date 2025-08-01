@@ -166,10 +166,16 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
                       {message.attachments && message.attachments.length > 0 && (
                         <div className="mt-2 space-y-2">
                             {message.attachments.map(att => (
-                                <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline bg-primary/10 p-2 rounded-md max-w-xs">
-                                {att.type === 'image' ? <ImageIcon className="h-4 w-4" /> : <File className="h-4 w-4" />}
-                                <span className="truncate">{att.name}</span>
-                                </a>
+                                <div key={att.id}>
+                                    {att.type === 'image' ? (
+                                        <img src={att.url} alt={att.name} className="rounded-lg max-w-xs max-h-64 object-cover" />
+                                    ) : (
+                                        <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline bg-primary/10 p-2 rounded-md max-w-xs">
+                                            <File className="h-4 w-4" />
+                                            <span className="truncate">{att.name}</span>
+                                        </a>
+                                    )}
+                                </div>
                             ))}
                         </div>
                       )}

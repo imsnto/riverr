@@ -310,10 +310,16 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                                     {comment.attachments && comment.attachments.length > 0 && (
                                                         <div className="mt-2 space-y-2">
                                                             {comment.attachments.map(att => (
-                                                                <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline bg-primary/10 p-2 rounded-md">
-                                                                {att.type === 'image' ? <ImageIcon className="h-4 w-4" /> : <File className="h-4 w-4" />}
-                                                                <span>{att.name}</span>
-                                                                </a>
+                                                                <div key={att.id}>
+                                                                    {att.type === 'image' ? (
+                                                                        <img src={att.url} alt={att.name} className="rounded-lg max-w-full max-h-64 object-cover" />
+                                                                    ) : (
+                                                                        <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline bg-primary/10 p-2 rounded-md">
+                                                                            <File className="h-4 w-4" />
+                                                                            <span>{att.name}</span>
+                                                                        </a>
+                                                                    )}
+                                                                </div>
                                                             ))}
                                                         </div>
                                                     )}
