@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Channel, Message, User } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -11,10 +11,26 @@ import { cn } from '@/lib/utils';
 import { Send } from 'lucide-react';
 import { addMessage } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const getInitials = (name: string) => {
+  if (!name) return '';
   return name.split(' ').map(n => n[0]).join('');
 };
+
+const renderMessageContent = (content: string, allUsers: User[]) => {
+    const parts = content.split(/(@\w+)/g);
+    return parts.map((part, index) => {
+        if (part.startsWith('@')) {
+            const userName = part.substring(1);
+            const user = allUsers.find(u => u.name === userName);
+            if (user) {
+                return <strong key={index} className="bg-primary/20 text-primary px-1 rounded-sm">@{user.name}</strong>;
+            }
+        }
+        return part;
+    });
+}
 
 interface ChannelsViewProps {
   channels: Channel[];
@@ -27,9 +43,32 @@ interface ChannelsViewProps {
 export default function ChannelsView({ channels, messages, allUsers, activeChannelId, setMessages }: ChannelsViewProps) {
   const { appUser } = useAuth();
   const [newMessage, setNewMessage] = useState('');
+  const [isTagging, setIsTagging] = useState(false);
+  const [tagQuery, setTagQuery] = useState('');
 
   const activeChannel = channels.find(c => c.id === activeChannelId);
   const channelMessages = messages.filter(m => m.channel_id === activeChannelId);
+  const channelMembers = activeChannel ? allUsers.filter(u => activeChannel.members.includes(u.id)) : [];
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNewMessage(value);
+
+    const lastAt = value.lastIndexOf('@');
+    if (lastAt !== -1 && value.slice(lastAt + 1).match(/^\w*$/)) {
+        setIsTagging(true);
+        setTagQuery(value.slice(lastAt + 1));
+    } else {
+        setIsTagging(false);
+    }
+  }
+
+  const handleUserTag = (userName: string) => {
+    const lastAt = newMessage.lastIndexOf('@');
+    setNewMessage(newMessage.slice(0, lastAt) + `@${userName} `);
+    setIsTagging(false);
+    document.getElementById('message-input')?.focus();
+  }
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +84,7 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
     
     setMessages(prev => [...prev, optimisticMessage]);
     setNewMessage('');
+    setIsTagging(false);
 
     try {
         const savedMessage = await addMessage({
@@ -61,6 +101,10 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
         // Optionally, show a toast notification for the error
     }
   };
+
+  const filteredMembers = channelMembers.filter(member => 
+    member.name.toLowerCase().includes(tagQuery.toLowerCase()) && member.id !== appUser?.id
+  );
 
   if (channels.length === 0) {
     return <div className="flex h-full items-center justify-center text-muted-foreground">No channels in this space.</div>;
@@ -91,7 +135,7 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
                           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
-                      <p className="text-sm">{message.content}</p>
+                      <p className="text-sm">{renderMessageContent(message.content, allUsers)}</p>
                     </div>
                   </div>
                 );
@@ -99,17 +143,43 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
             </div>
           </ScrollArea>
           <div className="p-4 border-t bg-card">
-            <form onSubmit={handleSendMessage} className="relative">
-              <Input
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder={`Message #${activeChannel.name}`}
-                className="pr-12"
-              />
-              <Button type="submit" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
+            <Popover open={isTagging} onOpenChange={setIsTagging}>
+                <PopoverTrigger asChild>
+                    <form onSubmit={handleSendMessage} className="relative">
+                      <Input
+                        id="message-input"
+                        value={newMessage}
+                        onChange={handleInputChange}
+                        placeholder={`Message #${activeChannel.name}`}
+                        className="pr-12"
+                        autoComplete="off"
+                      />
+                      <Button type="submit" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </form>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command>
+                        <ScrollArea className="max-h-48">
+                            {filteredMembers.length > 0 ? filteredMembers.map(member => (
+                                <div key={member.id} 
+                                    onClick={() => handleUserTag(member.name)}
+                                    className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent"
+                                >
+                                    <Avatar className="h-6 w-6">
+                                        <AvatarImage src={member.avatarUrl} />
+                                        <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-sm">{member.name}</span>
+                                </div>
+                            )) : (
+                                <div className="p-2 text-sm text-center text-muted-foreground">No users found</div>
+                            )}
+                        </ScrollArea>
+                    </Command>
+                </PopoverContent>
+            </Popover>
           </div>
         </>
       ) : (
@@ -120,5 +190,3 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
     </div>
   );
 }
-
-    
