@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import AllUsersTimesheet from './all-users-timesheet';
+import { startOfWeek, endOfWeek, subWeeks, addWeeks } from 'date-fns';
 
 const getInitials = (name: string) => {
   return name.split(' ').map(n => n[0]).join('');
@@ -28,6 +29,23 @@ export default function TeamTimesheets({ space, allUsers, projects, tasks, timeE
   const usersInSpace = allUsers.filter(u => space.members.includes(u.id));
   const [selectedUserId, setSelectedUserId] = useState(usersInSpace.length > 0 ? usersInSpace[0].id : '');
   const [viewMode, setViewMode] = useState<ViewMode>('all-users');
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  const weekStartsOn = 0; // Sunday
+  const startOfCurrentWeek = startOfWeek(currentDate, { weekStartsOn });
+  const endOfCurrentWeek = endOfWeek(currentDate, { weekStartsOn });
+
+  const handlePreviousWeek = () => {
+    setCurrentDate(subWeeks(currentDate, 1));
+  };
+
+  const handleNextWeek = () => {
+    setCurrentDate(addWeeks(currentDate, 1));
+  };
+  
+  const handleThisWeek = () => {
+    setCurrentDate(new Date());
+  }
 
   const selectedUser = usersInSpace.find(u => u.id === selectedUserId) || (usersInSpace.length > 0 ? usersInSpace[0] : null);
 
@@ -80,7 +98,11 @@ export default function TeamTimesheets({ space, allUsers, projects, tasks, timeE
               userId={selectedUserId}
               timeEntries={timeEntries}
               projects={projects}
-              tasks={tasks} 
+              tasks={tasks}
+              weekStart={startOfCurrentWeek}
+              onPrevWeek={handlePreviousWeek}
+              onNextWeek={handleNextWeek}
+              onThisWeek={handleThisWeek}
              />
           </CardContent>
         </Card>
@@ -93,6 +115,10 @@ export default function TeamTimesheets({ space, allUsers, projects, tasks, timeE
         onUserSelect={handleUserSelectAndSwitchView}
         timeEntries={timeEntries}
         users={usersInSpace}
+        weekStart={startOfCurrentWeek}
+        onPrevWeek={handlePreviousWeek}
+        onNextWeek={handleNextWeek}
+        onThisWeek={handleThisWeek}
       />
   )
 }
