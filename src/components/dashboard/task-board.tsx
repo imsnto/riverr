@@ -32,20 +32,46 @@ export interface Status {
 }
 
 const getInitials = (name: string) => {
+    if (!name) return '';
     return name.split(' ').map(n => n[0]).join('');
 }
 
 const STATUS_COLORS = [
-    { name: 'Gray', color: 'hsl(var(--muted-foreground))' },
-    { name: 'Blue', color: 'hsl(var(--primary))' },
-    { name: 'Green', color: '#22c55e' },
-    { name: 'Yellow', color: '#eab308' },
+    // Grays
+    { name: 'Gray', color: '#6b7280' },
+    { name: 'Stone', color: '#78716c' },
+    { name: 'Zinc', color: '#71717a' },
+    
+    // Reds
+    { name: 'Red', color: '#ef4444' },
+    { name: 'Rose', color: '#f43f5e' },
+
+    // Oranges
     { name: 'Orange', color: '#f97316' },
-    { name: 'Red', color: 'hsl(var(--destructive))' },
-    { name: 'Purple', color: '#8b5cf6' },
-    { name: 'Pink', color: '#ec4899' },
-    { name: 'Indigo', color: '#6366f1' },
+    { name: 'Amber', color: '#f59e0b' },
+    
+    // Yellows
+    { name: 'Yellow', color: '#eab308' },
+    { name: 'Lime', color: '#84cc16' },
+
+    // Greens
+    { name: 'Green', color: '#22c55e' },
+    { name: 'Emerald', color: '#10b981' },
     { name: 'Teal', color: '#14b8a6' },
+
+    // Blues
+    { name: 'Cyan', color: '#06b6d4' },
+    { name: 'Sky', color: '#0ea5e9' },
+    { name: 'Blue', color: '#3b82f6' },
+    { name: 'Indigo', color: '#6366f1' },
+
+    // Purples
+    { name: 'Violet', color: '#8b5cf6' },
+    { name: 'Purple', color: '#a855f7' },
+    { name: 'Fuchsia', color: '#d946ef' },
+
+    // Pinks
+    { name: 'Pink', color: '#ec4899' },
 ];
 
 
@@ -111,10 +137,10 @@ interface TaskBoardProps {
 }
 
 const defaultStatuses: Status[] = [
-    { name: 'Backlog', color: 'hsl(var(--muted-foreground))' },
-    { name: 'In Progress', color: 'hsl(var(--primary))' },
-    { name: 'Review', color: 'hsl(var(--accent))' },
-    { name: 'Done', color: 'hsl(var(--destructive))' },
+    { name: 'Backlog', color: '#6b7280' },
+    { name: 'In Progress', color: '#3b82f6' },
+    { name: 'Review', color: '#f59e0b' },
+    { name: 'Done', color: '#22c55e' },
 ]
 
 export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, onUpdateStatuses }: TaskBoardProps) {
@@ -291,18 +317,25 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, on
                                 <span>Change Color</span>
                             </DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
-                                <DropdownMenuSubContent>
-                                    <div className="grid grid-cols-5 gap-2 p-2 w-48">
-                                    {STATUS_COLORS.map(color => (
-                                        <button
-                                            key={color.name}
-                                            onClick={() => handleChangeColor(status.name, color.color)}
-                                            className="w-6 h-6 rounded-full border"
-                                            style={{ backgroundColor: color.color }}
-                                            aria-label={color.name}
-                                        />
-                                    ))}
+                                <DropdownMenuSubContent className="w-60 p-2">
+                                     <div className="grid grid-cols-5 gap-2 mb-2">
+                                        {STATUS_COLORS.map(color => (
+                                            <button
+                                                key={color.name}
+                                                onClick={() => handleChangeColor(status.name, color.color)}
+                                                className={cn("w-8 h-8 rounded-md border-2", status.color === color.color ? 'border-primary' : 'border-transparent')}
+                                                style={{ backgroundColor: color.color }}
+                                                aria-label={color.name}
+                                            />
+                                        ))}
                                     </div>
+                                    <Input
+                                        type="text"
+                                        defaultValue={status.color}
+                                        className="h-8"
+                                        onBlur={(e) => handleChangeColor(status.name, e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') handleChangeColor(status.name, e.currentTarget.value)}}
+                                    />
                                 </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                         </DropdownMenuSub>
@@ -388,3 +421,5 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, on
     </>
   );
 }
+
+    
