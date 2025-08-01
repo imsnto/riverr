@@ -17,10 +17,19 @@ const SimplifiedProjectSchema = z.object({ id: z.string(), name: z.string() });
 
 const CreateTaskFromThreadInputSchema = z.object({
   threadContent: z.string().describe('The full content of the message thread.'),
-  channelMembers: z.array(SimplifiedUserSchema).describe('A list of members in the channel to help suggest assignees.'),
-  projects: z.array(SimplifiedProjectSchema).describe('A list of available projects to associate the task with.'),
+  channelMembersAsJson: z.string().describe('A JSON string of members in the channel to help suggest assignees.'),
+  projectsAsJson: z.string().describe('A JSON string of available projects to associate the task with.'),
 });
-export type CreateTaskFromThreadInput = z.infer<typeof CreateTaskFromThreadInputSchema>;
+// This is the internal type for the flow
+type CreateTaskFromThreadFlowInput = z.infer<typeof CreateTaskFromThreadInputSchema>;
+
+
+// This is the public interface for the component
+export interface CreateTaskFromThreadInput {
+  threadContent: string;
+  channelMembers: z.infer<typeof SimplifiedUserSchema>[];
+  projects: z.infer<typeof SimplifiedProjectSchema>[];
+}
 
 const CreateTaskFromThreadOutputSchema = z.object({
   title: z.string().describe('A concise, auto-generated title for the task based on the thread summary.'),
@@ -34,7 +43,13 @@ export type CreateTaskFromThreadOutput = z.infer<typeof CreateTaskFromThreadOutp
 
 
 export async function createTaskFromThread(input: CreateTaskFromThreadInput): Promise<CreateTaskFromThreadOutput> {
-  return createTaskFromThreadFlow(input);
+  // Convert arrays to JSON strings before calling the flow
+  const flowInput: CreateTaskFromThreadFlowInput = {
+    threadContent: input.threadContent,
+    channelMembersAsJson: JSON.stringify(input.channelMembers),
+    projectsAsJson: JSON.stringify(input.projects),
+  };
+  return createTaskFromThreadFlow(flowInput);
 }
 
 const prompt = ai.definePrompt({
@@ -59,10 +74,10 @@ Based on the conversation, generate a task with the following properties:
 - **Priority:** Based on the language used (e.g., "ASAP," "urgent," "blocker"), suggest a priority level. Default to 'Medium' if no urgency is implied.
 
 Here are the available channel members (use their 'id' for the suggestion):
-{{{JSON.stringify channelMembers}}}
+{{{channelMembersAsJson}}}
 
 Here are the available projects (use their 'id' for the suggestion):
-{{{JSON.stringify projects}}}
+{{{projectsAsJson}}}
 
 Provide your response in the requested JSON format.
 `,
