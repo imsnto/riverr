@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import React, { useState, useEffect } from 'react';
@@ -17,12 +18,10 @@ import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
 import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
-import { useRouter } from 'next/navigation';
 
 
 function Dashboard() {
-  const { appUser, status } = useAuth();
-  const router = useRouter();
+  const { appUser } = useAuth();
 
   const [activeTab, setActiveTab] = useState('dashboard');
   
@@ -34,12 +33,6 @@ function Dashboard() {
   const [meetingLogs, setMeetingLogs] = useState<SlackMeetingLog[]>([]);
   const [activeSpaceId, setActiveSpaceId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
 
   useEffect(() => {
     async function loadInitialData() {
@@ -59,10 +52,8 @@ function Dashboard() {
           setIsLoading(false);
         }
     }
-    if (status === 'authenticated') {
-        loadInitialData();
-    }
-  }, [appUser, status]); 
+    loadInitialData();
+  }, [appUser]); 
 
   useEffect(() => {
     async function loadSpaceData() {
@@ -92,8 +83,8 @@ function Dashboard() {
     loadSpaceData();
   }, [activeSpaceId]);
   
-  if (status === 'loading' || !appUser) {
-    return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
+  if (!appUser) {
+    return <div className="flex h-screen items-center justify-center">Loading user data...</div>;
   }
   
   const userSpaces = allSpaces.filter(s => s.members.includes(appUser.id));

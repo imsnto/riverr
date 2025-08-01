@@ -2,5 +2,6 @@
 import { redirect } from 'next/navigation'
 
 export default function RootPage() {
-  redirect('/login')
+  // Redirect directly to the main app page since we are auto-logged in.
+  redirect('/')
 }
