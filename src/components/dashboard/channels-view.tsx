@@ -2,18 +2,19 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Channel, Message, User, Attachment, Reaction } from '@/lib/data';
+import { Channel, Message, User, Attachment, Reaction, Task } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Send, MessageCircleMore, Paperclip, File, ImageIcon, SmilePlus, MessageSquare, MoreHorizontal } from 'lucide-react';
+import { Send, MessageCircleMore, Paperclip, File, ImageIcon, SmilePlus, MessageSquare, MoreHorizontal, CheckCircle2 } from 'lucide-react';
 import { addMessage } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command } from '@/components/ui/command';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { Badge } from '../ui/badge';
 
 const getInitials = (name: string) => {
   if (!name) return '';
@@ -40,13 +41,14 @@ interface ChannelsViewProps {
   channels: Channel[];
   messages: Message[];
   allUsers: User[];
+  tasks: Task[];
   activeChannelId: string | null;
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   onCreateTask: (message: Message) => void;
   onViewThread: (message: Message) => void;
 }
 
-export default function ChannelsView({ channels, messages, allUsers, activeChannelId, setMessages, onCreateTask, onViewThread }: ChannelsViewProps) {
+export default function ChannelsView({ channels, messages, allUsers, tasks, activeChannelId, setMessages, onCreateTask, onViewThread }: ChannelsViewProps) {
   const { appUser } = useAuth();
   const [newMessage, setNewMessage] = useState('');
   const [isTagging, setIsTagging] = useState(false);
@@ -198,6 +200,8 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
     const replierIds = [...new Set(threadReplies.map(r => r.user_id))];
     const repliers = allUsers.filter(u => replierIds.includes(u.id));
 
+    const linkedTask = message.linked_task_id ? tasks.find(t => t.id === message.linked_task_id) : null;
+
     return (
         <div 
         key={message.id} 
@@ -233,6 +237,14 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
                 ))}
             </div>
           )}
+          {linkedTask && (
+            <div className="mt-2">
+                <Badge variant="secondary">
+                    <CheckCircle2 className="h-3 w-3 mr-1.5" />
+                    Task: {linkedTask.name} is <span className="font-semibold ml-1">{linkedTask.status}</span>
+                </Badge>
+            </div>
+           )}
           {message.reactions && message.reactions.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
                 {message.reactions.map(reaction => (

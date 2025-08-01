@@ -124,6 +124,7 @@ export interface Message {
   attachments?: Attachment[];
   reactions?: Reaction[];
   reply_count?: number;
+  linked_task_id?: string;
 }
 
 

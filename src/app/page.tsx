@@ -124,15 +124,16 @@ function Dashboard() {
 
   const handleTaskCreated = (newTask: Task) => {
     setTasks(prev => [...prev, newTask]);
-    // Potentially add a confirmation message back to the channel
-    const confirmationMessage: Message = {
-      id: `msg-system-${Date.now()}`,
-      channel_id: newTask.id, // This should be the channel id from the original message
-      user_id: 'system', // or appUser.id
-      content: `✅ Task created: "${newTask.name}"`,
-      timestamp: new Date().toISOString(),
-    };
-    // setMessages(prev => [...prev, confirmationMessage]);
+    
+    if (selectedMessageForTask) {
+      setMessages(prevMessages => 
+        prevMessages.map(msg => 
+          msg.id === selectedMessageForTask.id 
+            ? { ...msg, linked_task_id: newTask.id }
+            : msg
+        )
+      );
+    }
   }
 
   const handleViewThread = (thread: Message) => {
@@ -294,7 +295,8 @@ function Dashboard() {
                         <ChannelsView 
                         channels={channels}
                         messages={messages} 
-                        allUsers={allUsers} 
+                        allUsers={allUsers}
+                        tasks={tasks}
                         activeChannelId={activeChannelId}
                         setMessages={setMessages}
                         onCreateTask={handleOpenCreateTaskDialog}
