@@ -101,18 +101,24 @@ export interface SlackMeetingLog {
 // MOCK DATA - This data can be used to seed the database.
 
 export const users: User[] = [
-  { id: 'user-1', name: 'Brad', email: 'brad@riverr.app', role: 'Admin', slack_id: 'U12345', avatarUrl: 'https://placehold.co/100x100' }
+  { id: 'user-1', name: 'Brad', email: 'brad@riverr.app', role: 'Admin', slack_id: 'U12345', avatarUrl: 'https://placehold.co/100x100?text=B' },
+  { id: 'user-2', name: 'Alice', email: 'alice@example.com', role: 'Member', slack_id: 'U67890', avatarUrl: 'https://placehold.co/100x100?text=A' },
+  { id: 'user-3', name: 'Charlie', email: 'charlie@example.com', role: 'Member', slack_id: 'U13579', avatarUrl: 'https://placehold.co/100x100?text=C' },
+  { id: 'user-4', name: 'Diana', email: 'diana@example.com', role: 'Admin', slack_id: 'U24680', avatarUrl: 'https://placehold.co/100x100?text=D' }
 ];
 
 export const spaces: Space[] = [
-  { id: 'space-1', name: 'Work', members: ['user-1'] },
-  { id: 'space-2', name: 'Personal', members: ['user-1'] }
+  { id: 'space-1', name: 'Work', members: ['user-1', 'user-2', 'user-3', 'user-4'] },
+  { id: 'space-2', name: 'Personal', members: ['user-1', 'user-4'] },
+  { id: 'space-3', name: 'Client X', members: ['user-2', 'user-3']}
 ]
 
 export const projects: Project[] = [
-  { id: 'proj-1', space_id: 'space-1', name: 'Website Redesign', status: 'Active', created_by: 'user-1', members: ['user-1'], slack_channel_id: 'C111' },
-  { id: 'proj-2', space_id: 'space-1', name: 'Mobile App Development', status: 'Active', created_by: 'user-1', members: ['user-1'], slack_channel_id: 'C222' },
+  { id: 'proj-1', space_id: 'space-1', name: 'Website Redesign', status: 'Active', created_by: 'user-1', members: ['user-1', 'user-2'], slack_channel_id: 'C111' },
+  { id: 'proj-2', space_id: 'space-1', name: 'Mobile App Development', status: 'Active', created_by: 'user-1', members: ['user-1', 'user-3'], slack_channel_id: 'C222' },
+  { id: 'proj-3', space_id: 'space-1', name: 'API Integration', status: 'On Hold', created_by: 'user-4', members: ['user-2', 'user-4'], slack_channel_id: 'C333' },
   { id: 'proj-4', space_id: 'space-2', name: 'Personal Website', status: 'Active', created_by: 'user-1', members: ['user-1'] },
+  { id: 'proj-5', space_id: 'space-3', name: 'Marketing Campaign', status: 'Active', created_by: 'user-2', members: ['user-2', 'user-3'], slack_channel_id: 'C444' },
 ];
 
 export const tasks: Task[] = [
@@ -154,12 +160,46 @@ export const tasks: Task[] = [
     name: 'Develop landing page component',
     description: 'Code the main hero section of the landing page.',
     status: 'Backlog',
-    assigned_to: 'user-1',
+    assigned_to: 'user-2',
     due_date: '2024-08-20T23:59:59Z',
     priority: 'Medium',
     sprint_points: 5,
     tags: ['React', 'Web'],
     time_estimate: 24,
+    relationships: [],
+    activities: [],
+    comments: [],
+    attachments: []
+  },
+  {
+    id: 'task-3',
+    project_id: 'proj-1',
+    name: 'Set up analytics tracking',
+    description: 'Integrate Google Analytics and set up event tracking for key user actions.',
+    status: 'Done',
+    assigned_to: 'user-1',
+    due_date: '2024-08-10T23:59:59Z',
+    priority: 'Low',
+    sprint_points: 3,
+    tags: ['Analytics'],
+    time_estimate: 8,
+    relationships: [],
+    activities: [],
+    comments: [],
+    attachments: []
+  },
+  {
+    id: 'task-4',
+    project_id: 'proj-2',
+    name: 'Implement push notifications',
+    description: 'Set up FCM and create the service to handle push notifications.',
+    status: 'Review',
+    assigned_to: 'user-3',
+    due_date: '2024-08-18T23:59:59Z',
+    priority: 'High',
+    sprint_points: 8,
+    tags: ['Mobile', 'Firebase'],
+    time_estimate: 20,
     relationships: [],
     activities: [],
     comments: [],
@@ -182,11 +222,50 @@ export const tasks: Task[] = [
     comments: [],
     attachments: []
   },
+  {
+    id: 'task-6',
+    project_id: 'proj-3',
+    name: 'Research payment gateway APIs',
+    description: 'Compare Stripe, Braintree, and PayPal APIs for our needs.',
+    status: 'Backlog',
+    assigned_to: 'user-4',
+    due_date: '2024-09-01T23:59:59Z',
+    priority: null,
+    sprint_points: null,
+    tags: ['API', 'Research'],
+    time_estimate: 10,
+    relationships: [],
+    activities: [],
+    comments: [],
+    attachments: []
+  },
+  {
+    id: 'task-7',
+    project_id: 'proj-5',
+    name: 'Design social media assets',
+    description: 'Create graphics for Facebook, Twitter, and Instagram for the upcoming launch.',
+    status: 'In Progress',
+    assigned_to: 'user-2',
+    due_date: '2024-08-12T23:59:59Z',
+    priority: 'High',
+    sprint_points: 5,
+    tags: ['Design', 'Marketing'],
+    time_estimate: 15,
+    relationships: [],
+    activities: [],
+    comments: [],
+    attachments: []
+  }
 ];
 
 export const timeEntries: TimeEntry[] = [
   { id: 'time-1', user_id: 'user-1', project_id: 'proj-2', task_id: 'task-5', start_time: '2024-08-05T09:00:00Z', end_time: '2024-08-05T11:00:00Z', duration: 2, source: 'Timer', notes: 'Worked on profile page layout.' },
+  { id: 'time-2', user_id: 'user-2', project_id: 'proj-1', task_id: 'task-2', start_time: '2024-08-05T10:00:00Z', end_time: '2024-08-05T14:00:00Z', duration: 4, source: 'Manual', notes: 'Initial setup for landing page component.' },
+  { id: 'time-3', user_id: 'user-3', project_id: 'proj-2', task_id: 'task-4', start_time: '2024-08-05T13:00:00Z', end_time: '2024-08-05T17:00:00Z', duration: 4, source: 'Timer', notes: 'Configuring FCM and testing notifications.' },
   { id: 'time-4', user_id: 'user-1', project_id: 'proj-1', start_time: '2024-08-04T14:00:00Z', end_time: '2024-08-04T15:00:00Z', duration: 1, source: 'Slack', notes: 'Project sync meeting' },
+  { id: 'time-5', user_id: 'user-1', project_id: 'proj-1', task_id: 'task-1', start_time: '2024-08-06T09:00:00Z', end_time: '2024-08-06T12:00:00Z', duration: 3, source: 'Timer', notes: 'Refining homepage mockups.' },
+  { id: 'time-6', user_id: 'user-2', project_id: 'proj-5', task_id: 'task-7', start_time: '2024-08-06T11:00:00Z', end_time: '2024-08-06T15:00:00Z', duration: 4, source: 'Manual', notes: 'Drafting Instagram post designs.' },
+
 ];
 
 export const slackMeetingLogs: SlackMeetingLog[] = [
@@ -202,7 +281,7 @@ export const slackMeetingLogs: SlackMeetingLog[] = [
   },
   {
     id: 'slack-2',
-    user_id: 'user-1',
+    user_id: 'user-2',
     project_id: null,
     channel_id: 'C999',
     channel_name: 'general-chatter',
@@ -212,7 +291,7 @@ export const slackMeetingLogs: SlackMeetingLog[] = [
   },
   {
     id: 'slack-3',
-    user_id: 'user-1',
+    user_id: 'user-3',
     project_id: null,
     channel_id: 'C888',
     channel_name: 'project-handoff',
@@ -221,11 +300,22 @@ export const slackMeetingLogs: SlackMeetingLog[] = [
     duration: 1,
     suggested_project_id: undefined,
   },
+  {
+    id: 'slack-4',
+    user_id: 'user-4',
+    project_id: null,
+    channel_id: 'C333',
+    channel_name: 'proj-api-integration',
+    meeting_start: '2024-08-07T10:00:00Z',
+    meeting_end: '2024-08-07T10:30:00Z',
+    duration: 0.5,
+    suggested_project_id: 'proj-3',
+  },
 ];
 
 export const adminMappings = {
   'C111': 'proj-1', // #proj-website-redesign
   'C222': 'proj-2', // #mobile-app-dev
+  'C333': 'proj-3', // #api-integration
+  'C444': 'proj-5', // #marketing-campaign
 };
-
-    
