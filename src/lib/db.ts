@@ -144,8 +144,14 @@ export const getMessagesInChannel = async (channelId: string): Promise<mockData.
     return mockData.messages.filter(m => m.channel_id === channelId);
 }
 
-export const addMessage = async(message: Omit<mockData.Message, 'id' | 'timestamp'>): Promise<mockData.Message> => {
-    const newMessage = { ...message, id: `msg-${Date.now()}`, timestamp: new Date().toISOString() };
+export const addMessage = async(message: Omit<mockData.Message, 'id' | 'timestamp' | 'reactions' | 'reply_count'>): Promise<mockData.Message> => {
+    const newMessage = { 
+        ...message, 
+        id: `msg-${Date.now()}`, 
+        timestamp: new Date().toISOString(),
+        reactions: [],
+        reply_count: 0
+    };
     mockData.messages.push(newMessage);
     return newMessage;
 }

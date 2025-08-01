@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Channel, Message, User, Attachment } from '@/lib/data';
+import { Channel, Message, User, Attachment, Reaction } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -34,6 +34,8 @@ const renderMessageContent = (content: string, allUsers: User[]) => {
     });
 }
 
+const EMOJI_LIST = ['👍', '❤️', '😂', '😮', '😥', '🙏'];
+
 interface ChannelsViewProps {
   channels: Channel[];
   messages: Message[];
@@ -50,10 +52,12 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
   const [tagQuery, setTagQuery] = useState('');
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
 
   const activeChannel = channels.find(c => c.id === activeChannelId);
-  const channelMessages = messages.filter(m => m.channel_id === activeChannelId);
+  const channelMessages = messages.filter(m => m.channel_id === activeChannelId && !m.thread_id);
   const channelMembers = activeChannel ? allUsers.filter(u => activeChannel.members.includes(u.id)) : [];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,7 +65,7 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
     setNewMessage(value);
 
     const lastAt = value.lastIndexOf('@');
-    if (lastAt !== -1 && value.slice(lastAt + 1).match(/^\w*$/)) {
+    if (lastAt !== -1 && !value.slice(lastAt + 1).includes(' ')) {
         setIsTagging(true);
         setTagQuery(value.slice(lastAt + 1));
     } else {
@@ -73,7 +77,7 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
     const lastAt = newMessage.lastIndexOf('@');
     setNewMessage(newMessage.slice(0, lastAt) + `@${userName} `);
     setIsTagging(false);
-    document.getElementById('message-input')?.focus();
+    messageInputRef.current?.focus();
   }
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -94,12 +98,19 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
       content: newMessage,
       timestamp: new Date().toISOString(),
       attachments: newAttachments,
+      thread_id: replyingTo?.id,
+      reactions: [],
     }
     
     setMessages(prev => [...prev, optimisticMessage]);
+    if (replyingTo) {
+      setMessages(prev => prev.map(m => m.id === replyingTo.id ? { ...m, reply_count: (m.reply_count || 0) + 1 } : m));
+    }
+
     setNewMessage('');
     setAttachments([]);
     setIsTagging(false);
+    setReplyingTo(null);
 
     try {
         const savedMessage = await addMessage({
@@ -107,13 +118,15 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
             user_id: appUser.id,
             content: newMessage,
             attachments: newAttachments,
+            thread_id: replyingTo?.id,
         });
         setMessages(prev => prev.map(m => m.id === optimisticMessage.id ? savedMessage : m));
     } catch(err) {
-        // Revert optimistic update on failure
         setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
-        setNewMessage(newMessage); // Restore user input
-        // Optionally, show a toast notification for the error
+        if (replyingTo) {
+          setMessages(prev => prev.map(m => m.id === replyingTo.id ? { ...m, reply_count: (m.reply_count || 0) - 1 } : m));
+        }
+        setNewMessage(newMessage); 
     }
   };
 
@@ -123,6 +136,42 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
     }
   };
 
+  const handleReaction = (messageId: string, emoji: string) => {
+    if (!appUser) return;
+
+    setMessages(prev => prev.map(m => {
+        if (m.id === messageId) {
+            const reactions = m.reactions ? [...m.reactions] : [];
+            const existingReaction = reactions.find(r => r.emoji === emoji);
+
+            if (existingReaction) {
+                if (existingReaction.user_ids.includes(appUser.id)) {
+                    // User is removing their reaction
+                    existingReaction.count--;
+                    existingReaction.user_ids = existingReaction.user_ids.filter(id => id !== appUser.id);
+                    if(existingReaction.count === 0) {
+                        return { ...m, reactions: reactions.filter(r => r.emoji !== emoji) };
+                    }
+                } else {
+                    // User is adding to an existing reaction
+                    existingReaction.count++;
+                    existingReaction.user_ids.push(appUser.id);
+                }
+            } else {
+                // New reaction
+                reactions.push({ emoji, count: 1, user_ids: [appUser.id] });
+            }
+            return { ...m, reactions };
+        }
+        return m;
+    }));
+  };
+
+  const handleReplyClick = (message: Message) => {
+    setReplyingTo(message);
+    messageInputRef.current?.focus();
+  }
+
 
   const filteredMembers = channelMembers.filter(member => 
     member.name.toLowerCase().includes(tagQuery.toLowerCase()) && member.id !== appUser?.id
@@ -130,6 +179,113 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
 
   if (channels.length === 0) {
     return <div className="flex h-full items-center justify-center text-muted-foreground">No channels in this space.</div>;
+  }
+
+  const renderMessage = (message: Message) => {
+    const user = allUsers.find(u => u.id === message.user_id);
+    const threadReplies = messages.filter(m => m.thread_id === message.id);
+    
+    return (
+        <div 
+        key={message.id} 
+        className="flex items-start gap-3 group p-2 rounded-md hover:bg-accent/50"
+        onMouseEnter={() => setHoveredMessageId(message.id)}
+        onMouseLeave={() => setHoveredMessageId(null)}
+      >
+        <Avatar>
+          <AvatarImage src={user?.avatarUrl} />
+          <AvatarFallback>{user ? getInitials(user.name) : '?'}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold">{user?.name}</span>
+            <span className="text-xs text-muted-foreground">
+              {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+          {message.content && <p className="text-sm">{renderMessageContent(message.content, allUsers)}</p>}
+          {message.attachments && message.attachments.length > 0 && (
+            <div className="mt-2 space-y-2">
+                {message.attachments.map(att => (
+                    <div key={att.id}>
+                        {att.type === 'image' ? (
+                            <img src={att.url} alt={att.name} className="rounded-lg max-w-xs max-h-64 object-cover" />
+                        ) : (
+                            <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline bg-primary/10 p-2 rounded-md max-w-xs">
+                                <File className="h-4 w-4" />
+                                <span className="truncate">{att.name}</span>
+                            </a>
+                        )}
+                    </div>
+                ))}
+            </div>
+          )}
+          {message.reactions && message.reactions.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+                {message.reactions.map(reaction => (
+                    <Button key={reaction.emoji} variant="outline" size="sm" className="h-7 rounded-full" onClick={() => handleReaction(message.id, reaction.emoji)}>
+                        {reaction.emoji} <span className="ml-1 text-xs">{reaction.count}</span>
+                    </Button>
+                ))}
+            </div>
+          )}
+           {threadReplies.length > 0 && (
+             <div className="mt-2">
+                {threadReplies.slice(0,2).map(reply => {
+                    const replyUser = allUsers.find(u => u.id === reply.user_id);
+                    return (
+                        <div key={reply.id} className="flex items-center gap-1.5">
+                            <Avatar className="h-4 w-4">
+                                <AvatarImage src={replyUser?.avatarUrl} />
+                                <AvatarFallback>{replyUser ? getInitials(replyUser.name) : '?'}</AvatarFallback>
+                            </Avatar>
+                        </div>
+                    )
+                })}
+                <Button variant="link" size="sm" className="h-auto p-0" onClick={() => handleReplyClick(message)}>
+                    {threadReplies.length} {threadReplies.length > 1 ? 'replies' : 'reply'}
+                </Button>
+             </div>
+           )}
+        </div>
+         <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-card border rounded-full px-2 py-1", { "opacity-100": hoveredMessageId === message.id })}>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <SmilePlus className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-1">
+                <div className="flex gap-1">
+                  {EMOJI_LIST.map(emoji => (
+                    <Button key={emoji} variant="ghost" size="icon" className="h-8 w-8 text-lg" onClick={() => handleReaction(message.id, emoji)}>
+                      {emoji}
+                    </Button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleReplyClick(message)}>
+                <MessageSquare className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onCreateTask(message)}>
+                <MessageCircleMore className="h-4 w-4" />
+            </Button>
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    <DropdownMenuItem>
+                        <span>More actions...</span>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -142,73 +298,16 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
           </div>
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-1">
-              {channelMessages.map(message => {
-                const user = allUsers.find(u => u.id === message.user_id);
-                return (
-                  <div 
-                    key={message.id} 
-                    className="flex items-start gap-3 group p-2 rounded-md hover:bg-accent/50"
-                    onMouseEnter={() => setHoveredMessageId(message.id)}
-                    onMouseLeave={() => setHoveredMessageId(null)}
-                  >
-                    <Avatar>
-                      <AvatarImage src={user?.avatarUrl} />
-                      <AvatarFallback>{user ? getInitials(user.name) : '?'}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold">{user?.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      {message.content && <p className="text-sm">{renderMessageContent(message.content, allUsers)}</p>}
-                      {message.attachments && message.attachments.length > 0 && (
-                        <div className="mt-2 space-y-2">
-                            {message.attachments.map(att => (
-                                <div key={att.id}>
-                                    {att.type === 'image' ? (
-                                        <img src={att.url} alt={att.name} className="rounded-lg max-w-xs max-h-64 object-cover" />
-                                    ) : (
-                                        <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline bg-primary/10 p-2 rounded-md max-w-xs">
-                                            <File className="h-4 w-4" />
-                                            <span className="truncate">{att.name}</span>
-                                        </a>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                     <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-card border rounded-full px-2 py-1", { "opacity-100": hoveredMessageId === message.id })}>
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <SmilePlus className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <MessageSquare className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onCreateTask(message)}>
-                            <MessageCircleMore className="h-4 w-4" />
-                        </Button>
-                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem>
-                                    <span>More actions...</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                  </div>
-                );
-              })}
+              {channelMessages.map(renderMessage)}
             </div>
           </ScrollArea>
           <div className="p-4 border-t bg-card">
+            {replyingTo && (
+                <div className="text-xs text-muted-foreground mb-2 px-3 py-1 bg-muted rounded-md">
+                    Replying to <strong>{allUsers.find(u => u.id === replyingTo.user_id)?.name}</strong>
+                    <Button variant="ghost" size="sm" className="h-auto p-0 ml-2" onClick={() => setReplyingTo(null)}>&times;</Button>
+                </div>
+            )}
             {attachments.length > 0 && (
                 <div className="mb-2 space-y-2">
                     {attachments.map((file, i) => (
@@ -233,6 +332,7 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
                     <form onSubmit={handleSendMessage} className="relative">
                       <Input
                         id="message-input"
+                        ref={messageInputRef}
                         value={newMessage}
                         onChange={handleInputChange}
                         placeholder={`Message #${activeChannel.name}`}

@@ -359,10 +359,10 @@ export const channels: Channel[] = [
 ];
 
 export const messages: Message[] = [
-  { id: 'msg-1', channel_id: 'chan-1', user_id: 'user-1', content: 'Welcome to the Work space!', timestamp: '2024-08-01T09:00:00Z' },
+  { id: 'msg-1', channel_id: 'chan-1', user_id: 'user-1', content: 'Welcome to the Work space!', timestamp: '2024-08-01T09:00:00Z', reactions: [], reply_count: 0 },
   { id: 'msg-2', channel_id: 'chan-2', user_id: 'user-2', content: 'Hey @Brad, can you look at the latest mockups for the homepage?', timestamp: '2024-08-01T10:30:00Z', reactions: [{ emoji: '👍', count: 1, user_ids: ['user-1']}], reply_count: 1 },
-  { id: 'msg-3', channel_id: 'chan-2', user_id: 'user-1', content: 'Sure, taking a look now. They look great!', timestamp: '2024-08-01T10:32:00Z', thread_id: 'msg-2' },
-  { id: 'msg-4', channel_id: 'chan-3', user_id: 'user-3', content: 'Has anyone seen that new cat video? It\'s hilarious.', timestamp: '2024-08-01T11:00:00Z' },
-  { id: 'msg-5', channel_id: 'chan-5', user_id: 'user-4', content: 'I\'m going hiking this weekend, can\'t wait!', timestamp: '2024-08-02T14:00:00Z' },
-  { id: 'msg-6', channel_id: 'chan-6', user_id: 'user-2', content: 'Just sent the weekly update to Client X.', timestamp: '2024-08-03T17:00:00Z' },
+  { id: 'msg-3', channel_id: 'chan-2', user_id: 'user-1', content: 'Sure, taking a look now. They look great!', timestamp: '2024-08-01T10:32:00Z', thread_id: 'msg-2', reactions: [] },
+  { id: 'msg-4', channel_id: 'chan-3', user_id: 'user-3', content: 'Has anyone seen that new cat video? It\'s hilarious.', timestamp: '2024-08-01T11:00:00Z', reactions: [], reply_count: 0 },
+  { id: 'msg-5', channel_id: 'chan-5', user_id: 'user-4', content: 'I\'m going hiking this weekend, can\'t wait!', timestamp: '2024-08-02T14:00:00Z', reactions: [], reply_count: 0 },
+  { id: 'msg-6', channel_id: 'chan-6', user_id: 'user-2', content: 'Just sent the weekly update to Client X.', timestamp: '2024-08-03T17:00:00Z', reactions: [], reply_count: 0 },
 ];
