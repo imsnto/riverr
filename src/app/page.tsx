@@ -80,37 +80,38 @@ function Dashboard() {
         ]);
         setProjects(projectsInSpace);
         setChannels(channelsInSpace);
+        
+        const allMessages = await Promise.all(channelsInSpace.map(c => dbGetMessages(c.id))).then(res => res.flat());
+        setMessages(allMessages);
+
         if (channelsInSpace.length > 0 && !activeChannelId) {
           setActiveChannelId(channelsInSpace[0].id);
         } else if (channelsInSpace.length === 0) {
           setActiveChannelId(null);
+          setMessages([]);
         }
 
         const projectIds = projectsInSpace.map(p => p.id);
-        const channelIds = channelsInSpace.map(c => c.id);
 
-        if (projectIds.length > 0 || channelIds.length > 0) {
-            const [tasksInSpace, timeEntriesInSpace, meetingLogsInSpace, messagesInSpace] = await Promise.all([
-                projectIds.length > 0 ? dbGetTasks(projectIds) : Promise.resolve([]),
-                projectIds.length > 0 ? dbGetTimeEntries(projectIds) : Promise.resolve([]),
-                projectIds.length > 0 ? dbGetSlackLogs(projectIds) : Promise.resolve([]),
-                channelIds.length > 0 ? Promise.all(channelIds.map(dbGetMessages)).then(res => res.flat()) : Promise.resolve([]),
+        if (projectIds.length > 0) {
+            const [tasksInSpace, timeEntriesInSpace, meetingLogsInSpace] = await Promise.all([
+                dbGetTasks(projectIds),
+                dbGetTimeEntries(projectIds),
+                dbGetSlackMeetingLogsInSpace(projectIds),
             ]);
             setTasks(tasksInSpace);
             setTimeEntries(timeEntriesInSpace);
             setMeetingLogs(meetingLogsInSpace);
-            setMessages(messagesInSpace);
         } else {
             setTasks([]);
             setTimeEntries([]);
             setMeetingLogs([]);
-            setMessages([]);
         }
         setIsLoading(false);
       }
     }
     loadSpaceData();
-  }, [activeSpaceId]);
+  }, [activeSpaceId, activeChannelId]);
   
   const handleOpenCreateTaskDialog = (message: Message) => {
     setSelectedMessageForTask(message);
@@ -191,23 +192,33 @@ function Dashboard() {
                 </div>
                 <ScrollArea>
                   <div className="p-2">
-                    {channels.map(channel => (
+                    {channels.map(channel => {
+                      const hasMention = messages.some(
+                        m => m.channel_id === channel.id && m.content.includes(`@${appUser.name}`)
+                      );
+                      const isUnread = hasMention && activeChannelId !== channel.id;
+
+                      return (
                       <Button
                         key={channel.id}
                         variant="ghost"
                         className={cn(
                           'w-full justify-start gap-2',
-                          activeChannelId === channel.id && 'bg-primary/10 text-primary'
+                          activeChannelId === channel.id && 'bg-primary/10 text-primary',
+                          isUnread && "font-bold"
                         )}
                         onClick={() => {
                             setActiveChannelId(channel.id);
                             setActiveThread(null);
                         }}
                       >
-                        {channel.is_private ? <Lock className="h-4 w-4" /> : <Hash className="h-4 w-4" />}
-                        {channel.name}
+                         <div className="flex items-center gap-2">
+                            {channel.is_private ? <Lock className="h-4 w-4" /> : <Hash className="h-4 w-4" />}
+                            <span>{channel.name}</span>
+                          </div>
+                          {isUnread && <span className="ml-auto h-2 w-2 rounded-full bg-accent-foreground" />}
                       </Button>
-                    ))}
+                    )})}
                   </div>
                 </ScrollArea>
             </aside>
@@ -298,8 +309,11 @@ function Dashboard() {
             isOpen={isCreateTaskOpen}
             onOpenChange={setIsCreateTaskOpen}
             message={selectedMessageForTask}
-            channelMembers={channels.find(c => c.id === selectedMessageForTask.channel_id)?.members.map(id => allUsers.find(u => u.id === id)!).filter(Boolean) || []}
-            projects={projects}
+            channelMembers={channels.find(c => c.id === selectedMessageForTask.channel_id)?.members.map(id => {
+                const user = allUsers.find(u => u.id === id);
+                return { id: user!.id, name: user!.name };
+            }).filter(Boolean) || []}
+            projects={projects.map(p => ({ id: p.id, name: p.name }))}
             onTaskCreated={handleTaskCreated}
         />
       )}
@@ -320,3 +334,5 @@ export default function RootPage() {
         <Dashboard />
     )
 }
+
+    
