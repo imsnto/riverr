@@ -1,10 +1,16 @@
 
 
 // DATA STRUCTURES
+export interface Status {
+  name: string;
+  color: string;
+}
+
 export interface Space {
   id: string;
   name: string;
   members: string[];
+  statuses?: Status[];
 }
 
 export interface User {
@@ -127,6 +133,13 @@ export interface Message {
   linked_task_id?: string;
 }
 
+const defaultStatuses: Status[] = [
+    { name: 'Backlog', color: '#6b7280' },
+    { name: 'In Progress', color: '#3b82f6' },
+    { name: 'Review', color: '#f59e0b' },
+    { name: 'Done', color: '#22c55e' },
+];
+
 
 // MOCK DATA - This data can be used to seed the database.
 
@@ -138,9 +151,9 @@ export const users: User[] = [
 ];
 
 export const spaces: Space[] = [
-  { id: 'space-1', name: 'Work', members: ['user-1', 'user-2', 'user-3', 'user-4'] },
-  { id: 'space-2', name: 'Personal', members: ['user-1', 'user-4'] },
-  { id: 'space-3', name: 'Client X', members: ['user-2', 'user-3']}
+  { id: 'space-1', name: 'Work', members: ['user-1', 'user-2', 'user-3', 'user-4'], statuses: [...defaultStatuses] },
+  { id: 'space-2', name: 'Personal', members: ['user-1', 'user-4'], statuses: [{name: 'To Do', color: '#3b82f6'}, {name: 'Done', color: '#22c55e'}] },
+  { id: 'space-3', name: 'Client X', members: ['user-2', 'user-3'], statuses: [...defaultStatuses.slice(0,2), {name: 'Client Review', color: '#a855f7'}, {name: 'Approved', color: '#22c55e'}] }
 ]
 
 export const projects: Project[] = [
@@ -274,7 +287,7 @@ export const tasks: Task[] = [
     project_id: 'proj-5',
     name: 'Design social media assets',
     description: 'Create graphics for Facebook, Twitter, and Instagram for the upcoming launch.',
-    status: 'In Progress',
+    status: 'Client Review',
     assigned_to: 'user-2',
     due_date: '2024-08-12T23:59:59Z',
     priority: 'High',

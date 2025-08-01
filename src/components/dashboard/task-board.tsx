@@ -3,7 +3,7 @@
 
 import React, { useState, DragEvent } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { users, Task, Project } from '@/lib/data';
+import { users, Task, Project, Space, Status } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { MoreHorizontal, Plus, Edit, Trash2, Palette } from 'lucide-react';
@@ -25,11 +25,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-
-export interface Status {
-    name: string;
-    color: string;
-}
 
 const getInitials = (name: string) => {
     if (!name) return '';
@@ -132,8 +127,8 @@ interface TaskBoardProps {
   tasks: Task[];
   onUpdateTasks: (tasks: Task[]) => void;
   projects: Project[];
-  statuses: Status[];
-  onUpdateStatuses: (statuses: Status[]) => void;
+  activeSpace: Space;
+  onUpdateActiveSpace: (updatedSpace: Partial<Space>) => void;
 }
 
 const defaultStatuses: Status[] = [
@@ -143,19 +138,18 @@ const defaultStatuses: Status[] = [
     { name: 'Done', color: '#22c55e' },
 ]
 
-export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, onUpdateStatuses }: TaskBoardProps) {
+export default function TaskBoard({ tasks, onUpdateTasks, projects, activeSpace, onUpdateActiveSpace }: TaskBoardProps) {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
   const { toast } = useToast();
-
-  React.useEffect(() => {
-    if (statuses.length === 0) {
-        onUpdateStatuses(defaultStatuses);
-    }
-  }, [statuses, onUpdateStatuses])
+  
+  const statuses = activeSpace.statuses || defaultStatuses;
+  const setStatuses = (newStatuses: Status[]) => {
+    onUpdateActiveSpace({ statuses: newStatuses });
+  }
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, taskId: string) => {
     e.dataTransfer.setData('taskId', taskId);
@@ -214,7 +208,7 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, on
     onUpdateTasks([...tasks, newTask]);
     if (!statuses.find(s => s.name === newTask.status)) {
         const randomColor = STATUS_COLORS[statuses.length % STATUS_COLORS.length];
-        onUpdateStatuses([...statuses, { name: newTask.status, color: randomColor.color }]);
+        setStatuses([...statuses, { name: newTask.status, color: randomColor.color }]);
     }
   };
 
@@ -228,7 +222,7 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, on
   const handleAddNewColumn = () => {
     const newStatusName = `New Status ${statuses.length + 1}`;
     const randomColor = STATUS_COLORS[statuses.length % STATUS_COLORS.length];
-    onUpdateStatuses([...statuses, { name: newStatusName, color: randomColor.color }]);
+    setStatuses([...statuses, { name: newStatusName, color: randomColor.color }]);
   }
 
   const handleRenameColumn = (oldName: string) => {
@@ -241,7 +235,7 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, on
         return;
     }
     onUpdateTasks(tasks.map(t => t.status === oldName ? { ...t, status: newColumnName } : t));
-    onUpdateStatuses(statuses.map(s => s.name === oldName ? { ...s, name: newColumnName } : s));
+    setStatuses(statuses.map(s => s.name === oldName ? { ...s, name: newColumnName } : s));
     setEditingColumn(null);
     setNewColumnName("");
   }
@@ -253,11 +247,11 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, on
     }
     const defaultColumn = statuses.find(s => s.name !== columnToDelete)!;
     onUpdateTasks(tasks.map(t => t.status === columnToDelete ? { ...t, status: defaultColumn.name } : t));
-    onUpdateStatuses(statuses.filter(s => s.name !== columnToDelete));
+    setStatuses(statuses.filter(s => s.name !== columnToDelete));
   }
 
   const handleChangeColor = (statusName: string, color: string) => {
-    onUpdateStatuses(statuses.map(s => s.name === statusName ? { ...s, color: color } : s));
+    setStatuses(statuses.map(s => s.name === statusName ? { ...s, color: color } : s));
   }
 
   return (
@@ -421,5 +415,3 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, statuses, on
     </>
   );
 }
-
-    

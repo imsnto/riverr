@@ -3,10 +3,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { FolderKanban, GanttChart, MessageSquare, Settings, Users, MessageCircleMore } from 'lucide-react';
-import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message } from '@/lib/data';
+import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message, Status } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
-import TaskBoard, { Status } from '@/components/dashboard/task-board';
+import TaskBoard from '@/components/dashboard/task-board';
 import TeamTimesheets from '@/components/dashboard/team-timesheets';
 import ManualTimeEntry from '@/components/dashboard/manual-time-entry';
 import Timer from '@/components/dashboard/timer';
@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -51,7 +51,6 @@ function Dashboard() {
   const [readThreadIds, setReadThreadIds] = useState<Set<string>>(new Set());
 
   const [channelsViewMode, setChannelsViewMode] = useState<'channel' | 'all-threads'>('channel');
-  const [statuses, setStatuses] = useState<Status[]>([]);
 
 
   useEffect(() => {
@@ -141,6 +140,12 @@ function Dashboard() {
     setActiveThread(thread);
     setReadThreadIds(prev => new Set(prev).add(thread.id));
   };
+
+  const handleUpdateActiveSpace = async (updatedSpace: Partial<Space>) => {
+      const newActiveSpace = { ...activeSpace!, ...updatedSpace };
+      setAllSpaces(allSpaces.map(s => s.id === activeSpaceId ? newActiveSpace : s));
+      await dbUpdateSpace(activeSpaceId, updatedSpace);
+  }
 
 
   if (!appUser) {
@@ -302,7 +307,7 @@ function Dashboard() {
                         setMessages={setMessages}
                         onCreateTask={handleOpenCreateTaskDialog}
                         onViewThread={handleViewThread}
-                        statuses={statuses}
+                        statuses={activeSpace?.statuses || []}
                         />
                      ) : (
                         <AllThreadsView
@@ -328,9 +333,9 @@ function Dashboard() {
                   )}
                 </div>
               )}
-              {activeTab === 'tasks' && (
+              {activeTab === 'tasks' && activeSpace && (
                 <div className="p-4 md:p-8">
-                {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard tasks={tasks} onUpdateTasks={setTasks} projects={projects} statuses={statuses} onUpdateStatuses={setStatuses} />}
+                {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard tasks={tasks} onUpdateTasks={setTasks} projects={projects} activeSpace={activeSpace} onUpdateActiveSpace={handleUpdateActiveSpace} />}
                 </div>
               )}
               {appUser.role === 'Admin' && activeTab === 'timesheets' && (
@@ -388,9 +393,3 @@ export default function RootPage() {
         <Dashboard />
     )
 }
-
-    
-
-    
-
-    
