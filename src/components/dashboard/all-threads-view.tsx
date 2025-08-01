@@ -33,9 +33,10 @@ interface AllThreadsViewProps {
   allUsers: User[];
   appUser: User | null;
   onViewThread: (thread: Message) => void;
+  readThreadIds: Set<string>;
 }
 
-export default function AllThreadsView({ messages, allUsers, appUser, onViewThread }: AllThreadsViewProps) {
+export default function AllThreadsView({ messages, allUsers, appUser, onViewThread, readThreadIds }: AllThreadsViewProps) {
     if (!appUser) return null;
 
     const parentMessagesWithReplies = messages.filter(m => m.reply_count && m.reply_count > 0);
@@ -46,11 +47,12 @@ export default function AllThreadsView({ messages, allUsers, appUser, onViewThre
     });
 
     const sortedThreads = userInvolvedThreads.sort((a,b) => {
-        const lastReplyA = messages.filter(m => m.thread_id === a.id).sort((x,y) => new Date(y.timestamp).getTime() - new Date(x.timestamp).getTime())[0];
-        const lastReplyB = messages.filter(m => m.thread_id === b.id).sort((x,y) => new Date(y.timestamp).getTime() - new Date(x.timestamp).getTime())[0];
+        const lastReplyA = messages.filter(m => m.thread_id === a.id).sort((x,y) => new Date(y.timestamp).getTime() - new Date(x.timestamp).getTime())[0] || a;
+        const lastReplyB = messages.filter(m => m.thread_id === b.id).sort((x,y) => new Date(y.timestamp).getTime() - new Date(x.timestamp).getTime())[0] || b;
         return new Date(lastReplyB.timestamp).getTime() - new Date(lastReplyA.timestamp).getTime();
     })
-
+    
+    const firstUnreadIndex = sortedThreads.findIndex(t => !readThreadIds.has(t.id));
 
     if (sortedThreads.length === 0) {
         return <div className="flex h-full items-center justify-center text-muted-foreground">You have no threads yet.</div>;
@@ -68,12 +70,20 @@ export default function AllThreadsView({ messages, allUsers, appUser, onViewThre
                          const user = allUsers.find(u => u.id === thread.user_id);
                          const threadReplies = messages.filter(m => m.thread_id === thread.id);
                          const repliers = allUsers.filter(u => [...new Set(threadReplies.map(r => r.user_id))].includes(u.id));
+                         const isUnread = !readThreadIds.has(thread.id);
+                         const showUnreadSeparator = index === firstUnreadIndex;
 
-                         // This is a mock last-read implementation
-                         const isUnread = index < 2; 
 
                          return (
                             <div key={thread.id}>
+                                {showUnreadSeparator && (
+                                     <div className="relative px-4">
+                                        <Separator />
+                                        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
+                                            <span className="bg-background px-2 text-xs text-primary font-semibold">Unread</span>
+                                        </div>
+                                    </div>
+                                )}
                                 <button className={cn("w-full text-left p-4 hover:bg-accent/50", isUnread && "bg-primary/5")} onClick={() => onViewThread(thread)}>
                                     <div className="flex items-start gap-3">
                                         <Avatar>
@@ -104,14 +114,6 @@ export default function AllThreadsView({ messages, allUsers, appUser, onViewThre
                                         </span>
                                     </div>
                                 </button>
-                                {isUnread && (
-                                     <div className="relative px-4">
-                                        <Separator />
-                                        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
-                                            <span className="bg-background px-2 text-xs text-primary font-semibold">Unread</span>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                          )
                     })}

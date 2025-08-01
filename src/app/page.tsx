@@ -48,6 +48,7 @@ function Dashboard() {
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [selectedMessageForTask, setSelectedMessageForTask] = useState<Message | null>(null);
   const [activeThread, setActiveThread] = useState<Message | null>(null);
+  const [readThreadIds, setReadThreadIds] = useState<Set<string>>(new Set());
 
   const [channelsViewMode, setChannelsViewMode] = useState<'channel' | 'all-threads'>('channel');
 
@@ -134,6 +135,12 @@ function Dashboard() {
     // setMessages(prev => [...prev, confirmationMessage]);
   }
 
+  const handleViewThread = (thread: Message) => {
+    setActiveThread(thread);
+    setReadThreadIds(prev => new Set(prev).add(thread.id));
+  };
+
+
   if (!appUser) {
     return <div className="flex h-screen items-center justify-center">Loading user data...</div>;
   }
@@ -151,8 +158,14 @@ function Dashboard() {
     return <div className="flex justify-center items-center h-screen">Loading your workspace...</div>;
   }
   
-  const userThreads = messages.filter(m => m.thread_id && messages.find(p => p.id === m.thread_id)?.user_id === appUser.id);
-  const hasUnreadThreads = userThreads.length > 0; // Simplified for now
+  const parentMessagesWithReplies = messages.filter(m => m.reply_count && m.reply_count > 0);
+  const userInvolvedThreads = parentMessagesWithReplies.filter(parent => {
+      const threadMessages = messages.filter(m => m.thread_id === parent.id);
+      const participants = new Set([parent.user_id, ...threadMessages.map(m => m.user_id)]);
+      return participants.has(appUser.id);
+  });
+  const hasUnreadThreads = userInvolvedThreads.some(t => !readThreadIds.has(t.id));
+
 
   return (
     <TooltipProvider>
@@ -285,14 +298,15 @@ function Dashboard() {
                         activeChannelId={activeChannelId}
                         setMessages={setMessages}
                         onCreateTask={handleOpenCreateTaskDialog}
-                        onViewThread={setActiveThread}
+                        onViewThread={handleViewThread}
                         />
                      ) : (
                         <AllThreadsView
                           messages={messages}
                           allUsers={allUsers}
-                          onViewThread={setActiveThread}
+                          onViewThread={handleViewThread}
                           appUser={appUser}
+                          readThreadIds={readThreadIds}
                         />
                      )
                   }

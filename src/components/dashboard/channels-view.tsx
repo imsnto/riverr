@@ -107,13 +107,14 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
       content: newMessage,
       timestamp: new Date().toISOString(),
       attachments: newAttachments,
-      thread_id: replyingTo?.id,
+      thread_id: replyingTo?.thread_id || replyingTo?.id,
       reactions: [],
     }
     
     setMessages(prev => [...prev, optimisticMessage]);
     if (replyingTo) {
-      setMessages(prev => prev.map(m => m.id === replyingTo.id ? { ...m, reply_count: (m.reply_count || 0) + 1 } : m));
+        const parentId = replyingTo.thread_id || replyingTo.id;
+        setMessages(prev => prev.map(m => m.id === parentId ? { ...m, reply_count: (m.reply_count || 0) + 1 } : m));
     }
 
     setNewMessage('');
@@ -127,13 +128,14 @@ export default function ChannelsView({ channels, messages, allUsers, activeChann
             user_id: appUser.id,
             content: newMessage,
             attachments: newAttachments,
-            thread_id: replyingTo?.id,
+            thread_id: replyingTo?.thread_id || replyingTo?.id,
         });
         setMessages(prev => prev.map(m => m.id === optimisticMessage.id ? savedMessage : m));
     } catch(err) {
         setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
         if (replyingTo) {
-          setMessages(prev => prev.map(m => m.id === replyingTo.id ? { ...m, reply_count: (m.reply_count || 0) - 1 } : m));
+          const parentId = replyingTo.thread_id || replyingTo.id;
+          setMessages(prev => prev.map(m => m.id === parentId ? { ...m, reply_count: (m.reply_count || 0) - 1 } : m));
         }
         setNewMessage(newMessage); 
     }
