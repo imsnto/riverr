@@ -32,7 +32,7 @@ export interface CreateTaskFromThreadInput {
 }
 
 const CreateTaskFromThreadOutputSchema = z.object({
-  title: z.string().describe('A concise, auto-generated title for the task based on the thread summary.'),
+  title: z.string().describe('A concise, action-oriented title for the task. For example, for "Hey @Brad, can you look at the latest mockups for the homepage?", a good title would be "Review homepage mockups".'),
   description: z.string().describe('A detailed summary of the conversation and the action items.'),
   suggestedAssigneeId: z.string().optional().describe('The ID of the user suggested to be the assignee, based on who was mentioned or responded.'),
   suggestedProjectId: z.string().optional().describe('The ID of the project suggested for this task based on context.'),
@@ -66,7 +66,7 @@ Analyze the following thread content:
 ---
 
 Based on the conversation, generate a task with the following properties:
-- **Task Title:** Create a short, clear title that summarizes the main action item. If no clear action is present, use the first few words of the thread.
+- **Task Title:** Create a concise, action-oriented title that summarizes the core task. For example, for "Hey @Brad, can you look at the latest mockups for the homepage?", a good title would be "Review homepage mockups".
 - **Description:** Write a summary of the conversation, focusing on the problem and the required actions. Include the original thread content for reference.
 - **Suggested Assignee:** From the provided list of channel members, identify the best person to assign this task to. This is often the person being asked a question, who is mentioned by name, or who volunteers. Use the user's 'id' field for 'suggestedAssigneeId'. If no one is mentioned, leave it empty.
 - **Suggested Project:** From the provided list of projects, determine the most relevant project for this task based on the conversation's context. Use the project's 'id' field for 'suggestedProjectId'. If no project seems relevant, leave it empty.
