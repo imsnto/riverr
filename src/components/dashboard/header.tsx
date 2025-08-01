@@ -18,6 +18,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
 
 interface SpaceSwitcherProps {
   spaces: Space[];
@@ -77,10 +78,10 @@ function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProp
 
 export default function Header({ activeSpace, onSpaceChange, allSpaces, appUser }: { activeSpace: Space; onSpaceChange: (spaceId: string) => void; allSpaces: Space[], appUser: User | null }) {
   const router = useRouter();
+  const { signOut } = useAuth();
 
   const handleLogout = async () => {
-    // No-op since auth is removed
-    alert("Logout functionality is disabled.");
+    await signOut();
   }
 
   const getInitials = (name: string) => {

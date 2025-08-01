@@ -7,14 +7,26 @@ import { GanttChart } from 'lucide-react';
 import { useState, useEffect, Suspense } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { onAuthStateChanged } from 'firebase/auth';
 
 function LoginContent() {
   const [error, setError] = useState<string | null>(null);
-  const { status } = useAuth();
+  const [status, setStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, user => {
+      if (user) {
+        setStatus('authenticated');
+        router.push('/');
+      } else {
+        setStatus('unauthenticated');
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   useEffect(() => {
     const errorParam = searchParams.get('error');
@@ -23,17 +35,10 @@ function LoginContent() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    if (status === 'authenticated') {
-      router.push('/');
-    }
-  }, [status, router]);
-
   const handleGoogleSignIn = async () => {
     setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
-      // The onAuthStateChanged listener in AuthProvider will handle the redirect
     } catch (error: any) {
       if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
         console.error('Error signing in with Google', error);

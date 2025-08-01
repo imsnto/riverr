@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { updateUser } from '@/lib/db';
 
 const getInitials = (name: string) => {
     if (!name) return '';
@@ -17,7 +18,7 @@ const getInitials = (name: string) => {
 };
 
 export default function ProfilePage() {
-    const { appUser, setAppUser } = useAuth();
+    const { appUser, setAppUser, firebaseUser } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
     
@@ -40,19 +41,27 @@ export default function ProfilePage() {
         }
     };
     
-    const handleSaveChanges = () => {
-        if (appUser) {
-            const updatedUser = {
-                ...appUser,
+    const handleSaveChanges = async () => {
+        if (appUser && firebaseUser) {
+            const updatedUserData = {
                 name: name,
                 avatarUrl: avatar,
             };
-            setAppUser(updatedUser);
-            // Here you would also update the user in your database
-            toast({
-                title: 'Profile Updated',
-                description: 'Your profile has been successfully updated.',
-            });
+            
+            try {
+                await updateUser(firebaseUser.uid, updatedUserData);
+                setAppUser(prevUser => prevUser ? { ...prevUser, ...updatedUserData } : null);
+                toast({
+                    title: 'Profile Updated',
+                    description: 'Your profile has been successfully updated.',
+                });
+            } catch (error) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Update Failed',
+                    description: 'Could not update your profile. Please try again.',
+                });
+            }
         }
     }
 
