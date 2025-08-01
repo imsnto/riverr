@@ -3,20 +3,19 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Project, Task, TimeEntry } from '@/lib/data';
+import { Project, Task, TimeEntry, User } from '@/lib/data';
 import { CheckCircle, Clock, FolderKanban } from 'lucide-react';
 import ProjectDetailsDialog from './project-details-dialog';
-import { useAuth } from '@/hooks/use-auth';
 
 interface OverviewProps {
   projects: Project[];
   tasks: Task[];
   timeEntries: TimeEntry[];
+  appUser: User | null;
 }
 
-export default function Overview({ projects, tasks, timeEntries }: OverviewProps) {
+export default function Overview({ projects, tasks, timeEntries, appUser }: OverviewProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const { appUser } = useAuth();
 
   if (!appUser) return null;
 

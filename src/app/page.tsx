@@ -15,34 +15,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { useAuth } from '@/hooks/use-auth';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, addUser, getUser } from '@/lib/db';
-import { useRouter } from 'next/navigation';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers } from '@/lib/db';
 import { users as mockUsers } from '@/lib/data';
 
-function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { status } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
-
-  if (status === 'loading') {
-    return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
-  }
-  
-  if (status === 'authenticated') {
-    return <>{children}</>;
-  }
-
-  return <div className="flex h-screen items-center justify-center">Authenticating...</div>;
-}
-
 function Dashboard() {
-  const { firebaseUser, appUser, setAppUser } = useAuth();
+  const [appUser] = useState<User | null>(mockUsers.find(u => u.email === 'brad@riverr.app') || null);
   const [activeTab, setActiveTab] = useState('dashboard');
   
   const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -56,51 +33,24 @@ function Dashboard() {
 
   useEffect(() => {
     async function loadInitialData() {
-        if (!firebaseUser) return;
+        if (!appUser) return;
         setIsLoading(true);
 
-        let currentUser = appUser;
-        if (!currentUser) {
-            let userDoc = await getUser(firebaseUser.uid);
-            if (!userDoc) {
-                 const mockUser = mockUsers.find(u => u.email === firebaseUser.email);
-                 if (mockUser) {
-                    const newUserInfo: Omit<User, 'id'> = {
-                        name: firebaseUser.displayName || 'New User',
-                        email: firebaseUser.email!,
-                        role: mockUser.role,
-                        slack_id: '',
-                        avatarUrl: firebaseUser.photoURL || `https://placehold.co/100x100.png`,
-                    };
-                    userDoc = await addUser(newUserInfo, firebaseUser.uid);
-                    setAppUser(userDoc); // Set the newly created user in context
-                 }
-            } else {
-                 setAppUser(userDoc);
-            }
-            currentUser = userDoc;
-        }
-
-        if (currentUser) {
-            const [users, spaces] = await Promise.all([dbGetAllUsers(), dbGetAllSpaces()]);
-            setAllUsers(users);
-            setAllSpaces(spaces);
-            
-            const userSpaces = spaces.filter(s => s.members.includes(currentUser!.id));
-            if (userSpaces.length > 0) {
-              setActiveSpaceId(userSpaces[0].id);
-            } else if (spaces.length > 0) {
-              setActiveSpaceId(spaces[0].id);
-            } else {
-              setIsLoading(false);
-            }
+        const [users, spaces] = await Promise.all([dbGetAllUsers(), dbGetAllSpaces()]);
+        setAllUsers(users);
+        setAllSpaces(spaces);
+        
+        const userSpaces = spaces.filter(s => s.members.includes(appUser!.id));
+        if (userSpaces.length > 0) {
+          setActiveSpaceId(userSpaces[0].id);
+        } else if (spaces.length > 0) {
+          setActiveSpaceId(spaces[0].id);
         } else {
-            // This case should ideally not be hit if auth guard is working
-             setIsLoading(false);
+          setIsLoading(false);
         }
     }
     loadInitialData();
-  }, [firebaseUser, appUser, setAppUser]); 
+  }, [appUser]); 
 
   useEffect(() => {
     async function loadSpaceData() {
@@ -147,7 +97,7 @@ function Dashboard() {
   
   return (
     <div className="flex min-h-screen w-full flex-col bg-background font-body">
-      <Header activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={userSpaces.length > 0 ? userSpaces : allSpaces} />
+      <Header activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={userSpaces.length > 0 ? userSpaces : allSpaces} appUser={appUser} />
       <div className="flex flex-1">
         <aside className="hidden w-64 flex-col border-r bg-card p-4 md:flex">
           <nav className="flex flex-col gap-2">
@@ -186,11 +136,11 @@ function Dashboard() {
                <>
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2">
-                      <Overview projects={projects} tasks={tasks} timeEntries={timeEntries} />
+                      <Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} />
                     </div>
                     <div className="flex flex-col gap-6">
-                      <Timer tasks={tasks} />
-                      <ManualTimeEntry projects={projects} tasks={tasks} />
+                      <Timer tasks={tasks} appUser={appUser} />
+                      <ManualTimeEntry projects={projects} tasks={tasks} appUser={appUser}/>
                     </div>
                   </div>
                   <div className="mt-6">
@@ -216,7 +166,7 @@ function Dashboard() {
                       <TabsTrigger value="users">Users</TabsTrigger>
                     </TabsList>
                     <TabsContent value="spaces">
-                     {isLoading ? <div className="flex justify-center items-center h-full">Loading spaces...</div> : <SpaceSettings allSpaces={allSpaces} allUsers={allUsers} setSpaces={setAllSpaces} />}
+                     {isLoading ? <div className="flex justify-center items-center h-full">Loading spaces...</div> : <SpaceSettings allSpaces={allSpaces} allUsers={allUsers} setSpaces={setAllSpaces} appUser={appUser} />}
                     </TabsContent>
                     <TabsContent value="users">
                      {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings />}
@@ -240,8 +190,6 @@ const NAV_ITEMS = [
 
 export default function DashboardPage() {
     return (
-        <AuthGuard>
-            <Dashboard />
-        </AuthGuard>
+        <Dashboard />
     )
 }

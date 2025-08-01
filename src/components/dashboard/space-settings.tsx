@@ -10,7 +10,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import SpaceFormDialog from './space-form-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
 
 const getInitials = (name: string) => {
   return name.split(' ').map(n => n[0]).join('');
@@ -20,13 +19,13 @@ interface SpaceSettingsProps {
     allSpaces: Space[];
     allUsers: User[];
     setSpaces: (spaces: Space[]) => void;
+    appUser: User | null;
 }
 
-export default function SpaceSettings({ allSpaces, allUsers, setSpaces }: SpaceSettingsProps) {
+export default function SpaceSettings({ allSpaces, allUsers, setSpaces, appUser }: SpaceSettingsProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
   const { toast } = useToast();
-  const { appUser } = useAuth();
 
   const handleCreateNew = () => {
     setSelectedSpace(null);

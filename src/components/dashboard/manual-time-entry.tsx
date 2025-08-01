@@ -7,19 +7,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Project, Task } from '@/lib/data';
+import { Project, Task, User } from '@/lib/data';
 import { Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
 
 interface ManualTimeEntryProps {
   projects: Project[];
   tasks: Task[];
+  appUser: User | null;
 }
 
-export default function ManualTimeEntry({ projects, tasks }: ManualTimeEntryProps) {
+export default function ManualTimeEntry({ projects, tasks, appUser }: ManualTimeEntryProps) {
   const { toast } = useToast();
-  const { appUser } = useAuth();
   
   if (!appUser) return null;
 

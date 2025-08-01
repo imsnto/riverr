@@ -14,7 +14,6 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Bot, Calendar, CircleDot, Clock, Flag, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight, Paperclip, File, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
 
 const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
@@ -76,7 +75,7 @@ interface TaskDetailsDialogProps {
 
 export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdateTask }: TaskDetailsDialogProps) {
     const { toast } = useToast();
-    const { appUser } = useAuth();
+    const appUser = users.find(u => u.email === 'brad@riverr.app');
     const [attachments, setAttachments] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     

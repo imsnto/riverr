@@ -11,14 +11,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Space } from '@/lib/data';
-import { LifeBuoy, LogOut, User, ChevronsUpDown, Check } from 'lucide-react';
+import { Space, User } from '@/lib/data';
+import { LifeBuoy, LogOut, User as UserIcon, ChevronsUpDown, Check } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
 import React from 'react';
-import { useAuth } from '@/hooks/use-auth';
-import { signOut, auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 
 interface SpaceSwitcherProps {
@@ -77,13 +75,12 @@ function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProp
 }
 
 
-export default function Header({ activeSpace, onSpaceChange, allSpaces }: { activeSpace: Space; onSpaceChange: (spaceId: string) => void; allSpaces: Space[] }) {
-  const { appUser } = useAuth();
+export default function Header({ activeSpace, onSpaceChange, allSpaces, appUser }: { activeSpace: Space; onSpaceChange: (spaceId: string) => void; allSpaces: Space[], appUser: User | null }) {
   const router = useRouter();
 
   const handleLogout = async () => {
-    await signOut(auth);
-    router.push('/login');
+    // No-op since auth is removed
+    alert("Logout functionality is disabled.");
   }
 
   const getInitials = (name: string) => {
@@ -123,7 +120,7 @@ export default function Header({ activeSpace, onSpaceChange, allSpaces }: { acti
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => router.push('/profile')}>
-              <User className="mr-2 h-4 w-4" />
+              <UserIcon className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
             <DropdownMenuItem>
