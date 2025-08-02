@@ -19,86 +19,78 @@ import * as mockData from './data';
 
 // --- User Management ---
 export const getUser = async (userId: string): Promise<mockData.User | null> => {
-  // This is a mock implementation
-  return mockData.users.find(u => u.id === userId) || null;
+  const userDoc = await getDoc(doc(db, 'users', userId));
+  return userDoc.exists() ? ({ id: userDoc.id, ...userDoc.data() } as mockData.User) : null;
 };
 
 export const getUserByEmail = async (email: string): Promise<mockData.User | null> => {
-    // This is a mock implementation
-    return mockData.users.find(u => u.email === email) || null;
+    const q = query(collection(db, 'users'), where("email", "==", email));
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) return null;
+    const userDoc = querySnapshot.docs[0];
+    return { id: userDoc.id, ...userDoc.data() } as mockData.User;
 }
 
 export const addUser = async (user: Omit<mockData.User, 'id'>, uid: string): Promise<mockData.User> => {
-  // This is a mock implementation
-  const newUser = { ...user, id: uid };
-  mockData.users.push(newUser);
-  return newUser;
+  const newUser = { ...user };
+  await setDoc(doc(db, 'users', uid), newUser);
+  return { ...newUser, id: uid };
 };
 
 export const updateUser = async (userId: string, data: Partial<mockData.User>): Promise<void> => {
-    // This is a mock implementation
-    const userIndex = mockData.users.findIndex(u => u.id === userId);
-    if (userIndex !== -1) {
-        mockData.users[userIndex] = { ...mockData.users[userIndex], ...data };
-    }
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, data);
 }
 
 // --- Invite Management ---
 export const addInvite = async (invite: mockData.Invite): Promise<void> => {
-    // In a real app, this would write to Firestore.
-    // For now, we'll just log it to show it's being called.
-    console.log("Invite added (mock):", invite);
+    // Use the email as the document ID for easy lookup
+    await setDoc(doc(db, 'invites', invite.email), invite);
 }
 
 export const getInvite = async(email: string): Promise<mockData.Invite | null> => {
-    // In a real app, this would query Firestore.
-    // For this mock, let's pretend no invites exist yet.
-    return null;
+    const inviteDoc = await getDoc(doc(db, 'invites', email));
+    return inviteDoc.exists() ? (inviteDoc.data() as mockData.Invite) : null;
 }
 
 export const deleteInvite = async (email: string): Promise<void> => {
-    // In a real app, this would delete from Firestore.
-    console.log("Invite deleted (mock):", email);
+    await deleteDoc(doc(db, 'invites', email));
 }
 
 
 // --- Space Management ---
 export const getSpacesForUser = async (userId: string): Promise<mockData.Space[]> => {
-  // This is a mock implementation
-  return mockData.spaces.filter(s => s.members.includes(userId));
+  const q = query(collection(db, 'spaces'), where('members', 'array-contains', userId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as mockData.Space));
 };
 
 export const getAllSpaces = async (): Promise<mockData.Space[]> => {
-    // This is a mock implementation
-    return mockData.spaces;
+    const querySnapshot = await getDocs(collection(db, 'spaces'));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as mockData.Space));
 }
 
 export const addSpace = async (space: Omit<mockData.Space, 'id'>) => {
-    const newId = `space-${Date.now()}`;
-    mockData.spaces.push({ ...space, id: newId });
-    return newId;
+    const docRef = await addDoc(collection(db, 'spaces'), space);
+    return docRef.id;
 }
 
 export const updateSpace = async (spaceId: string, data: Partial<mockData.Space>): Promise<void> => {
-    const spaceIndex = mockData.spaces.findIndex(s => s.id === spaceId);
-    if (spaceIndex !== -1) {
-        mockData.spaces[spaceIndex] = { ...mockData.spaces[spaceIndex], ...data };
-    }
+    const spaceRef = doc(db, 'spaces', spaceId);
+    await updateDoc(spaceRef, data);
 }
 
 export const addMemberToSpaces = async (spaceIds: string[], userId: string): Promise<void> => {
-    // This is a mock implementation
+    const batch = writeBatch(db);
     spaceIds.forEach(spaceId => {
-        const space = mockData.spaces.find(s => s.id === spaceId);
-        if (space && !space.members.includes(userId)) {
-            space.members.push(userId);
-        }
-    })
+        const spaceRef = doc(db, 'spaces', spaceId);
+        batch.update(spaceRef, { members: arrayUnion(userId) });
+    });
+    await batch.commit();
 }
 
 export const deleteSpace = async (spaceId: string): Promise<void> => {
-    const index = mockData.spaces.findIndex(s => s.id === spaceId);
-    if (index !== -1) mockData.spaces.splice(index, 1);
+    await deleteDoc(doc(db, 'spaces', spaceId));
 }
 
 // --- Project Management ---
@@ -172,5 +164,6 @@ export const addMessage = async(message: Omit<mockData.Message, 'id' | 'timestam
 
 // --- Generic User Data ---
 export const getAllUsers = async (): Promise<mockData.User[]> => {
-    return mockData.users;
+    const querySnapshot = await getDocs(collection(db, 'users'));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as mockData.User));
 }
