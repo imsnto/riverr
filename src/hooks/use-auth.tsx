@@ -30,27 +30,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setFirebaseUser(user);
-        let userProfile = await getUser(user.uid);
-        
-        if (!userProfile) {
-          // This is a new user, check for an invite
-          const invite = user.email ? await getInvite(user.email) : null;
-          const newUser: Omit<AppUser, 'id'> = {
-            name: user.displayName || 'New User',
-            email: user.email!,
-            role: invite ? invite.role : 'Member', // Default to 'Member' if no invite
-            slack_id: '',
-            avatarUrl: user.photoURL || `https://placehold.co/100x100?text=${user.displayName?.[0] || 'U'}`,
-          };
-          userProfile = await addUser(newUser, user.uid);
-
-          if (invite) {
-            await addMemberToSpaces(invite.spaces, user.uid);
-            await deleteInvite(invite.email);
-          }
+        const userProfile = await getUser(user.uid);
+        if (userProfile) {
+          setAppUser(userProfile);
         }
-
-        setAppUser(userProfile);
+        // If no userProfile, we'll handle it on sign-in.
+        // This handles the case of a returning, already authenticated user.
         setStatus('authenticated');
       } else {
         setFirebaseUser(null);
@@ -67,9 +52,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      
+      // Now that sign-in is complete, interact with Firestore
+      let userProfile = await getUser(user.uid);
+      if (!userProfile) {
+        // This is a new user, check for an invite
+        const invite = user.email ? await getInvite(user.email) : null;
+        const newUser: Omit<AppUser, 'id'> = {
+          name: user.displayName || 'New User',
+          email: user.email!,
+          role: invite ? invite.role : 'Member', // Default to 'Member' if no invite
+          slack_id: '',
+          avatarUrl: user.photoURL || `https://placehold.co/100x100?text=${user.displayName?.[0] || 'U'}`,
+        };
+        userProfile = await addUser(newUser, user.uid);
+
+        if (invite) {
+          await addMemberToSpaces(invite.spaces, user.uid);
+          await deleteInvite(invite.email);
+        }
+      }
+      setAppUser(userProfile);
+      setStatus('authenticated');
+
     } catch (error) {
       console.error("Error signing in with Google: ", error);
+      setStatus('unauthenticated');
     }
   };
 
