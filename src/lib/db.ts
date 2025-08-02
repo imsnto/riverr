@@ -1,5 +1,4 @@
 
-
 // src/lib/db.ts
 import {
   collection,
@@ -20,20 +19,24 @@ import * as mockData from './data';
 
 // --- User Management ---
 export const getUser = async (userId: string): Promise<mockData.User | null> => {
+  // This is a mock implementation
   return mockData.users.find(u => u.id === userId) || null;
 };
 
 export const getUserByEmail = async (email: string): Promise<mockData.User | null> => {
+    // This is a mock implementation
     return mockData.users.find(u => u.email === email) || null;
 }
 
 export const addUser = async (user: Omit<mockData.User, 'id'>, uid: string): Promise<mockData.User> => {
+  // This is a mock implementation
   const newUser = { ...user, id: uid };
   mockData.users.push(newUser);
   return newUser;
 };
 
 export const updateUser = async (userId: string, data: Partial<mockData.User>): Promise<void> => {
+    // This is a mock implementation
     const userIndex = mockData.users.findIndex(u => u.id === userId);
     if (userIndex !== -1) {
         mockData.users[userIndex] = { ...mockData.users[userIndex], ...data };
@@ -42,24 +45,31 @@ export const updateUser = async (userId: string, data: Partial<mockData.User>): 
 
 // --- Invite Management ---
 export const addInvite = async (invite: mockData.Invite): Promise<void> => {
+    // In a real app, this would write to Firestore.
+    // For now, we'll just log it to show it's being called.
     console.log("Invite added (mock):", invite);
 }
 
 export const getInvite = async(email: string): Promise<mockData.Invite | null> => {
+    // In a real app, this would query Firestore.
+    // For this mock, let's pretend no invites exist yet.
     return null;
 }
 
 export const deleteInvite = async (email: string): Promise<void> => {
+    // In a real app, this would delete from Firestore.
     console.log("Invite deleted (mock):", email);
 }
 
 
 // --- Space Management ---
 export const getSpacesForUser = async (userId: string): Promise<mockData.Space[]> => {
+  // This is a mock implementation
   return mockData.spaces.filter(s => s.members.includes(userId));
 };
 
 export const getAllSpaces = async (): Promise<mockData.Space[]> => {
+    // This is a mock implementation
     return mockData.spaces;
 }
 
@@ -77,6 +87,7 @@ export const updateSpace = async (spaceId: string, data: Partial<mockData.Space>
 }
 
 export const addMemberToSpaces = async (spaceIds: string[], userId: string): Promise<void> => {
+    // This is a mock implementation
     spaceIds.forEach(spaceId => {
         const space = mockData.spaces.find(s => s.id === spaceId);
         if (space && !space.members.includes(userId)) {
@@ -92,17 +103,20 @@ export const deleteSpace = async (spaceId: string): Promise<void> => {
 
 // --- Project Management ---
 export const getProjectsInSpace = async (spaceId: string): Promise<mockData.Project[]> => {
+    // This is a mock implementation
     return mockData.projects.filter(p => p.space_id === spaceId);
 }
 
 
 // --- Task Management ---
 export const getTasksInProject = async (projectId: string): Promise<mockData.Task[]> => {
+    // This is a mock implementation
     return mockData.tasks.filter(t => t.project_id === projectId);
 }
 
 export const getTasksInSpace = async (projectIds: string[]): Promise<mockData.Task[]> => {
     if (projectIds.length === 0) return [];
+    // This is a mock implementation
     return mockData.tasks.filter(t => projectIds.includes(t.project_id));
 }
 

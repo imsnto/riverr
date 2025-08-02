@@ -142,7 +142,8 @@ function Dashboard() {
   };
 
   const handleUpdateActiveSpace = async (updatedSpace: Partial<Space>) => {
-      const newActiveSpace = { ...activeSpace!, ...updatedSpace };
+      if (!activeSpace) return;
+      const newActiveSpace = { ...activeSpace, ...updatedSpace };
       setAllSpaces(allSpaces.map(s => s.id === activeSpaceId ? newActiveSpace : s));
       await dbUpdateSpace(activeSpaceId, updatedSpace);
   }
