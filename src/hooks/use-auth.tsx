@@ -10,9 +10,13 @@ import { getUser, addUser, getInvite, deleteInvite, addMemberToSpaces } from '@/
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
+const LOCAL_STORAGE_KEY = 'timeflow_user';
+
+
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   appUser: AppUser | null;
+  isAdmin: boolean;
   status: AuthStatus;
   setAppUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
   signOut: () => Promise<void>;
@@ -25,27 +29,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
-  
+
   useEffect(() => {
+    // Try to load user from localStorage on initial load
+    const cachedUser = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (cachedUser) {
+        try {
+            const parsedUser = JSON.parse(cachedUser);
+            setAppUser(parsedUser);
+            setStatus('authenticated'); // Assume authenticated if cached, will be verified by onAuthStateChanged
+        } catch (e) {
+            console.error("Failed to parse cached user", e);
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+        }
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setFirebaseUser(user);
       if (user) {
-        setFirebaseUser(user);
+        // User is signed in, get their ID token and set it as a cookie
+        const token = await user.getIdToken();
+        document.cookie = `token=${token}; path=/; max-age=3600`; // 1 hour expiry
+
         const userProfile = await getUser(user.uid);
         if (userProfile) {
           setAppUser(userProfile);
-          setStatus('authenticated');
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userProfile));
         } else {
-           // This can happen if the user exists in Firebase Auth but not in Firestore DB.
-           // We will let signInWithGoogle handle the creation.
-           // Setting status to unauthenticated will show the login page.
-           setStatus('unauthenticated');
+            // This case might happen if user exists in Auth but not Firestore. 
+            // We'll let signInWithGoogle handle creation.
+            // For an existing session, this could be an error state.
+             await handleSignOut();
+             return;
         }
+        setStatus('authenticated');
       } else {
+        // User is signed out
         setFirebaseUser(null);
         setAppUser(null);
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
+        document.cookie = 'token=; Max-Age=0; path=/;'; // Clear cookie on sign out
         setStatus('unauthenticated');
       }
     });
+
     return () => unsubscribe();
   }, []);
 
@@ -54,6 +81,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setFirebaseUser(null);
     setAppUser(null);
     setStatus('unauthenticated');
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    document.cookie = 'token=; Max-Age=0; path=/;';
   }
 
   const signInWithGoogle = async () => {
@@ -71,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email: user.email!,
           role: invite ? invite.role : 'Member',
           slack_id: '',
-          avatarUrl: user.photoURL || `https://placehold.co/100x100?text=${user.displayName?.[0] || 'U'}`,
+          avatarUrl: user.photoURL || `https://placehold.co/100x100.png?text=${user.displayName?.[0] || 'U'}`,
         };
         userProfile = await addUser(newUser, user.uid);
 
@@ -81,8 +110,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       
+      const token = await user.getIdToken();
+      document.cookie = `token=${token}; path=/; max-age=3600`;
+
       setFirebaseUser(user);
       setAppUser(userProfile);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userProfile));
       setStatus('authenticated');
 
     } catch (error) {
@@ -92,9 +125,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
   };
+  
+  const isAdmin = !!appUser && (appUser.role === 'Admin');
 
   return (
-    <AuthContext.Provider value={{ firebaseUser, appUser, status, setAppUser, signOut: handleSignOut, signInWithGoogle }}>
+    <AuthContext.Provider value={{ firebaseUser, appUser, isAdmin, status, setAppUser, signOut: handleSignOut, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );
@@ -107,5 +142,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    

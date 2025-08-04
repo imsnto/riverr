@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FolderKanban, GanttChart, MessageSquare, Settings, Users, MessageCircleMore } from 'lucide-react';
+import { FolderKanban, GanttChart, MessageSquare, Settings, Users, MessageCircleMore, ShieldCheck } from 'lucide-react';
 import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message, Status, Invite } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
@@ -27,11 +27,14 @@ import CreateTaskFromThreadDialog from '@/components/dashboard/create-task-from-
 import ThreadView from '@/components/dashboard/thread-view';
 import AllThreadsView from '@/components/dashboard/all-threads-view';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+import AdminSettings from './admin/page';
 
 
 export default function Dashboard() {
-  const { appUser } = useAuth();
+  const { appUser, isAdmin } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [activeTab, setActiveTab] = useState('dashboard');
   
@@ -119,7 +122,7 @@ export default function Dashboard() {
             const [tasksInSpace, timeEntriesInSpace, meetingLogsInSpace] = await Promise.all([
                 dbGetTasks(projectIds),
                 dbGetTimeEntries(projectIds),
-                dbGetSlackLogs(activeSpaceId), // Use spaceId to get unassigned logs in that space context
+                dbGetSlackMeetingLogsInSpace(activeSpaceId), // Use spaceId to get unassigned logs in that space context
             ]);
             setTasks(tasksInSpace);
             setTimeEntries(timeEntriesInSpace);
@@ -241,6 +244,22 @@ export default function Dashboard() {
   });
   const hasUnreadThreads = userInvolvedThreads.some(t => !readThreadIds.has(t.id));
 
+  const handleNavClick = (tabId: string) => {
+      if (tabId === 'admin') {
+          router.push('/admin');
+      } else {
+          setActiveTab(tabId);
+      }
+  }
+
+  const NAV_ITEMS = [
+    { id: 'dashboard', label: 'Dashboard', icon: GanttChart },
+    { id: 'tasks', label: 'Task Board', icon: FolderKanban },
+    { id: 'channels', label: 'Channels', icon: MessageSquare },
+    { id: 'timesheets', label: 'Team Timesheets', icon: Users, adminOnly: true },
+    { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
+    { id: 'admin', label: 'Admin Panel', icon: ShieldCheck, adminOnly: true },
+  ];
 
   return (
     <TooltipProvider>
@@ -251,7 +270,7 @@ export default function Dashboard() {
           <aside className="hidden w-20 flex-col items-center border-r bg-card p-4 md:flex">
             <nav className="flex flex-col items-center gap-4">
               {NAV_ITEMS.map(item => {
-                if (item.adminOnly && (!appUser || appUser.role !== 'Admin')) {
+                if (item.adminOnly && !isAdmin) {
                   return null;
                 }
                 return (
@@ -259,7 +278,7 @@ export default function Dashboard() {
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
-                        onClick={() => setActiveTab(item.id)}
+                        onClick={() => handleNavClick(item.id)}
                         className={cn(
                           "w-10 h-10 rounded-lg",
                           activeTab === item.id && 'bg-primary/10 text-primary'
@@ -406,12 +425,12 @@ export default function Dashboard() {
                 {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard tasks={tasks} onUpdateTasks={handleUpdateTasks} projects={projects} activeSpace={activeSpace} allUsers={allUsers} onUpdateActiveSpace={handleUpdateActiveSpace} />}
                 </div>
               )}
-              {appUser.role === 'Admin' && activeTab === 'timesheets' && (
+              {isAdmin && activeTab === 'timesheets' && (
                   <div className="p-4 md:p-8">
                   {isLoading ? <div className="flex justify-center items-center h-full">Loading timesheets...</div> : <TeamTimesheets timeEntries={timeEntries} projects={projects} tasks={tasks} space={activeSpace} allUsers={allUsers} />}
                   </div>
               )}
-              {appUser.role === 'Admin' && activeTab === 'settings' && (
+              {isAdmin && activeTab === 'settings' && (
                   <div className="p-4 md:p-8">
                       <h1 className="text-2xl font-bold mb-4">Settings</h1>
                       <Tabs defaultValue="spaces" className="w-full">
@@ -447,17 +466,5 @@ export default function Dashboard() {
     </TooltipProvider>
   );
 }
-
-const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: GanttChart },
-  { id: 'tasks', label: 'Task Board', icon: FolderKanban },
-  { id: 'channels', label: 'Channels', icon: MessageSquare },
-  { id: 'timesheets', label: 'Team Timesheets', icon: Users, adminOnly: true },
-  { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
-];
-
-    
-
-    
 
     
