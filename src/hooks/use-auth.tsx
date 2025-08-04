@@ -30,13 +30,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setFirebaseUser(user);
+        // This is for returning users.
         const userProfile = await getUser(user.uid);
         if (userProfile) {
           setAppUser(userProfile);
+          setStatus('authenticated');
+        } else {
+          // If the user is authenticated with Firebase but has no profile in our DB,
+          // it's an inconsistent state. This can happen if the DB entry was deleted
+          // manually. Signing them out is the safest course of action.
+           setStatus('loading'); // Stay in loading while we decide
+           const invite = user.email ? await getInvite(user.email) : null;
+           if (invite) {
+             // This is a new user signing up who was invited.
+             await signInWithGoogle(true); // pass a flag to indicate this is part of the initial check
+           } else {
+             // A returning user with no DB record and no invite. Sign them out.
+             console.warn("User exists in Firebase Auth but not in DB. Forcing sign-out.");
+             await firebaseSignOut(auth);
+             setStatus('unauthenticated');
+           }
         }
-        // If no userProfile, we'll handle it on sign-in.
-        // This handles the case of a returning, already authenticated user.
-        setStatus('authenticated');
       } else {
         setFirebaseUser(null);
         setAppUser(null);
@@ -50,20 +64,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await firebaseSignOut(auth);
   }
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (isInitialCheck = false) => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      // If called from the onAuthStateChanged listener, we don't need to show the popup again.
+      const result = isInitialCheck && auth.currentUser 
+        ? { user: auth.currentUser } 
+        : await signInWithPopup(auth, googleProvider);
+        
       const user = result.user;
       
-      // Now that sign-in is complete, interact with Firestore
       let userProfile = await getUser(user.uid);
       if (!userProfile) {
-        // This is a new user, check for an invite
         const invite = user.email ? await getInvite(user.email) : null;
         const newUser: Omit<AppUser, 'id'> = {
           name: user.displayName || 'New User',
           email: user.email!,
-          role: invite ? invite.role : 'Member', // Default to 'Member' if no invite
+          role: invite ? invite.role : 'Member',
           slack_id: '',
           avatarUrl: user.photoURL || `https://placehold.co/100x100?text=${user.displayName?.[0] || 'U'}`,
         };
@@ -74,12 +90,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           await deleteInvite(invite.email);
         }
       }
+      setFirebaseUser(user);
       setAppUser(userProfile);
       setStatus('authenticated');
 
     } catch (error) {
       console.error("Error signing in with Google: ", error);
-      setStatus('unauthenticated');
+      // Don't set to unauthenticated if the popup is closed by the user
+      // This check might need to be more sophisticated based on error codes
+      if (status !== 'authenticated') {
+          setStatus('unauthenticated');
+      }
     }
   };
 

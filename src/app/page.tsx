@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -27,6 +28,8 @@ export default function RootPage() {
         return <Dashboard />;
     }
 
+    // This state can be reached briefly while the initial user check is happening.
+    // Or if there's an issue fetching the user profile after auth.
     return (
        <div className="flex h-screen items-center justify-center">
             <p>Loading...</p>
