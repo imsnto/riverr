@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FolderKanban, GanttChart, MessageSquare, Settings, Users, MessageCircleMore } from 'lucide-react';
-import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message, Status } from '@/lib/data';
+import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message, Status, Invite } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
 import TaskBoard from '@/components/dashboard/task-board';
@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, updateTask, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, updateTask, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, addInvite as dbAddInvite } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -26,10 +26,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import CreateTaskFromThreadDialog from '@/components/dashboard/create-task-from-thread-dialog';
 import ThreadView from '@/components/dashboard/thread-view';
 import AllThreadsView from '@/components/dashboard/all-threads-view';
+import { useToast } from '@/hooks/use-toast';
 
 
 export default function Dashboard() {
   const { appUser } = useAuth();
+  const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState('dashboard');
   
@@ -85,7 +87,7 @@ export default function Dashboard() {
           setAllSpaces([createdSpace]);
           setActiveSpaceId(newSpaceId);
         }
-        setIsLoading(false); // <--- THIS WAS THE MISSING PIECE
+        setIsLoading(false);
     }
     loadInitialData();
   }, [appUser]); 
@@ -117,7 +119,7 @@ export default function Dashboard() {
             const [tasksInSpace, timeEntriesInSpace, meetingLogsInSpace] = await Promise.all([
                 dbGetTasks(projectIds),
                 dbGetTimeEntries(projectIds),
-                dbGetSlackLogs(projectIds),
+                dbGetSlackLogs(activeSpaceId), // Use spaceId to get unassigned logs in that space context
             ]);
             setTasks(tasksInSpace);
             setTimeEntries(timeEntriesInSpace);
@@ -192,6 +194,23 @@ export default function Dashboard() {
   const handleDeleteSpace = async (spaceId: string) => {
       await dbDeleteSpace(spaceId);
       setAllSpaces(allSpaces.filter(s => s.id !== spaceId));
+  }
+
+  const handleInviteUser = async (values: Invite) => {
+    try {
+        await dbAddInvite(values);
+        toast({
+            title: 'User Invited',
+            description: `${values.email} has been invited. They will get access once they sign in.`
+        });
+    } catch (error) {
+        console.error("Error inviting user: ", error);
+        toast({
+            variant: 'destructive',
+            title: 'Invite Failed',
+            description: 'Could not send the invitation. Please try again.'
+        });
+    }
   }
 
 
@@ -402,7 +421,7 @@ export default function Dashboard() {
                           {isLoading ? <div className="flex justify-center items-center h-full">Loading spaces...</div> : <SpaceSettings allSpaces={allSpaces} allUsers={allUsers} onSave={handleSaveSpace} onDelete={handleDeleteSpace} appUser={appUser} />}
                           </TabsContent>
                           <TabsContent value="users">
-                          {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings />}
+                          {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings allUsers={allUsers} allSpaces={allSpaces} onInviteUser={handleInviteUser} appUser={appUser} />}
                           </TabsContent>
                       </Tabs>
                   </div>
@@ -434,3 +453,5 @@ const NAV_ITEMS = [
   { id: 'timesheets', label: 'Team Timesheets', icon: Users, adminOnly: true },
   { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
 ];
+
+    

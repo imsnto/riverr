@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User, Space, Invite } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,60 +12,23 @@ import { MoreHorizontal, Plus, Edit, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import InviteUserDialog from './invite-user-dialog';
-import { getAllUsers, addInvite, getAllSpaces } from '@/lib/db';
 
 const getInitials = (name: string) => {
   if (!name) return '';
   return name.split(' ').map(n => n[0]).join('');
 };
 
-interface InviteFormValues {
-    email: string;
-    role: 'Admin' | 'Member';
-    spaces: string[];
+interface UserSettingsProps {
+    allUsers: User[];
+    allSpaces: Space[];
+    onInviteUser: (values: Invite) => void;
+    appUser: User | null;
 }
 
-export default function UserSettings() {
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [allSpaces, setAllSpaces] = useState<Space[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function UserSettings({ allUsers: initialUsers, allSpaces, onInviteUser, appUser }: UserSettingsProps) {
+  const [allUsers, setAllUsers] = useState<User[]>(initialUsers);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const { toast } = useToast();
-
-  const fetchUsersAndSpaces = async () => {
-    setLoading(true);
-    const [users, spaces] = await Promise.all([getAllUsers(), getAllSpaces()]);
-    setAllUsers(users);
-    setAllSpaces(spaces);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    fetchUsersAndSpaces();
-  }, [])
-
-  const handleInviteUser = async (values: InviteFormValues) => {
-    try {
-        const newInvite: Invite = {
-            email: values.email,
-            role: values.role,
-            spaces: values.spaces
-        };
-        await addInvite(newInvite);
-        toast({
-            title: 'User Invited',
-            description: `${values.email} has been invited. They will get access once they sign in.`
-        });
-        // We don't re-fetch users here because the user is only invited, not created yet.
-    } catch (error) {
-        console.error("Error inviting user: ", error);
-        toast({
-            variant: 'destructive',
-            title: 'Invite Failed',
-            description: 'Could not send the invitation. Please try again.'
-        });
-    }
-  }
 
   const handleRemoveUser = (userId: string) => {
     // In a real app, you'd call a DB function here.
@@ -77,10 +40,6 @@ export default function UserSettings() {
         title: 'User Removed',
         description: `${userToRemove?.name || 'The user'} has been removed from the list.`
     })
-  }
-
-  if (loading) {
-    return <div>Loading user settings...</div>
   }
 
   return (
@@ -130,23 +89,25 @@ export default function UserSettings() {
                                 <span className="font-mono text-xs">{user.slack_id || 'N/A'}</span>
                             </TableCell>
                             <TableCell className="text-right">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon">
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem disabled>
-                                            <Edit className="mr-2 h-4 w-4" />
-                                            Edit Role
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleRemoveUser(user.id)} className="text-destructive">
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Remove User
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                {user.id !== appUser?.id && (
+                                     <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon">
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem disabled>
+                                                <Edit className="mr-2 h-4 w-4" />
+                                                Edit Role
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleRemoveUser(user.id)} className="text-destructive">
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Remove User
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                )}
                             </TableCell>
                         </TableRow>
                     ))}
@@ -158,9 +119,11 @@ export default function UserSettings() {
         <InviteUserDialog 
             isOpen={isInviteDialogOpen}
             onOpenChange={setIsInviteDialogOpen}
-            onInvite={handleInviteUser}
+            onInvite={onInviteUser}
             allSpaces={allSpaces}
         />
     </>
   );
 }
+
+    
