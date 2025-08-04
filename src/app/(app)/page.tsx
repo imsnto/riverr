@@ -73,12 +73,19 @@ export default function Dashboard() {
           const newSpace: Omit<Space, 'id'> = {
             name: `${appUser.name}'s Space`,
             members: [appUser.id],
+            statuses: [
+                { name: 'Backlog', color: '#6b7280' },
+                { name: 'In Progress', color: '#3b82f6' },
+                { name: 'Review', color: '#f59e0b' },
+                { name: 'Done', color: '#22c55e' },
+            ]
           };
           const newSpaceId = await dbAddSpace(newSpace);
           const createdSpace = { ...newSpace, id: newSpaceId };
           setAllSpaces([createdSpace]);
           setActiveSpaceId(newSpaceId);
         }
+        setIsLoading(false); // <--- THIS WAS THE MISSING PIECE
     }
     loadInitialData();
   }, [appUser]); 
