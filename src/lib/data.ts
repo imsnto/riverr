@@ -54,6 +54,7 @@ export interface Task {
   activities: Activity[];
   comments: Comment[];
   attachments?: Attachment[];
+  linked_task_id?: string;
 }
 
 export interface Activity {
@@ -144,10 +145,10 @@ const defaultStatuses: Status[] = [
 // MOCK DATA - This data can be used to seed the database.
 
 export const users: User[] = [
-  { id: 'user-1', name: 'Brad', email: 'brad@riverr.app', role: 'Admin', slack_id: 'U12345', avatarUrl: 'https://placehold.co/100x100?text=B' },
-  { id: 'user-2', name: 'Alice', email: 'alice@example.com', role: 'Member', slack_id: 'U67890', avatarUrl: 'https://placehold.co/100x100?text=A' },
-  { id: 'user-3', name: 'Charlie', email: 'charlie@example.com', role: 'Member', slack_id: 'U13579', avatarUrl: 'https://placehold.co/100x100?text=C' },
-  { id: 'user-4', name: 'Diana', email: 'diana@example.com', role: 'Admin', slack_id: 'U24680', avatarUrl: 'https://placehold.co/100x100?text=D' }
+  { id: 'user-1', name: 'Brad', email: 'brad@riverr.app', role: 'Admin', slack_id: 'U12345', avatarUrl: 'https://placehold.co/100x100.png' },
+  { id: 'user-2', name: 'Alice', email: 'alice@example.com', role: 'Member', slack_id: 'U67890', avatarUrl: 'https://placehold.co/100x100.png' },
+  { id: 'user-3', name: 'Charlie', email: 'charlie@example.com', role: 'Member', slack_id: 'U13579', avatarUrl: 'https://placehold.co/100x100.png' },
+  { id: 'user-4', name: 'Diana', email: 'diana@example.com', role: 'Admin', slack_id: 'U24680', avatarUrl: 'https://placehold.co/100x100.png' }
 ];
 
 export const spaces: Space[] = [
@@ -189,12 +190,12 @@ export const tasks: Task[] = [
         comment: 'How is this going? Can you upload the latest designs?',
         timestamp: '2024-08-01T10:00:00Z',
         attachments: [
-          { id: 'att-1', name: 'wireframe-v1.png', url: 'https://placehold.co/600x400.png', type: 'image', "data-ai-hint": "wireframe" }
+          { id: 'att-1', name: 'wireframe-v1.png', url: 'https://placehold.co/600x400.png', type: 'image' }
         ]
       },
     ],
     attachments: [
-      { id: 'att-1', name: 'wireframe-v1.png', url: 'https://placehold.co/600x400.png', type: 'image', "data-ai-hint": "wireframe" }
+      { id: 'att-1', name: 'wireframe-v1.png', url: 'https://placehold.co/600x400.png', type: 'image' }
     ]
   },
   {
@@ -380,3 +381,5 @@ export const messages: Message[] = [
   { id: 'msg-5', channel_id: 'chan-5', user_id: 'user-4', content: 'I\'m going hiking this weekend, can\'t wait!', timestamp: '2024-08-02T14:00:00Z', reactions: [], reply_count: 0 },
   { id: 'msg-6', channel_id: 'chan-6', user_id: 'user-2', content: 'Just sent the weekly update to Client X.', timestamp: '2024-08-03T17:00:00Z', reactions: [], reply_count: 0 },
 ];
+
+    

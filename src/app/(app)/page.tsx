@@ -146,14 +146,16 @@ export default function Dashboard() {
     
     if (selectedMessageForTask) {
       const updatedMessage = { ...selectedMessageForTask, linked_task_id: newTask.id };
-      // TODO: Update message in DB
-      setMessages(prevMessages => 
-        prevMessages.map(msg => 
-          msg.id === selectedMessageForTask.id 
-            ? updatedMessage
-            : msg
-        )
+      
+      const newMessages = messages.map(msg => 
+        msg.id === selectedMessageForTask.id 
+          ? updatedMessage
+          : msg
       );
+      setMessages(newMessages);
+
+      // In a real app, you would also update the message in the database here
+      // For example: await updateMessage(updatedMessage.id, { linked_task_id: newTask.id });
     }
   }
 
@@ -227,7 +229,7 @@ export default function Dashboard() {
     setActiveChannelId(null);
   };
   
-  if (isLoading && !activeSpace) {
+  if (isLoading || !activeSpace) {
     return <div className="flex justify-center items-center h-screen">Loading your workspace...</div>;
   }
   
@@ -453,6 +455,8 @@ const NAV_ITEMS = [
   { id: 'timesheets', label: 'Team Timesheets', icon: Users, adminOnly: true },
   { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
 ];
+
+    
 
     
 
