@@ -18,11 +18,12 @@ const getInitials = (name: string) => {
 interface SpaceSettingsProps {
     allSpaces: Space[];
     allUsers: User[];
-    setSpaces: (spaces: Space[]) => void;
+    onSave: (space: Space) => void;
+    onDelete: (spaceId: string) => void;
     appUser: User | null;
 }
 
-export default function SpaceSettings({ allSpaces, allUsers, setSpaces, appUser }: SpaceSettingsProps) {
+export default function SpaceSettings({ allSpaces, allUsers, onSave, onDelete, appUser }: SpaceSettingsProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
   const { toast } = useToast();
@@ -38,16 +39,29 @@ export default function SpaceSettings({ allSpaces, allUsers, setSpaces, appUser 
   };
   
   const handleDelete = (spaceId: string) => {
-    setSpaces(allSpaces.filter(s => s.id !== spaceId));
+    onDelete(spaceId);
     toast({ title: 'Space Deleted', description: 'The space has been successfully deleted.' });
   }
 
-  const handleSave = (spaceData: Space) => {
+  const handleSaveAndClose = (spaceData: Partial<Space>) => {
+    const defaultStatuses = [
+        { name: 'Backlog', color: '#6b7280' },
+        { name: 'In Progress', color: '#3b82f6' },
+        { name: 'Review', color: '#f59e0b' },
+        { name: 'Done', color: '#22c55e' },
+    ];
+    
     if (selectedSpace) {
-      setSpaces(allSpaces.map(s => s.id === spaceData.id ? spaceData : s));
+      onSave({ ...selectedSpace, ...spaceData });
       toast({ title: 'Space Updated', description: 'The space has been successfully updated.' });
     } else {
-      setSpaces([...allSpaces, { ...spaceData, id: `space-${Date.now()}`, members: [appUser!.id] }]);
+      const newSpace: Space = {
+        id: '', // Will be set by parent
+        name: spaceData.name!,
+        members: spaceData.members || [appUser!.id],
+        statuses: defaultStatuses
+      };
+      onSave(newSpace);
       toast({ title: 'Space Created', description: 'The space has been successfully created.' });
     }
   };
@@ -118,7 +132,7 @@ export default function SpaceSettings({ allSpaces, allUsers, setSpaces, appUser 
       <SpaceFormDialog
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
-        onSave={handleSave}
+        onSave={handleSaveAndClose}
         space={selectedSpace}
         allUsers={allUsers}
       />

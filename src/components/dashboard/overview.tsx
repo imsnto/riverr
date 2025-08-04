@@ -12,9 +12,10 @@ interface OverviewProps {
   tasks: Task[];
   timeEntries: TimeEntry[];
   appUser: User | null;
+  allUsers: User[];
 }
 
-export default function Overview({ projects, tasks, timeEntries, appUser }: OverviewProps) {
+export default function Overview({ projects, tasks, timeEntries, appUser, allUsers }: OverviewProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   if (!appUser) return null;
@@ -109,6 +110,8 @@ export default function Overview({ projects, tasks, timeEntries, appUser }: Over
               setSelectedProject(null);
             }
           }}
+          tasks={tasks.filter(t => t.project_id === selectedProject.id)}
+          allUsers={allUsers}
         />
       )}
     </>

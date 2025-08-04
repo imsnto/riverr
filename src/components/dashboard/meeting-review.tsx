@@ -1,10 +1,11 @@
+
 'use client';
 
 import React, { useState, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { users, adminMappings, SlackMeetingLog, Project } from '@/lib/data';
+import { adminMappings, SlackMeetingLog, Project, User } from '@/lib/data';
 import { Bot, Calendar, Clock, Loader2, Tag } from 'lucide-react';
 import { suggestProjectFromMeeting } from '@/ai/flows/suggest-project-from-meeting';
 import { useToast } from '@/hooks/use-toast';
@@ -23,9 +24,10 @@ interface SuggestionState {
 interface MeetingReviewProps {
   slackMeetingLogs: SlackMeetingLog[];
   projects: Project[];
+  allUsers: User[];
 }
 
-export default function MeetingReview({ slackMeetingLogs, projects }: MeetingReviewProps) {
+export default function MeetingReview({ slackMeetingLogs, projects, allUsers }: MeetingReviewProps) {
   const unassignedMeetings = slackMeetingLogs.filter(log => !log.project_id);
   const [suggestions, setSuggestions] = useState<SuggestionState>({});
   const [isPending, startTransition] = useTransition();
@@ -72,7 +74,7 @@ export default function MeetingReview({ slackMeetingLogs, projects }: MeetingRev
       </CardHeader>
       <CardContent className="space-y-4">
         {unassignedMeetings.map(meeting => {
-          const user = users.find(u => u.id === meeting.user_id);
+          const user = allUsers.find(u => u.id === meeting.user_id);
           const suggestionState = suggestions[meeting.id];
 
           return (

@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Project, tasks, users } from '@/lib/data';
+import { Project, Task, User } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { ScrollArea } from '../ui/scroll-area';
@@ -14,13 +14,16 @@ const getInitials = (name: string) => {
 
 interface ProjectDetailsDialogProps {
     project: Project;
+    tasks: Task[];
+    allUsers: User[];
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
 }
 
-export default function ProjectDetailsDialog({ project, isOpen, onOpenChange }: ProjectDetailsDialogProps) {
-    const projectTasks = tasks.filter(t => t.project_id === project.id);
-    const projectMembers = users.filter(u => project.members.includes(u.id));
+export default function ProjectDetailsDialog({ project, tasks, allUsers, isOpen, onOpenChange }: ProjectDetailsDialogProps) {
+    const projectTasks = tasks;
+    const projectMembers = allUsers.filter(u => project.members.includes(u.id));
+    const createdBy = allUsers.find(u => u.id === project.created_by);
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -31,7 +34,7 @@ export default function ProjectDetailsDialog({ project, isOpen, onOpenChange }: 
                         <Badge>{project.status}</Badge>
                     </DialogTitle>
                     <DialogDescription>
-                        Created by {users.find(u => u.id === project.created_by)?.name || 'Unknown'}
+                        Created by {createdBy?.name || 'Unknown'}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid md:grid-cols-3 gap-6 py-4">
@@ -40,7 +43,7 @@ export default function ProjectDetailsDialog({ project, isOpen, onOpenChange }: 
                         <ScrollArea className="h-72 rounded-md border">
                             <div className="p-4 space-y-3">
                                 {projectTasks.length > 0 ? projectTasks.map(task => {
-                                    const assignee = users.find(u => u.id === task.assigned_to);
+                                    const assignee = allUsers.find(u => u.id === task.assigned_to);
                                     return (
                                         <div key={task.id} className="p-3 rounded-md border bg-card/50">
                                             <div className="flex justify-between items-start">
@@ -87,4 +90,3 @@ export default function ProjectDetailsDialog({ project, isOpen, onOpenChange }: 
         </Dialog>
     );
 }
-

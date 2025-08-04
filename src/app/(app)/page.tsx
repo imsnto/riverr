@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, updateTask } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, updateTask, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -57,6 +57,7 @@ export default function Dashboard() {
     async function loadInitialData() {
         if (!appUser) return;
         setIsLoading(true);
+        await seedDatabase();
 
         const [users, spaces] = await Promise.all([dbGetAllUsers(), dbGetAllSpaces()]);
         setAllUsers(users);
@@ -68,7 +69,15 @@ export default function Dashboard() {
         } else if (spaces.length > 0) {
           setActiveSpaceId(spaces[0].id);
         } else {
-          setIsLoading(false);
+          // If no spaces exist, let's create a default one for the user
+          const newSpace: Omit<Space, 'id'> = {
+            name: `${appUser.name}'s Space`,
+            members: [appUser.id],
+          };
+          const newSpaceId = await dbAddSpace(newSpace);
+          const createdSpace = { ...newSpace, id: newSpaceId };
+          setAllSpaces([createdSpace]);
+          setActiveSpaceId(newSpaceId);
         }
     }
     loadInitialData();
@@ -85,8 +94,8 @@ export default function Dashboard() {
         setProjects(projectsInSpace);
         setChannels(channelsInSpace);
         
-        const allMessages = await Promise.all(channelsInSpace.map(c => dbGetMessages(c.id))).then(res => res.flat());
-        setMessages(allMessages);
+        const allMessagesInChannels = await Promise.all(channelsInSpace.map(c => dbGetMessages(c.id))).then(res => res.flat());
+        setMessages(allMessagesInChannels);
 
         if (channelsInSpace.length > 0 && !activeChannelId) {
           setActiveChannelId(channelsInSpace[0].id);
@@ -122,14 +131,17 @@ export default function Dashboard() {
     setIsCreateTaskOpen(true);
   }
 
-  const handleTaskCreated = (newTask: Task) => {
+  const handleTaskCreated = async (taskData: Omit<Task, 'id'>) => {
+    const newTask = await dbAddTask(taskData);
     setTasks(prev => [...prev, newTask]);
     
     if (selectedMessageForTask) {
+      const updatedMessage = { ...selectedMessageForTask, linked_task_id: newTask.id };
+      // TODO: Update message in DB
       setMessages(prevMessages => 
         prevMessages.map(msg => 
           msg.id === selectedMessageForTask.id 
-            ? { ...msg, linked_task_id: newTask.id }
+            ? updatedMessage
             : msg
         )
       );
@@ -137,14 +149,15 @@ export default function Dashboard() {
   }
 
   const handleUpdateTasks = async (updatedTasks: Task[]) => {
-    const originalTasks = tasks;
-    setTasks(updatedTasks);
+    // This is a simple but inefficient way to handle updates.
     // In a real app, you'd want to find the specific task that changed and update it.
-    // For this mock, we'll just log it. A more complex diffing logic might be needed.
-    const changedTask = updatedTasks.find((t, i) => t.status !== originalTasks[i]?.status || t.assigned_to !== originalTasks[i]?.assigned_to);
-    if(changedTask) {
-      await updateTask(changedTask.id, { status: changedTask.status, assigned_to: changedTask.assigned_to });
+    for (const task of updatedTasks) {
+      const originalTask = tasks.find(t => t.id === task.id);
+      if (originalTask && JSON.stringify(originalTask) !== JSON.stringify(task)) {
+        await updateTask(task.id, task);
+      }
     }
+    setTasks(updatedTasks);
   }
 
   const handleViewThread = (thread: Message) => {
@@ -157,6 +170,21 @@ export default function Dashboard() {
       const newActiveSpace = { ...activeSpace, ...updatedSpace };
       setAllSpaces(allSpaces.map(s => s.id === activeSpaceId ? newActiveSpace : s));
       await dbUpdateSpace(activeSpaceId, updatedSpace);
+  }
+
+  const handleSaveSpace = async (spaceData: Space) => {
+     if (spaceData.id) { // Existing space
+        await dbUpdateSpace(spaceData.id, spaceData);
+        setAllSpaces(allSpaces.map(s => s.id === spaceData.id ? spaceData : s));
+      } else { // New space
+        const newId = await dbAddSpace({ name: spaceData.name, members: spaceData.members, statuses: spaceData.statuses });
+        setAllSpaces([...allSpaces, { ...spaceData, id: newId }]);
+      }
+  }
+  
+  const handleDeleteSpace = async (spaceId: string) => {
+      await dbDeleteSpace(spaceId);
+      setAllSpaces(allSpaces.filter(s => s.id !== spaceId));
   }
 
 
@@ -291,7 +319,7 @@ export default function Dashboard() {
                 <>
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                       <div className="lg:col-span-2">
-                        <Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} />
+                        <Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} />
                       </div>
                       <div className="flex flex-col gap-6">
                         <Timer tasks={tasks} appUser={appUser} />
@@ -299,7 +327,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="mt-6">
-                      <MeetingReview slackMeetingLogs={meetingLogs} projects={projects} />
+                      <MeetingReview slackMeetingLogs={meetingLogs} projects={projects} allUsers={allUsers} />
                     </div>
                   </>
                 }
@@ -347,7 +375,7 @@ export default function Dashboard() {
               )}
               {activeTab === 'tasks' && activeSpace && (
                 <div className="p-4 md:p-8">
-                {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard tasks={tasks} onUpdateTasks={handleUpdateTasks} projects={projects} activeSpace={activeSpace} onUpdateActiveSpace={handleUpdateActiveSpace} />}
+                {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard tasks={tasks} onUpdateTasks={handleUpdateTasks} projects={projects} activeSpace={activeSpace} allUsers={allUsers} onUpdateActiveSpace={handleUpdateActiveSpace} />}
                 </div>
               )}
               {appUser.role === 'Admin' && activeTab === 'timesheets' && (
@@ -364,7 +392,7 @@ export default function Dashboard() {
                           <TabsTrigger value="users">Users</TabsTrigger>
                           </TabsList>
                           <TabsContent value="spaces">
-                          {isLoading ? <div className="flex justify-center items-center h-full">Loading spaces...</div> : <SpaceSettings allSpaces={allSpaces} allUsers={allUsers} setSpaces={setAllSpaces} appUser={appUser} />}
+                          {isLoading ? <div className="flex justify-center items-center h-full">Loading spaces...</div> : <SpaceSettings allSpaces={allSpaces} allUsers={allUsers} onSave={handleSaveSpace} onDelete={handleDeleteSpace} appUser={appUser} />}
                           </TabsContent>
                           <TabsContent value="users">
                           {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings />}

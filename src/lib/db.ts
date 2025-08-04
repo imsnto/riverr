@@ -1,4 +1,3 @@
-
 // src/lib/db.ts
 import {
   collection,
@@ -12,10 +11,98 @@ import {
   where,
   deleteDoc,
   writeBatch,
-  arrayUnion
+  arrayUnion,
+  limit
 } from 'firebase/firestore';
 import { db } from './firebase';
 import * as mockData from './data';
+
+let isSeeding = false;
+let isSeeded = false;
+
+// Seed the database with initial data if it's empty
+export const seedDatabase = async () => {
+    if (isSeeded || isSeeding) return;
+    isSeeding = true;
+
+    try {
+        const usersCollection = collection(db, 'users');
+        const snapshot = await getDocs(query(usersCollection, limit(1)));
+        
+        if (snapshot.empty) {
+            console.log('Database is empty, seeding with initial data...');
+            const batch = writeBatch(db);
+
+            // Seed Users
+            mockData.users.forEach(user => {
+                const userRef = doc(db, 'users', user.id);
+                // The user object from mockData includes the id, so we need to destructure it
+                const { id, ...userData } = user;
+                batch.set(userRef, userData);
+            });
+            
+            // Seed Spaces
+             mockData.spaces.forEach(space => {
+                const spaceRef = doc(db, 'spaces', space.id);
+                const { id, ...spaceData } = space;
+                batch.set(spaceRef, spaceData);
+            });
+
+             // Seed Projects
+             mockData.projects.forEach(project => {
+                const projectRef = doc(db, 'projects', project.id);
+                 const { id, ...projectData } = project;
+                batch.set(projectRef, projectData);
+            });
+
+            // Seed Tasks
+            mockData.tasks.forEach(task => {
+                const taskRef = doc(db, 'tasks', task.id);
+                 const { id, ...taskData } = task;
+                batch.set(taskRef, taskData);
+            });
+
+            // Seed Time Entries
+            mockData.timeEntries.forEach(entry => {
+                const entryRef = doc(db, 'timeEntries', entry.id);
+                 const { id, ...entryData } = entry;
+                batch.set(entryRef, entryData);
+            });
+
+            // Seed Slack Meeting Logs
+            mockData.slackMeetingLogs.forEach(log => {
+                const logRef = doc(db, 'slackMeetingLogs', log.id);
+                 const { id, ...logData } = log;
+                batch.set(logRef, logData);
+            });
+
+            // Seed Channels
+            mockData.channels.forEach(channel => {
+                const channelRef = doc(db, 'channels', channel.id);
+                 const { id, ...channelData } = channel;
+                batch.set(channelRef, channelData);
+            });
+
+            // Seed Messages
+            mockData.messages.forEach(message => {
+                const messageRef = doc(db, 'messages', message.id);
+                 const { id, ...messageData } = message;
+                batch.set(messageRef, messageData);
+            });
+
+            await batch.commit();
+            console.log('Database seeded successfully.');
+            isSeeded = true;
+        } else {
+             isSeeded = true;
+        }
+    } catch (error) {
+        console.error("Error seeding database: ", error);
+    } finally {
+        isSeeding = false;
+    }
+};
+
 
 // --- User Management ---
 export const getUser = async (userId: string): Promise<mockData.User | null> => {
@@ -67,6 +154,10 @@ export const getSpacesForUser = async (userId: string): Promise<mockData.Space[]
 
 export const getAllSpaces = async (): Promise<mockData.Space[]> => {
     const querySnapshot = await getDocs(collection(db, 'spaces'));
+    if (querySnapshot.empty && !isSeeding) {
+        await seedDatabase();
+        return getAllSpaces();
+    }
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as mockData.Space));
 }
 
@@ -95,75 +186,93 @@ export const deleteSpace = async (spaceId: string): Promise<void> => {
 
 // --- Project Management ---
 export const getProjectsInSpace = async (spaceId: string): Promise<mockData.Project[]> => {
-    // This is a mock implementation
-    return mockData.projects.filter(p => p.space_id === spaceId);
+    const q = query(collection(db, 'projects'), where('space_id', '==', spaceId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as mockData.Project));
 }
 
 
 // --- Task Management ---
 export const getTasksInProject = async (projectId: string): Promise<mockData.Task[]> => {
-    // This is a mock implementation
-    return mockData.tasks.filter(t => t.project_id === projectId);
+    const q = query(collection(db, 'tasks'), where('project_id', '==', projectId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as mockData.Task));
 }
 
 export const getTasksInSpace = async (projectIds: string[]): Promise<mockData.Task[]> => {
     if (projectIds.length === 0) return [];
-    // This is a mock implementation
-    return mockData.tasks.filter(t => projectIds.includes(t.project_id));
+    const q = query(collection(db, 'tasks'), where('project_id', 'in', projectIds));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as mockData.Task));
 }
 
 export const addTask = async (task: Omit<mockData.Task, 'id'>): Promise<mockData.Task> => {
-    const newTask = { ...task, id: `task-${Date.now()}`};
-    mockData.tasks.push(newTask);
-    return newTask;
+    const docRef = await addDoc(collection(db, 'tasks'), task);
+    return { ...task, id: docRef.id };
 }
 
 export const updateTask = async (taskId: string, data: Partial<mockData.Task>): Promise<void> => {
-    const taskIndex = mockData.tasks.findIndex(t => t.id === taskId);
-    if(taskIndex !== -1) {
-        mockData.tasks[taskIndex] = { ...mockData.tasks[taskIndex], ...data };
-    }
+    const taskRef = doc(db, 'tasks', taskId);
+    await updateDoc(taskRef, data);
 }
 
 // --- Time Entry Management ---
 export const getTimeEntriesInSpace = async (projectIds: string[]): Promise<mockData.TimeEntry[]> => {
     if (projectIds.length === 0) return [];
-    return mockData.timeEntries.filter(t => projectIds.includes(t.project_id));
+    const q = query(collection(db, 'timeEntries'), where('project_id', 'in', projectIds));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as mockData.TimeEntry));
 }
 
 
 // --- Slack Meeting Log Management ---
 export const getSlackMeetingLogsInSpace = async (projectIds: string[]): Promise<mockData.SlackMeetingLog[]> => {
-    // This logic needs to match the original, fetching logs with matching project_id OR where project_id is null
-    const logsWithProject = mockData.slackMeetingLogs.filter(log => log.project_id && projectIds.includes(log.project_id));
-    const logsWithoutProject = mockData.slackMeetingLogs.filter(log => log.project_id === null);
+    const q1 = query(collection(db, 'slackMeetingLogs'), where('project_id', 'in', projectIds));
+    const q2 = query(collection(db, 'slackMeetingLogs'), where('project_id', '==', null));
+
+    const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
     
-    return [...logsWithProject, ...logsWithoutProject];
+    const logs = [
+        ...snapshot1.docs.map(doc => ({ id: doc.id, ...doc.data() } as mockData.SlackMeetingLog)),
+        ...snapshot2.docs.map(doc => ({ id: doc.id, ...doc.data() } as mockData.SlackMeetingLog)),
+    ];
+
+    // Deduplicate logs in case a log somehow matches both
+    const uniqueLogs = Array.from(new Map(logs.map(log => [log.id, log])).values());
+
+    return uniqueLogs;
 }
 
 // --- Channel & Message Management ---
 export const getChannelsInSpace = async (spaceId: string): Promise<mockData.Channel[]> => {
-    return mockData.channels.filter(c => c.space_id === spaceId);
+    const q = query(collection(db, 'channels'), where('space_id', '==', spaceId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as mockData.Channel));
 }
 
 export const getMessagesInChannel = async (channelId: string): Promise<mockData.Message[]> => {
-    return mockData.messages.filter(m => m.channel_id === channelId);
+    const q = query(collection(db, 'messages'), where('channel_id', '==', channelId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as mockData.Message)).sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 }
 
 export const addMessage = async(message: Omit<mockData.Message, 'id' | 'timestamp' | 'reactions' | 'reply_count'>): Promise<mockData.Message> => {
     const newMessage = { 
         ...message, 
-        id: `msg-${Date.now()}`, 
         timestamp: new Date().toISOString(),
         reactions: [],
         reply_count: 0
     };
-    mockData.messages.push(newMessage);
-    return newMessage;
+    const docRef = await addDoc(collection(db, 'messages'), newMessage);
+    return { ...newMessage, id: docRef.id };
 }
 
 // --- Generic User Data ---
 export const getAllUsers = async (): Promise<mockData.User[]> => {
     const querySnapshot = await getDocs(collection(db, 'users'));
+     if (querySnapshot.empty && !isSeeding) {
+        await seedDatabase();
+        return getAllUsers();
+    }
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as mockData.User));
 }

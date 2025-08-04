@@ -3,7 +3,7 @@
 
 import React, { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Task, users, projects, Comment, Activity, User, timeEntries, Attachment } from '@/lib/data';
+import { Task, Comment, Activity, User, Project, Attachment } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -14,9 +14,10 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Bot, Calendar, CircleDot, Clock, Flag, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight, Paperclip, File, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('');
+    return name ? name.split(' ').map(n => n[0]).join('') : '';
 }
 
 interface DetailRowProps {
@@ -72,20 +73,22 @@ interface TaskDetailsDialogProps {
     onOpenChange: (isOpen: boolean) => void;
     onUpdateTask: (task: Task) => void;
     statuses: string[];
+    allUsers: User[];
+    projects: Project[];
 }
 
-export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdateTask, statuses }: TaskDetailsDialogProps) {
+export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdateTask, statuses, allUsers, projects }: TaskDetailsDialogProps) {
     const { toast } = useToast();
-    const appUser = users.find(u => u.email === 'brad@riverr.app');
+    const { appUser } = useAuth();
     const [attachments, setAttachments] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
     if (!appUser) return null;
 
     const project = projects.find(p => p.id === task.project_id);
-    const totalTimeTracked = timeEntries
-      .filter(t => t.task_id === task.id)
-      .reduce((acc, entry) => acc + entry.duration, 0);
+    
+    // In a real app, time entries would be fetched from the DB
+    const totalTimeTracked = 0; // timeEntries.filter(t => t.task_id === task.id).reduce((acc, entry) => acc + entry.duration, 0);
 
     const handleAddComment = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -167,6 +170,8 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
           setAttachments(prev => [...prev, ...Array.from(event.target.files!)]);
         }
     };
+    
+    const assignee = allUsers.find(u=>u.id === task.assigned_to);
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -210,15 +215,15 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                         <SelectValue asChild>
                                            <div className="flex items-center gap-2">
                                             <Avatar className="h-5 w-5">
-                                              <AvatarImage src={users.find(u=>u.id === task.assigned_to)?.avatarUrl} />
-                                              <AvatarFallback>{getInitials(users.find(u=>u.id === task.assigned_to)?.name || '')}</AvatarFallback>
+                                              <AvatarImage src={assignee?.avatarUrl} />
+                                              <AvatarFallback>{getInitials(assignee?.name || '')}</AvatarFallback>
                                             </Avatar>
-                                            {users.find(u=>u.id === task.assigned_to)?.name}
+                                            {assignee?.name}
                                           </div>
                                         </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {users.map(user => (
+                                      {allUsers.map(user => (
                                         <SelectItem key={user.id} value={user.id}>
                                           <div className="flex items-center gap-2">
                                             <Avatar className="h-5 w-5">
@@ -293,7 +298,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                 {sortedActivities.map(activity => {
                                     if (activity.type === 'comment' && activity.comment_id) {
                                         const comment = task.comments.find(c => c.id === activity.comment_id);
-                                        const user = users.find(u => u.id === activity.user_id);
+                                        const user = allUsers.find(u => u.id === activity.user_id);
                                         if (!comment || !user) return null;
                                         return (
                                              <div key={activity.id} className="flex items-start gap-3">
@@ -327,7 +332,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                             </div>
                                         )
                                     }
-                                    return <ActivityItem key={activity.id} activity={activity} allUsers={users} />;
+                                    return <ActivityItem key={activity.id} activity={activity} allUsers={allUsers} />;
                                 })}
                             </div>
                         </ScrollArea>

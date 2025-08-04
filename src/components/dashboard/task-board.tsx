@@ -3,7 +3,7 @@
 
 import React, { useState, DragEvent } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { users, Task, Project, Space, Status } from '@/lib/data';
+import { User, Task, Project, Space, Status } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { MoreHorizontal, Plus, Edit, Trash2, Palette } from 'lucide-react';
@@ -70,8 +70,8 @@ const STATUS_COLORS = [
 ];
 
 
-const TaskCard = ({ task, project, onUpdateTask, onClick, isDragging }: { task: Task, project?: Project, onUpdateTask: (task: Task) => void, onClick: () => void, isDragging: boolean }) => {
-  const assignee = users.find(u => u.id === task.assigned_to);
+const TaskCard = ({ task, project, onUpdateTask, onClick, isDragging, allUsers }: { task: Task, project?: Project, onUpdateTask: (task: Task) => void, onClick: () => void, isDragging: boolean, allUsers: User[] }) => {
+  const assignee = allUsers.find(u => u.id === task.assigned_to);
 
   const handleAssigneeChange = (userId: string) => {
     onUpdateTask({ ...task, assigned_to: userId });
@@ -110,7 +110,7 @@ const TaskCard = ({ task, project, onUpdateTask, onClick, isDragging }: { task: 
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent onClick={(e) => e.stopPropagation()} align="start">
-            {users.map(user => (
+            {allUsers.map(user => (
               <DropdownMenuItem key={user.id} onSelect={() => handleAssigneeChange(user.id)}>
                 {user.name}
               </DropdownMenuItem>
@@ -128,6 +128,7 @@ interface TaskBoardProps {
   onUpdateTasks: (tasks: Task[]) => void;
   projects: Project[];
   activeSpace: Space;
+  allUsers: User[];
   onUpdateActiveSpace: (updatedSpace: Partial<Space>) => void;
 }
 
@@ -138,7 +139,7 @@ const defaultStatuses: Status[] = [
     { name: 'Done', color: '#22c55e' },
 ]
 
-export default function TaskBoard({ tasks, onUpdateTasks, projects, activeSpace, onUpdateActiveSpace }: TaskBoardProps) {
+export default function TaskBoard({ tasks, onUpdateTasks, projects, activeSpace, allUsers, onUpdateActiveSpace }: TaskBoardProps) {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -382,6 +383,7 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, activeSpace,
                       onClick={() => setSelectedTask(task)} 
                       onUpdateTask={handleUpdateTask}
                       isDragging={draggedTask === task.id}
+                      allUsers={allUsers}
                     />
                   </div>
                 ))}
@@ -400,16 +402,19 @@ export default function TaskBoard({ tasks, onUpdateTasks, projects, activeSpace,
         onTaskAdd={handleAddTask}
         projects={projects}
         statuses={statuses.map(s => s.name)}
+        allUsers={allUsers}
       />
       {selectedTask && (
         <TaskDetailsDialog
           task={selectedTask}
           isOpen={!!selectedTask}
+          allUsers={allUsers}
           onOpenChange={(isOpen) => {
             if (!isOpen) setSelectedTask(null);
           }}
           onUpdateTask={handleUpdateTask}
           statuses={statuses.map(s => s.name)}
+          projects={projects}
         />
       )}
     </>

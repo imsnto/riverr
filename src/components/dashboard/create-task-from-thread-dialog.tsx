@@ -19,7 +19,6 @@ import { cn } from '@/lib/utils';
 import { Message, Task } from '@/lib/data';
 import { createTaskFromThread } from '@/ai/flows/create-task-from-thread';
 import { useToast } from '@/hooks/use-toast';
-import { addTask } from '@/lib/db';
 
 const taskSchema = z.object({
   name: z.string().min(1, 'Task name is required'),
@@ -38,7 +37,7 @@ interface CreateTaskFromThreadDialogProps {
   message: Message;
   channelMembers: { id: string; name: string }[];
   projects: { id: string; name: string }[];
-  onTaskCreated: (task: Task) => void;
+  onTaskCreated: (task: Omit<Task, 'id'>) => void;
 }
 
 export default function CreateTaskFromThreadDialog({
@@ -96,7 +95,7 @@ export default function CreateTaskFromThreadDialog({
 
   const onSubmit = async (values: TaskFormValues) => {
     try {
-      const newTaskData = {
+      const newTaskData: Omit<Task, 'id'> = {
         ...values,
         description: values.description || '',
         due_date: values.due_date ? values.due_date.toISOString() : new Date().toISOString(),
@@ -118,9 +117,8 @@ export default function CreateTaskFromThreadDialog({
         attachments: [],
       };
       
-      const createdTask = await addTask(newTaskData);
+      onTaskCreated(newTaskData);
       
-      onTaskCreated(createdTask);
       toast({ title: 'Task Created', description: 'The new task has been added to the board.' });
       onOpenChange(false);
 

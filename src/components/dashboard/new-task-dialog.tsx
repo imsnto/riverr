@@ -16,7 +16,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { users, Task, Project } from '@/lib/data';
+import { User, Task, Project } from '@/lib/data';
 
 const taskSchema = z.object({
   name: z.string().min(1, 'Task name is required'),
@@ -35,9 +35,10 @@ interface NewTaskDialogProps {
   onTaskAdd: (task: Task) => void;
   projects: Project[];
   statuses: string[];
+  allUsers: User[];
 }
 
-export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, projects, statuses }: NewTaskDialogProps) {
+export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, projects, statuses, allUsers }: NewTaskDialogProps) {
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
@@ -54,6 +55,7 @@ export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, project
     const newTask: Task = {
       id: `task-${Date.now()}`,
       ...values,
+      description: values.description || '',
       due_date: values.due_date.toISOString(),
       priority: null,
       sprint_points: null,
@@ -150,7 +152,7 @@ export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, project
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {users.map(user => (
+                      {allUsers.map(user => (
                         <SelectItem key={user.id} value={user.id}>
                           {user.name}
                         </SelectItem>
