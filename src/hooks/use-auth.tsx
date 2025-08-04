@@ -35,11 +35,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setAppUser(userProfile);
           setStatus('authenticated');
         } else {
-           // This is a new user or a user whose DB record was deleted.
-           // The signInWithGoogle flow will handle creating the profile.
-           // For now, we wait for the user to click the sign-in button.
-           // If they are returning, this might briefly show the login page
-           // before signInWithGoogle is triggered and logs them in fully.
+           // This can happen if the user exists in Firebase Auth but not in Firestore DB.
+           // We will let signInWithGoogle handle the creation.
+           // Setting status to unauthenticated will show the login page.
            setStatus('unauthenticated');
         }
       } else {
@@ -53,6 +51,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const handleSignOut = async () => {
     await firebaseSignOut(auth);
+    setFirebaseUser(null);
+    setAppUser(null);
+    setStatus('unauthenticated');
   }
 
   const signInWithGoogle = async () => {
@@ -106,3 +107,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    

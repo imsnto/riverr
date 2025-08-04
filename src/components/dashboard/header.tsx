@@ -82,7 +82,8 @@ export default function Header({ activeSpace, onSpaceChange, allSpaces, appUser 
 
   const handleLogout = async () => {
     await signOut();
-  }
+    router.push('/login');
+  };
 
   const getInitials = (name: string) => {
     if (!name) return '';
@@ -139,3 +140,5 @@ export default function Header({ activeSpace, onSpaceChange, allSpaces, appUser 
     </header>
   );
 }
+
+    

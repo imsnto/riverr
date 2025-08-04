@@ -249,7 +249,7 @@ export default function Dashboard() {
           <aside className="hidden w-20 flex-col items-center border-r bg-card p-4 md:flex">
             <nav className="flex flex-col items-center gap-4">
               {NAV_ITEMS.map(item => {
-                if (item.adminOnly && appUser.role !== 'Admin') {
+                if (item.adminOnly && (!appUser || appUser.role !== 'Admin')) {
                   return null;
                 }
                 return (
@@ -453,5 +453,7 @@ const NAV_ITEMS = [
   { id: 'timesheets', label: 'Team Timesheets', icon: Users, adminOnly: true },
   { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
 ];
+
+    
 
     
