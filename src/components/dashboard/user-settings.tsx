@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -25,9 +26,10 @@ interface UserSettingsProps {
     allUsers: User[];
     allSpaces: Space[];
     appUser: User | null;
+    onInvite: (values: Omit<Invite, 'token'>) => void;
 }
 
-export default function UserSettings({ allUsers: initialUsers, allSpaces, appUser }: UserSettingsProps) {
+export default function UserSettings({ allUsers: initialUsers, allSpaces, appUser, onInvite }: UserSettingsProps) {
   const [allUsers, setAllUsers] = useState<User[]>(initialUsers);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const { toast } = useToast();
@@ -47,22 +49,9 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, appUse
     })
   }
 
-  const handleInvite = async (values: Omit<Invite, 'token'>) => {
-    try {
-      const token = randomBytes(16).toString('hex');
-      await addInvite({ ...values, token });
-      toast({
-        title: 'Invite Sent',
-        description: `${values.email} has been invited. They will get access once they sign in.`,
-      })
-    } catch (error) {
-      console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'Invite Failed',
-        description: 'Could not send the invitation. Please try again.',
-      })
-    }
+  const handleInviteAndClose = (values: Omit<Invite, 'token'>) => {
+    onInvite(values);
+    setIsInviteOpen(false);
   }
 
 
@@ -152,7 +141,7 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, appUse
         <InviteUserDialog 
             isOpen={isInviteOpen}
             onOpenChange={setIsInviteOpen}
-            onInvite={handleInvite}
+            onInvite={handleInviteAndClose}
             allSpaces={allSpaces}
         />
     </>

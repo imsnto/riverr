@@ -290,9 +290,6 @@ export default function Dashboard() {
                 if (item.permission === false) { // Explicitly hide if permission is false
                   return null;
                 }
-                 if (item.id === 'settings' && !isAdmin) {
-                  return null;
-                }
                 return (
                   <Tooltip key={item.id} delayDuration={0}>
                     <TooltipTrigger asChild>
