@@ -11,7 +11,7 @@ import { db } from '@/lib/firebase';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
-const LOCAL_STORAGE_KEY = 'timeflow_user_v2';
+const LOCAL_STORAGE_KEY = 'timeflow_user_v3';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -47,10 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setStatus('authenticated');
         } catch (e) {
             localStorage.removeItem(LOCAL_STORAGE_KEY);
-            setStatus('unauthenticated');
         }
-    } else {
-      setStatus('loading');
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -66,11 +63,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             name: user.displayName || 'New User',
             email: user.email!,
             avatarUrl: user.photoURL || `https://placehold.co/100x100.png?text=${user.displayName?.[0] || 'U'}`,
-            role: 'Admin',
+            role: 'Admin', // Default global role
           };
           userProfile = await addUser(newUser, user.uid);
           
-          const personalSpace = {
+          const personalSpace: Omit<Space, 'id'> = {
             name: `${userProfile.name}'s Space`,
             members: { [userProfile.id]: { role: 'Admin' as const } },
             statuses: [
@@ -91,10 +88,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
            const spaces = await getSpacesForUser(userProfile.id);
            const invites = await getInvitesForEmail(userProfile.email);
-           setAppUser(userProfile);
-           setUserSpaces(spaces);
-           setPendingInvites(invites);
-           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ appUser: userProfile, firebaseUser: user, userSpaces: spaces }));
+           if (appUser?.id !== userProfile.id || spaces.length !== userSpaces.length) {
+              setAppUser(userProfile);
+              setUserSpaces(spaces);
+              setPendingInvites(invites);
+              localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ appUser: userProfile, firebaseUser: user, userSpaces: spaces }));
+           }
         }
         setStatus('authenticated');
 
@@ -133,6 +132,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setPendingInvites(prev => prev.filter(i => i.id !== invite.id));
     const updatedSpaces = await getSpacesForUser(appUser.id);
     setUserSpaces(updatedSpaces);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ appUser, firebaseUser, userSpaces: updatedSpaces }));
   };
 
   const handleDeclineInvite = async (inviteId: string) => {
