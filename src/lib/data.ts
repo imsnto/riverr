@@ -44,7 +44,8 @@ export interface Invite {
   invitedBy?: {
     id: string;
     name: string;
-  }
+  },
+  permissions?: Permissions;
 }
 
 export interface Project {

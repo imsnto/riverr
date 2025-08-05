@@ -93,7 +93,10 @@ export const acceptInvite = async (invite: Invite, userId: string) => {
     // Add user to each space
     for (const spaceId of invite.spaces) {
         const spaceRef = doc(db, 'spaces', spaceId);
-        const member: SpaceMember = { role: invite.role };
+        const member: SpaceMember = { 
+            role: invite.role,
+            permissions: invite.role === 'Admin' ? undefined : invite.permissions,
+        };
         batch.update(spaceRef, {
             [`members.${userId}`]: member
         });
