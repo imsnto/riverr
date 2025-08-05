@@ -39,8 +39,8 @@ export const sendInviteEmail = functions.firestore
         MessageStream: POSTMARK_STREAM,
       });
 
-      console.log(`Invite email sent to ${invite.email}`);
+      console.log(`✅ Invite email sent to ${invite.email}`);
     } catch (error) {
-      console.error(`Error sending invite to ${invite.email}:`, error);
+      console.error(`❌ Error sending invite to ${invite.email}:`, error);
     }
   });
