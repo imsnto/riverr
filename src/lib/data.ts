@@ -1,4 +1,19 @@
 // DATA STRUCTURES
+
+export interface Permissions {
+  canViewTasks: boolean;
+  canEditTasks: boolean;
+  canLogTime: boolean;
+  canSeeAllTimesheets: boolean;
+  canViewReports: boolean;
+  canInviteMembers: boolean;
+}
+
+export interface SpaceMember {
+  role: 'Admin' | 'Member';
+  permissions?: Permissions;
+}
+
 export interface Status {
   name: string;
   color: string;
@@ -7,7 +22,7 @@ export interface Status {
 export interface Space {
   id: string;
   name: string;
-  members: string[];
+  members: Record<string, SpaceMember>; // From string[] to Record<string, SpaceMember>
   statuses?: Status[];
 }
 
@@ -15,9 +30,8 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: "Admin" | "Member";
-  slack_id: string;
   avatarUrl: string;
+  // Role is now per-space, not global
 }
 
 export interface Invite {
@@ -33,7 +47,7 @@ export interface Project {
   name: string;
   status: "Active" | "Archived" | "On Hold";
   created_by: string;
-  members: string[];
+  members: string[]; // This remains a string array of user IDs
   slack_channel_id?: string;
 }
 
@@ -143,18 +157,44 @@ const defaultStatuses: Status[] = [
 
 // MOCK DATA - This data can be used to seed the database.
 
-export const users: User[] = [
-  { id: 'user-1', name: 'Brad', email: 'brad@riverr.app', role: 'Admin', slack_id: 'U12345', avatarUrl: 'https://placehold.co/100x100.png' },
-  { id: 'user-2', name: 'Alice', email: 'alice@example.com', role: 'Member', slack_id: 'U67890', avatarUrl: 'https://placehold.co/100x100.png' },
-  { id: 'user-3', name: 'Charlie', email: 'charlie@example.com', role: 'Member', slack_id: 'U13579', avatarUrl: 'https://placehold.co/100x100.png' },
-  { id: 'user-4', name: 'Diana', email: 'diana@example.com', role: 'Admin', slack_id: 'U24680', avatarUrl: 'https://placehold.co/100x100.png' }
+export const users: Omit<User, 'id'>[] = [
+  { name: 'Brad Miller', email: 'brad@riverr.app', avatarUrl: 'https://placehold.co/100x100.png' },
+  { name: 'Alice', email: 'alice@example.com', avatarUrl: 'https://placehold.co/100x100.png' },
+  { name: 'Charlie', email: 'charlie@example.com', avatarUrl: 'https://placehold.co/100x100.png' },
+  { name: 'Diana', email: 'diana@example.com', avatarUrl: 'https://placehold.co/100x100.png' }
 ];
 
 export const spaces: Space[] = [
-  { id: 'space-1', name: 'Work', members: ['user-1', 'user-2', 'user-3', 'user-4'], statuses: [...defaultStatuses] },
-  { id: 'space-2', name: 'Personal', members: ['user-1', 'user-4'], statuses: [{name: 'To Do', color: '#3b82f6'}, {name: 'Done', color: '#22c55e'}] },
-  { id: 'space-3', name: 'Client X', members: ['user-2', 'user-3'], statuses: [...defaultStatuses.slice(0,2), {name: 'Client Review', color: '#a855f7'}, {name: 'Approved', color: '#22c55e'}] }
-]
+  { 
+    id: 'space-1', 
+    name: 'Work', 
+    members: {
+      'user-1': { role: 'Admin' },
+      'user-2': { role: 'Member', permissions: { canViewTasks: true, canEditTasks: true, canLogTime: true, canSeeAllTimesheets: false, canViewReports: true, canInviteMembers: false } },
+      'user-3': { role: 'Member', permissions: { canViewTasks: true, canEditTasks: false, canLogTime: true, canSeeAllTimesheets: false, canViewReports: false, canInviteMembers: false } },
+      'user-4': { role: 'Admin' }
+    },
+    statuses: [...defaultStatuses] 
+  },
+  { 
+    id: 'space-2', 
+    name: 'Personal', 
+    members: {
+      'user-1': { role: 'Admin' },
+      'user-4': { role: 'Admin' }
+    }, 
+    statuses: [{name: 'To Do', color: '#3b82f6'}, {name: 'Done', color: '#22c55e'}] 
+  },
+  { 
+    id: 'space-3', 
+    name: 'Client X', 
+    members: {
+      'user-2': { role: 'Admin' },
+      'user-3': { role: 'Member', permissions: { canViewTasks: true, canEditTasks: true, canLogTime: true, canSeeAllTimesheets: true, canViewReports: true, canInviteMembers: true } },
+    },
+    statuses: [...defaultStatuses.slice(0,2), {name: 'Client Review', color: '#a855f7'}, {name: 'Approved', color: '#22c55e'}] 
+  }
+];
 
 export const projects: Project[] = [
   { id: 'proj-1', space_id: 'space-1', name: 'Website Redesign', status: 'Active', created_by: 'user-1', members: ['user-1', 'user-2'], slack_channel_id: 'C111' },
@@ -380,3 +420,5 @@ export const messages: Message[] = [
   { id: 'msg-5', channel_id: 'chan-5', user_id: 'user-4', content: 'I\'m going hiking this weekend, can\'t wait!', timestamp: '2024-08-02T14:00:00Z', reactions: [], reply_count: 0 },
   { id: 'msg-6', channel_id: 'chan-6', user_id: 'user-2', content: 'Just sent the weekly update to Client X.', timestamp: '2024-08-03T17:00:00Z', reactions: [], reply_count: 0 },
 ];
+
+    

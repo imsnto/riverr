@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, updateTask, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, addInvite as dbAddInvite } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, updateTask, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -32,7 +32,7 @@ import AdminSettings from './admin/page';
 
 
 export default function Dashboard() {
-  const { appUser, isAdmin } = useAuth();
+  const { appUser } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -68,27 +68,13 @@ export default function Dashboard() {
         setAllUsers(users);
         setAllSpaces(spaces);
         
-        const userSpaces = spaces.filter(s => s.members.includes(appUser!.id));
+        const userSpaces = spaces.filter(s => s.members[appUser!.id]);
         if (userSpaces.length > 0) {
           setActiveSpaceId(userSpaces[0].id);
         } else if (spaces.length > 0) {
-          setActiveSpaceId(spaces[0].id);
-        } else {
-          // If no spaces exist, let's create a default one for the user
-          const newSpace: Omit<Space, 'id'> = {
-            name: `${appUser.name}'s Space`,
-            members: [appUser.id],
-            statuses: [
-                { name: 'Backlog', color: '#6b7280' },
-                { name: 'In Progress', color: '#3b82f6' },
-                { name: 'Review', color: '#f59e0b' },
-                { name: 'Done', color: '#22c55e' },
-            ]
-          };
-          const newSpaceId = await dbAddSpace(newSpace);
-          const createdSpace = { ...newSpace, id: newSpaceId };
-          setAllSpaces([createdSpace]);
-          setActiveSpaceId(newSpaceId);
+            // This case should ideally not happen with the new auth model
+            // as users get a default space.
+            setActiveSpaceId(spaces[0].id);
         }
         setIsLoading(false);
     }
@@ -106,14 +92,15 @@ export default function Dashboard() {
         setProjects(projectsInSpace);
         setChannels(channelsInSpace);
         
-        const allMessagesInChannels = await Promise.all(channelsInSpace.map(c => dbGetMessages(c.id))).then(res => res.flat());
-        setMessages(allMessagesInChannels);
-
-        if (channelsInSpace.length > 0 && !activeChannelId) {
-          setActiveChannelId(channelsInSpace[0].id);
-        } else if (channelsInSpace.length === 0) {
-          setActiveChannelId(null);
-          setMessages([]);
+        if (channelsInSpace.length > 0) {
+            const allMessagesInChannels = await Promise.all(channelsInSpace.map(c => dbGetMessages(c.id))).then(res => res.flat());
+            setMessages(allMessagesInChannels);
+            if (!activeChannelId) {
+                setActiveChannelId(channelsInSpace[0].id);
+            }
+        } else {
+            setActiveChannelId(null);
+            setMessages([]);
         }
 
         const projectIds = projectsInSpace.map(p => p.id);
@@ -122,7 +109,7 @@ export default function Dashboard() {
             const [tasksInSpace, timeEntriesInSpace, meetingLogsInSpace] = await Promise.all([
                 dbGetTasks(projectIds),
                 dbGetTimeEntries(projectIds),
-                dbGetSlackMeetingLogsInSpace(activeSpaceId), // Use spaceId to get unassigned logs in that space context
+                dbGetSlackMeetingLogsInSpace(activeSpaceId),
             ]);
             setTasks(tasksInSpace);
             setTimeEntries(timeEntriesInSpace);
@@ -156,15 +143,10 @@ export default function Dashboard() {
           : msg
       );
       setMessages(newMessages);
-
-      // In a real app, you would also update the message in the database here
-      // For example: await updateMessage(updatedMessage.id, { linked_task_id: newTask.id });
     }
   }
 
   const handleUpdateTasks = async (updatedTasks: Task[]) => {
-    // This is a simple but inefficient way to handle updates.
-    // In a real app, you'd want to find the specific task that changed and update it.
     for (const task of updatedTasks) {
       const originalTask = tasks.find(t => t.id === task.id);
       if (originalTask && JSON.stringify(originalTask) !== JSON.stringify(task)) {
@@ -211,30 +193,15 @@ export default function Dashboard() {
       setAllSpaces(allSpaces.filter(s => s.id !== spaceId));
   }
 
-  const handleInviteUser = async (values: Invite) => {
-    try {
-        await dbAddInvite(values);
-        toast({
-            title: 'User Invited',
-            description: `${values.email} has been invited. They will get access once they sign in.`
-        });
-    } catch (error) {
-        console.error("Error inviting user: ", error);
-        toast({
-            variant: 'destructive',
-            title: 'Invite Failed',
-            description: 'Could not send the invitation. Please try again.'
-        });
-    }
-  }
-
-
   if (!appUser) {
     return <div className="flex h-screen items-center justify-center">Loading user data...</div>;
   }
   
-  const userSpaces = allSpaces.filter(s => s.members.includes(appUser.id));
+  const userSpaces = allSpaces.filter(s => s.members[appUser.id]);
   const activeSpace = allSpaces.find(s => s.id === activeSpaceId) || userSpaces[0] || allSpaces[0];
+
+  const currentUserPermissions = activeSpace?.members[appUser.id];
+  const isAdmin = currentUserPermissions?.role === 'Admin';
   
   const handleSpaceChange = (spaceId: string) => {
     setActiveSpaceId(spaceId);
@@ -261,14 +228,16 @@ export default function Dashboard() {
           setActiveTab(tabId);
       }
   }
+  
+  const canSeeTimesheets = isAdmin || currentUserPermissions?.permissions?.canSeeAllTimesheets;
 
   const NAV_ITEMS = [
     { id: 'dashboard', label: 'Dashboard', icon: GanttChart },
     { id: 'tasks', label: 'Task Board', icon: FolderKanban },
     { id: 'channels', label: 'Channels', icon: MessageSquare },
-    { id: 'timesheets', label: 'Team Timesheets', icon: Users, adminOnly: true },
-    { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
-    { id: 'admin', label: 'Admin Panel', icon: ShieldCheck, adminOnly: true },
+    { id: 'timesheets', label: 'Team Timesheets', icon: Users, permission: canSeeTimesheets },
+    { id: 'settings', label: 'Settings', icon: Settings, permission: isAdmin },
+    { id: 'admin', label: 'Global Admin', icon: ShieldCheck, permission: false }, // Assuming global admin is separate
   ];
 
   return (
@@ -280,7 +249,7 @@ export default function Dashboard() {
           <aside className="hidden w-20 flex-col items-center border-r bg-card p-4 md:flex">
             <nav className="flex flex-col items-center gap-4">
               {NAV_ITEMS.map(item => {
-                if (item.adminOnly && !isAdmin) {
+                if (item.permission === false) { // Explicitly hide if permission is false
                   return null;
                 }
                 return (
@@ -435,7 +404,7 @@ export default function Dashboard() {
                 {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard tasks={tasks} onUpdateTasks={handleUpdateTasks} projects={projects} activeSpace={activeSpace} allUsers={allUsers} onUpdateActiveSpace={handleUpdateActiveSpace} />}
                 </div>
               )}
-              {isAdmin && activeTab === 'timesheets' && (
+              {canSeeTimesheets && activeTab === 'timesheets' && (
                   <div className="p-4 md:p-8">
                   {isLoading ? <div className="flex justify-center items-center h-full">Loading timesheets...</div> : <TeamTimesheets timeEntries={timeEntries} projects={projects} tasks={tasks} space={activeSpace} allUsers={allUsers} />}
                   </div>
@@ -452,7 +421,7 @@ export default function Dashboard() {
                           {isLoading ? <div className="flex justify-center items-center h-full">Loading spaces...</div> : <SpaceSettings allSpaces={allSpaces} allUsers={allUsers} onSave={handleSaveSpace} onDelete={handleDeleteSpace} appUser={appUser} />}
                           </TabsContent>
                           <TabsContent value="users">
-                          {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings allUsers={allUsers} allSpaces={allSpaces} onInviteUser={handleInviteUser} appUser={appUser} />}
+                          {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings allUsers={allUsers} allSpaces={allSpaces} onInviteUser={() => {}} appUser={appUser} />}
                           </TabsContent>
                       </Tabs>
                   </div>
@@ -476,3 +445,5 @@ export default function Dashboard() {
     </TooltipProvider>
   );
 }
+
+    

@@ -12,6 +12,7 @@ import AllUsersTimesheet from './all-users-timesheet';
 import { startOfWeek, endOfWeek, subWeeks, addWeeks } from 'date-fns';
 
 const getInitials = (name: string) => {
+  if (!name) return '';
   return name.split(' ').map(n => n[0]).join('');
 }
 
@@ -26,7 +27,7 @@ interface TeamTimesheetsProps {
 }
 
 export default function TeamTimesheets({ space, allUsers, projects, tasks, timeEntries }: TeamTimesheetsProps) {
-  const usersInSpace = allUsers.filter(u => space.members.includes(u.id));
+  const usersInSpace = allUsers.filter(u => space.members[u.id]);
   const [selectedUserId, setSelectedUserId] = useState(usersInSpace.length > 0 ? usersInSpace[0].id : '');
   const [viewMode, setViewMode] = useState<ViewMode>('all-users');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -122,3 +123,5 @@ export default function TeamTimesheets({ space, allUsers, projects, tasks, timeE
       />
   )
 }
+
+    

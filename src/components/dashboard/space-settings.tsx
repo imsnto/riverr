@@ -73,7 +73,7 @@ export default function SpaceSettings({ allSpaces, allUsers, onSave, onDelete, a
         <CardContent>
           <div className="space-y-4">
             {allSpaces.map(space => {
-              const members = space.members.map(id => allUsers.find(u => u.id === id)).filter(Boolean) as User[];
+              const members = Object.keys(space.members).map(id => allUsers.find(u => u.id === id)).filter(Boolean) as User[];
               return (
                 <div key={space.id} className="border p-4 rounded-lg flex justify-between items-center">
                     <div>
@@ -129,3 +129,5 @@ export default function SpaceSettings({ allSpaces, allUsers, onSave, onDelete, a
     </>
   );
 }
+
+    

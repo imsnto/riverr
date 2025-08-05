@@ -1,4 +1,3 @@
-
 // src/lib/db.ts
 
 import {
@@ -17,7 +16,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Space, User, Invite, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages } from './data';
+import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages } from './data';
 import { randomBytes } from 'crypto';
 
 // --- Seeding ---
@@ -28,8 +27,11 @@ export const seedDatabase = async () => {
     if (snapshot.empty) {
         console.log('Database is empty, seeding data...');
         const batch = writeBatch(db);
-
-        users.forEach(user => batch.set(doc(db, 'users', user.id), user));
+        
+        // Let's create mock users with specific IDs for reproducible seeding
+        const userIds = ['user-1', 'user-2', 'user-3', 'user-4'];
+        users.forEach((user, i) => batch.set(doc(db, 'users', userIds[i]), user));
+        
         spaces.forEach(space => batch.set(doc(db, 'spaces', space.id), space));
         projects.forEach(project => batch.set(doc(db, 'projects', project.id), project));
         tasks.forEach(task => batch.set(doc(db, 'tasks', task.id), task));
@@ -73,64 +75,21 @@ export const updateUser = async (userId: string, data: Partial<User>): Promise<v
   await updateDoc(userRef, data);
 };
 
-// --- Direct User Pre-Approval ---
-export const addPreApprovedUser = async (userData: Omit<Invite, 'token'>): Promise<void> => {
-    await setDoc(doc(db, 'pre-approved-users', userData.email), userData);
-}
-
-export const getPreApprovedUser = async (email: string): Promise<Omit<Invite, 'token'> | null> => {
-    const userDoc = await getDoc(doc(db, 'pre-approved-users', email));
-    return userDoc.exists() ? (userDoc.data() as Omit<Invite, 'token'>) : null;
-}
-
-export const deletePreApprovedUser = async (email: string): Promise<void> => {
-    await deleteDoc(doc(db, 'pre-approved-users', email));
-}
-
-
-// --- Invite Management ---
-export const addInvite = async (inviteData: Omit<Invite, 'token'>): Promise<void> => {
-    const token = randomBytes(16).toString('hex');
-    const inviteWithToken: Invite = { ...inviteData, token };
-    await setDoc(doc(db, 'invites', inviteData.email), inviteWithToken);
-};
-
-export const getInvite = async(email: string): Promise<Invite | null> => {
+// --- Obsolete Invite Management ---
+// These functions are no longer needed with the new auth model but are kept for reference,
+// they should be removed in a future cleanup.
+export const getInvite = async(email: string): Promise<any | null> => {
   const inviteDoc = await getDoc(doc(db, 'invites', email));
-  return inviteDoc.exists() ? (inviteDoc.data() as Invite) : null;
+  return inviteDoc.exists() ? (inviteDoc.data() as any) : null;
 };
-
-export const getAllInvites = async (): Promise<Invite[]> => {
-    const querySnapshot = await getDocs(collection(db, 'invites'));
-    return querySnapshot.docs.map(doc => doc.data() as Invite);
-};
-
 export const deleteInvite = async (email: string): Promise<void> => {
   await deleteDoc(doc(db, 'invites', email));
 };
 
-export const resendInvite = async (email: string): Promise<boolean> => {
-  const invite = await getInvite(email);
-  if (!invite) {
-    console.error("No invite found for this email to resend.");
-    return false;
-  }
-  
-  const inviteData: Omit<Invite, 'token'> = {
-    email: invite.email,
-    role: invite.role,
-    spaces: invite.spaces,
-  }
-
-  // Use setDoc to overwrite existing and create new, which handles the trigger correctly
-  await addInvite(inviteData);
-  return true;
-}
-
 
 // --- Space Management ---
 export const getSpacesForUser = async (userId: string): Promise<Space[]> => {
-  const q = query(collection(db, 'spaces'), where('members', 'array-contains', userId));
+  const q = query(collection(db, 'spaces'), where(`members.${userId}`, '!=', null));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Space));
 };
@@ -148,15 +107,6 @@ export const addSpace = async (space: Omit<Space, 'id'>) => {
 export const updateSpace = async (spaceId: string, data: Partial<Space>): Promise<void> => {
   const spaceRef = doc(db, 'spaces', spaceId);
   await updateDoc(spaceRef, data);
-};
-
-export const addMemberToSpaces = async (spaceIds: string[], userId: string): Promise<void> => {
-  const batch = writeBatch(db);
-  spaceIds.forEach(spaceId => {
-    const spaceRef = doc(db, 'spaces', spaceId);
-    batch.update(spaceRef, { members: arrayUnion(userId) });
-  });
-  await batch.commit();
 };
 
 export const deleteSpace = async (spaceId: string): Promise<void> => {
@@ -204,20 +154,15 @@ export const getTimeEntriesInSpace = async (projectIds: string[]): Promise<TimeE
 }
 
 export const getSlackMeetingLogsInSpace = async (spaceId: string): Promise<SlackMeetingLog[]> => {
-    // This is not a query that scales well in firestore.
-    // In a real app we'd likely duplicate spaceId on the log, or query projects first.
-    // For this prototype, it's acceptable.
     const projectsInSpace = await getProjectsInSpace(spaceId);
     const projectIds = projectsInSpace.map(p => p.id);
 
     if (projectIds.length === 0) return [];
     
-    // Add unassigned logs
     const unassignedQ = query(collection(db, 'slack_meeting_logs'), where('project_id', '==', null));
     const unassignedSnapshot = await getDocs(unassignedQ);
     const unassignedLogs = unassignedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SlackMeetingLog));
 
-    // Add assigned logs
     const q = query(collection(db, 'slack_meeting_logs'), where('project_id', 'in', projectIds));
     const querySnapshot = await getDocs(q);
     const assignedLogs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SlackMeetingLog));
@@ -255,3 +200,5 @@ export const addMessage = async (message: Omit<Message, 'id'>): Promise<Message>
     
     return savedMessage;
 }
+
+    

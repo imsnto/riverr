@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -16,14 +17,13 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Space, User } from '@/lib/data';
+import { Space, User, SpaceMember } from '@/lib/data';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -50,8 +50,8 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
   const form = useForm<SpaceFormValues>({
     resolver: zodResolver(spaceSchema),
     defaultValues: {
-      name: space?.name || '',
-      members: space?.members || [currentUser.id],
+      name: '',
+      members: [currentUser.id],
     },
   });
   
@@ -60,7 +60,7 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
       if (space) {
           form.reset({
               name: space.name,
-              members: space.members,
+              members: Object.keys(space.members),
           });
       } else {
           form.reset({
@@ -72,7 +72,24 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
   }, [space, currentUser, form, isOpen])
 
   const onSubmit = (values: SpaceFormValues) => {
-    onSave(values);
+    // Convert the array of member IDs back into the required Record structure
+    const membersMap: Record<string, SpaceMember> = {};
+    values.members.forEach(memberId => {
+        // If editing, preserve existing role, otherwise default to Admin for creator, Member for others
+        const existingMember = space?.members[memberId];
+        if (existingMember) {
+            membersMap[memberId] = existingMember;
+        } else {
+            membersMap[memberId] = { role: memberId === currentUser.id ? 'Admin' : 'Member' };
+        }
+    });
+
+    const spaceData = {
+        name: values.name,
+        members: membersMap
+    };
+    
+    onSave(spaceData);
     onOpenChange(false);
   };
 
@@ -132,7 +149,7 @@ function MemberSelect({ allUsers, selectedUsers, onChange, creatorId }: { allUse
     const [open, setOpen] = React.useState(false)
   
     const handleSelect = (userId: string) => {
-        if (creatorId && userId === creatorId) return; // Prevent de-selecting the creator
+        if (creatorId && userId === creatorId) return;
 
         const newSelected = selectedUsers.includes(userId)
             ? selectedUsers.filter(id => id !== userId)
@@ -191,3 +208,5 @@ function MemberSelect({ allUsers, selectedUsers, onChange, creatorId }: { allUse
       </div>
     )
   }
+
+    
