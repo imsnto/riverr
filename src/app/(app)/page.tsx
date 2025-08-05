@@ -130,7 +130,7 @@ export default function Dashboard() {
             const [tasksInSpace, timeEntriesInSpace, meetingLogsInSpace] = await Promise.all([
                 dbGetTasks(projectIds),
                 dbGetTimeEntries(projectIds),
-                dbGetSlackMeetingLogsInSpace(activeSpaceId),
+                dbGetSlackLogs(activeSpaceId),
             ]);
             if (abortController.signal.aborted) return;
             setTasks(tasksInSpace);
@@ -197,7 +197,7 @@ export default function Dashboard() {
   const handleSaveSpace = async (spaceData: Omit<Space, 'id'>) => {
      if ('id' in spaceData && spaceData.id) { // Existing space
         await dbUpdateSpace(spaceData.id, spaceData);
-        setAllSpaces(allSpaces.map(s => s.id === spaceData.id ? { ...s, ...spaceData } : s));
+        setAllSpaces(allSpaces.map(s => s.id === spaceData.id ? { ...s, ...spaceData } as Space : s));
       } else { // New space
         const newSpace: Omit<Space, 'id'> = {
             name: spaceData.name,
