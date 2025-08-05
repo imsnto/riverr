@@ -40,39 +40,39 @@ type SpaceFormValues = z.infer<typeof spaceSchema>;
 interface SpaceFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (space: Space) => void;
+  onSave: (space: Omit<Space, 'id' | 'statuses'>) => void;
   space: Space | null;
   allUsers: User[];
+  currentUser: User;
 }
 
-export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, allUsers }: SpaceFormDialogProps) {
+export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, allUsers, currentUser }: SpaceFormDialogProps) {
   const form = useForm<SpaceFormValues>({
     resolver: zodResolver(spaceSchema),
     defaultValues: {
       name: space?.name || '',
-      members: space?.members || [],
+      members: space?.members || [currentUser.id],
     },
   });
   
   React.useEffect(() => {
-    if (space) {
-        form.reset({
-            name: space.name,
-            members: space.members,
-        });
-    } else {
-        form.reset({
-            name: '',
-            members: [],
-        })
+    if (isOpen) {
+      if (space) {
+          form.reset({
+              name: space.name,
+              members: space.members,
+          });
+      } else {
+          form.reset({
+              name: '',
+              members: [currentUser.id],
+          })
+      }
     }
-  }, [space, form])
+  }, [space, currentUser, form, isOpen])
 
   const onSubmit = (values: SpaceFormValues) => {
-    onSave({
-        id: space?.id || '', // ID will be generated/kept in the parent component
-        ...values
-    });
+    onSave(values);
     onOpenChange(false);
   };
 
@@ -106,7 +106,12 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Members</FormLabel>
-                   <MemberSelect allUsers={allUsers} selectedUsers={field.value} onChange={field.onChange} />
+                   <MemberSelect 
+                        allUsers={allUsers} 
+                        selectedUsers={field.value} 
+                        onChange={field.onChange}
+                        creatorId={space ? null : currentUser.id}
+                    />
                   <FormMessage />
                 </FormItem>
               )}
@@ -123,10 +128,12 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
 }
 
 
-function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
+function MemberSelect({ allUsers, selectedUsers, onChange, creatorId }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void, creatorId: string | null }) {
     const [open, setOpen] = React.useState(false)
   
     const handleSelect = (userId: string) => {
+        if (creatorId && userId === creatorId) return; // Prevent de-selecting the creator
+
         const newSelected = selectedUsers.includes(userId)
             ? selectedUsers.filter(id => id !== userId)
             : [...selectedUsers, userId];
@@ -163,6 +170,9 @@ function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[],
                       key={user.id}
                       value={user.name}
                       onSelect={() => handleSelect(user.id)}
+                      className={cn(
+                        creatorId && user.id === creatorId && "opacity-50 cursor-not-allowed"
+                      )}
                     >
                       <Check
                         className={cn(

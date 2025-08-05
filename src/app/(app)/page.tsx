@@ -186,13 +186,23 @@ export default function Dashboard() {
       await dbUpdateSpace(activeSpaceId, updatedSpace);
   }
 
-  const handleSaveSpace = async (spaceData: Space) => {
-     if (spaceData.id) { // Existing space
+  const handleSaveSpace = async (spaceData: Omit<Space, 'id'>) => {
+     if ('id' in spaceData && spaceData.id) { // Existing space
         await dbUpdateSpace(spaceData.id, spaceData);
-        setAllSpaces(allSpaces.map(s => s.id === spaceData.id ? spaceData : s));
+        setAllSpaces(allSpaces.map(s => s.id === spaceData.id ? { ...s, ...spaceData } : s));
       } else { // New space
-        const newId = await dbAddSpace({ name: spaceData.name, members: spaceData.members, statuses: spaceData.statuses });
-        setAllSpaces([...allSpaces, { ...spaceData, id: newId }]);
+        const newSpace: Omit<Space, 'id'> = {
+            name: spaceData.name,
+            members: spaceData.members,
+            statuses: [
+                { name: 'Backlog', color: '#6b7280' },
+                { name: 'In Progress', color: '#3b82f6' },
+                { name: 'Review', color: '#f59e0b' },
+                { name: 'Done', color: '#22c55e' },
+            ]
+        }
+        const newId = await dbAddSpace(newSpace);
+        setAllSpaces([...allSpaces, { ...newSpace, id: newId }]);
       }
   }
   
@@ -466,5 +476,3 @@ export default function Dashboard() {
     </TooltipProvider>
   );
 }
-
-    

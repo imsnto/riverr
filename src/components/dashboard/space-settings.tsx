@@ -18,7 +18,7 @@ const getInitials = (name: string) => {
 interface SpaceSettingsProps {
     allSpaces: Space[];
     allUsers: User[];
-    onSave: (space: Space) => void;
+    onSave: (space: Omit<Space, 'id'>) => void;
     onDelete: (spaceId: string) => void;
     appUser: User | null;
 }
@@ -27,6 +27,8 @@ export default function SpaceSettings({ allSpaces, allUsers, onSave, onDelete, a
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
   const { toast } = useToast();
+
+  if (!appUser) return null;
 
   const handleCreateNew = () => {
     setSelectedSpace(null);
@@ -43,25 +45,12 @@ export default function SpaceSettings({ allSpaces, allUsers, onSave, onDelete, a
     toast({ title: 'Space Deleted', description: 'The space has been successfully deleted.' });
   }
 
-  const handleSaveAndClose = (spaceData: Partial<Space>) => {
-    const defaultStatuses = [
-        { name: 'Backlog', color: '#6b7280' },
-        { name: 'In Progress', color: '#3b82f6' },
-        { name: 'Review', color: '#f59e0b' },
-        { name: 'Done', color: '#22c55e' },
-    ];
-    
+  const handleSaveAndClose = (spaceData: Omit<Space, 'id'|'statuses'>) => {
     if (selectedSpace) {
       onSave({ ...selectedSpace, ...spaceData });
       toast({ title: 'Space Updated', description: 'The space has been successfully updated.' });
     } else {
-      const newSpace: Space = {
-        id: '', // Will be set by parent
-        name: spaceData.name!,
-        members: spaceData.members || [appUser!.id],
-        statuses: defaultStatuses
-      };
-      onSave(newSpace);
+      onSave(spaceData);
       toast({ title: 'Space Created', description: 'The space has been successfully created.' });
     }
   };
@@ -135,6 +124,7 @@ export default function SpaceSettings({ allSpaces, allUsers, onSave, onDelete, a
         onSave={handleSaveAndClose}
         space={selectedSpace}
         allUsers={allUsers}
+        currentUser={appUser}
       />
     </>
   );
