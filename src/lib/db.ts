@@ -17,7 +17,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember } from './data';
+import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions } from './data';
 import { randomBytes } from 'crypto';
 
 // --- Seeding ---
@@ -90,13 +90,28 @@ export const getInvitesForEmail = async (email: string): Promise<Invite[]> => {
 export const acceptInvite = async (invite: Invite, userId: string) => {
     const batch = writeBatch(db);
 
+    const defaultMemberPermissions: Permissions = {
+        canViewTasks: true,
+        canEditTasks: false,
+        canLogTime: true,
+        canSeeAllTimesheets: false,
+        canViewReports: false,
+        canInviteMembers: false,
+    };
+
     // Add user to each space
     for (const spaceId of invite.spaces) {
         const spaceRef = doc(db, 'spaces', spaceId);
+        
         const member: SpaceMember = { 
             role: invite.role,
-            permissions: invite.role === 'Admin' ? undefined : invite.permissions,
+            // If the role is member, use the invite's permissions or fall back to a default.
+            // If the role is admin, permissions are not needed as they have full access.
+            permissions: invite.role === 'Member' 
+                ? (invite.permissions || defaultMemberPermissions)
+                : undefined,
         };
+        
         batch.update(spaceRef, {
             [`members.${userId}`]: member
         });
