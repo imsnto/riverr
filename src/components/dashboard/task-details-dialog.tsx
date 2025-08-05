@@ -498,4 +498,3 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
     );
 }
 
-    
