@@ -17,6 +17,8 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { User, Task, Project } from '@/lib/data';
+import { addTask as dbAddTask } from '@/lib/db';
+import { useToast } from '@/hooks/use-toast';
 
 const taskSchema = z.object({
   name: z.string().min(1, 'Task name is required'),
@@ -39,46 +41,59 @@ interface NewTaskDialogProps {
 }
 
 export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, projects, statuses, allUsers }: NewTaskDialogProps) {
+  const { toast } = useToast();
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
       name: '',
       description: '',
-      project_id: '',
+      project_id: projects.length > 0 ? projects[0].id : '',
       assigned_to: '',
       due_date: new Date(),
       status: statuses[0] || '',
     },
   });
 
-  const onSubmit = (values: TaskFormValues) => {
-    const newTask: Task = {
-      id: `task-${Date.now()}`,
-      ...values,
-      description: values.description || '',
-      due_date: values.due_date.toISOString(),
-      priority: null,
-      sprint_points: null,
-      tags: [],
-      time_estimate: null,
-      relationships: [],
-      activities: [],
-      comments: [],
-      attachments: [],
-    };
-    onTaskAdd(newTask);
-    form.reset({ ...form.formState.defaultValues, status: statuses[0] || ''});
-    onOpenChange(false);
+  const onSubmit = async (values: TaskFormValues) => {
+    try {
+        const taskData: Omit<Task, 'id'> = {
+            ...values,
+            description: values.description || '',
+            due_date: values.due_date.toISOString(),
+            priority: null,
+            sprint_points: null,
+            tags: [],
+            time_estimate: null,
+            relationships: [],
+            activities: [],
+            comments: [],
+            attachments: [],
+        };
+        const newTask = await dbAddTask(taskData);
+        onTaskAdd(newTask);
+        toast({ title: 'Task Created' });
+        onOpenChange(false);
+    } catch (e) {
+        toast({
+            variant: 'destructive',
+            title: 'Failed to create task',
+            description: 'There was an error saving the task. Please try again.',
+        })
+    }
   };
   
   React.useEffect(() => {
-    if (statuses.length > 0) {
+    if (isOpen) {
         form.reset({
-            ...form.formState.defaultValues,
-            status: statuses[0],
+            name: '',
+            description: '',
+            project_id: projects.length > 0 ? projects[0].id : '',
+            assigned_to: '',
+            due_date: new Date(),
+            status: statuses[0] || '',
         })
     }
-  }, [statuses, form])
+  }, [isOpen, projects, statuses, form])
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
