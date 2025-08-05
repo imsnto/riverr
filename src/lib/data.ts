@@ -57,6 +57,14 @@ export interface Project {
   slack_channel_id?: string;
 }
 
+export interface Subtask {
+  id: string;
+  name: string;
+  status: string;
+  assigned_to: string;
+  due_date: string | null;
+}
+
 export interface Task {
   id: string;
   project_id: string;
@@ -74,6 +82,7 @@ export interface Task {
   comments: Comment[];
   attachments?: Attachment[];
   linked_task_id?: string;
+  subtasks?: Subtask[];
 }
 
 export interface Activity {
@@ -241,6 +250,11 @@ export const tasks: Task[] = [
     ],
     attachments: [
       { id: 'att-1', name: 'wireframe-v1.png', url: 'https://placehold.co/600x400.png', type: 'image' }
+    ],
+    subtasks: [
+      { id: 'sub-1', name: 'Design hero section', status: 'Done', assigned_to: 'user-1', due_date: '2024-08-10T23:59:59Z'},
+      { id: 'sub-2', name: 'Design feature grid', status: 'In Progress', assigned_to: 'user-1', due_date: '2024-08-12T23:59:59Z'},
+      { id: 'sub-3', name: 'Design footer', status: 'Backlog', assigned_to: 'user-1', due_date: null},
     ]
   },
   {
@@ -258,7 +272,8 @@ export const tasks: Task[] = [
     relationships: [],
     activities: [],
     comments: [],
-    attachments: []
+    attachments: [],
+    subtasks: []
   },
   {
     id: 'task-3',
@@ -275,7 +290,8 @@ export const tasks: Task[] = [
     relationships: [],
     activities: [],
     comments: [],
-    attachments: []
+    attachments: [],
+    subtasks: []
   },
   {
     id: 'task-4',
@@ -292,7 +308,8 @@ export const tasks: Task[] = [
     relationships: [],
     activities: [],
     comments: [],
-    attachments: []
+    attachments: [],
+    subtasks: []
   },
   {
     id: 'task-5',
@@ -309,7 +326,8 @@ export const tasks: Task[] = [
     relationships: [],
     activities: [],
     comments: [],
-    attachments: []
+    attachments: [],
+    subtasks: []
   },
   {
     id: 'task-6',
@@ -326,7 +344,8 @@ export const tasks: Task[] = [
     relationships: [],
     activities: [],
     comments: [],
-    attachments: []
+    attachments: [],
+    subtasks: []
   },
   {
     id: 'task-7',
@@ -343,7 +362,8 @@ export const tasks: Task[] = [
     relationships: [],
     activities: [],
     comments: [],
-    attachments: []
+    attachments: [],
+    subtasks: []
   }
 ];
 

@@ -2,8 +2,8 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Task, Comment, Activity, User, Project, Attachment } from '@/lib/data';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Task, Comment, Activity, User, Project, Attachment, Subtask } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -11,10 +11,16 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
-import { Bot, Calendar, CircleDot, Clock, Flag, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight, Paperclip, File, Image as ImageIcon } from 'lucide-react';
+import { Bot, Calendar, CircleDot, Clock, Flag, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight, Paperclip, File, Image as ImageIcon, Plus, Trash2, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { Input } from '../ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar as CalendarPicker } from '../ui/calendar';
+import { format } from 'date-fns';
+import { Checkbox } from '../ui/checkbox';
+
 
 const getInitials = (name: string) => {
     return name ? name.split(' ').map(n => n[0]).join('') : '';
@@ -24,12 +30,13 @@ interface DetailRowProps {
     icon: React.ElementType;
     label: string;
     children: React.ReactNode;
+    className?: string;
 }
-const DetailRow: React.FC<DetailRowProps> = ({ icon: Icon, label, children }) => (
-    <div className="grid grid-cols-3 items-center gap-2">
+const DetailRow: React.FC<DetailRowProps> = ({ icon: Icon, label, children, className }) => (
+    <div className={cn("grid grid-cols-3 items-center gap-2", className)}>
         <div className="col-span-1 flex items-center gap-2 text-muted-foreground">
             <Icon className="h-4 w-4" />
-            <span className="text-sm">{label}</span>
+            <span className="text-sm font-medium">{label}</span>
         </div>
         <div className="col-span-2">{children}</div>
     </div>
@@ -82,6 +89,8 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
     const { appUser } = useAuth();
     const [attachments, setAttachments] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [newTag, setNewTag] = useState('');
+    const [newSubtask, setNewSubtask] = useState('');
     
     if (!appUser) return null;
 
@@ -162,6 +171,41 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         };
         onUpdateTask(updatedTask);
     }
+
+     const handleAddTag = () => {
+        if (newTag && !task.tags.includes(newTag)) {
+            handleFieldChange('tags', [...task.tags, newTag]);
+            setNewTag('');
+        }
+    };
+
+    const handleRemoveTag = (tagToRemove: string) => {
+        handleFieldChange('tags', task.tags.filter(tag => tag !== tagToRemove));
+    };
+
+    const handleAddSubtask = () => {
+        if (newSubtask.trim() === '' || !appUser) return;
+        const newSub: Subtask = {
+            id: `sub-${Date.now()}`,
+            name: newSubtask.trim(),
+            status: 'Backlog',
+            assigned_to: appUser.id,
+            due_date: null
+        };
+        const subtasks = task.subtasks ? [...task.subtasks, newSub] : [newSub];
+        handleFieldChange('subtasks', subtasks);
+        setNewSubtask('');
+    }
+
+    const handleUpdateSubtask = (subtaskId: string, newStatus: string) => {
+         const subtasks = task.subtasks?.map(sub => sub.id === subtaskId ? {...sub, status: newStatus} : sub);
+         handleFieldChange('subtasks', subtasks);
+    }
+    
+    const handleRemoveSubtask = (subtaskId: string) => {
+        const subtasks = task.subtasks?.filter(sub => sub.id !== subtaskId);
+        handleFieldChange('subtasks', subtasks);
+    }
     
     const sortedActivities = [...task.activities].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
@@ -179,18 +223,19 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                 <div className="grid grid-cols-3 h-full">
                     {/* Left Panel: Task Details */}
                     <div className="col-span-2 p-6 flex flex-col gap-6 overflow-y-auto">
-                        <DialogHeader className="gap-4">
+                        <DialogHeader>
                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Button variant="outline" size="sm" className="pointer-events-none">
-                                    <CircleDot className="mr-2" /> Task
+                                    <CircleDot className="mr-2" /> {project?.name || 'Task'}
                                 </Button>
-                                <span>{task.id}</span>
-                                <Button variant="ghost" size="sm">
-                                    <Bot className="mr-2" /> Ask AI
-                                </Button>
+                                <span>/ {task.id}</span>
                            </div>
-                           <DialogTitle className="text-2xl">{task.name}</DialogTitle>
-                           <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 text-primary-foreground">
+                           <Input 
+                                defaultValue={task.name}
+                                onBlur={(e) => handleFieldChange('name', e.target.value)}
+                                className="text-2xl font-bold h-auto p-0 border-none focus-visible:ring-0"
+                            />
+                            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 text-primary-foreground">
                                 <Bot className="h-5 w-5 text-primary" />
                                 <p className="text-sm font-medium text-primary">Ask Brain to <a href="#" className="underline">create a summary</a> · <a href="#" className="underline">generate subtasks</a> · <a href="#" className="underline">find similar tasks</a> · <a href="#" className="underline">or ask about this task</a></p>
                            </div>
@@ -237,12 +282,26 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                     </SelectContent>
                                 </Select>
                             </DetailRow>
-                            <DetailRow icon={Calendar} label="Dates">
-                                <div className="flex items-center gap-2 text-sm h-8">
-                                    <span>{new Date(task.due_date).toLocaleDateString()}</span>
-                                    <ArrowRight className="h-4 w-4 text-muted-foreground"/>
-                                    <span>{new Date(task.due_date).toLocaleDateString()}</span>
-                                </div>
+                             <DetailRow icon={Calendar} label="Due Date">
+                                 <Popover>
+                                    <PopoverTrigger asChild>
+                                    <Button
+                                        variant={"outline"}
+                                        className={cn("w-full justify-start text-left font-normal h-8", !task.due_date && "text-muted-foreground")}
+                                    >
+                                        <Calendar className="mr-2 h-4 w-4" />
+                                        {task.due_date ? format(new Date(task.due_date), "PPP") : <span>Pick a date</span>}
+                                    </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <CalendarPicker
+                                            mode="single"
+                                            selected={new Date(task.due_date)}
+                                            onSelect={(date) => handleFieldChange('due_date', date?.toISOString())}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
                             </DetailRow>
                              <DetailRow icon={Flag} label="Priority">
                                 <Select value={task.priority || 'null'} onValueChange={(value) => handleFieldChange('priority', value === 'null' ? null : value)}>
@@ -258,28 +317,87 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                     </SelectContent>
                                 </Select>
                             </DetailRow>
-                             <DetailRow icon={Clock} label="Time Estimate">
-                                <p className="text-sm h-8 flex items-center">{task.time_estimate ? `${task.time_estimate}h` : 'Empty'}</p>
+                            <DetailRow icon={Clock} label="Time Est.">
+                                <Input type="number" placeholder="0h" className="h-8" defaultValue={task.time_estimate || ''} onBlur={(e) => handleFieldChange('time_estimate', e.target.value ? parseFloat(e.target.value) : null)} />
                             </DetailRow>
-                             <DetailRow icon={Zap} label="Sprint Points">
-                                 <p className="text-sm h-8 flex items-center">{task.sprint_points ? `${task.sprint_points}` : 'Empty'}</p>
+                            <DetailRow icon={Zap} label="Sprint Pts.">
+                                <Input type="number" placeholder="0" className="h-8" defaultValue={task.sprint_points || ''} onBlur={(e) => handleFieldChange('sprint_points', e.target.value ? parseInt(e.target.value, 10) : null)} />
                             </DetailRow>
-                            <DetailRow icon={Clock} label="Track Time">
-                                <p className="text-sm font-medium h-8 flex items-center">{totalTimeTracked}h</p>
-                            </DetailRow>
-                             <DetailRow icon={Tag} label="Tags">
-                                <p className="text-sm h-8 flex items-center">Empty</p>
-                            </DetailRow>
-                            <DetailRow icon={LinkIcon} label="Relationships">
-                                <p className="text-sm h-8 flex items-center">Empty</p>
+                            <DetailRow icon={Tag} label="Tags" className="items-start">
+                                <div className="flex flex-col gap-2">
+                                     <div className="flex flex-wrap gap-1">
+                                        {task.tags.map(tag => (
+                                            <Badge key={tag} variant="secondary">
+                                                {tag}
+                                                <button onClick={() => handleRemoveTag(tag)} className="ml-1 rounded-full hover:bg-destructive/20 p-0.5">
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            placeholder="Add tag..."
+                                            className="h-8"
+                                            value={newTag}
+                                            onChange={(e) => setNewTag(e.target.value)}
+                                            onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }}
+                                        />
+                                        <Button size="sm" onClick={handleAddTag}>Add</Button>
+                                    </div>
+                                </div>
                             </DetailRow>
                         </div>
 
                         <Separator />
 
                         <div>
-                            <p className="text-sm text-muted-foreground">{task.description}</p>
+                            <DialogTitle className="text-lg mb-2">Description</DialogTitle>
+                            <Textarea 
+                                defaultValue={task.description}
+                                onBlur={(e) => handleFieldChange('description', e.target.value)}
+                                placeholder="Add a more detailed description..."
+                                className="min-h-[120px]"
+                            />
                         </div>
+
+                        <Separator />
+
+                        <div>
+                            <DialogTitle className="text-lg mb-2">Subtasks</DialogTitle>
+                             <div className="space-y-2">
+                                {task.subtasks?.map(subtask => {
+                                    const subtaskAssignee = allUsers.find(u => u.id === subtask.assigned_to);
+                                    return (
+                                        <div key={subtask.id} className="flex items-center gap-2 group">
+                                            <Checkbox 
+                                                checked={subtask.status === 'Done'}
+                                                onCheckedChange={(checked) => handleUpdateSubtask(subtask.id, checked ? 'Done' : 'Backlog')}
+                                            />
+                                            <Input defaultValue={subtask.name} className={cn("h-8 border-transparent hover:border-input focus-visible:border-input read-only:border-transparent read-only:hover:border-transparent", subtask.status === 'Done' && 'line-through text-muted-foreground')} />
+                                            <Avatar className="h-6 w-6">
+                                                <AvatarImage src={subtaskAssignee?.avatarUrl} />
+                                                <AvatarFallback>{getInitials(subtaskAssignee?.name || '')}</AvatarFallback>
+                                            </Avatar>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => handleRemoveSubtask(subtask.id)}>
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        </div>
+                                    )
+                                })}
+                                <div className="flex items-center gap-2">
+                                    <Input 
+                                        placeholder="Add a new subtask..."
+                                        className="h-8"
+                                        value={newSubtask}
+                                        onChange={(e) => setNewSubtask(e.target.value)}
+                                        onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); handleAddSubtask(); } }}
+                                    />
+                                    <Button size="sm" onClick={handleAddSubtask}><Plus className="h-4 w-4 mr-1"/> Add</Button>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
 
                     {/* Right Panel: Activity & Comments */}
