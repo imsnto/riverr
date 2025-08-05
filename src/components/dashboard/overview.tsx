@@ -26,6 +26,17 @@ export default function Overview({ projects, tasks, timeEntries, appUser, allUse
 
   const totalHoursLogged = userTimeEntries.reduce((acc, entry) => acc + entry.duration, 0);
 
+  const formatDuration = (hours: number) => {
+    if (hours >= 1) {
+      return `${hours.toFixed(1)} hrs`;
+    }
+    const minutes = hours * 60;
+    if (minutes < 1) {
+        return `< 1 min`;
+    }
+    return `${Math.round(minutes)} min`;
+  };
+
   return (
     <>
       <div className="space-y-6">
@@ -91,7 +102,7 @@ export default function Overview({ projects, tasks, timeEntries, appUser, allUse
                    const task = tasks.find(t => t.id === entry.task_id);
                    return (
                       <li key={entry.id} className="text-sm">
-                          <p className="font-medium">{entry.duration} hrs on {project?.name}</p>
+                          <p className="font-medium">{formatDuration(entry.duration)} on {project?.name}</p>
                           <p className="text-xs text-muted-foreground">{task ? task.name : entry.notes}</p>
                       </li>
                    );
@@ -117,5 +128,3 @@ export default function Overview({ projects, tasks, timeEntries, appUser, allUse
     </>
   );
 }
-
-    
