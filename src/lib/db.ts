@@ -1,3 +1,4 @@
+
 // src/lib/db.ts
 
 import {
@@ -69,8 +70,9 @@ export const addUser = async (user: Omit<User, 'id'>, uid: string): Promise<User
   const preApprovedUser = await getPreApprovedUser(user.email);
   const invite = await getInvite(user.email);
 
-  const role = preApprovedUser?.role || invite?.role || 'Member';
-  const spaces = preApprovedUser?.spaces || invite?.spaces || [];
+  const authSource = preApprovedUser || invite;
+  const role = authSource?.role || 'Member';
+  const spaces = authSource?.spaces || [];
 
   const userWithRole = { ...user, role };
 
