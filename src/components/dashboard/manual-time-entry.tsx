@@ -30,7 +30,10 @@ export default function ManualTimeEntry({ projects, tasks, appUser, onLogTime }:
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const duration = parseFloat(formData.get('duration') as string);
+    const hours = parseFloat(formData.get('hours') as string) || 0;
+    const minutes = parseFloat(formData.get('minutes') as string) || 0;
+    const duration = hours + minutes / 60;
+    
     const projectId = formData.get('project') as string;
     const taskId = formData.get('task') as string | undefined;
     const notes = formData.get('notes') as string;
@@ -105,8 +108,11 @@ export default function ManualTimeEntry({ projects, tasks, appUser, onLogTime }:
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="duration">Duration (in hours)</Label>
-            <Input id="duration" name="duration" type="number" step="0.1" placeholder="e.g., 2.5" required />
+            <Label>Duration</Label>
+            <div className="grid grid-cols-2 gap-2">
+                <Input id="hours" name="hours" type="number" placeholder="Hours" min="0" />
+                <Input id="minutes" name="minutes" type="number" placeholder="Minutes" step="1" min="0" />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="notes">Notes</Label>
