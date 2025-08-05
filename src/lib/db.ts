@@ -103,14 +103,12 @@ export const acceptInvite = async (invite: Invite, userId: string) => {
     for (const spaceId of invite.spaces) {
         const spaceRef = doc(db, 'spaces', spaceId);
         
-        const member: SpaceMember = { 
-            role: invite.role,
-            // If the role is member, use the invite's permissions or fall back to a default.
-            // If the role is admin, permissions are not needed as they have full access.
-            permissions: invite.role === 'Member' 
-                ? (invite.permissions || defaultMemberPermissions)
-                : undefined,
-        };
+        const member: SpaceMember = { role: invite.role };
+        
+        // Only add permissions for Members. Admins get full access by default.
+        if (invite.role === 'Member') {
+          member.permissions = invite.permissions || defaultMemberPermissions;
+        }
         
         batch.update(spaceRef, {
             [`members.${userId}`]: member
