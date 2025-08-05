@@ -2,11 +2,10 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User as AppUser } from '@/lib/data';
+import { User as AppUser, Space, SpaceMember } from '@/lib/data';
 import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut, signInWithPopup } from 'firebase/auth';
-import { auth, db, googleProvider } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { getUser, addUser, addSpace } from '@/lib/db';
+import { auth, googleProvider } from '@/lib/firebase';
+import { getUser, addUser, addSpace, getSpacesForUser } from '@/lib/db';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -19,7 +18,8 @@ interface AuthContextType {
   setAppUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  getUserPermissions: (spaceId: string) => { role: 'Admin' | 'Member', permissions: any } | null;
+  userSpaces: Space[];
+  getUserPermissions: (spaceId: string) => SpaceMember | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
-  const [userSpaces, setUserSpaces] = useState<any[]>([]);
+  const [userSpaces, setUserSpaces] = useState<Space[]>([]);
 
   useEffect(() => {
     const cachedUser = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -37,10 +37,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const parsed = JSON.parse(cachedUser);
             setAppUser(parsed.appUser);
             setFirebaseUser(parsed.firebaseUser);
+            setUserSpaces(parsed.userSpaces || []);
             setStatus('authenticated');
         } catch (e) {
             localStorage.removeItem(LOCAL_STORAGE_KEY);
         }
+    } else {
+        setStatus('loading');
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -52,20 +55,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         let userProfile = await getUser(user.uid);
 
         if (!userProfile) {
-          // If no profile, create one
           const newUser: Omit<AppUser, 'id'> = {
             name: user.displayName || 'New User',
             email: user.email!,
             avatarUrl: user.photoURL || `https://placehold.co/100x100.png?text=${user.displayName?.[0] || 'U'}`,
           };
           userProfile = await addUser(newUser, user.uid);
-
-          // Create a personal space for the new user
-          const newSpace = {
+          const personalSpace = {
             name: `${userProfile.name}'s Space`,
-            members: {
-              [userProfile.id]: { role: 'Admin' }
-            },
+            members: { [userProfile.id]: { role: 'Admin' as const } },
             statuses: [
               { name: 'Backlog', color: '#6b7280' },
               { name: 'In Progress', color: '#3b82f6' },
@@ -73,16 +71,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               { name: 'Done', color: '#22c55e' },
             ]
           };
-          await addSpace(newSpace);
+          await addSpace(personalSpace);
         }
         
+        const spaces = await getSpacesForUser(userProfile.id);
+        setUserSpaces(spaces);
         setAppUser(userProfile);
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ appUser: userProfile, firebaseUser: user }));
+        
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ appUser: userProfile, firebaseUser: user, userSpaces: spaces }));
         setStatus('authenticated');
 
       } else {
         setFirebaseUser(null);
         setAppUser(null);
+        setUserSpaces([]);
         localStorage.removeItem(LOCAL_STORAGE_KEY);
         document.cookie = 'token=; Max-Age=0; path=/;';
         setStatus('unauthenticated');
@@ -94,9 +96,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const handleSignOut = async () => {
     await firebaseSignOut(auth);
+    setAppUser(null);
+    setFirebaseUser(null);
+    setUserSpaces([]);
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    document.cookie = 'token=; Max-Age=0; path=/;';
+    setStatus('unauthenticated');
   };
 
   const signInWithGoogle = async () => {
+    setStatus('loading');
     try {
       await signInWithPopup(auth, googleProvider);
       // The onAuthStateChanged listener will handle the rest
@@ -107,10 +116,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const getUserPermissions = (spaceId: string) => {
-    // This part is tricky without fetching spaces here.
-    // This is a simplified placeholder. In a real app, you might fetch user's spaces
-    // within the AuthProvider or have a separate hook for permissions.
-    return null;
+    const space = userSpaces.find(s => s.id === spaceId);
+    if (!space || !appUser) return null;
+    return space.members[appUser.id] || null;
   }
 
   const value: AuthContextType = {
@@ -120,13 +128,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setAppUser,
     signOut: handleSignOut,
     signInWithGoogle,
+    userSpaces,
     getUserPermissions,
-    // A placeholder for isAdmin, true if user is admin in ANY space.
-    // A more granular check should be used in components.
-    get isAdmin() {
-      // This is a simplification. A real app would need to check the active space.
-      return true; 
-    }
   };
 
   return (
@@ -143,5 +146,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    
