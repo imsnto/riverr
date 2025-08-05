@@ -5,7 +5,9 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User as AppUser, Space, SpaceMember } from '@/lib/data';
 import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut, signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { getUser, addUser, addSpace, getSpacesForUser } from '@/lib/db';
+import { getUser, addUser, addSpace, getSpacesForUser, getInvite, deleteInvite, updateSpace } from '@/lib/db';
+import { writeBatch, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -43,7 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             localStorage.removeItem(LOCAL_STORAGE_KEY);
         }
     } else {
-        setStatus('loading');
+      setStatus('loading');
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -55,23 +57,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         let userProfile = await getUser(user.uid);
 
         if (!userProfile) {
+          const invite = user.email ? await getInvite(user.email) : null;
+
           const newUser: Omit<AppUser, 'id'> = {
             name: user.displayName || 'New User',
             email: user.email!,
             avatarUrl: user.photoURL || `https://placehold.co/100x100.png?text=${user.displayName?.[0] || 'U'}`,
           };
           userProfile = await addUser(newUser, user.uid);
-          const personalSpace = {
-            name: `${userProfile.name}'s Space`,
-            members: { [userProfile.id]: { role: 'Admin' as const } },
-            statuses: [
-              { name: 'Backlog', color: '#6b7280' },
-              { name: 'In Progress', color: '#3b82f6' },
-              { name: 'Review', color: '#f59e0b' },
-              { name: 'Done', color: '#22c55e' },
-            ]
-          };
-          await addSpace(personalSpace);
+
+          if (invite) {
+             const batch = writeBatch(db);
+             for (const spaceId of invite.spaces) {
+               const spaceRef = doc(db, 'spaces', spaceId);
+               batch.update(spaceRef, {
+                 [`members.${userProfile.id}`]: { role: invite.role }
+               });
+             }
+             await batch.commit();
+             await deleteInvite(invite.email);
+          } else {
+             const personalSpace = {
+              name: `${userProfile.name}'s Space`,
+              members: { [userProfile.id]: { role: 'Admin' as const, permissions: {} } },
+              statuses: [
+                { name: 'Backlog', color: '#6b7280' },
+                { name: 'In Progress', color: '#3b82f6' },
+                { name: 'Review', color: '#f59e0b' },
+                { name: 'Done', color: '#22c55e' },
+              ]
+            };
+            await addSpace(personalSpace);
+          }
         }
         
         const spaces = await getSpacesForUser(userProfile.id);

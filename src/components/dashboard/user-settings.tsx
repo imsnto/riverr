@@ -8,9 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Plus } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import InviteUserDialog from './invite-user-dialog';
+import { addInvite } from '@/lib/db';
+import { randomBytes } from 'crypto';
+
 
 const getInitials = (name: string) => {
   if (!name) return '';
@@ -25,6 +29,7 @@ interface UserSettingsProps {
 
 export default function UserSettings({ allUsers: initialUsers, allSpaces, appUser }: UserSettingsProps) {
   const [allUsers, setAllUsers] = useState<User[]>(initialUsers);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
   const { toast } = useToast();
   
   const getRoleInSpace = (user: User, space: Space): SpaceMember | null => {
@@ -42,6 +47,25 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, appUse
     })
   }
 
+  const handleInvite = async (values: Omit<Invite, 'token'>) => {
+    try {
+      const token = randomBytes(16).toString('hex');
+      await addInvite({ ...values, token });
+      toast({
+        title: 'Invite Sent',
+        description: `${values.email} has been invited. They will get access once they sign in.`,
+      })
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'Invite Failed',
+        description: 'Could not send the invitation. Please try again.',
+      })
+    }
+  }
+
+
   return (
     <>
         <div className="space-y-6">
@@ -50,8 +74,12 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, appUse
                     <div className="flex justify-between items-center">
                         <div>
                             <CardTitle>Manage Users</CardTitle>
-                            <CardDescription>View users who share a space with you.</CardDescription>
+                            <CardDescription>View and invite users to your spaces.</CardDescription>
                         </div>
+                         <Button onClick={() => setIsInviteOpen(true)}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Invite User
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -121,8 +149,12 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, appUse
                 </CardContent>
             </Card>
         </div>
+        <InviteUserDialog 
+            isOpen={isInviteOpen}
+            onOpenChange={setIsInviteOpen}
+            onInvite={handleInvite}
+            allSpaces={allSpaces}
+        />
     </>
   );
 }
-
-    

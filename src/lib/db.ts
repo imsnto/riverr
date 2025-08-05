@@ -1,3 +1,4 @@
+
 // src/lib/db.ts
 
 import {
@@ -16,7 +17,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages } from './data';
+import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite } from './data';
 import { randomBytes } from 'crypto';
 
 // --- Seeding ---
@@ -75,13 +76,17 @@ export const updateUser = async (userId: string, data: Partial<User>): Promise<v
   await updateDoc(userRef, data);
 };
 
-// --- Obsolete Invite Management ---
-// These functions are no longer needed with the new auth model but are kept for reference,
-// they should be removed in a future cleanup.
-export const getInvite = async(email: string): Promise<any | null> => {
+// --- Invite Management ---
+export const addInvite = async (invite: Invite): Promise<void> => {
+  const inviteRef = doc(db, 'invites', invite.email);
+  await setDoc(inviteRef, invite);
+}
+
+export const getInvite = async(email: string): Promise<Invite | null> => {
   const inviteDoc = await getDoc(doc(db, 'invites', email));
-  return inviteDoc.exists() ? (inviteDoc.data() as any) : null;
+  return inviteDoc.exists() ? (inviteDoc.data() as Invite) : null;
 };
+
 export const deleteInvite = async (email: string): Promise<void> => {
   await deleteDoc(doc(db, 'invites', email));
 };
@@ -200,5 +205,3 @@ export const addMessage = async (message: Omit<Message, 'id'>): Promise<Message>
     
     return savedMessage;
 }
-
-    
