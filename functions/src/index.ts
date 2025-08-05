@@ -1,4 +1,5 @@
 
+
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { ServerClient } from 'postmark';
@@ -49,3 +50,4 @@ export const sendInviteEmail = functions.firestore
       console.error(`❌ Failed to send invite to ${to}:`, err);
     }
   });
+

@@ -1,3 +1,4 @@
+
 // src/lib/db.ts
 
 import {
@@ -83,7 +84,6 @@ export const updateUser = async (userId: string, data: Partial<User>): Promise<v
 };
 
 // --- Invite Management ---
-// Creating an invite document now automatically triggers the `sendInviteEmail` Cloud Function.
 export const addInvite = async (invite: Invite): Promise<void> => {
     await setDoc(doc(db, 'invites', invite.email), invite);
 };
@@ -91,6 +91,11 @@ export const addInvite = async (invite: Invite): Promise<void> => {
 export const getInvite = async(email: string): Promise<Invite | null> => {
   const inviteDoc = await getDoc(doc(db, 'invites', email));
   return inviteDoc.exists() ? (inviteDoc.data() as Invite) : null;
+};
+
+export const getAllInvites = async (): Promise<Invite[]> => {
+    const querySnapshot = await getDocs(collection(db, 'invites'));
+    return querySnapshot.docs.map(doc => doc.data() as Invite);
 };
 
 export const deleteInvite = async (email: string): Promise<void> => {
