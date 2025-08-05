@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -264,6 +264,23 @@ export default function Dashboard() {
       toast({ title: 'Invitation Declined' });
   }
 
+  const handleAddProject = async (project: Omit<Project, 'id'>) => {
+    const newProject = await addProject(project);
+    setProjects(prev => [...prev, newProject]);
+  }
+
+  const handleUpdateProject = async (projectId: string, projectData: Partial<Project>) => {
+    await updateProject(projectId, projectData);
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...projectData } as Project : p));
+  }
+  
+  const handleDeleteProject = async (projectId: string) => {
+    await deleteProject(projectId);
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+    setTasks(prev => prev.filter(t => t.project_id !== projectId));
+  }
+
+
   if (!appUser) {
     return <div className="flex h-screen items-center justify-center">Loading user data...</div>;
   }
@@ -409,7 +426,7 @@ export default function Dashboard() {
           )}
 
           {/* Main Content */}
-          <main className={cn("flex-1 overflow-auto", activeTab === 'channels' && "flex")}>
+          <main className={cn("flex-1 overflow-auto", activeTab === 'channels' && "flex", activeTab === 'tasks' && "p-4 md:p-8")}>
               {pendingInvites.length > 0 && (
                 <div className='p-4'>
                 {pendingInvites.map(invite => {
@@ -495,9 +512,9 @@ export default function Dashboard() {
                 </div>
               )}
               {activeTab === 'tasks' && activeSpace && (
-                <div className="p-4 md:p-8">
-                {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard tasks={tasks} onUpdateTasks={handleUpdateTasks} projects={projects} activeSpace={activeSpace} allUsers={allUsers} onUpdateActiveSpace={handleUpdateActiveSpace} />}
-                </div>
+                <>
+                {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard tasks={tasks} onUpdateTasks={handleUpdateTasks} projects={projects} activeSpace={activeSpace} allUsers={visibleUsers} onUpdateActiveSpace={handleUpdateActiveSpace} onAddProject={handleAddProject} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} />}
+                </>
               )}
               {canSeeTimesheets && activeTab === 'timesheets' && (
                   <div className="p-4 md:p-8">

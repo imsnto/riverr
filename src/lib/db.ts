@@ -145,6 +145,31 @@ export const getProjectsInSpace = async (spaceId: string): Promise<Project[]> =>
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
 };
 
+export const addProject = async (project: Omit<Project, 'id'>): Promise<Project> => {
+    const docRef = await addDoc(collection(db, 'projects'), project);
+    return { ...project, id: docRef.id };
+}
+
+export const updateProject = async (projectId: string, data: Partial<Project>): Promise<void> => {
+    const projectRef = doc(db, 'projects', projectId);
+    await updateDoc(projectRef, data);
+}
+
+export const deleteProject = async (projectId: string): Promise<void> => {
+    // Also delete tasks associated with the project
+    const batch = writeBatch(db);
+    const tasksQuery = query(collection(db, 'tasks'), where('project_id', '==', projectId));
+    const tasksSnapshot = await getDocs(tasksQuery);
+    tasksSnapshot.forEach(taskDoc => {
+        batch.delete(taskDoc.ref);
+    });
+    
+    const projectRef = doc(db, 'projects', projectId);
+    batch.delete(projectRef);
+    
+    await batch.commit();
+}
+
 // --- Task Management ---
 export const getTasksInProject = async (projectId: string): Promise<Task[]> => {
   const q = query(collection(db, 'tasks'), where('project_id', '==', projectId));
