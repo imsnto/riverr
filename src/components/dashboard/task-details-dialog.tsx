@@ -11,7 +11,7 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
-import { Bot, Calendar, CircleDot, Clock, Flag, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight, Paperclip, File, Image as ImageIcon, Plus, Trash2, CheckCircle2 } from 'lucide-react';
+import { Bot, Calendar, CircleDot, Clock, Flag, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight, Paperclip, File, Image as ImageIcon, Plus, Trash2, CheckCircle2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
@@ -197,7 +197,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         setNewSubtask('');
     }
 
-    const handleUpdateSubtask = (subtaskId: string, newStatus: string) => {
+    const handleUpdateSubtaskStatus = (subtaskId: string, newStatus: string) => {
          const subtasks = task.subtasks?.map(sub => sub.id === subtaskId ? {...sub, status: newStatus} : sub);
          handleFieldChange('subtasks', subtasks);
     }
@@ -220,9 +220,9 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl h-[90vh]">
-                <div className="grid grid-cols-3 h-full">
+                <div className="grid md:grid-cols-3 h-full">
                     {/* Left Panel: Task Details */}
-                    <div className="col-span-2 p-6 flex flex-col gap-6 overflow-y-auto">
+                    <div className="md:col-span-2 p-6 flex flex-col gap-6 overflow-y-auto">
                         <DialogHeader>
                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Button variant="outline" size="sm" className="pointer-events-none">
@@ -241,7 +241,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                            </div>
                         </DialogHeader>
 
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                             <DetailRow icon={CircleDot} label="Status">
                                 <Select value={task.status} onValueChange={(value) => handleFieldChange('status', value)}>
                                     <SelectTrigger className="h-8">
@@ -320,10 +320,10 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                             <DetailRow icon={Clock} label="Time Est.">
                                 <Input type="number" placeholder="0h" className="h-8" defaultValue={task.time_estimate || ''} onBlur={(e) => handleFieldChange('time_estimate', e.target.value ? parseFloat(e.target.value) : null)} />
                             </DetailRow>
-                            <DetailRow icon={Zap} label="Sprint Pts.">
-                                <Input type="number" placeholder="0" className="h-8" defaultValue={task.sprint_points || ''} onBlur={(e) => handleFieldChange('sprint_points', e.target.value ? parseInt(e.target.value, 10) : null)} />
+                             <DetailRow icon={Clock} label="Time Logged">
+                                <Input type="number" placeholder="0h" className="h-8" value={totalTimeTracked} disabled />
                             </DetailRow>
-                            <DetailRow icon={Tag} label="Tags" className="items-start">
+                            <DetailRow icon={Tag} label="Tags" className="items-start md:col-span-2">
                                 <div className="flex flex-col gap-2">
                                      <div className="flex flex-wrap gap-1">
                                         {task.tags.map(tag => (
@@ -372,7 +372,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                         <div key={subtask.id} className="flex items-center gap-2 group">
                                             <Checkbox 
                                                 checked={subtask.status === 'Done'}
-                                                onCheckedChange={(checked) => handleUpdateSubtask(subtask.id, checked ? 'Done' : 'Backlog')}
+                                                onCheckedChange={(checked) => handleUpdateSubtaskStatus(subtask.id, checked ? 'Done' : 'Backlog')}
                                             />
                                             <Input defaultValue={subtask.name} className={cn("h-8 border-transparent hover:border-input focus-visible:border-input read-only:border-transparent read-only:hover:border-transparent", subtask.status === 'Done' && 'line-through text-muted-foreground')} />
                                             <Avatar className="h-6 w-6">
@@ -497,3 +497,5 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         </Dialog>
     );
 }
+
+    
