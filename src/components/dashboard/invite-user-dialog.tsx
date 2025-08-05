@@ -28,7 +28,7 @@ type InviteFormValues = z.infer<typeof inviteSchema>;
 interface InviteUserDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onInvite: (values: Omit<Invite, 'token'>) => void;
+  onInvite: (values: Omit<Invite, 'id' | 'token' | 'status' | 'invitedBy'>) => void;
   allSpaces: Space[];
 }
 

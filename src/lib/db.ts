@@ -17,7 +17,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite } from './data';
+import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember } from './data';
 import { randomBytes } from 'crypto';
 
 // --- Seeding ---
@@ -77,19 +77,39 @@ export const updateUser = async (userId: string, data: Partial<User>): Promise<v
 };
 
 // --- Invite Management ---
-export const addInvite = async (invite: Invite): Promise<void> => {
-  const inviteRef = doc(db, 'invites', invite.email);
-  await setDoc(inviteRef, invite);
+export const addInvite = async (invite: Omit<Invite, 'id'>): Promise<void> => {
+  await addDoc(collection(db, 'invites'), invite);
 }
 
-export const getInvite = async(email: string): Promise<Invite | null> => {
-  const inviteDoc = await getDoc(doc(db, 'invites', email));
-  return inviteDoc.exists() ? (inviteDoc.data() as Invite) : null;
+export const getInvitesForEmail = async (email: string): Promise<Invite[]> => {
+    const q = query(collection(db, 'invites'), where("email", "==", email), where("status", "==", "pending"));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invite));
 };
 
-export const deleteInvite = async (email: string): Promise<void> => {
-  await deleteDoc(doc(db, 'invites', email));
-};
+export const acceptInvite = async (invite: Invite, userId: string) => {
+    const batch = writeBatch(db);
+
+    // Add user to each space
+    for (const spaceId of invite.spaces) {
+        const spaceRef = doc(db, 'spaces', spaceId);
+        const member: SpaceMember = { role: invite.role };
+        batch.update(spaceRef, {
+            [`members.${userId}`]: member
+        });
+    }
+
+    // Mark invite as accepted
+    const inviteRef = doc(db, 'invites', invite.id);
+    batch.update(inviteRef, { status: 'accepted' });
+
+    await batch.commit();
+}
+
+export const declineInvite = async (inviteId: string) => {
+    const inviteRef = doc(db, 'invites', inviteId);
+    await updateDoc(inviteRef, { status: 'declined' });
+}
 
 
 // --- Space Management ---
@@ -162,12 +182,16 @@ export const getSlackMeetingLogsInSpace = async (spaceId: string): Promise<Slack
     const projectsInSpace = await getProjectsInSpace(spaceId);
     const projectIds = projectsInSpace.map(p => p.id);
 
-    if (projectIds.length === 0) return [];
+    // This logic is a bit flawed. It assumes unassigned logs belong to the current space.
+    // In a real app, you might have a space_id on the log or filter by user's slack ID.
+    // For now, we'll return all unassigned logs + logs for projects in the current space.
     
     const unassignedQ = query(collection(db, 'slack_meeting_logs'), where('project_id', '==', null));
     const unassignedSnapshot = await getDocs(unassignedQ);
     const unassignedLogs = unassignedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SlackMeetingLog));
 
+    if (projectIds.length === 0) return unassignedLogs;
+    
     const q = query(collection(db, 'slack_meeting_logs'), where('project_id', 'in', projectIds));
     const querySnapshot = await getDocs(q);
     const assignedLogs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SlackMeetingLog));

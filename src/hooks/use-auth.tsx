@@ -2,10 +2,10 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User as AppUser, Space, SpaceMember } from '@/lib/data';
+import { User as AppUser, Space, SpaceMember, Invite } from '@/lib/data';
 import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut, signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { getUser, addUser, addSpace, getSpacesForUser, getInvite, deleteInvite, updateSpace } from '@/lib/db';
+import { getUser, addUser, addSpace, getSpacesForUser, getInvitesForEmail, acceptInvite, declineInvite } from '@/lib/db';
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -21,6 +21,9 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   userSpaces: Space[];
+  pendingInvites: Invite[];
+  acceptInvite: (invite: Invite) => Promise<void>;
+  declineInvite: (inviteId: string) => Promise<void>;
   getUserPermissions: (spaceId: string) => SpaceMember | null;
 }
 
@@ -31,6 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [userSpaces, setUserSpaces] = useState<Space[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
 
   useEffect(() => {
     const cachedUser = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -43,6 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setStatus('authenticated');
         } catch (e) {
             localStorage.removeItem(LOCAL_STORAGE_KEY);
+            setStatus('unauthenticated');
         }
     } else {
       setStatus('loading');
@@ -57,51 +62,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         let userProfile = await getUser(user.uid);
 
         if (!userProfile) {
-          const invite = user.email ? await getInvite(user.email) : null;
-
           const newUser: Omit<AppUser, 'id'> = {
             name: user.displayName || 'New User',
             email: user.email!,
             avatarUrl: user.photoURL || `https://placehold.co/100x100.png?text=${user.displayName?.[0] || 'U'}`,
+            role: 'Admin',
           };
           userProfile = await addUser(newUser, user.uid);
-
-          if (invite) {
-             const batch = writeBatch(db);
-             for (const spaceId of invite.spaces) {
-               const spaceRef = doc(db, 'spaces', spaceId);
-               batch.update(spaceRef, {
-                 [`members.${userProfile.id}`]: { role: invite.role }
-               });
-             }
-             await batch.commit();
-             await deleteInvite(invite.email);
-          } else {
-             const personalSpace = {
-              name: `${userProfile.name}'s Space`,
-              members: { [userProfile.id]: { role: 'Admin' as const, permissions: {} } },
-              statuses: [
-                { name: 'Backlog', color: '#6b7280' },
-                { name: 'In Progress', color: '#3b82f6' },
-                { name: 'Review', color: '#f59e0b' },
-                { name: 'Done', color: '#22c55e' },
-              ]
-            };
-            await addSpace(personalSpace);
-          }
+          
+          const personalSpace = {
+            name: `${userProfile.name}'s Space`,
+            members: { [userProfile.id]: { role: 'Admin' as const } },
+            statuses: [
+              { name: 'Backlog', color: '#6b7280' },
+              { name: 'In Progress', color: '#3b82f6' },
+              { name: 'Review', color: '#f59e0b' },
+              { name: 'Done', color: '#22c55e' },
+            ]
+          };
+          await addSpace(personalSpace);
+          
+          const spaces = await getSpacesForUser(userProfile.id);
+          const invites = await getInvitesForEmail(userProfile.email);
+          setAppUser(userProfile);
+          setUserSpaces(spaces);
+          setPendingInvites(invites);
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ appUser: userProfile, firebaseUser: user, userSpaces: spaces }));
+        } else {
+           const spaces = await getSpacesForUser(userProfile.id);
+           const invites = await getInvitesForEmail(userProfile.email);
+           setAppUser(userProfile);
+           setUserSpaces(spaces);
+           setPendingInvites(invites);
+           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ appUser: userProfile, firebaseUser: user, userSpaces: spaces }));
         }
-        
-        const spaces = await getSpacesForUser(userProfile.id);
-        setUserSpaces(spaces);
-        setAppUser(userProfile);
-        
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ appUser: userProfile, firebaseUser: user, userSpaces: spaces }));
         setStatus('authenticated');
 
       } else {
         setFirebaseUser(null);
         setAppUser(null);
         setUserSpaces([]);
+        setPendingInvites([]);
         localStorage.removeItem(LOCAL_STORAGE_KEY);
         document.cookie = 'token=; Max-Age=0; path=/;';
         setStatus('unauthenticated');
@@ -113,12 +114,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const handleSignOut = async () => {
     await firebaseSignOut(auth);
-    setAppUser(null);
-    setFirebaseUser(null);
-    setUserSpaces([]);
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
-    document.cookie = 'token=; Max-Age=0; path=/;';
-    setStatus('unauthenticated');
   };
 
   const signInWithGoogle = async () => {
@@ -132,6 +127,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const handleAcceptInvite = async (invite: Invite) => {
+    if (!appUser) return;
+    await acceptInvite(invite, appUser.id);
+    setPendingInvites(prev => prev.filter(i => i.id !== invite.id));
+    const updatedSpaces = await getSpacesForUser(appUser.id);
+    setUserSpaces(updatedSpaces);
+  };
+
+  const handleDeclineInvite = async (inviteId: string) => {
+      await declineInvite(inviteId);
+      setPendingInvites(prev => prev.filter(i => i.id !== inviteId));
+  };
+  
   const getUserPermissions = (spaceId: string) => {
     const space = userSpaces.find(s => s.id === spaceId);
     if (!space || !appUser) return null;
@@ -146,6 +154,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signOut: handleSignOut,
     signInWithGoogle,
     userSpaces,
+    pendingInvites,
+    acceptInvite: handleAcceptInvite,
+    declineInvite: handleDeclineInvite,
     getUserPermissions,
   };
 

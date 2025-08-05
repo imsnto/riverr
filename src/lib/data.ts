@@ -31,14 +31,20 @@ export interface User {
   name: string;
   email: string;
   avatarUrl: string;
-  // Role is now per-space, not global
+  role?: 'Admin' | 'Member'; // Optional global role, but per-space is preferred
 }
 
 export interface Invite {
+  id: string;
   email: string;
   role: "Admin" | "Member";
   spaces: string[]; // array of space IDs
   token: string;
+  status: 'pending' | 'accepted' | 'declined';
+  invitedBy?: {
+    id: string;
+    name: string;
+  }
 }
 
 export interface Project {
@@ -100,11 +106,11 @@ export interface TimeEntry {
   user_id: string;
   project_id: string;
   task_id?: string;
+  source: "Manual" | "Timer" | "Slack";
+  notes: string;
   start_time: string;
   end_time: string;
   duration: number; // in hours
-  source: "Manual" | "Timer" | "Slack";
-  notes: string;
 }
 
 export interface SlackMeetingLog {
@@ -158,10 +164,10 @@ const defaultStatuses: Status[] = [
 // MOCK DATA - This data can be used to seed the database.
 
 export const users: Omit<User, 'id'>[] = [
-  { name: 'Brad Miller', email: 'brad@riverr.app', avatarUrl: 'https://placehold.co/100x100.png' },
-  { name: 'Alice', email: 'alice@example.com', avatarUrl: 'https://placehold.co/100x100.png' },
-  { name: 'Charlie', email: 'charlie@example.com', avatarUrl: 'https://placehold.co/100x100.png' },
-  { name: 'Diana', email: 'diana@example.com', avatarUrl: 'https://placehold.co/100x100.png' }
+  { name: 'Brad Miller', email: 'brad@riverr.app', avatarUrl: 'https://placehold.co/100x100.png', role: 'Admin' },
+  { name: 'Alice', email: 'alice@example.com', avatarUrl: 'https://placehold.co/100x100.png', role: 'Admin' },
+  { name: 'Charlie', email: 'charlie@example.com', avatarUrl: 'https://placehold.co/100x100.png', role: 'Member' },
+  { name: 'Diana', email: 'diana@example.com', avatarUrl: 'https://placehold.co/100x100.png', role: 'Member' }
 ];
 
 export const spaces: Space[] = [
@@ -420,5 +426,3 @@ export const messages: Message[] = [
   { id: 'msg-5', channel_id: 'chan-5', user_id: 'user-4', content: 'I\'m going hiking this weekend, can\'t wait!', timestamp: '2024-08-02T14:00:00Z', reactions: [], reply_count: 0 },
   { id: 'msg-6', channel_id: 'chan-6', user_id: 'user-2', content: 'Just sent the weekly update to Client X.', timestamp: '2024-08-03T17:00:00Z', reactions: [], reply_count: 0 },
 ];
-
-    

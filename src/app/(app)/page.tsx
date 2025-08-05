@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask, addInvite } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -29,8 +29,9 @@ import ThreadView from '@/components/dashboard/thread-view';
 import AllThreadsView from '@/components/dashboard/all-threads-view';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import AdminSettings from './admin/page';
 import InviteUserDialog from '@/components/dashboard/invite-user-dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Mail } from 'lucide-react';
 
 export default function Dashboard() {
   const { appUser } = useAuth();
@@ -56,6 +57,8 @@ export default function Dashboard() {
   const [activeThread, setActiveThread] = useState<Message | null>(null);
   const [readThreadIds, setReadThreadIds] = useState<Set<string>>(new Set());
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
+
 
   const [channelsViewMode, setChannelsViewMode] = useState<'channel' | 'all-threads'>('channel');
 
@@ -67,12 +70,17 @@ export default function Dashboard() {
         setIsLoading(true);
         await seedDatabase();
 
-        const [users, spaces] = await Promise.all([dbGetAllUsers(), dbGetAllSpaces()]);
+        const [users, spaces, invites] = await Promise.all([
+          dbGetAllUsers(), 
+          dbGetAllSpaces(),
+          getInvitesForEmail(appUser.email),
+        ]);
         
         if (abortController.signal.aborted) return;
 
         setAllUsers(users);
         setAllSpaces(spaces);
+        setPendingInvites(invites);
         
         const userSpaces = spaces.filter(s => s.members[appUser!.id]);
         if (userSpaces.length > 0) {
@@ -211,13 +219,24 @@ export default function Dashboard() {
       setAllSpaces(allSpaces.filter(s => s.id !== spaceId));
   }
 
-  const handleInvite = async (values: Omit<Invite, 'token'>) => {
+  const handleInvite = async (values: Omit<Invite, 'token' | 'id' | 'status'>) => {
     try {
+      if (!appUser) throw new Error("User not authenticated");
       const token = Math.random().toString(36).substring(2);
-      await addInvite({ ...values, token });
+      
+      await addInvite({ 
+        ...values,
+        token,
+        status: 'pending',
+        invitedBy: {
+          id: appUser.id,
+          name: appUser.name
+        }
+       });
+
       toast({
         title: 'Invite Sent',
-        description: `${values.email} has been invited. They will get access once they sign in.`,
+        description: `${values.email} has been invited. They will see the invitation on their dashboard.`,
       })
     } catch (error) {
       console.error(error);
@@ -229,6 +248,22 @@ export default function Dashboard() {
     }
   }
 
+  const handleAcceptInvite = async (invite: Invite) => {
+    if (!appUser) return;
+    await acceptInvite(invite, appUser.id);
+    setPendingInvites(prev => prev.filter(i => i.id !== invite.id));
+    // Reload spaces to reflect new membership
+    const updatedSpaces = await dbGetAllSpaces();
+    setAllSpaces(updatedSpaces);
+    toast({ title: 'Invitation Accepted!', description: `You have joined the ${invite.spaces.map(id => allSpaces.find(s=>s.id === id)?.name).join(', ')} space(s).` });
+  }
+  
+  const handleDeclineInvite = async (invite: Invite) => {
+      await declineInvite(invite.id);
+      setPendingInvites(prev => prev.filter(i => i.id !== invite.id));
+      toast({ title: 'Invitation Declined' });
+  }
+
   if (!appUser) {
     return <div className="flex h-screen items-center justify-center">Loading user data...</div>;
   }
@@ -237,8 +272,8 @@ export default function Dashboard() {
   const activeSpace = allSpaces.find(s => s.id === activeSpaceId) || userSpaces[0] || allSpaces[0];
 
   const currentUserPermissions = activeSpace?.members[appUser.id];
-  const isAdmin = currentUserPermissions?.role === 'Admin';
-  
+  const canSeeTimesheets = currentUserPermissions?.role === 'Admin' || currentUserPermissions?.permissions?.canSeeAllTimesheets;
+
   const handleSpaceChange = (spaceId: string) => {
     setActiveSpaceId(spaceId);
     setActiveThread(null);
@@ -258,21 +293,19 @@ export default function Dashboard() {
   const hasUnreadThreads = userInvolvedThreads.some(t => !readThreadIds.has(t.id));
 
   const handleNavClick = (tabId: string) => {
-      if (tabId === 'admin') {
-          router.push('/admin');
-      } else {
-          setActiveTab(tabId);
-      }
+    if (tabId === 'admin') {
+        router.push('/admin');
+    } else {
+        setActiveTab(tabId);
+    }
   }
   
-  const canSeeTimesheets = isAdmin || currentUserPermissions?.permissions?.canSeeAllTimesheets;
-
   const NAV_ITEMS = [
     { id: 'dashboard', label: 'Dashboard', icon: GanttChart },
     { id: 'tasks', label: 'Task Board', icon: FolderKanban },
     { id: 'channels', label: 'Channels', icon: MessageSquare },
     { id: 'timesheets', label: 'Team Timesheets', icon: Users, permission: canSeeTimesheets },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'settings', label: 'Settings', icon: Settings, permission: true },
   ];
   
   const visibleUserIds = new Set(userSpaces.flatMap(s => Object.keys(s.members)));
@@ -312,12 +345,6 @@ export default function Dashboard() {
                 );
               })}
             </nav>
-            <div className="mt-auto">
-              <Button variant="ghost" onClick={() => setIsInviteOpen(true)}>
-                <Plus className="h-5 w-5" />
-                 <span className="sr-only">Invite User</span>
-              </Button>
-            </div>
           </aside>
           
           {/* Secondary Sidebar (for Channels) */}
@@ -383,6 +410,30 @@ export default function Dashboard() {
 
           {/* Main Content */}
           <main className={cn("flex-1 overflow-auto", activeTab === 'channels' && "flex")}>
+              {pendingInvites.length > 0 && (
+                <div className='p-4'>
+                {pendingInvites.map(invite => {
+                    const spaceNames = invite.spaces.map(id => allSpaces.find(s => s.id === id)?.name).filter(Boolean).join(', ');
+                    return (
+                        <Alert key={invite.id}>
+                          <Mail className="h-4 w-4" />
+                          <AlertTitle>You have a new invitation!</AlertTitle>
+                          <AlertDescription>
+                            <div className="flex justify-between items-center">
+                              <p>
+                                <strong>{invite.invitedBy?.name || 'Someone'}</strong> has invited you to join the <strong>{spaceNames}</strong> space(s).
+                              </p>
+                              <div className="flex gap-2 mt-2">
+                                <Button size="sm" onClick={() => handleAcceptInvite(invite)}>Accept</Button>
+                                <Button size="sm" variant="outline" onClick={() => handleDeclineInvite(invite)}>Decline</Button>
+                              </div>
+                            </div>
+                          </AlertDescription>
+                        </Alert>
+                    )
+                })}
+                </div>
+              )}
               {activeTab === 'dashboard' && (
                 <div className="p-4 md:p-8">
                 {isLoading ? <div className="flex justify-center items-center h-full">Loading dashboard...</div> : 
@@ -495,7 +546,3 @@ export default function Dashboard() {
     </TooltipProvider>
   );
 }
-
-    
-
-    
