@@ -1,4 +1,3 @@
-
 // src/lib/db.ts
 
 import {
@@ -85,6 +84,7 @@ export const updateUser = async (userId: string, data: Partial<User>): Promise<v
 
 // --- Invite Management ---
 export const addInvite = async (invite: Invite): Promise<void> => {
+    // This will trigger the `sendInviteEmail` cloud function on create
     await setDoc(doc(db, 'invites', invite.email), invite);
 };
 
@@ -101,6 +101,20 @@ export const getAllInvites = async (): Promise<Invite[]> => {
 export const deleteInvite = async (email: string): Promise<void> => {
   await deleteDoc(doc(db, 'invites', email));
 };
+
+export const resendInvite = async (email: string): Promise<boolean> => {
+  const invite = await getInvite(email);
+  if (!invite) {
+    console.error("No invite found for this email to resend.");
+    return false;
+  }
+  
+  // To re-trigger the `onCreate` cloud function, we delete and then re-add the document.
+  await deleteInvite(email);
+  await addInvite(invite);
+  return true;
+}
+
 
 // --- Space Management ---
 export const getSpacesForUser = async (userId: string): Promise<Space[]> => {
@@ -178,10 +192,25 @@ export const getTimeEntriesInSpace = async (projectIds: string[]): Promise<TimeE
 }
 
 export const getSlackMeetingLogsInSpace = async (spaceId: string): Promise<SlackMeetingLog[]> => {
-    // This query might need a composite index in Firestore
-    const q = query(collection(db, 'slack_meeting_logs'), where('space_id', '==', spaceId));
+    // This is not a query that scales well in firestore.
+    // In a real app we'd likely duplicate spaceId on the log, or query projects first.
+    // For this prototype, it's acceptable.
+    const projectsInSpace = await getProjectsInSpace(spaceId);
+    const projectIds = projectsInSpace.map(p => p.id);
+
+    if (projectIds.length === 0) return [];
+    
+    // Add unassigned logs
+    const unassignedQ = query(collection(db, 'slack_meeting_logs'), where('project_id', '==', null));
+    const unassignedSnapshot = await getDocs(unassignedQ);
+    const unassignedLogs = unassignedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SlackMeetingLog));
+
+    // Add assigned logs
+    const q = query(collection(db, 'slack_meeting_logs'), where('project_id', 'in', projectIds));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SlackMeetingLog));
+    const assignedLogs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SlackMeetingLog));
+    
+    return [...unassignedLogs, ...assignedLogs];
 }
 
 
@@ -200,5 +229,17 @@ export const getMessagesInChannel = async (channelId: string): Promise<Message[]
 
 export const addMessage = async (message: Omit<Message, 'id'>): Promise<Message> => {
     const docRef = await addDoc(collection(db, 'messages'), message);
-    return { ...message, id: docRef.id };
+    const savedMessage = { ...message, id: docRef.id };
+
+    if (message.thread_id) {
+        const parentMessageRef = doc(db, 'messages', message.thread_id);
+        const parentMessageSnap = await getDoc(parentMessageRef);
+        if (parentMessageSnap.exists()) {
+            const parentMessage = parentMessageSnap.data();
+            const currentReplies = parentMessage.reply_count || 0;
+            await updateDoc(parentMessageRef, { reply_count: currentReplies + 1 });
+        }
+    }
+    
+    return savedMessage;
 }

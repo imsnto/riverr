@@ -12,7 +12,7 @@ import { MoreHorizontal, Plus, Edit, Trash2, Mail } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import InviteUserDialog from './invite-user-dialog';
-import { getAllInvites, deleteInvite } from '@/lib/db';
+import { getAllInvites, deleteInvite, resendInvite } from '@/lib/db';
 
 const getInitials = (name: string) => {
   if (!name) return '';
@@ -49,12 +49,20 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, onInvi
     })
   }
 
-  const handleResendInvite = (email: string) => {
-    // This is a placeholder. In a real app you might trigger a function here.
-     toast({
-        title: 'Invite Resent',
-        description: `A new invitation has been sent to ${email}.`
-    })
+  const handleResendInvite = async (email: string) => {
+    const success = await resendInvite(email);
+    if (success) {
+      toast({
+          title: 'Invite Resent',
+          description: `A new invitation has been sent to ${email}.`
+      });
+    } else {
+      toast({
+          variant: 'destructive',
+          title: 'Resend Failed',
+          description: `Could not find an invite for ${email}. It may have already been accepted.`
+      })
+    }
   }
   
   const handleRevokeInvite = async (email: string) => {
