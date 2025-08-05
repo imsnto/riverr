@@ -2,7 +2,7 @@
 'use client'
 
 import React, { useState } from 'react';
-import { TimeEntry, Project, Task, users as allUsers } from '@/lib/data';
+import { TimeEntry, Project, Task, users as allUsers, User } from '@/lib/data';
 import { ChevronLeft, ChevronRight, MoreHorizontal, Dot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -18,9 +18,11 @@ interface WeeklyTimesheetProps {
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onThisWeek: () => void;
+  allUsers: User[];
+  statuses: string[];
 }
 
-export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: initialTasks, weekStart, onPrevWeek, onNextWeek, onThisWeek }: WeeklyTimesheetProps) {
+export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: initialTasks, weekStart, onPrevWeek, onNextWeek, onThisWeek, allUsers, statuses }: WeeklyTimesheetProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
@@ -159,6 +161,9 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
             if (!isOpen) setSelectedTask(null);
           }}
           onUpdateTask={handleUpdateTask}
+          projects={projects}
+          allUsers={allUsers}
+          statuses={statuses}
         />
       )}
     </>

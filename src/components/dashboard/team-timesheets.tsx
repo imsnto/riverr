@@ -58,6 +58,9 @@ export default function TeamTimesheets({ space, allUsers, projects, tasks, timeE
   if (usersInSpace.length === 0) {
     return <div className="text-center p-8">No users in this space.</div>;
   }
+  
+  const statuses = space.statuses ? space.statuses.map(s => s.name) : [];
+
 
   if (viewMode === 'single-user' && selectedUser) {
     return (
@@ -97,13 +100,15 @@ export default function TeamTimesheets({ space, allUsers, projects, tasks, timeE
           <CardContent className="p-0">
             <WeeklyTimesheet 
               userId={selectedUserId}
-              timeEntries={timeEntries}
+              timeEntries={timeEntries.filter(t => t.user_id === selectedUserId)}
               projects={projects}
               tasks={tasks}
               weekStart={startOfCurrentWeek}
               onPrevWeek={handlePreviousWeek}
               onNextWeek={handleNextWeek}
               onThisWeek={handleThisWeek}
+              allUsers={usersInSpace}
+              statuses={statuses}
              />
           </CardContent>
         </Card>
@@ -123,5 +128,3 @@ export default function TeamTimesheets({ space, allUsers, projects, tasks, timeE
       />
   )
 }
-
-    
