@@ -125,6 +125,7 @@ const TaskCard = ({ task, project, onUpdateTask, onClick, isDragging, allUsers }
 
 interface ProjectBoardProps {
   project: Project;
+  projects: Project[];
   tasks: Task[];
   onUpdateTasks: (tasks: Task[]) => void;
   activeSpace: Space;
@@ -139,7 +140,7 @@ const defaultStatuses: Status[] = [
     { name: 'Done', color: '#22c55e' },
 ]
 
-export default function ProjectBoard({ project, tasks: allTasks, onUpdateTasks, activeSpace, allUsers, onUpdateActiveSpace }: ProjectBoardProps) {
+export default function ProjectBoard({ project, projects, tasks: allTasks, onUpdateTasks, activeSpace, allUsers, onUpdateActiveSpace }: ProjectBoardProps) {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -413,7 +414,7 @@ export default function ProjectBoard({ project, tasks: allTasks, onUpdateTasks, 
           }}
           onUpdateTask={handleUpdateTask}
           statuses={statuses.map(s => s.name)}
-          projects={allTasks.map(t => projects.find(p => p.id === t.project_id)).filter(Boolean) as Project[]}
+          projects={projects}
         />
       )}
     </>

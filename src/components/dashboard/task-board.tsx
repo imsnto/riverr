@@ -123,6 +123,7 @@ export default function TaskBoard({
         {selectedProject ? (
             <ProjectBoard 
                 project={selectedProject}
+                projects={projects}
                 tasks={tasks.filter(t => t.project_id === selectedProject.id)}
                 onUpdateTasks={onUpdateTasks}
                 activeSpace={activeSpace}
