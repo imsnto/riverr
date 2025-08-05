@@ -5,7 +5,7 @@ import { User as AppUser } from '@/lib/data';
 import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth, db, googleProvider } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { getUser, addUser, getInvite, deleteInvite, addMemberToSpaces } from '@/lib/db';
+import { getUser, addUser, getInvite, deleteInvite, addMemberToSpaces, getPreApprovedUser, deletePreApprovedUser } from '@/lib/db';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -91,24 +91,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (!userProfile) {
         const invite = await getInvite(email);
+        const preApprovedUser = await getPreApprovedUser(email);
 
-        if (!invite) {
+        if (!invite && !preApprovedUser) {
           await firebaseSignOut(auth);
-          alert("You are not invited to use this platform. Please contact an admin.");
+          alert("You are not authorized to use this platform. Please contact an admin.");
           return;
         }
+
+        const authSource = preApprovedUser || invite;
 
         const newUser: Omit<AppUser, 'id'> = {
           name: user.displayName || 'New User',
           email,
-          role: invite.role,
+          role: authSource!.role,
           slack_id: '',
           avatarUrl: user.photoURL || `https://placehold.co/100x100.png?text=${user.displayName?.[0] || 'U'}`,
         };
 
         userProfile = await addUser(newUser, user.uid);
-        await addMemberToSpaces(invite.spaces, user.uid);
-        await deleteInvite(email);
+        await addMemberToSpaces(authSource!.spaces, user.uid);
+        
+        if (invite) await deleteInvite(email);
+        if (preApprovedUser) await deletePreApprovedUser(email);
       }
 
       const token = await user.getIdToken();

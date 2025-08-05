@@ -7,11 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Plus, Edit, Trash2, Mail } from 'lucide-react';
+import { MoreHorizontal, Plus, Edit, Trash2, Mail, UserPlus } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import InviteUserDialog from './invite-user-dialog';
-import { getAllInvites, deleteInvite, resendInvite, addInvite as dbAddInvite } from '@/lib/db';
+import { getAllInvites, deleteInvite, resendInvite, addInvite as dbAddInvite, addPreApprovedUser } from '@/lib/db';
+import AddUserDialog from './add-user-dialog';
 
 const getInitials = (name: string) => {
   if (!name) return '';
@@ -29,6 +30,7 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, onInvi
   const [allUsers, setAllUsers] = useState<User[]>(initialUsers);
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const fetchInvites = async () => {
@@ -86,6 +88,23 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, onInvi
         description: `${values.email} has been invited.`
     });
   }
+  
+  const handleAddUser = async (values: Omit<Invite, 'token'>) => {
+      try {
+        await addPreApprovedUser(values);
+        toast({
+            title: 'User Added',
+            description: `${values.email} has been pre-approved. They can now sign in.`
+        });
+      } catch (error) {
+        console.error("Error pre-approving user:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Failed to Add User',
+            description: `Could not pre-approve ${values.email}.`
+        });
+      }
+  }
 
   return (
     <>
@@ -95,12 +114,18 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, onInvi
                     <div className="flex justify-between items-center">
                         <div>
                             <CardTitle>Manage Users</CardTitle>
-                            <CardDescription>Invite, remove, and manage user roles.</CardDescription>
+                            <CardDescription>Add new users or send email invitations.</CardDescription>
                         </div>
-                        <Button onClick={() => setIsInviteDialogOpen(true)}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Invite User
-                        </Button>
+                        <div className="flex gap-2">
+                           <Button variant="outline" onClick={() => setIsAddUserDialogOpen(true)}>
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Add User
+                            </Button>
+                            <Button onClick={() => setIsInviteDialogOpen(true)}>
+                                <Mail className="mr-2 h-4 w-4" />
+                                Invite User
+                            </Button>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -228,11 +253,16 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, onInvi
             )}
         </div>
 
-
         <InviteUserDialog 
             isOpen={isInviteDialogOpen}
             onOpenChange={setIsInviteDialogOpen}
             onInvite={handleNewInvite}
+            allSpaces={allSpaces}
+        />
+        <AddUserDialog 
+            isOpen={isAddUserDialogOpen}
+            onOpenChange={setIsAddUserDialogOpen}
+            onAddUser={handleAddUser}
             allSpaces={allSpaces}
         />
     </>

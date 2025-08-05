@@ -1,4 +1,3 @@
-
 // src/lib/db.ts
 
 import {
@@ -67,12 +66,24 @@ export const addUser = async (user: Omit<User, 'id'>, uid: string): Promise<User
   const existing = await getUser(uid);
   if (existing) return existing;
 
-  let invite = await getInvite(user.email);
-  const userWithRole = { ...user, role: invite?.role || 'Member' };
+  const preApprovedUser = await getPreApprovedUser(user.email);
+  const invite = await getInvite(user.email);
+
+  const role = preApprovedUser?.role || invite?.role || 'Member';
+  const spaces = preApprovedUser?.spaces || invite?.spaces || [];
+
+  const userWithRole = { ...user, role };
 
   await setDoc(doc(db, 'users', uid), userWithRole);
+  
+  if (spaces.length > 0) {
+    await addMemberToSpaces(spaces, uid);
+  }
+
+  if (preApprovedUser) {
+    await deletePreApprovedUser(preApprovedUser.email);
+  }
   if (invite) {
-    await addMemberToSpaces(invite.spaces, uid);
     await deleteInvite(invite.email);
   }
 
@@ -84,11 +95,25 @@ export const updateUser = async (userId: string, data: Partial<User>): Promise<v
   await updateDoc(userRef, data);
 };
 
+// --- Direct User Pre-Approval ---
+export const addPreApprovedUser = async (userData: Omit<Invite, 'token'>): Promise<void> => {
+    await setDoc(doc(db, 'pre-approved-users', userData.email), userData);
+}
+
+export const getPreApprovedUser = async (email: string): Promise<Omit<Invite, 'token'> | null> => {
+    const userDoc = await getDoc(doc(db, 'pre-approved-users', email));
+    return userDoc.exists() ? (userDoc.data() as Omit<Invite, 'token'>) : null;
+}
+
+export const deletePreApprovedUser = async (email: string): Promise<void> => {
+    await deleteDoc(doc(db, 'pre-approved-users', email));
+}
+
+
 // --- Invite Management ---
 export const addInvite = async (inviteData: Omit<Invite, 'token'>): Promise<void> => {
     const token = randomBytes(16).toString('hex');
     const inviteWithToken: Invite = { ...inviteData, token };
-    // This will trigger the `sendInviteEmail` cloud function on create
     await setDoc(doc(db, 'invites', inviteData.email), inviteWithToken);
 };
 
@@ -113,7 +138,6 @@ export const resendInvite = async (email: string): Promise<boolean> => {
     return false;
   }
   
-  // To re-trigger the `onCreate` cloud function, we delete and then re-add the document.
   const inviteData: Omit<Invite, 'token'> = {
     email: invite.email,
     role: invite.role,
