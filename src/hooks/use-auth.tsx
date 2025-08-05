@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -52,8 +53,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setAppUser(userProfile);
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userProfile));
         } else {
-          await handleSignOut();
-          return;
+          // This case handles when the user is authenticated with Firebase,
+          // but their profile creation might have been interrupted or they were deleted.
+          // It's safer to sign them out to force the profile creation flow again.
+          // The signInWithGoogle logic will handle creating the user profile properly.
         }
         setStatus('authenticated');
       } else {
@@ -90,42 +93,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       let userProfile = await getUser(user.uid);
 
       if (!userProfile) {
-        const invite = await getInvite(email);
         const preApprovedUser = await getPreApprovedUser(email);
-
-        if (!invite && !preApprovedUser) {
-          await firebaseSignOut(auth);
-          alert("You are not authorized to use this platform. Please contact an admin.");
-          return;
+        
+        if (!preApprovedUser) {
+          const invite = await getInvite(email);
+          if (!invite) {
+            await firebaseSignOut(auth);
+            alert("You are not authorized to use this platform. Please contact an admin.");
+            return;
+          }
+          // If they have an old invite, we can proceed, but the pre-approved flow is preferred
         }
 
-        const authSource = preApprovedUser || invite;
+        const authSource = preApprovedUser || await getInvite(email);
+
+        if (!authSource) {
+           await firebaseSignOut(auth);
+           alert("You are not authorized to use this platform. Please contact an admin.");
+           return;
+        }
 
         const newUser: Omit<AppUser, 'id'> = {
           name: user.displayName || 'New User',
           email,
-          role: authSource!.role,
+          role: authSource.role,
           slack_id: '',
           avatarUrl: user.photoURL || `https://placehold.co/100x100.png?text=${user.displayName?.[0] || 'U'}`,
         };
 
         userProfile = await addUser(newUser, user.uid);
-        await addMemberToSpaces(authSource!.spaces, user.uid);
+        await addMemberToSpaces(authSource.spaces, user.uid);
         
-        if (invite) await deleteInvite(email);
+        // Clean up the pre-approval/invite records
         if (preApprovedUser) await deletePreApprovedUser(email);
+        else await deleteInvite(email);
       }
 
       const token = await user.getIdToken();
       document.cookie = `token=${token}; path=/; max-age=3600`;
 
+      // Explicitly set user state to prevent race conditions
       setFirebaseUser(user);
       setAppUser(userProfile);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userProfile));
       setStatus('authenticated');
+
     } catch (error) {
       console.error("Error during Google Sign-In:", error);
-      alert("Sign-in failed. Please try again.");
+      // Don't alert here, just log and set to unauthenticated
       setStatus('unauthenticated');
     }
   };

@@ -64,32 +64,8 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
 };
 
 export const addUser = async (user: Omit<User, 'id'>, uid: string): Promise<User> => {
-  const existing = await getUser(uid);
-  if (existing) return existing;
-
-  const preApprovedUser = await getPreApprovedUser(user.email);
-  const invite = await getInvite(user.email);
-
-  const authSource = preApprovedUser || invite;
-  const role = authSource?.role || 'Member';
-  const spaces = authSource?.spaces || [];
-
-  const userWithRole = { ...user, role };
-
-  await setDoc(doc(db, 'users', uid), userWithRole);
-  
-  if (spaces.length > 0) {
-    await addMemberToSpaces(spaces, uid);
-  }
-
-  if (preApprovedUser) {
-    await deletePreApprovedUser(preApprovedUser.email);
-  }
-  if (invite) {
-    await deleteInvite(invite.email);
-  }
-
-  return { ...userWithRole, id: uid };
+  await setDoc(doc(db, 'users', uid), user);
+  return { ...user, id: uid };
 };
 
 export const updateUser = async (userId: string, data: Partial<User>): Promise<void> => {
@@ -146,7 +122,7 @@ export const resendInvite = async (email: string): Promise<boolean> => {
     spaces: invite.spaces,
   }
 
-  await deleteInvite(email);
+  // Use setDoc to overwrite existing and create new, which handles the trigger correctly
   await addInvite(inviteData);
   return true;
 }
