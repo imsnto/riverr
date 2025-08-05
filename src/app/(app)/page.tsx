@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -15,13 +16,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask, addInvite } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Hash, Lock } from 'lucide-react';
+import { Hash, Lock, Plus } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import CreateTaskFromThreadDialog from '@/components/dashboard/create-task-from-thread-dialog';
 import ThreadView from '@/components/dashboard/thread-view';
@@ -29,7 +30,7 @@ import AllThreadsView from '@/components/dashboard/all-threads-view';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import AdminSettings from './admin/page';
-
+import InviteUserDialog from '@/components/dashboard/invite-user-dialog';
 
 export default function Dashboard() {
   const { appUser } = useAuth();
@@ -54,6 +55,7 @@ export default function Dashboard() {
   const [selectedMessageForTask, setSelectedMessageForTask] = useState<Message | null>(null);
   const [activeThread, setActiveThread] = useState<Message | null>(null);
   const [readThreadIds, setReadThreadIds] = useState<Set<string>>(new Set());
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   const [channelsViewMode, setChannelsViewMode] = useState<'channel' | 'all-threads'>('channel');
 
@@ -139,7 +141,7 @@ export default function Dashboard() {
     return () => {
       abortController.abort();
     };
-  }, [activeSpaceId, activeChannelId]);
+  }, [activeSpaceId]);
   
   const handleOpenCreateTaskDialog = (message: Message) => {
     setSelectedMessageForTask(message);
@@ -209,6 +211,24 @@ export default function Dashboard() {
       setAllSpaces(allSpaces.filter(s => s.id !== spaceId));
   }
 
+  const handleInvite = async (values: Omit<Invite, 'token'>) => {
+    try {
+      const token = Math.random().toString(36).substring(2);
+      await addInvite({ ...values, token });
+      toast({
+        title: 'Invite Sent',
+        description: `${values.email} has been invited. They will get access once they sign in.`,
+      })
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'Invite Failed',
+        description: 'Could not send the invitation. Please try again.',
+      })
+    }
+  }
+
   if (!appUser) {
     return <div className="flex h-screen items-center justify-center">Loading user data...</div>;
   }
@@ -252,9 +272,9 @@ export default function Dashboard() {
     { id: 'tasks', label: 'Task Board', icon: FolderKanban },
     { id: 'channels', label: 'Channels', icon: MessageSquare },
     { id: 'timesheets', label: 'Team Timesheets', icon: Users, permission: canSeeTimesheets },
-    { id: 'settings', label: 'Settings', icon: Settings, permission: isAdmin },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ];
-
+  
   const visibleUserIds = new Set(userSpaces.flatMap(s => Object.keys(s.members)));
   const visibleUsers = allUsers.filter(u => visibleUserIds.has(u.id));
 
@@ -268,6 +288,9 @@ export default function Dashboard() {
             <nav className="flex flex-col items-center gap-4">
               {NAV_ITEMS.map(item => {
                 if (item.permission === false) { // Explicitly hide if permission is false
+                  return null;
+                }
+                 if (item.id === 'settings' && !isAdmin) {
                   return null;
                 }
                 return (
@@ -292,6 +315,12 @@ export default function Dashboard() {
                 );
               })}
             </nav>
+            <div className="mt-auto">
+              <Button variant="ghost" onClick={() => setIsInviteOpen(true)}>
+                <Plus className="h-5 w-5" />
+                 <span className="sr-only">Invite User</span>
+              </Button>
+            </div>
           </aside>
           
           {/* Secondary Sidebar (for Channels) */}
@@ -427,7 +456,7 @@ export default function Dashboard() {
                   {isLoading ? <div className="flex justify-center items-center h-full">Loading timesheets...</div> : <TeamTimesheets timeEntries={timeEntries} projects={projects} tasks={tasks} space={activeSpace} allUsers={allUsers} />}
                   </div>
               )}
-              {isAdmin && activeTab === 'settings' && (
+              {activeTab === 'settings' && (
                   <div className="p-4 md:p-8">
                       <h1 className="text-2xl font-bold mb-4">Settings</h1>
                       <Tabs defaultValue="spaces" className="w-full">
@@ -439,7 +468,7 @@ export default function Dashboard() {
                           {isLoading ? <div className="flex justify-center items-center h-full">Loading spaces...</div> : <SpaceSettings allSpaces={userSpaces} allUsers={visibleUsers} onSave={handleSaveSpace} onDelete={handleDeleteSpace} appUser={appUser} />}
                           </TabsContent>
                           <TabsContent value="users">
-                          {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings allUsers={visibleUsers} allSpaces={userSpaces} appUser={appUser} />}
+                          {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings allUsers={visibleUsers} allSpaces={userSpaces} appUser={appUser} onInvite={() => setIsInviteOpen(true)} />}
                           </TabsContent>
                       </Tabs>
                   </div>
@@ -460,8 +489,16 @@ export default function Dashboard() {
             onTaskCreated={handleTaskCreated}
         />
       )}
+       <InviteUserDialog 
+          isOpen={isInviteOpen}
+          onOpenChange={setIsInviteOpen}
+          onInvite={handleInvite}
+          allSpaces={userSpaces}
+        />
     </TooltipProvider>
   );
 }
+
+    
 
     
