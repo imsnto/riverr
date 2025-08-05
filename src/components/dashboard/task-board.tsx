@@ -8,7 +8,7 @@ import { Plus, Folder, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import ProjectBoard from '@/components/dashboard/project-board';
+import ProjectBoard from './project-board';
 import ProjectFormDialog from './project-form-dialog';
 import { useToast } from '@/hooks/use-toast';
 import NewTaskDialog from './new-task-dialog';
@@ -170,7 +170,7 @@ export default function TaskBoard({
           onTaskAdd={handleAddTask}
           projects={[selectedProject]}
           statuses={statuses.map(s => s.name)}
-          allUsers={spaceMembers.filter(u => selectedProject.members.includes(u.id))}
+          allUsers={spaceMembers}
         />
       )}
     </div>
