@@ -4,14 +4,15 @@ import * as postmark from 'postmark';
 
 admin.initializeApp();
 
-// ✅ Make sure this matches your *Invite Users (Riverr Project Management)* server
+// ✅ Use your verified Postmark info
 const POSTMARK_API_KEY = 'eed163d1-398a-40f8-b555-8ec1c5a53ae5';
 const FROM_EMAIL = 'brad@riverr.app';
-const POSTMARK_STREAM = 'defaultTransactional'; // ✅ Name of your transactional stream
-const DOMAIN = 'app.riverr.app'; // ✅ Must match your verified domain
+const POSTMARK_STREAM = 'defaultTransactional'; // from your "Invite Users (Riverr Project Management)" server
+const DOMAIN = 'app.riverr.app'; // your actual frontend domain (must be verified in Postmark)
 
 const postmarkClient = new postmark.ServerClient(POSTMARK_API_KEY);
 
+// Cloud Function to send invite email when a new invite is created in Firestore
 export const sendInviteEmail = functions.firestore
   .document('invites/{inviteId}')
   .onCreate(async (snap, context) => {

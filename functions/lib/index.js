@@ -15,35 +15,26 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendInviteEmail = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const postmark = __importStar(require("postmark"));
 admin.initializeApp();
-// ✅ Make sure this matches your *Invite Users (Riverr Project Management)* server
+// ✅ Use your verified Postmark info
 const POSTMARK_API_KEY = 'eed163d1-398a-40f8-b555-8ec1c5a53ae5';
 const FROM_EMAIL = 'brad@riverr.app';
-const POSTMARK_STREAM = 'defaultTransactional'; // ✅ Name of your transactional stream
-const DOMAIN = 'app.riverr.app'; // ✅ Must match your verified domain
+const POSTMARK_STREAM = 'defaultTransactional'; // from your "Invite Users (Riverr Project Management)" server
+const DOMAIN = 'app.riverr.app'; // your actual frontend domain (must be verified in Postmark)
 const postmarkClient = new postmark.ServerClient(POSTMARK_API_KEY);
+// Cloud Function to send invite email when a new invite is created in Firestore
 exports.sendInviteEmail = functions.firestore
     .document('invites/{inviteId}')
     .onCreate(async (snap, context) => {
