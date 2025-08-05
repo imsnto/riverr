@@ -1,53 +1,38 @@
-
-
-import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
-import { ServerClient } from 'postmark';
+import * as functions from "firebase-functions";
+import * as admin from "firebase-admin";
+import postmark from "postmark";
 
 admin.initializeApp();
 
-// Initialize Postmark client from secure config
-// Set this by running: firebase functions:config:set postmark.key="YOUR_POSTMARK_API_KEY"
-const postmarkKey = functions.config().postmark?.key;
-
-if (!postmarkKey) {
-  console.error('Postmark API key not set in Firebase Functions config. Set it with: firebase functions:config:set postmark.key="YOUR_KEY"');
-}
-const postmark = new ServerClient(postmarkKey);
-
+// ✅ Postmark API Client (Riverr Project Management)
+const client = new postmark.ServerClient("eed163d1-398a-40f8-b555-8ec1c5a53ae5");
 
 export const sendInviteEmail = functions.firestore
-  .document('invites/{email}')
-  .onCreate(async (snap) => {
-    if (!postmarkKey) {
-      console.error('Cannot send email, Postmark key is not configured.');
-      return;
-    }
-    
+  .document("invites/{inviteId}")
+  .onCreate(async (snap, context) => {
     const invite = snap.data();
-    const to = invite.email;
+    const { email } = invite;
 
-    // TODO: Replace with your actual domain
-    const loginUrl = 'https://timeflow-6i3eo.web.app/login'; 
+    const inviteLink = `https://riverr.app/login`; // ✅ Replace with your actual login page URL
 
     try {
-      await postmark.sendEmail({
-        From: 'no-reply@timeflow-6i3eo.web.app', // This must be a verified sender signature in Postmark
-        To: to,
-        Subject: 'You’ve been invited to Timeflow',
+      await client.sendEmail({
+        From: '"Bradley from Riverr" <brad@riverr.app>', // ✅ Verified sender
+        To: email,
+        Subject: `You're invited to join Riverr`,
         HtmlBody: `
-          <p>Hello,</p>
-          <p>You’ve been invited to join a workspace on Timeflow.</p>
-          <p><a href="${loginUrl}">Click here to sign in with Google</a>.</p>
-          <p>If you were not expecting this, you can safely ignore this email.</p>
+          <p>Hey there,</p>
+          <p>You've been invited to join <strong>Riverr Project Management</strong>.</p>
+          <p><a href="${inviteLink}">Click here to sign in with Google</a>.</p>
+          <p>If you weren’t expecting this invitation, you can ignore this email.</p>
+          <br>
+          <p>— Bradley & the Riverr Team</p>
         `,
-        TextBody: `You’ve been invited to Timeflow. Sign in here: ${loginUrl}`,
-        MessageStream: 'outbound', // Or whatever your transactional stream is named
+        MessageStream: "outbound", // Default stream unless you created a custom one
       });
 
-      console.log(`✅ Invite email sent to ${to}`);
-    } catch (err) {
-      console.error(`❌ Failed to send invite to ${to}:`, err);
+      console.log(`Invite email sent to ${email}`);
+    } catch (error) {
+      console.error("Error sending invite email:", error);
     }
   });
-
