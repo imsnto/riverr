@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User, Space, Invite, SpaceMember } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,11 +20,10 @@ const getInitials = (name: string) => {
 interface UserSettingsProps {
     allUsers: User[];
     allSpaces: Space[];
-    onInviteUser: (values: Omit<Invite, 'token'>) => void;
     appUser: User | null;
 }
 
-export default function UserSettings({ allUsers: initialUsers, allSpaces, onInviteUser, appUser }: UserSettingsProps) {
+export default function UserSettings({ allUsers: initialUsers, allSpaces, appUser }: UserSettingsProps) {
   const [allUsers, setAllUsers] = useState<User[]>(initialUsers);
   const { toast } = useToast();
   
@@ -51,7 +50,7 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, onInvi
                     <div className="flex justify-between items-center">
                         <div>
                             <CardTitle>Manage Users</CardTitle>
-                            <CardDescription>View all users across all spaces.</CardDescription>
+                            <CardDescription>View users who share a space with you.</CardDescription>
                         </div>
                     </div>
                 </CardHeader>

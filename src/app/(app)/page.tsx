@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, updateTask, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -237,13 +237,15 @@ export default function Dashboard() {
     { id: 'channels', label: 'Channels', icon: MessageSquare },
     { id: 'timesheets', label: 'Team Timesheets', icon: Users, permission: canSeeTimesheets },
     { id: 'settings', label: 'Settings', icon: Settings, permission: isAdmin },
-    { id: 'admin', label: 'Global Admin', icon: ShieldCheck, permission: false }, // Assuming global admin is separate
   ];
+
+  const visibleUserIds = new Set(userSpaces.flatMap(s => Object.keys(s.members)));
+  const visibleUsers = allUsers.filter(u => visibleUserIds.has(u.id));
 
   return (
     <TooltipProvider>
       <div className="flex h-screen w-full flex-col bg-background font-body">
-        <Header activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={userSpaces.length > 0 ? userSpaces : allSpaces} appUser={appUser} />
+        <Header activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={userSpaces} appUser={appUser} />
         <div className="flex flex-1 overflow-hidden">
           {/* Primary Sidebar */}
           <aside className="hidden w-20 flex-col items-center border-r bg-card p-4 md:flex">
@@ -418,10 +420,10 @@ export default function Dashboard() {
                           <TabsTrigger value="users">Users</TabsTrigger>
                           </TabsList>
                           <TabsContent value="spaces">
-                          {isLoading ? <div className="flex justify-center items-center h-full">Loading spaces...</div> : <SpaceSettings allSpaces={allSpaces} allUsers={allUsers} onSave={handleSaveSpace} onDelete={handleDeleteSpace} appUser={appUser} />}
+                          {isLoading ? <div className="flex justify-center items-center h-full">Loading spaces...</div> : <SpaceSettings allSpaces={userSpaces} allUsers={visibleUsers} onSave={handleSaveSpace} onDelete={handleDeleteSpace} appUser={appUser} />}
                           </TabsContent>
                           <TabsContent value="users">
-                          {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings allUsers={allUsers} allSpaces={allSpaces} onInviteUser={() => {}} appUser={appUser} />}
+                          {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings allUsers={visibleUsers} allSpaces={userSpaces} appUser={appUser} />}
                           </TabsContent>
                       </Tabs>
                   </div>
