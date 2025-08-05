@@ -27,14 +27,25 @@ export default function Overview({ projects, tasks, timeEntries, appUser, allUse
   const totalHoursLogged = userTimeEntries.reduce((acc, entry) => acc + entry.duration, 0);
 
   const formatDuration = (hours: number) => {
-    if (hours >= 1) {
-      return `${hours.toFixed(1)} hrs`;
-    }
-    const minutes = hours * 60;
-    if (minutes < 1) {
+    if (hours === 0) return '0 min';
+    
+    const totalMinutes = Math.round(hours * 60);
+
+    if (totalMinutes < 1) {
         return `< 1 min`;
     }
-    return `${Math.round(minutes)} min`;
+
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+
+    const parts = [];
+    if (h > 0) {
+        parts.push(`${h} hr${h > 1 ? 's' : ''}`);
+    }
+    if (m > 0) {
+        parts.push(`${m} min`);
+    }
+    return parts.join(' ');
   };
 
   return (
@@ -67,7 +78,7 @@ export default function Overview({ projects, tasks, timeEntries, appUser, allUse
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalHoursLogged.toFixed(1)}</div>
+              <div className="text-2xl font-bold">{formatDuration(totalHoursLogged)}</div>
               <p className="text-xs text-muted-foreground">Total hours logged this week</p>
             </CardContent>
           </Card>
