@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import ProjectBoard from '@/components/dashboard/project-board';
 import ProjectFormDialog from './project-form-dialog';
 import { useToast } from '@/hooks/use-toast';
+import NewTaskDialog from './new-task-dialog';
 
 interface TaskBoardProps {
   tasks: Task[];
@@ -38,6 +39,7 @@ export default function TaskBoard({
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(projects.length > 0 ? projects[0].id : null);
   const [isProjectFormOpen, setIsProjectFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const handleCreateNewProject = () => {
@@ -76,8 +78,18 @@ export default function TaskBoard({
     }
   }
 
+  const handleAddTask = (newTask: Task) => {
+    onUpdateTasks([...tasks, newTask]);
+    const statuses = activeSpace.statuses || [];
+    if (!statuses.find(s => s.name === newTask.status)) {
+        const randomColor = { name: 'Gray', color: '#6b7280' };
+        onUpdateActiveSpace({ statuses: [...statuses, { name: newTask.status, color: randomColor.color }] });
+    }
+  };
+
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   const spaceMembers = allUsers.filter(u => activeSpace.members[u.id]);
+  const statuses = activeSpace.statuses || [];
 
   return (
     <div className="flex h-full gap-6">
@@ -129,6 +141,7 @@ export default function TaskBoard({
                 activeSpace={activeSpace}
                 allUsers={allUsers}
                 onUpdateActiveSpace={onUpdateActiveSpace}
+                onNewTaskRequest={() => setIsNewTaskDialogOpen(true)}
             />
         ) : (
             <div className="flex flex-col items-center justify-center h-full text-center bg-card rounded-lg">
@@ -150,6 +163,16 @@ export default function TaskBoard({
         spaceId={activeSpace.id}
         spaceMembers={spaceMembers}
       />
+       {selectedProject && (
+        <NewTaskDialog
+          isOpen={isNewTaskDialogOpen}
+          onOpenChange={setIsNewTaskDialogOpen}
+          onTaskAdd={handleAddTask}
+          projects={[selectedProject]}
+          statuses={statuses.map(s => s.name)}
+          allUsers={spaceMembers.filter(u => selectedProject.members.includes(u.id))}
+        />
+      )}
     </div>
   );
 }

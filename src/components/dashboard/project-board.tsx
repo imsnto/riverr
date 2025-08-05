@@ -131,6 +131,7 @@ interface ProjectBoardProps {
   activeSpace: Space;
   allUsers: User[];
   onUpdateActiveSpace: (updatedSpace: Partial<Space>) => void;
+  onNewTaskRequest: () => void;
 }
 
 const defaultStatuses: Status[] = [
@@ -140,9 +141,8 @@ const defaultStatuses: Status[] = [
     { name: 'Done', color: '#22c55e' },
 ]
 
-export default function ProjectBoard({ project, projects, tasks: allTasks, onUpdateTasks, activeSpace, allUsers, onUpdateActiveSpace }: ProjectBoardProps) {
+export default function ProjectBoard({ project, projects, tasks: allTasks, onUpdateTasks, activeSpace, allUsers, onUpdateActiveSpace, onNewTaskRequest }: ProjectBoardProps) {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
-  const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
@@ -206,14 +206,6 @@ export default function ProjectBoard({ project, projects, tasks: allTasks, onUpd
     setDraggedTask(null);
   };
 
-  const handleAddTask = (newTask: Task) => {
-    onUpdateTasks([...allTasks, newTask]);
-    if (!statuses.find(s => s.name === newTask.status)) {
-        const randomColor = STATUS_COLORS[statuses.length % STATUS_COLORS.length];
-        setStatuses([...statuses, { name: newTask.status, color: randomColor.color }]);
-    }
-  };
-
   const handleUpdateTask = (updatedTask: Task) => {
     onUpdateTasks(allTasks.map(task => task.id === updatedTask.id ? updatedTask : task));
     if (selectedTask && selectedTask.id === updatedTask.id) {
@@ -260,7 +252,7 @@ export default function ProjectBoard({ project, projects, tasks: allTasks, onUpd
     <>
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">{project.name}</h1>
-        <Button onClick={() => setIsNewTaskDialogOpen(true)}>
+        <Button onClick={onNewTaskRequest}>
           <Plus className="mr-2 h-4 w-4" />
           New Task
         </Button>
@@ -396,14 +388,6 @@ export default function ProjectBoard({ project, projects, tasks: allTasks, onUpd
             </Button>
         </div>
       </div>
-      <NewTaskDialog 
-        isOpen={isNewTaskDialogOpen}
-        onOpenChange={setIsNewTaskDialogOpen}
-        onTaskAdd={handleAddTask}
-        projects={[project]}
-        statuses={statuses.map(s => s.name)}
-        allUsers={allUsers.filter(u => project.members.includes(u.id))}
-      />
       {selectedTask && (
         <TaskDetailsDialog
           task={selectedTask}
@@ -420,5 +404,3 @@ export default function ProjectBoard({ project, projects, tasks: allTasks, onUpd
     </>
   );
 }
-
-    
