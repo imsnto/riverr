@@ -308,6 +308,8 @@ export default function Dashboard() {
 
   const currentUserPermissions = activeSpace?.members[appUser.id];
   const canSeeTimesheets = currentUserPermissions?.role === 'Admin' || currentUserPermissions?.permissions?.canSeeAllTimesheets;
+  const canLogTime = currentUserPermissions?.role === 'Admin' || currentUserPermissions?.permissions?.canLogTime;
+
 
   const handleSpaceChange = (spaceId: string) => {
     setActiveSpaceId(spaceId);
@@ -339,7 +341,7 @@ export default function Dashboard() {
     { id: 'dashboard', label: 'Dashboard', icon: GanttChart },
     { id: 'tasks', label: 'Task Board', icon: FolderKanban },
     { id: 'channels', label: 'Channels', icon: MessageSquare },
-    { id: 'timesheets', label: 'Team Timesheets', icon: Users, permission: canSeeTimesheets },
+    { id: 'timesheets', label: 'Timesheets', icon: Users, permission: canLogTime },
     { id: 'settings', label: 'Settings', icon: Settings, permission: true },
   ];
   
@@ -534,9 +536,9 @@ export default function Dashboard() {
                 {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard tasks={tasks} onUpdateTasks={handleUpdateTasks} projects={projects} activeSpace={activeSpace} allUsers={visibleUsers} onUpdateActiveSpace={handleUpdateActiveSpace} onAddProject={handleAddProject} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} />}
                 </>
               )}
-              {canSeeTimesheets && activeTab === 'timesheets' && (
+              {canLogTime && activeTab === 'timesheets' && (
                   <div className="p-4 md:p-8">
-                  {isLoading ? <div className="flex justify-center items-center h-full">Loading timesheets...</div> : <TeamTimesheets timeEntries={timeEntries} projects={projects} tasks={tasks} space={activeSpace} allUsers={allUsers} />}
+                  {isLoading ? <div className="flex justify-center items-center h-full">Loading timesheets...</div> : <TeamTimesheets timeEntries={timeEntries} projects={projects} tasks={tasks} space={activeSpace} allUsers={allUsers} appUser={appUser} />}
                   </div>
               )}
               {activeTab === 'settings' && (

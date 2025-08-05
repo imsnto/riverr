@@ -24,17 +24,20 @@ interface TeamTimesheetsProps {
   projects: Project[];
   tasks: Task[];
   timeEntries: TimeEntry[];
+  appUser: User;
 }
 
-export default function TeamTimesheets({ space, allUsers, projects, tasks, timeEntries }: TeamTimesheetsProps) {
+export default function TeamTimesheets({ space, allUsers, projects, tasks, timeEntries, appUser }: TeamTimesheetsProps) {
   const usersInSpace = allUsers.filter(u => space.members[u.id]);
-  const [selectedUserId, setSelectedUserId] = useState(usersInSpace.length > 0 ? usersInSpace[0].id : '');
-  const [viewMode, setViewMode] = useState<ViewMode>('all-users');
+  const currentUserPermissions = space.members[appUser.id];
+  const canSeeAllTimesheets = currentUserPermissions?.role === 'Admin' || currentUserPermissions?.permissions?.canSeeAllTimesheets;
+
+  const [selectedUserId, setSelectedUserId] = useState(appUser.id);
+  const [viewMode, setViewMode] = useState<ViewMode>(canSeeAllTimesheets ? 'all-users' : 'single-user');
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const weekStartsOn = 0; // Sunday
   const startOfCurrentWeek = startOfWeek(currentDate, { weekStartsOn });
-  const endOfCurrentWeek = endOfWeek(currentDate, { weekStartsOn });
 
   const handlePreviousWeek = () => {
     setCurrentDate(subWeeks(currentDate, 1));
@@ -66,10 +69,12 @@ export default function TeamTimesheets({ space, allUsers, projects, tasks, timeE
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-4">
-           <Button variant="outline" onClick={() => setViewMode('all-users')}>
-            Back to All Users
-          </Button>
-          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+           {canSeeAllTimesheets && (
+            <Button variant="outline" onClick={() => setViewMode('all-users')}>
+                Back to All Users
+            </Button>
+           )}
+          <Select value={selectedUserId} onValueChange={setSelectedUserId} disabled={!canSeeAllTimesheets}>
               <SelectTrigger className="w-[250px]">
                   <SelectValue>
                       <div className="flex items-center gap-2">
