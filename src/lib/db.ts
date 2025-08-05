@@ -203,6 +203,11 @@ export const getTimeEntriesInSpace = async (projectIds: string[]): Promise<TimeE
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimeEntry));
 }
 
+export const addTimeEntry = async (timeData: Omit<TimeEntry, 'id'>): Promise<TimeEntry> => {
+  const docRef = await addDoc(collection(db, 'time_entries'), timeData);
+  return { ...timeData, id: docRef.id };
+};
+
 export const getSlackMeetingLogsInSpace = async (spaceId: string): Promise<SlackMeetingLog[]> => {
     const projectsInSpace = await getProjectsInSpace(spaceId);
     const projectIds = projectsInSpace.map(p => p.id);

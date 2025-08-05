@@ -1,13 +1,14 @@
 
 'use client';
 
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Project, Task, User } from '@/lib/data';
+import { Project, Task, User, TimeEntry } from '@/lib/data';
 import { Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -15,10 +16,12 @@ interface ManualTimeEntryProps {
   projects: Project[];
   tasks: Task[];
   appUser: User | null;
+  onLogTime: (timeData: Omit<TimeEntry, 'id'>) => void;
 }
 
-export default function ManualTimeEntry({ projects, tasks, appUser }: ManualTimeEntryProps) {
+export default function ManualTimeEntry({ projects, tasks, appUser, onLogTime }: ManualTimeEntryProps) {
   const { toast } = useToast();
+  const [selectedProject, setSelectedProject] = useState('');
   
   if (!appUser) return null;
 
@@ -26,11 +29,37 @@ export default function ManualTimeEntry({ projects, tasks, appUser }: ManualTime
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    toast({
-      title: 'Time Logged',
-      description: 'Your time has been successfully logged.',
+    const formData = new FormData(e.currentTarget);
+    const duration = parseFloat(formData.get('duration') as string);
+    const projectId = formData.get('project') as string;
+    const taskId = formData.get('task') as string | undefined;
+    const notes = formData.get('notes') as string;
+
+    if (!duration || !projectId) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Information',
+        description: 'Please select a project and enter a duration.',
+      });
+      return;
+    }
+
+    const endTime = new Date();
+    const startTime = new Date(endTime.getTime() - duration * 60 * 60 * 1000);
+
+    onLogTime({
+      user_id: appUser.id,
+      project_id: projectId,
+      task_id: taskId,
+      source: 'Manual',
+      notes,
+      start_time: startTime.toISOString(),
+      end_time: endTime.toISOString(),
+      duration: duration,
     });
+    
     (e.target as HTMLFormElement).reset();
+    setSelectedProject('');
   };
 
   return (
@@ -45,7 +74,7 @@ export default function ManualTimeEntry({ projects, tasks, appUser }: ManualTime
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="project">Project</Label>
-            <Select name="project">
+            <Select name="project" onValueChange={setSelectedProject}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a project" />
               </SelectTrigger>
@@ -60,13 +89,13 @@ export default function ManualTimeEntry({ projects, tasks, appUser }: ManualTime
           </div>
           <div className="space-y-2">
             <Label htmlFor="task">Task (Optional)</Label>
-            <Select name="task">
+            <Select name="task" disabled={!selectedProject}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a task" />
               </SelectTrigger>
               <SelectContent>
                 {tasks
-                  .filter(t => userProjects.some(p => p.id === t.project_id))
+                  .filter(t => t.project_id === selectedProject)
                   .map(task => (
                     <SelectItem key={task.id} value={task.id}>
                       {task.name}

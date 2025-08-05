@@ -6,23 +6,26 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Play, Square, TimerIcon } from 'lucide-react';
-import { Task, User } from '@/lib/data';
+import { Task, User, TimeEntry } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
 interface TimerProps {
   tasks: Task[];
   appUser: User | null;
+  onLogTime: (timeData: Omit<TimeEntry, 'id'>) => void;
 }
 
-export default function Timer({ tasks, appUser }: TimerProps) {
+export default function Timer({ tasks, appUser, onLogTime }: TimerProps) {
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = useRef<Date | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     if (isRunning) {
+      startTimeRef.current = new Date();
       timerRef.current = setInterval(() => {
         setTime(prevTime => prevTime + 1);
       }, 1000);
@@ -48,12 +51,20 @@ export default function Timer({ tasks, appUser }: TimerProps) {
 
   const handleStop = () => {
     setIsRunning(false);
-    if (time > 0) {
-      const taskName = tasks.find(t => t.id === selectedTask)?.name || 'the selected task';
-      toast({
-        title: 'Time Logged',
-        description: `Logged ${(time / 3600).toFixed(2)} hours for ${taskName}.`,
-      });
+    if (time > 0 && selectedTask && appUser) {
+      const task = tasks.find(t => t.id === selectedTask);
+      if (task) {
+        onLogTime({
+          user_id: appUser.id,
+          project_id: task.project_id,
+          task_id: task.id,
+          source: 'Timer',
+          notes: `Timer entry for: ${task.name}`,
+          start_time: startTimeRef.current!.toISOString(),
+          end_time: new Date().toISOString(),
+          duration: time / 3600,
+        });
+      }
     }
     setTime(0);
   };

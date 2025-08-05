@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject, addTimeEntry } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -280,6 +280,24 @@ export default function Dashboard() {
     setTasks(prev => prev.filter(t => t.project_id !== projectId));
   }
 
+  const handleLogTime = async (timeData: Omit<TimeEntry, 'id'>) => {
+    try {
+      const newTimeEntry = await addTimeEntry(timeData);
+      setTimeEntries(prev => [...prev, newTimeEntry]);
+      toast({
+        title: 'Time Logged',
+        description: `Successfully logged ${timeData.duration} hours.`,
+      });
+    } catch (error) {
+      console.error('Failed to log time:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Logging Failed',
+        description: 'Could not save the time entry. Please try again.',
+      });
+    }
+  };
+
 
   if (!appUser) {
     return <div className="flex h-screen items-center justify-center">Loading user data...</div>;
@@ -460,8 +478,8 @@ export default function Dashboard() {
                         <Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} />
                       </div>
                       <div className="flex flex-col gap-6">
-                        <Timer tasks={tasks} appUser={appUser} />
-                        <ManualTimeEntry projects={projects} tasks={tasks} appUser={appUser}/>
+                        <Timer tasks={tasks} appUser={appUser} onLogTime={handleLogTime}/>
+                        <ManualTimeEntry projects={projects} tasks={tasks} appUser={appUser} onLogTime={handleLogTime}/>
                       </div>
                     </div>
                     <div className="mt-6">
