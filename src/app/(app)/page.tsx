@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -59,12 +59,16 @@ export default function Dashboard() {
 
 
   useEffect(() => {
+    const abortController = new AbortController();
     async function loadInitialData() {
         if (!appUser) return;
         setIsLoading(true);
         await seedDatabase();
 
         const [users, spaces] = await Promise.all([dbGetAllUsers(), dbGetAllSpaces()]);
+        
+        if (abortController.signal.aborted) return;
+
         setAllUsers(users);
         setAllSpaces(spaces);
         
@@ -72,16 +76,19 @@ export default function Dashboard() {
         if (userSpaces.length > 0) {
           setActiveSpaceId(userSpaces[0].id);
         } else if (spaces.length > 0) {
-            // This case should ideally not happen with the new auth model
-            // as users get a default space.
             setActiveSpaceId(spaces[0].id);
         }
         setIsLoading(false);
     }
     loadInitialData();
+
+    return () => {
+      abortController.abort();
+    };
   }, [appUser]); 
 
   useEffect(() => {
+    const abortController = new AbortController();
     async function loadSpaceData() {
       if (activeSpaceId) {
         setIsLoading(true);
@@ -89,11 +96,15 @@ export default function Dashboard() {
             dbGetProjects(activeSpaceId),
             dbGetChannels(activeSpaceId),
         ]);
+        
+        if (abortController.signal.aborted) return;
+
         setProjects(projectsInSpace);
         setChannels(channelsInSpace);
         
         if (channelsInSpace.length > 0) {
             const allMessagesInChannels = await Promise.all(channelsInSpace.map(c => dbGetMessages(c.id))).then(res => res.flat());
+            if (abortController.signal.aborted) return;
             setMessages(allMessagesInChannels);
             if (!activeChannelId) {
                 setActiveChannelId(channelsInSpace[0].id);
@@ -111,6 +122,7 @@ export default function Dashboard() {
                 dbGetTimeEntries(projectIds),
                 dbGetSlackMeetingLogsInSpace(activeSpaceId),
             ]);
+            if (abortController.signal.aborted) return;
             setTasks(tasksInSpace);
             setTimeEntries(timeEntriesInSpace);
             setMeetingLogs(meetingLogsInSpace);
@@ -123,7 +135,11 @@ export default function Dashboard() {
       }
     }
     loadSpaceData();
-  }, [activeSpaceId]);
+
+    return () => {
+      abortController.abort();
+    };
+  }, [activeSpaceId, activeChannelId]);
   
   const handleOpenCreateTaskDialog = (message: Message) => {
     setSelectedMessageForTask(message);
