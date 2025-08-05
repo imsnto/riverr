@@ -26,10 +26,11 @@ interface UserSettingsProps {
     allUsers: User[];
     allSpaces: Space[];
     appUser: User | null;
-    onInvite: (values: Omit<Invite, 'token'>) => void;
+    onInvite: () => void;
+    handleInvite: (values: Omit<Invite, 'id' | 'token' | 'status'>) => void;
 }
 
-export default function UserSettings({ allUsers: initialUsers, allSpaces, appUser, onInvite }: UserSettingsProps) {
+export default function UserSettings({ allUsers: initialUsers, allSpaces, appUser, onInvite, handleInvite }: UserSettingsProps) {
   const [allUsers, setAllUsers] = useState<User[]>(initialUsers);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const { toast } = useToast();
@@ -49,8 +50,8 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, appUse
     })
   }
 
-  const handleInviteAndClose = (values: Omit<Invite, 'token'>) => {
-    onInvite(values);
+  const handleInviteAndClose = (values: Omit<Invite, 'id' | 'token' | 'status'>) => {
+    handleInvite(values);
     setIsInviteOpen(false);
   }
 

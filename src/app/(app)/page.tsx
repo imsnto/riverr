@@ -551,7 +551,7 @@ export default function Dashboard() {
                           {isLoading ? <div className="flex justify-center items-center h-full">Loading spaces...</div> : <SpaceSettings allSpaces={userSpaces} allUsers={visibleUsers} onSave={handleSaveSpace} onDelete={handleDeleteSpace} appUser={appUser} />}
                           </TabsContent>
                           <TabsContent value="users">
-                          {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings allUsers={visibleUsers} allSpaces={userSpaces} appUser={appUser} onInvite={() => setIsInviteOpen(true)} />}
+                          {isLoading ? <div className="flex justify-center items-center h-full">Loading users...</div> : <UserSettings allUsers={visibleUsers} allSpaces={userSpaces} appUser={appUser} onInvite={() => setIsInviteOpen(true)} handleInvite={handleInvite} />}
                           </TabsContent>
                       </Tabs>
                   </div>
