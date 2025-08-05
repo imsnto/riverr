@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -12,7 +11,7 @@ import { MoreHorizontal, Plus, Edit, Trash2, Mail } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import InviteUserDialog from './invite-user-dialog';
-import { getAllInvites, deleteInvite, resendInvite } from '@/lib/db';
+import { getAllInvites, deleteInvite, resendInvite, addInvite as dbAddInvite } from '@/lib/db';
 
 const getInitials = (name: string) => {
   if (!name) return '';
@@ -22,7 +21,7 @@ const getInitials = (name: string) => {
 interface UserSettingsProps {
     allUsers: User[];
     allSpaces: Space[];
-    onInviteUser: (values: Invite) => void;
+    onInviteUser: (values: Omit<Invite, 'token'>) => void;
     appUser: User | null;
 }
 
@@ -32,11 +31,12 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, onInvi
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const { toast } = useToast();
 
+  const fetchInvites = async () => {
+    const invites = await getAllInvites();
+    setPendingInvites(invites);
+  };
+
   useEffect(() => {
-    const fetchInvites = async () => {
-        const invites = await getAllInvites();
-        setPendingInvites(invites);
-    };
     fetchInvites();
   }, []);
 
@@ -56,6 +56,8 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, onInvi
           title: 'Invite Resent',
           description: `A new invitation has been sent to ${email}.`
       });
+       // Re-fetch invites to get the new token if needed, or just for UI consistency
+      await fetchInvites();
     } else {
       toast({
           variant: 'destructive',
@@ -75,10 +77,14 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, onInvi
     })
   }
   
-  const handleNewInvite = (values: Invite) => {
-    onInviteUser(values);
-    // Optimistically add to the list
-    setPendingInvites(prev => [...prev, values]);
+  const handleNewInvite = async (values: Omit<Invite, 'token'>) => {
+    await dbAddInvite(values);
+    // Optimistically add to the list, but re-fetch to get the real data with token
+    await fetchInvites();
+    toast({
+        title: 'User Invited',
+        description: `${values.email} has been invited.`
+    });
   }
 
   return (
@@ -232,5 +238,3 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, onInvi
     </>
   );
 }
-
-    

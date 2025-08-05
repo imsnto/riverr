@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Space, User, Invite, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages } from './data';
+import { randomBytes } from 'crypto';
 
 // --- Seeding ---
 export const seedDatabase = async () => {
@@ -83,9 +84,11 @@ export const updateUser = async (userId: string, data: Partial<User>): Promise<v
 };
 
 // --- Invite Management ---
-export const addInvite = async (invite: Invite): Promise<void> => {
+export const addInvite = async (inviteData: Omit<Invite, 'token'>): Promise<void> => {
+    const token = randomBytes(16).toString('hex');
+    const inviteWithToken: Invite = { ...inviteData, token };
     // This will trigger the `sendInviteEmail` cloud function on create
-    await setDoc(doc(db, 'invites', invite.email), invite);
+    await setDoc(doc(db, 'invites', inviteData.email), inviteWithToken);
 };
 
 export const getInvite = async(email: string): Promise<Invite | null> => {
@@ -110,8 +113,14 @@ export const resendInvite = async (email: string): Promise<boolean> => {
   }
   
   // To re-trigger the `onCreate` cloud function, we delete and then re-add the document.
+  const inviteData: Omit<Invite, 'token'> = {
+    email: invite.email,
+    role: invite.role,
+    spaces: invite.spaces,
+  }
+
   await deleteInvite(email);
-  await addInvite(invite);
+  await addInvite(inviteData);
   return true;
 }
 

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Mail, Check, ChevronsUpDown } from 'lucide-react';
-import { Space, User } from '@/lib/data';
+import { Space, Invite } from '@/lib/data';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
@@ -27,7 +27,7 @@ type InviteFormValues = z.infer<typeof inviteSchema>;
 interface InviteUserDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onInvite: (values: InviteFormValues) => void;
+  onInvite: (values: Omit<Invite, 'token'>) => void;
   allSpaces: Space[];
 }
 

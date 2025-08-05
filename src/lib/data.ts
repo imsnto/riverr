@@ -1,5 +1,3 @@
-
-
 // DATA STRUCTURES
 export interface Status {
   name: string;
@@ -26,6 +24,7 @@ export interface Invite {
   email: string;
   role: "Admin" | "Member";
   spaces: string[]; // array of space IDs
+  token: string;
 }
 
 export interface Project {
@@ -381,5 +380,3 @@ export const messages: Message[] = [
   { id: 'msg-5', channel_id: 'chan-5', user_id: 'user-4', content: 'I\'m going hiking this weekend, can\'t wait!', timestamp: '2024-08-02T14:00:00Z', reactions: [], reply_count: 0 },
   { id: 'msg-6', channel_id: 'chan-6', user_id: 'user-2', content: 'Just sent the weekly update to Client X.', timestamp: '2024-08-03T17:00:00Z', reactions: [], reply_count: 0 },
 ];
-
-    
