@@ -62,9 +62,19 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
 };
 
 export const addUser = async (user: Omit<User, 'id'>, uid: string): Promise<User> => {
-  const userRef = doc(db, 'users', uid);
-  await setDoc(userRef, user);
-  return { ...user, id: uid };
+  const existing = await getUser(uid);
+  if (existing) return existing;
+
+  let invite = await getInvite(user.email);
+  const userWithRole = { ...user, role: invite?.role || 'Member' };
+
+  await setDoc(doc(db, 'users', uid), userWithRole);
+  if (invite) {
+    await addMemberToSpaces(invite.spaces, uid);
+    await deleteInvite(invite.email);
+  }
+
+  return { ...userWithRole, id: uid };
 };
 
 export const updateUser = async (userId: string, data: Partial<User>): Promise<void> => {
@@ -73,9 +83,8 @@ export const updateUser = async (userId: string, data: Partial<User>): Promise<v
 };
 
 // --- Invite Management ---
+// Creating an invite document now automatically triggers the `sendInviteEmail` Cloud Function.
 export const addInvite = async (invite: Invite): Promise<void> => {
-    // Before adding, let's also trigger the email
-    await sendInviteEmail(invite);
     await setDoc(doc(db, 'invites', invite.email), invite);
 };
 
@@ -164,6 +173,7 @@ export const getTimeEntriesInSpace = async (projectIds: string[]): Promise<TimeE
 }
 
 export const getSlackMeetingLogsInSpace = async (spaceId: string): Promise<SlackMeetingLog[]> => {
+    // This query might need a composite index in Firestore
     const q = query(collection(db, 'slack_meeting_logs'), where('space_id', '==', spaceId));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SlackMeetingLog));
@@ -187,17 +197,3 @@ export const addMessage = async (message: Omit<Message, 'id'>): Promise<Message>
     const docRef = await addDoc(collection(db, 'messages'), message);
     return { ...message, id: docRef.id };
 }
-
-
-// --- Email Trigger for Firestore Extension ---
-export const sendInviteEmail = async (invite: Invite): Promise<void> => {
-  const loginUrl = `https://timeflow-6i3eo.web.app/login`;
-  await addDoc(collection(db, 'mail'), {
-    to: invite.email,
-    message: {
-      subject: `You're invited to join Timeflow`,
-      text: `You've been invited to join a workspace. Click here to login: ${loginUrl}`,
-      html: `<p>You've been invited to join Timeflow.</p><p><a href="${loginUrl}">Click here to get started</a></p>`
-    }
-  });
-};
