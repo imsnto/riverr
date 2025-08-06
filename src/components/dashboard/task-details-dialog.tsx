@@ -75,7 +75,7 @@ const ActivityItem = ({ activity, allUsers }: { activity: Activity; allUsers: Us
 
 
 interface TaskDetailsDialogProps {
-    task: Task;
+    task: Task | null;
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     onUpdateTask: (task: Task) => void;
@@ -434,7 +434,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                         </div>
                         <ScrollArea className="flex-1">
                             <div className="p-4 space-y-4">
-                                {sortedActivities.map(activity => {
+                                {sortedActivities.map((activity) => {
                                     if (activity.type === 'comment' && activity.comment_id) {
                                         const comment = task.comments.find(c => c.id === activity.comment_id);
                                         const user = allUsers.find(u => u.id === activity.user_id);

@@ -185,23 +185,21 @@ export default function TaskBoard({
           />
         )}
       </div>
-      {selectedTask && (
-        <TaskDetailsDialog
-          key={selectedTask.id} // Add key to force re-mount when task changes
-          task={selectedTask}
-          isOpen={!!selectedTask}
-          allUsers={allUsers}
-          allTasks={tasks}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) setSelectedTask(null);
-          }}
-          onUpdateTask={handleUpdateTask}
-          onAddTask={handleAddTask}
-          onTaskSelect={setSelectedTask}
-          statuses={statuses.map(s => s.name)}
-          projects={projects}
-        />
-      )}
+      <TaskDetailsDialog
+        key={selectedTask?.id} // Add key to force re-mount when task changes
+        task={selectedTask}
+        isOpen={!!selectedTask}
+        allUsers={allUsers}
+        allTasks={tasks}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setSelectedTask(null);
+        }}
+        onUpdateTask={handleUpdateTask}
+        onAddTask={handleAddTask}
+        onTaskSelect={setSelectedTask}
+        statuses={statuses.map(s => s.name)}
+        projects={projects}
+      />
     </>
   );
 }
