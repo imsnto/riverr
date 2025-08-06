@@ -42,8 +42,7 @@ interface LaunchJobDialogProps {
 export default function LaunchJobDialog({ isOpen, onOpenChange, template, allUsers, activeSpace, onJobLaunched }: LaunchJobDialogProps) {
     const { toast } = useToast();
     const { appUser } = useAuth();
-    const [projects, setProjects] = useState<Project[]>([]);
-
+   
     const uniqueAssigneeIds = useMemo(() => {
         const ids = new Set(template.phases.map(p => p.defaultAssigneeId));
         return Array.from(ids);
@@ -58,7 +57,6 @@ export default function LaunchJobDialog({ isOpen, onOpenChange, template, allUse
 
     const launchJobSchema = z.object({
         name: z.string().min(1, 'Job name is required'),
-        projectId: z.string().min(1, 'Project is required'),
         roleUserMapping: z.record(z.string()),
     });
 
@@ -68,27 +66,24 @@ export default function LaunchJobDialog({ isOpen, onOpenChange, template, allUse
         resolver: zodResolver(launchJobSchema),
         defaultValues: {
             name: '',
-            projectId: '',
             roleUserMapping: defaultRoleUserMapping,
         },
     });
 
     useEffect(() => {
         if (isOpen) {
-            getProjectsInSpace(activeSpace.id).then(setProjects);
             form.reset({
                 name: '',
-                projectId: '',
                 roleUserMapping: defaultRoleUserMapping,
             });
         }
-    }, [isOpen, activeSpace.id, form, defaultRoleUserMapping]);
+    }, [isOpen, form, defaultRoleUserMapping]);
 
 
     const onSubmit = async (values: LaunchJobFormValues) => {
         if (!appUser) return;
         try {
-            await dbLaunchJob(values.name, template, values.roleUserMapping, appUser.id, activeSpace.id, values.projectId);
+            await dbLaunchJob(values.name, template, values.roleUserMapping, appUser.id, activeSpace.id);
             toast({
                 title: "Job Launched! 🚀",
                 description: `The job "${values.name}" has started, and the first task has been created.`,
@@ -125,26 +120,6 @@ export default function LaunchJobDialog({ isOpen, onOpenChange, template, allUse
                                     <FormControl>
                                         <Input placeholder="e.g., Onboard NewCo" {...field} />
                                     </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="projectId"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Assign to Project</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select a project for the tasks" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
                                     <FormMessage />
                                 </FormItem>
                             )}

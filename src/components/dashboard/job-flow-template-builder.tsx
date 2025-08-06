@@ -23,6 +23,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useAuth } from '@/hooks/use-auth';
 import LaunchJobDialog from './launch-job-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Checkbox } from '../ui/checkbox';
+import { Form, FormControl, FormItem, FormLabel } from '../ui/form';
 
 interface JobFlowTemplateBuilderProps {
   templates: JobFlowTemplate[];
@@ -38,6 +40,7 @@ const phaseSchema = z.object({
   defaultAssigneeId: z.string().min(1, 'Default assignee is required'),
   taskTitleTemplate: z.string().min(1, 'Task title is required'),
   taskDescriptionTemplate: z.string().optional(),
+  requiresReview: z.boolean().default(false),
 });
 
 const templateSchema = z.object({
@@ -54,7 +57,7 @@ function TemplateForm({ onSave, allUsers, closeDialog }: { onSave: (data: Templa
     defaultValues: {
       name: '',
       description: '',
-      phases: [{ id: `phase-${Date.now()}`, name: '', defaultAssigneeId: '', taskTitleTemplate: '', taskDescriptionTemplate: '' }],
+      phases: [{ id: `phase-${Date.now()}`, name: '', defaultAssigneeId: '', taskTitleTemplate: '', taskDescriptionTemplate: '', requiresReview: false }],
     },
   });
 
@@ -71,6 +74,7 @@ function TemplateForm({ onSave, allUsers, closeDialog }: { onSave: (data: Templa
   }
 
   return (
+    <Form {...form}>
     <form id="template-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
        <div className="space-y-2">
         <Label htmlFor="name">Template Name</Label>
@@ -88,36 +92,70 @@ function TemplateForm({ onSave, allUsers, closeDialog }: { onSave: (data: Templa
           {fields.map((field, index) => (
             <div key={field.id} className="flex items-start gap-2 rounded-lg border p-4 bg-background">
                <GripVertical className="h-5 w-5 mt-8 text-muted-foreground" />
-               <div className="flex-1 space-y-2">
-                    <Label>Phase Name</Label>
-                    <Input {...register(`phases.${index}.name`)} placeholder="e.g., Kick-off Call" />
-                    {errors.phases?.[index]?.name && <p className="text-sm text-destructive">{errors.phases[index]?.name?.message}</p>}
+               <div className="flex-1 space-y-4">
+                    <div>
+                        <Label>Phase Name</Label>
+                        <Input {...register(`phases.${index}.name`)} placeholder="e.g., Kick-off Call" />
+                        {errors.phases?.[index]?.name && <p className="text-sm text-destructive">{errors.phases[index]?.name?.message}</p>}
+                    </div>
                     
-                    <Label>Default Assignee</Label>
-                    <Controller
-                        control={control}
-                        name={`phases.${index}.defaultAssigneeId`}
-                        render={({ field }) => (
-                           <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a default assignee" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {allUsers.map(user => (
-                                        <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                           </Select>
-                        )}
-                    />
-                    {errors.phases?.[index]?.defaultAssigneeId && <p className="text-sm text-destructive">{errors.phases[index]?.defaultAssigneeId?.message}</p>}
+                    <div>
+                        <Label>Default Assignee</Label>
+                        <Controller
+                            control={control}
+                            name={`phases.${index}.defaultAssigneeId`}
+                            render={({ field }) => (
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a default assignee" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {allUsers.map(user => (
+                                            <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                            </Select>
+                            )}
+                        />
+                        {errors.phases?.[index]?.defaultAssigneeId && <p className="text-sm text-destructive">{errors.phases[index]?.defaultAssigneeId?.message}</p>}
+                    </div>
                     
-                    <Label>Task Title Template</Label>
-                    <Input {...register(`phases.${index}.taskTitleTemplate`)} placeholder="e.g., Schedule meeting with {{job_name}}" />
-                     {errors.phases?.[index]?.taskTitleTemplate && <p className="text-sm text-destructive">{errors.phases[index]?.taskTitleTemplate?.message}</p>}
+                    <div>
+                        <Label>Task Title Template</Label>
+                        <Input {...register(`phases.${index}.taskTitleTemplate`)} placeholder="e.g., Schedule meeting with {{job_name}}" />
+                        {errors.phases?.[index]?.taskTitleTemplate && <p className="text-sm text-destructive">{errors.phases[index]?.taskTitleTemplate?.message}</p>}
+                    </div>
                     
-                    <Label>Task Description Template</Label>
-                    <Textarea {...register(`phases.${index}.taskDescriptionTemplate`)} placeholder="Task Description Template (optional)" rows={2}/>
+                    <div>
+                        <Label>Task Description Template</Label>
+                        <Textarea {...register(`phases.${index}.taskDescriptionTemplate`)} placeholder="Task Description Template (optional)" rows={2}/>
+                    </div>
+
+                    <div>
+                        <Controller
+                            control={control}
+                            name={`phases.${index}.requiresReview`}
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
+                                    <FormControl>
+                                        <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel>
+                                            Requires Review
+                                        </FormLabel>
+                                        <p className="text-xs text-muted-foreground">
+                                            If checked, this phase must be manually approved before the flow can continue.
+                                        </p>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+
                </div>
                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="mt-6">
                     <Trash2 className="h-4 w-4 text-destructive" />
@@ -127,13 +165,14 @@ function TemplateForm({ onSave, allUsers, closeDialog }: { onSave: (data: Templa
           <Button
             type="button"
             variant="outline"
-            onClick={() => append({ id: `phase-${Date.now()}`, name: '', defaultAssigneeId: '', taskTitleTemplate: '', taskDescriptionTemplate: '' })}
+            onClick={() => append({ id: `phase-${Date.now()}`, name: '', defaultAssigneeId: '', taskTitleTemplate: '', taskDescriptionTemplate: '', requiresReview: false })}
           >
             <Plus className="mr-2 h-4 w-4" /> Add Phase
           </Button>
         </div>
       </div>
     </form>
+    </Form>
   )
 }
 
@@ -156,7 +195,8 @@ export default function JobFlowTemplateBuilder({ templates, allUsers, onSave, ac
             phases: data.phases.map((phase, index) => ({
                 ...phase,
                 id: phase.id || `phase-${Date.now()}-${index}`,
-                phaseIndex: index
+                phaseIndex: index,
+                requiresReview: phase.requiresReview || false,
             })),
         };
         onSave(newTemplate);

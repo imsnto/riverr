@@ -313,8 +313,7 @@ export const launchJob = async (
     template: JobFlowTemplate,
     roleUserMapping: Record<string, string>,
     createdBy: string,
-    spaceId: string,
-    projectId: string
+    spaceId: string
 ): Promise<Job> => {
 
     const batch = writeBatch(db);
@@ -348,10 +347,10 @@ export const launchJob = async (
     const taskDescription = firstPhase.taskDescriptionTemplate.replace(/\{\{job_name\}\}/g, jobName);
 
     const taskData: Omit<Task, 'id'> = {
-        project_id: projectId, // This needs to be determined, maybe a dedicated project for flows?
+        project_id: null,
         name: taskTitle,
         description: taskDescription,
-        status: 'Backlog',
+        status: 'Pending',
         assigned_to: assigneeId,
         due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(), // Default due date: 1 week from now
         priority: 'Medium',
@@ -381,4 +380,74 @@ export const launchJob = async (
     await batch.commit();
 
     return { ...newJobData, id: jobRef.id };
+}
+
+export const updateJobPhase = async (
+    job: Job,
+    template: JobFlowTemplate,
+    tasks: Task[],
+    jobFlowTasks: JobFlowTask[]
+) => {
+    const currentPhase = template.phases.find(p => p.phaseIndex === job.currentPhaseIndex);
+    if (!currentPhase) throw new Error("Current phase not found in template.");
+
+    // Logic to advance phase
+    const nextPhaseIndex = job.currentPhaseIndex + 1;
+    const nextPhase = template.phases.find(p => p.phaseIndex === nextPhaseIndex);
+
+    const batch = writeBatch(db);
+
+    if (nextPhase) {
+        // Create the next task
+        const assigneeId = job.roleUserMapping[nextPhase.defaultAssigneeId];
+        const taskTitle = nextPhase.taskTitleTemplate.replace(/\{\{job_name\}\}/g, job.name);
+        const taskDescription = nextPhase.taskDescriptionTemplate.replace(/\{\{job_name\}\}/g, job.name);
+
+        const taskData: Omit<Task, 'id'> = {
+            project_id: null,
+            name: taskTitle,
+            description: taskDescription,
+            status: 'Pending',
+            assigned_to: assigneeId,
+            due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(),
+            priority: 'Medium',
+            sprint_points: null, tags: ['JobFlow', job.name], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null
+        };
+        const taskRef = doc(collection(db, 'tasks'));
+        batch.set(taskRef, taskData);
+
+        // Create the JobFlowTask link
+        const jobFlowTaskData: Omit<JobFlowTask, 'id'> = {
+            jobId: job.id,
+            phaseIndex: nextPhaseIndex,
+            taskId: taskRef.id,
+            createdAt: new Date().toISOString()
+        };
+        const jobFlowTaskRef = doc(collection(db, 'job_flow_tasks'));
+        batch.set(jobFlowTaskRef, jobFlowTaskData);
+        
+        // Update the job to the next phase
+        const jobRef = doc(db, 'jobs', job.id);
+        batch.update(jobRef, { currentPhaseIndex: nextPhaseIndex });
+
+    } else {
+        // No more phases, complete the job
+        const jobRef = doc(db, 'jobs', job.id);
+        batch.update(jobRef, { status: 'completed' });
+    }
+
+    await batch.commit();
+}
+
+
+export const reviewJobPhase = async (jobId: string, phaseIndex: number, userId: string) => {
+    const q = query(collection(db, 'job_flow_tasks'), where('jobId', '==', jobId), where('phaseIndex', '==', phaseIndex));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) throw new Error("Could not find job flow task to review.");
+
+    const jobFlowTaskRef = snapshot.docs[0].ref;
+    await updateDoc(jobFlowTaskRef, { reviewedBy: userId });
+
+    // The logic to advance the phase will be called separately after review.
 }
