@@ -1,5 +1,4 @@
 
-
 // src/lib/data.ts
 export interface User {
   id: string;
