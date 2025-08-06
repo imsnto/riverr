@@ -49,7 +49,7 @@ const ActivityItem = ({ activity, allUsers }: { activity: Activity; allUsers: Us
         switch (activity.type) {
             case 'status_change':
                 return (
-                    <p><span className="font-semibold">{user?.name}</span> changed status from <Badge variant="outline">{activity.from}</Badge> to <Badge variant="outline">{activity.to}</Badge></p>
+                    <div><span className="font-semibold">{user?.name}</span> changed status from <Badge variant="outline">{activity.from}</Badge> to <Badge variant="outline">{activity.to}</Badge></div>
                 );
             case 'comment':
                  const comment = activity.comment;
@@ -525,3 +525,4 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         </Dialog>
     );
 }
+
