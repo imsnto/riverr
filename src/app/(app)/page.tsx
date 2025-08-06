@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getAllTasks as dbGetAllTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask as dbUpdateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject, addTimeEntry, getAllJobs, getAllJobFlowTasks, getJobFlowTemplates, deleteTask } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getAllTasks as dbGetAllTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask as dbUpdateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject, addTimeEntry as dbAddTimeEntry, getAllJobs, getAllJobFlowTasks, getJobFlowTemplates, deleteTask } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -350,7 +350,7 @@ export default function Dashboard() {
 
   const handleLogTime = async (timeData: Omit<TimeEntry, 'id'>) => {
     try {
-      const newTimeEntry = await addTimeEntry(timeData);
+      const newTimeEntry = await dbAddTimeEntry(timeData);
       setTimeEntries(prev => [...prev, newTimeEntry]);
       toast({
         title: 'Time Logged',
@@ -752,6 +752,7 @@ export default function Dashboard() {
           <TaskDetailsDialog
             key={selectedTask.id}
             task={selectedTask}
+            timeEntries={timeEntries.filter(t => t.task_id === selectedTask.id)}
             isOpen={!!selectedTask}
             allUsers={allUsers}
             allTasks={tasks}
@@ -762,6 +763,7 @@ export default function Dashboard() {
             onAddTask={handleAddTaskOptimistic}
             onRemoveTask={handleRemoveTask}
             onTaskSelect={handleTaskSelect}
+            onLogTime={handleLogTime}
             statuses={activeSpace.statuses?.map(s => s.name) || []}
             projects={projects}
           />

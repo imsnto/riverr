@@ -1,9 +1,10 @@
 
+
 'use client';
 
 import React, { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Task, Comment, Activity, User, Project, Attachment } from '@/lib/data';
+import { Task, Comment, Activity, User, Project, Attachment, TimeEntry } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -21,6 +22,7 @@ import { Calendar as CalendarPicker } from '../ui/calendar';
 import { format } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
 import { addTask as dbAddTask } from '@/lib/db';
+import LogTimeDialog from './log-time-dialog';
 
 
 const getInitials = (name: string) => {
@@ -81,25 +83,28 @@ const ActivityItem = ({ activity, allUsers }: { activity: Activity; allUsers: Us
 
 interface TaskDetailsDialogProps {
     task: Task | null;
+    timeEntries: TimeEntry[];
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     onUpdateTask: (task: Task, tempId?: string) => void;
     onAddTask: (task: Task) => void;
     onRemoveTask: (taskId: string) => void;
     onTaskSelect: (task: Task) => void;
+    onLogTime: (timeData: Omit<TimeEntry, 'id'>) => void;
     statuses: string[];
     allUsers: User[];
     allTasks: Task[];
     projects: Project[];
 }
 
-export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdateTask, onAddTask, onRemoveTask, onTaskSelect, statuses, allUsers, allTasks, projects }: TaskDetailsDialogProps) {
+export default function TaskDetailsDialog({ task, timeEntries, isOpen, onOpenChange, onUpdateTask, onAddTask, onRemoveTask, onTaskSelect, onLogTime, statuses, allUsers, allTasks, projects }: TaskDetailsDialogProps) {
     const { toast } = useToast();
     const { appUser } = useAuth();
     const [attachments, setAttachments] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [newTag, setNewTag] = useState('');
     const [newSubtaskName, setNewSubtaskName] = useState('');
+    const [isLogTimeOpen, setIsLogTimeOpen] = useState(false);
 
     if (!appUser || !task) {
         return null;
@@ -108,8 +113,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
     const project = projects.find(p => p.id === task.project_id);
     const subtasks = allTasks.filter(t => t.parentId === task.id);
     
-    // In a real app, time entries would be fetched from the DB
-    const totalTimeTracked = 0; // timeEntries.filter(t => t.task_id === task.id).reduce((acc, entry) => acc + entry.duration, 0);
+    const totalTimeTracked = timeEntries.reduce((acc, entry) => acc + entry.duration, 0);
 
     const handleAddComment = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -248,7 +252,13 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         onRemoveTask(subtaskId);
     }
     
-    const sortedActivities = [...(task.activities || [])].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const sortedActivities = [...(task.activities || []), ...timeEntries.map(t => ({
+        id: t.id,
+        user_id: t.user_id,
+        timestamp: t.end_time,
+        type: 'comment', // Treat as comment for display
+        comment: `Logged ${t.duration.toFixed(2)} hours. ${t.notes ? `Notes: ${t.notes}` : ''}`
+    } as Activity))].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files) {
@@ -369,8 +379,8 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                 </DetailRow>
                                  <DetailRow icon={Clock} label="Time Logged">
                                     <div className="flex items-center gap-2">
-                                        <Input type="number" defaultValue={totalTimeTracked} onBlur={(e) => handleFieldChange('time_estimate', parseFloat(e.target.value) || 0)} className="h-8" />
-                                        <Button variant="outline" size="sm" className="h-8">Log Time</Button>
+                                        <Input readOnly value={`${totalTimeTracked.toFixed(2)}h`} className="h-8 font-medium" />
+                                        <Button variant="outline" size="sm" className="h-8" onClick={() => setIsLogTimeOpen(true)}>Log Time</Button>
                                     </div>
                                 </DetailRow>
                                 <DetailRow icon={Tag} label="Tags" className="items-start">
@@ -545,9 +555,17 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                         </div>
                     </div>
                 </div>
+                {isLogTimeOpen && (
+                    <LogTimeDialog
+                        isOpen={isLogTimeOpen}
+                        onOpenChange={setIsLogTimeOpen}
+                        task={task}
+                        allUsers={allUsers}
+                        appUser={appUser}
+                        onLogTime={onLogTime}
+                    />
+                )}
             </DialogContent>
         </Dialog>
     );
 }
-
-    
