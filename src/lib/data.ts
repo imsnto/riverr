@@ -168,7 +168,7 @@ export interface JobFlowPhase {
   id: string;
   phaseIndex: number;
   name: string;
-  defaultAssigneeId: string; // e.g., 'user-123'
+  defaultAssigneeId: string;
   taskTitleTemplate: string;
   taskDescriptionTemplate: string;
 }
@@ -190,7 +190,8 @@ export interface Job {
   status: 'active' | 'completed' | 'cancelled';
   createdBy: string;
   createdAt: string;
-  roleUserMapping: Record<string, string>; // Maps roles like 'Designer' to a specific userId
+  roleUserMapping: Record<string, string>; // Maps defaultAssigneeId from phase to a specific userId for this job instance
+  space_id: string;
 }
 
 // Links a job to the actual task created in the main system

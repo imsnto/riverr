@@ -16,7 +16,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions, jobFlowTemplates } from './data';
+import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions, jobFlowTemplates, JobFlowTemplate, Job } from './data';
 import { randomBytes } from 'crypto';
 
 // --- Seeding ---
@@ -105,7 +105,6 @@ export const acceptInvite = async (invite: Invite, userId: string) => {
         
         const member: SpaceMember = { role: invite.role };
         
-        // Only add permissions for Members. Admins get full access by default.
         if (invite.role === 'Member') {
           member.permissions = invite.permissions || defaultMemberPermissions;
         }
@@ -274,4 +273,77 @@ export const addMessage = async (message: Omit<Message, 'id'>): Promise<Message>
     }
     
     return savedMessage;
+}
+
+// --- Job Flow Management ---
+export const launchJob = async (
+    jobName: string,
+    template: JobFlowTemplate,
+    roleUserMapping: Record<string, string>,
+    createdBy: string,
+    spaceId: string,
+    projectId: string
+): Promise<void> => {
+
+    const batch = writeBatch(db);
+
+    // 1. Create the Job document
+    const jobData: Omit<Job, 'id'> = {
+        name: jobName,
+        workflowTemplateId: template.id,
+        currentPhaseIndex: 0,
+        status: 'active',
+        createdBy: createdBy,
+        createdAt: new Date().toISOString(),
+        roleUserMapping: roleUserMapping,
+        space_id: spaceId
+    };
+    const jobRef = doc(collection(db, 'jobs'));
+    batch.set(jobRef, jobData);
+
+    // 2. Create the first task
+    const firstPhase = template.phases.find(p => p.phaseIndex === 0);
+    if (!firstPhase) {
+        throw new Error("Template has no starting phase.");
+    }
+    
+    const assigneeId = roleUserMapping[firstPhase.defaultAssigneeId];
+    if (!assigneeId) {
+        throw new Error(`No user mapped for assignee ID ${firstPhase.defaultAssigneeId} in the first phase.`);
+    }
+
+    const taskTitle = firstPhase.taskTitleTemplate.replace(/\{\{job_name\}\}/g, jobName);
+    const taskDescription = firstPhase.taskDescriptionTemplate.replace(/\{\{job_name\}\}/g, jobName);
+
+    const taskData: Omit<Task, 'id'> = {
+        project_id: projectId, // This needs to be determined, maybe a dedicated project for flows?
+        name: taskTitle,
+        description: taskDescription,
+        status: 'Backlog',
+        assigned_to: assigneeId,
+        due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(), // Default due date: 1 week from now
+        priority: 'Medium',
+        sprint_points: null,
+        tags: ['JobFlow', jobName],
+        time_estimate: null,
+        relationships: [],
+        activities: [],
+        comments: [],
+        attachments: [],
+    };
+    const taskRef = doc(collection(db, 'tasks'));
+    batch.set(taskRef, taskData);
+
+    // 3. Create the JobFlowTask link
+    const jobFlowTaskData = {
+        jobId: jobRef.id,
+        phaseIndex: 0,
+        taskId: taskRef.id,
+        createdAt: new Date().toISOString()
+    };
+    const jobFlowTaskRef = doc(collection(db, 'job_flow_tasks'));
+    batch.set(jobFlowTaskRef, jobFlowTaskData);
+
+    // Commit all writes at once
+    await batch.commit();
 }

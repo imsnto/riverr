@@ -301,17 +301,9 @@ export default function Dashboard() {
     }
   };
 
-  const handleSaveJobFlowTemplate = (templateData: Omit<JobFlowTemplate, 'id' | 'createdAt' | 'createdBy'>) => {
-    if (!appUser) return;
-    const newTemplate: JobFlowTemplate = {
-      ...templateData,
-      id: `jft-${Date.now()}`,
-      createdBy: appUser.id,
-      createdAt: new Date().toISOString(),
-      phases: templateData.phases.map((phase, index) => ({ ...phase, id: `phase-${Date.now()}-${index}`, phaseIndex: index })),
-    };
-    setJobFlowTemplates(prev => [...prev, newTemplate]);
-    toast({ title: 'Template Saved!', description: `The "${newTemplate.name}" template has been saved.`});
+  const handleSaveJobFlowTemplate = (templateData: JobFlowTemplate) => {
+    setJobFlowTemplates(prev => [...prev, templateData]);
+    toast({ title: 'Template Saved!', description: `The "${templateData.name}" template has been saved.`});
   }
 
 
@@ -555,7 +547,7 @@ export default function Dashboard() {
               )}
                {activeTab === 'flows' && activeSpace && (
                 <>
-                {isLoading ? <div className="flex justify-center items-center h-full">Loading flows...</div> : <JobFlowTemplateBuilder templates={jobFlowTemplates} allUsers={visibleUsers} onSave={handleSaveJobFlowTemplate} />}
+                {isLoading ? <div className="flex justify-center items-center h-full">Loading flows...</div> : <JobFlowTemplateBuilder templates={jobFlowTemplates} allUsers={visibleUsers} onSave={handleSaveJobFlowTemplate} activeSpace={activeSpace} />}
                 </>
               )}
               {canLogTime && activeTab === 'timesheets' && (
