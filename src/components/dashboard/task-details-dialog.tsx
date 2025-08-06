@@ -398,7 +398,12 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                     </Select>
                                 </DetailRow>
                                 <DetailRow icon={Clock} label="Time Est.">
-                                    <Input type="number" placeholder="0h" className="h-8" defaultValue={task.time_estimate || ''} onBlur={(e) => handleFieldChange('time_estimate', e.target.value ? parseFloat(e.target.value) : null)} />
+                                    <Input 
+                                        type="number" 
+                                        placeholder="0h" 
+                                        className="h-8" 
+                                        defaultValue={task.time_estimate || ''} 
+                                        onBlur={(e) => handleFieldChange('time_estimate', e.target.value ? parseFloat(e.target.value) : null)} />
                                 </DetailRow>
                                  <DetailRow icon={Clock} label="Time Logged">
                                     <div className="flex items-center gap-2">

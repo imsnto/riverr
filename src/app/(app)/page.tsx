@@ -37,6 +37,7 @@ import ActiveJobsView from '@/components/dashboard/active-jobs-view';
 import TaskDetailsDialog from '@/components/dashboard/task-details-dialog';
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import LogTimeDialog from '@/components/dashboard/log-time-dialog';
 
 export default function Dashboard() {
   const { appUser } = useAuth();
@@ -218,15 +219,17 @@ export default function Dashboard() {
   };
   
   const handleUpdateTask = (updatedTask: Task, tempId?: string) => {
+    let newTasks: Task[] = [];
     setTasks(prevTasks => {
         const taskIndex = prevTasks.findIndex(t => t.id === (tempId || updatedTask.id));
         
         if (taskIndex !== -1) {
-            const newTasks = [...prevTasks];
+            newTasks = [...prevTasks];
             newTasks[taskIndex] = updatedTask;
             return newTasks;
         }
-        return [...prevTasks, updatedTask]; 
+        newTasks = [...prevTasks, updatedTask];
+        return newTasks;
     });
 
     if (selectedTask && selectedTask.id === (tempId || updatedTask.id)) {
