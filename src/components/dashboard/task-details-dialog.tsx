@@ -473,7 +473,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                             {task.due_date ? format(parseISO(task.due_date), "PPP") : <span>Pick a date</span>}
                                         </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0 z-[1000]" align="start">
+                                        <PopoverContent className="w-auto p-0" align="start">
                                             <CalendarPicker
                                                 mode="single"
                                                 selected={parseISO(task.due_date)}
@@ -723,7 +723,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                 })}
                             </div>
                         </ScrollArea>
-                        <div className="p-4 border-t mt-auto">
+                        <div className="p-4 border-t">
                             {attachments.length > 0 && (
                                 <div className="mb-2 space-y-2">
                                     {attachments.map((file, i) => (
@@ -776,4 +776,3 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
         </Dialog>
     );
 }
-
