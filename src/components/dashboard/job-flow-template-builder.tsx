@@ -192,19 +192,17 @@ export default function JobFlowTemplateBuilder({ templates, allUsers }: JobFlowT
                 </CardContent>
             </Card>
 
-            <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
-                <DialogHeader>
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
+                <DialogHeader className="p-6 pb-4">
                     <DialogTitle>Create New Job Flow Template</DialogTitle>
                     <DialogDescription>
                         Define the phases and default tasks for a reusable workflow.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="flex-1 overflow-hidden">
-                  <ScrollArea className="h-full pr-6 -mr-6">
-                      <TemplateForm onSave={handleSave} allUsers={allUsers} />
-                  </ScrollArea>
+                <div className="flex-1 overflow-y-auto px-6">
+                  <TemplateForm onSave={handleSave} allUsers={allUsers} />
                 </div>
-                 <DialogFooter>
+                 <DialogFooter className="p-6 pt-4 border-t">
                     <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancel</Button>
                     <Button type="submit" form="template-form">Save Template</Button>
                 </DialogFooter>
