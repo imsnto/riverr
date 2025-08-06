@@ -46,8 +46,8 @@ const templateSchema = z.object({
 
 type TemplateFormValues = z.infer<typeof templateSchema>;
 
-function TemplateForm({ onSave, onOpenChange, allUsers }: { onSave: (data: any) => void, onOpenChange: (open: boolean) => void, allUsers: User[] }) {
-  const { register, control, handleSubmit, formState: { errors } } = useForm<TemplateFormValues>({
+function TemplateForm({ onSave, onCancel, allUsers }: { onSave: (data: any) => void, onCancel: () => void, allUsers: User[] }) {
+  const form = useForm<TemplateFormValues>({
     resolver: zodResolver(templateSchema),
     defaultValues: {
       name: '',
@@ -56,6 +56,8 @@ function TemplateForm({ onSave, onOpenChange, allUsers }: { onSave: (data: any) 
     },
   });
 
+  const { register, control, handleSubmit, formState: { errors } } = form;
+
   const { fields, append, remove } = useFieldArray({
     control,
     name: 'phases',
@@ -63,12 +65,12 @@ function TemplateForm({ onSave, onOpenChange, allUsers }: { onSave: (data: any) 
   
   const onSubmit = (data: TemplateFormValues) => {
       console.log(data);
-      onOpenChange(false);
+      onSave(data);
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="space-y-2">
+    <form id="template-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+       <div className="space-y-2">
         <Label htmlFor="name">Template Name</Label>
         <Input id="name" {...register('name')} placeholder="e.g., Client Onboarding" />
         {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
@@ -124,11 +126,6 @@ function TemplateForm({ onSave, onOpenChange, allUsers }: { onSave: (data: any) 
           </Button>
         </div>
       </div>
-      
-      <DialogFooter>
-        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-        <Button type="submit">Save Template</Button>
-      </DialogFooter>
     </form>
   )
 }
@@ -136,6 +133,11 @@ function TemplateForm({ onSave, onOpenChange, allUsers }: { onSave: (data: any) 
 
 export default function JobFlowTemplateBuilder({ templates, allUsers }: JobFlowTemplateBuilderProps) {
     const [isFormOpen, setIsFormOpen] = useState(false);
+
+    const handleSave = (data: any) => {
+        console.log("Saving data:", data);
+        setIsFormOpen(false);
+    }
 
     return (
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -182,7 +184,7 @@ export default function JobFlowTemplateBuilder({ templates, allUsers }: JobFlowT
                     {templates.length === 0 && (
                         <div className="text-center py-12 border-2 border-dashed rounded-lg">
                             <FilePlus className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <h3 className="mt-2 text-sm font-semibold text-gray-900">No job flow templates</h3>
+                            <h3 className="mt-2 text-sm font-semibold text-foreground">No job flow templates</h3>
                             <p className="mt-1 text-sm text-muted-foreground">Get started by creating a new template.</p>
                         </div>
                     )}
@@ -190,16 +192,22 @@ export default function JobFlowTemplateBuilder({ templates, allUsers }: JobFlowT
                 </CardContent>
             </Card>
 
-            <DialogContent className="sm:max-w-2xl max-h-[90vh]">
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Create New Job Flow Template</DialogTitle>
                     <DialogDescription>
                         Define the phases and default tasks for a reusable workflow.
                     </DialogDescription>
                 </DialogHeader>
-                <ScrollArea className="pr-6 -mr-6">
-                    <TemplateForm onSave={() => {}} onOpenChange={setIsFormOpen} allUsers={allUsers} />
-                </ScrollArea>
+                <div className="flex-1 overflow-hidden">
+                  <ScrollArea className="h-full pr-6 -mr-6">
+                      <TemplateForm onSave={handleSave} onCancel={() => setIsFormOpen(false)} allUsers={allUsers} />
+                  </ScrollArea>
+                </div>
+                 <DialogFooter>
+                    <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancel</Button>
+                    <Button type="submit" form="template-form">Save Template</Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
