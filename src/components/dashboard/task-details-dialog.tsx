@@ -472,7 +472,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                             {task.due_date ? format(parseISO(task.due_date), "PPP") : <span>Pick a date</span>}
                                         </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <PopoverContent className="w-auto p-0 z-[1000]" align="start">
                                             <CalendarPicker
                                                 mode="single"
                                                 selected={parseISO(task.due_date)}
@@ -664,7 +664,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                         </div>
                     </ScrollArea>
 
-                    {/* Right Panel: Activity & Comments */}
+                   {/* Right Panel: Activity & Comments */}
                     <div className="col-span-1 border-l bg-card flex flex-col h-full">
                         {/* Sticky header */}
                         <div className="p-4 border-b sticky top-0 bg-card z-10">
@@ -778,6 +778,3 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
         </Dialog>
     );
 }
-
-
-    
