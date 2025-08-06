@@ -186,7 +186,6 @@ export default function TaskBoard({
         )}
       </div>
       <TaskDetailsDialog
-        key={selectedTask?.id} // Add key to force re-mount when task changes
         task={selectedTask}
         isOpen={!!selectedTask}
         allUsers={allUsers}
