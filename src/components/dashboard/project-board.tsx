@@ -258,12 +258,6 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
           <div
             key={status.name}
             className="flex-shrink-0 w-80"
-            onDragOver={handleDragOver}
-            onDrop={(e) => { 
-                if (tasks.filter(t => t.status === status.name).length === 0) {
-                    handleDrop(e, status.name);
-                }
-            }}
           >
             <div className="flex justify-between items-center mb-4 px-1">
                  {editingColumn === status.name ? (
@@ -348,7 +342,11 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-            <div className="bg-primary/5 rounded-lg p-2 max-h-[calc(100vh-16rem)] overflow-y-auto">
+            <div 
+              className="bg-primary/5 rounded-lg p-2 max-h-[calc(100vh-16rem)] overflow-y-auto min-h-[5rem]"
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, status.name)}
+            >
               {tasks
                 .filter(task => task.status === status.name)
                 .map(task => (
@@ -363,6 +361,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                     }}
                      onDragOver={(e) => {
                         e.preventDefault();
+                        e.stopPropagation();
                     }}
                   >
                     <TaskCard 
