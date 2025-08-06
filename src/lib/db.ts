@@ -18,7 +18,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions, jobFlowTemplates, JobFlowTemplate, Job, JobFlowTask, jobs, jobFlowTasks } from './data';
+import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions, jobFlowTemplates, JobFlowTemplate, Job, JobFlowTask, jobs, jobFlowTasks, JobFlowTaskTemplate } from './data';
 import { randomBytes } from 'crypto';
 
 // --- Seeding ---
@@ -313,7 +313,8 @@ const createSubtasks = (
     subtaskTemplates: any[],
     parentTaskId: string,
     roleUserMapping: Record<string, string>,
-    jobName: string
+    jobName: string,
+    parentDueDate: Date
 ) => {
     for (const subtaskTemplate of subtaskTemplates) {
         const subtaskAssigneeId = roleUserMapping[subtaskTemplate.defaultAssigneeId];
@@ -329,7 +330,7 @@ const createSubtasks = (
             description: '',
             status: 'Pending',
             assigned_to: subtaskAssigneeId,
-            due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(),
+            due_date: parentDueDate.toISOString(), // Subtasks get same due date as parent
             priority: null, sprint_points: null, tags: ['JobFlow', jobName], time_estimate: null,
             relationships: [], activities: [], comments: [], attachments: [], parentId: parentTaskId
         };
@@ -338,6 +339,61 @@ const createSubtasks = (
     }
 }
 
+const createTasksForPhase = async (
+    batch: any,
+    phase: JobFlowPhase,
+    jobId: string,
+    jobName: string,
+    roleUserMapping: Record<string, string>
+) => {
+    let lastDueDate = new Date();
+     for (const taskTemplate of phase.tasks) {
+        const assigneeId = roleUserMapping[taskTemplate.defaultAssigneeId];
+        if (!assigneeId) {
+            throw new Error(`No user mapped for assignee ID ${taskTemplate.defaultAssigneeId} in phase "${phase.name}".`);
+        }
+
+        const taskTitle = taskTemplate.titleTemplate.replace(/\{\{job_name\}\}/g, jobName);
+        const taskDescription = (taskTemplate.descriptionTemplate || '').replace(/\{\{job_name\}\}/g, jobName);
+        
+        const dueDate = new Date(lastDueDate);
+        dueDate.setDate(dueDate.getDate() + taskTemplate.estimatedDurationDays);
+
+        const taskRef = doc(collection(db, 'tasks'));
+        const taskData: Omit<Task, 'id'> = {
+            project_id: null,
+            name: taskTitle,
+            description: taskDescription,
+            status: 'Pending',
+            assigned_to: assigneeId,
+            due_date: dueDate.toISOString(),
+            priority: 'Medium',
+            sprint_points: null,
+            tags: ['JobFlow', jobName],
+            time_estimate: taskTemplate.estimatedDurationDays * 8, // Assume 8 hours per day
+            relationships: [],
+            activities: [],
+            comments: [],
+            attachments: [],
+            parentId: null
+        };
+        batch.set(taskRef, taskData);
+        lastDueDate = dueDate; // Set the last due date for the next task in sequence
+
+        if (taskTemplate.subtaskTemplates && taskTemplate.subtaskTemplates.length > 0) {
+            createSubtasks(batch, taskTemplate.subtaskTemplates, taskRef.id, roleUserMapping, jobName, dueDate);
+        }
+
+        const jobFlowTaskData: Omit<JobFlowTask, 'id'> = {
+            jobId: jobId,
+            phaseIndex: phase.phaseIndex,
+            taskId: taskRef.id,
+            createdAt: new Date().toISOString()
+        };
+        const jobFlowTaskRef = doc(collection(db, 'job_flow_tasks'));
+        batch.set(jobFlowTaskRef, jobFlowTaskData);
+    }
+}
 
 export const launchJob = async (
     jobName: string,
@@ -349,7 +405,6 @@ export const launchJob = async (
 
     const batch = writeBatch(db);
 
-    // 1. Create the Job document
     const newJobData: Omit<Job, 'id'> = {
         name: jobName,
         workflowTemplateId: template.id,
@@ -363,59 +418,13 @@ export const launchJob = async (
     const jobRef = doc(collection(db, 'jobs'));
     batch.set(jobRef, newJobData);
 
-    // 2. Create the first task(s) and their subtasks
     const firstPhase = template.phases.find(p => p.phaseIndex === 0);
     if (!firstPhase) {
         throw new Error("Template has no starting phase.");
     }
     
-    for (const taskTemplate of firstPhase.tasks) {
-        const assigneeId = roleUserMapping[taskTemplate.defaultAssigneeId];
-        if (!assigneeId) {
-            throw new Error(`No user mapped for assignee ID ${taskTemplate.defaultAssigneeId} in the first phase.`);
-        }
-
-        const taskTitle = taskTemplate.titleTemplate.replace(/\{\{job_name\}\}/g, jobName);
-        const taskDescription = (taskTemplate.descriptionTemplate || '').replace(/\{\{job_name\}\}/g, jobName);
-
-        const taskRef = doc(collection(db, 'tasks'));
-        const taskData: Omit<Task, 'id'> = {
-            project_id: null,
-            name: taskTitle,
-            description: taskDescription,
-            status: 'Pending',
-            assigned_to: assigneeId,
-            due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(), // Default due date: 1 week from now
-            priority: 'Medium',
-            sprint_points: null,
-            tags: ['JobFlow', jobName],
-            time_estimate: null,
-            relationships: [],
-            activities: [],
-            comments: [],
-            attachments: [],
-            parentId: null
-        };
-        batch.set(taskRef, taskData);
-
-        // 2a. Create subtasks if they exist in the template
-        if (taskTemplate.subtaskTemplates && taskTemplate.subtaskTemplates.length > 0) {
-            createSubtasks(batch, taskTemplate.subtaskTemplates, taskRef.id, roleUserMapping, jobName);
-        }
-
-
-        // 3. Create the JobFlowTask link for each task
-        const jobFlowTaskData = {
-            jobId: jobRef.id,
-            phaseIndex: 0,
-            taskId: taskRef.id,
-            createdAt: new Date().toISOString()
-        };
-        const jobFlowTaskRef = doc(collection(db, 'job_flow_tasks'));
-        batch.set(jobFlowTaskRef, jobFlowTaskData);
-    }
+    await createTasksForPhase(batch, firstPhase, jobRef.id, jobName, roleUserMapping);
     
-    // Commit all writes at once
     await batch.commit();
 
     return { ...newJobData, id: jobRef.id };
@@ -437,41 +446,8 @@ export const updateJobPhase = async (
     const batch = writeBatch(db);
 
     if (nextPhase) {
-        for (const taskTemplate of nextPhase.tasks) {
-            const assigneeId = job.roleUserMapping[taskTemplate.defaultAssigneeId];
-            const taskTitle = taskTemplate.titleTemplate.replace(/\{\{job_name\}\}/g, job.name);
-            const taskDescription = (taskTemplate.descriptionTemplate || '').replace(/\{\{job_name\}\}/g, job.name);
-            
-            const taskRef = doc(collection(db, 'tasks'));
-            const taskData: Omit<Task, 'id'> = {
-                project_id: null,
-                name: taskTitle,
-                description: taskDescription,
-                status: 'Pending',
-                assigned_to: assigneeId,
-                due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(),
-                priority: 'Medium',
-                sprint_points: null, tags: ['JobFlow', job.name], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null
-            };
-            batch.set(taskRef, taskData);
-
-             // Create subtasks if they exist in the template
-            if (taskTemplate.subtaskTemplates && taskTemplate.subtaskTemplates.length > 0) {
-                createSubtasks(batch, taskTemplate.subtaskTemplates, taskRef.id, job.roleUserMapping, job.name);
-            }
-    
-            // Create the JobFlowTask link
-            const jobFlowTaskData: Omit<JobFlowTask, 'id'> = {
-                jobId: job.id,
-                phaseIndex: nextPhaseIndex,
-                taskId: taskRef.id,
-                createdAt: new Date().toISOString()
-            };
-            const jobFlowTaskRef = doc(collection(db, 'job_flow_tasks'));
-            batch.set(jobFlowTaskRef, jobFlowTaskData);
-        }
+        await createTasksForPhase(batch, nextPhase, job.id, job.name, job.roleUserMapping);
         
-        // Update the job to the next phase
         const jobRef = doc(db, 'jobs', job.id);
         batch.update(jobRef, { currentPhaseIndex: nextPhaseIndex });
 
@@ -490,9 +466,11 @@ export const reviewJobPhase = async (jobId: string, phaseIndex: number, userId: 
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) throw new Error("Could not find job flow task to review.");
-
-    const jobFlowTaskRef = snapshot.docs[0].ref;
-    await updateDoc(jobFlowTaskRef, { reviewedBy: userId });
-
-    // The logic to advance the phase will be called separately after review.
+    
+    const batch = writeBatch(db);
+    snapshot.docs.forEach(doc => {
+        batch.update(doc.ref, { reviewedBy: userId });
+    })
+    
+    await batch.commit();
 }

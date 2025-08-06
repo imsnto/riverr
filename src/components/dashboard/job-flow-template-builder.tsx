@@ -41,6 +41,7 @@ const subtaskTemplateSchema = z.object({
   id: z.string().optional(),
   titleTemplate: z.string().min(1, 'Subtask title cannot be empty'),
   defaultAssigneeId: z.string().min(1, "Assignee is required"),
+  estimatedDurationDays: z.coerce.number().min(0, "Duration must be positive").default(0),
 });
 
 const taskTemplateSchema = z.object({
@@ -48,6 +49,7 @@ const taskTemplateSchema = z.object({
   titleTemplate: z.string().min(1, 'Task title is required'),
   descriptionTemplate: z.string().optional(),
   defaultAssigneeId: z.string().min(1, 'Default assignee is required'),
+  estimatedDurationDays: z.coerce.number().min(1, "Duration must be at least 1 day"),
   subtaskTemplates: z.array(subtaskTemplateSchema).optional(),
 });
 
@@ -75,7 +77,7 @@ function TemplateForm({ onSave, allUsers, closeDialog }: { onSave: (data: Templa
       phases: [{ 
         id: `phase-${Date.now()}`, 
         name: '', 
-        tasks: [{ id: `task-${Date.now()}`, titleTemplate: '', descriptionTemplate: '', defaultAssigneeId: '', subtaskTemplates: [] }],
+        tasks: [{ id: `task-${Date.now()}`, titleTemplate: '', descriptionTemplate: '', defaultAssigneeId: '', estimatedDurationDays: 1, subtaskTemplates: [] }],
         requiresReview: false 
       }],
     },
@@ -157,7 +159,7 @@ function TemplateForm({ onSave, allUsers, closeDialog }: { onSave: (data: Templa
           <Button
             type="button"
             variant="outline"
-            onClick={() => appendPhase({ id: `phase-${Date.now()}`, name: '', tasks: [{id: `task-${Date.now()}`, titleTemplate: '', defaultAssigneeId: '', subtaskTemplates: []}], requiresReview: false })}
+            onClick={() => appendPhase({ id: `phase-${Date.now()}`, name: '', tasks: [{id: `task-${Date.now()}`, titleTemplate: '', defaultAssigneeId: '', estimatedDurationDays: 1, subtaskTemplates: []}], requiresReview: false })}
           >
             <Plus className="mr-2 h-4 w-4" /> Add Phase
           </Button>
@@ -187,25 +189,38 @@ const PhaseTasks = ({ control, phaseIndex, allUsers, errors }: { control: any, p
                         <Label className="text-xs">Task Description Template (optional)</Label>
                         <Textarea {...control.register(`phases.${phaseIndex}.tasks.${taskIndex}.descriptionTemplate`)} placeholder="Use {{job_name}} for dynamic job name" className="bg-background" rows={2}/>
                     </div>
-                     <div className="space-y-1">
-                        <Label className="text-xs">Default Assignee</Label>
-                        <Controller
-                            control={control}
-                            name={`phases.${phaseIndex}.tasks.${taskIndex}.defaultAssigneeId`}
-                            render={({ field }) => (
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <SelectTrigger className="bg-background h-8">
-                                        <SelectValue placeholder="Select a default assignee" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {allUsers.map(user => (
-                                            <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                            </Select>
-                            )}
-                        />
-                        {errors.phases?.[phaseIndex]?.tasks?.[taskIndex]?.defaultAssigneeId && <p className="text-sm text-destructive">{errors.phases[phaseIndex]?.tasks[taskIndex]?.defaultAssigneeId?.message}</p>}
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <Label className="text-xs">Default Assignee</Label>
+                            <Controller
+                                control={control}
+                                name={`phases.${phaseIndex}.tasks.${taskIndex}.defaultAssigneeId`}
+                                render={({ field }) => (
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <SelectTrigger className="bg-background h-8">
+                                            <SelectValue placeholder="Select a default assignee" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {allUsers.map(user => (
+                                                <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                </Select>
+                                )}
+                            />
+                            {errors.phases?.[phaseIndex]?.tasks?.[taskIndex]?.defaultAssigneeId && <p className="text-sm text-destructive">{errors.phases[phaseIndex]?.tasks[taskIndex]?.defaultAssigneeId?.message}</p>}
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs">Duration (days)</Label>
+                            <Input 
+                                type="number"
+                                {...control.register(`phases.${phaseIndex}.tasks.${taskIndex}.estimatedDurationDays`)}
+                                placeholder="e.g., 5"
+                                className="bg-background h-8"
+                                min="1"
+                            />
+                            {errors.phases?.[phaseIndex]?.tasks?.[taskIndex]?.estimatedDurationDays && <p className="text-sm text-destructive">{errors.phases[phaseIndex]?.tasks[taskIndex]?.estimatedDurationDays?.message}</p>}
+                        </div>
                     </div>
                     
                     <Separator className="my-2" />
@@ -221,7 +236,7 @@ const PhaseTasks = ({ control, phaseIndex, allUsers, errors }: { control: any, p
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => append({ id: `task-${Date.now()}`, titleTemplate: '', defaultAssigneeId: '', subtaskTemplates: [] })}
+                onClick={() => append({ id: `task-${Date.now()}`, titleTemplate: '', defaultAssigneeId: '', estimatedDurationDays: 1, subtaskTemplates: [] })}
                 className="w-full"
             >
                 <Plus className="mr-2 h-4 w-4" /> Add Task to Phase
@@ -241,11 +256,18 @@ const Subtasks = ({ control, phaseIndex, taskIndex, allUsers, errors }: { contro
             <Label className="text-xs">Subtask Templates</Label>
             {fields.map((subtaskField, subtaskIndex) => (
                 <div key={subtaskField.id} className="space-y-2 p-2 border rounded-md bg-background">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                         <Input
                             {...control.register(`phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates.${subtaskIndex}.titleTemplate`)}
                             placeholder="e.g., Send follow-up email"
-                            className="bg-background h-8"
+                            className="bg-background h-8 flex-1"
+                        />
+                        <Input 
+                            type="number"
+                            {...control.register(`phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates.${subtaskIndex}.estimatedDurationDays`)}
+                            placeholder="Days"
+                            className="bg-background h-8 w-20"
+                            min="0"
                         />
                         <Button type="button" variant="ghost" size="icon" onClick={() => remove(subtaskIndex)} className="h-8 w-8">
                             <Trash2 className="h-4 w-4 text-destructive" />
@@ -279,7 +301,7 @@ const Subtasks = ({ control, phaseIndex, taskIndex, allUsers, errors }: { contro
                 variant="outline"
                 size="sm"
                 className="w-full h-8"
-                onClick={() => append({ id: `subtask-${Date.now()}`, titleTemplate: '', defaultAssigneeId: '' })}
+                onClick={() => append({ id: `subtask-${Date.now()}`, titleTemplate: '', defaultAssigneeId: '', estimatedDurationDays: 0 })}
             >
                 <Plus className="mr-2 h-4 w-4" /> Add Subtask Template
             </Button>
@@ -310,9 +332,11 @@ export default function JobFlowTemplateBuilder({ templates, allUsers, onSave, ac
                 tasks: phase.tasks.map((task, taskIndex) => ({
                     ...task,
                     id: task.id || `task-template-${Date.now()}-${taskIndex}`,
+                    estimatedDurationDays: task.estimatedDurationDays || 1,
                     subtaskTemplates: (task.subtaskTemplates || []).map((sub, subIndex) => ({
                         ...sub,
-                        id: sub.id || `subtask-template-${Date.now()}-${subIndex}`
+                        id: sub.id || `subtask-template-${Date.now()}-${subIndex}`,
+                        estimatedDurationDays: sub.estimatedDurationDays || 0,
                     })),
                 })),
                 requiresReview: phase.requiresReview || false,

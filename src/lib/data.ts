@@ -162,6 +162,7 @@ export interface JobFlowSubtaskTemplate {
     id: string;
     titleTemplate: string;
     defaultAssigneeId: string;
+    estimatedDurationDays: number;
 }
 
 export interface JobFlowTaskTemplate {
@@ -169,6 +170,7 @@ export interface JobFlowTaskTemplate {
   titleTemplate: string;
   descriptionTemplate?: string;
   defaultAssigneeId: string;
+  estimatedDurationDays: number;
   subtaskTemplates?: JobFlowSubtaskTemplate[];
 }
 
@@ -533,9 +535,9 @@ export const jobFlowTemplates: JobFlowTemplate[] = [
         createdBy: 'user-1',
         createdAt: '2024-08-01T00:00:00Z',
         phases: [
-            { id: 'phase-1-1', phaseIndex: 0, name: 'Initial Contact', tasks: [{id: 'task-template-1', titleTemplate: 'Follow up with {{job_name}}', defaultAssigneeId: 'user-1'}], requiresReview: false },
-            { id: 'phase-1-2', phaseIndex: 1, name: 'Kick-off Meeting', tasks: [{id: 'task-template-2', titleTemplate: 'Schedule kick-off meeting with {{job_name}}', defaultAssigneeId: 'user-2'}], requiresReview: true },
-            { id: 'phase-1-3', phaseIndex: 2, name: 'Project Setup', tasks: [{id: 'task-template-3', titleTemplate: 'Set up project for {{job_name}}', defaultAssigneeId: 'user-1'}], requiresReview: false },
+            { id: 'phase-1-1', phaseIndex: 0, name: 'Initial Contact', tasks: [{id: 'task-template-1', titleTemplate: 'Follow up with {{job_name}}', defaultAssigneeId: 'user-1', estimatedDurationDays: 1, subtaskTemplates: []}], requiresReview: false },
+            { id: 'phase-1-2', phaseIndex: 1, name: 'Kick-off Meeting', tasks: [{id: 'task-template-2', titleTemplate: 'Schedule kick-off meeting with {{job_name}}', defaultAssigneeId: 'user-2', estimatedDurationDays: 3, subtaskTemplates: []}], requiresReview: true },
+            { id: 'phase-1-3', phaseIndex: 2, name: 'Project Setup', tasks: [{id: 'task-template-3', titleTemplate: 'Set up project for {{job_name}}', defaultAssigneeId: 'user-1', estimatedDurationDays: 2, subtaskTemplates: []}], requiresReview: false },
         ]
     },
     {
@@ -545,9 +547,9 @@ export const jobFlowTemplates: JobFlowTemplate[] = [
         createdBy: 'user-2',
         createdAt: '2024-08-02T00:00:00Z',
         phases: [
-            { id: 'phase-2-1', phaseIndex: 0, name: 'QA & Testing', tasks: [{id: 'task-template-4', titleTemplate: 'Perform full QA cycle on {{job_name}}', defaultAssigneeId: 'user-3'}], requiresReview: true },
-            { id: 'phase-2-2', phaseIndex: 1, name: 'DNS Propagation', tasks: [{id: 'task-template-5', titleTemplate: 'Update DNS records for {{job_name}}', defaultAssigneeId: 'user-4'}], requiresReview: false },
-            { id: 'phase-2-3', phaseIndex: 2, name: 'Post-launch Monitoring', tasks: [{id: 'task-template-6', titleTemplate: 'Monitor {{job_name}} for 24 hours post-launch', defaultAssigneeId: 'user-1'}], requiresReview: false },
+            { id: 'phase-2-1', phaseIndex: 0, name: 'QA & Testing', tasks: [{id: 'task-template-4', titleTemplate: 'Perform full QA cycle on {{job_name}}', defaultAssigneeId: 'user-3', estimatedDurationDays: 5, subtaskTemplates: []}], requiresReview: true },
+            { id: 'phase-2-2', phaseIndex: 1, name: 'DNS Propagation', tasks: [{id: 'task-template-5', titleTemplate: 'Update DNS records for {{job_name}}', defaultAssigneeId: 'user-4', estimatedDurationDays: 1, subtaskTemplates: []}], requiresReview: false },
+            { id: 'phase-2-3', phaseIndex: 2, name: 'Post-launch Monitoring', tasks: [{id: 'task-template-6', titleTemplate: 'Monitor {{job_name}} for 24 hours post-launch', defaultAssigneeId: 'user-1', estimatedDurationDays: 1, subtaskTemplates: []}], requiresReview: false },
         ]
     },
     {
@@ -557,16 +559,16 @@ export const jobFlowTemplates: JobFlowTemplate[] = [
       createdBy: 'user-1',
       createdAt: '2024-08-10T00:00:00Z',
       phases: [
-          { id: 'phase-3-01', phaseIndex: 0, name: 'Feature Definition', tasks: [{id: 'task-template-7', titleTemplate: 'Define feature scope for {{job_name}}', defaultAssigneeId: 'user-2'}], requiresReview: true },
-          { id: 'phase-3-02', phaseIndex: 1, name: 'UX/UI Design', tasks: [{id: 'task-template-8', titleTemplate: 'Design mockups for {{job_name}}', defaultAssigneeId: 'user-1'}], requiresReview: false },
-          { id: 'phase-3-03', phaseIndex: 2, name: 'Design Review', tasks: [{id: 'task-template-9', titleTemplate: 'Review and approve designs for {{job_name}}', defaultAssigneeId: 'user-2'}], requiresReview: true },
-          { id: 'phase-3-04', phaseIndex: 3, name: 'Technical Spec', tasks: [{id: 'task-template-10', titleTemplate: 'Write technical spec for {{job_name}}', defaultAssigneeId: 'user-4'}], requiresReview: true },
-          { id: 'phase-3-05', phaseIndex: 4, name: 'Backend Development', tasks: [{id: 'task-template-11', titleTemplate: 'Build backend for {{job_name}}', defaultAssigneeId: 'user-4'}], requiresReview: false },
-          { id: 'phase-3-06', phaseIndex: 5, name: 'Frontend Development', tasks: [{id: 'task-template-12', titleTemplate: 'Build frontend for {{job_name}}', defaultAssigneeId: 'user-3'}], requiresReview: false },
-          { id: 'phase-3-07', phaseIndex: 6, name: 'QA Testing', tasks: [{id: 'task-template-13', titleTemplate: 'Perform QA testing on {{job_name}}', defaultAssigneeId: 'user-3'}], requiresReview: true },
-          { id: 'phase-3-08', phaseIndex: 7, name: 'User Acceptance Testing (UAT)', tasks: [{id: 'task-template-14', titleTemplate: 'Conduct UAT for {{job_name}}', defaultAssigneeId: 'user-2'}], requiresReview: true },
-          { id: 'phase-3-09', phaseIndex: 8, name: 'Deployment', tasks: [{id: 'task-template-15', titleTemplate: 'Deploy {{job_name}} to production', defaultAssigneeId: 'user-4'}], requiresReview: false },
-          { id: 'phase-3-10', phaseIndex: 9, name: 'Post-Launch Monitoring', tasks: [{id: 'task-template-16', titleTemplate: 'Monitor {{job_name}} post-launch', defaultAssigneeId: 'user-1'}], requiresReview: false },
+          { id: 'phase-3-01', phaseIndex: 0, name: 'Feature Definition', tasks: [{id: 'task-template-7', titleTemplate: 'Define feature scope for {{job_name}}', defaultAssigneeId: 'user-2', estimatedDurationDays: 3, subtaskTemplates: []}], requiresReview: true },
+          { id: 'phase-3-02', phaseIndex: 1, name: 'UX/UI Design', tasks: [{id: 'task-template-8', titleTemplate: 'Design mockups for {{job_name}}', defaultAssigneeId: 'user-1', estimatedDurationDays: 5, subtaskTemplates: []}], requiresReview: false },
+          { id: 'phase-3-03', phaseIndex: 2, name: 'Design Review', tasks: [{id: 'task-template-9', titleTemplate: 'Review and approve designs for {{job_name}}', defaultAssigneeId: 'user-2', estimatedDurationDays: 2, subtaskTemplates: []}], requiresReview: true },
+          { id: 'phase-3-04', phaseIndex: 3, name: 'Technical Spec', tasks: [{id: 'task-template-10', titleTemplate: 'Write technical spec for {{job_name}}', defaultAssigneeId: 'user-4', estimatedDurationDays: 4, subtaskTemplates: []}], requiresReview: true },
+          { id: 'phase-3-05', phaseIndex: 4, name: 'Backend Development', tasks: [{id: 'task-template-11', titleTemplate: 'Build backend for {{job_name}}', defaultAssigneeId: 'user-4', estimatedDurationDays: 7, subtaskTemplates: []}], requiresReview: false },
+          { id: 'phase-3-06', phaseIndex: 5, name: 'Frontend Development', tasks: [{id: 'task-template-12', titleTemplate: 'Build frontend for {{job_name}}', defaultAssigneeId: 'user-3', estimatedDurationDays: 7, subtaskTemplates: []}], requiresReview: false },
+          { id: 'phase-3-07', phaseIndex: 6, name: 'QA Testing', tasks: [{id: 'task-template-13', titleTemplate: 'Perform QA testing on {{job_name}}', defaultAssigneeId: 'user-3', estimatedDurationDays: 5, subtaskTemplates: []}], requiresReview: true },
+          { id: 'phase-3-08', phaseIndex: 7, name: 'User Acceptance Testing (UAT)', tasks: [{id: 'task-template-14', titleTemplate: 'Conduct UAT for {{job_name}}', defaultAssigneeId: 'user-2', estimatedDurationDays: 3, subtaskTemplates: []}], requiresReview: true },
+          { id: 'phase-3-09', phaseIndex: 8, name: 'Deployment', tasks: [{id: 'task-template-15', titleTemplate: 'Deploy {{job_name}} to production', defaultAssigneeId: 'user-4', estimatedDurationDays: 1, subtaskTemplates: []}], requiresReview: false },
+          { id: 'phase-3-10', phaseIndex: 9, name: 'Post-Launch Monitoring', tasks: [{id: 'task-template-16', titleTemplate: 'Monitor {{job_name}} post-launch', defaultAssigneeId: 'user-1', estimatedDurationDays: 1, subtaskTemplates: []}], requiresReview: false },
       ]
   }
 ];
