@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useRef, useState } from 'react';
@@ -20,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar as CalendarPicker } from '../ui/calendar';
 import { format } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
-import { addTask } from '@/lib/db';
+import { addTask as dbAddTask } from '@/lib/db';
 
 
 const getInitials = (name: string) => {
@@ -192,7 +193,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
     
     const handleAddSubtask = async () => {
         if (!newSubtaskName.trim()) return;
-
+    
         const tempId = `temp-${Date.now()}-${Math.random()}`;
         const optimisticSubtask: Task = {
             id: tempId,
@@ -212,28 +213,30 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
             attachments: [],
             parentId: task.id,
         };
-
+    
+        // Optimistically render it
         onAddTask(optimisticSubtask);
         setNewSubtaskName('');
-
+    
         try {
-            // Firestore will generate the ID, so we don't pass one
-            const { id, ...subtaskData } = optimisticSubtask;
-            const actualSubtask = await addTask(subtaskData);
-
-            // Replace the temp task with the real one from Firestore
+            // Firestore generates the ID, so we pass undefined
+            const actualSubtaskData = { ...optimisticSubtask, id: undefined };
+            delete (actualSubtaskData as any).id;
+            
+            const actualSubtask = await dbAddTask(actualSubtaskData);
+            
+            // Replace the temp one with the real one from Firestore
             onUpdateTask(actualSubtask, tempId);
-
         } catch (err) {
+            // Remove the optimistic subtask or show error
             toast({
                 variant: 'destructive',
                 title: 'Failed to add subtask',
                 description: String(err),
             });
-            // Here you might want to remove the optimistic subtask from the state
-            // onUpdateTask({ ...optimisticSubtask, id: tempId, name: 'Failed to save' });
+            // Optionally remove the temp task from allTasks here
         }
-    }
+    };
 
     const handleUpdateSubtaskStatus = (subtask: Task, checked: boolean) => {
          const updatedSubtask = { ...subtask, status: checked ? 'Done' : 'Backlog' };
@@ -277,7 +280,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                 <Button variant="outline" size="sm" className="pointer-events-none">
                                     {project?.name || 'Task'}
                                 </Button>
-                                <span>/ {task?.id?.substring(0,6)}...</span>
+                                <span>/ {task.id.substring(0,6)}...</span>
                            </div>
                            <Input 
                                 defaultValue={task.name}

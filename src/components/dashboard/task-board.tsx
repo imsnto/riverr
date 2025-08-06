@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -24,6 +25,10 @@ interface TaskBoardProps {
   onAddProject: (project: Omit<Project, 'id'>) => Promise<void>;
   onUpdateProject: (projectId: string, project: Partial<Project>) => Promise<void>;
   onDeleteProject: (projectId: string) => Promise<void>;
+  selectedTask: Task | null;
+  onTaskSelect: (task: Task | null) => void;
+  onUpdateTask: (task: Task, tempId?: string) => void;
+  onAddTask: (task: Task) => void;
 }
 
 export default function TaskBoard({ 
@@ -35,13 +40,16 @@ export default function TaskBoard({
     onUpdateActiveSpace,
     onAddProject,
     onUpdateProject,
-    onDeleteProject
+    onDeleteProject,
+    selectedTask,
+    onTaskSelect,
+    onUpdateTask,
+    onAddTask,
 }: TaskBoardProps) {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(projects.length > 0 ? projects[0].id : null);
   const [isProjectFormOpen, setIsProjectFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const { toast } = useToast();
 
   const handleCreateNewProject = () => {
@@ -80,9 +88,8 @@ export default function TaskBoard({
     }
   }
 
-  const handleAddTask = (newTask: Task) => {
-    // This function now just adds the task (optimistic or real) to the state
-    onUpdateTasks([...tasks, newTask]);
+  const handleAddTaskDialog = (newTask: Task) => {
+    onAddTask(newTask);
     const statuses = activeSpace.statuses || [];
     if (!statuses.find(s => s.name === newTask.status)) {
         const randomColor = { name: 'Gray', color: '#6b7280' };
@@ -90,38 +97,6 @@ export default function TaskBoard({
     }
   };
 
-  const handleUpdateTask = (updatedTask: Task, tempId?: string) => {
-    onUpdateTasks(prevTasks => {
-        const taskExists = prevTasks.some(t => t.id === updatedTask.id);
-        
-        // If we have a tempId, it means we are replacing a temporary task
-        if (tempId) {
-            return prevTasks.map(t => t.id === tempId ? updatedTask : t);
-        }
-        
-        // Otherwise, it's a normal update or the final step of an optimistic update
-        // where the permanent task now has its real ID.
-        if (taskExists) {
-            return prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t);
-        }
-        
-        // If the task wasn't found by its permanent ID, it might be a replacement
-        // for a temp task that hasn't been swapped yet. This is a fallback.
-        const tempIndex = prevTasks.findIndex(t => t.id.startsWith('temp-') && t.name === updatedTask.name);
-        if (tempIndex !== -1) {
-            const newTasks = [...prevTasks];
-            newTasks[tempIndex] = updatedTask;
-            return newTasks;
-        }
-
-        // If it's a completely new task (shouldn't happen via this function, but for safety)
-        return [...prevTasks, updatedTask];
-    });
-
-    if (selectedTask && selectedTask.id === (tempId || updatedTask.id)) {
-        setSelectedTask(updatedTask);
-    }
-  }
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   const spaceMembers = allUsers.filter(u => activeSpace.members[u.id]);
@@ -179,7 +154,7 @@ export default function TaskBoard({
                   allUsers={allUsers}
                   onUpdateActiveSpace={onUpdateActiveSpace}
                   onNewTaskRequest={() => setIsNewTaskDialogOpen(true)}
-                  onTaskClick={(task) => setSelectedTask(task)}
+                  onTaskClick={(task) => onTaskSelect(task)}
               />
           ) : (
               <div className="flex flex-col items-center justify-center h-full text-center bg-card rounded-lg">
@@ -205,29 +180,13 @@ export default function TaskBoard({
           <NewTaskDialog
             isOpen={isNewTaskDialogOpen}
             onOpenChange={setIsNewTaskDialogOpen}
-            onTaskAdd={handleAddTask}
+            onTaskAdd={handleAddTaskDialog}
             projects={selectedProject ? [selectedProject] : []}
             statuses={statuses.map(s => s.name)}
             allUsers={spaceMembers}
           />
         )}
       </div>
-      {selectedTask && (
-        <TaskDetailsDialog
-          task={selectedTask}
-          isOpen={!!selectedTask}
-          allUsers={allUsers}
-          allTasks={tasks}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) setSelectedTask(null);
-          }}
-          onUpdateTask={handleUpdateTask}
-          onAddTask={handleAddTask}
-          onTaskSelect={setSelectedTask}
-          statuses={statuses.map(s => s.name)}
-          projects={projects}
-        />
-      )}
     </>
   );
 }

@@ -34,6 +34,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Mail } from 'lucide-react';
 import JobFlowTemplateBuilder from '@/components/dashboard/job-flow-template-builder';
 import ActiveJobsView from '@/components/dashboard/active-jobs-view';
+import TaskDetailsDialog from '@/components/dashboard/task-details-dialog';
 
 export default function Dashboard() {
   const { appUser } = useAuth();
@@ -63,6 +64,7 @@ export default function Dashboard() {
   const [readThreadIds, setReadThreadIds] = useState<Set<string>>(new Set());
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
 
   const [channelsViewMode, setChannelsViewMode] = useState<'channel' | 'all-threads'>('channel');
@@ -187,21 +189,56 @@ export default function Dashboard() {
       console.error("Expected an array of tasks but got:", updatedTasks);
       return;
     }
-    
+  
+    // Update local state immediately for better UX
+    setTasks(updatedTasks);
+  
     // Batch update Firestore for performance
-    const batch = [];
+    const batch = writeBatch(db);
     for (const task of updatedTasks) {
       const originalTask = tasks.find(t => t.id === task.id);
       if (originalTask && JSON.stringify(originalTask) !== JSON.stringify(task)) {
-        // In a real app, you'd probably want to use a write batch here from Firestore
-        batch.push(updateTask(task.id, task));
+        const taskRef = doc(db, 'tasks', task.id);
+        batch.update(taskRef, task);
       }
     }
-    if (batch.length > 0) {
-        await Promise.all(batch);
+    try {
+      await batch.commit();
+    } catch (error) {
+      console.error("Failed to batch update tasks:", error);
+      // Optionally revert state or show a toast
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: 'Could not save task changes to the server.',
+      });
+      // Revert to original tasks state if update fails
+      // For a more robust solution, you might want to refetch from DB
+      setTasks(tasks); 
     }
-    setTasks(updatedTasks);
-  }
+  };
+
+  const handleUpdateTask = (updatedTask: Task, tempId?: string) => {
+    setTasks(prevTasks => {
+      const taskIndex = prevTasks.findIndex(t => t.id === (tempId || updatedTask.id));
+      if (taskIndex !== -1) {
+        const newTasks = [...prevTasks];
+        newTasks[taskIndex] = updatedTask;
+        return newTasks;
+      }
+      return [...prevTasks, updatedTask];
+    });
+
+    if (selectedTask && selectedTask.id === (tempId || updatedTask.id)) {
+      setSelectedTask(updatedTask);
+    }
+    // Asynchronously update Firestore without blocking UI
+    updateTask(updatedTask.id, updatedTask);
+  };
+  
+  const handleAddTaskOptimistic = (newTask: Task) => {
+    setTasks(prev => [...prev, newTask]);
+  };
 
   const handleViewThread = (thread: Message) => {
     setActiveThread(thread);
@@ -608,7 +645,22 @@ export default function Dashboard() {
               )}
               {activeTab === 'tasks' && activeSpace && (
                 <>
-                {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard tasks={tasks} onUpdateTasks={handleUpdateTasks} projects={projects} activeSpace={activeSpace} allUsers={visibleUsers} onUpdateActiveSpace={handleUpdateActiveSpace} onAddProject={handleAddProject} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} />}
+                {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : 
+                <TaskBoard 
+                    tasks={tasks} 
+                    onUpdateTasks={handleUpdateTasks} 
+                    projects={projects} 
+                    activeSpace={activeSpace} 
+                    allUsers={visibleUsers} 
+                    onUpdateActiveSpace={handleUpdateActiveSpace} 
+                    onAddProject={handleAddProject} 
+                    onUpdateProject={handleUpdateProject} 
+                    onDeleteProject={handleDeleteProject}
+                    selectedTask={selectedTask}
+                    onTaskSelect={setSelectedTask}
+                    onUpdateTask={handleUpdateTask}
+                    onAddTask={handleAddTaskOptimistic}
+                />}
                 </>
               )}
                {activeTab === 'flows' && activeSpace && (
@@ -675,6 +727,22 @@ export default function Dashboard() {
           onInvite={handleInvite}
           allSpaces={userSpaces}
         />
+        {selectedTask && (
+          <TaskDetailsDialog
+            task={selectedTask}
+            isOpen={!!selectedTask}
+            allUsers={allUsers}
+            allTasks={tasks}
+            onOpenChange={(isOpen) => {
+              if (!isOpen) setSelectedTask(null);
+            }}
+            onUpdateTask={handleUpdateTask}
+            onAddTask={handleAddTaskOptimistic}
+            onTaskSelect={setSelectedTask}
+            statuses={activeSpace.statuses?.map(s => s.name) || []}
+            projects={projects}
+          />
+      )}
     </TooltipProvider>
   );
 }
