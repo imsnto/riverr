@@ -19,7 +19,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Input } from '../ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar as CalendarPicker } from '../ui/calendar';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
 import { addTask as dbAddTask } from '@/lib/db';
 import LogTimeDialog from './log-time-dialog';
@@ -363,20 +363,20 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                     </Select>
                                 </DetailRow>
                                  <DetailRow icon={Calendar} label="Due Date">
-                                     <Popover>
+                                     <Popover modal={true}>
                                         <PopoverTrigger asChild>
                                         <Button
                                             variant={"outline"}
                                             className={cn("w-full justify-start text-left font-normal h-8", !task.due_date && "text-muted-foreground")}
                                         >
                                             <Calendar className="mr-2 h-4 w-4" />
-                                            {task.due_date ? format(new Date(task.due_date), "PPP") : <span>Pick a date</span>}
+                                            {task.due_date ? format(parseISO(task.due_date), "PPP") : <span>Pick a date</span>}
                                         </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0 z-[1000]">
+                                        <PopoverContent className="w-auto p-0">
                                             <CalendarPicker
                                                 mode="single"
-                                                selected={new Date(task.due_date)}
+                                                selected={parseISO(task.due_date)}
                                                 onSelect={(date) => date && handleFieldChange('due_date', date.toISOString())}
                                                 initialFocus
                                             />
