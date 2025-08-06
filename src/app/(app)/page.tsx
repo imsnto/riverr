@@ -498,7 +498,7 @@ export default function Dashboard() {
 
     return (
         <SidebarProvider>
-            <Sidebar>
+            <Sidebar collapsible="icon">
                 <SidebarHeader>
                     <h2 className="text-xl font-semibold px-2">TimeFlow</h2>
                 </SidebarHeader>
@@ -570,7 +570,5 @@ export default function Dashboard() {
         </SidebarProvider>
     );
 }
-
-    
 
     
