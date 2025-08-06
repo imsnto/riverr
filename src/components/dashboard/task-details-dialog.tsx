@@ -435,7 +435,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                             {task.due_date ? format(parseISO(task.due_date), "PPP") : <span>Pick a date</span>}
                                         </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <PopoverContent className="w-auto p-0 z-[1000]" align="start">
                                             <CalendarPicker
                                                 mode="single"
                                                 selected={parseISO(task.due_date)}
@@ -554,6 +554,9 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                                         {subtask.name}
                                                     </label>
                                                 </Button>
+                                                 {subtask.due_date && (
+                                                    <span className="text-xs text-muted-foreground">{format(parseISO(subtask.due_date), "MMM d")}</span>
+                                                )}
                                                 <Avatar className="h-6 w-6">
                                                     <AvatarImage src={subtaskAssignee?.avatarUrl} />
                                                     <AvatarFallback>{getInitials(subtaskAssignee?.name || '')}</AvatarFallback>
@@ -725,4 +728,3 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
         </Dialog>
     );
 }
-
