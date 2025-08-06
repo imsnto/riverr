@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Task, Comment, Activity, User, Project, Attachment, TimeEntry } from '@/lib/data';
 import { Badge } from '../ui/badge';
@@ -29,8 +29,8 @@ const getInitials = (name: string) => {
     return name ? name.split(' ').map(n => n[0]).join('') : '';
 }
 
-const formatDuration = (hours: number) => {
-    if (hours === 0) return '0 min';
+const formatDuration = (hours: number | null) => {
+    if (hours === null || hours === undefined || hours === 0) return '0h';
     
     const totalMinutes = Math.round(hours * 60);
 
@@ -50,6 +50,44 @@ const formatDuration = (hours: number) => {
     }
     return parts.join(' ');
   };
+
+  const parseDuration = (durationStr: string): number => {
+    if (!durationStr) return 0;
+    let totalHours = 0;
+    const duration = durationStr.toLowerCase().trim();
+
+    // Regex to capture numbers and units (h, m)
+    const matches = duration.match(/(\d*\.?\d+)\s*(h|m)?/g) || [];
+
+    if (matches.length === 0 && !isNaN(parseFloat(duration))) {
+        // Handle case where only a number is entered (e.g., "2.5")
+        return parseFloat(duration);
+    }
+    
+    matches.forEach(match => {
+        const parts = match.match(/(\d*\.?\d+)\s*(h|m)?/);
+        if (parts) {
+            const value = parseFloat(parts[1]);
+            const unit = parts[2];
+            
+            if (unit === 'h') {
+                totalHours += value;
+            } else if (unit === 'm') {
+                totalHours += value / 60;
+            } else if (!unit) {
+                // If no unit, assume hours if it's the only number, otherwise minutes
+                if (matches.length === 1) {
+                    totalHours += value;
+                } else {
+                    totalHours += value / 60;
+                }
+            }
+        }
+    });
+
+    return totalHours;
+};
+
 
 
 interface DetailRowProps {
@@ -128,6 +166,16 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
     const [newTag, setNewTag] = useState('');
     const [newSubtaskName, setNewSubtaskName] = useState('');
     const [isLogTimeOpen, setIsLogTimeOpen] = useState(false);
+
+    const [estTime, setEstTime] = useState<string>(formatDuration(task?.time_estimate || null));
+    const [showEstTimeSuggestion, setShowEstTimeSuggestion] = useState(false);
+    
+    useEffect(() => {
+        if (task) {
+            setEstTime(formatDuration(task.time_estimate));
+        }
+    }, [task]);
+
 
     if (!appUser || !task) {
         return null;
@@ -290,6 +338,8 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
     };
     
     const assignee = allUsers.find(u=>u.id === task.assigned_to);
+    
+    const parsedEstTimeSuggestion = parseDuration(estTime);
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -373,7 +423,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                             {task.due_date ? format(parseISO(task.due_date), "PPP") : <span>Pick a date</span>}
                                         </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0">
+                                        <PopoverContent className="w-auto p-0" align="start">
                                             <CalendarPicker
                                                 mode="single"
                                                 selected={parseISO(task.due_date)}
@@ -398,12 +448,33 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                     </Select>
                                 </DetailRow>
                                 <DetailRow icon={Clock} label="Time Est.">
-                                    <Input 
-                                        type="number" 
-                                        placeholder="0h" 
-                                        className="h-8" 
-                                        defaultValue={task.time_estimate || ''} 
-                                        onBlur={(e) => handleFieldChange('time_estimate', e.target.value ? parseFloat(e.target.value) : null)} />
+                                    <div className="flex flex-col gap-2">
+                                        <Input 
+                                            placeholder="e.g., 2h 30m" 
+                                            className="h-8" 
+                                            value={estTime} 
+                                            onChange={(e) => {
+                                                setEstTime(e.target.value);
+                                                setShowEstTimeSuggestion(true);
+                                            }}
+                                            onBlur={() => handleFieldChange('time_estimate', parseDuration(estTime))}
+                                        />
+                                        {showEstTimeSuggestion && parsedEstTimeSuggestion > 0 && formatDuration(parsedEstTimeSuggestion) !== estTime && (
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                className="w-full h-8 text-xs" 
+                                                onClick={() => {
+                                                    const formatted = formatDuration(parsedEstTimeSuggestion);
+                                                    setEstTime(formatted);
+                                                    handleFieldChange('time_estimate', parseDuration(formatted));
+                                                    setShowEstTimeSuggestion(false);
+                                                }}
+                                            >
+                                                Did you mean: <span className="font-semibold mx-1">{formatDuration(parsedEstTimeSuggestion)}</span>?
+                                            </Button>
+                                        )}
+                                    </div>
                                 </DetailRow>
                                  <DetailRow icon={Clock} label="Time Logged">
                                     <div className="flex items-center gap-2">
