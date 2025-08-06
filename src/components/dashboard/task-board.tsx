@@ -81,6 +81,7 @@ export default function TaskBoard({
   }
 
   const handleAddTask = (newTask: Task) => {
+    // This function now just adds the task (optimistic or real) to the state
     onUpdateTasks([...tasks, newTask]);
     const statuses = activeSpace.statuses || [];
     if (!statuses.find(s => s.name === newTask.status)) {
@@ -89,10 +90,36 @@ export default function TaskBoard({
     }
   };
 
-  const handleUpdateTask = (updatedTask: Task) => {
-    onUpdateTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task));
-    if (selectedTask && selectedTask.id === updatedTask.id) {
-      setSelectedTask(updatedTask);
+  const handleUpdateTask = (updatedTask: Task, tempId?: string) => {
+    onUpdateTasks(prevTasks => {
+        const taskExists = prevTasks.some(t => t.id === updatedTask.id);
+        
+        // If we have a tempId, it means we are replacing a temporary task
+        if (tempId) {
+            return prevTasks.map(t => t.id === tempId ? updatedTask : t);
+        }
+        
+        // Otherwise, it's a normal update or the final step of an optimistic update
+        // where the permanent task now has its real ID.
+        if (taskExists) {
+            return prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t);
+        }
+        
+        // If the task wasn't found by its permanent ID, it might be a replacement
+        // for a temp task that hasn't been swapped yet. This is a fallback.
+        const tempIndex = prevTasks.findIndex(t => t.id.startsWith('temp-') && t.name === updatedTask.name);
+        if (tempIndex !== -1) {
+            const newTasks = [...prevTasks];
+            newTasks[tempIndex] = updatedTask;
+            return newTasks;
+        }
+
+        // If it's a completely new task (shouldn't happen via this function, but for safety)
+        return [...prevTasks, updatedTask];
+    });
+
+    if (selectedTask && selectedTask.id === (tempId || updatedTask.id)) {
+        setSelectedTask(updatedTask);
     }
   }
 
@@ -185,20 +212,22 @@ export default function TaskBoard({
           />
         )}
       </div>
-      <TaskDetailsDialog
-        task={selectedTask}
-        isOpen={!!selectedTask}
-        allUsers={allUsers}
-        allTasks={tasks}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) setSelectedTask(null);
-        }}
-        onUpdateTask={handleUpdateTask}
-        onAddTask={handleAddTask}
-        onTaskSelect={setSelectedTask}
-        statuses={statuses.map(s => s.name)}
-        projects={projects}
-      />
+      {selectedTask && (
+        <TaskDetailsDialog
+          task={selectedTask}
+          isOpen={!!selectedTask}
+          allUsers={allUsers}
+          allTasks={tasks}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setSelectedTask(null);
+          }}
+          onUpdateTask={handleUpdateTask}
+          onAddTask={handleAddTask}
+          onTaskSelect={setSelectedTask}
+          statuses={statuses.map(s => s.name)}
+          projects={projects}
+        />
+      )}
     </>
   );
 }

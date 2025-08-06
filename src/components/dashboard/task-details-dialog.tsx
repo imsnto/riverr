@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar as CalendarPicker } from '../ui/calendar';
 import { format } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
+import { addTask } from '@/lib/db';
 
 
 const getInitials = (name: string) => {
@@ -82,9 +83,9 @@ interface TaskDetailsDialogProps {
     task: Task | null;
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    onUpdateTask: (task: Task) => void;
-    onAddTask: (task: Omit<Task, 'id'>) => void;
-    onTaskSelect: (task: Task, allTasks: Task[]) => void;
+    onUpdateTask: (task: Task, tempId?: string) => void;
+    onAddTask: (task: Task) => void;
+    onTaskSelect: (task: Task) => void;
     statuses: string[];
     allUsers: User[];
     allTasks: Task[];
@@ -189,10 +190,12 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         handleFieldChange('tags', task.tags.filter(tag => tag !== tagToRemove));
     };
     
-    const handleAddSubtask = () => {
+    const handleAddSubtask = async () => {
         if (!newSubtaskName.trim()) return;
 
-        const newSubtaskData: Omit<Task, 'id'> = {
+        const tempId = `temp-${Date.now()}-${Math.random()}`;
+        const optimisticSubtask: Task = {
+            id: tempId,
             project_id: task.project_id,
             name: newSubtaskName.trim(),
             description: '',
@@ -209,8 +212,27 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
             attachments: [],
             parentId: task.id,
         };
-        onAddTask(newSubtaskData);
+
+        onAddTask(optimisticSubtask);
         setNewSubtaskName('');
+
+        try {
+            // Firestore will generate the ID, so we don't pass one
+            const { id, ...subtaskData } = optimisticSubtask;
+            const actualSubtask = await addTask(subtaskData);
+
+            // Replace the temp task with the real one from Firestore
+            onUpdateTask(actualSubtask, tempId);
+
+        } catch (err) {
+            toast({
+                variant: 'destructive',
+                title: 'Failed to add subtask',
+                description: String(err),
+            });
+            // Here you might want to remove the optimistic subtask from the state
+            // onUpdateTask({ ...optimisticSubtask, id: tempId, name: 'Failed to save' });
+        }
     }
 
     const handleUpdateSubtaskStatus = (subtask: Task, checked: boolean) => {
@@ -395,16 +417,19 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                             <div>
                                 <h3 className="text-lg font-semibold mb-2">Subtasks</h3>
                                  <div className="space-y-2">
-                                    {subtasks.map((subtask) => {
+                                    {subtasks.filter(subtask => !!subtask.id).map((subtask) => {
                                         const subtaskAssignee = allUsers.find(u => u.id === subtask.assigned_to);
                                         return (
-                                            <div key={subtask.id} className="flex items-center gap-2 group p-1 rounded-md hover:bg-accent/50">
+                                            <div key={subtask.id} className={cn(
+                                                "flex items-center gap-2 group p-1 rounded-md hover:bg-accent/50",
+                                                subtask.id.startsWith('temp-') && "opacity-50 animate-pulse"
+                                            )}>
                                                 <Checkbox 
                                                     id={`subtask-${subtask.id}`}
                                                     checked={subtask.status === 'Done'}
                                                     onCheckedChange={(checked) => handleUpdateSubtaskStatus(subtask, !!checked)}
                                                 />
-                                                <Button variant="link" className="p-0 h-auto justify-start flex-1" onClick={() => onTaskSelect(subtask, allTasks)}>
+                                                <Button variant="link" className="p-0 h-auto justify-start flex-1" onClick={() => onTaskSelect(subtask)}>
                                                     <label htmlFor={`subtask-${subtask.id}`} className={cn("flex-1 cursor-pointer", subtask.status === 'Done' && 'line-through text-muted-foreground')}>
                                                         {subtask.name}
                                                     </label>
@@ -525,5 +550,3 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         </Dialog>
     );
 }
-
-    
