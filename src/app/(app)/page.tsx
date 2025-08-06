@@ -226,7 +226,6 @@ export default function Dashboard() {
             newTasks[taskIndex] = updatedTask;
             return newTasks;
         }
-        // This case should ideally not be hit if we are just updating
         return [...prevTasks, updatedTask]; 
     });
 
@@ -751,6 +750,7 @@ export default function Dashboard() {
         />
         {selectedTask && (
           <TaskDetailsDialog
+            key={selectedTask.id}
             task={selectedTask}
             isOpen={!!selectedTask}
             allUsers={allUsers}
