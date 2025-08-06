@@ -436,6 +436,18 @@ export default function Dashboard() {
   const visibleUserIds = new Set(userSpaces.flatMap(s => Object.keys(s.members)));
   const visibleUsers = allUsers.filter(u => visibleUserIds.has(u.id));
 
+  const handleTaskSelect = (task: Task) => {
+    // Make sure we grab the fresh version from tasks[] by id
+    const freshTask = tasks.find(t => t.id === task.id);
+    if (freshTask) {
+        setSelectedTask({ ...freshTask }); // clone to force rerender
+    } else {
+        // Fallback for temp tasks that might not be in the main list yet
+        setSelectedTask(task);
+        console.warn("Selected task not found in main tasks array:", task.id);
+    }
+  };
+
   return (
     <TooltipProvider>
       <div className="flex h-screen w-full flex-col bg-background font-body">
@@ -667,7 +679,7 @@ export default function Dashboard() {
                     onAddProject={handleAddProject} 
                     onUpdateProject={handleUpdateProject} 
                     onDeleteProject={handleDeleteProject}
-                    onTaskSelect={setSelectedTask}
+                    onTaskSelect={handleTaskSelect}
                     onUpdateTask={handleUpdateTask}
                     onAddTask={handleAddTaskOptimistic}
                 />}
@@ -749,7 +761,7 @@ export default function Dashboard() {
             onUpdateTask={handleUpdateTask}
             onAddTask={handleAddTaskOptimistic}
             onRemoveTask={handleRemoveTask}
-            onTaskSelect={setSelectedTask}
+            onTaskSelect={handleTaskSelect}
             statuses={activeSpace.statuses?.map(s => s.name) || []}
             projects={projects}
           />

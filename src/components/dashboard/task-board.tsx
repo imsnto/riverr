@@ -25,8 +25,7 @@ interface TaskBoardProps {
   onAddProject: (project: Omit<Project, 'id'>) => Promise<void>;
   onUpdateProject: (projectId: string, project: Partial<Project>) => Promise<void>;
   onDeleteProject: (projectId: string) => Promise<void>;
-  selectedTask: Task | null;
-  onTaskSelect: (task: Task | null) => void;
+  onTaskSelect: (task: Task) => void;
   onUpdateTask: (task: Task, tempId?: string) => void;
   onAddTask: (task: Task) => void;
 }
@@ -41,7 +40,6 @@ export default function TaskBoard({
     onAddProject,
     onUpdateProject,
     onDeleteProject,
-    selectedTask,
     onTaskSelect,
     onUpdateTask,
     onAddTask,
