@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject, addTimeEntry, getAllJobs, getAllJobFlowTasks, getJobFlowTemplates } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getAllTasks as dbGetAllTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject, addTimeEntry, getAllJobs, getAllJobFlowTasks, getJobFlowTemplates } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -137,7 +137,7 @@ export default function Dashboard() {
         }
 
         const [tasksInSpace, timeEntriesInSpace, meetingLogsInSpace] = await Promise.all([
-            dbGetTasks(),
+            dbGetAllTasks(),
             dbGetTimeEntries(projectsInSpace.map(p => p.id)),
             dbGetSlackLogs(activeSpaceId),
         ]);
@@ -319,7 +319,7 @@ export default function Dashboard() {
     const [jobsInSpace, jobFlowTasksInSpace, allTasks] = await Promise.all([
         getAllJobs(activeSpaceId),
         getAllJobFlowTasks(activeSpaceId),
-        dbGetTasks()
+        dbGetAllTasks()
     ]);
     setJobs(jobsInSpace);
     setJobFlowTasks(jobFlowTasksInSpace);

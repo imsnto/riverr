@@ -195,10 +195,8 @@ export const getTasksInProject = async (projectId: string): Promise<Task[]> => {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
 };
 
-export const getTasksInSpace = async (projectIds: string[]): Promise<Task[]> => {
-  if (projectIds.length === 0) return [];
-  const q = query(collection(db, 'tasks'), where('project_id', 'in', projectIds));
-  const querySnapshot = await getDocs(q);
+export const getAllTasks = async (): Promise<Task[]> => {
+  const querySnapshot = await getDocs(collection(db, 'tasks'));
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
 };
 
@@ -215,7 +213,7 @@ export const updateTask = async (taskId: string, data: Partial<Task>): Promise<v
 
 // --- Time & Log Management ---
 export const getTimeEntriesInSpace = async (projectIds: string[]): Promise<TimeEntry[]> => {
-    if (projectIds.length === 0) return [];
+    if (!projectIds || projectIds.length === 0) return [];
     const q = query(collection(db, 'time_entries'), where('project_id', 'in', projectIds));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimeEntry));
@@ -356,6 +354,7 @@ export const launchJob = async (
         activities: [],
         comments: [],
         attachments: [],
+        parentId: null
     };
     const taskRef = doc(collection(db, 'tasks'));
     batch.set(taskRef, taskData);
