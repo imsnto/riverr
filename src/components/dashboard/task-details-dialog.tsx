@@ -236,7 +236,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
-                <DialogHeader>
+                <DialogHeader className="p-6 pb-0">
                     <DialogTitle className="sr-only">Task Details: {task.name}</DialogTitle>
                 </DialogHeader>
                 {/* Main Content Grid */}
@@ -518,5 +518,3 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         </Dialog>
     );
 }
-
-    
