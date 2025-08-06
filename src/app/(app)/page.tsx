@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FolderKanban, GanttChart, MessageSquare, Settings, Users, MessageCircleMore, ShieldCheck, FilePlus } from 'lucide-react';
+import { FolderKanban, GanttChart, MessageSquare, Settings, Users, MessageCircleMore, ShieldCheck, FilePlus, GitBranch } from 'lucide-react';
 import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message, Status, Invite, JobFlowTemplate, jobFlowTemplates as mockTemplates, JobFlowPhase, Job, JobFlowTask } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
@@ -66,6 +66,7 @@ export default function Dashboard() {
 
 
   const [channelsViewMode, setChannelsViewMode] = useState<'channel' | 'all-threads'>('channel');
+  const [flowsViewMode, setFlowsViewMode] = useState<'templates' | 'active-jobs'>('templates');
 
 
   useEffect(() => {
@@ -461,8 +462,43 @@ export default function Dashboard() {
             </aside>
           )}
 
+           {/* Secondary Sidebar (for Flows) */}
+           {activeTab === 'flows' && (
+            <aside className="w-56 border-r flex flex-col bg-card">
+                <div className="p-4 border-b">
+                  <h2 className="text-lg font-semibold">Flows</h2>
+                </div>
+                <ScrollArea>
+                  <div className="p-2">
+                    <Button
+                        variant="ghost"
+                        className={cn(
+                          'w-full justify-start gap-2',
+                          flowsViewMode === 'templates' && 'bg-primary/10 text-primary'
+                        )}
+                        onClick={() => setFlowsViewMode('templates')}
+                      >
+                        <FilePlus className="h-4 w-4" />
+                        <span>Templates</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className={cn(
+                          'w-full justify-start gap-2',
+                           flowsViewMode === 'active-jobs' && 'bg-primary/10 text-primary'
+                        )}
+                        onClick={() => setFlowsViewMode('active-jobs')}
+                      >
+                        <GitBranch className="h-4 w-4" />
+                        <span>Active Jobs</span>
+                      </Button>
+                  </div>
+                </ScrollArea>
+            </aside>
+          )}
+
           {/* Main Content */}
-          <main className={cn("flex-1 overflow-auto p-4 md:p-8", activeTab === 'channels' && "p-0", activeTab === 'tasks' && "p-4 md:p-8")}>
+          <main className={cn("flex-1 overflow-auto p-4 md:p-8", (activeTab === 'channels' || activeTab === 'flows') && "p-4 md:p-8", activeTab === 'tasks' && "p-4 md:p-8")}>
               {pendingInvites.length > 0 && (
                 <div className='p-4'>
                 {pendingInvites.map(invite => {
@@ -508,7 +544,7 @@ export default function Dashboard() {
                 </>
               )}
               {activeTab === 'channels' && (
-                <div className="flex flex-1 h-full">
+                <div className="flex flex-1 h-full p-0">
                   <div className="flex-1 overflow-y-auto">
                     {isLoading ? <div className="flex justify-center items-center h-full">Loading channels...</div> : 
                      channelsViewMode === 'channel' ? (
@@ -556,13 +592,17 @@ export default function Dashboard() {
                 <div className="space-y-6">
                   {isLoading ? <div className="flex justify-center items-center h-full">Loading flows...</div> : 
                     <>
-                      <JobFlowTemplateBuilder templates={jobFlowTemplates} allUsers={visibleUsers} onSave={handleSaveJobFlowTemplate} activeSpace={activeSpace} />
-                      <ActiveJobsView
-                        jobs={jobs}
-                        jobFlowTasks={jobFlowTasks}
-                        tasks={tasks}
-                        templates={jobFlowTemplates}
-                      />
+                      {flowsViewMode === 'templates' && (
+                        <JobFlowTemplateBuilder templates={jobFlowTemplates} allUsers={visibleUsers} onSave={handleSaveJobFlowTemplate} activeSpace={activeSpace} />
+                      )}
+                      {flowsViewMode === 'active-jobs' && (
+                         <ActiveJobsView
+                          jobs={jobs}
+                          jobFlowTasks={jobFlowTasks}
+                          tasks={tasks}
+                          templates={jobFlowTemplates}
+                        />
+                      )}
                     </>
                   }
                 </div>
