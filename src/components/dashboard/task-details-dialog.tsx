@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useRef, useState } from 'react';
@@ -371,7 +370,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                  <DetailRow icon={Clock} label="Time Logged">
                                     <div className="flex items-center gap-2">
                                         <Input type="text" value={`${totalTimeTracked.toFixed(2)}h`} className="h-8 bg-muted" readOnly />
-                                        <Button variant="outline" size="sm" className="h-8" disabled>Log Time</Button>
+                                        <Button variant="outline" size="sm" className="h-8">Log Time</Button>
                                     </div>
                                 </DetailRow>
                                 <DetailRow icon={Tag} label="Tags" className="items-start">
