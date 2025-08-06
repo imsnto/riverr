@@ -344,7 +344,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                             <CalendarPicker
                                                 mode="single"
                                                 selected={new Date(task.due_date)}
-                                                onSelect={(date) => handleFieldChange('due_date', date?.toISOString())}
+                                                onSelect={(date) => date && handleFieldChange('due_date', date.toISOString())}
                                                 initialFocus
                                             />
                                         </PopoverContent>
@@ -369,7 +369,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                 </DetailRow>
                                  <DetailRow icon={Clock} label="Time Logged">
                                     <div className="flex items-center gap-2">
-                                        <Input type="text" value={`${totalTimeTracked.toFixed(2)}h`} className="h-8 bg-muted" readOnly />
+                                        <Input type="number" defaultValue={totalTimeTracked} onBlur={(e) => handleFieldChange('time_estimate', parseFloat(e.target.value) || 0)} className="h-8" />
                                         <Button variant="outline" size="sm" className="h-8">Log Time</Button>
                                     </div>
                                 </DetailRow>
@@ -549,3 +549,5 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         </Dialog>
     );
 }
+
+    
