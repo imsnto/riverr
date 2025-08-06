@@ -1,4 +1,3 @@
-
 // src/lib/data.ts
 export interface User {
   id: string;
@@ -393,19 +392,53 @@ export const jobs: Job[] = [
     { id: 'job-1', name: 'Onboard Acme Corp', workflowTemplateId: 'jft-1', space_id: 'space-1', currentPhaseIndex: 0, status: 'active', createdBy: 'user-1', createdAt: '2024-08-01T10:00:00Z', roleUserMapping: {'user-1': 'user-1', 'user-2': 'user-2'} },
     { id: 'job-2', name: 'Onboard Globex Inc', workflowTemplateId: 'jft-1', space_id: 'space-1', currentPhaseIndex: 1, status: 'active', createdBy: 'user-1', createdAt: '2024-08-02T11:00:00Z', roleUserMapping: {'user-1': 'user-1', 'user-2': 'user-2'} },
     { id: 'job-3', name: 'Onboard Jane Doe', workflowTemplateId: 'jft-2', space_id: 'space-2', currentPhaseIndex: 0, status: 'active', createdBy: 'user-4', createdAt: '2024-08-03T12:00:00Z', roleUserMapping: {'user-4': 'user-4', 'user-1': 'user-1'} },
+    { id: 'job-4', name: 'Onboard Synergy Inc', workflowTemplateId: 'jft-1', space_id: 'space-1', currentPhaseIndex: 3, status: 'active', createdBy: 'user-1', createdAt: '2024-08-05T14:00:00Z', roleUserMapping: {'user-1': 'user-1', 'user-2': 'user-2'} },
+    { id: 'job-5', name: 'Onboard John Smith', workflowTemplateId: 'jft-2', space_id: 'space-2', currentPhaseIndex: 1, status: 'active', createdBy: 'user-4', createdAt: '2024-08-06T15:00:00Z', roleUserMapping: {'user-4': 'user-4', 'user-1': 'user-1'} },
+    { id: 'job-6', name: 'Q3 Report', workflowTemplateId: 'jft-3', space_id: 'space-1', currentPhaseIndex: 0, status: 'active', createdBy: 'user-1', createdAt: '2024-08-07T16:00:00Z', roleUserMapping: {'user-1': 'user-1', 'user-2': 'user-2'} },
+    { id: 'job-7', name: 'Q4 Planning', workflowTemplateId: 'jft-3', space_id: 'space-1', currentPhaseIndex: 0, status: 'completed', createdBy: 'user-1', createdAt: '2024-07-01T16:00:00Z', roleUserMapping: {'user-1': 'user-1', 'user-2': 'user-2'} },
+
 ];
 
 export const jobFlowTasks: JobFlowTask[] = [
+    // Existing
     { id: 'jftask-1', jobId: 'job-1', taskId: 'task-jft-1', phaseIndex: 0, createdAt: '2024-08-01T10:00:00Z' },
     { id: 'jftask-2', jobId: 'job-2', taskId: 'task-jft-2', phaseIndex: 0, createdAt: '2024-08-02T11:00:00Z' },
     { id: 'jftask-3', jobId: 'job-2', taskId: 'task-jft-3', phaseIndex: 1, createdAt: '2024-08-02T11:00:00Z' },
     { id: 'jftask-4', jobId: 'job-3', taskId: 'task-jft-4', phaseIndex: 0, createdAt: '2024-08-03T12:00:00Z' },
+
+    // New for job-4 (jft-1)
+    { id: 'jftask-5', jobId: 'job-4', taskId: 'task-jft-5', phaseIndex: 0, createdAt: '2024-08-05T14:00:00Z' },
+    { id: 'jftask-6', jobId: 'job-4', taskId: 'task-jft-6', phaseIndex: 1, createdAt: '2024-08-05T14:00:00Z' },
+    { id: 'jftask-7', jobId: 'job-4', taskId: 'task-jft-7', phaseIndex: 2, createdAt: '2024-08-05T14:00:00Z' },
+    { id: 'jftask-8', jobId: 'job-4', taskId: 'task-jft-8', phaseIndex: 3, createdAt: '2024-08-05T14:00:00Z' },
+
+    // New for job-5 (jft-2)
+    { id: 'jftask-9', jobId: 'job-5', taskId: 'task-jft-9', phaseIndex: 0, createdAt: '2024-08-06T15:00:00Z' },
+    { id: 'jftask-10', jobId: 'job-5', taskId: 'task-jft-10', phaseIndex: 1, createdAt: '2024-08-06T15:00:00Z' },
+
+    // New for job-6 (jft-3)
+    { id: 'jftask-11', jobId: 'job-6', taskId: 'task-jft-11', phaseIndex: 0, createdAt: '2024-08-07T16:00:00Z' },
+
+     // New for job-7 (jft-3)
+    { id: 'jftask-12', jobId: 'job-7', taskId: 'task-jft-12', phaseIndex: 0, createdAt: '2024-07-01T16:00:00Z' },
+
 ];
 
 // Let's add the tasks for the jobs
 tasks.push(
+    // Existing
     { id: 'task-jft-1', project_id: null, name: 'Qualify Lead: Onboard Acme Corp', description: '', status: 'In Progress', assigned_to: 'user-1', due_date: '2024-08-02T10:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null },
     { id: 'task-jft-2', project_id: null, name: 'Qualify Lead: Onboard Globex Inc', description: '', status: 'Done', assigned_to: 'user-1', due_date: '2024-08-03T11:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null },
     { id: 'task-jft-3', project_id: null, name: 'Initial Outreach Call with Onboard Globex Inc', description: '', status: 'In Progress', assigned_to: 'user-1', due_date: '2024-08-04T11:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null },
-    { id: 'task-jft-4', project_id: null, name: 'Send Welcome Packet to Onboard Jane Doe', description: '', status: 'In Progress', assigned_to: 'user-4', due_date: '2024-08-04T12:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null }
-)
+    { id: 'task-jft-4', project_id: null, name: 'Send Welcome Packet to Onboard Jane Doe', description: '', status: 'In Progress', assigned_to: 'user-4', due_date: '2024-08-04T12:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null },
+    
+    // New tasks for seeded jobs
+    { id: 'task-jft-5', project_id: null, name: 'Qualify Lead: Onboard Synergy Inc', description: '', status: 'Done', assigned_to: 'user-1', due_date: '2024-08-06T14:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null },
+    { id: 'task-jft-6', project_id: null, name: 'Initial Outreach Call with Onboard Synergy Inc', description: '', status: 'Done', assigned_to: 'user-1', due_date: '2024-08-07T14:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null },
+    { id: 'task-jft-7', project_id: null, name: 'Schedule Product Demo for Onboard Synergy Inc', description: '', status: 'Done', assigned_to: 'user-2', due_date: '2024-08-09T14:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null },
+    { id: 'task-jft-8', project_id: null, name: 'Send Proposal to Onboard Synergy Inc', description: '', status: 'In Progress', assigned_to: 'user-1', due_date: '2024-08-12T14:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null },
+    { id: 'task-jft-9', project_id: null, name: 'Send Welcome Packet to Onboard John Smith', description: '', status: 'Done', assigned_to: 'user-4', due_date: '2024-08-07T15:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null },
+    { id: 'task-jft-10', project_id: null, name: 'HR Orientation for Onboard John Smith', description: '', status: 'Pending', assigned_to: 'user-4', due_date: '2024-08-08T15:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null },
+    { id: 'task-jft-11', project_id: null, name: 'Task A for Q3 Report', description: '', status: 'In Progress', assigned_to: 'user-1', due_date: '2024-08-08T16:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null },
+    { id: 'task-jft-12', project_id: null, name: 'Task A for Q4 Planning', description: '', status: 'Done', assigned_to: 'user-1', due_date: '2024-07-02T16:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null }
+);
