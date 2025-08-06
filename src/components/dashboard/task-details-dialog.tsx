@@ -84,7 +84,7 @@ interface TaskDetailsDialogProps {
     onOpenChange: (isOpen: boolean) => void;
     onUpdateTask: (task: Task) => void;
     onAddTask: (task: Omit<Task, 'id'>) => void;
-    onTaskSelect: (task: Task) => void;
+    onTaskSelect: (task: Task, allTasks: Task[]) => void;
     statuses: string[];
     allUsers: User[];
     allTasks: Task[];
@@ -404,7 +404,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                                     checked={subtask.status === 'Done'}
                                                     onCheckedChange={(checked) => handleUpdateSubtaskStatus(subtask, !!checked)}
                                                 />
-                                                <Button variant="link" className="p-0 h-auto justify-start flex-1" onClick={() => onTaskSelect(subtask)}>
+                                                <Button variant="link" className="p-0 h-auto justify-start flex-1" onClick={() => onTaskSelect(subtask, allTasks)}>
                                                     <label htmlFor={`subtask-${subtask.id}`} className={cn("flex-1 cursor-pointer", subtask.status === 'Done' && 'line-through text-muted-foreground')}>
                                                         {subtask.name}
                                                     </label>
@@ -525,3 +525,5 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         </Dialog>
     );
 }
+
+    
