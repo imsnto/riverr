@@ -405,6 +405,24 @@ export const tasks: Task[] = [
     comments: [],
     attachments: [],
     subtasks: []
+  },
+  {
+    id: 'task-job-1',
+    project_id: 'proj-2',
+    name: 'Define feature scope for Project Phoenix',
+    description: 'Initial planning and feature definition.',
+    status: 'Backlog',
+    assigned_to: 'user-2',
+    due_date: '2024-08-30T23:59:59Z',
+    priority: 'High',
+    sprint_points: null,
+    tags: ['JobFlow', 'Project Phoenix'],
+    time_estimate: null,
+    relationships: [],
+    activities: [],
+    comments: [],
+    attachments: [],
+    subtasks: []
   }
 ];
 
@@ -496,9 +514,9 @@ export const jobFlowTemplates: JobFlowTemplate[] = [
         createdBy: 'user-1',
         createdAt: '2024-08-01T00:00:00Z',
         phases: [
-            { id: 'phase-1-1', phaseIndex: 0, name: 'Initial Contact', defaultAssigneeId: 'user-1', taskTitleTemplate: 'Follow up with {{client_name}}', taskDescriptionTemplate: 'Initial follow-up call after demo.' },
-            { id: 'phase-1-2', phaseIndex: 1, name: 'Kick-off Meeting', defaultAssigneeId: 'user-2', taskTitleTemplate: 'Schedule kick-off meeting with {{client_name}}', taskDescriptionTemplate: 'Send calendar invites and prepare agenda.' },
-            { id: 'phase-1-3', phaseIndex: 2, name: 'Project Setup', defaultAssigneeId: 'user-1', taskTitleTemplate: 'Set up project for {{client_name}} in Asana', taskDescriptionTemplate: 'Create project, invite team, and set initial tasks.' },
+            { id: 'phase-1-1', phaseIndex: 0, name: 'Initial Contact', defaultAssigneeId: 'user-1', taskTitleTemplate: 'Follow up with {{job_name}}', taskDescriptionTemplate: 'Initial follow-up call after demo.' },
+            { id: 'phase-1-2', phaseIndex: 1, name: 'Kick-off Meeting', defaultAssigneeId: 'user-2', taskTitleTemplate: 'Schedule kick-off meeting with {{job_name}}', taskDescriptionTemplate: 'Send calendar invites and prepare agenda.' },
+            { id: 'phase-1-3', phaseIndex: 2, name: 'Project Setup', defaultAssigneeId: 'user-1', taskTitleTemplate: 'Set up project for {{job_name}}', taskDescriptionTemplate: 'Create project, invite team, and set initial tasks.' },
         ]
     },
     {
@@ -508,9 +526,57 @@ export const jobFlowTemplates: JobFlowTemplate[] = [
         createdBy: 'user-2',
         createdAt: '2024-08-02T00:00:00Z',
         phases: [
-            { id: 'phase-2-1', phaseIndex: 0, name: 'QA & Testing', defaultAssigneeId: 'user-3', taskTitleTemplate: 'Perform full QA cycle on {{website_url}}', taskDescriptionTemplate: 'Check all pages, forms, and functionality across browsers.' },
-            { id: 'phase-2-2', phaseIndex: 1, name: 'DNS Propagation', defaultAssigneeId: 'user-4', taskTitleTemplate: 'Update DNS records for {{website_url}}', taskDescriptionTemplate: 'Point domain to new server and monitor propagation.' },
-            { id: 'phase-2-3', phaseIndex: 2, name: 'Post-launch Monitoring', defaultAssigneeId: 'user-1', taskTitleTemplate: 'Monitor {{website_url}} for 24 hours post-launch', taskDescriptionTemplate: 'Watch for errors, performance issues, or downtime.' },
+            { id: 'phase-2-1', phaseIndex: 0, name: 'QA & Testing', defaultAssigneeId: 'user-3', taskTitleTemplate: 'Perform full QA cycle on {{job_name}}', taskDescriptionTemplate: 'Check all pages, forms, and functionality across browsers.' },
+            { id: 'phase-2-2', phaseIndex: 1, name: 'DNS Propagation', defaultAssigneeId: 'user-4', taskTitleTemplate: 'Update DNS records for {{job_name}}', taskDescriptionTemplate: 'Point domain to new server and monitor propagation.' },
+            { id: 'phase-2-3', phaseIndex: 2, name: 'Post-launch Monitoring', defaultAssigneeId: 'user-1', taskTitleTemplate: 'Monitor {{job_name}} for 24 hours post-launch', taskDescriptionTemplate: 'Watch for errors, performance issues, or downtime.' },
         ]
+    },
+    {
+      id: 'jft-3',
+      name: 'Product Development Cycle',
+      description: 'A 10-phase cycle for new feature development from idea to launch.',
+      createdBy: 'user-1',
+      createdAt: '2024-08-10T00:00:00Z',
+      phases: [
+          { id: 'phase-3-01', phaseIndex: 0, name: 'Feature Definition', defaultAssigneeId: 'user-2', taskTitleTemplate: 'Define feature scope for {{job_name}}', taskDescriptionTemplate: 'Create the product requirements document (PRD).' },
+          { id: 'phase-3-02', phaseIndex: 1, name: 'UX/UI Design', defaultAssigneeId: 'user-1', taskTitleTemplate: 'Design mockups for {{job_name}}', taskDescriptionTemplate: 'Create high-fidelity mockups in Figma.' },
+          { id: 'phase-3-03', phaseIndex: 2, name: 'Design Review', defaultAssigneeId: 'user-2', taskTitleTemplate: 'Review and approve designs for {{job_name}}', taskDescriptionTemplate: 'Final approval from product lead.' },
+          { id: 'phase-3-04', phaseIndex: 3, name: 'Technical Spec', defaultAssigneeId: 'user-4', taskTitleTemplate: 'Write technical spec for {{job_name}}', taskDescriptionTemplate: 'Document the architecture, APIs, and data models.' },
+          { id: 'phase-3-05', phaseIndex: 4, name: 'Backend Development', defaultAssigneeId: 'user-4', taskTitleTemplate: 'Build backend for {{job_name}}', taskDescriptionTemplate: 'Implement server-side logic and database changes.' },
+          { id: 'phase-3-06', phaseIndex: 5, name: 'Frontend Development', defaultAssigneeId: 'user-3', taskTitleTemplate: 'Build frontend for {{job_name}}', taskDescriptionTemplate: 'Implement the user interface and connect to backend.' },
+          { id: 'phase-3-07', phaseIndex: 6, name: 'QA Testing', defaultAssigneeId: 'user-3', taskTitleTemplate: 'Perform QA testing on {{job_name}}', taskDescriptionTemplate: 'Run test cases and log bugs.' },
+          { id: 'phase-3-08', phaseIndex: 7, name: 'User Acceptance Testing (UAT)', defaultAssigneeId: 'user-2', taskTitleTemplate: 'Conduct UAT for {{job_name}}', taskDescriptionTemplate: 'Get feedback from internal stakeholders.' },
+          { id: 'phase-3-09', phaseIndex: 8, name: 'Deployment', defaultAssigneeId: 'user-4', taskTitleTemplate: 'Deploy {{job_name}} to production', taskDescriptionTemplate: 'Merge to main and deploy.' },
+          { id: 'phase-3-10', phaseIndex: 9, name: 'Post-Launch Monitoring', defaultAssigneeId: 'user-1', taskTitleTemplate: 'Monitor {{job_name}} post-launch', taskDescriptionTemplate: 'Watch for production issues and user feedback.' },
+      ]
+  }
+];
+
+export const jobs: Job[] = [
+    {
+        id: 'job-1',
+        name: 'Project Phoenix',
+        workflowTemplateId: 'jft-3',
+        currentPhaseIndex: 0,
+        status: 'active',
+        createdBy: 'user-1',
+        createdAt: '2024-08-11T00:00:00Z',
+        space_id: 'space-1',
+        roleUserMapping: {
+            'user-1': 'user-1',
+            'user-2': 'user-2',
+            'user-3': 'user-3',
+            'user-4': 'user-4',
+        }
     }
+];
+
+export const jobFlowTasks: JobFlowTask[] = [
+  {
+    id: 'jftask-1',
+    jobId: 'job-1',
+    phaseIndex: 0,
+    taskId: 'task-job-1',
+    createdAt: '2024-08-11T00:00:00Z'
+  }
 ];

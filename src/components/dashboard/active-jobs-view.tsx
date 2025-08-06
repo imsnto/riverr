@@ -6,6 +6,7 @@ import { Job, JobFlowTask, JobFlowTemplate, Task } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Check, Circle, GitBranch, Loader2 } from 'lucide-react';
+import { Button } from '../ui/button';
 
 interface ActiveJobsViewProps {
   jobs: Job[];
@@ -44,6 +45,11 @@ const PhaseConnector = () => {
 export default function ActiveJobsView({ jobs, jobFlowTasks, tasks, templates }: ActiveJobsViewProps) {
   
   const activeJobs = jobs.filter(j => j.status === 'active');
+
+  const handleJobClick = (job: Job) => {
+    // This will eventually open a details dialog
+    console.log("Clicked job:", job.id);
+  }
   
   return (
     <Card>
@@ -63,33 +69,35 @@ export default function ActiveJobsView({ jobs, jobFlowTasks, tasks, templates }:
           if (!template) return null;
 
           return (
-            <Card key={job.id}>
-              <CardHeader>
-                <CardTitle className="text-lg">{job.name}</CardTitle>
-                <CardDescription>
-                  Using template: <span className="font-semibold">{template.name}</span>
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center">
-                    {template.phases.map((phase, index) => {
-                        let status: 'completed' | 'in-progress' | 'pending' = 'pending';
-                        if(job.currentPhaseIndex > phase.phaseIndex) {
-                            status = 'completed';
-                        } else if (job.currentPhaseIndex === phase.phaseIndex) {
-                            status = 'in-progress';
-                        }
+            <Button variant="ghost" className="w-full h-auto p-0" key={job.id} onClick={() => handleJobClick(job)}>
+              <Card className="w-full hover:bg-accent/50 transition-colors">
+                <CardHeader>
+                  <CardTitle className="text-lg">{job.name}</CardTitle>
+                  <CardDescription>
+                    Using template: <span className="font-semibold">{template.name}</span>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center">
+                      {template.phases.map((phase, index) => {
+                          let status: 'completed' | 'in-progress' | 'pending' = 'pending';
+                          if(job.currentPhaseIndex > phase.phaseIndex) {
+                              status = 'completed';
+                          } else if (job.currentPhaseIndex === phase.phaseIndex) {
+                              status = 'in-progress';
+                          }
 
-                        return (
-                            <React.Fragment key={phase.id}>
-                                <PhaseNode name={phase.name} status={status} />
-                                {index < template.phases.length - 1 && <PhaseConnector />}
-                            </React.Fragment>
-                        )
-                    })}
-                </div>
-              </CardContent>
-            </Card>
+                          return (
+                              <React.Fragment key={phase.id}>
+                                  <PhaseNode name={phase.name} status={status} />
+                                  {index < template.phases.length - 1 && <PhaseConnector />}
+                              </React.Fragment>
+                          )
+                      })}
+                  </div>
+                </CardContent>
+              </Card>
+            </Button>
           );
         })}
       </CardContent>
