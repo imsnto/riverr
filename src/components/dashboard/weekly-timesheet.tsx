@@ -65,26 +65,47 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
   
   const totalWeekHours = dailyTotals.reduce((a, b) => a + b, 0);
 
-  const handleUpdateTask = (updatedTask: Task) => {
-    setTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task));
-    if (selectedTask && selectedTask.id === updatedTask.id) {
-      setSelectedTask(updatedTask);
+  const handleUpdateTask = (updatedTask: Task, tempId?: string) => {
+    let newTasks: Task[] = [];
+    setTasks(prevTasks => {
+        const taskIndex = prevTasks.findIndex(t => t.id === (tempId || updatedTask.id));
+        
+        if (taskIndex !== -1) {
+            newTasks = [...prevTasks];
+            newTasks[taskIndex] = updatedTask;
+            return newTasks;
+        }
+        newTasks = [...prevTasks, updatedTask];
+        return newTasks;
+    });
+
+    if (selectedTask && selectedTask.id === (tempId || updatedTask.id)) {
+        setSelectedTask(updatedTask);
     }
-  };
+};
   
   const handleAddTask = (newTask: Task) => {
     setTasks(prev => [...prev, newTask]);
   }
 
   const handleTaskClick = (task: Task | undefined) => {
-    if (task) {
-      const fullTask = initialTasks.find(t => t.id === task.id);
-      if(fullTask) setSelectedTask(fullTask);
+    if (!task) return;
+    // Make sure we grab the fresh version from initialTasks[] by id
+    const freshTask = initialTasks.find(t => t.id === task.id);
+    if (freshTask) {
+        setSelectedTask({ ...freshTask }); // clone to force rerender
+    } else {
+        // Fallback for temp tasks that might not be in the main list yet
+        setSelectedTask(task);
+        console.warn("Selected task not found in main tasks array:", task.id);
     }
   };
 
   // Dummy handlers for TaskDetailsDialog props that are not used in this context
-  const handleRemoveTask = (taskId: string) => {};
+  const handleRemoveTask = (taskId: string) => {
+     setTasks(prev => prev.filter(t => t.id !== taskId));
+  };
+
   const handleLogTime = (timeData: Omit<TimeEntry, 'id'>) => {};
 
   return (
@@ -164,6 +185,7 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
 
       {selectedTask && (
         <TaskDetailsDialog
+          key={selectedTask.id}
           task={selectedTask}
           isOpen={!!selectedTask}
           timeEntries={timeEntries.filter(t => t.task_id === selectedTask.id)}
