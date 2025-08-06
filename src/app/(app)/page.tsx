@@ -5,7 +5,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarFooter } from '@/components/ui/sidebar';
 import { FolderKanban, MessageSquare, Timer, Settings, UserPlus, FilePlus, Bot, Workflow, BarChart } from 'lucide-react';
-import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, Invite, Status, JobFlowTemplate, Job, JobFlowTask, PhaseTemplate, TaskTemplate } from '@/lib/data';
+import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, Invite, Status, JobFlowTemplate, Job, JobFlowTask, PhaseTemplate, TaskTemplate, Activity } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import TaskBoard from '@/components/dashboard/task-board';
 import { useToast } from '@/hooks/use-toast';
@@ -52,6 +52,7 @@ import JobFlowTemplateBuilder from '@/components/dashboard/job-flow-template-bui
 import PhaseTemplateBuilder from '@/components/dashboard/phase-template-builder';
 import TaskTemplateBuilder from '@/components/dashboard/task-template-builder';
 import JobFlowBoard from '@/components/dashboard/job-flow-board';
+import { Button } from '@/components/ui/button';
 
 
 type View = 'overview' | 'tasks' | 'messages' | 'timesheets' | 'reports' | 'flows' | 'settings';
@@ -65,7 +66,7 @@ const LoadingState = () => (
 );
 
 export default function Dashboard() {
-    const { appUser, userSpaces, setUserSpaces, signOut } = useAuth();
+    const { appUser, userSpaces, setUserSpaces } = useAuth();
     const { toast } = useToast();
     
     const [activeSpace, setActiveSpace] = useState<Space | null>(null);
@@ -97,20 +98,15 @@ export default function Dashboard() {
     const fetchData = async (space: Space) => {
         setIsLoading(true);
         try {
+            // First, fetch data that doesn't have dependencies
             const [
-                users, projects, tasks, timeEntries, slackLogs, 
-                channels, messages, jobTemplates, jobs, jobFlowTasks,
-                phaseTpls, taskTpls
+                users, fetchedProjects, allTasks, fetchedChannels, jobTemplates, 
+                fetchedJobs, fetchedJobFlowTasks, phaseTpls, taskTpls
             ] = await Promise.all([
                 getAllUsers(),
                 getProjectsInSpace(space.id),
                 getAllTasks(), // In a larger app, this should be paginated/filtered
-                getTimeEntriesInSpace(projects.map(p => p.id)),
-                getSlackMeetingLogsInSpace(space.id),
                 getChannelsInSpace(space.id),
-                Promise.all(
-                    (await getChannelsInSpace(space.id)).map(c => getMessagesInChannel(c.id))
-                ).then(msgArrays => msgArrays.flat()),
                 getJobFlowTemplates(),
                 getAllJobs(space.id),
                 getAllJobFlowTasks(space.id),
@@ -119,21 +115,32 @@ export default function Dashboard() {
             ]);
 
             setAllUsers(users);
-            setProjects(projects);
-            setTasks(tasks);
-            setTimeEntries(timeEntries);
-            setSlackLogs(slackLogs);
-            setChannels(channels);
-            setMessages(messages);
+            setProjects(fetchedProjects);
+            setTasks(allTasks);
+            setChannels(fetchedChannels);
             setJobFlowTemplates(jobTemplates);
-            setJobs(jobs);
-            setJobFlowTasks(jobFlowTasks);
+            setJobs(fetchedJobs);
+            setJobFlowTasks(fetchedJobFlowTasks);
             setPhaseTemplates(phaseTpls);
             setTaskTemplates(taskTpls);
 
-            if (channels.length > 0 && !activeChannelId) {
-                setActiveChannelId(channels[0].id);
+            // Now, fetch data that depends on the results above
+            const [fetchedTimeEntries, fetchedSlackLogs, fetchedMessages] = await Promise.all([
+                getTimeEntriesInSpace(fetchedProjects.map(p => p.id)),
+                getSlackMeetingLogsInSpace(space.id),
+                Promise.all(
+                    fetchedChannels.map(c => getMessagesInChannel(c.id))
+                ).then(msgArrays => msgArrays.flat()),
+            ]);
+            
+            setTimeEntries(fetchedTimeEntries);
+            setSlackLogs(fetchedSlackLogs);
+            setMessages(fetchedMessages);
+
+            if (fetchedChannels.length > 0 && !activeChannelId) {
+                setActiveChannelId(fetchedChannels[0].id);
             }
+
         } catch (error) {
             console.error('Failed to fetch data:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not load workspace data.' });
@@ -290,7 +297,7 @@ export default function Dashboard() {
     
     const handleCreateTask = async (taskData: Omit<Task, 'id'>) => {
        const newTask = await handleAddTask(taskData);
-       if(newTask) {
+       if(newTask && activeThread) {
            const linkActivity: Activity = {
              id: `act-${Date.now()}`,
              user_id: appUser!.id,
@@ -299,12 +306,6 @@ export default function Dashboard() {
              comment_id: `comment-${Date.now()}`,
              comment: `Created task: "${newTask.name}" from this thread.`,
            }
-            const updatedMessage = { 
-                ...activeThread!, 
-                linked_task_id: newTask.id,
-            };
-            // This is just a UI update, we're not saving this activity to the message
-            // In a real app we might want to do that.
             
             // This is a hacky way to make the task appear on the message
             const messageWithTask = {
@@ -569,3 +570,5 @@ export default function Dashboard() {
         </SidebarProvider>
     );
 }
+
+    
