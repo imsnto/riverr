@@ -395,7 +395,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                             <div>
                                 <h3 className="text-lg font-semibold mb-2">Subtasks</h3>
                                  <div className="space-y-2">
-                                    {subtasks.map(subtask => {
+                                    {subtasks.map((subtask) => {
                                         const subtaskAssignee = allUsers.find(u => u.id === subtask.assigned_to);
                                         return (
                                             <div key={subtask.id} className="flex items-center gap-2 group p-1 rounded-md hover:bg-accent/50">
@@ -525,4 +525,3 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         </Dialog>
     );
 }
-
