@@ -161,6 +161,7 @@ export interface Message {
 export interface JobFlowSubtaskTemplate {
     id: string;
     titleTemplate: string;
+    defaultAssigneeId: string;
 }
 
 export interface JobFlowTaskTemplate {

@@ -40,6 +40,7 @@ interface JobFlowTemplateBuilderProps {
 const subtaskTemplateSchema = z.object({
   id: z.string().optional(),
   titleTemplate: z.string().min(1, 'Subtask title cannot be empty'),
+  defaultAssigneeId: z.string().min(1, "Assignee is required"),
 });
 
 const taskTemplateSchema = z.object({
@@ -208,7 +209,7 @@ const PhaseTasks = ({ control, phaseIndex, allUsers, errors }: { control: any, p
                     </div>
                     
                     <Separator className="my-2" />
-                    <Subtasks control={control} phaseIndex={phaseIndex} taskIndex={taskIndex} errors={errors} />
+                    <Subtasks control={control} phaseIndex={phaseIndex} taskIndex={taskIndex} allUsers={allUsers} errors={errors} />
 
 
                     <Button type="button" variant="ghost" size="icon" onClick={() => remove(taskIndex)} className="absolute -top-2 -right-2 h-6 w-6">
@@ -229,7 +230,7 @@ const PhaseTasks = ({ control, phaseIndex, allUsers, errors }: { control: any, p
     )
 }
 
-const Subtasks = ({ control, phaseIndex, taskIndex, errors }: { control: any; phaseIndex: number; taskIndex: number; errors: any }) => {
+const Subtasks = ({ control, phaseIndex, taskIndex, allUsers, errors }: { control: any; phaseIndex: number; taskIndex: number; allUsers: User[], errors: any }) => {
     const { fields, append, remove } = useFieldArray({
         control,
         name: `phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates`,
@@ -239,15 +240,38 @@ const Subtasks = ({ control, phaseIndex, taskIndex, errors }: { control: any; ph
         <div className="space-y-2 pl-4 border-l-2">
             <Label className="text-xs">Subtask Templates</Label>
             {fields.map((subtaskField, subtaskIndex) => (
-                <div key={subtaskField.id} className="flex items-center gap-2">
-                    <Input
-                        {...control.register(`phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates.${subtaskIndex}.titleTemplate`)}
-                        placeholder="e.g., Send follow-up email"
-                        className="bg-background h-8"
-                    />
-                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(subtaskIndex)} className="h-8 w-8">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                <div key={subtaskField.id} className="space-y-2 p-2 border rounded-md bg-background">
+                    <div className="flex items-center gap-2">
+                        <Input
+                            {...control.register(`phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates.${subtaskIndex}.titleTemplate`)}
+                            placeholder="e.g., Send follow-up email"
+                            className="bg-background h-8"
+                        />
+                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(subtaskIndex)} className="h-8 w-8">
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                    </div>
+                    <div>
+                         <Controller
+                            control={control}
+                            name={`phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates.${subtaskIndex}.defaultAssigneeId`}
+                            render={({ field }) => (
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <SelectTrigger className="bg-muted/50 h-8 text-xs">
+                                        <SelectValue placeholder="Assign subtask..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {allUsers.map(user => (
+                                            <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                            </Select>
+                            )}
+                        />
+                        {errors.phases?.[phaseIndex]?.tasks?.[taskIndex]?.subtaskTemplates?.[subtaskIndex]?.defaultAssigneeId && (
+                            <p className="text-sm text-destructive">{errors.phases[phaseIndex]?.tasks[taskIndex]?.subtaskTemplates[subtaskIndex]?.defaultAssigneeId?.message}</p>
+                        )}
+                    </div>
                 </div>
             ))}
              <Button
@@ -255,7 +279,7 @@ const Subtasks = ({ control, phaseIndex, taskIndex, errors }: { control: any; ph
                 variant="outline"
                 size="sm"
                 className="w-full h-8"
-                onClick={() => append({ id: `subtask-${Date.now()}`, titleTemplate: '' })}
+                onClick={() => append({ id: `subtask-${Date.now()}`, titleTemplate: '', defaultAssigneeId: '' })}
             >
                 <Plus className="mr-2 h-4 w-4" /> Add Subtask Template
             </Button>

@@ -312,17 +312,23 @@ const createSubtasks = (
     batch: any,
     subtaskTemplates: any[],
     parentTaskId: string,
-    assigneeId: string,
+    roleUserMapping: Record<string, string>,
     jobName: string
 ) => {
     for (const subtaskTemplate of subtaskTemplates) {
+        const subtaskAssigneeId = roleUserMapping[subtaskTemplate.defaultAssigneeId];
+        if (!subtaskAssigneeId) {
+             console.warn(`No user mapped for subtask assignee ID ${subtaskTemplate.defaultAssigneeId}. Skipping subtask.`);
+             continue;
+        }
+
         const subtaskTitle = subtaskTemplate.titleTemplate.replace(/\{\{job_name\}\}/g, jobName);
         const subtaskData: Omit<Task, 'id'> = {
             project_id: null,
             name: subtaskTitle,
             description: '',
             status: 'Pending',
-            assigned_to: assigneeId,
+            assigned_to: subtaskAssigneeId,
             due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(),
             priority: null, sprint_points: null, tags: ['JobFlow', jobName], time_estimate: null,
             relationships: [], activities: [], comments: [], attachments: [], parentId: parentTaskId
@@ -394,7 +400,7 @@ export const launchJob = async (
 
         // 2a. Create subtasks if they exist in the template
         if (taskTemplate.subtaskTemplates && taskTemplate.subtaskTemplates.length > 0) {
-            createSubtasks(batch, taskTemplate.subtaskTemplates, taskRef.id, assigneeId, jobName);
+            createSubtasks(batch, taskTemplate.subtaskTemplates, taskRef.id, roleUserMapping, jobName);
         }
 
 
@@ -451,7 +457,7 @@ export const updateJobPhase = async (
 
              // Create subtasks if they exist in the template
             if (taskTemplate.subtaskTemplates && taskTemplate.subtaskTemplates.length > 0) {
-                createSubtasks(batch, taskTemplate.subtaskTemplates, taskRef.id, assigneeId, job.name);
+                createSubtasks(batch, taskTemplate.subtaskTemplates, taskRef.id, job.roleUserMapping, job.name);
             }
     
             // Create the JobFlowTask link
