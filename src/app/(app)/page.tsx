@@ -182,12 +182,23 @@ export default function Dashboard() {
     }
   }
 
-  const handleUpdateTasks = async (updatedTasks: Task[]) => {
+  const handleUpdateTasks = async (updatedTasks: Task[] = []) => {
+    if (!Array.isArray(updatedTasks)) {
+      console.error("Expected an array of tasks but got:", updatedTasks);
+      return;
+    }
+    
+    // Batch update Firestore for performance
+    const batch = [];
     for (const task of updatedTasks) {
       const originalTask = tasks.find(t => t.id === task.id);
       if (originalTask && JSON.stringify(originalTask) !== JSON.stringify(task)) {
-        await updateTask(task.id, task);
+        // In a real app, you'd probably want to use a write batch here from Firestore
+        batch.push(updateTask(task.id, task));
       }
+    }
+    if (batch.length > 0) {
+        await Promise.all(batch);
     }
     setTasks(updatedTasks);
   }
