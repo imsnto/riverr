@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Task, Comment, Activity, User, Project, Attachment } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
@@ -236,6 +236,9 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
+                <DialogHeader>
+                    <DialogTitle className="sr-only">Task Details: {task.name}</DialogTitle>
+                </DialogHeader>
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 flex-1 overflow-hidden">
                     {/* Left Panel: Task Details */}
@@ -515,3 +518,5 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         </Dialog>
     );
 }
+
+    
