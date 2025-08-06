@@ -275,7 +275,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
         onRemoveTask(subtaskId);
     }
     
-    const sortedActivities = [...(task.activities || []), ...timeEntries.map(t => ({
+    const sortedActivities = [...(task.activities || []), ...(timeEntries || []).map(t => ({
         id: t.id,
         user_id: t.user_id,
         timestamp: t.end_time,
@@ -373,7 +373,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                             {task.due_date ? format(new Date(task.due_date), "PPP") : <span>Pick a date</span>}
                                         </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0">
+                                        <PopoverContent className="w-auto p-0 z-[1000]">
                                             <CalendarPicker
                                                 mode="single"
                                                 selected={new Date(task.due_date)}
