@@ -3,12 +3,13 @@
 
 import React from 'react';
 import { Job, JobFlowTemplate, JobFlowTask, Task, User, Status } from '@/lib/data';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Check, Circle, Loader2, GitBranch, Briefcase, User as UserIcon } from 'lucide-react';
+import { Check, Circle, Loader2, GitBranch, Briefcase, User as UserIcon, CheckCircle2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Separator } from '../ui/separator';
+import { Button } from '../ui/button';
 
 interface JobDetailsDialogProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ interface JobDetailsDialogProps {
   jobFlowTasks: JobFlowTask[];
   tasks: Task[];
   allUsers: User[];
+  onAdvancePhase: () => void;
+  onUpdateTask: (task: Task) => void;
 }
 
 const getInitials = (name: string) => {
@@ -32,9 +35,19 @@ export default function JobDetailsDialog({
   jobFlowTasks,
   tasks,
   allUsers,
+  onAdvancePhase,
+  onUpdateTask,
 }: JobDetailsDialogProps) {
 
   if (!template) return null;
+  
+  const currentPhase = template.phases.find(p => p.phaseIndex === job.currentPhaseIndex);
+  const tasksForCurrentPhase = jobFlowTasks
+    .filter(jft => jft.phaseIndex === job.currentPhaseIndex)
+    .map(jft => tasks.find(t => t.id === jft.taskId))
+    .filter((t): t is Task => !!t);
+
+  const areAllTasksComplete = tasksForCurrentPhase.every(t => t.status === 'Done');
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -62,6 +75,7 @@ export default function JobDetailsDialog({
                     }
 
                     const phaseTaskLinks = jobFlowTasks.filter(jft => jft.phaseIndex === phase.phaseIndex);
+                    const phaseTasks = phaseTaskLinks.map(jft => tasks.find(t => t.id === jft.taskId)).filter(Boolean) as Task[];
 
                     const statusIcon = {
                         completed: <Check className="h-5 w-5 text-white" />,
@@ -85,26 +99,27 @@ export default function JobDetailsDialog({
                             <div className="flex-1 pt-1.5">
                                 <p className="font-semibold">{phase.name}</p>
                                 <div className="mt-2 space-y-2">
-                                {phaseTaskLinks.length > 0 ? phaseTaskLinks.map(link => {
-                                    const task = tasks.find(t => t.id === link.taskId);
-                                    if (!task) return <div key={link.id} className="text-sm text-muted-foreground italic">Task not found...</div>;
-                                    
+                                {phaseTasks.length > 0 ? phaseTasks.map(task => {
                                     const assignee = allUsers.find(u => u.id === task.assigned_to);
-
+                                    const isComplete = task.status === 'Done';
                                     return (
-                                        <div key={task.id} className="text-sm text-muted-foreground p-2 border rounded-md">
+                                        <div key={task.id} className="text-sm text-muted-foreground p-2 border rounded-md flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                                <Briefcase className="h-4 w-4" />
-                                                <span>Task: <span className="font-medium text-foreground">{task.name}</span></span>
+                                                <button onClick={() => onUpdateTask({ ...task, status: isComplete ? 'Pending' : 'Done' })}>
+                                                {isComplete ? (
+                                                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                                ) : (
+                                                    <Circle className="h-5 w-5 text-muted-foreground" />
+                                                )}
+                                                </button>
+                                                <span className={cn(isComplete && 'line-through')}>{task.name}</span>
                                             </div>
-                                             <div className="flex items-center gap-2 mt-1">
-                                                <UserIcon className="h-4 w-4" />
-                                                <span>Assigned to: <span className="font-medium text-foreground">{assignee?.name || 'Unknown'}</span></span>
-                                            </div>
-                                             <div className="flex items-center gap-2 mt-1">
-                                                <Circle className="h-4 w-4" />
-                                                <span>Status: <span className="font-medium text-foreground">{task.status}</span></span>
-                                            </div>
+                                             {assignee && (
+                                                <Avatar className="h-6 w-6">
+                                                    <AvatarImage src={assignee.avatarUrl} />
+                                                    <AvatarFallback>{getInitials(assignee.name)}</AvatarFallback>
+                                                </Avatar>
+                                             )}
                                         </div>
                                     )
                                 }) : (
@@ -117,6 +132,15 @@ export default function JobDetailsDialog({
                 })}
             </div>
         </ScrollArea>
+        {currentPhase && areAllTasksComplete && (
+            <DialogFooter>
+                {currentPhase.requiresReview ? (
+                    <Button>Submit for Review</Button>
+                ) : (
+                    <Button onClick={onAdvancePhase}>Complete Phase</Button>
+                )}
+            </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -1,88 +1,73 @@
-// DATA STRUCTURES
 
-export interface Permissions {
-  canViewTasks: boolean;
-  canEditTasks: boolean;
-  canLogTime: boolean;
-  canSeeAllTimesheets: boolean;
-  canViewReports: boolean;
-  canInviteMembers: boolean;
-}
 
-export interface SpaceMember {
-  role: 'Admin' | 'Member';
-  permissions?: Permissions;
-}
-
-export interface Status {
-  name: string;
-  color: string;
-}
-
-export interface Space {
-  id: string;
-  name: string;
-  members: Record<string, SpaceMember>; // From string[] to Record<string, SpaceMember>
-  statuses?: Status[];
-}
-
+// src/lib/data.ts
 export interface User {
   id: string;
   name: string;
   email: string;
   avatarUrl: string;
-  role?: 'Admin' | 'Member'; // Optional global role, but per-space is preferred
+  role: 'Admin' | 'Member';
 }
 
-export interface Invite {
-  id: string;
-  email: string;
-  role: "Admin" | "Member";
-  spaces: string[]; // array of space IDs
-  token: string;
-  status: 'pending' | 'accepted' | 'declined';
-  invitedBy?: {
-    id: string;
+export interface Permissions {
+    canViewTasks: boolean;
+    canEditTasks: boolean;
+    canLogTime: boolean;
+    canSeeAllTimesheets: boolean;
+    canViewReports: boolean;
+    canInviteMembers: boolean;
+}
+
+export interface SpaceMember {
+    role: 'Admin' | 'Member';
+    permissions?: Permissions;
+}
+
+export interface Status {
     name: string;
-  },
-  permissions?: Permissions;
+    color: string;
+}
+
+export interface Space {
+  id: string;
+  name: string;
+  members: Record<string, SpaceMember>; // key is user ID
+  statuses: Status[];
 }
 
 export interface Project {
   id: string;
-  space_id: string;
   name: string;
-  status: "Active" | "Archived" | "On Hold";
-  created_by: string;
-  members: string[]; // This remains a string array of user IDs
-  slack_channel_id?: string;
+  space_id: string;
+  members: string[]; // array of user IDs
+  status: 'Active' | 'Archived' | 'On Hold';
+  created_by: string; // user ID
 }
 
 export interface Task {
   id: string;
-  project_id: string | null; // Can be null for job-related tasks
+  project_id: string | null;
   name: string;
   description: string;
   status: string;
-  assigned_to: string;
-  due_date: string;
-  priority: "Low" | "Medium" | "High" | "Urgent" | null;
+  assigned_to: string; // user ID
+  due_date: string; // ISO 8601
+  priority: 'Low' | 'Medium' | 'High' | 'Urgent' | null;
   sprint_points: number | null;
   tags: string[];
   time_estimate: number | null; // in hours
-  relationships: string[]; // e.g., parent task, related tasks
+  relationships: { type: 'depends_on' | 'blocks'; taskId: string }[];
   activities: Activity[];
   comments: Comment[];
-  attachments?: Attachment[];
-  linked_task_id?: string;
+  attachments: Attachment[];
   parentId?: string | null;
 }
 
 export interface Activity {
   id: string;
   user_id: string;
-  timestamp: string;
-  type: "status_change" | "comment" | "assignee_change" | "subtask_completion";
+  timestamp: string; // ISO 8601
+  type: 'status_change' | 'assignee_change' | 'comment' | 'subtask_completion';
   from?: string;
   to?: string;
   comment_id?: string;
@@ -90,19 +75,19 @@ export interface Activity {
   subtask_name?: string;
 }
 
-export interface Attachment {
-  id: string;
-  name: string;
-  url: string;
-  type: 'image' | 'file';
+export interface Comment {
+    id: string;
+    user_id: string;
+    comment: string;
+    timestamp: string;
+    attachments: Attachment[];
 }
 
-export interface Comment {
-  id: string;
-  user_id: string;
-  comment: string;
-  timestamp: string;
-  attachments?: Attachment[];
+export interface Attachment {
+    id: string;
+    name: string;
+    url: string;
+    type: 'image' | 'file';
 }
 
 export interface TimeEntry {
@@ -110,54 +95,54 @@ export interface TimeEntry {
   user_id: string;
   project_id: string;
   task_id?: string;
-  source: "Manual" | "Timer" | "Slack";
+  source: 'Timer' | 'Manual';
   notes: string;
-  start_time: string;
-  end_time: string;
+  start_time: string; // ISO 8601
+  end_time: string; // ISO 8601
   duration: number; // in hours
 }
 
 export interface SlackMeetingLog {
-  id: string;
-  user_id: string;
-  project_id: string | null;
-  channel_id: string;
-  channel_name: string;
-  meeting_start: string;
-  meeting_end: string;
-  duration: number; // in hours
-  suggested_project_id?: string;
+    id: string;
+    user_id: string;
+    channel_name: string;
+    meeting_start: string;
+    duration: number; // in hours
+    project_id: string | null;
 }
 
 export interface Channel {
-  id: string;
-  space_id: string;
-  name: string;
-  description: string;
-  is_private: boolean;
-  members: string[];
-}
-
-export interface Reaction {
-  emoji: string;
-  user_ids: string[];
-  count: number;
+    id: string;
+    space_id: string;
+    name: string;
+    description: string;
+    members: string[]; // user IDs
 }
 
 export interface Message {
-  id: string;
-  channel_id: string;
-  user_id: string;
-  content: string;
-  timestamp: string;
-  thread_id?: string;
-  attachments?: Attachment[];
-  reactions?: Reaction[];
-  reply_count?: number;
-  linked_task_id?: string;
+    id: string;
+    channel_id: string;
+    user_id: string;
+    content: string;
+    timestamp: string; // ISO 8601
+    attachments?: Attachment[];
+    reactions?: { emoji: string; count: number, user_ids: string[] }[];
+    thread_id?: string;
+    reply_count?: number;
+    linked_task_id?: string;
 }
 
-// Job Flow System
+export interface Invite {
+    id: string;
+    email: string;
+    role: 'Admin' | 'Member';
+    spaces: string[]; // Space IDs
+    permissions?: Permissions;
+    token: string;
+    status: 'pending' | 'accepted' | 'declined';
+    invitedBy: string; // User ID
+}
+
 export interface JobFlowSubtaskTemplate {
     id: string;
     titleTemplate: string;
@@ -166,56 +151,28 @@ export interface JobFlowSubtaskTemplate {
 }
 
 export interface JobFlowTaskTemplate {
-  id: string;
-  titleTemplate: string;
-  descriptionTemplate?: string;
-  defaultAssigneeId: string;
-  estimatedDurationDays: number;
-  subtaskTemplates?: JobFlowSubtaskTemplate[];
+    id: string;
+    titleTemplate: string;
+    descriptionTemplate?: string;
+    defaultAssigneeId: string;
+    estimatedDurationDays: number;
+    subtaskTemplates?: JobFlowSubtaskTemplate[];
 }
 
 export interface JobFlowPhase {
-  id: string;
-  phaseIndex: number;
-  name: string;
-  tasks: JobFlowTaskTemplate[];
-  requiresReview: boolean;
+    id: string;
+    phaseIndex: number;
+    name: string;
+    tasks: JobFlowTaskTemplate[];
+    requiresReview: boolean;
 }
 
 export interface JobFlowTemplate {
-  id: string;
-  name: string;
-  description: string;
-  phases: JobFlowPhase[];
-  createdBy: string;
-  createdAt: string;
-}
-
-export interface Job {
-  id: string;
-  name: string;
-  workflowTemplateId: string;
-  currentPhaseIndex: number;
-  status: 'active' | 'completed' | 'cancelled';
-  createdBy: string;
-  createdAt: string;
-  roleUserMapping: Record<string, string>; // Maps defaultAssigneeId from phase to a specific userId for this job instance
-  space_id: string;
-}
-
-// Links a job to the actual task created in the main system
-export interface JobFlowTask {
     id: string;
-    jobId: string;
-    phaseIndex: number;
-    taskId: string; // The ID of the task in the main `tasks` collection
-    createdAt: string;
-    reviewedBy?: string; // ID of user who approved the review phase
-}
-
-// Reusable, standalone templates
-export interface TaskTemplate extends JobFlowTaskTemplate {
-    // This interface now just extends JobFlowTaskTemplate, as the redundant fields are removed.
+    name: string;
+    description: string;
+    phases: JobFlowPhase[];
+    defaultView: 'kanban' | 'stepper' | 'list';
 }
 
 export interface PhaseTemplate {
@@ -226,395 +183,230 @@ export interface PhaseTemplate {
     requiresReview: boolean;
 }
 
+export interface TaskTemplate {
+    id: string;
+    titleTemplate: string;
+    descriptionTemplate?: string;
+    defaultAssigneeId: string;
+    estimatedDurationDays: number;
+    subtaskTemplates?: JobFlowSubtaskTemplate[];
+}
 
-const defaultStatuses: Status[] = [
-    { name: 'Backlog', color: '#6b7280' },
-    { name: 'In Progress', color: '#3b82f6' },
-    { name: 'Review', color: '#f59e0b' },
-    { name: 'Done', color: '#22c55e' },
-];
+
+export interface Job {
+    id: string;
+    name: string;
+    workflowTemplateId: string;
+    space_id: string;
+    currentPhaseIndex: number;
+    status: 'active' | 'completed' | 'on-hold';
+    createdBy: string;
+    createdAt: string;
+    roleUserMapping: Record<string, string>; // Maps defaultAssigneeId to a real userId
+}
+
+export interface JobFlowTask {
+    id: string;
+    jobId: string;
+    taskId: string;
+    phaseIndex: number;
+    createdAt: string;
+    reviewedBy?: string;
+}
 
 
-// MOCK DATA - This data can be used to seed the database.
+// --- MOCK DATA ---
+export const adminMappings = {
+    'C012AB3CD': 'proj-1',
+    'C054EF7GH': 'proj-2'
+}
 
 export const users: Omit<User, 'id'>[] = [
-  { name: 'Brad Miller', email: 'brad@riverr.app', avatarUrl: 'https://placehold.co/100x100.png', role: 'Admin' },
-  { name: 'Alice', email: 'alice@example.com', avatarUrl: 'https://placehold.co/100x100.png', role: 'Admin' },
+  { name: 'Brad', email: 'brad@example.com', avatarUrl: 'https://placehold.co/100x100.png', role: 'Admin' },
+  { name: 'Alice', email: 'alice@example.com', avatarUrl: 'https://placehold.co/100x100.png', role: 'Member' },
   { name: 'Charlie', email: 'charlie@example.com', avatarUrl: 'https://placehold.co/100x100.png', role: 'Member' },
-  { name: 'Diana', email: 'diana@example.com', avatarUrl: 'https://placehold.co/100x100.png', role: 'Member' }
+  { name: 'Diana', email: 'diana@example.com', avatarUrl: 'https://placehold.co/100x100.png', role: 'Member' },
 ];
 
 export const spaces: Space[] = [
-  { 
-    id: 'space-1', 
-    name: 'Work', 
-    members: {
-      'user-1': { role: 'Admin' },
-      'user-2': { role: 'Member', permissions: { canViewTasks: true, canEditTasks: true, canLogTime: true, canSeeAllTimesheets: false, canViewReports: true, canInviteMembers: false } },
-      'user-3': { role: 'Member', permissions: { canViewTasks: true, canEditTasks: false, canLogTime: true, canSeeAllTimesheets: false, canViewReports: false, canInviteMembers: false } },
-      'user-4': { role: 'Admin' }
-    },
-    statuses: [...defaultStatuses] 
-  },
-  { 
-    id: 'space-2', 
-    name: 'Personal', 
-    members: {
-      'user-1': { role: 'Admin' },
-      'user-4': { role: 'Admin' }
-    }, 
-    statuses: [{name: 'To Do', color: '#3b82f6'}, {name: 'Done', color: '#22c55e'}] 
-  },
-  { 
-    id: 'space-3', 
-    name: 'Client X', 
-    members: {
-      'user-2': { role: 'Admin' },
-      'user-3': { role: 'Member', permissions: { canViewTasks: true, canEditTasks: true, canLogTime: true, canSeeAllTimesheets: true, canViewReports: true, canInviteMembers: true } },
-    },
-    statuses: [...defaultStatuses.slice(0,2), {name: 'Client Review', color: '#a855f7'}, {name: 'Approved', color: '#22c55e'}] 
-  }
-];
-
-export const projects: Project[] = [
-  { id: 'proj-1', space_id: 'space-1', name: 'Website Redesign', status: 'Active', created_by: 'user-1', members: ['user-1', 'user-2'], slack_channel_id: 'C111' },
-  { id: 'proj-2', space_id: 'space-1', name: 'Mobile App Development', status: 'Active', created_by: 'user-1', members: ['user-1', 'user-3'], slack_channel_id: 'C222' },
-  { id: 'proj-3', space_id: 'space-1', name: 'API Integration', status: 'On Hold', created_by: 'user-4', members: ['user-2', 'user-4'], slack_channel_id: 'C333' },
-  { id: 'proj-4', space_id: 'space-2', name: 'Personal Website', status: 'Active', created_by: 'user-1', members: ['user-1'] },
-  { id: 'proj-5', space_id: 'space-3', name: 'Marketing Campaign', status: 'Active', created_by: 'user-2', members: ['user-2', 'user-3'], slack_channel_id: 'C444' },
-];
-
-export const tasks: Task[] = [
-  {
-    id: 'task-1',
-    project_id: 'proj-1',
-    name: 'Design home page mockups',
-    description: 'Create high-fidelity mockups in Figma for the new website homepage.',
-    status: 'In Progress',
-    assigned_to: 'user-1',
-    due_date: '2024-08-15T23:59:59Z',
-    priority: 'High',
-    sprint_points: 8,
-    tags: ['UI', 'Figma'],
-    time_estimate: 16,
-    relationships: [],
-    activities: [
-      { id: 'act-1', user_id: 'user-1', timestamp: '2024-07-20T16:48:00Z', type: 'status_change', from: 'Backlog', to: 'In Progress'},
-      { id: 'act-2', user_id: 'user-1', timestamp: '2024-08-01T10:00:00Z', type: 'comment', comment_id: 'comment-1' },
-    ],
-    comments: [
-      {
-        id: 'comment-1',
-        user_id: 'user-1',
-        comment: 'How is this going? Can you upload the latest designs?',
-        timestamp: '2024-08-01T10:00:00Z',
-        attachments: [
-          { id: 'att-1', name: 'wireframe-v1.png', url: 'https://placehold.co/600x400.png', type: 'image' }
-        ]
-      },
-    ],
-    attachments: [
-      { id: 'att-1', name: 'wireframe-v1.png', url: 'https://placehold.co/600x400.png', type: 'image' }
-    ],
-    parentId: null,
-  },
-  {
-    id: 'task-1-sub-1',
-    project_id: 'proj-1',
-    name: 'Design hero section',
-    description: 'Subtask for hero section design',
-    status: 'Done',
-    assigned_to: 'user-1',
-    due_date: '2024-08-10T23:59:59Z',
-    priority: null, sprint_points: null, tags: [], time_estimate: null, relationships: [], activities: [], comments: [],
-    parentId: 'task-1'
-  },
-  {
-    id: 'task-1-sub-2',
-    project_id: 'proj-1',
-    name: 'Design feature grid',
-    description: 'Subtask for feature grid design',
-    status: 'In Progress',
-    assigned_to: 'user-1',
-    due_date: '2024-08-12T23:59:59Z',
-    priority: null, sprint_points: null, tags: [], time_estimate: null, relationships: [], activities: [], comments: [],
-    parentId: 'task-1'
-  },
-  {
-    id: 'task-1-sub-3',
-    project_id: 'proj-1',
-    name: 'Design footer',
-    description: 'Subtask for footer design',
-    status: 'Backlog',
-    assigned_to: 'user-1',
-    due_date: new Date().toISOString(),
-    priority: null, sprint_points: null, tags: [], time_estimate: null, relationships: [], activities: [], comments: [],
-    parentId: 'task-1'
-  },
-  {
-    id: 'task-2',
-    project_id: 'proj-1',
-    name: 'Develop landing page component',
-    description: 'Code the main hero section of the landing page.',
-    status: 'Backlog',
-    assigned_to: 'user-2',
-    due_date: '2024-08-20T23:59:59Z',
-    priority: 'Medium',
-    sprint_points: 5,
-    tags: ['React', 'Web'],
-    time_estimate: 24,
-    relationships: [],
-    activities: [],
-    comments: [],
-    attachments: [],
-    parentId: null
-  },
-  {
-    id: 'task-3',
-    project_id: 'proj-1',
-    name: 'Set up analytics tracking',
-    description: 'Integrate Google Analytics and set up event tracking for key user actions.',
-    status: 'Done',
-    assigned_to: 'user-1',
-    due_date: '2024-08-10T23:59:59Z',
-    priority: 'Low',
-    sprint_points: 3,
-    tags: ['Analytics'],
-    time_estimate: 8,
-    relationships: [],
-    activities: [],
-    comments: [],
-    attachments: [],
-    parentId: null
-  },
-  {
-    id: 'task-4',
-    project_id: 'proj-2',
-    name: 'Implement push notifications',
-    description: 'Set up FCM and create the service to handle push notifications.',
-    status: 'Review',
-    assigned_to: 'user-3',
-    due_date: '2024-08-18T23:59:59Z',
-    priority: 'High',
-    sprint_points: 8,
-    tags: ['Mobile', 'Firebase'],
-    time_estimate: 20,
-    relationships: [],
-    activities: [],
-    comments: [],
-    attachments: [],
-    parentId: null
-  },
-  {
-    id: 'task-5',
-    project_id: 'proj-2',
-    name: 'User profile page',
-    description: 'Create the user profile page where users can edit their details.',
-    status: 'In Progress',
-    assigned_to: 'user-1',
-    due_date: '2024-08-25T23:59:59Z',
-    priority: 'Medium',
-    sprint_points: 5,
-    tags: [],
-    time_estimate: 12,
-    relationships: [],
-    activities: [],
-    comments: [],
-    attachments: [],
-    parentId: null
-  },
-  {
-    id: 'task-6',
-    project_id: 'proj-3',
-    name: 'Research payment gateway APIs',
-    description: 'Compare Stripe, Braintree, and PayPal APIs for our needs.',
-    status: 'Backlog',
-    assigned_to: 'user-4',
-    due_date: '2024-09-01T23:59:59Z',
-    priority: null,
-    sprint_points: null,
-    tags: ['API', 'Research'],
-    time_estimate: 10,
-    relationships: [],
-    activities: [],
-    comments: [],
-    attachments: [],
-    parentId: null
-  },
-  {
-    id: 'task-job-1',
-    project_id: 'proj-2',
-    name: 'Define feature scope for Project Phoenix',
-    description: 'Initial planning and feature definition.',
-    status: 'Backlog',
-    assigned_to: 'user-2',
-    due_date: '2024-08-30T23:59:59Z',
-    priority: 'High',
-    sprint_points: null,
-    tags: ['JobFlow', 'Project Phoenix'],
-    time_estimate: null,
-    relationships: [],
-    activities: [],
-    comments: [],
-    attachments: [],
-    parentId: null
-  }
-];
-
-export const timeEntries: TimeEntry[] = [
-  { id: 'time-1', user_id: 'user-1', project_id: 'proj-2', task_id: 'task-5', start_time: '2024-08-05T09:00:00Z', end_time: '2024-08-05T11:00:00Z', duration: 2, source: 'Timer', notes: 'Worked on profile page layout.' },
-  { id: 'time-2', user_id: 'user-2', project_id: 'proj-1', task_id: 'task-2', start_time: '2024-08-05T10:00:00Z', end_time: '2024-08-05T14:00:00Z', duration: 4, source: 'Manual', notes: 'Initial setup for landing page component.' },
-  { id: 'time-3', user_id: 'user-3', project_id: 'proj-2', task_id: 'task-4', start_time: '2024-08-05T13:00:00Z', end_time: '2024-08-05T17:00:00Z', duration: 4, source: 'Timer', notes: 'Configuring FCM and testing notifications.' },
-  { id: 'time-4', user_id: 'user-1', project_id: 'proj-1', start_time: '2024-08-04T14:00:00Z', end_time: '2024-08-04T15:00:00Z', duration: 1, source: 'Slack', notes: 'Project sync meeting' },
-  { id: 'time-5', user_id: 'user-1', project_id: 'proj-1', task_id: 'task-1', start_time: '2024-08-06T09:00:00Z', end_time: '2024-08-06T12:00:00Z', duration: 3, source: 'Timer', notes: 'Refining homepage mockups.' },
-  { id: 'time-6', user_id: 'user-2', project_id: 'proj-5', task_id: 'task-7', start_time: '2024-08-06T11:00:00Z', end_time: '2024-08-06T15:00:00Z', duration: 4, source: 'Manual', notes: 'Drafting Instagram post designs.' },
-
-];
-
-export const slackMeetingLogs: SlackMeetingLog[] = [
-  {
-    id: 'slack-1',
-    user_id: 'user-1',
-    project_id: 'proj-1',
-    channel_id: 'C111',
-    channel_name: 'proj-website-redesign',
-    meeting_start: '2024-08-04T14:00:00Z',
-    meeting_end: '2024-08-04T15:00:00Z',
-    duration: 1,
-  },
-  {
-    id: 'slack-2',
-    user_id: 'user-2',
-    project_id: null,
-    channel_id: 'C999',
-    channel_name: 'general-chatter',
-    meeting_start: '2024-08-05T16:00:00Z',
-    meeting_end: '2024-08-05T16:30:00Z',
-    duration: 0.5,
-  },
-  {
-    id: 'slack-3',
-    user_id: 'user-3',
-    project_id: null,
-    channel_id: 'C888',
-    channel_name: 'project-handoff',
-    meeting_start: '2024-08-06T11:00:00Z',
-    meeting_end: '2024-08-06T12:00:00Z',
-    duration: 1,
-    suggested_project_id: undefined,
-  },
-  {
-    id: 'slack-4',
-    user_id: 'user-4',
-    project_id: null,
-    channel_id: 'C333',
-    channel_name: 'proj-api-integration',
-    meeting_start: '2024-08-07T10:00:00Z',
-    meeting_end: '2024-08-07T10:30:00Z',
-    duration: 0.5,
-    suggested_project_id: 'proj-3',
-  },
-];
-
-export const adminMappings = {
-  'C111': 'proj-1', // #proj-website-redesign
-  'C222': 'proj-2', // #mobile-app-dev
-  'C333': 'proj-3', // #api-integration
-  'C444': 'proj-5', // #marketing-campaign
-};
-
-export const channels: Channel[] = [
-  { id: 'chan-1', space_id: 'space-1', name: 'general', description: 'General announcements and discussions for the Work space.', is_private: false, members: ['user-1', 'user-2', 'user-3', 'user-4'] },
-  { id: 'chan-2', space_id: 'space-1', name: 'proj-website-redesign', description: 'Discussions related to the website redesign project.', is_private: false, members: ['user-1', 'user-2'] },
-  { id: 'chan-3', space_id: 'space-1', name: 'random', description: 'For water cooler conversations and memes.', is_private: false, members: ['user-1', 'user-2', 'user-3', 'user-4'] },
-  { id: 'chan-4', space_id: 'space-1', name: 'design-critiques', description: 'Private channel for the design team.', is_private: true, members: ['user-1', 'user-2'] },
-  { id: 'chan-5', space_id: 'space-2', name: 'weekend-plans', description: 'What\'s everyone up to this weekend?', is_private: false, members: ['user-1', 'user-4'] },
-  { id: 'chan-6', space_id: 'space-3', name: 'client-comms', description: 'Official communication with Client X.', is_private: false, members: ['user-2', 'user-3'] },
-];
-
-export const messages: Message[] = [
-  { id: 'msg-1', channel_id: 'chan-1', user_id: 'user-1', content: 'Welcome to the Work space!', timestamp: '2024-08-01T09:00:00Z', reactions: [], reply_count: 0 },
-  { id: 'msg-2', channel_id: 'chan-2', user_id: 'user-2', content: 'Hey @Brad, can you look at the latest mockups for the homepage?', timestamp: '2024-08-01T10:30:00Z', reactions: [{ emoji: '👍', count: 1, user_ids: ['user-1']}], reply_count: 1 },
-  { id: 'msg-3', channel_id: 'chan-2', user_id: 'user-1', content: 'Sure, taking a look now. They look great!', timestamp: '2024-08-01T10:32:00Z', thread_id: 'msg-2', reactions: [] },
-  { id: 'msg-4', channel_id: 'chan-3', user_id: 'user-3', content: 'Has anyone seen that new cat video? It\'s hilarious.', timestamp: '2024-08-01T11:00:00Z', reactions: [], reply_count: 0 },
-  { id: 'msg-5', channel_id: 'chan-5', user_id: 'user-4', content: 'I\'m going hiking this weekend, can\'t wait!', timestamp: '2024-08-02T14:00:00Z', reactions: [], reply_count: 0 },
-  { id: 'msg-6', channel_id: 'chan-6', user_id: 'user-2', content: 'Just sent the weekly update to Client X.', timestamp: '2024-08-03T17:00:00Z', reactions: [], reply_count: 0 },
-];
-
-export const taskTemplates: TaskTemplate[] = [];
-export const phaseTemplates: PhaseTemplate[] = [];
-
-export const jobFlowTemplates: JobFlowTemplate[] = [
-    {
-        id: 'jft-1',
-        name: 'New Client Onboarding',
-        description: 'A standard workflow for bringing new clients into the system.',
-        createdBy: 'user-1',
-        createdAt: '2024-08-01T00:00:00Z',
-        phases: [
-            { id: 'phase-1-1', phaseIndex: 0, name: 'Initial Contact', tasks: [{id: 'task-template-1', titleTemplate: 'Follow up with {{job_name}}', defaultAssigneeId: 'user-1', estimatedDurationDays: 1, subtaskTemplates: []}], requiresReview: false },
-            { id: 'phase-1-2', phaseIndex: 1, name: 'Kick-off Meeting', tasks: [{id: 'task-template-2', titleTemplate: 'Schedule kick-off meeting with {{job_name}}', defaultAssigneeId: 'user-2', estimatedDurationDays: 3, subtaskTemplates: []}], requiresReview: true },
-            { id: 'phase-1-3', phaseIndex: 2, name: 'Project Setup', tasks: [{id: 'task-template-3', titleTemplate: 'Set up project for {{job_name}}', defaultAssigneeId: 'user-1', estimatedDurationDays: 2, subtaskTemplates: []}], requiresReview: false },
+    { 
+        id: 'space-1', 
+        name: 'Riverr',
+        members: {
+            'user-1': { role: 'Admin' },
+            'user-2': { role: 'Member' },
+            'user-3': { role: 'Member' }
+        },
+        statuses: [
+            { name: 'Backlog', color: '#6b7280' },
+            { name: 'In Progress', color: '#3b82f6' },
+            { name: 'In Review', color: '#f59e0b' },
+            { name: 'Done', color: '#22c55e' },
         ]
     },
-    {
-        id: 'jft-2',
-        name: 'Website Launch Checklist',
-        description: 'A comprehensive checklist for launching a new website.',
-        createdBy: 'user-2',
-        createdAt: '2024-08-02T00:00:00Z',
-        phases: [
-            { id: 'phase-2-1', phaseIndex: 0, name: 'QA & Testing', tasks: [{id: 'task-template-4', titleTemplate: 'Perform full QA cycle on {{job_name}}', defaultAssigneeId: 'user-3', estimatedDurationDays: 5, subtaskTemplates: []}], requiresReview: true },
-            { id: 'phase-2-2', phaseIndex: 1, name: 'DNS Propagation', tasks: [{id: 'task-template-5', titleTemplate: 'Update DNS records for {{job_name}}', defaultAssigneeId: 'user-4', estimatedDurationDays: 1, subtaskTemplates: []}], requiresReview: false },
-            { id: 'phase-2-3', phaseIndex: 2, name: 'Post-launch Monitoring', tasks: [{id: 'task-template-6', titleTemplate: 'Monitor {{job_name}} for 24 hours post-launch', defaultAssigneeId: 'user-1', estimatedDurationDays: 1, subtaskTemplates: []}], requiresReview: false },
+     { 
+        id: 'space-2', 
+        name: 'Acme Inc.',
+        members: {
+            'user-1': { role: 'Admin' },
+            'user-4': { role: 'Member' }
+        },
+        statuses: [
+            { name: 'To Do', color: '#6b7280' },
+            { name: 'Doing', color: '#3b82f6' },
+            { name: 'Blocked', color: '#ef4444' },
+            { name: 'Shipped', color: '#22c55e' },
         ]
-    },
-    {
-      id: 'jft-3',
-      name: 'Product Development Cycle',
-      description: 'A 10-phase cycle for new feature development from idea to launch.',
-      createdBy: 'user-1',
-      createdAt: '2024-08-10T00:00:00Z',
-      phases: [
-          { id: 'phase-3-01', phaseIndex: 0, name: 'Feature Definition', tasks: [{id: 'task-template-7', titleTemplate: 'Define feature scope for {{job_name}}', defaultAssigneeId: 'user-2', estimatedDurationDays: 3, subtaskTemplates: []}], requiresReview: true },
-          { id: 'phase-3-02', phaseIndex: 1, name: 'UX/UI Design', tasks: [{id: 'task-template-8', titleTemplate: 'Design mockups for {{job_name}}', defaultAssigneeId: 'user-1', estimatedDurationDays: 5, subtaskTemplates: []}], requiresReview: false },
-          { id: 'phase-3-03', phaseIndex: 2, name: 'Design Review', tasks: [{id: 'task-template-9', titleTemplate: 'Review and approve designs for {{job_name}}', defaultAssigneeId: 'user-2', estimatedDurationDays: 2, subtaskTemplates: []}], requiresReview: true },
-          { id: 'phase-3-04', phaseIndex: 3, name: 'Technical Spec', tasks: [{id: 'task-template-10', titleTemplate: 'Write technical spec for {{job_name}}', defaultAssigneeId: 'user-4', estimatedDurationDays: 4, subtaskTemplates: []}], requiresReview: true },
-          { id: 'phase-3-05', phaseIndex: 4, name: 'Backend Development', tasks: [{id: 'task-template-11', titleTemplate: 'Build backend for {{job_name}}', defaultAssigneeId: 'user-4', estimatedDurationDays: 7, subtaskTemplates: []}], requiresReview: false },
-          { id: 'phase-3-06', phaseIndex: 5, name: 'Frontend Development', tasks: [{id: 'task-template-12', titleTemplate: 'Build frontend for {{job_name}}', defaultAssigneeId: 'user-3', estimatedDurationDays: 7, subtaskTemplates: []}], requiresReview: false },
-          { id: 'phase-3-07', phaseIndex: 6, name: 'QA Testing', tasks: [{id: 'task-template-13', titleTemplate: 'Perform QA testing on {{job_name}}', defaultAssigneeId: 'user-3', estimatedDurationDays: 5, subtaskTemplates: []}], requiresReview: true },
-          { id: 'phase-3-08', phaseIndex: 7, name: 'User Acceptance Testing (UAT)', tasks: [{id: 'task-template-14', titleTemplate: 'Conduct UAT for {{job_name}}', defaultAssigneeId: 'user-2', estimatedDurationDays: 3, subtaskTemplates: []}], requiresReview: true },
-          { id: 'phase-3-09', phaseIndex: 8, name: 'Deployment', tasks: [{id: 'task-template-15', titleTemplate: 'Deploy {{job_name}} to production', defaultAssigneeId: 'user-4', estimatedDurationDays: 1, subtaskTemplates: []}], requiresReview: false },
-          { id: 'phase-3-10', phaseIndex: 9, name: 'Post-Launch Monitoring', tasks: [{id: 'task-template-16', titleTemplate: 'Monitor {{job_name}} post-launch', defaultAssigneeId: 'user-1', estimatedDurationDays: 1, subtaskTemplates: []}], requiresReview: false },
-      ]
-  }
-];
-
-export const jobs: Job[] = [
-    {
-        id: 'job-1',
-        name: 'Project Phoenix',
-        workflowTemplateId: 'jft-3',
-        currentPhaseIndex: 0,
-        status: 'active',
-        createdBy: 'user-1',
-        createdAt: '2024-08-11T00:00:00Z',
-        space_id: 'space-1',
-        roleUserMapping: {
-            'user-1': 'user-1',
-            'user-2': 'user-2',
-            'user-3': 'user-3',
-            'user-4': 'user-4',
-        }
     }
 ];
 
-export const jobFlowTasks: JobFlowTask[] = [
+export const projects: Project[] = [
+  { id: 'proj-1', name: 'Website Redesign', space_id: 'space-1', members: ['user-1', 'user-2'], status: 'Active', created_by: 'user-1' },
+  { id: 'proj-2', name: 'Mobile App Launch', space_id: 'space-1', members: ['user-1', 'user-3'], status: 'Active', created_by: 'user-1' },
+  { id: 'proj-3', name: 'Q3 Marketing Campaign', space_id: 'space-2', members: ['user-1', 'user-4'], status: 'On Hold', created_by: 'user-4' },
+];
+
+export const tasks: Task[] = [
+  // Project 1 Tasks
+  { id: 'task-1', project_id: 'proj-1', name: 'Design homepage mockup', description: 'Create a high-fidelity mockup in Figma.', status: 'In Progress', assigned_to: 'user-2', due_date: '2024-08-15T23:59:59Z', priority: 'High', sprint_points: 8, tags: ['design', 'figma'], time_estimate: 16, relationships: [], activities: [], comments: [], attachments: [] },
+  { id: 'task-2', project_id: 'proj-1', name: 'Develop homepage layout', description: 'Code the HTML/CSS for the new homepage.', status: 'Backlog', assigned_to: 'user-1', due_date: '2024-08-20T23:59:59Z', priority: 'High', sprint_points: 13, tags: ['dev', 'css'], time_estimate: 24, relationships: [{ type: 'depends_on', taskId: 'task-1' }], activities: [], comments: [], attachments: [] },
+  // Project 2 Tasks
+  { id: 'task-3', project_id: 'proj-2', name: 'Setup App Store Connect', description: 'Prepare listings for both Apple App Store and Google Play.', status: 'Done', assigned_to: 'user-3', due_date: '2024-08-01T23:59:59Z', priority: 'Urgent', sprint_points: 5, tags: ['release'], time_estimate: 8, relationships: [], activities: [], comments: [], attachments: [] },
+  { id: 'task-4', project_id: 'proj-2', name: 'Plan launch day social media', description: 'Draft posts for Twitter, LinkedIn, etc.', status: 'In Review', assigned_to: 'user-1', due_date: '2024-08-10T23:59:59Z', priority: 'Medium', sprint_points: 3, tags: ['marketing'], time_estimate: 6, relationships: [], activities: [], comments: [], attachments: [] },
+];
+
+export const timeEntries: TimeEntry[] = [
+    { id: 'time-1', user_id: 'user-2', project_id: 'proj-1', task_id: 'task-1', source: 'Timer', notes: 'Worked on initial wireframes', start_time: '2024-08-05T09:00:00Z', end_time: '2024-08-05T11:30:00Z', duration: 2.5 },
+    { id: 'time-2', user_id: 'user-1', project_id: 'proj-2', task_id: 'task-4', source: 'Manual', notes: 'Drafting tweets', start_time: '2024-08-05T13:00:00Z', end_time: '2024-08-05T14:00:00Z', duration: 1 },
+];
+
+export const slackMeetingLogs: SlackMeetingLog[] = [
+    { id: 'log-1', user_id: 'user-1', channel_name: 'proj-website', meeting_start: '2024-08-04T16:00:00Z', duration: 1, project_id: null },
+    { id: 'log-2', user_id: 'user-3', channel_name: 'proj-mobile-app', meeting_start: '2024-08-02T10:00:00Z', duration: 0.5, project_id: 'proj-2' },
+]
+
+export const channels: Channel[] = [
+    { id: 'chan-1', space_id: 'space-1', name: 'general', description: 'General chat for the Riverr team', members: ['user-1', 'user-2', 'user-3'] },
+    { id: 'chan-2', space_id: 'space-1', name: 'website-dev', description: 'Discussion for the new website', members: ['user-1', 'user-2'] },
+];
+
+export const messages: Message[] = [
+    { id: 'msg-1', channel_id: 'chan-2', user_id: 'user-1', content: "Hey @Alice, can you take a look at the latest mockups for the homepage? I think we're ready for development.", timestamp: '2024-08-05T10:00:00Z', reply_count: 2 },
+    { id: 'msg-2', channel_id: 'chan-2', user_id: 'user-2', content: "Sure thing, Brad! They look great. I'll get started on the component structure.", timestamp: '2024-08-05T10:05:00Z', thread_id: 'msg-1' },
+     { id: 'msg-3', channel_id: 'chan-2', user_id: 'user-1', content: "Perfect, let me know if you need any assets.", timestamp: '2024-08-05T10:06:00Z', thread_id: 'msg-1' }
+];
+
+export const taskTemplates: TaskTemplate[] = [
+    {
+        id: 'task-tpl-1',
+        titleTemplate: 'Client Kick-off Meeting',
+        descriptionTemplate: 'Schedule and hold the initial kick-off meeting with {{job_name}}.',
+        defaultAssigneeId: 'user-1', // Brad - Account Manager
+        estimatedDurationDays: 1,
+        subtaskTemplates: [
+            { id: 'sub-tpl-1a', titleTemplate: 'Send welcome email', defaultAssigneeId: 'user-1', estimatedDurationDays: 0 },
+            { id: 'sub-tpl-1b', titleTemplate: 'Prepare meeting agenda', defaultAssigneeId: 'user-1', estimatedDurationDays: 0 },
+        ]
+    },
+    {
+        id: 'task-tpl-2',
+        titleTemplate: 'Onboarding Call with {{job_name}}',
+        defaultAssigneeId: 'user-3', // Charlie - Onboarding Specialist
+        estimatedDurationDays: 1,
+    }
+];
+
+
+export const phaseTemplates: PhaseTemplate[] = [
+    {
+        id: 'phase-tpl-1',
+        name: 'Client Onboarding',
+        description: 'Initial phase to onboard a new client.',
+        tasks: [
+            {
+                id: 'task-tpl-1',
+                titleTemplate: 'Client Kick-off Meeting',
+                descriptionTemplate: 'Schedule and hold the initial kick-off meeting with {{job_name}}.',
+                defaultAssigneeId: 'user-1', // Brad - Account Manager
+                estimatedDurationDays: 1,
+                subtaskTemplates: [
+                    { id: 'sub-tpl-1a', titleTemplate: 'Send welcome email', defaultAssigneeId: 'user-1', estimatedDurationDays: 0 },
+                    { id: 'sub-tpl-1b', titleTemplate: 'Prepare meeting agenda', defaultAssigneeId: 'user-1', estimatedDurationDays: 0 },
+                ]
+            }
+        ],
+        requiresReview: true
+    }
+]
+
+export const jobFlowTemplates: JobFlowTemplate[] = [
   {
-    id: 'jftask-1',
-    jobId: 'job-1',
-    phaseIndex: 0,
-    taskId: 'task-job-1',
-    createdAt: '2024-08-11T00:00:00Z'
+    id: 'jft-1',
+    name: 'Client Onboarding Pipeline',
+    description: 'A standard pipeline for bringing new clients into the fold.',
+    defaultView: 'kanban',
+    phases: [
+      { id: 'phase-1', phaseIndex: 0, name: 'Lead In', requiresReview: false, tasks: [
+        { id: 'task-tpl-j1-p1-t1', titleTemplate: 'Qualify Lead: {{job_name}}', defaultAssigneeId: 'user-1', estimatedDurationDays: 1 }
+      ]},
+      { id: 'phase-2', phaseIndex: 1, name: 'Contact Made', requiresReview: false, tasks: [
+        { id: 'task-tpl-j1-p2-t1', titleTemplate: 'Initial Outreach Call with {{job_name}}', defaultAssigneeId: 'user-1', estimatedDurationDays: 1 }
+      ]},
+      { id: 'phase-3', phaseIndex: 2, name: 'Demo Scheduled', requiresReview: true, tasks: [
+         { id: 'task-tpl-j1-p3-t1', titleTemplate: 'Schedule Product Demo for {{job_name}}', defaultAssigneeId: 'user-2', estimatedDurationDays: 2 }
+      ]},
+      { id: 'phase-4', phaseIndex: 3, name: 'Proposal Sent', requiresReview: false, tasks: [
+        { id: 'task-tpl-j1-p4-t1', titleTemplate: 'Send Proposal to {{job_name}}', defaultAssigneeId: 'user-1', estimatedDurationDays: 3 }
+      ]},
+    ],
+  },
+   {
+    id: 'jft-2',
+    name: 'New Employee Onboarding',
+    description: 'A checklist for onboarding new employees.',
+    defaultView: 'stepper',
+    phases: [
+      { id: 'phase-j2-1', phaseIndex: 0, name: 'Pre-Onboarding', requiresReview: true, tasks: [
+          { id: 'task-tpl-j2-p1-t1', titleTemplate: 'Send Welcome Packet to {{job_name}}', defaultAssigneeId: 'user-4', estimatedDurationDays: 1},
+          { id: 'task-tpl-j2-p1-t2', titleTemplate: 'Setup IT Equipment for {{job_name}}', defaultAssigneeId: 'user-1', estimatedDurationDays: 2}
+      ]},
+      { id: 'phase-j2-2', phaseIndex: 1, name: 'First Week', requiresReview: false, tasks: [
+          { id: 'task-tpl-j2-p2-t1', titleTemplate: 'HR Orientation for {{job_name}}', defaultAssigneeId: 'user-4', estimatedDurationDays: 1}
+      ]},
+    ],
+  },
+  {
+    id: 'jft-3',
+    name: 'Simple Checklist',
+    description: 'A basic list of tasks.',
+    defaultView: 'list',
+    phases: [
+      { id: 'phase-j3-1', phaseIndex: 0, name: 'To Do', requiresReview: false, tasks: [
+        { id: 'task-tpl-j3-p1-t1', titleTemplate: 'Task A for {{job_name}}', defaultAssigneeId: 'user-1', estimatedDurationDays: 1 },
+        { id: 'task-tpl-j3-p1-t2', titleTemplate: 'Task B for {{job_name}}', defaultAssigneeId: 'user-2', estimatedDurationDays: 2 },
+      ]},
+    ]
   }
 ];
+
+
+export const jobs: Job[] = [
+    { id: 'job-1', name: 'Onboard Acme Corp', workflowTemplateId: 'jft-1', space_id: 'space-1', currentPhaseIndex: 0, status: 'active', createdBy: 'user-1', createdAt: '2024-08-01T10:00:00Z', roleUserMapping: {'user-1': 'user-1', 'user-2': 'user-2'} },
+    { id: 'job-2', name: 'Onboard Globex Inc', workflowTemplateId: 'jft-1', space_id: 'space-1', currentPhaseIndex: 1, status: 'active', createdBy: 'user-1', createdAt: '2024-08-02T11:00:00Z', roleUserMapping: {'user-1': 'user-1', 'user-2': 'user-2'} },
+    { id: 'job-3', name: 'Onboard Jane Doe', workflowTemplateId: 'jft-2', space_id: 'space-2', currentPhaseIndex: 0, status: 'active', createdBy: 'user-4', createdAt: '2024-08-03T12:00:00Z', roleUserMapping: {'user-4': 'user-4', 'user-1': 'user-1'} },
+];
+
+export const jobFlowTasks: JobFlowTask[] = [
+    { id: 'jftask-1', jobId: 'job-1', taskId: 'task-jft-1', phaseIndex: 0, createdAt: '2024-08-01T10:00:00Z' },
+    { id: 'jftask-2', jobId: 'job-2', taskId: 'task-jft-2', phaseIndex: 0, createdAt: '2024-08-02T11:00:00Z' },
+    { id: 'jftask-3', jobId: 'job-2', taskId: 'task-jft-3', phaseIndex: 1, createdAt: '2024-08-02T11:00:00Z' },
+    { id: 'jftask-4', jobId: 'job-3', taskId: 'task-jft-4', phaseIndex: 0, createdAt: '2024-08-03T12:00:00Z' },
+];
+
+// Let's add the tasks for the jobs
+tasks.push(
+    { id: 'task-jft-1', project_id: null, name: 'Qualify Lead: Onboard Acme Corp', description: '', status: 'In Progress', assigned_to: 'user-1', due_date: '2024-08-02T10:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null },
+    { id: 'task-jft-2', project_id: null, name: 'Qualify Lead: Onboard Globex Inc', description: '', status: 'Done', assigned_to: 'user-1', due_date: '2024-08-03T11:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null },
+    { id: 'task-jft-3', project_id: null, name: 'Initial Outreach Call with Onboard Globex Inc', description: '', status: 'In Progress', assigned_to: 'user-1', due_date: '2024-08-04T11:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null },
+    { id: 'task-jft-4', project_id: null, name: 'Send Welcome Packet to Onboard Jane Doe', description: '', status: 'In Progress', assigned_to: 'user-4', due_date: '2024-08-04T12:00:00Z', priority: 'Medium', sprint_points: null, tags: ['JobFlow'], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null }
+)
