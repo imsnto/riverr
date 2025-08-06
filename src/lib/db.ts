@@ -18,7 +18,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions, jobFlowTemplates, JobFlowTemplate, Job, JobFlowTask, jobs, jobFlowTasks, JobFlowTaskTemplate } from './data';
+import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions, jobFlowTemplates, JobFlowTemplate, Job, JobFlowTask, jobs, jobFlowTasks, JobFlowTaskTemplate, phaseTemplates, taskTemplates, PhaseTemplate, TaskTemplate } from './data';
 import { randomBytes } from 'crypto';
 
 // --- Seeding ---
@@ -42,6 +42,8 @@ export const seedDatabase = async () => {
         channels.forEach(channel => batch.set(doc(db, 'channels', channel.id), channel));
         messages.forEach(message => batch.set(doc(db, 'messages', message.id), message));
         jobFlowTemplates.forEach(template => batch.set(doc(db, 'job_flow_templates', template.id), template));
+        phaseTemplates.forEach(template => batch.set(doc(db, 'phase_templates', template.id), template));
+        taskTemplates.forEach(template => batch.set(doc(db, 'task_templates', template.id), template));
         jobs.forEach(job => batch.set(doc(db, 'jobs', job.id), job));
         jobFlowTasks.forEach(jft => batch.set(doc(db, 'job_flow_tasks', jft.id), jft));
         
@@ -289,6 +291,27 @@ export const getJobFlowTemplates = async (): Promise<JobFlowTemplate[]> => {
     const querySnapshot = await getDocs(collection(db, 'job_flow_templates'));
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JobFlowTemplate));
 };
+
+export const getPhaseTemplates = async (): Promise<PhaseTemplate[]> => {
+    const querySnapshot = await getDocs(collection(db, 'phase_templates'));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PhaseTemplate));
+};
+
+export const getTaskTemplates = async (): Promise<TaskTemplate[]> => {
+    const querySnapshot = await getDocs(collection(db, 'task_templates'));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TaskTemplate));
+};
+
+export const addPhaseTemplate = async (template: Omit<PhaseTemplate, 'id'>): Promise<PhaseTemplate> => {
+    const docRef = await addDoc(collection(db, 'phase_templates'), template);
+    return { ...template, id: docRef.id };
+}
+
+export const addTaskTemplate = async (template: Omit<TaskTemplate, 'id'>): Promise<TaskTemplate> => {
+    const docRef = await addDoc(collection(db, 'task_templates'), template);
+    return { ...template, id: docRef.id };
+}
+
 
 export const getAllJobs = async (spaceId: string): Promise<Job[]> => {
     const q = query(collection(db, 'jobs'), where('space_id', '==', spaceId));

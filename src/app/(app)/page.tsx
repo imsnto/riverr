@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FolderKanban, GanttChart, MessageSquare, Settings, Users, MessageCircleMore, ShieldCheck, FilePlus, GitBranch } from 'lucide-react';
-import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message, Status, Invite, JobFlowTemplate, Job, JobFlowTask } from '@/lib/data';
+import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message, Status, Invite, JobFlowTemplate, Job, JobFlowTask, PhaseTemplate, TaskTemplate } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
 import TaskBoard from '@/components/dashboard/task-board';
@@ -16,13 +16,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getAllTasks as dbGetAllTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask as dbUpdateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject, addTimeEntry as dbAddTimeEntry, getAllJobs, getAllJobFlowTasks, getJobFlowTemplates, deleteTask } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getAllTasks as dbGetAllTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask as dbUpdateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject, addTimeEntry as dbAddTimeEntry, getAllJobs, getAllJobFlowTasks, getJobFlowTemplates, deleteTask, getPhaseTemplates, getTaskTemplates, addPhaseTemplate, addTaskTemplate } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Hash, Lock, Plus } from 'lucide-react';
+import { Hash, Lock, Plus, FileText, Component } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import CreateTaskFromThreadDialog from '@/components/dashboard/create-task-from-thread-dialog';
 import ThreadView from '@/components/dashboard/thread-view';
@@ -38,6 +38,8 @@ import TaskDetailsDialog from '@/components/dashboard/task-details-dialog';
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import LogTimeDialog from '@/components/dashboard/log-time-dialog';
+import PhaseTemplateBuilder from '@/components/dashboard/phase-template-builder';
+import TaskTemplateBuilder from '@/components/dashboard/task-template-builder';
 
 export default function Dashboard() {
   const { appUser } = useAuth();
@@ -55,6 +57,8 @@ export default function Dashboard() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [jobFlowTemplates, setJobFlowTemplates] = useState<JobFlowTemplate[]>([]);
+  const [phaseTemplates, setPhaseTemplates] = useState<PhaseTemplate[]>([]);
+  const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobFlowTasks, setJobFlowTasks] = useState<JobFlowTask[]>([]);
   const [activeSpaceId, setActiveSpaceId] = useState('');
@@ -81,11 +85,13 @@ export default function Dashboard() {
         setIsLoading(true);
         await seedDatabase();
 
-        const [users, spaces, invites, templates] = await Promise.all([
+        const [users, spaces, invites, jfTemplates, pTemplates, tTemplates] = await Promise.all([
           dbGetAllUsers(), 
           dbGetAllSpaces(),
           getInvitesForEmail(appUser.email),
           getJobFlowTemplates(),
+          getPhaseTemplates(),
+          getTaskTemplates(),
         ]);
         
         if (abortController.signal.aborted) return;
@@ -93,7 +99,9 @@ export default function Dashboard() {
         setAllUsers(users);
         setAllSpaces(spaces);
         setPendingInvites(invites);
-        setJobFlowTemplates(templates);
+        setJobFlowTemplates(jfTemplates);
+        setPhaseTemplates(pTemplates);
+        setTaskTemplates(tTemplates);
         
         const userSpaces = spaces.filter(s => s.members[appUser!.id]);
         if (userSpaces.length > 0) {
@@ -369,9 +377,21 @@ export default function Dashboard() {
     }
   };
 
-  const handleSaveJobFlowTemplate = (templateData: JobFlowTemplate) => {
+  const handleSaveJobFlowTemplate = async (templateData: JobFlowTemplate) => {
     setJobFlowTemplates(prev => [...prev, templateData]);
     toast({ title: 'Template Saved!', description: `The "${templateData.name}" template has been saved.`});
+  }
+
+  const handleSavePhaseTemplate = async (templateData: Omit<PhaseTemplate, 'id'>) => {
+    const newTemplate = await addPhaseTemplate(templateData);
+    setPhaseTemplates(prev => [...prev, newTemplate]);
+    toast({ title: 'Phase Template Saved!', description: `The "${newTemplate.name}" template has been saved.`});
+  }
+  
+  const handleSaveTaskTemplate = async (templateData: Omit<TaskTemplate, 'id'>) => {
+    const newTemplate = await addTaskTemplate(templateData);
+    setTaskTemplates(prev => [...prev, newTemplate]);
+    toast({ title: 'Task Template Saved!', description: `The "${newTemplate.templateName}" template has been saved.`});
   }
   
   const handleJobLaunched = async () => {
@@ -554,19 +574,8 @@ export default function Dashboard() {
                   <h2 className="text-lg font-semibold">Flows</h2>
                 </div>
                 <ScrollArea>
-                  <div className="p-2">
-                    <Button
-                        variant="ghost"
-                        className={cn(
-                          'w-full justify-start gap-2',
-                          flowsViewMode === 'templates' && 'bg-primary/10 text-primary'
-                        )}
-                        onClick={() => setFlowsViewMode('templates')}
-                      >
-                        <FilePlus className="h-4 w-4" />
-                        <span>Templates</span>
-                      </Button>
-                      <Button
+                  <div className="p-2 space-y-1">
+                     <Button
                         variant="ghost"
                         className={cn(
                           'w-full justify-start gap-2',
@@ -576,6 +585,41 @@ export default function Dashboard() {
                       >
                         <GitBranch className="h-4 w-4" />
                         <span>Active Jobs</span>
+                      </Button>
+                    <Separator className="my-1" />
+                    <h3 className="px-2 py-1 text-xs font-semibold text-muted-foreground">Templates</h3>
+                    <Button
+                        variant="ghost"
+                        className={cn(
+                          'w-full justify-start gap-2',
+                          flowsViewMode === 'templates' && 'bg-primary/10 text-primary'
+                        )}
+                        onClick={() => setFlowsViewMode('templates')}
+                      >
+                        <FilePlus className="h-4 w-4" />
+                        <span>Job Flows</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className={cn(
+                          'w-full justify-start gap-2',
+                          flowsViewMode === 'phase-templates' && 'bg-primary/10 text-primary'
+                        )}
+                        onClick={() => setFlowsViewMode('phase-templates')}
+                      >
+                        <Component className="h-4 w-4" />
+                        <span>Phases</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className={cn(
+                          'w-full justify-start gap-2',
+                          flowsViewMode === 'task-templates' && 'bg-primary/10 text-primary'
+                        )}
+                        onClick={() => setFlowsViewMode('task-templates')}
+                      >
+                        <FileText className="h-4 w-4" />
+                        <span>Tasks</span>
                       </Button>
                   </div>
                 </ScrollArea>
@@ -691,10 +735,7 @@ export default function Dashboard() {
                 <div className="space-y-6">
                   {isLoading ? <div className="flex justify-center items-center h-full">Loading flows...</div> : 
                     <>
-                      {flowsViewMode === 'templates' && (
-                        <JobFlowTemplateBuilder templates={jobFlowTemplates} allUsers={visibleUsers} onSave={handleSaveJobFlowTemplate} activeSpace={activeSpace} onJobLaunched={handleJobLaunched} />
-                      )}
-                      {flowsViewMode === 'active-jobs' && (
+                       {flowsViewMode === 'active-jobs' && (
                          <ActiveJobsView
                           jobs={jobs}
                           jobFlowTasks={jobFlowTasks}
@@ -702,6 +743,15 @@ export default function Dashboard() {
                           templates={jobFlowTemplates}
                           allUsers={visibleUsers}
                         />
+                      )}
+                      {flowsViewMode === 'templates' && (
+                        <JobFlowTemplateBuilder templates={jobFlowTemplates} allUsers={visibleUsers} onSave={handleSaveJobFlowTemplate} activeSpace={activeSpace} onJobLaunched={handleJobLaunched} phaseTemplates={phaseTemplates} taskTemplates={taskTemplates} />
+                      )}
+                       {flowsViewMode === 'phase-templates' && (
+                        <PhaseTemplateBuilder templates={phaseTemplates} allUsers={visibleUsers} onSave={handleSavePhaseTemplate} taskTemplates={taskTemplates}/>
+                      )}
+                      {flowsViewMode === 'task-templates' && (
+                        <TaskTemplateBuilder templates={taskTemplates} allUsers={visibleUsers} onSave={handleSaveTaskTemplate} />
                       )}
                     </>
                   }

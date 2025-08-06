@@ -213,6 +213,21 @@ export interface JobFlowTask {
     reviewedBy?: string; // ID of user who approved the review phase
 }
 
+// Reusable, standalone templates
+export interface TaskTemplate extends JobFlowTaskTemplate {
+    templateName: string;
+    templateDescription?: string;
+}
+
+export interface PhaseTemplate {
+    id: string;
+    name: string;
+    description?: string;
+    tasks: JobFlowTaskTemplate[];
+    requiresReview: boolean;
+}
+
+
 const defaultStatuses: Status[] = [
     { name: 'Backlog', color: '#6b7280' },
     { name: 'In Progress', color: '#3b82f6' },
@@ -526,6 +541,9 @@ export const messages: Message[] = [
   { id: 'msg-5', channel_id: 'chan-5', user_id: 'user-4', content: 'I\'m going hiking this weekend, can\'t wait!', timestamp: '2024-08-02T14:00:00Z', reactions: [], reply_count: 0 },
   { id: 'msg-6', channel_id: 'chan-6', user_id: 'user-2', content: 'Just sent the weekly update to Client X.', timestamp: '2024-08-03T17:00:00Z', reactions: [], reply_count: 0 },
 ];
+
+export const taskTemplates: TaskTemplate[] = [];
+export const phaseTemplates: PhaseTemplate[] = [];
 
 export const jobFlowTemplates: JobFlowTemplate[] = [
     {
