@@ -663,104 +663,106 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                             </div>
                         </div>
                     </ScrollArea>
+                    
+                    {/* Right Panel: Activity & Comments */}
+                    <div className="col-span-1 border-l bg-card flex flex-col h-full overflow-hidden">
+                        <div className="flex flex-col h-full">
+                            {/* Sticky Header */}
+                            <div className="p-4 border-b bg-card sticky top-0 z-10">
+                                <h3 className="font-semibold">Activity</h3>
+                            </div>
 
-                   {/* Right Panel: Activity & Comments */}
-                    <div className="col-span-1 border-l bg-card flex flex-col h-full">
-                        {/* Sticky header */}
-                        <div className="p-4 border-b sticky top-0 bg-card z-10">
-                            <h3 className="font-semibold">Activity</h3>
-                        </div>
+                            {/* Scrollable Feed */}
+                            <div className="flex-1 overflow-y-auto px-4 space-y-4">
+                                {sortedActivities.map((activity) => {
+                                    if (activity.type === 'comment' && activity.comment_id) {
+                                        const user = allUsers.find(u => u.id === activity.user_id);
+                                        const isTimeLog = activity.comment_id.startsWith('time-');
+                                        const comment = isTimeLog ? null : (task.comments || []).find(c => c.id === activity.comment_id);
+                                        
+                                        if (!user) return null;
+                                        if (!isTimeLog && !comment) return null;
 
-                        {/* Scrollable middle */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                            {sortedActivities.map((activity) => {
-                                if (activity.type === 'comment' && activity.comment_id) {
-                                    const user = allUsers.find(u => u.id === activity.user_id);
-                                    const isTimeLog = activity.comment_id.startsWith('time-');
-                                    const comment = isTimeLog ? null : (task.comments || []).find(c => c.id === activity.comment_id);
-                                    
-                                    if (!user) return null;
-                                    if (!isTimeLog && !comment) return null;
-
-                                    return (
-                                        <div key={activity.id} className="flex items-start gap-3">
-                                            <Avatar className="h-8 w-8">
-                                                <AvatarImage src={user.avatarUrl} alt={user.name} />
-                                                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1 rounded-md border bg-background p-3">
-                                                <div className="flex justify-between items-center">
-                                                    <p className="font-semibold text-sm">{user.name}</p>
-                                                    <p className="text-xs text-muted-foreground">{new Date(activity.timestamp).toLocaleDateString()}</p>
+                                        return (
+                                            <div key={activity.id} className="flex items-start gap-3">
+                                                <Avatar className="h-8 w-8">
+                                                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                                                    <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex-1 rounded-md border bg-background p-3">
+                                                    <div className="flex justify-between items-center">
+                                                        <p className="font-semibold text-sm">{user.name}</p>
+                                                        <p className="text-xs text-muted-foreground">{new Date(activity.timestamp).toLocaleDateString()}</p>
+                                                    </div>
+                                                    {isTimeLog ? (
+                                                        <p className="text-sm text-muted-foreground mt-1">{activity.comment}</p>
+                                                    ) : (
+                                                        <>
+                                                            {comment?.comment && <p className="text-sm text-muted-foreground mt-1">{comment.comment}</p>}
+                                                            {comment?.attachments && comment.attachments.length > 0 && (
+                                                                <div className="mt-2 space-y-2">
+                                                                    {comment.attachments.map(att => (
+                                                                        <div key={att.id}>
+                                                                            {att.type === 'image' ? (
+                                                                                <img src={att.url} alt={att.name} className="rounded-lg max-w-full max-h-64 object-cover" />
+                                                                            ) : (
+                                                                                <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline bg-primary/10 p-2 rounded-md">
+                                                                                    <File className="h-4 w-4" />
+                                                                                    <span>{att.name}</span>
+                                                                                </a>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    )}
                                                 </div>
-                                                {isTimeLog ? (
-                                                    <p className="text-sm text-muted-foreground mt-1">{activity.comment}</p>
-                                                ) : (
-                                                    <>
-                                                        {comment?.comment && <p className="text-sm text-muted-foreground mt-1">{comment.comment}</p>}
-                                                        {comment?.attachments && comment.attachments.length > 0 && (
-                                                            <div className="mt-2 space-y-2">
-                                                                {comment.attachments.map(att => (
-                                                                    <div key={att.id}>
-                                                                        {att.type === 'image' ? (
-                                                                            <img src={att.url} alt={att.name} className="rounded-lg max-w-full max-h-64 object-cover" />
-                                                                        ) : (
-                                                                            <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline bg-primary/10 p-2 rounded-md">
-                                                                                <File className="h-4 w-4" />
-                                                                                <span>{att.name}</span>
-                                                                            </a>
-                                                                        )}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </>
-                                                )}
                                             </div>
-                                        </div>
-                                    )
-                                }
-                                return <ActivityItem key={activity.id} activity={activity} allUsers={allUsers} />;
-                            })}
-                        </div>
+                                        )
+                                    }
+                                    return <ActivityItem key={activity.id} activity={activity} allUsers={allUsers} />;
+                                })}
+                            </div>
 
-                        {/* Sticky footer */}
-                        <div className="p-4 border-t sticky bottom-0 bg-card z-10">
-                           {attachments.length > 0 && (
-                                <div className="mb-2 space-y-2">
-                                    {attachments.map((file, i) => (
-                                    <div key={i} className="flex items-center justify-between gap-2 text-sm bg-muted p-2 rounded-md">
-                                        <div className="flex items-center gap-2 overflow-hidden">
-                                            {file.type.startsWith('image/') ? <ImageIcon className="h-4 w-4 flex-shrink-0" /> : <File className="h-4 w-4 flex-shrink-0" />}
-                                            <span className="truncate">{file.name}</span>
+                            {/* Sticky Footer */}
+                            <div className="p-4 border-t bg-card sticky bottom-0 z-10">
+                               {attachments.length > 0 && (
+                                    <div className="mb-2 space-y-2">
+                                        {attachments.map((file, i) => (
+                                        <div key={i} className="flex items-center justify-between gap-2 text-sm bg-muted p-2 rounded-md">
+                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                {file.type.startsWith('image/') ? <ImageIcon className="h-4 w-4 flex-shrink-0" /> : <File className="h-4 w-4 flex-shrink-0" />}
+                                                <span className="truncate">{file.name}</span>
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}
+                                            >
+                                            &times;
+                                            </Button>
                                         </div>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}
-                                        >
-                                        &times;
-                                        </Button>
+                                        ))}
                                     </div>
-                                    ))}
-                                </div>
-                            )}
-                            <form onSubmit={handleAddComment} className="relative">
-                                <Textarea name="comment" placeholder="Write a comment..." className="pr-24" />
-                                <div className="absolute right-2 bottom-2 flex gap-1">
-                                    <input
-                                        type="file"
-                                        multiple
-                                        ref={fileInputRef}
-                                        className="hidden"
-                                        onChange={handleFileSelect}
-                                    />
-                                    <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
-                                        <Paperclip className="h-4 w-4" />
-                                    </Button>
-                                    <Button type="submit" size="sm">Send</Button>
-                                </div>
-                            </form>
+                                )}
+                                <form onSubmit={handleAddComment} className="relative">
+                                    <Textarea name="comment" placeholder="Write a comment..." className="pr-24" />
+                                    <div className="absolute right-2 bottom-2 flex gap-1">
+                                        <input
+                                            type="file"
+                                            multiple
+                                            ref={fileInputRef}
+                                            className="hidden"
+                                            onChange={handleFileSelect}
+                                        />
+                                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
+                                            <Paperclip className="h-4 w-4" />
+                                        </Button>
+                                        <Button type="submit" size="sm">Send</Button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
