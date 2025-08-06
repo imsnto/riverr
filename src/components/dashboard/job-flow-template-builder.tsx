@@ -46,7 +46,7 @@ const templateSchema = z.object({
 
 type TemplateFormValues = z.infer<typeof templateSchema>;
 
-function TemplateForm({ onSave, onCancel, allUsers }: { onSave: (data: any) => void, onCancel: () => void, allUsers: User[] }) {
+function TemplateForm({ onSave, allUsers }: { onSave: (data: any) => void, allUsers: User[] }) {
   const form = useForm<TemplateFormValues>({
     resolver: zodResolver(templateSchema),
     defaultValues: {
@@ -201,7 +201,7 @@ export default function JobFlowTemplateBuilder({ templates, allUsers }: JobFlowT
                 </DialogHeader>
                 <div className="flex-1 overflow-hidden">
                   <ScrollArea className="h-full pr-6 -mr-6">
-                      <TemplateForm onSave={handleSave} onCancel={() => setIsFormOpen(false)} allUsers={allUsers} />
+                      <TemplateForm onSave={handleSave} allUsers={allUsers} />
                   </ScrollArea>
                 </div>
                  <DialogFooter>
