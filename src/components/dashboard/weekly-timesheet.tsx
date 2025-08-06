@@ -70,6 +70,10 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
       setSelectedTask(updatedTask);
     }
   };
+  
+  const handleAddTask = (newTask: Task) => {
+    setTasks(prev => [...prev, newTask]);
+  }
 
   const handleTaskClick = (task: Task | undefined) => {
     if (task) {
@@ -153,19 +157,21 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
         </div>
       </div>
 
-      {selectedTask && (
-        <TaskDetailsDialog
+      <TaskDetailsDialog
           task={selectedTask}
           isOpen={!!selectedTask}
+          allUsers={allUsers}
+          allTasks={tasks}
           onOpenChange={(isOpen) => {
             if (!isOpen) setSelectedTask(null);
           }}
           onUpdateTask={handleUpdateTask}
-          projects={projects}
-          allUsers={allUsers}
+          onAddTask={handleAddTask}
+          onTaskSelect={setSelectedTask}
           statuses={statuses}
+          projects={projects}
         />
-      )}
     </>
   );
 }
+
