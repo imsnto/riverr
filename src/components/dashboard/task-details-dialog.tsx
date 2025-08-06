@@ -95,7 +95,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
     const [newTag, setNewTag] = useState('');
     const [newSubtaskName, setNewSubtaskName] = useState('');
     
-    if (!appUser) return null;
+    if (!appUser || !task) return null;
 
     const project = projects.find(p => p.id === task.project_id);
     const subtasks = allTasks.filter(t => t.parentId === task.id);
