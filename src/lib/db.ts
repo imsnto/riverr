@@ -1,4 +1,5 @@
 
+
 // src/lib/db.ts
 
 import {
@@ -207,8 +208,15 @@ export const addTask = async (task: Omit<Task, 'id'>): Promise<Task> => {
 
 export const updateTask = async (taskId: string, data: Partial<Task>): Promise<void> => {
   const taskRef = doc(db, 'tasks', taskId);
-  await updateDoc(taskRef, data);
+  // Firestore does not allow 'undefined' fields. Remove id before updating.
+  const { id: _omit, ...dataWithoutId } = data;
+  await updateDoc(taskRef, dataWithoutId);
 };
+
+export const deleteTask = async (taskId: string): Promise<void> => {
+    const taskRef = doc(db, 'tasks', taskId);
+    await deleteDoc(taskRef);
+}
 
 
 // --- Time & Log Management ---

@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getAllTasks as dbGetAllTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask as dbUpdateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject, addTimeEntry, getAllJobs, getAllJobFlowTasks, getJobFlowTemplates } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getAllTasks as dbGetAllTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask as dbUpdateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject, addTimeEntry, getAllJobs, getAllJobFlowTasks, getJobFlowTemplates, deleteTask } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -192,15 +192,16 @@ export default function Dashboard() {
       return;
     }
   
+    const currentTasks = tasks;
     setTasks(updatedTasks);
   
     const batch = writeBatch(db);
     for (const task of updatedTasks) {
       if (task.id.startsWith('temp-')) continue;
-      const originalTask = tasks.find(t => t.id === task.id);
+      const originalTask = currentTasks.find(t => t.id === task.id);
       if (originalTask && JSON.stringify(originalTask) !== JSON.stringify(task)) {
         const taskRef = doc(db, 'tasks', task.id);
-        batch.update(taskRef, { ...task, id: undefined });
+        batch.update(taskRef, task);
       }
     }
     try {
@@ -212,7 +213,7 @@ export default function Dashboard() {
         title: 'Update Failed',
         description: 'Could not save task changes to the server.',
       });
-      setTasks(tasks); 
+      setTasks(currentTasks); 
     }
   };
   
@@ -233,7 +234,7 @@ export default function Dashboard() {
     }
     
     if (!updatedTask.id.startsWith('temp-')) {
-        dbUpdateTask(updatedTask.id, { ...updatedTask, id: undefined as any });
+        dbUpdateTask(updatedTask.id, updatedTask);
     }
   };
   
@@ -243,6 +244,9 @@ export default function Dashboard() {
   
   const handleRemoveTask = (taskId: string) => {
     setTasks(prev => prev.filter(t => t.id !== taskId));
+    if (!taskId.startsWith('temp-')) {
+        deleteTask(taskId);
+    }
   }
 
   const handleViewThread = (thread: Message) => {
