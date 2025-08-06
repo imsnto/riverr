@@ -163,6 +163,45 @@ export interface Message {
   linked_task_id?: string;
 }
 
+// Job Flow System
+export interface JobFlowPhase {
+  id: string;
+  phaseIndex: number;
+  name: string;
+  defaultRole: string; // e.g., 'Designer', 'Developer'
+  taskTitleTemplate: string;
+  taskDescriptionTemplate: string;
+}
+
+export interface JobFlowTemplate {
+  id: string;
+  name: string;
+  description: string;
+  phases: JobFlowPhase[];
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface Job {
+  id: string;
+  name: string;
+  workflowTemplateId: string;
+  currentPhaseIndex: number;
+  status: 'active' | 'completed' | 'cancelled';
+  createdBy: string;
+  createdAt: string;
+  roleUserMapping: Record<string, string>; // Maps roles like 'Designer' to a specific userId
+}
+
+// Links a job to the actual task created in the main system
+export interface JobFlowTask {
+    id: string;
+    jobId: string;
+    phaseIndex: number;
+    taskId: string; // The ID of the task in the main `tasks` collection
+    createdAt: string;
+}
+
 const defaultStatuses: Status[] = [
     { name: 'Backlog', color: '#6b7280' },
     { name: 'In Progress', color: '#3b82f6' },
