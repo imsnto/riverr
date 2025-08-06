@@ -16,7 +16,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions, jobFlowTemplates, JobFlowTemplate, Job } from './data';
+import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions, jobFlowTemplates, JobFlowTemplate, Job, JobFlowTask } from './data';
 import { randomBytes } from 'crypto';
 
 // --- Seeding ---
@@ -276,6 +276,24 @@ export const addMessage = async (message: Omit<Message, 'id'>): Promise<Message>
 }
 
 // --- Job Flow Management ---
+export const getAllJobs = async (spaceId: string): Promise<Job[]> => {
+    const q = query(collection(db, 'jobs'), where('space_id', '==', spaceId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
+};
+
+export const getAllJobFlowTasks = async (spaceId: string): Promise<JobFlowTask[]> => {
+    // This is inefficient. In a real app, you might query by job IDs that are in the space.
+    // For now, let's get all jobs in the space and then get their tasks.
+    const jobsInSpace = await getAllJobs(spaceId);
+    if (jobsInSpace.length === 0) return [];
+    
+    const jobIds = jobsInSpace.map(j => j.id);
+    const q = query(collection(db, 'job_flow_tasks'), where('jobId', 'in', jobIds));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JobFlowTask));
+};
+
 export const launchJob = async (
     jobName: string,
     template: JobFlowTemplate,

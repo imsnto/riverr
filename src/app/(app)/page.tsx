@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FolderKanban, GanttChart, MessageSquare, Settings, Users, MessageCircleMore, ShieldCheck, FilePlus } from 'lucide-react';
-import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message, Status, Invite, JobFlowTemplate, jobFlowTemplates as mockTemplates, JobFlowPhase } from '@/lib/data';
+import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message, Status, Invite, JobFlowTemplate, jobFlowTemplates as mockTemplates, JobFlowPhase, Job, JobFlowTask } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
 import TaskBoard from '@/components/dashboard/task-board';
@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject, addTimeEntry } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject, addTimeEntry, getAllJobs, getAllJobFlowTasks } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,7 @@ import InviteUserDialog from '@/components/dashboard/invite-user-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Mail } from 'lucide-react';
 import JobFlowTemplateBuilder from '@/components/dashboard/job-flow-template-builder';
+import ActiveJobsView from '@/components/dashboard/active-jobs-view';
 
 export default function Dashboard() {
   const { appUser } = useAuth();
@@ -50,6 +51,8 @@ export default function Dashboard() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [jobFlowTemplates, setJobFlowTemplates] = useState<JobFlowTemplate[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobFlowTasks, setJobFlowTasks] = useState<JobFlowTask[]>([]);
   const [activeSpaceId, setActiveSpaceId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
@@ -105,15 +108,19 @@ export default function Dashboard() {
     async function loadSpaceData() {
       if (activeSpaceId) {
         setIsLoading(true);
-        const [projectsInSpace, channelsInSpace] = await Promise.all([
+        const [projectsInSpace, channelsInSpace, jobsInSpace, jobFlowTasksInSpace] = await Promise.all([
             dbGetProjects(activeSpaceId),
             dbGetChannels(activeSpaceId),
+            getAllJobs(activeSpaceId),
+            getAllJobFlowTasks(activeSpaceId)
         ]);
         
         if (abortController.signal.aborted) return;
 
         setProjects(projectsInSpace);
         setChannels(channelsInSpace);
+        setJobs(jobsInSpace);
+        setJobFlowTasks(jobFlowTasksInSpace);
         
         if (channelsInSpace.length > 0) {
             const allMessagesInChannels = await Promise.all(channelsInSpace.map(c => dbGetMessages(c.id))).then(res => res.flat());
@@ -546,9 +553,19 @@ export default function Dashboard() {
                 </>
               )}
                {activeTab === 'flows' && activeSpace && (
-                <>
-                {isLoading ? <div className="flex justify-center items-center h-full">Loading flows...</div> : <JobFlowTemplateBuilder templates={jobFlowTemplates} allUsers={visibleUsers} onSave={handleSaveJobFlowTemplate} activeSpace={activeSpace} />}
-                </>
+                <div className="space-y-6">
+                  {isLoading ? <div className="flex justify-center items-center h-full">Loading flows...</div> : 
+                    <>
+                      <JobFlowTemplateBuilder templates={jobFlowTemplates} allUsers={visibleUsers} onSave={handleSaveJobFlowTemplate} activeSpace={activeSpace} />
+                      <ActiveJobsView
+                        jobs={jobs}
+                        jobFlowTasks={jobFlowTasks}
+                        tasks={tasks}
+                        templates={jobFlowTemplates}
+                      />
+                    </>
+                  }
+                </div>
               )}
               {canLogTime && activeTab === 'timesheets' && (
                   <>
