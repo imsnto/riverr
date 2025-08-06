@@ -115,6 +115,10 @@ const ActivityItem = ({ activity, allUsers }: { activity: Activity; allUsers: Us
                 return (
                     <div><span className="font-semibold">{user?.name}</span> changed status from <Badge variant="outline">{activity.from}</Badge> to <Badge variant="outline">{activity.to}</Badge></div>
                 );
+            case 'assignee_change':
+                return (
+                    <div><span className="font-semibold">{user?.name}</span> changed assignee from <Badge variant="outline">{activity.from}</Badge> to <Badge variant="outline">{activity.to}</Badge></div>
+                );
             case 'comment':
                  const comment = activity.comment_id;
                  const commentText = activity.comment
@@ -253,6 +257,19 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                 type: 'status_change',
                 from: task.status,
                 to: value,
+            };
+        }
+
+        if (field === 'assigned_to' && task.assigned_to !== value) {
+            const fromUser = allUsers.find(u => u.id === task.assigned_to)?.name || 'Unassigned';
+            const toUser = allUsers.find(u => u.id === value)?.name || 'Unassigned';
+            newActivity = {
+                id: `act-${Date.now()}`,
+                user_id: appUser.id,
+                timestamp: new Date().toISOString(),
+                type: 'assignee_change',
+                from: fromUser,
+                to: toUser,
             };
         }
         
@@ -728,3 +745,4 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
         </Dialog>
     );
 }
+
