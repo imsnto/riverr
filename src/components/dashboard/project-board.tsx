@@ -7,7 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { User, Task, Project, Space, Status } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { MoreHorizontal, Plus, Edit, Trash2, Palette } from 'lucide-react';
+import { MoreHorizontal, Plus, Edit, Trash2, Palette, Calendar, MessageSquare } from 'lucide-react';
 import { Button, buttonVariants } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '../ui/dropdown-menu';
@@ -72,51 +72,30 @@ const STATUS_COLORS = [
 const TaskCard = ({ task, project, onUpdateTask, onClick, isDragging, allUsers }: { task: Task, project?: Project, onUpdateTask: (task: Task) => void, onClick: () => void, isDragging: boolean, allUsers: User[] }) => {
   const assignee = allUsers.find(u => u.id === task.assigned_to);
 
-  const handleAssigneeChange = (userId: string) => {
-    onUpdateTask({ ...task, assigned_to: userId });
-  };
-
   return (
     <Card
       onClick={onClick}
       className={cn(
-        "mb-4 bg-card hover:shadow-md transition-shadow duration-200 cursor-pointer",
+        "mb-2 bg-card hover:shadow-md transition-shadow duration-200 cursor-pointer",
         isDragging && "opacity-50 ring-2 ring-primary"
       )}
     >
-      <CardHeader className="p-4 cursor-grab">
-        <div className="flex justify-between items-start">
-            <Badge variant="outline" className="mb-2 font-normal">{project?.name || 'No Project'}</Badge>
-            <Button variant="ghost" size="icon" className="h-6 w-6">
-                <MoreHorizontal className="h-4 w-4" />
-            </Button>
-        </div>
-        <CardTitle className="text-base font-medium">{task.name}</CardTitle>
+      <CardHeader className="p-3 cursor-grab">
+        <CardTitle className="text-sm font-medium">{task.name}</CardTitle>
       </CardHeader>
-      <CardContent className="p-4 pt-0">
-        <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
-      </CardContent>
-      <CardFooter className="flex justify-between items-center p-4 pt-0">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" className="h-8 w-8 p-0 rounded-full">
-                {assignee && (
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={assignee.avatarUrl} alt={assignee.name} />
-                    <AvatarFallback>{getInitials(assignee.name)}</AvatarFallback>
-                  </Avatar>
-                )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent onClick={(e) => e.stopPropagation()} align="start">
-            {allUsers.map(user => (
-              <DropdownMenuItem key={user.id} onSelect={() => handleAssigneeChange(user.id)}>
-                {user.name}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <span className="text-xs text-muted-foreground">Due: {new Date(task.due_date).toLocaleDateString()}</span>
+      <CardFooter className="flex justify-between items-center p-3 pt-0">
+         <div className="flex items-center gap-2 text-muted-foreground">
+            {task.comments?.length > 0 && 
+                <div className="flex items-center gap-1 text-xs">
+                    <MessageSquare className="h-3 w-3" />
+                    {task.comments.length}
+                </div>
+            }
+         </div>
+        <Avatar className="h-6 w-6">
+            <AvatarImage src={assignee?.avatarUrl} alt={assignee?.name} />
+            <AvatarFallback>{assignee ? getInitials(assignee.name) : 'U'}</AvatarFallback>
+        </Avatar>
       </CardFooter>
     </Card>
   );
