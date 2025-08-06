@@ -506,27 +506,27 @@ export default function Dashboard() {
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton onClick={() => setView('overview')} isActive={view === 'overview'}>
-                                <BarChart /> Overview
+                                <BarChart /> <span>Overview</span>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                         <SidebarMenuItem>
                             <SidebarMenuButton onClick={() => setView('tasks')} isActive={view === 'tasks'}>
-                                <FolderKanban /> Tasks
+                                <FolderKanban /> <span>Tasks</span>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                         <SidebarMenuItem>
                             <SidebarMenuButton onClick={() => setView('messages')} isActive={view === 'messages'}>
-                                <MessageSquare /> Messages
+                                <MessageSquare /> <span>Messages</span>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                         <SidebarMenuItem>
                             <SidebarMenuButton onClick={() => setView('timesheets')} isActive={view === 'timesheets'}>
-                                <Timer /> Timesheets
+                                <Timer /> <span>Timesheets</span>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                          <SidebarMenuItem>
                             <SidebarMenuButton onClick={() => setView('flows')} isActive={view === 'flows'}>
-                                <Workflow /> Flows
+                                <Workflow /> <span>Flows</span>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     </SidebarMenu>
@@ -535,7 +535,7 @@ export default function Dashboard() {
                     <SidebarMenu>
                          <SidebarMenuItem>
                             <SidebarMenuButton onClick={() => setView('settings')} isActive={view === 'settings'}>
-                                <Settings /> Settings
+                                <Settings /> <span>Settings</span>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     </SidebarMenu>
@@ -570,5 +570,7 @@ export default function Dashboard() {
         </SidebarProvider>
     );
 }
+
+    
 
     
