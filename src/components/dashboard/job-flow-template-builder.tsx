@@ -21,16 +21,19 @@ import { Label } from '@/components/ui/label';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { ScrollArea } from '../ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface JobFlowTemplateBuilderProps {
   templates: JobFlowTemplate[];
+  allUsers: User[];
   // onSave: (template: Omit<JobFlowTemplate, 'id' | 'createdAt' | 'createdBy'>) => void;
   // onDelete: (templateId: string) => void;
 }
 
 const phaseSchema = z.object({
   name: z.string().min(1, 'Phase name is required'),
-  defaultRole: z.string().min(1, 'Default role is required'),
+  defaultAssigneeId: z.string().min(1, 'Default assignee is required'),
   taskTitleTemplate: z.string().min(1, 'Task title is required'),
   taskDescriptionTemplate: z.string().optional(),
 });
@@ -43,13 +46,13 @@ const templateSchema = z.object({
 
 type TemplateFormValues = z.infer<typeof templateSchema>;
 
-function TemplateForm({ onSave, onOpenChange }: { onSave: (data: any) => void, onOpenChange: (open: boolean) => void }) {
+function TemplateForm({ onSave, onOpenChange, allUsers }: { onSave: (data: any) => void, onOpenChange: (open: boolean) => void, allUsers: User[] }) {
   const { register, control, handleSubmit, formState: { errors } } = useForm<TemplateFormValues>({
     resolver: zodResolver(templateSchema),
     defaultValues: {
       name: '',
       description: '',
-      phases: [{ name: '', defaultRole: '', taskTitleTemplate: '', taskDescriptionTemplate: '' }],
+      phases: [{ name: '', defaultAssigneeId: '', taskTitleTemplate: '', taskDescriptionTemplate: '' }],
     },
   });
 
@@ -84,8 +87,25 @@ function TemplateForm({ onSave, onOpenChange }: { onSave: (data: any) => void, o
                <div className="flex-1 space-y-2">
                     <Input {...register(`phases.${index}.name`)} placeholder="Phase Name (e.g., Kick-off Call)" />
                     {errors.phases?.[index]?.name && <p className="text-sm text-destructive">{errors.phases[index]?.name?.message}</p>}
-                    <Input {...register(`phases.${index}.defaultRole`)} placeholder="Default Role (e.g., Project Manager)" />
-                     {errors.phases?.[index]?.defaultRole && <p className="text-sm text-destructive">{errors.phases[index]?.defaultRole?.message}</p>}
+                    
+                    <Controller
+                        control={control}
+                        name={`phases.${index}.defaultAssigneeId`}
+                        render={({ field }) => (
+                           <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a default assignee" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {allUsers.map(user => (
+                                        <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                           </Select>
+                        )}
+                    />
+                    {errors.phases?.[index]?.defaultAssigneeId && <p className="text-sm text-destructive">{errors.phases[index]?.defaultAssigneeId?.message}</p>}
+
                     <Input {...register(`phases.${index}.taskTitleTemplate`)} placeholder="Task Title Template (e.g., Schedule meeting with {{client}})" />
                      {errors.phases?.[index]?.taskTitleTemplate && <p className="text-sm text-destructive">{errors.phases[index]?.taskTitleTemplate?.message}</p>}
                     <Textarea {...register(`phases.${index}.taskDescriptionTemplate`)} placeholder="Task Description Template" rows={2}/>
@@ -98,7 +118,7 @@ function TemplateForm({ onSave, onOpenChange }: { onSave: (data: any) => void, o
           <Button
             type="button"
             variant="outline"
-            onClick={() => append({ name: '', defaultRole: '', taskTitleTemplate: '', taskDescriptionTemplate: '' })}
+            onClick={() => append({ name: '', defaultAssigneeId: '', taskTitleTemplate: '', taskDescriptionTemplate: '' })}
           >
             <Plus className="mr-2 h-4 w-4" /> Add Phase
           </Button>
@@ -114,7 +134,7 @@ function TemplateForm({ onSave, onOpenChange }: { onSave: (data: any) => void, o
 }
 
 
-export default function JobFlowTemplateBuilder({ templates }: JobFlowTemplateBuilderProps) {
+export default function JobFlowTemplateBuilder({ templates, allUsers }: JobFlowTemplateBuilderProps) {
     const [isFormOpen, setIsFormOpen] = useState(false);
 
     return (
@@ -170,14 +190,16 @@ export default function JobFlowTemplateBuilder({ templates }: JobFlowTemplateBui
                 </CardContent>
             </Card>
 
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="sm:max-w-2xl max-h-[90vh]">
                 <DialogHeader>
-                <DialogTitle>Create New Job Flow Template</DialogTitle>
-                <DialogDescription>
-                    Define the phases and default tasks for a reusable workflow.
-                </DialogDescription>
+                    <DialogTitle>Create New Job Flow Template</DialogTitle>
+                    <DialogDescription>
+                        Define the phases and default tasks for a reusable workflow.
+                    </DialogDescription>
                 </DialogHeader>
-                <TemplateForm onSave={() => {}} onOpenChange={setIsFormOpen} />
+                <ScrollArea className="pr-6 -mr-6">
+                    <TemplateForm onSave={() => {}} onOpenChange={setIsFormOpen} allUsers={allUsers} />
+                </ScrollArea>
             </DialogContent>
         </Dialog>
     );

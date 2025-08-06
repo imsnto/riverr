@@ -542,7 +542,7 @@ export default function Dashboard() {
               )}
                {activeTab === 'flows' && activeSpace && (
                 <>
-                {isLoading ? <div className="flex justify-center items-center h-full">Loading flows...</div> : <JobFlowTemplateBuilder templates={jobFlowTemplates} />}
+                {isLoading ? <div className="flex justify-center items-center h-full">Loading flows...</div> : <JobFlowTemplateBuilder templates={jobFlowTemplates} allUsers={visibleUsers} />}
                 </>
               )}
               {canLogTime && activeTab === 'timesheets' && (

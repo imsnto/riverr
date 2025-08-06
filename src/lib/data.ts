@@ -168,7 +168,7 @@ export interface JobFlowPhase {
   id: string;
   phaseIndex: number;
   name: string;
-  defaultRole: string; // e.g., 'Designer', 'Developer'
+  defaultAssigneeId: string; // e.g., 'user-123'
   taskTitleTemplate: string;
   taskDescriptionTemplate: string;
 }
@@ -495,9 +495,9 @@ export const jobFlowTemplates: JobFlowTemplate[] = [
         createdBy: 'user-1',
         createdAt: '2024-08-01T00:00:00Z',
         phases: [
-            { id: 'phase-1-1', phaseIndex: 0, name: 'Initial Contact', defaultRole: 'Sales', taskTitleTemplate: 'Follow up with {{client_name}}', taskDescriptionTemplate: 'Initial follow-up call after demo.' },
-            { id: 'phase-1-2', phaseIndex: 1, name: 'Kick-off Meeting', defaultRole: 'Account Manager', taskTitleTemplate: 'Schedule kick-off meeting with {{client_name}}', taskDescriptionTemplate: 'Send calendar invites and prepare agenda.' },
-            { id: 'phase-1-3', phaseIndex: 2, name: 'Project Setup', defaultRole: 'Project Manager', taskTitleTemplate: 'Set up project for {{client_name}} in Asana', taskDescriptionTemplate: 'Create project, invite team, and set initial tasks.' },
+            { id: 'phase-1-1', phaseIndex: 0, name: 'Initial Contact', defaultAssigneeId: 'user-1', taskTitleTemplate: 'Follow up with {{client_name}}', taskDescriptionTemplate: 'Initial follow-up call after demo.' },
+            { id: 'phase-1-2', phaseIndex: 1, name: 'Kick-off Meeting', defaultAssigneeId: 'user-2', taskTitleTemplate: 'Schedule kick-off meeting with {{client_name}}', taskDescriptionTemplate: 'Send calendar invites and prepare agenda.' },
+            { id: 'phase-1-3', phaseIndex: 2, name: 'Project Setup', defaultAssigneeId: 'user-1', taskTitleTemplate: 'Set up project for {{client_name}} in Asana', taskDescriptionTemplate: 'Create project, invite team, and set initial tasks.' },
         ]
     },
     {
@@ -507,9 +507,9 @@ export const jobFlowTemplates: JobFlowTemplate[] = [
         createdBy: 'user-2',
         createdAt: '2024-08-02T00:00:00Z',
         phases: [
-            { id: 'phase-2-1', phaseIndex: 0, name: 'QA & Testing', defaultRole: 'QA Engineer', taskTitleTemplate: 'Perform full QA cycle on {{website_url}}', taskDescriptionTemplate: 'Check all pages, forms, and functionality across browsers.' },
-            { id: 'phase-2-2', phaseIndex: 1, name: 'DNS Propagation', defaultRole: 'DevOps', taskTitleTemplate: 'Update DNS records for {{website_url}}', taskDescriptionTemplate: 'Point domain to new server and monitor propagation.' },
-            { id: 'phase-2-3', phaseIndex: 2, name: 'Post-launch Monitoring', defaultRole: 'Developer', taskTitleTemplate: 'Monitor {{website_url}} for 24 hours post-launch', taskDescriptionTemplate: 'Watch for errors, performance issues, or downtime.' },
+            { id: 'phase-2-1', phaseIndex: 0, name: 'QA & Testing', defaultAssigneeId: 'user-3', taskTitleTemplate: 'Perform full QA cycle on {{website_url}}', taskDescriptionTemplate: 'Check all pages, forms, and functionality across browsers.' },
+            { id: 'phase-2-2', phaseIndex: 1, name: 'DNS Propagation', defaultAssigneeId: 'user-4', taskTitleTemplate: 'Update DNS records for {{website_url}}', taskDescriptionTemplate: 'Point domain to new server and monitor propagation.' },
+            { id: 'phase-2-3', phaseIndex: 2, name: 'Post-launch Monitoring', defaultAssigneeId: 'user-1', taskTitleTemplate: 'Monitor {{website_url}} for 24 hours post-launch', taskDescriptionTemplate: 'Watch for errors, performance issues, or downtime.' },
         ]
     }
 ];
