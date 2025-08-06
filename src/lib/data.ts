@@ -158,11 +158,17 @@ export interface Message {
 }
 
 // Job Flow System
+export interface JobFlowSubtaskTemplate {
+    id: string;
+    titleTemplate: string;
+}
+
 export interface JobFlowTaskTemplate {
   id: string;
   titleTemplate: string;
   descriptionTemplate?: string;
   defaultAssigneeId: string;
+  subtaskTemplates?: JobFlowSubtaskTemplate[];
 }
 
 export interface JobFlowPhase {

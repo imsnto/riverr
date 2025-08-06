@@ -308,6 +308,31 @@ export const getAllJobFlowTasks = async (spaceId: string): Promise<JobFlowTask[]
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JobFlowTask));
 };
 
+const createSubtasks = (
+    batch: any,
+    subtaskTemplates: any[],
+    parentTaskId: string,
+    assigneeId: string,
+    jobName: string
+) => {
+    for (const subtaskTemplate of subtaskTemplates) {
+        const subtaskTitle = subtaskTemplate.titleTemplate.replace(/\{\{job_name\}\}/g, jobName);
+        const subtaskData: Omit<Task, 'id'> = {
+            project_id: null,
+            name: subtaskTitle,
+            description: '',
+            status: 'Pending',
+            assigned_to: assigneeId,
+            due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(),
+            priority: null, sprint_points: null, tags: ['JobFlow', jobName], time_estimate: null,
+            relationships: [], activities: [], comments: [], attachments: [], parentId: parentTaskId
+        };
+        const subtaskRef = doc(collection(db, 'tasks'));
+        batch.set(subtaskRef, subtaskData);
+    }
+}
+
+
 export const launchJob = async (
     jobName: string,
     template: JobFlowTemplate,
@@ -332,7 +357,7 @@ export const launchJob = async (
     const jobRef = doc(collection(db, 'jobs'));
     batch.set(jobRef, newJobData);
 
-    // 2. Create the first task(s)
+    // 2. Create the first task(s) and their subtasks
     const firstPhase = template.phases.find(p => p.phaseIndex === 0);
     if (!firstPhase) {
         throw new Error("Template has no starting phase.");
@@ -347,6 +372,7 @@ export const launchJob = async (
         const taskTitle = taskTemplate.titleTemplate.replace(/\{\{job_name\}\}/g, jobName);
         const taskDescription = (taskTemplate.descriptionTemplate || '').replace(/\{\{job_name\}\}/g, jobName);
 
+        const taskRef = doc(collection(db, 'tasks'));
         const taskData: Omit<Task, 'id'> = {
             project_id: null,
             name: taskTitle,
@@ -364,8 +390,13 @@ export const launchJob = async (
             attachments: [],
             parentId: null
         };
-        const taskRef = doc(collection(db, 'tasks'));
         batch.set(taskRef, taskData);
+
+        // 2a. Create subtasks if they exist in the template
+        if (taskTemplate.subtaskTemplates && taskTemplate.subtaskTemplates.length > 0) {
+            createSubtasks(batch, taskTemplate.subtaskTemplates, taskRef.id, assigneeId, jobName);
+        }
+
 
         // 3. Create the JobFlowTask link for each task
         const jobFlowTaskData = {
@@ -404,7 +435,8 @@ export const updateJobPhase = async (
             const assigneeId = job.roleUserMapping[taskTemplate.defaultAssigneeId];
             const taskTitle = taskTemplate.titleTemplate.replace(/\{\{job_name\}\}/g, job.name);
             const taskDescription = (taskTemplate.descriptionTemplate || '').replace(/\{\{job_name\}\}/g, job.name);
-    
+            
+            const taskRef = doc(collection(db, 'tasks'));
             const taskData: Omit<Task, 'id'> = {
                 project_id: null,
                 name: taskTitle,
@@ -415,8 +447,12 @@ export const updateJobPhase = async (
                 priority: 'Medium',
                 sprint_points: null, tags: ['JobFlow', job.name], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null
             };
-            const taskRef = doc(collection(db, 'tasks'));
             batch.set(taskRef, taskData);
+
+             // Create subtasks if they exist in the template
+            if (taskTemplate.subtaskTemplates && taskTemplate.subtaskTemplates.length > 0) {
+                createSubtasks(batch, taskTemplate.subtaskTemplates, taskRef.id, assigneeId, job.name);
+            }
     
             // Create the JobFlowTask link
             const jobFlowTaskData: Omit<JobFlowTask, 'id'> = {

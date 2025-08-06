@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
-import { JobFlowTemplate, JobFlowPhase, User, Space, JobFlowTaskTemplate } from '@/lib/data';
+import { JobFlowTemplate, JobFlowPhase, User, Space, JobFlowTaskTemplate, JobFlowSubtaskTemplate } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, MoreHorizontal, Edit, Trash2, GripVertical, FilePlus, Rocket } from 'lucide-react';
@@ -36,11 +37,17 @@ interface JobFlowTemplateBuilderProps {
   onJobLaunched: () => void;
 }
 
+const subtaskTemplateSchema = z.object({
+  id: z.string().optional(),
+  titleTemplate: z.string().min(1, 'Subtask title cannot be empty'),
+});
+
 const taskTemplateSchema = z.object({
   id: z.string().optional(),
   titleTemplate: z.string().min(1, 'Task title is required'),
   descriptionTemplate: z.string().optional(),
   defaultAssigneeId: z.string().min(1, 'Default assignee is required'),
+  subtaskTemplates: z.array(subtaskTemplateSchema).optional(),
 });
 
 const phaseSchema = z.object({
@@ -67,7 +74,7 @@ function TemplateForm({ onSave, allUsers, closeDialog }: { onSave: (data: Templa
       phases: [{ 
         id: `phase-${Date.now()}`, 
         name: '', 
-        tasks: [{ id: `task-${Date.now()}`, titleTemplate: '', descriptionTemplate: '', defaultAssigneeId: '' }],
+        tasks: [{ id: `task-${Date.now()}`, titleTemplate: '', descriptionTemplate: '', defaultAssigneeId: '', subtaskTemplates: [] }],
         requiresReview: false 
       }],
     },
@@ -149,7 +156,7 @@ function TemplateForm({ onSave, allUsers, closeDialog }: { onSave: (data: Templa
           <Button
             type="button"
             variant="outline"
-            onClick={() => appendPhase({ id: `phase-${Date.now()}`, name: '', tasks: [{id: `task-${Date.now()}`, titleTemplate: '', defaultAssigneeId: ''}], requiresReview: false })}
+            onClick={() => appendPhase({ id: `phase-${Date.now()}`, name: '', tasks: [{id: `task-${Date.now()}`, titleTemplate: '', defaultAssigneeId: '', subtaskTemplates: []}], requiresReview: false })}
           >
             <Plus className="mr-2 h-4 w-4" /> Add Phase
           </Button>
@@ -199,6 +206,10 @@ const PhaseTasks = ({ control, phaseIndex, allUsers, errors }: { control: any, p
                         />
                         {errors.phases?.[phaseIndex]?.tasks?.[taskIndex]?.defaultAssigneeId && <p className="text-sm text-destructive">{errors.phases[phaseIndex]?.tasks[taskIndex]?.defaultAssigneeId?.message}</p>}
                     </div>
+                    
+                    <Separator className="my-2" />
+                    <Subtasks control={control} phaseIndex={phaseIndex} taskIndex={taskIndex} errors={errors} />
+
 
                     <Button type="button" variant="ghost" size="icon" onClick={() => remove(taskIndex)} className="absolute -top-2 -right-2 h-6 w-6">
                         <Trash2 className="h-3 w-3 text-destructive" />
@@ -209,7 +220,7 @@ const PhaseTasks = ({ control, phaseIndex, allUsers, errors }: { control: any, p
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => append({ id: `task-${Date.now()}`, titleTemplate: '', defaultAssigneeId: '' })}
+                onClick={() => append({ id: `task-${Date.now()}`, titleTemplate: '', defaultAssigneeId: '', subtaskTemplates: [] })}
                 className="w-full"
             >
                 <Plus className="mr-2 h-4 w-4" /> Add Task to Phase
@@ -217,6 +228,40 @@ const PhaseTasks = ({ control, phaseIndex, allUsers, errors }: { control: any, p
         </div>
     )
 }
+
+const Subtasks = ({ control, phaseIndex, taskIndex, errors }: { control: any; phaseIndex: number; taskIndex: number; errors: any }) => {
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: `phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates`,
+    });
+
+    return (
+        <div className="space-y-2 pl-4 border-l-2">
+            <Label className="text-xs">Subtask Templates</Label>
+            {fields.map((subtaskField, subtaskIndex) => (
+                <div key={subtaskField.id} className="flex items-center gap-2">
+                    <Input
+                        {...control.register(`phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates.${subtaskIndex}.titleTemplate`)}
+                        placeholder="e.g., Send follow-up email"
+                        className="bg-background h-8"
+                    />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(subtaskIndex)} className="h-8 w-8">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                </div>
+            ))}
+             <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full h-8"
+                onClick={() => append({ id: `subtask-${Date.now()}`, titleTemplate: '' })}
+            >
+                <Plus className="mr-2 h-4 w-4" /> Add Subtask Template
+            </Button>
+        </div>
+    );
+};
 
 
 export default function JobFlowTemplateBuilder({ templates, allUsers, onSave, activeSpace, onJobLaunched }: JobFlowTemplateBuilderProps) {
@@ -241,6 +286,10 @@ export default function JobFlowTemplateBuilder({ templates, allUsers, onSave, ac
                 tasks: phase.tasks.map((task, taskIndex) => ({
                     ...task,
                     id: task.id || `task-template-${Date.now()}-${taskIndex}`,
+                    subtaskTemplates: (task.subtaskTemplates || []).map((sub, subIndex) => ({
+                        ...sub,
+                        id: sub.id || `subtask-template-${Date.now()}-${subIndex}`
+                    })),
                 })),
                 requiresReview: phase.requiresReview || false,
             })),
