@@ -27,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 interface JobFlowTemplateBuilderProps {
   templates: JobFlowTemplate[];
   allUsers: User[];
-  // onSave: (template: Omit<JobFlowTemplate, 'id' | 'createdAt' | 'createdBy'>) => void;
+  onSave: (template: Omit<JobFlowTemplate, 'id' | 'createdAt' | 'createdBy'>) => void;
   // onDelete: (templateId: string) => void;
 }
 
@@ -46,7 +46,7 @@ const templateSchema = z.object({
 
 type TemplateFormValues = z.infer<typeof templateSchema>;
 
-function TemplateForm({ onSave, allUsers }: { onSave: (data: any) => void, allUsers: User[] }) {
+function TemplateForm({ onSave, allUsers, closeDialog }: { onSave: (data: TemplateFormValues) => void, allUsers: User[], closeDialog: () => void }) {
   const form = useForm<TemplateFormValues>({
     resolver: zodResolver(templateSchema),
     defaultValues: {
@@ -64,8 +64,8 @@ function TemplateForm({ onSave, allUsers }: { onSave: (data: any) => void, allUs
   });
   
   const onSubmit = (data: TemplateFormValues) => {
-      console.log(data);
       onSave(data);
+      closeDialog();
   }
 
   return (
@@ -131,12 +131,11 @@ function TemplateForm({ onSave, allUsers }: { onSave: (data: any) => void, allUs
 }
 
 
-export default function JobFlowTemplateBuilder({ templates, allUsers }: JobFlowTemplateBuilderProps) {
+export default function JobFlowTemplateBuilder({ templates, allUsers, onSave }: JobFlowTemplateBuilderProps) {
     const [isFormOpen, setIsFormOpen] = useState(false);
 
     const handleSave = (data: any) => {
-        console.log("Saving data:", data);
-        setIsFormOpen(false);
+        onSave(data);
     }
 
     return (
@@ -200,7 +199,7 @@ export default function JobFlowTemplateBuilder({ templates, allUsers }: JobFlowT
                     </DialogDescription>
                 </DialogHeader>
                 <div className="flex-1 overflow-y-auto px-6">
-                  <TemplateForm onSave={handleSave} allUsers={allUsers} />
+                  <TemplateForm onSave={handleSave} allUsers={allUsers} closeDialog={() => setIsFormOpen(false)} />
                 </div>
                  <DialogFooter className="p-6 pt-4 border-t">
                     <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancel</Button>

@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FolderKanban, GanttChart, MessageSquare, Settings, Users, MessageCircleMore, ShieldCheck, FilePlus } from 'lucide-react';
-import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message, Status, Invite, JobFlowTemplate, jobFlowTemplates as mockTemplates } from '@/lib/data';
+import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message, Status, Invite, JobFlowTemplate, jobFlowTemplates as mockTemplates, JobFlowPhase } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
 import TaskBoard from '@/components/dashboard/task-board';
@@ -301,6 +301,19 @@ export default function Dashboard() {
     }
   };
 
+  const handleSaveJobFlowTemplate = (templateData: Omit<JobFlowTemplate, 'id' | 'createdAt' | 'createdBy'>) => {
+    if (!appUser) return;
+    const newTemplate: JobFlowTemplate = {
+      ...templateData,
+      id: `jft-${Date.now()}`,
+      createdBy: appUser.id,
+      createdAt: new Date().toISOString(),
+      phases: templateData.phases.map((phase, index) => ({ ...phase, id: `phase-${Date.now()}-${index}`, phaseIndex: index })),
+    };
+    setJobFlowTemplates(prev => [...prev, newTemplate]);
+    toast({ title: 'Template Saved!', description: `The "${newTemplate.name}" template has been saved.`});
+  }
+
 
   if (!appUser) {
     return <div className="flex h-screen items-center justify-center">Loading user data...</div>;
@@ -542,7 +555,7 @@ export default function Dashboard() {
               )}
                {activeTab === 'flows' && activeSpace && (
                 <>
-                {isLoading ? <div className="flex justify-center items-center h-full">Loading flows...</div> : <JobFlowTemplateBuilder templates={jobFlowTemplates} allUsers={visibleUsers} />}
+                {isLoading ? <div className="flex justify-center items-center h-full">Loading flows...</div> : <JobFlowTemplateBuilder templates={jobFlowTemplates} allUsers={visibleUsers} onSave={handleSaveJobFlowTemplate} />}
                 </>
               )}
               {canLogTime && activeTab === 'timesheets' && (
