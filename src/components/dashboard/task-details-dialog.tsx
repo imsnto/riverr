@@ -116,8 +116,10 @@ const ActivityItem = ({ activity, allUsers }: { activity: Activity; allUsers: Us
                     <div><span className="font-semibold">{user?.name}</span> changed status from <Badge variant="outline">{activity.from}</Badge> to <Badge variant="outline">{activity.to}</Badge></div>
                 );
             case 'assignee_change':
+                const fromUser = allUsers.find(u => u.name === activity.from)?.name || activity.from || 'Unassigned';
+                const toUser = allUsers.find(u => u.name === activity.to)?.name || activity.to || 'Unassigned';
                 return (
-                    <div><span className="font-semibold">{user?.name}</span> changed assignee from <Badge variant="outline">{activity.from}</Badge> to <Badge variant="outline">{activity.to}</Badge></div>
+                    <div><span className="font-semibold">{user?.name}</span> changed assignee from <Badge variant="outline">{fromUser}</Badge> to <Badge variant="outline">{toUser}</Badge></div>
                 );
             case 'comment':
                  const commentText = activity.comment
