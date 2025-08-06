@@ -193,51 +193,51 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
     };
     
     const handleAddSubtask = async () => {
-        if (!newSubtaskName.trim() || !appUser) return;
-      
-        const tempId = `temp-${Date.now()}`;
-        const optimisticSubtask: Task = {
-          id: tempId,
-          project_id: task.project_id,
-          name: newSubtaskName.trim(),
-          description: '',
-          status: 'Backlog',
-          assigned_to: appUser.id,
-          due_date: new Date().toISOString(),
-          priority: null,
-          sprint_points: null,
-          tags: [],
-          time_estimate: null,
-          relationships: [],
-          activities: [],
-          comments: [],
-          attachments: [],
-          parentId: task.id,
-        };
-      
-        // 1. Optimistically add to UI
-        onAddTask(optimisticSubtask);
-        setNewSubtaskName('');
-      
-        try {
-          // 2. Strip ID before saving to Firestore
-          const { id: _omit, ...taskWithoutId } = optimisticSubtask;
-          const savedTask = await dbAddTask(taskWithoutId);
-      
-          // 3. Patch UI with real ID
-          onUpdateTask(savedTask, tempId);
-      
-        } catch (error) {
-          // 4. Show toast
-          toast({
-            variant: 'destructive',
-            title: 'Failed to create subtask',
-            description: (error as Error).message,
-          });
-      
-          // 5. Remove temp task from UI
-          onRemoveTask(tempId);
-        }
+      if (!newSubtaskName.trim() || !appUser) return;
+    
+      const tempId = `temp-${Date.now()}`;
+      const optimisticSubtask: Task = {
+        id: tempId,
+        project_id: task.project_id,
+        name: newSubtaskName.trim(),
+        description: '',
+        status: 'Backlog',
+        assigned_to: appUser.id,
+        due_date: new Date().toISOString(),
+        priority: null,
+        sprint_points: null,
+        tags: [],
+        time_estimate: null,
+        relationships: [],
+        activities: [],
+        comments: [],
+        attachments: [],
+        parentId: task.id,
+      };
+    
+      // 1. Optimistically add to UI
+      onAddTask(optimisticSubtask);
+      setNewSubtaskName('');
+    
+      try {
+        // 2. Strip ID before saving to Firestore
+        const { id: _omit, ...taskWithoutId } = optimisticSubtask;
+        const savedTask = await dbAddTask(taskWithoutId);
+    
+        // 3. Patch UI with real ID
+        onUpdateTask(savedTask, tempId);
+    
+      } catch (error) {
+        // 4. Show toast
+        toast({
+          variant: 'destructive',
+          title: 'Failed to create subtask',
+          description: (error as Error).message,
+        });
+    
+        // 5. Remove temp task from UI
+        onRemoveTask(tempId);
+      }
     };
 
     const handleUpdateSubtaskStatus = (subtask: Task, checked: boolean) => {
@@ -369,7 +369,10 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                     <Input type="number" placeholder="0h" className="h-8" defaultValue={task.time_estimate || ''} onBlur={(e) => handleFieldChange('time_estimate', e.target.value ? parseFloat(e.target.value) : null)} />
                                 </DetailRow>
                                  <DetailRow icon={Clock} label="Time Logged">
-                                    <Input type="number" placeholder="0h" className="h-8" defaultValue={totalTimeTracked} onBlur={(e) => console.log('Time logged not implemented yet')} />
+                                    <div className="flex items-center gap-2">
+                                        <Input type="text" value={`${totalTimeTracked.toFixed(2)}h`} className="h-8 bg-muted" readOnly />
+                                        <Button variant="outline" size="sm" className="h-8" disabled>Log Time</Button>
+                                    </div>
                                 </DetailRow>
                                 <DetailRow icon={Tag} label="Tags" className="items-start">
                                     <div className="flex flex-col gap-2">
@@ -547,4 +550,3 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         </Dialog>
     );
 }
-
