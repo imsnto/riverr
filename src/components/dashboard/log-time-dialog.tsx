@@ -50,25 +50,40 @@ interface LogTimeDialogProps {
   onLogTime: (timeData: Omit<TimeEntry, 'id'>) => void;
 }
 
-// Simple parser for inputs like "2h 30m"
 const parseDuration = (durationStr: string): number => {
     let totalHours = 0;
-    const hoursMatch = durationStr.match(/(\d+(\.\d+)?)\s*h/);
-    const minutesMatch = durationStr.match(/(\d+(\.\d+)?)\s*m/);
+    const duration = durationStr.toLowerCase().trim();
 
-    if (hoursMatch) {
-        totalHours += parseFloat(hoursMatch[1]);
+    // Regex to capture hours and minutes, e.g., "2h 30m", "1.5h", "45m"
+    const hourMatches = duration.match(/(\d+(\.\d+)?)\s*h/);
+    const minMatches = duration.match(/(\d+(\.\d+)?)\s*m/);
+
+    if (hourMatches) {
+        totalHours += parseFloat(hourMatches[1]);
     }
-    if (minutesMatch) {
-        totalHours += parseFloat(minutesMatch[1]) / 60;
+    if (minMatches) {
+        totalHours += parseFloat(minMatches[1]) / 60;
     }
-    // If no units, assume hours
-    if (!hoursMatch && !minutesMatch && durationStr.trim()) {
-        const numericValue = parseFloat(durationStr);
+
+    // If there's an hour match but no minute match, check for trailing numbers
+    if (hourMatches && !minMatches) {
+        const afterHours = duration.split(hourMatches[0])[1]?.trim();
+        if (afterHours) {
+            const trailingMinutes = parseFloat(afterHours);
+            if (!isNaN(trailingMinutes)) {
+                totalHours += trailingMinutes / 60;
+            }
+        }
+    }
+    
+    // If no units were found at all, treat the number as hours
+    if (!hourMatches && !minMatches) {
+        const numericValue = parseFloat(duration);
         if (!isNaN(numericValue)) {
             totalHours = numericValue;
         }
     }
+
     return totalHours;
 };
 
