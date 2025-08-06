@@ -332,50 +332,52 @@ export const launchJob = async (
     const jobRef = doc(collection(db, 'jobs'));
     batch.set(jobRef, newJobData);
 
-    // 2. Create the first task
+    // 2. Create the first task(s)
     const firstPhase = template.phases.find(p => p.phaseIndex === 0);
     if (!firstPhase) {
         throw new Error("Template has no starting phase.");
     }
     
-    const assigneeId = roleUserMapping[firstPhase.defaultAssigneeId];
-    if (!assigneeId) {
-        throw new Error(`No user mapped for assignee ID ${firstPhase.defaultAssigneeId} in the first phase.`);
+    for (const taskTemplate of firstPhase.tasks) {
+        const assigneeId = roleUserMapping[taskTemplate.defaultAssigneeId];
+        if (!assigneeId) {
+            throw new Error(`No user mapped for assignee ID ${taskTemplate.defaultAssigneeId} in the first phase.`);
+        }
+
+        const taskTitle = taskTemplate.titleTemplate.replace(/\{\{job_name\}\}/g, jobName);
+        const taskDescription = (taskTemplate.descriptionTemplate || '').replace(/\{\{job_name\}\}/g, jobName);
+
+        const taskData: Omit<Task, 'id'> = {
+            project_id: null,
+            name: taskTitle,
+            description: taskDescription,
+            status: 'Pending',
+            assigned_to: assigneeId,
+            due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(), // Default due date: 1 week from now
+            priority: 'Medium',
+            sprint_points: null,
+            tags: ['JobFlow', jobName],
+            time_estimate: null,
+            relationships: [],
+            activities: [],
+            comments: [],
+            attachments: [],
+            parentId: null
+        };
+        const taskRef = doc(collection(db, 'tasks'));
+        batch.set(taskRef, taskData);
+
+        // 3. Create the JobFlowTask link for each task
+        const jobFlowTaskData = {
+            jobId: jobRef.id,
+            phaseIndex: 0,
+            taskId: taskRef.id,
+            createdAt: new Date().toISOString()
+        };
+        const jobFlowTaskRef = doc(collection(db, 'job_flow_tasks'));
+        batch.set(jobFlowTaskRef, jobFlowTaskData);
     }
-
-    const taskTitle = firstPhase.taskTitleTemplate.replace(/\{\{job_name\}\}/g, jobName);
-    const taskDescription = firstPhase.taskDescriptionTemplate.replace(/\{\{job_name\}\}/g, jobName);
-
-    const taskData: Omit<Task, 'id'> = {
-        project_id: null,
-        name: taskTitle,
-        description: taskDescription,
-        status: 'Pending',
-        assigned_to: assigneeId,
-        due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(), // Default due date: 1 week from now
-        priority: 'Medium',
-        sprint_points: null,
-        tags: ['JobFlow', jobName],
-        time_estimate: null,
-        relationships: [],
-        activities: [],
-        comments: [],
-        attachments: [],
-        parentId: null
-    };
-    const taskRef = doc(collection(db, 'tasks'));
-    batch.set(taskRef, taskData);
-
-    // 3. Create the JobFlowTask link
-    const jobFlowTaskData = {
-        jobId: jobRef.id,
-        phaseIndex: 0,
-        taskId: taskRef.id,
-        createdAt: new Date().toISOString()
-    };
-    const jobFlowTaskRef = doc(collection(db, 'job_flow_tasks'));
-    batch.set(jobFlowTaskRef, jobFlowTaskData);
-
+    
     // Commit all writes at once
     await batch.commit();
 
@@ -398,33 +400,34 @@ export const updateJobPhase = async (
     const batch = writeBatch(db);
 
     if (nextPhase) {
-        // Create the next task
-        const assigneeId = job.roleUserMapping[nextPhase.defaultAssigneeId];
-        const taskTitle = nextPhase.taskTitleTemplate.replace(/\{\{job_name\}\}/g, job.name);
-        const taskDescription = nextPhase.taskDescriptionTemplate.replace(/\{\{job_name\}\}/g, job.name);
-
-        const taskData: Omit<Task, 'id'> = {
-            project_id: null,
-            name: taskTitle,
-            description: taskDescription,
-            status: 'Pending',
-            assigned_to: assigneeId,
-            due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(),
-            priority: 'Medium',
-            sprint_points: null, tags: ['JobFlow', job.name], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null
-        };
-        const taskRef = doc(collection(db, 'tasks'));
-        batch.set(taskRef, taskData);
-
-        // Create the JobFlowTask link
-        const jobFlowTaskData: Omit<JobFlowTask, 'id'> = {
-            jobId: job.id,
-            phaseIndex: nextPhaseIndex,
-            taskId: taskRef.id,
-            createdAt: new Date().toISOString()
-        };
-        const jobFlowTaskRef = doc(collection(db, 'job_flow_tasks'));
-        batch.set(jobFlowTaskRef, jobFlowTaskData);
+        for (const taskTemplate of nextPhase.tasks) {
+            const assigneeId = job.roleUserMapping[taskTemplate.defaultAssigneeId];
+            const taskTitle = taskTemplate.titleTemplate.replace(/\{\{job_name\}\}/g, job.name);
+            const taskDescription = (taskTemplate.descriptionTemplate || '').replace(/\{\{job_name\}\}/g, job.name);
+    
+            const taskData: Omit<Task, 'id'> = {
+                project_id: null,
+                name: taskTitle,
+                description: taskDescription,
+                status: 'Pending',
+                assigned_to: assigneeId,
+                due_date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(),
+                priority: 'Medium',
+                sprint_points: null, tags: ['JobFlow', job.name], time_estimate: null, relationships: [], activities: [], comments: [], attachments: [], parentId: null
+            };
+            const taskRef = doc(collection(db, 'tasks'));
+            batch.set(taskRef, taskData);
+    
+            // Create the JobFlowTask link
+            const jobFlowTaskData: Omit<JobFlowTask, 'id'> = {
+                jobId: job.id,
+                phaseIndex: nextPhaseIndex,
+                taskId: taskRef.id,
+                createdAt: new Date().toISOString()
+            };
+            const jobFlowTaskRef = doc(collection(db, 'job_flow_tasks'));
+            batch.set(jobFlowTaskRef, jobFlowTaskData);
+        }
         
         // Update the job to the next phase
         const jobRef = doc(db, 'jobs', job.id);

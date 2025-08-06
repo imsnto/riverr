@@ -61,9 +61,7 @@ export default function JobDetailsDialog({
                         phaseStatus = 'in-progress';
                     }
 
-                    const phaseTaskLink = jobFlowTasks.find(jft => jft.phaseIndex === phase.phaseIndex);
-                    const task = phaseTaskLink ? tasks.find(t => t.id === phaseTaskLink.taskId) : null;
-                    const assignee = task ? allUsers.find(u => u.id === task.assigned_to) : null;
+                    const phaseTaskLinks = jobFlowTasks.filter(jft => jft.phaseIndex === phase.phaseIndex);
 
                     const statusIcon = {
                         completed: <Check className="h-5 w-5 text-white" />,
@@ -86,24 +84,33 @@ export default function JobDetailsDialog({
                             </div>
                             <div className="flex-1 pt-1.5">
                                 <p className="font-semibold">{phase.name}</p>
-                                {task ? (
-                                    <div className="mt-2 text-sm text-muted-foreground space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <Briefcase className="h-4 w-4" />
-                                            <span>Task: <span className="font-medium text-foreground">{task.name}</span></span>
+                                <div className="mt-2 space-y-2">
+                                {phaseTaskLinks.length > 0 ? phaseTaskLinks.map(link => {
+                                    const task = tasks.find(t => t.id === link.taskId);
+                                    if (!task) return <div key={link.id} className="text-sm text-muted-foreground italic">Task not found...</div>;
+                                    
+                                    const assignee = allUsers.find(u => u.id === task.assigned_to);
+
+                                    return (
+                                        <div key={task.id} className="text-sm text-muted-foreground p-2 border rounded-md">
+                                            <div className="flex items-center gap-2">
+                                                <Briefcase className="h-4 w-4" />
+                                                <span>Task: <span className="font-medium text-foreground">{task.name}</span></span>
+                                            </div>
+                                             <div className="flex items-center gap-2 mt-1">
+                                                <UserIcon className="h-4 w-4" />
+                                                <span>Assigned to: <span className="font-medium text-foreground">{assignee?.name || 'Unknown'}</span></span>
+                                            </div>
+                                             <div className="flex items-center gap-2 mt-1">
+                                                <Circle className="h-4 w-4" />
+                                                <span>Status: <span className="font-medium text-foreground">{task.status}</span></span>
+                                            </div>
                                         </div>
-                                         <div className="flex items-center gap-2">
-                                            <UserIcon className="h-4 w-4" />
-                                            <span>Assigned to: <span className="font-medium text-foreground">{assignee?.name || 'Unknown'}</span></span>
-                                        </div>
-                                         <div className="flex items-center gap-2">
-                                            <Circle className="h-4 w-4" />
-                                            <span>Status: <span className="font-medium text-foreground">{task.status}</span></span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground italic mt-1">Task not yet created</p>
+                                    )
+                                }) : (
+                                    <p className="text-sm text-muted-foreground italic mt-1">Tasks not yet created for this phase</p>
                                 )}
+                                </div>
                             </div>
                         </div>
                     );
