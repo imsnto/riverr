@@ -476,7 +476,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                         className="hidden"
                                         onChange={handleFileSelect}
                                     />
-                                    <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInput.current?.click()}>
+                                    <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
                                         <Paperclip className="h-4 w-4" />
                                     </Button>
                                     <Button type="submit" size="sm">Send</Button>
