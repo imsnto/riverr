@@ -1,3 +1,4 @@
+
 // src/lib/db.ts
 
 import {
@@ -16,7 +17,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions, jobFlowTemplates, JobFlowTemplate, Job, JobFlowTask } from './data';
+import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions, jobFlowTemplates, JobFlowTemplate, Job, JobFlowTask, jobs, jobFlowTasks } from './data';
 import { randomBytes } from 'crypto';
 
 // --- Seeding ---
@@ -40,6 +41,8 @@ export const seedDatabase = async () => {
         channels.forEach(channel => batch.set(doc(db, 'channels', channel.id), channel));
         messages.forEach(message => batch.set(doc(db, 'messages', message.id), message));
         jobFlowTemplates.forEach(template => batch.set(doc(db, 'job_flow_templates', template.id), template));
+        jobs.forEach(job => batch.set(doc(db, 'jobs', job.id), job));
+        jobFlowTasks.forEach(jft => batch.set(doc(db, 'job_flow_tasks', jft.id), jft));
         
         await batch.commit();
         console.log('Database seeded successfully!');
@@ -276,6 +279,11 @@ export const addMessage = async (message: Omit<Message, 'id'>): Promise<Message>
 }
 
 // --- Job Flow Management ---
+export const getJobFlowTemplates = async (): Promise<JobFlowTemplate[]> => {
+    const querySnapshot = await getDocs(collection(db, 'job_flow_templates'));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JobFlowTemplate));
+};
+
 export const getAllJobs = async (spaceId: string): Promise<Job[]> => {
     const q = query(collection(db, 'jobs'), where('space_id', '==', spaceId));
     const querySnapshot = await getDocs(q);

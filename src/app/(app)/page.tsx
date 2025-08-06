@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FolderKanban, GanttChart, MessageSquare, Settings, Users, MessageCircleMore, ShieldCheck, FilePlus, GitBranch } from 'lucide-react';
-import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message, Status, Invite, JobFlowTemplate, jobFlowTemplates as mockTemplates, JobFlowPhase, Job, JobFlowTask } from '@/lib/data';
+import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message, Status, Invite, JobFlowTemplate, Job, JobFlowTask } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
 import TaskBoard from '@/components/dashboard/task-board';
@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject, addTimeEntry, getAllJobs, getAllJobFlowTasks } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getTasksInSpace as dbGetTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject, addTimeEntry, getAllJobs, getAllJobFlowTasks, getJobFlowTemplates } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -76,10 +76,11 @@ export default function Dashboard() {
         setIsLoading(true);
         await seedDatabase();
 
-        const [users, spaces, invites] = await Promise.all([
+        const [users, spaces, invites, templates] = await Promise.all([
           dbGetAllUsers(), 
           dbGetAllSpaces(),
           getInvitesForEmail(appUser.email),
+          getJobFlowTemplates(),
         ]);
         
         if (abortController.signal.aborted) return;
@@ -87,7 +88,7 @@ export default function Dashboard() {
         setAllUsers(users);
         setAllSpaces(spaces);
         setPendingInvites(invites);
-        setJobFlowTemplates(mockTemplates);
+        setJobFlowTemplates(templates);
         
         const userSpaces = spaces.filter(s => s.members[appUser!.id]);
         if (userSpaces.length > 0) {
@@ -601,6 +602,7 @@ export default function Dashboard() {
                           jobFlowTasks={jobFlowTasks}
                           tasks={tasks}
                           templates={jobFlowTemplates}
+                          allUsers={visibleUsers}
                         />
                       )}
                     </>

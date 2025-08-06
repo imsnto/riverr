@@ -1,18 +1,20 @@
 
 'use client';
 
-import React from 'react';
-import { Job, JobFlowTask, JobFlowTemplate, Task } from '@/lib/data';
+import React, { useState } from 'react';
+import { Job, JobFlowTask, JobFlowTemplate, Task, User } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Check, Circle, GitBranch, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
+import JobDetailsDialog from './job-details-dialog';
 
 interface ActiveJobsViewProps {
   jobs: Job[];
   jobFlowTasks: JobFlowTask[];
   tasks: Task[];
   templates: JobFlowTemplate[];
+  allUsers: User[];
 }
 
 const PhaseNode = ({ name, status }: { name: string, status: 'completed' | 'in-progress' | 'pending' }) => {
@@ -42,65 +44,79 @@ const PhaseConnector = () => {
     return <div className="flex-1 h-px bg-border -mx-2"></div>
 }
 
-export default function ActiveJobsView({ jobs, jobFlowTasks, tasks, templates }: ActiveJobsViewProps) {
+export default function ActiveJobsView({ jobs, jobFlowTasks, tasks, templates, allUsers }: ActiveJobsViewProps) {
   
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const activeJobs = jobs.filter(j => j.status === 'active');
 
   const handleJobClick = (job: Job) => {
-    // This will eventually open a details dialog
-    console.log("Clicked job:", job.id);
+    setSelectedJob(job);
   }
   
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-            <GitBranch />
-            <CardTitle>Active Jobs</CardTitle>
-        </div>
-        <CardDescription>Track the progress of all ongoing jobs launched from your templates.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {activeJobs.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">No active jobs. Launch one from a template to get started!</div>
-        )}
-        {activeJobs.map(job => {
-          const template = templates.find(t => t.id === job.workflowTemplateId);
-          if (!template) return null;
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+              <GitBranch />
+              <CardTitle>Active Jobs</CardTitle>
+          </div>
+          <CardDescription>Track the progress of all ongoing jobs launched from your templates.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {activeJobs.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">No active jobs. Launch one from a template to get started!</div>
+          )}
+          {activeJobs.map(job => {
+            const template = templates.find(t => t.id === job.workflowTemplateId);
+            if (!template) return null;
 
-          return (
-            <Button variant="ghost" className="w-full h-auto p-0" key={job.id} onClick={() => handleJobClick(job)}>
-              <Card className="w-full hover:bg-accent/50 transition-colors">
-                <CardHeader>
-                  <CardTitle className="text-lg">{job.name}</CardTitle>
-                  <CardDescription>
-                    Using template: <span className="font-semibold">{template.name}</span>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center">
-                      {template.phases.map((phase, index) => {
-                          let status: 'completed' | 'in-progress' | 'pending' = 'pending';
-                          if(job.currentPhaseIndex > phase.phaseIndex) {
-                              status = 'completed';
-                          } else if (job.currentPhaseIndex === phase.phaseIndex) {
-                              status = 'in-progress';
-                          }
+            return (
+              <Button variant="ghost" className="w-full h-auto p-0" key={job.id} onClick={() => handleJobClick(job)}>
+                <Card className="w-full hover:bg-accent/50 transition-colors">
+                  <CardHeader>
+                    <CardTitle className="text-lg">{job.name}</CardTitle>
+                    <CardDescription>
+                      Using template: <span className="font-semibold">{template.name}</span>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center">
+                        {template.phases.map((phase, index) => {
+                            let status: 'completed' | 'in-progress' | 'pending' = 'pending';
+                            if(job.currentPhaseIndex > phase.phaseIndex) {
+                                status = 'completed';
+                            } else if (job.currentPhaseIndex === phase.phaseIndex) {
+                                status = 'in-progress';
+                            }
 
-                          return (
-                              <React.Fragment key={phase.id}>
-                                  <PhaseNode name={phase.name} status={status} />
-                                  {index < template.phases.length - 1 && <PhaseConnector />}
-                              </React.Fragment>
-                          )
-                      })}
-                  </div>
-                </CardContent>
-              </Card>
-            </Button>
-          );
-        })}
-      </CardContent>
-    </Card>
+                            return (
+                                <React.Fragment key={phase.id}>
+                                    <PhaseNode name={phase.name} status={status} />
+                                    {index < template.phases.length - 1 && <PhaseConnector />}
+                                </React.Fragment>
+                            )
+                        })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Button>
+            );
+          })}
+        </CardContent>
+      </Card>
+      
+      {selectedJob && (
+        <JobDetailsDialog
+          isOpen={!!selectedJob}
+          onOpenChange={(isOpen) => !isOpen && setSelectedJob(null)}
+          job={selectedJob}
+          tasks={tasks}
+          jobFlowTasks={jobFlowTasks.filter(jft => jft.jobId === selectedJob.id)}
+          template={templates.find(t => t.id === selectedJob.workflowTemplateId)}
+          allUsers={allUsers}
+        />
+      )}
+    </>
   );
 }
