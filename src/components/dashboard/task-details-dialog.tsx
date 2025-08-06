@@ -43,7 +43,7 @@ const formatDuration = (hours: number) => {
 
     const parts = [];
     if (h > 0) {
-        parts.push(`${h} hr${h > 1 ? 's' : ''}`);
+        parts.push(`${h} hr`);
     }
     if (m > 0) {
         parts.push(`${m} min`);
