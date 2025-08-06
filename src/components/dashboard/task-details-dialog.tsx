@@ -666,10 +666,12 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                     </ScrollArea>
 
                     {/* Right Panel: Activity & Comments */}
-                    <ScrollArea className="col-span-1 border-l bg-card">
-                        <div className="flex flex-col h-full p-4">
-                            <h3 className="font-semibold mb-4">Activity</h3>
-                            <div className="flex-1 space-y-4">
+                    <div className="col-span-1 border-l bg-card flex flex-col h-full">
+                        <div className="p-4 border-b">
+                            <h3 className="font-semibold">Activity</h3>
+                        </div>
+                        <ScrollArea className="flex-1">
+                            <div className="p-4 space-y-4">
                                 {sortedActivities.map((activity) => {
                                     if (activity.type === 'comment' && activity.comment_id) {
                                         const user = allUsers.find(u => u.id === activity.user_id);
@@ -720,45 +722,45 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                     return <ActivityItem key={activity.id} activity={activity} allUsers={allUsers} />;
                                 })}
                             </div>
-                            <div className="mt-auto pt-4">
-                                {attachments.length > 0 && (
-                                    <div className="mb-2 space-y-2">
-                                        {attachments.map((file, i) => (
-                                        <div key={i} className="flex items-center justify-between gap-2 text-sm bg-muted p-2 rounded-md">
-                                            <div className="flex items-center gap-2 overflow-hidden">
-                                                {file.type.startsWith('image/') ? <ImageIcon className="h-4 w-4 flex-shrink-0" /> : <File className="h-4 w-4 flex-shrink-0" />}
-                                                <span className="truncate">{file.name}</span>
-                                            </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}
-                                            >
-                                            &times;
-                                            </Button>
+                        </ScrollArea>
+                        <div className="p-4 border-t mt-auto">
+                            {attachments.length > 0 && (
+                                <div className="mb-2 space-y-2">
+                                    {attachments.map((file, i) => (
+                                    <div key={i} className="flex items-center justify-between gap-2 text-sm bg-muted p-2 rounded-md">
+                                        <div className="flex items-center gap-2 overflow-hidden">
+                                            {file.type.startsWith('image/') ? <ImageIcon className="h-4 w-4 flex-shrink-0" /> : <File className="h-4 w-4 flex-shrink-0" />}
+                                            <span className="truncate">{file.name}</span>
                                         </div>
-                                        ))}
-                                    </div>
-                                )}
-                                <form onSubmit={handleAddComment} className="relative">
-                                    <Textarea name="comment" placeholder="Write a comment..." className="pr-24" />
-                                    <div className="absolute right-2 bottom-2 flex gap-1">
-                                        <input
-                                            type="file"
-                                            multiple
-                                            ref={fileInputRef}
-                                            className="hidden"
-                                            onChange={handleFileSelect}
-                                        />
-                                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
-                                            <Paperclip className="h-4 w-4" />
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}
+                                        >
+                                        &times;
                                         </Button>
-                                        <Button type="submit" size="sm">Send</Button>
                                     </div>
-                                </form>
-                            </div>
+                                    ))}
+                                </div>
+                            )}
+                            <form onSubmit={handleAddComment} className="relative">
+                                <Textarea name="comment" placeholder="Write a comment..." className="pr-24" />
+                                <div className="absolute right-2 bottom-2 flex gap-1">
+                                    <input
+                                        type="file"
+                                        multiple
+                                        ref={fileInputRef}
+                                        className="hidden"
+                                        onChange={handleFileSelect}
+                                    />
+                                    <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
+                                        <Paperclip className="h-4 w-4" />
+                                    </Button>
+                                    <Button type="submit" size="sm">Send</Button>
+                                </div>
+                            </form>
                         </div>
-                    </ScrollArea>
+                    </div>
                 </div>
                 {isLogTimeOpen && (
                     <LogTimeDialog
