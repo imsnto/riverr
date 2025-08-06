@@ -30,7 +30,7 @@ const getInitials = (name: string) => {
 }
 
 const formatDuration = (hours: number | null) => {
-    if (hours === null || hours === undefined || hours === 0) return '0h';
+    if (hours === null || hours === undefined || hours === 0) return '';
     
     const totalMinutes = Math.round(hours * 60);
 
@@ -116,11 +116,12 @@ const ActivityItem = ({ activity, allUsers }: { activity: Activity; allUsers: Us
                     <div><span className="font-semibold">{user?.name}</span> changed status from <Badge variant="outline">{activity.from}</Badge> to <Badge variant="outline">{activity.to}</Badge></div>
                 );
             case 'comment':
-                 const comment = activity.comment;
+                 const comment = activity.comment_id;
+                 const commentText = activity.comment
                 return (
                     <div>
                         <p><span className="font-semibold">{user?.name}</span> left a comment.</p>
-                        {comment && <div className="text-muted-foreground text-xs p-2 border rounded-md mt-1">{comment}</div>}
+                        {commentText && <div className="text-muted-foreground text-xs p-2 border rounded-md mt-1">{commentText}</div>}
                     </div>
                 )
             default:
@@ -164,17 +165,25 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
     const [attachments, setAttachments] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [newTag, setNewTag] = useState('');
+    
+    // State for creating a new subtask
     const [newSubtaskName, setNewSubtaskName] = useState('');
+    const [newSubtaskAssignee, setNewSubtaskAssignee] = useState<string | null>(null);
+    const [newSubtaskDueDate, setNewSubtaskDueDate] = useState<Date | null>(null);
+
     const [isLogTimeOpen, setIsLogTimeOpen] = useState(false);
 
-    const [estTime, setEstTime] = useState<string>(formatDuration(task?.time_estimate || null));
+    const [estTime, setEstTime] = useState<string>('');
     const [showEstTimeSuggestion, setShowEstTimeSuggestion] = useState(false);
     
     useEffect(() => {
         if (task) {
             setEstTime(formatDuration(task.time_estimate));
+            if (appUser) {
+              setNewSubtaskAssignee(appUser.id);
+            }
         }
-    }, [task]);
+    }, [task, appUser]);
 
 
     if (!appUser || !task) {
@@ -276,8 +285,8 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
         name: newSubtaskName.trim(),
         description: '',
         status: 'Backlog',
-        assigned_to: appUser.id,
-        due_date: new Date().toISOString(),
+        assigned_to: newSubtaskAssignee || appUser.id,
+        due_date: newSubtaskDueDate ? newSubtaskDueDate.toISOString() : new Date().toISOString(),
         priority: null,
         sprint_points: null,
         tags: [],
@@ -292,6 +301,8 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
       // 1. Optimistically add to UI
       onAddTask(optimisticSubtask);
       setNewSubtaskName('');
+      setNewSubtaskAssignee(appUser.id);
+      setNewSubtaskDueDate(null);
     
       try {
         // 2. Strip ID before saving to Firestore
@@ -328,6 +339,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
         user_id: t.user_id,
         timestamp: t.end_time,
         type: 'comment', // Treat as comment for display
+        comment_id: `time-${t.id}`,
         comment: `Logged ${formatDuration(t.duration)}. ${t.notes ? `Notes: ${t.notes}` : ''}`
     } as Activity))].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
@@ -522,7 +534,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
 
                             <Separator />
 
-                            <div>
+                             <div>
                                 <h3 className="text-lg font-semibold mb-2">Subtasks</h3>
                                  <div className="space-y-2">
                                     {subtasks.map((subtask) => {
@@ -552,15 +564,60 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                             </div>
                                         )
                                     })}
-                                    <div className="flex items-center gap-2">
+                                    <div className="space-y-2 rounded-lg border p-3 bg-muted/50">
                                         <Input 
-                                            placeholder="Add a new subtask..."
-                                            className="h-8"
+                                            placeholder="Create a new subtask..."
+                                            className="h-8 bg-background"
                                             value={newSubtaskName}
                                             onChange={(e) => setNewSubtaskName(e.target.value)}
                                             onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); handleAddSubtask(); } }}
                                         />
-                                        <Button size="sm" onClick={handleAddSubtask}><Plus className="h-4 w-4 mr-1"/> Add</Button>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Select value={newSubtaskAssignee || ''} onValueChange={(value) => setNewSubtaskAssignee(value)}>
+                                                    <SelectTrigger className="h-7 text-xs w-auto border-dashed">
+                                                        <SelectValue placeholder="Assignee" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                      {allUsers.map(user => (
+                                                        <SelectItem key={user.id} value={user.id}>
+                                                          <div className="flex items-center gap-2">
+                                                            <Avatar className="h-5 w-5">
+                                                              <AvatarImage src={user.avatarUrl} alt={user.name} />
+                                                              <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                                                            </Avatar>
+                                                            {user.name}
+                                                          </div>
+                                                        </SelectItem>
+                                                      ))}
+                                                    </SelectContent>
+                                                </Select>
+
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-7 text-xs w-auto border-dashed"
+                                                        >
+                                                            <Calendar className="mr-1 h-3 w-3" />
+                                                            {newSubtaskDueDate ? format(newSubtaskDueDate, 'LLL dd') : 'Due Date'}
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0 z-[1000]" align="start">
+                                                        <CalendarPicker
+                                                            mode="single"
+                                                            selected={newSubtaskDueDate}
+                                                            onSelect={setNewSubtaskDueDate}
+                                                            initialFocus
+                                                        />
+                                                    </PopoverContent>
+                                                </Popover>
+                                            </div>
+                                             <Button size="sm" onClick={handleAddSubtask} disabled={!newSubtaskName.trim()}>
+                                                <Plus className="h-4 w-4 mr-1"/> Add
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
