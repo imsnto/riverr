@@ -82,10 +82,12 @@ export interface Activity {
   id: string;
   user_id: string;
   timestamp: string;
-  type: "status_change" | "comment" | "assignee_change";
+  type: "status_change" | "comment" | "assignee_change" | "subtask_completion";
   from?: string;
   to?: string;
   comment_id?: string;
+  comment?: string;
+  subtask_name?: string;
 }
 
 export interface Attachment {

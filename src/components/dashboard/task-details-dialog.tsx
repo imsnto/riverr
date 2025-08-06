@@ -120,13 +120,16 @@ const ActivityItem = ({ activity, allUsers }: { activity: Activity; allUsers: Us
                     <div><span className="font-semibold">{user?.name}</span> changed assignee from <Badge variant="outline">{activity.from}</Badge> to <Badge variant="outline">{activity.to}</Badge></div>
                 );
             case 'comment':
-                 const comment = activity.comment_id;
                  const commentText = activity.comment
                 return (
                     <div>
                         <p><span className="font-semibold">{user?.name}</span> left a comment.</p>
                         {commentText && <div className="text-muted-foreground text-xs p-2 border rounded-md mt-1">{commentText}</div>}
                     </div>
+                );
+            case 'subtask_completion':
+                return (
+                     <div><span className="font-semibold">{user?.name}</span> marked subtask <Badge variant="outline">{activity.subtask_name}</Badge> as complete.</div>
                 )
             default:
                 return null;
@@ -343,8 +346,24 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
     };
 
     const handleUpdateSubtaskStatus = (subtask: Task, checked: boolean) => {
-         const updatedSubtask = { ...subtask, status: checked ? 'Done' : 'Backlog' };
-         onUpdateTask(updatedSubtask);
+        const newStatus = checked ? 'Done' : 'Backlog';
+        const updatedSubtask = { ...subtask, status: newStatus };
+        onUpdateTask(updatedSubtask);
+
+        if (newStatus === 'Done') {
+            const newActivity: Activity = {
+                id: `act-${Date.now()}`,
+                user_id: appUser.id,
+                timestamp: new Date().toISOString(),
+                type: 'subtask_completion',
+                subtask_name: subtask.name,
+            }
+            const updatedParentTask = {
+                ...task,
+                activities: [...(task.activities || []), newActivity]
+            };
+            onUpdateTask(updatedParentTask);
+        }
     }
     
     const handleRemoveSubtask = (subtaskId: string) => {
@@ -624,7 +643,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                                             {newSubtaskDueDate ? format(newSubtaskDueDate, 'LLL dd') : 'Due Date'}
                                                         </Button>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0" align="start">
+                                                    <PopoverContent className="w-auto p-0 z-[1000]" align="start">
                                                         <CalendarPicker
                                                             mode="single"
                                                             selected={newSubtaskDueDate}
@@ -653,9 +672,13 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                             <div className="p-4 space-y-4">
                                 {sortedActivities.map((activity) => {
                                     if (activity.type === 'comment' && activity.comment_id) {
-                                        const comment = (task.comments || []).find(c => c.id === activity.comment_id);
                                         const user = allUsers.find(u => u.id === activity.user_id);
-                                        if (!comment || !user) return null;
+                                        const isTimeLog = activity.comment_id.startsWith('time-');
+                                        const comment = isTimeLog ? null : (task.comments || []).find(c => c.id === activity.comment_id);
+                                        
+                                        if (!user) return null;
+                                        if (!isTimeLog && !comment) return null;
+
                                         return (
                                              <div key={activity.id} className="flex items-start gap-3">
                                                 <Avatar className="h-8 w-8">
@@ -665,24 +688,30 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                                 <div className="flex-1 rounded-md border bg-background p-3">
                                                     <div className="flex justify-between items-center">
                                                         <p className="font-semibold text-sm">{user.name}</p>
-                                                        <p className="text-xs text-muted-foreground">{new Date(comment.timestamp).toLocaleDateString()}</p>
+                                                        <p className="text-xs text-muted-foreground">{new Date(activity.timestamp).toLocaleDateString()}</p>
                                                     </div>
-                                                    {comment.comment && <p className="text-sm text-muted-foreground mt-1">{comment.comment}</p>}
-                                                    {comment.attachments && comment.attachments.length > 0 && (
-                                                        <div className="mt-2 space-y-2">
-                                                            {comment.attachments.map(att => (
-                                                                <div key={att.id}>
-                                                                    {att.type === 'image' ? (
-                                                                        <img src={att.url} alt={att.name} className="rounded-lg max-w-full max-h-64 object-cover" />
-                                                                    ) : (
-                                                                        <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline bg-primary/10 p-2 rounded-md">
-                                                                            <File className="h-4 w-4" />
-                                                                            <span>{att.name}</span>
-                                                                        </a>
-                                                                    )}
+                                                    {isTimeLog ? (
+                                                        <p className="text-sm text-muted-foreground mt-1">{activity.comment}</p>
+                                                    ) : (
+                                                        <>
+                                                            {comment?.comment && <p className="text-sm text-muted-foreground mt-1">{comment.comment}</p>}
+                                                            {comment?.attachments && comment.attachments.length > 0 && (
+                                                                <div className="mt-2 space-y-2">
+                                                                    {comment.attachments.map(att => (
+                                                                        <div key={att.id}>
+                                                                            {att.type === 'image' ? (
+                                                                                <img src={att.url} alt={att.name} className="rounded-lg max-w-full max-h-64 object-cover" />
+                                                                            ) : (
+                                                                                <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline bg-primary/10 p-2 rounded-md">
+                                                                                    <File className="h-4 w-4" />
+                                                                                    <span>{att.name}</span>
+                                                                                </a>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
                                                                 </div>
-                                                            ))}
-                                                        </div>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </div>
                                             </div>
