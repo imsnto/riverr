@@ -246,14 +246,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
     }
     
     const handleRemoveSubtask = (subtaskId: string) => {
-        // In a real app, this would be a hard delete or a soft delete.
-        // For now, we will just filter it out from the parent's view.
-        // This won't actually delete it from the `allTasks` array.
-        toast({
-            variant: 'destructive',
-            title: 'Delete not implemented',
-            description: 'This is a placeholder action.',
-        })
+        onRemoveTask(subtaskId);
     }
     
     const sortedActivities = [...(task.activities || [])].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -376,7 +369,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                     <Input type="number" placeholder="0h" className="h-8" defaultValue={task.time_estimate || ''} onBlur={(e) => handleFieldChange('time_estimate', e.target.value ? parseFloat(e.target.value) : null)} />
                                 </DetailRow>
                                  <DetailRow icon={Clock} label="Time Logged">
-                                    <Input type="number" placeholder="0h" className="h-8" value={totalTimeTracked} disabled />
+                                    <Input type="number" placeholder="0h" className="h-8" defaultValue={totalTimeTracked} onBlur={(e) => console.log('Time logged not implemented yet')} />
                                 </DetailRow>
                                 <DetailRow icon={Tag} label="Tags" className="items-start">
                                     <div className="flex flex-col gap-2">
@@ -421,7 +414,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                             <div>
                                 <h3 className="text-lg font-semibold mb-2">Subtasks</h3>
                                  <div className="space-y-2">
-                                    {subtasks.filter(st => !!st.id).map((subtask) => {
+                                    {subtasks.map((subtask) => {
                                         const subtaskAssignee = allUsers.find(u => u.id === subtask.assigned_to);
                                         return (
                                             <div key={subtask.id} className={cn(
@@ -554,3 +547,4 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         </Dialog>
     );
 }
+
