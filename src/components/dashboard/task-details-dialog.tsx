@@ -151,8 +151,8 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         
         const updatedTask = { 
             ...task, 
-            comments: [...task.comments, newComment],
-            activities: [...task.activities, newActivity],
+            comments: [...(task.comments || []), newComment],
+            activities: [...(task.activities || []), newActivity],
         };
         onUpdateTask(updatedTask);
         form.reset();
@@ -175,26 +175,26 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         const updatedTask = {
              ...task,
              [field]: value,
-             ...(newActivity ? { activities: [...task.activities, newActivity] } : {})
+             ...(newActivity ? { activities: [...(task.activities || []), newActivity] } : {})
         };
         onUpdateTask(updatedTask);
     }
 
      const handleAddTag = () => {
         if (newTag && !task.tags.includes(newTag)) {
-            handleFieldChange('tags', [...task.tags, newTag]);
+            handleFieldChange('tags', [...(task.tags || []), newTag]);
             setNewTag('');
         }
     };
 
     const handleRemoveTag = (tagToRemove: string) => {
-        handleFieldChange('tags', task.tags.filter(tag => tag !== tagToRemove));
+        handleFieldChange('tags', (task.tags || []).filter(tag => tag !== tagToRemove));
     };
     
     const handleAddSubtask = async () => {
         if (!newSubtaskName.trim()) return;
     
-        const tempId = `temp-${Date.now()}-${Math.random()}`;
+        const tempId = `temp-${Date.now()}`;
         const optimisticSubtask: Task = {
             id: tempId,
             project_id: task.project_id,
@@ -214,27 +214,20 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
             parentId: task.id,
         };
     
-        // Optimistically render it
         onAddTask(optimisticSubtask);
         setNewSubtaskName('');
     
         try {
-            // Firestore generates the ID, so we pass undefined
-            const actualSubtaskData = { ...optimisticSubtask, id: undefined };
-            delete (actualSubtaskData as any).id;
-            
-            const actualSubtask = await dbAddTask(actualSubtaskData);
-            
-            // Replace the temp one with the real one from Firestore
-            onUpdateTask(actualSubtask, tempId);
+            const savedTask = await dbAddTask({ ...optimisticSubtask, id: undefined as any });
+            onUpdateTask(savedTask, tempId);
         } catch (err) {
-            // Remove the optimistic subtask or show error
             toast({
                 variant: 'destructive',
-                title: 'Failed to add subtask',
+                title: 'Failed to create subtask',
                 description: String(err),
             });
-            // Optionally remove the temp task from allTasks here
+            // Here you might want to dispatch an action to remove the temp task
+            // For now, we'll leave it to show the user something went wrong
         }
     };
 
@@ -255,7 +248,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         })
     }
     
-    const sortedActivities = [...task.activities].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const sortedActivities = [...(task.activities || [])].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files) {
@@ -280,7 +273,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                 <Button variant="outline" size="sm" className="pointer-events-none">
                                     {project?.name || 'Task'}
                                 </Button>
-                                <span>/ {task.id.substring(0,6)}...</span>
+                                <span>/ {task?.id?.substring(0,6)}...</span>
                            </div>
                            <Input 
                                 defaultValue={task.name}
@@ -380,7 +373,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                 <DetailRow icon={Tag} label="Tags" className="items-start">
                                     <div className="flex flex-col gap-2">
                                          <div className="flex flex-wrap gap-1">
-                                            {task.tags.map(tag => (
+                                            {(task.tags || []).map(tag => (
                                                 <Badge key={tag} variant="secondary">
                                                     {tag}
                                                     <button onClick={() => handleRemoveTag(tag)} className="ml-1 rounded-full hover:bg-destructive/20 p-0.5">
@@ -471,7 +464,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                             <div className="p-4 space-y-4">
                                 {sortedActivities.map((activity) => {
                                     if (activity.type === 'comment' && activity.comment_id) {
-                                        const comment = task.comments.find(c => c.id === activity.comment_id);
+                                        const comment = (task.comments || []).find(c => c.id === activity.comment_id);
                                         const user = allUsers.find(u => u.id === activity.user_id);
                                         if (!comment || !user) return null;
                                         return (
