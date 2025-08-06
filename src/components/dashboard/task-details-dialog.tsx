@@ -593,7 +593,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                                     </SelectContent>
                                                 </Select>
 
-                                                <Popover>
+                                                <Popover modal={true}>
                                                     <PopoverTrigger asChild>
                                                         <Button
                                                             size="sm"
@@ -604,7 +604,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                                             {newSubtaskDueDate ? format(newSubtaskDueDate, 'LLL dd') : 'Due Date'}
                                                         </Button>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0 z-[1000]" align="start">
+                                                    <PopoverContent className="w-auto p-0" align="start">
                                                         <CalendarPicker
                                                             mode="single"
                                                             selected={newSubtaskDueDate}
@@ -725,3 +725,4 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
         </Dialog>
     );
 }
+
