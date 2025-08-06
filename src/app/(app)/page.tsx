@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
-import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getAllTasks as dbGetAllTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject, addTimeEntry, getAllJobs, getAllJobFlowTasks, getJobFlowTemplates } from '@/lib/db';
+import { getAllSpaces as dbGetAllSpaces, getProjectsInSpace as dbGetProjects, getAllTasks as dbGetAllTasks, getTimeEntriesInSpace as dbGetTimeEntries, getSlackMeetingLogsInSpace as dbGetSlackLogs, getAllUsers as dbGetAllUsers, getChannelsInSpace as dbGetChannels, getMessagesInChannel as dbGetMessages, addTask as dbAddTask, updateSpace as dbUpdateSpace, addSpace as dbAddSpace, deleteSpace as dbDeleteSpace, seedDatabase, updateTask as dbUpdateTask, addInvite, getInvitesForEmail, acceptInvite, declineInvite, addProject, updateProject, deleteProject, addTimeEntry, getAllJobs, getAllJobFlowTasks, getJobFlowTemplates } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import ChannelsView from '@/components/dashboard/channels-view';
 import { cn } from '@/lib/utils';
@@ -35,6 +35,8 @@ import { Mail } from 'lucide-react';
 import JobFlowTemplateBuilder from '@/components/dashboard/job-flow-template-builder';
 import ActiveJobsView from '@/components/dashboard/active-jobs-view';
 import TaskDetailsDialog from '@/components/dashboard/task-details-dialog';
+import { writeBatch, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function Dashboard() {
   const { appUser } = useAuth();
@@ -190,12 +192,11 @@ export default function Dashboard() {
       return;
     }
   
-    // Update local state immediately for better UX
     setTasks(updatedTasks);
   
-    // Batch update Firestore for performance
     const batch = writeBatch(db);
     for (const task of updatedTasks) {
+      if (task.id.startsWith('temp-')) continue;
       const originalTask = tasks.find(t => t.id === task.id);
       if (originalTask && JSON.stringify(originalTask) !== JSON.stringify(task)) {
         const taskRef = doc(db, 'tasks', task.id);
@@ -206,34 +207,38 @@ export default function Dashboard() {
       await batch.commit();
     } catch (error) {
       console.error("Failed to batch update tasks:", error);
-      // Optionally revert state or show a toast
       toast({
         variant: 'destructive',
         title: 'Update Failed',
         description: 'Could not save task changes to the server.',
       });
-      // Revert to original tasks state if update fails
-      // For a more robust solution, you might want to refetch from DB
       setTasks(tasks); 
     }
   };
-
+  
   const handleUpdateTask = (updatedTask: Task, tempId?: string) => {
     setTasks(prevTasks => {
+      // If a tempId is provided, it means we're replacing an optimistic task
+      // with the real one from the database.
       const taskIndex = prevTasks.findIndex(t => t.id === (tempId || updatedTask.id));
+      
       if (taskIndex !== -1) {
         const newTasks = [...prevTasks];
         newTasks[taskIndex] = updatedTask;
         return newTasks;
       }
+      // If the task wasn't found, it's a new task, so just add it.
       return [...prevTasks, updatedTask];
     });
 
     if (selectedTask && selectedTask.id === (tempId || updatedTask.id)) {
       setSelectedTask(updatedTask);
     }
-    // Asynchronously update Firestore without blocking UI
-    updateTask(updatedTask.id, updatedTask);
+    
+    // Asynchronously update Firestore without blocking UI, if it's not a temp task
+    if (!updatedTask.id.startsWith('temp-')) {
+        dbUpdateTask(updatedTask.id, updatedTask);
+    }
   };
   
   const handleAddTaskOptimistic = (newTask: Task) => {
@@ -656,7 +661,6 @@ export default function Dashboard() {
                     onAddProject={handleAddProject} 
                     onUpdateProject={handleUpdateProject} 
                     onDeleteProject={handleDeleteProject}
-                    selectedTask={selectedTask}
                     onTaskSelect={setSelectedTask}
                     onUpdateTask={handleUpdateTask}
                     onAddTask={handleAddTaskOptimistic}
