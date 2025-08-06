@@ -23,11 +23,11 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { JobFlowTemplate, User, Space, Project } from '@/lib/data';
+import { JobFlowTemplate, User, Space, Project, Job } from '@/lib/data';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { launchJob } from '@/lib/db';
+import { launchJob as dbLaunchJob } from '@/lib/db';
 import { getProjectsInSpace } from '@/lib/db';
 
 interface LaunchJobDialogProps {
@@ -36,9 +36,10 @@ interface LaunchJobDialogProps {
   template: JobFlowTemplate;
   allUsers: User[];
   activeSpace: Space;
+  onJobLaunched: () => void;
 }
 
-export default function LaunchJobDialog({ isOpen, onOpenChange, template, allUsers, activeSpace }: LaunchJobDialogProps) {
+export default function LaunchJobDialog({ isOpen, onOpenChange, template, allUsers, activeSpace, onJobLaunched }: LaunchJobDialogProps) {
     const { toast } = useToast();
     const { appUser } = useAuth();
     const [projects, setProjects] = useState<Project[]>([]);
@@ -87,11 +88,12 @@ export default function LaunchJobDialog({ isOpen, onOpenChange, template, allUse
     const onSubmit = async (values: LaunchJobFormValues) => {
         if (!appUser) return;
         try {
-            await launchJob(values.name, template, values.roleUserMapping, appUser.id, activeSpace.id, values.projectId);
+            await dbLaunchJob(values.name, template, values.roleUserMapping, appUser.id, activeSpace.id, values.projectId);
             toast({
                 title: "Job Launched! 🚀",
                 description: `The job "${values.name}" has started, and the first task has been created.`,
             });
+            onJobLaunched();
             onOpenChange(false);
         } catch (error) {
             console.error(error);

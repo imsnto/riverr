@@ -309,12 +309,12 @@ export const launchJob = async (
     createdBy: string,
     spaceId: string,
     projectId: string
-): Promise<void> => {
+): Promise<Job> => {
 
     const batch = writeBatch(db);
 
     // 1. Create the Job document
-    const jobData: Omit<Job, 'id'> = {
+    const newJobData: Omit<Job, 'id'> = {
         name: jobName,
         workflowTemplateId: template.id,
         currentPhaseIndex: 0,
@@ -325,7 +325,7 @@ export const launchJob = async (
         space_id: spaceId
     };
     const jobRef = doc(collection(db, 'jobs'));
-    batch.set(jobRef, jobData);
+    batch.set(jobRef, newJobData);
 
     // 2. Create the first task
     const firstPhase = template.phases.find(p => p.phaseIndex === 0);
@@ -372,4 +372,6 @@ export const launchJob = async (
 
     // Commit all writes at once
     await batch.commit();
+
+    return { ...newJobData, id: jobRef.id };
 }

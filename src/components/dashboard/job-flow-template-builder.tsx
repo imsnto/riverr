@@ -29,6 +29,7 @@ interface JobFlowTemplateBuilderProps {
   allUsers: User[];
   onSave: (template: JobFlowTemplate) => void;
   activeSpace: Space;
+  onJobLaunched: () => void;
 }
 
 const phaseSchema = z.object({
@@ -137,7 +138,7 @@ function TemplateForm({ onSave, allUsers, closeDialog }: { onSave: (data: Templa
 }
 
 
-export default function JobFlowTemplateBuilder({ templates, allUsers, onSave, activeSpace }: JobFlowTemplateBuilderProps) {
+export default function JobFlowTemplateBuilder({ templates, allUsers, onSave, activeSpace, onJobLaunched }: JobFlowTemplateBuilderProps) {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isLaunchOpen, setIsLaunchOpen] = useState(false);
     const [selectedTemplate, setSelectedTemplate] = useState<JobFlowTemplate | null>(null);
@@ -238,8 +239,7 @@ export default function JobFlowTemplateBuilder({ templates, allUsers, onSave, ac
                 </div>
                 </CardContent>
             </Card>
-
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
                 <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
                     <DialogHeader className="p-6 pb-4 border-b">
                         <DialogTitle>Create New Job Flow Template</DialogTitle>
@@ -264,6 +264,7 @@ export default function JobFlowTemplateBuilder({ templates, allUsers, onSave, ac
                     template={selectedTemplate}
                     allUsers={allUsers}
                     activeSpace={activeSpace}
+                    onJobLaunched={onJobLaunched}
                 />
             )}
         </>

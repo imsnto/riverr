@@ -314,6 +314,20 @@ export default function Dashboard() {
     setJobFlowTemplates(prev => [...prev, templateData]);
     toast({ title: 'Template Saved!', description: `The "${templateData.name}" template has been saved.`});
   }
+  
+  const handleJobLaunched = async () => {
+    if (!activeSpaceId) return;
+    // Refetch jobs and tasks to get the newly created ones
+    const [jobsInSpace, jobFlowTasksInSpace] = await Promise.all([
+        getAllJobs(activeSpaceId),
+        getAllJobFlowTasks(activeSpaceId)
+    ]);
+    const projectIds = projects.map(p => p.id);
+    const tasksInSpace = await dbGetTasks(projectIds);
+    setJobs(jobsInSpace);
+    setJobFlowTasks(jobFlowTasksInSpace);
+    setTasks(tasksInSpace);
+  };
 
 
   if (!appUser) {
@@ -594,7 +608,7 @@ export default function Dashboard() {
                   {isLoading ? <div className="flex justify-center items-center h-full">Loading flows...</div> : 
                     <>
                       {flowsViewMode === 'templates' && (
-                        <JobFlowTemplateBuilder templates={jobFlowTemplates} allUsers={visibleUsers} onSave={handleSaveJobFlowTemplate} activeSpace={activeSpace} />
+                        <JobFlowTemplateBuilder templates={jobFlowTemplates} allUsers={visibleUsers} onSave={handleSaveJobFlowTemplate} activeSpace={activeSpace} onJobLaunched={handleJobLaunched} />
                       )}
                       {flowsViewMode === 'active-jobs' && (
                          <ActiveJobsView
