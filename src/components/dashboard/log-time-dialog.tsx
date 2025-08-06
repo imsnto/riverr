@@ -51,40 +51,59 @@ interface LogTimeDialogProps {
 }
 
 const parseDuration = (durationStr: string): number => {
+    if (!durationStr) return 0;
     let totalHours = 0;
     const duration = durationStr.toLowerCase().trim();
 
-    // Regex to capture hours and minutes, e.g., "2h 30m", "1.5h", "45m"
-    const hourMatches = duration.match(/(\d+(\.\d+)?)\s*h/);
-    const minMatches = duration.match(/(\d+(\.\d+)?)\s*m/);
+    const parts = duration.split(/([hm])/).filter(Boolean);
+    let currentNumber = 0;
 
-    if (hourMatches) {
-        totalHours += parseFloat(hourMatches[1]);
-    }
-    if (minMatches) {
-        totalHours += parseFloat(minMatches[1]) / 60;
-    }
-
-    // If there's an hour match but no minute match, check for trailing numbers
-    if (hourMatches && !minMatches) {
-        const afterHours = duration.split(hourMatches[0])[1]?.trim();
-        if (afterHours) {
-            const trailingMinutes = parseFloat(afterHours);
-            if (!isNaN(trailingMinutes)) {
-                totalHours += trailingMinutes / 60;
-            }
+    for (const part of parts) {
+        const num = parseFloat(part);
+        if (!isNaN(num)) {
+            currentNumber = num;
+        } else if (part === 'h') {
+            totalHours += currentNumber;
+            currentNumber = 0;
+        } else if (part === 'm') {
+            totalHours += currentNumber / 60;
+            currentNumber = 0;
         }
     }
-    
-    // If no units were found at all, treat the number as hours
-    if (!hourMatches && !minMatches) {
-        const numericValue = parseFloat(duration);
-        if (!isNaN(numericValue)) {
-            totalHours = numericValue;
-        }
+
+    if(currentNumber > 0 && totalHours === 0) {
+      // If only a number is entered, assume hours
+      totalHours = currentNumber;
+    } else if(currentNumber > 0 && totalHours > 0) {
+      // If a number is after 'h' treat as minutes
+      totalHours += currentNumber / 60;
     }
+
 
     return totalHours;
+};
+
+
+const formatDuration = (hours: number): string => {
+    if (hours === 0) return '0 min';
+    
+    const totalMinutes = Math.round(hours * 60);
+
+    if (totalMinutes < 1) {
+        return `< 1 min`;
+    }
+
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+
+    const parts = [];
+    if (h > 0) {
+        parts.push(`${h} hr${h > 1 ? 's' : ''}`);
+    }
+    if (m > 0) {
+        parts.push(`${m} min`);
+    }
+    return parts.join(' ');
 };
 
 
@@ -192,8 +211,8 @@ export default function LogTimeDialog({ isOpen, onOpenChange, task, allUsers, ap
                     <Input placeholder="e.g., 2h 30m or 2.5" {...field} />
                   </FormControl>
                    {parsedSuggestion > 0 && (
-                        <Button type="button" variant="outline" className="w-full" onClick={() => form.setValue('duration', `${parsedSuggestion.toFixed(2)}h`)}>
-                            Log {parsedSuggestion.toFixed(2)} hours
+                        <Button type="button" variant="outline" className="w-full" onClick={() => form.setValue('duration', formatDuration(parsedSuggestion))}>
+                            Log {formatDuration(parsedSuggestion)}
                         </Button>
                     )}
                   <FormMessage />
