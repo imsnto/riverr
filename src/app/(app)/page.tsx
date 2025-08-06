@@ -219,24 +219,26 @@ export default function Dashboard() {
   
   const handleUpdateTask = (updatedTask: Task, tempId?: string) => {
     setTasks(prevTasks => {
-      const taskIndex = prevTasks.findIndex(t => t.id === (tempId || updatedTask.id));
-      
-      if (taskIndex !== -1) {
-        const newTasks = [...prevTasks];
-        newTasks[taskIndex] = updatedTask;
-        return newTasks;
-      }
-      return [...prevTasks, updatedTask];
+        const taskIndex = prevTasks.findIndex(t => t.id === (tempId || updatedTask.id));
+        
+        if (taskIndex !== -1) {
+            const newTasks = [...prevTasks];
+            newTasks[taskIndex] = updatedTask;
+            return newTasks;
+        }
+        // This case should ideally not be hit if we are just updating
+        return [...prevTasks, updatedTask]; 
     });
 
     if (selectedTask && selectedTask.id === (tempId || updatedTask.id)) {
-      setSelectedTask(updatedTask);
+        setSelectedTask(updatedTask);
     }
     
     if (!updatedTask.id.startsWith('temp-')) {
         dbUpdateTask(updatedTask.id, updatedTask);
     }
-  };
+};
+
   
   const handleAddTaskOptimistic = (newTask: Task) => {
     setTasks(prev => [...prev, newTask]);
