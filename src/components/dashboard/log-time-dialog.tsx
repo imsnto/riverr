@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -55,37 +55,41 @@ const parseDuration = (durationStr: string): number => {
     let totalHours = 0;
     const duration = durationStr.toLowerCase().trim();
 
-    const parts = duration.split(/([hm])/).filter(Boolean);
-    let currentNumber = 0;
+    // Regex to capture numbers and units (h, m)
+    const matches = duration.match(/(\d*\.?\d+)\s*(h|m)?/g) || [];
 
-    for (const part of parts) {
-        const num = parseFloat(part);
-        if (!isNaN(num)) {
-            currentNumber = num;
-        } else if (part === 'h') {
-            totalHours += currentNumber;
-            currentNumber = 0;
-        } else if (part === 'm') {
-            totalHours += currentNumber / 60;
-            currentNumber = 0;
+    if (matches.length === 0 && !isNaN(parseFloat(duration))) {
+        // Handle case where only a number is entered (e.g., "2.5")
+        return parseFloat(duration);
+    }
+    
+    matches.forEach(match => {
+        const parts = match.match(/(\d*\.?\d+)\s*(h|m)?/);
+        if (parts) {
+            const value = parseFloat(parts[1]);
+            const unit = parts[2];
+            
+            if (unit === 'h') {
+                totalHours += value;
+            } else if (unit === 'm') {
+                totalHours += value / 60;
+            } else if (!unit) {
+                // If no unit, assume hours if it's the only number, otherwise minutes
+                if (matches.length === 1) {
+                    totalHours += value;
+                } else {
+                    totalHours += value / 60;
+                }
+            }
         }
-    }
-
-    if(currentNumber > 0 && totalHours === 0) {
-      // If only a number is entered, assume hours
-      totalHours = currentNumber;
-    } else if(currentNumber > 0 && totalHours > 0) {
-      // If a number is after 'h' treat as minutes
-      totalHours += currentNumber / 60;
-    }
-
+    });
 
     return totalHours;
 };
 
 
 const formatDuration = (hours: number): string => {
-    if (hours === 0) return '0 min';
+    if (hours === 0) return '';
     
     const totalMinutes = Math.round(hours * 60);
 
@@ -98,7 +102,7 @@ const formatDuration = (hours: number): string => {
 
     const parts = [];
     if (h > 0) {
-        parts.push(`${h} hr${h > 1 ? 's' : ''}`);
+        parts.push(`${h} hr`);
     }
     if (m > 0) {
         parts.push(`${m} min`);
@@ -109,6 +113,8 @@ const formatDuration = (hours: number): string => {
 
 export default function LogTimeDialog({ isOpen, onOpenChange, task, allUsers, appUser, onLogTime }: LogTimeDialogProps) {
   const { toast } = useToast();
+  const [showSuggestion, setShowSuggestion] = useState(true);
+
   const form = useForm<TimeLogFormValues>({
     resolver: zodResolver(timeLogSchema),
     defaultValues: {
@@ -117,6 +123,13 @@ export default function LogTimeDialog({ isOpen, onOpenChange, task, allUsers, ap
       userId: appUser.id,
     },
   });
+
+  useEffect(() => {
+    if (isOpen) {
+        form.reset();
+        setShowSuggestion(true);
+    }
+  }, [isOpen, form]);
 
   const onSubmit = (values: TimeLogFormValues) => {
     const durationInHours = parseDuration(values.duration);
@@ -208,11 +221,26 @@ export default function LogTimeDialog({ isOpen, onOpenChange, task, allUsers, ap
                 <FormItem>
                   <FormLabel>Duration</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., 2h 30m or 2.5" {...field} />
+                    <Input 
+                        placeholder="e.g., 2h 30m or 2.5" 
+                        {...field}
+                        onChange={(e) => {
+                            field.onChange(e);
+                            setShowSuggestion(true);
+                        }}
+                    />
                   </FormControl>
-                   {parsedSuggestion > 0 && (
-                        <Button type="button" variant="outline" className="w-full" onClick={() => form.setValue('duration', formatDuration(parsedSuggestion))}>
-                            Log {formatDuration(parsedSuggestion)}
+                   {showSuggestion && parsedSuggestion > 0 && formatDuration(parsedSuggestion) !== durationInput && (
+                        <Button 
+                            type="button" 
+                            variant="outline" 
+                            className="w-full" 
+                            onClick={() => {
+                                form.setValue('duration', formatDuration(parsedSuggestion));
+                                setShowSuggestion(false);
+                            }}
+                        >
+                            Did you mean: <span className="font-semibold mx-1">{formatDuration(parsedSuggestion)}</span>?
                         </Button>
                     )}
                   <FormMessage />
@@ -242,3 +270,4 @@ export default function LogTimeDialog({ isOpen, onOpenChange, task, allUsers, ap
     </Dialog>
   );
 }
+
