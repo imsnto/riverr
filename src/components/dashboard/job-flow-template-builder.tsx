@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -13,7 +12,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,13 +22,13 @@ import { z } from 'zod';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useAuth } from '@/hooks/use-auth';
 import LaunchJobDialog from './launch-job-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface JobFlowTemplateBuilderProps {
   templates: JobFlowTemplate[];
   allUsers: User[];
   onSave: (template: JobFlowTemplate) => void;
   activeSpace: Space;
-  // onDelete: (templateId: string) => void;
 }
 
 const phaseSchema = z.object({
@@ -143,9 +141,10 @@ export default function JobFlowTemplateBuilder({ templates, allUsers, onSave, ac
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isLaunchOpen, setIsLaunchOpen] = useState(false);
     const [selectedTemplate, setSelectedTemplate] = useState<JobFlowTemplate | null>(null);
+    const { appUser } = useAuth();
+
 
     const handleSave = (data: TemplateFormValues) => {
-        const { appUser } = useAuth();
         if (!appUser) return;
 
         const newTemplate: JobFlowTemplate = {
