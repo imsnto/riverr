@@ -3,7 +3,7 @@
 
 import React, { useRef, useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Task, Comment, Activity, User, Project, Attachment, Subtask } from '@/lib/data';
+import { Task, Comment, Activity, User, Project, Attachment } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -79,22 +79,26 @@ interface TaskDetailsDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     onUpdateTask: (task: Task) => void;
+    onAddTask: (task: Omit<Task, 'id'>) => void;
+    onTaskSelect: (task: Task) => void;
     statuses: string[];
     allUsers: User[];
+    allTasks: Task[];
     projects: Project[];
 }
 
-export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdateTask, statuses, allUsers, projects }: TaskDetailsDialogProps) {
+export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdateTask, onAddTask, onTaskSelect, statuses, allUsers, allTasks, projects }: TaskDetailsDialogProps) {
     const { toast } = useToast();
     const { appUser } = useAuth();
     const [attachments, setAttachments] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [newTag, setNewTag] = useState('');
-    const [newSubtask, setNewSubtask] = useState('');
+    const [newSubtaskName, setNewSubtaskName] = useState('');
     
     if (!appUser) return null;
 
     const project = projects.find(p => p.id === task.project_id);
+    const subtasks = allTasks.filter(t => t.parentId === task.id);
     
     // In a real app, time entries would be fetched from the DB
     const totalTimeTracked = 0; // timeEntries.filter(t => t.task_id === task.id).reduce((acc, entry) => acc + entry.duration, 0);
@@ -177,29 +181,46 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
     const handleRemoveTag = (tagToRemove: string) => {
         handleFieldChange('tags', task.tags.filter(tag => tag !== tagToRemove));
     };
-
+    
     const handleAddSubtask = () => {
-        if (newSubtask.trim() === '' || !appUser) return;
-        const newSub: Subtask = {
-            id: `sub-${Date.now()}`,
-            name: newSubtask.trim(),
+        if (!newSubtaskName.trim()) return;
+
+        const newSubtaskData: Omit<Task, 'id'> = {
+            project_id: task.project_id,
+            name: newSubtaskName.trim(),
+            description: '',
             status: 'Backlog',
             assigned_to: appUser.id,
-            due_date: null
+            due_date: new Date().toISOString(),
+            priority: null,
+            sprint_points: null,
+            tags: [],
+            time_estimate: null,
+            relationships: [],
+            activities: [],
+            comments: [],
+            attachments: [],
+            parentId: task.id,
         };
-        const subtasks = task.subtasks ? [...task.subtasks, newSub] : [newSub];
-        handleFieldChange('subtasks', subtasks);
-        setNewSubtask('');
+        onAddTask(newSubtaskData);
+        setNewSubtaskName('');
     }
 
-    const handleUpdateSubtaskStatus = (subtaskId: string, checked: boolean) => {
-         const subtasks = task.subtasks?.map(sub => sub.id === subtaskId ? {...sub, status: checked ? 'Done' : 'Backlog'} : sub);
-         handleFieldChange('subtasks', subtasks);
+    const handleUpdateSubtaskStatus = (subtask: Task, checked: boolean) => {
+         const updatedSubtask = { ...subtask, status: checked ? 'Done' : 'Backlog' };
+         onUpdateTask(updatedSubtask);
     }
     
     const handleRemoveSubtask = (subtaskId: string) => {
-        const subtasks = task.subtasks?.filter(sub => sub.id !== subtaskId);
-        handleFieldChange('subtasks', subtasks);
+        // In a real app, this would be a hard delete or a soft delete.
+        // For now, we will just filter it out from the parent's view.
+        // This won't actually delete it from the `allTasks` array.
+        // A proper implementation would require a deleteTask function.
+        toast({
+            variant: 'destructive',
+            title: 'Delete not implemented',
+            description: 'This is a placeholder action.',
+        })
     }
     
     const sortedActivities = [...task.activities].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -364,15 +385,20 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                             <div>
                                 <h3 className="text-lg font-semibold mb-2">Subtasks</h3>
                                  <div className="space-y-2">
-                                    {task.subtasks?.map(subtask => {
+                                    {subtasks.map(subtask => {
                                         const subtaskAssignee = allUsers.find(u => u.id === subtask.assigned_to);
                                         return (
-                                            <div key={subtask.id} className="flex items-center gap-2 group">
+                                            <div key={subtask.id} className="flex items-center gap-2 group p-1 rounded-md hover:bg-accent/50">
                                                 <Checkbox 
+                                                    id={`subtask-${subtask.id}`}
                                                     checked={subtask.status === 'Done'}
-                                                    onCheckedChange={(checked) => handleUpdateSubtaskStatus(subtask.id, !!checked)}
+                                                    onCheckedChange={(checked) => handleUpdateSubtaskStatus(subtask, !!checked)}
                                                 />
-                                                <Input defaultValue={subtask.name} className={cn("h-8 border-transparent hover:border-input focus-visible:border-input read-only:border-transparent read-only:hover:border-transparent", subtask.status === 'Done' && 'line-through text-muted-foreground')} />
+                                                <Button variant="link" className="p-0 h-auto justify-start flex-1" onClick={() => onTaskSelect(subtask)}>
+                                                    <label htmlFor={`subtask-${subtask.id}`} className={cn("flex-1 cursor-pointer", subtask.status === 'Done' && 'line-through text-muted-foreground')}>
+                                                        {subtask.name}
+                                                    </label>
+                                                </Button>
                                                 <Avatar className="h-6 w-6">
                                                     <AvatarImage src={subtaskAssignee?.avatarUrl} />
                                                     <AvatarFallback>{getInitials(subtaskAssignee?.name || '')}</AvatarFallback>
@@ -387,8 +413,8 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                         <Input 
                                             placeholder="Add a new subtask..."
                                             className="h-8"
-                                            value={newSubtask}
-                                            onChange={(e) => setNewSubtask(e.target.value)}
+                                            value={newSubtaskName}
+                                            onChange={(e) => setNewSubtaskName(e.target.value)}
                                             onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); handleAddSubtask(); } }}
                                         />
                                         <Button size="sm" onClick={handleAddSubtask}><Plus className="h-4 w-4 mr-1"/> Add</Button>

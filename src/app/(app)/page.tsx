@@ -136,23 +136,16 @@ export default function Dashboard() {
             setMessages([]);
         }
 
-        const projectIds = projectsInSpace.map(p => p.id);
+        const [tasksInSpace, timeEntriesInSpace, meetingLogsInSpace] = await Promise.all([
+            dbGetTasks(),
+            dbGetTimeEntries(projectsInSpace.map(p => p.id)),
+            dbGetSlackLogs(activeSpaceId),
+        ]);
+        if (abortController.signal.aborted) return;
+        setTasks(tasksInSpace);
+        setTimeEntries(timeEntriesInSpace);
+        setMeetingLogs(meetingLogsInSpace);
 
-        if (projectIds.length > 0) {
-            const [tasksInSpace, timeEntriesInSpace, meetingLogsInSpace] = await Promise.all([
-                dbGetTasks(projectIds),
-                dbGetTimeEntries(projectIds),
-                dbGetSlackLogs(activeSpaceId),
-            ]);
-            if (abortController.signal.aborted) return;
-            setTasks(tasksInSpace);
-            setTimeEntries(timeEntriesInSpace);
-            setMeetingLogs(meetingLogsInSpace);
-        } else {
-            setTasks([]);
-            setTimeEntries([]);
-            setMeetingLogs([]);
-        }
         setIsLoading(false);
       }
     }
@@ -168,9 +161,14 @@ export default function Dashboard() {
     setIsCreateTaskOpen(true);
   }
 
-  const handleTaskCreated = async (taskData: Omit<Task, 'id'>) => {
+  const handleAddTask = async (taskData: Omit<Task, 'id'>) => {
     const newTask = await dbAddTask(taskData);
     setTasks(prev => [...prev, newTask]);
+    return newTask;
+  }
+  
+  const handleTaskCreated = async (taskData: Omit<Task, 'id'>) => {
+    const newTask = await handleAddTask(taskData);
     
     if (selectedMessageForTask) {
       const updatedMessage = { ...selectedMessageForTask, linked_task_id: newTask.id };
@@ -318,15 +316,14 @@ export default function Dashboard() {
   const handleJobLaunched = async () => {
     if (!activeSpaceId) return;
     // Refetch jobs and tasks to get the newly created ones
-    const [jobsInSpace, jobFlowTasksInSpace] = await Promise.all([
+    const [jobsInSpace, jobFlowTasksInSpace, allTasks] = await Promise.all([
         getAllJobs(activeSpaceId),
-        getAllJobFlowTasks(activeSpaceId)
+        getAllJobFlowTasks(activeSpaceId),
+        dbGetTasks()
     ]);
-    const projectIds = projects.map(p => p.id);
-    const tasksInSpace = await dbGetTasks(projectIds);
     setJobs(jobsInSpace);
     setJobFlowTasks(jobFlowTasksInSpace);
-    setTasks(tasksInSpace);
+    setTasks(allTasks);
   };
 
 

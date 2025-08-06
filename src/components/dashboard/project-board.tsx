@@ -9,8 +9,6 @@ import { Badge } from '../ui/badge';
 import { MoreHorizontal, Plus, Edit, Trash2, Palette } from 'lucide-react';
 import { Button, buttonVariants } from '../ui/button';
 import { cn } from '@/lib/utils';
-import NewTaskDialog from './new-task-dialog';
-import TaskDetailsDialog from './task-details-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '../ui/dropdown-menu';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -126,12 +124,13 @@ const TaskCard = ({ task, project, onUpdateTask, onClick, isDragging, allUsers }
 interface ProjectBoardProps {
   project: Project;
   projects: Project[];
-  tasks: Task[];
+  allTasks: Task[];
   onUpdateTasks: (tasks: Task[]) => void;
   activeSpace: Space;
   allUsers: User[];
   onUpdateActiveSpace: (updatedSpace: Partial<Space>) => void;
   onNewTaskRequest: () => void;
+  onTaskClick: (task: Task) => void;
 }
 
 const defaultStatuses: Status[] = [
@@ -141,14 +140,13 @@ const defaultStatuses: Status[] = [
     { name: 'Done', color: '#22c55e' },
 ]
 
-export default function ProjectBoard({ project, projects, tasks: allTasks, onUpdateTasks, activeSpace, allUsers, onUpdateActiveSpace, onNewTaskRequest }: ProjectBoardProps) {
+export default function ProjectBoard({ project, projects, allTasks, onUpdateTasks, activeSpace, allUsers, onUpdateActiveSpace, onNewTaskRequest, onTaskClick }: ProjectBoardProps) {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
   const { toast } = useToast();
   
-  const tasks = allTasks.filter(t => t.project_id === project.id);
+  const tasks = allTasks.filter(t => t.project_id === project.id && !t.parentId);
   const statuses = activeSpace.statuses || defaultStatuses;
   const setStatuses = (newStatuses: Status[]) => {
     onUpdateActiveSpace({ statuses: newStatuses });
@@ -208,9 +206,6 @@ export default function ProjectBoard({ project, projects, tasks: allTasks, onUpd
 
   const handleUpdateTask = (updatedTask: Task) => {
     onUpdateTasks(allTasks.map(task => task.id === updatedTask.id ? updatedTask : task));
-    if (selectedTask && selectedTask.id === updatedTask.id) {
-      setSelectedTask(updatedTask);
-    }
   }
 
   const handleAddNewColumn = () => {
@@ -372,7 +367,7 @@ export default function ProjectBoard({ project, projects, tasks: allTasks, onUpd
                     <TaskCard 
                       task={task} 
                       project={project}
-                      onClick={() => setSelectedTask(task)} 
+                      onClick={() => onTaskClick(task)} 
                       onUpdateTask={handleUpdateTask}
                       isDragging={draggedTask === task.id}
                       allUsers={allUsers}
@@ -388,19 +383,6 @@ export default function ProjectBoard({ project, projects, tasks: allTasks, onUpd
             </Button>
         </div>
       </div>
-      {selectedTask && (
-        <TaskDetailsDialog
-          task={selectedTask}
-          isOpen={!!selectedTask}
-          allUsers={allUsers}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) setSelectedTask(null);
-          }}
-          onUpdateTask={handleUpdateTask}
-          statuses={statuses.map(s => s.name)}
-          projects={projects}
-        />
-      )}
     </>
   );
 }

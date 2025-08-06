@@ -58,14 +58,6 @@ export interface Project {
   slack_channel_id?: string;
 }
 
-export interface Subtask {
-  id: string;
-  name: string;
-  status: string;
-  assigned_to: string;
-  due_date: string | null;
-}
-
 export interface Task {
   id: string;
   project_id: string;
@@ -83,7 +75,7 @@ export interface Task {
   comments: Comment[];
   attachments?: Attachment[];
   linked_task_id?: string;
-  subtasks?: Subtask[];
+  parentId?: string | null;
 }
 
 export interface Activity {
@@ -292,11 +284,40 @@ export const tasks: Task[] = [
     attachments: [
       { id: 'att-1', name: 'wireframe-v1.png', url: 'https://placehold.co/600x400.png', type: 'image' }
     ],
-    subtasks: [
-      { id: 'sub-1', name: 'Design hero section', status: 'Done', assigned_to: 'user-1', due_date: '2024-08-10T23:59:59Z'},
-      { id: 'sub-2', name: 'Design feature grid', status: 'In Progress', assigned_to: 'user-1', due_date: '2024-08-12T23:59:59Z'},
-      { id: 'sub-3', name: 'Design footer', status: 'Backlog', assigned_to: 'user-1', due_date: null},
-    ]
+    parentId: null,
+  },
+  {
+    id: 'task-1-sub-1',
+    project_id: 'proj-1',
+    name: 'Design hero section',
+    description: 'Subtask for hero section design',
+    status: 'Done',
+    assigned_to: 'user-1',
+    due_date: '2024-08-10T23:59:59Z',
+    priority: null, sprint_points: null, tags: [], time_estimate: null, relationships: [], activities: [], comments: [],
+    parentId: 'task-1'
+  },
+  {
+    id: 'task-1-sub-2',
+    project_id: 'proj-1',
+    name: 'Design feature grid',
+    description: 'Subtask for feature grid design',
+    status: 'In Progress',
+    assigned_to: 'user-1',
+    due_date: '2024-08-12T23:59:59Z',
+    priority: null, sprint_points: null, tags: [], time_estimate: null, relationships: [], activities: [], comments: [],
+    parentId: 'task-1'
+  },
+  {
+    id: 'task-1-sub-3',
+    project_id: 'proj-1',
+    name: 'Design footer',
+    description: 'Subtask for footer design',
+    status: 'Backlog',
+    assigned_to: 'user-1',
+    due_date: new Date().toISOString(),
+    priority: null, sprint_points: null, tags: [], time_estimate: null, relationships: [], activities: [], comments: [],
+    parentId: 'task-1'
   },
   {
     id: 'task-2',
@@ -314,7 +335,7 @@ export const tasks: Task[] = [
     activities: [],
     comments: [],
     attachments: [],
-    subtasks: []
+    parentId: null
   },
   {
     id: 'task-3',
@@ -332,7 +353,7 @@ export const tasks: Task[] = [
     activities: [],
     comments: [],
     attachments: [],
-    subtasks: []
+    parentId: null
   },
   {
     id: 'task-4',
@@ -350,7 +371,7 @@ export const tasks: Task[] = [
     activities: [],
     comments: [],
     attachments: [],
-    subtasks: []
+    parentId: null
   },
   {
     id: 'task-5',
@@ -368,7 +389,7 @@ export const tasks: Task[] = [
     activities: [],
     comments: [],
     attachments: [],
-    subtasks: []
+    parentId: null
   },
   {
     id: 'task-6',
@@ -386,7 +407,7 @@ export const tasks: Task[] = [
     activities: [],
     comments: [],
     attachments: [],
-    subtasks: []
+    parentId: null
   },
   {
     id: 'task-7',
@@ -404,7 +425,7 @@ export const tasks: Task[] = [
     activities: [],
     comments: [],
     attachments: [],
-    subtasks: []
+    parentId: null
   },
   {
     id: 'task-job-1',
@@ -422,7 +443,7 @@ export const tasks: Task[] = [
     activities: [],
     comments: [],
     attachments: [],
-    subtasks: []
+    parentId: null
   }
 ];
 
