@@ -348,7 +348,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-            <div className="bg-primary/5 rounded-lg p-2 min-h-[500px]">
+            <div className="bg-primary/5 rounded-lg p-2 max-h-[calc(100vh-16rem)] overflow-y-auto">
               {tasks
                 .filter(task => task.status === status.name)
                 .map(task => (
