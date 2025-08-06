@@ -52,8 +52,12 @@ const ActivityItem = ({ activity, allUsers }: { activity: Activity; allUsers: Us
                     <p><span className="font-semibold">{user?.name}</span> changed status from <Badge variant="outline">{activity.from}</Badge> to <Badge variant="outline">{activity.to}</Badge></p>
                 );
             case 'comment':
+                 const comment = activity.comment;
                 return (
-                    <p><span className="font-semibold">{user?.name}</span> left a comment.</p>
+                    <div>
+                        <p><span className="font-semibold">{user?.name}</span> left a comment.</p>
+                        {comment && <div className="text-muted-foreground text-xs p-2 border rounded-md mt-1">{comment}</div>}
+                    </div>
                 )
             default:
                 return null;
@@ -140,6 +144,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
             timestamp: new Date().toISOString(),
             type: 'comment',
             comment_id: newComment.id,
+            comment: newComment.comment,
         }
         
         const updatedTask = { 
@@ -239,7 +244,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
                 <DialogHeader className="p-6 pb-0">
-                    <DialogTitle className="sr-only">Task Details: {task.name}</DialogTitle>
+                   <DialogTitle className="sr-only">Task Details: {task?.name}</DialogTitle>
                 </DialogHeader>
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 flex-1 overflow-hidden">
@@ -250,7 +255,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                                 <Button variant="outline" size="sm" className="pointer-events-none">
                                     {project?.name || 'Task'}
                                 </Button>
-                                <span>/ {task.id.substring(0,6)}...</span>
+                                <span>/ {task?.id?.substring(0,6)}...</span>
                            </div>
                            <Input 
                                 defaultValue={task.name}
