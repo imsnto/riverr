@@ -120,7 +120,7 @@ interface TaskDetailsDialogProps {
     projects: Project[];
 }
 
-export default function TaskDetailsDialog({ task, timeEntries, isOpen, onOpenChange, onUpdateTask, onAddTask, onRemoveTask, onTaskSelect, onLogTime, statuses, allUsers, allTasks, projects }: TaskDetailsDialogProps) {
+export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOpenChange, onUpdateTask, onAddTask, onRemoveTask, onTaskSelect, onLogTime, statuses, allUsers, allTasks, projects }: TaskDetailsDialogProps) {
     const { toast } = useToast();
     const { appUser } = useAuth();
     const [attachments, setAttachments] = useState<File[]>([]);

@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import React, { useState } from 'react';
@@ -82,6 +83,10 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
     }
   };
 
+  // Dummy handlers for TaskDetailsDialog props that are not used in this context
+  const handleRemoveTask = (taskId: string) => {};
+  const handleLogTime = (timeData: Omit<TimeEntry, 'id'>) => {};
+
   return (
     <>
       <div className="p-6">
@@ -157,9 +162,11 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
         </div>
       </div>
 
-      <TaskDetailsDialog
+      {selectedTask && (
+        <TaskDetailsDialog
           task={selectedTask}
           isOpen={!!selectedTask}
+          timeEntries={timeEntries.filter(t => t.task_id === selectedTask.id)}
           allUsers={allUsers}
           allTasks={tasks}
           onOpenChange={(isOpen) => {
@@ -167,11 +174,13 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
           }}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
+          onRemoveTask={handleRemoveTask}
           onTaskSelect={setSelectedTask}
+          onLogTime={handleLogTime}
           statuses={statuses}
           projects={projects}
         />
+      )}
     </>
   );
 }
-
