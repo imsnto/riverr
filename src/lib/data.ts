@@ -215,8 +215,7 @@ export interface JobFlowTask {
 
 // Reusable, standalone templates
 export interface TaskTemplate extends JobFlowTaskTemplate {
-    templateName: string;
-    templateDescription?: string;
+    // This interface now just extends JobFlowTaskTemplate, as the redundant fields are removed.
 }
 
 export interface PhaseTemplate {

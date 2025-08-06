@@ -226,8 +226,8 @@ const PhaseTasks = ({ control, allUsers, errors, taskTemplates }: { control: any
                                     onClick={() => handleAddTaskFromTemplate(tt)}
                                     className="w-full text-left p-2 rounded-md hover:bg-accent"
                                 >
-                                    <p className="font-semibold">{tt.templateName}</p>
-                                    <p className="text-sm text-muted-foreground">{tt.templateDescription}</p>
+                                    <p className="font-semibold">{tt.titleTemplate}</p>
+                                    <p className="text-sm text-muted-foreground">{tt.descriptionTemplate}</p>
                                 </button>
                                 </DialogTrigger>
                             ))}
@@ -388,4 +388,3 @@ export default function PhaseTemplateBuilder({ templates, allUsers, onSave, task
         </>
     );
 }
-

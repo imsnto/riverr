@@ -40,8 +40,6 @@ const subtaskTemplateSchema = z.object({
 });
 
 const taskTemplateSchema = z.object({
-  templateName: z.string().min(1, 'Template name is required'),
-  templateDescription: z.string().optional(),
   titleTemplate: z.string().min(1, 'Task title is required'),
   descriptionTemplate: z.string().optional(),
   defaultAssigneeId: z.string().min(1, 'Default assignee is required'),
@@ -55,8 +53,6 @@ function TemplateForm({ onSave, allUsers, closeDialog }: { onSave: (data: TaskTe
   const form = useForm<TaskTemplateFormValues>({
     resolver: zodResolver(taskTemplateSchema),
     defaultValues: {
-      templateName: '',
-      templateDescription: '',
       titleTemplate: '',
       descriptionTemplate: '',
       defaultAssigneeId: '',
@@ -75,19 +71,7 @@ function TemplateForm({ onSave, allUsers, closeDialog }: { onSave: (data: TaskTe
   return (
     <Form {...form}>
     <form id="task-template-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="templateName">Template Name</Label>
-        <Input id="templateName" {...register('templateName')} placeholder="e.g., Weekly Client Report" />
-        {errors.templateName && <p className="text-sm text-destructive">{errors.templateName.message}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="templateDescription">Template Description</Label>
-        <Textarea id="templateDescription" {...register('templateDescription')} placeholder="A brief description of this task template." />
-      </div>
-
-      <Separator />
-
-      <div className="rounded-md border p-4 space-y-4 bg-muted/50">
+      <div className="rounded-md border p-4 space-y-4 bg-card">
         <div className="space-y-1">
             <Label className="text-sm">Task Title Template</Label>
             <Input {...register('titleTemplate')} placeholder="e.g., Prepare report for {{client_name}}" className="bg-background"/>
@@ -232,7 +216,7 @@ export default function TaskTemplateBuilder({ templates, allUsers, onSave }: Tas
                     <Card key={template.id}>
                         <CardHeader>
                             <div className="flex justify-between items-start">
-                                <CardTitle className="text-lg">{template.templateName}</CardTitle>
+                                <CardTitle className="text-lg">{template.titleTemplate}</CardTitle>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="ghost" size="icon">
@@ -249,11 +233,8 @@ export default function TaskTemplateBuilder({ templates, allUsers, onSave }: Tas
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
-                            <CardDescription>{template.templateDescription}</CardDescription>
+                            <CardDescription>{template.descriptionTemplate}</CardDescription>
                         </CardHeader>
-                         <CardContent>
-                            <p className="text-sm font-semibold">"{template.titleTemplate}"</p>
-                        </CardContent>
                     </Card>
                     ))}
                     {templates.length === 0 && (
