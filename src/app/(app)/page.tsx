@@ -200,7 +200,7 @@ export default function Dashboard() {
       const originalTask = tasks.find(t => t.id === task.id);
       if (originalTask && JSON.stringify(originalTask) !== JSON.stringify(task)) {
         const taskRef = doc(db, 'tasks', task.id);
-        batch.update(taskRef, task);
+        batch.update(taskRef, { ...task, id: undefined });
       }
     }
     try {
@@ -218,8 +218,6 @@ export default function Dashboard() {
   
   const handleUpdateTask = (updatedTask: Task, tempId?: string) => {
     setTasks(prevTasks => {
-      // If a tempId is provided, it means we're replacing an optimistic task
-      // with the real one from the database.
       const taskIndex = prevTasks.findIndex(t => t.id === (tempId || updatedTask.id));
       
       if (taskIndex !== -1) {
@@ -227,7 +225,6 @@ export default function Dashboard() {
         newTasks[taskIndex] = updatedTask;
         return newTasks;
       }
-      // If the task wasn't found, it's a new task, so just add it.
       return [...prevTasks, updatedTask];
     });
 
@@ -235,15 +232,18 @@ export default function Dashboard() {
       setSelectedTask(updatedTask);
     }
     
-    // Asynchronously update Firestore without blocking UI, if it's not a temp task
     if (!updatedTask.id.startsWith('temp-')) {
-        dbUpdateTask(updatedTask.id, updatedTask);
+        dbUpdateTask(updatedTask.id, { ...updatedTask, id: undefined as any });
     }
   };
   
   const handleAddTaskOptimistic = (newTask: Task) => {
     setTasks(prev => [...prev, newTask]);
   };
+  
+  const handleRemoveTask = (taskId: string) => {
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+  }
 
   const handleViewThread = (thread: Message) => {
     setActiveThread(thread);
@@ -258,9 +258,9 @@ export default function Dashboard() {
   }
 
   const handleSaveSpace = async (spaceData: Omit<Space, 'id'>) => {
-     if ('id' in spaceData && spaceData.id) { // Existing space
-        await dbUpdateSpace(spaceData.id, spaceData);
-        setAllSpaces(allSpaces.map(s => s.id === spaceData.id ? { ...s, ...spaceData } as Space : s));
+     if ('id' in spaceData && (spaceData as Space).id) { // Existing space
+        await dbUpdateSpace((spaceData as Space).id, spaceData);
+        setAllSpaces(allSpaces.map(s => s.id === (spaceData as Space).id ? { ...s, ...spaceData } as Space : s));
       } else { // New space
         const newSpace: Omit<Space, 'id'> = {
             name: spaceData.name,
@@ -742,6 +742,7 @@ export default function Dashboard() {
             }}
             onUpdateTask={handleUpdateTask}
             onAddTask={handleAddTaskOptimistic}
+            onRemoveTask={handleRemoveTask}
             onTaskSelect={setSelectedTask}
             statuses={activeSpace.statuses?.map(s => s.name) || []}
             projects={projects}

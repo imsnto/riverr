@@ -86,6 +86,7 @@ interface TaskDetailsDialogProps {
     onOpenChange: (isOpen: boolean) => void;
     onUpdateTask: (task: Task, tempId?: string) => void;
     onAddTask: (task: Task) => void;
+    onRemoveTask: (taskId: string) => void;
     onTaskSelect: (task: Task) => void;
     statuses: string[];
     allUsers: User[];
@@ -93,7 +94,7 @@ interface TaskDetailsDialogProps {
     projects: Project[];
 }
 
-export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdateTask, onAddTask, onTaskSelect, statuses, allUsers, allTasks, projects }: TaskDetailsDialogProps) {
+export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdateTask, onAddTask, onRemoveTask, onTaskSelect, statuses, allUsers, allTasks, projects }: TaskDetailsDialogProps) {
     const { toast } = useToast();
     const { appUser } = useAuth();
     const [attachments, setAttachments] = useState<File[]>([]);
@@ -192,42 +193,50 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
     };
     
     const handleAddSubtask = async () => {
-        if (!newSubtaskName.trim()) return;
-    
+        if (!newSubtaskName.trim() || !appUser) return;
+      
         const tempId = `temp-${Date.now()}`;
         const optimisticSubtask: Task = {
-            id: tempId,
-            project_id: task.project_id,
-            name: newSubtaskName.trim(),
-            description: '',
-            status: 'Backlog',
-            assigned_to: appUser.id,
-            due_date: new Date().toISOString(),
-            priority: null,
-            sprint_points: null,
-            tags: [],
-            time_estimate: null,
-            relationships: [],
-            activities: [],
-            comments: [],
-            attachments: [],
-            parentId: task.id,
+          id: tempId,
+          project_id: task.project_id,
+          name: newSubtaskName.trim(),
+          description: '',
+          status: 'Backlog',
+          assigned_to: appUser.id,
+          due_date: new Date().toISOString(),
+          priority: null,
+          sprint_points: null,
+          tags: [],
+          time_estimate: null,
+          relationships: [],
+          activities: [],
+          comments: [],
+          attachments: [],
+          parentId: task.id,
         };
-    
+      
+        // 1. Optimistically add to UI
         onAddTask(optimisticSubtask);
         setNewSubtaskName('');
-    
+      
         try {
-            const savedTask = await dbAddTask({ ...optimisticSubtask, id: undefined as any });
-            onUpdateTask(savedTask, tempId);
-        } catch (err) {
-            toast({
-                variant: 'destructive',
-                title: 'Failed to create subtask',
-                description: String(err),
-            });
-            // Here you might want to dispatch an action to remove the temp task
-            // For now, we'll leave it to show the user something went wrong
+          // 2. Strip ID before saving to Firestore
+          const { id: _omit, ...taskWithoutId } = optimisticSubtask;
+          const savedTask = await dbAddTask(taskWithoutId);
+      
+          // 3. Patch UI with real ID
+          onUpdateTask(savedTask, tempId);
+      
+        } catch (error) {
+          // 4. Show toast
+          toast({
+            variant: 'destructive',
+            title: 'Failed to create subtask',
+            description: (error as Error).message,
+          });
+      
+          // 5. Remove temp task from UI
+          onRemoveTask(tempId);
         }
     };
 
@@ -240,7 +249,6 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
         // In a real app, this would be a hard delete or a soft delete.
         // For now, we will just filter it out from the parent's view.
         // This won't actually delete it from the `allTasks` array.
-        // A proper implementation would require a deleteTask function.
         toast({
             variant: 'destructive',
             title: 'Delete not implemented',
@@ -413,7 +421,7 @@ export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdate
                             <div>
                                 <h3 className="text-lg font-semibold mb-2">Subtasks</h3>
                                  <div className="space-y-2">
-                                    {subtasks.filter(subtask => !!subtask.id).map((subtask) => {
+                                    {subtasks.filter(st => !!st.id).map((subtask) => {
                                         const subtaskAssignee = allUsers.find(u => u.id === subtask.assigned_to);
                                         return (
                                             <div key={subtask.id} className={cn(
