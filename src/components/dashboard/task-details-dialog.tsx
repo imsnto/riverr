@@ -90,13 +90,14 @@ interface TaskDetailsDialogProps {
 export default function TaskDetailsDialog({ task, isOpen, onOpenChange, onUpdateTask, onAddTask, onTaskSelect, statuses, allUsers, allTasks, projects }: TaskDetailsDialogProps) {
     const { toast } = useToast();
     const { appUser } = useAuth();
-
-    if (!appUser || !task) return null;
-    
     const [attachments, setAttachments] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [newTag, setNewTag] = useState('');
     const [newSubtaskName, setNewSubtaskName] = useState('');
+
+    if (!appUser || !task) {
+        return null;
+    }
     
     const project = projects.find(p => p.id === task.project_id);
     const subtasks = allTasks.filter(t => t.parentId === task.id);
