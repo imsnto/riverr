@@ -29,6 +29,29 @@ const getInitials = (name: string) => {
     return name ? name.split(' ').map(n => n[0]).join('') : '';
 }
 
+const formatDuration = (hours: number) => {
+    if (hours === 0) return '0 min';
+    
+    const totalMinutes = Math.round(hours * 60);
+
+    if (totalMinutes < 1) {
+        return `< 1 min`;
+    }
+
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+
+    const parts = [];
+    if (h > 0) {
+        parts.push(`${h} hr${h > 1 ? 's' : ''}`);
+    }
+    if (m > 0) {
+        parts.push(`${m} min`);
+    }
+    return parts.join(' ');
+  };
+
+
 interface DetailRowProps {
     icon: React.ElementType;
     label: string;
@@ -257,7 +280,7 @@ export default function TaskDetailsDialog({ task, timeEntries, isOpen, onOpenCha
         user_id: t.user_id,
         timestamp: t.end_time,
         type: 'comment', // Treat as comment for display
-        comment: `Logged ${t.duration.toFixed(2)} hours. ${t.notes ? `Notes: ${t.notes}` : ''}`
+        comment: `Logged ${formatDuration(t.duration)}. ${t.notes ? `Notes: ${t.notes}` : ''}`
     } as Activity))].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -379,7 +402,7 @@ export default function TaskDetailsDialog({ task, timeEntries, isOpen, onOpenCha
                                 </DetailRow>
                                  <DetailRow icon={Clock} label="Time Logged">
                                     <div className="flex items-center gap-2">
-                                        <Input readOnly value={`${totalTimeTracked.toFixed(2)}h`} className="h-8 font-medium" />
+                                        <Input readOnly value={formatDuration(totalTimeTracked)} className="h-8 font-medium bg-muted" />
                                         <Button variant="outline" size="sm" className="h-8" onClick={() => setIsLogTimeOpen(true)}>Log Time</Button>
                                     </div>
                                 </DetailRow>
