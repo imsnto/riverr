@@ -486,3 +486,30 @@ export const messages: Message[] = [
   { id: 'msg-5', channel_id: 'chan-5', user_id: 'user-4', content: 'I\'m going hiking this weekend, can\'t wait!', timestamp: '2024-08-02T14:00:00Z', reactions: [], reply_count: 0 },
   { id: 'msg-6', channel_id: 'chan-6', user_id: 'user-2', content: 'Just sent the weekly update to Client X.', timestamp: '2024-08-03T17:00:00Z', reactions: [], reply_count: 0 },
 ];
+
+export const jobFlowTemplates: JobFlowTemplate[] = [
+    {
+        id: 'jft-1',
+        name: 'New Client Onboarding',
+        description: 'A standard workflow for bringing new clients into the system.',
+        createdBy: 'user-1',
+        createdAt: '2024-08-01T00:00:00Z',
+        phases: [
+            { id: 'phase-1-1', phaseIndex: 0, name: 'Initial Contact', defaultRole: 'Sales', taskTitleTemplate: 'Follow up with {{client_name}}', taskDescriptionTemplate: 'Initial follow-up call after demo.' },
+            { id: 'phase-1-2', phaseIndex: 1, name: 'Kick-off Meeting', defaultRole: 'Account Manager', taskTitleTemplate: 'Schedule kick-off meeting with {{client_name}}', taskDescriptionTemplate: 'Send calendar invites and prepare agenda.' },
+            { id: 'phase-1-3', phaseIndex: 2, name: 'Project Setup', defaultRole: 'Project Manager', taskTitleTemplate: 'Set up project for {{client_name}} in Asana', taskDescriptionTemplate: 'Create project, invite team, and set initial tasks.' },
+        ]
+    },
+    {
+        id: 'jft-2',
+        name: 'Website Launch Checklist',
+        description: 'A comprehensive checklist for launching a new website.',
+        createdBy: 'user-2',
+        createdAt: '2024-08-02T00:00:00Z',
+        phases: [
+            { id: 'phase-2-1', phaseIndex: 0, name: 'QA & Testing', defaultRole: 'QA Engineer', taskTitleTemplate: 'Perform full QA cycle on {{website_url}}', taskDescriptionTemplate: 'Check all pages, forms, and functionality across browsers.' },
+            { id: 'phase-2-2', phaseIndex: 1, name: 'DNS Propagation', defaultRole: 'DevOps', taskTitleTemplate: 'Update DNS records for {{website_url}}', taskDescriptionTemplate: 'Point domain to new server and monitor propagation.' },
+            { id: 'phase-2-3', phaseIndex: 2, name: 'Post-launch Monitoring', defaultRole: 'Developer', taskTitleTemplate: 'Monitor {{website_url}} for 24 hours post-launch', taskDescriptionTemplate: 'Watch for errors, performance issues, or downtime.' },
+        ]
+    }
+];

@@ -3,8 +3,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FolderKanban, GanttChart, MessageSquare, Settings, Users, MessageCircleMore, ShieldCheck } from 'lucide-react';
-import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message, Status, Invite } from '@/lib/data';
+import { FolderKanban, GanttChart, MessageSquare, Settings, Users, MessageCircleMore, ShieldCheck, FilePlus } from 'lucide-react';
+import { User, Space, Project, Task, SlackMeetingLog, TimeEntry, Channel, Message, Status, Invite, JobFlowTemplate, jobFlowTemplates as mockTemplates } from '@/lib/data';
 import Header from '@/components/dashboard/header';
 import Overview from '@/components/dashboard/overview';
 import TaskBoard from '@/components/dashboard/task-board';
@@ -32,6 +32,7 @@ import { useRouter } from 'next/navigation';
 import InviteUserDialog from '@/components/dashboard/invite-user-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Mail } from 'lucide-react';
+import JobFlowTemplateBuilder from '@/components/dashboard/job-flow-template-builder';
 
 export default function Dashboard() {
   const { appUser } = useAuth();
@@ -48,6 +49,7 @@ export default function Dashboard() {
   const [meetingLogs, setMeetingLogs] = useState<SlackMeetingLog[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [jobFlowTemplates, setJobFlowTemplates] = useState<JobFlowTemplate[]>([]);
   const [activeSpaceId, setActiveSpaceId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
@@ -81,6 +83,7 @@ export default function Dashboard() {
         setAllUsers(users);
         setAllSpaces(spaces);
         setPendingInvites(invites);
+        setJobFlowTemplates(mockTemplates);
         
         const userSpaces = spaces.filter(s => s.members[appUser!.id]);
         if (userSpaces.length > 0) {
@@ -307,7 +310,7 @@ export default function Dashboard() {
   const activeSpace = allSpaces.find(s => s.id === activeSpaceId) || userSpaces[0] || allSpaces[0];
 
   const currentUserPermissions = activeSpace?.members[appUser.id];
-  const canSeeTimesheets = currentUserPermissions?.role === 'Admin' || currentUserPermissions?.permissions?.canSeeAllTimesheets;
+  const canSeeAllTimesheets = currentUserPermissions?.role === 'Admin' || currentUserPermissions?.permissions?.canSeeAllTimesheets;
   const canLogTime = currentUserPermissions?.role === 'Admin' || currentUserPermissions?.permissions?.canLogTime;
 
 
@@ -341,6 +344,7 @@ export default function Dashboard() {
     { id: 'dashboard', label: 'Dashboard', icon: GanttChart },
     { id: 'tasks', label: 'Task Board', icon: FolderKanban },
     { id: 'channels', label: 'Channels', icon: MessageSquare },
+    { id: 'flows', label: 'Flows', icon: FilePlus, permission: true },
     { id: 'timesheets', label: 'Timesheets', icon: Users, permission: canLogTime },
     { id: 'settings', label: 'Settings', icon: Settings, permission: true },
   ];
@@ -446,7 +450,7 @@ export default function Dashboard() {
           )}
 
           {/* Main Content */}
-          <main className={cn("flex-1 overflow-auto", activeTab === 'channels' && "flex", activeTab === 'tasks' && "p-4 md:p-8")}>
+          <main className={cn("flex-1 overflow-auto p-4 md:p-8", activeTab === 'channels' && "p-0", activeTab === 'tasks' && "p-4 md:p-8")}>
               {pendingInvites.length > 0 && (
                 <div className='p-4'>
                 {pendingInvites.map(invite => {
@@ -472,7 +476,7 @@ export default function Dashboard() {
                 </div>
               )}
               {activeTab === 'dashboard' && (
-                <div className="p-4 md:p-8">
+                <>
                 {isLoading ? <div className="flex justify-center items-center h-full">Loading dashboard...</div> : 
                 <>
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -489,10 +493,10 @@ export default function Dashboard() {
                     </div>
                   </>
                 }
-                </div>
+                </>
               )}
               {activeTab === 'channels' && (
-                <div className="flex flex-1">
+                <div className="flex flex-1 h-full">
                   <div className="flex-1 overflow-y-auto">
                     {isLoading ? <div className="flex justify-center items-center h-full">Loading channels...</div> : 
                      channelsViewMode === 'channel' ? (
@@ -536,13 +540,18 @@ export default function Dashboard() {
                 {isLoading ? <div className="flex justify-center items-center h-full">Loading tasks...</div> : <TaskBoard tasks={tasks} onUpdateTasks={handleUpdateTasks} projects={projects} activeSpace={activeSpace} allUsers={visibleUsers} onUpdateActiveSpace={handleUpdateActiveSpace} onAddProject={handleAddProject} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} />}
                 </>
               )}
+               {activeTab === 'flows' && activeSpace && (
+                <>
+                {isLoading ? <div className="flex justify-center items-center h-full">Loading flows...</div> : <JobFlowTemplateBuilder templates={jobFlowTemplates} />}
+                </>
+              )}
               {canLogTime && activeTab === 'timesheets' && (
-                  <div className="p-4 md:p-8">
+                  <>
                   {isLoading ? <div className="flex justify-center items-center h-full">Loading timesheets...</div> : <TeamTimesheets timeEntries={timeEntries} projects={projects} tasks={tasks} space={activeSpace} allUsers={allUsers} appUser={appUser} />}
-                  </div>
+                  </>
               )}
               {activeTab === 'settings' && (
-                  <div className="p-4 md:p-8">
+                  <div>
                       <h1 className="text-2xl font-bold mb-4">Settings</h1>
                       <Tabs defaultValue="spaces" className="w-full">
                           <TabsList>

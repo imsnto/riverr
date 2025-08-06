@@ -1,4 +1,3 @@
-
 // src/lib/db.ts
 
 import {
@@ -17,7 +16,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions } from './data';
+import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions, jobFlowTemplates } from './data';
 import { randomBytes } from 'crypto';
 
 // --- Seeding ---
@@ -40,6 +39,7 @@ export const seedDatabase = async () => {
         slackMeetingLogs.forEach(log => batch.set(doc(db, 'slack_meeting_logs', log.id), log));
         channels.forEach(channel => batch.set(doc(db, 'channels', channel.id), channel));
         messages.forEach(message => batch.set(doc(db, 'messages', message.id), message));
+        jobFlowTemplates.forEach(template => batch.set(doc(db, 'job_flow_templates', template.id), template));
         
         await batch.commit();
         console.log('Database seeded successfully!');
