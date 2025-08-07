@@ -13,6 +13,9 @@ import { Separator } from '../ui/separator';
 import { useAuth } from '@/hooks/use-auth';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { ScrollArea } from '../ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { cn } from '@/lib/utils';
 
 const getInitials = (name: string) => {
     if (!name) return '';
@@ -238,6 +241,8 @@ function AssistantPanel({ fullDocument, onClose, onInsert }: { fullDocument: str
 
 function CommentsPanel({ document, onClose, allUsers, appUser, onPostComment }: { document: Document, onClose: () => void, allUsers: User[], appUser: User, onPostComment: (content: string) => void }) {
     const [newComment, setNewComment] = useState('');
+    const [isTagging, setIsTagging] = useState(false);
+    const [tagQuery, setTagQuery] = useState('');
     const comments = document.comments || [];
 
     const handlePost = () => {
@@ -245,6 +250,25 @@ function CommentsPanel({ document, onClose, allUsers, appUser, onPostComment }: 
         onPostComment(newComment);
         setNewComment('');
     }
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const value = e.target.value;
+        setNewComment(value);
+    
+        const lastAt = value.lastIndexOf('@');
+        if (lastAt !== -1 && !value.slice(lastAt + 1).includes(' ')) {
+            setIsTagging(true);
+            setTagQuery(value.slice(lastAt + 1));
+        } else {
+            setIsTagging(false);
+        }
+      }
+    
+      const handleUserTag = (userName: string) => {
+        const lastAt = newComment.lastIndexOf('@');
+        setNewComment(newComment.slice(0, lastAt) + `@${userName} `);
+        setIsTagging(false);
+      }
 
     const renderCommentContent = (content: string) => {
         const parts = content.split(/(@\w+)/g);
@@ -259,6 +283,10 @@ function CommentsPanel({ document, onClose, allUsers, appUser, onPostComment }: 
             return part;
         });
     }
+
+    const filteredMembers = allUsers.filter(member => 
+        member.name.toLowerCase().includes(tagQuery.toLowerCase()) && member.id !== appUser?.id
+    );
 
     return (
         <div className="flex flex-col h-full">
@@ -297,13 +325,44 @@ function CommentsPanel({ document, onClose, allUsers, appUser, onPostComment }: 
                 </div>
             </ScrollArea>
             <div className="p-4 border-t">
-                 <Textarea 
-                    placeholder="Write a comment... use @ to mention users" 
-                    value={newComment}
-                    onChange={e => setNewComment(e.target.value)}
-                    className="mb-2"
-                    rows={3}
-                />
+                <Popover open={isTagging} onOpenChange={setIsTagging}>
+                    <PopoverTrigger asChild>
+                        <Textarea 
+                            placeholder="Write a comment... use @ to mention users" 
+                            value={newComment}
+                            onChange={handleInputChange}
+                            className="mb-2"
+                            rows={3}
+                        />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command>
+                        <CommandInput 
+                            placeholder="Tag user..."
+                            value={tagQuery}
+                            onValueChange={setTagQuery}
+                        />
+                        <CommandList>
+                            <CommandEmpty>No users found.</CommandEmpty>
+                            <CommandGroup>
+                                {filteredMembers.map(member => (
+                                    <CommandItem
+                                        key={member.id}
+                                        value={member.name}
+                                        onSelect={() => handleUserTag(member.name)}
+                                    >
+                                    <Avatar className="mr-2 h-6 w-6">
+                                        <AvatarImage src={member.avatarUrl} />
+                                        <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                                    </Avatar>
+                                    {member.name}
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                    </PopoverContent>
+                </Popover>
                 <Button className="w-full" onClick={handlePost}>Post Comment</Button>
             </div>
         </div>
