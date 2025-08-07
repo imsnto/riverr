@@ -489,7 +489,7 @@ function DashboardComponent() {
                 }
                 const isTemplateView = ['templates', 'phases', 'tasks'].includes(flowsView);
                 return (
-                     <div className="flex flex-col h-full">
+                     <div className="flex flex-col h-full p-4 md:p-8">
                         <div className="flex items-center p-2">
                             <Button 
                                 variant="ghost" 
