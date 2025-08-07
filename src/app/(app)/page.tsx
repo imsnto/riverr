@@ -509,7 +509,7 @@ export default function Dashboard() {
         <div className="flex flex-1 h-screen pt-16">
             <Sidebar collapsible="icon">
                 <div className="flex flex-col h-full">
-                    <div className="flex-1 space-y-2">
+                    <div className="space-y-2 pt-4">
                         <Button onClick={() => setView('overview')} variant={view === 'overview' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
                             <BarChart className="w-7 h-7"/>
                         </Button>
