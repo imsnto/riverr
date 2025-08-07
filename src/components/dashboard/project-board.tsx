@@ -389,12 +389,12 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
       </div>
       <div className="flex gap-6 overflow-x-auto pb-4">
         {activeStatuses.map(renderStatusColumn)}
+        {closingStatus && renderStatusColumn(closingStatus)}
         <div className="flex-shrink-0 w-80">
             <Button variant="outline" className="w-full" onClick={handleAddNewColumn}>
                 <Plus className="mr-2 h-4 w-4" /> Add Status
             </Button>
         </div>
-         {closingStatus && renderStatusColumn(closingStatus)}
       </div>
     </>
   );
