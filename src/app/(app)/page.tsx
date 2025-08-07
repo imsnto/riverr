@@ -457,37 +457,39 @@ function DashboardComponent() {
                             onAddMessage={handleAddMessage}
                         />
                     </div>
-                    <div className="w-[400px] border-l bg-card h-full overflow-y-auto">
-                      {rightPanelView === 'threads' && (
-                        <AllThreadsView
-                          messages={messages}
-                          allUsers={allUsers}
-                          appUser={appUser}
-                          onViewThread={handleViewThread}
-                          readThreadIds={readThreadIds}
-                        />
-                      )}
-                      {rightPanelView === 'thread' && activeThread && (
-                         <ThreadView
-                            thread={activeThread}
+                     {rightPanelView && (
+                        <div className="w-[400px] border-l bg-card h-full overflow-y-auto">
+                        {rightPanelView === 'threads' && (
+                            <AllThreadsView
                             messages={messages}
                             allUsers={allUsers}
-                            setMessages={setMessages}
-                            onClose={() => setRightPanelView('threads')}
-                            onAddMessage={handleAddMessage}
-                         />
-                      )}
-                      {rightPanelView === 'task-from-thread' && activeThread && (
-                         <CreateTaskFromThreadDialog
-                            isOpen={rightPanelView === 'task-from-thread'}
-                            onOpenChange={() => setRightPanelView('threads')}
-                            message={activeThread}
-                            channelMembers={channelMembers.map(u => ({ id: u.id, name: u.name }))}
-                            projects={SimplifiedProjects}
-                            onTaskCreated={handleCreateTask}
-                         />
-                      )}
-                    </div>
+                            appUser={appUser}
+                            onViewThread={handleViewThread}
+                            readThreadIds={readThreadIds}
+                            />
+                        )}
+                        {rightPanelView === 'thread' && activeThread && (
+                            <ThreadView
+                                thread={activeThread}
+                                messages={messages}
+                                allUsers={allUsers}
+                                setMessages={setMessages}
+                                onClose={() => setRightPanelView(null)}
+                                onAddMessage={handleAddMessage}
+                            />
+                        )}
+                        {rightPanelView === 'task-from-thread' && activeThread && (
+                            <CreateTaskFromThreadDialog
+                                isOpen={rightPanelView === 'task-from-thread'}
+                                onOpenChange={() => setRightPanelView('threads')}
+                                message={activeThread}
+                                channelMembers={channelMembers.map(u => ({ id: u.id, name: u.name }))}
+                                projects={SimplifiedProjects}
+                                onTaskCreated={handleCreateTask}
+                            />
+                        )}
+                        </div>
+                    )}
                 </div>
             )
             case 'timesheets': return <div className="p-4 md:p-8"><TeamTimesheets allSpaces={userSpaces} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} /></div>;
@@ -599,43 +601,43 @@ function DashboardComponent() {
       <SidebarProvider defaultOpen={false}>
         <div className="h-screen flex flex-col">
           <TopBar />
-          <div className="flex flex-1 pt-16 overflow-hidden">
-            <Sidebar collapsible="icon">
-                <div className="flex flex-col h-full">
-                    <div className="space-y-2 pt-4">
-                        <Button onClick={() => setView('overview')} variant={view === 'overview' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
-                            <BarChart className="w-7 h-7"/>
-                        </Button>
-                        <Button onClick={() => setView('tasks')} variant={view === 'tasks' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
-                            <FolderKanban className="w-7 h-7"/>
-                        </Button>
-                        <Button onClick={() => router.push('/mytasks')} variant={view === 'mytasks' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
-                            <ClipboardCheck className="w-7 h-7"/>
-                        </Button>
-                        <Button onClick={() => setView('messages')} variant={view === 'messages' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
-                            <MessageSquare className="w-7 h-7"/>
-                        </Button>
-                        <Button onClick={() => router.push('/documents')} variant={view === 'documents' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
-                            <BookOpen className="w-7 h-7"/>
-                        </Button>
-                        <Button onClick={() => setView('timesheets')} variant={view === 'timesheets' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
-                            <Timer className="w-7 h-7"/>
-                        </Button>
-                        <Button onClick={() => setView('flows')} variant={view === 'flows' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
-                            <Workflow className="w-7 h-7"/>
-                        </Button>
+           <div className="flex-1 flex pt-16 overflow-hidden">
+                <Sidebar collapsible="icon">
+                    <div className="flex flex-col h-full">
+                        <div className="space-y-2 pt-4">
+                            <Button onClick={() => setView('overview')} variant={view === 'overview' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                                <BarChart className="w-7 h-7"/>
+                            </Button>
+                            <Button onClick={() => setView('tasks')} variant={view === 'tasks' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                                <FolderKanban className="w-7 h-7"/>
+                            </Button>
+                            <Button onClick={() => router.push('/mytasks')} variant={view === 'mytasks' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                                <ClipboardCheck className="w-7 h-7"/>
+                            </Button>
+                            <Button onClick={() => setView('messages')} variant={view === 'messages' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                                <MessageSquare className="w-7 h-7"/>
+                            </Button>
+                            <Button onClick={() => router.push('/documents')} variant={view === 'documents' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                                <BookOpen className="w-7 h-7"/>
+                            </Button>
+                            <Button onClick={() => setView('timesheets')} variant={view === 'timesheets' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                                <Timer className="w-7 h-7"/>
+                            </Button>
+                            <Button onClick={() => setView('flows')} variant={view === 'flows' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                                <Workflow className="w-7 h-7"/>
+                            </Button>
+                        </div>
+                        <div className="mt-auto space-y-2">
+                            <Button onClick={() => setView('settings')} variant={view === 'settings' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                                <Settings className="w-7 h-7"/>
+                            </Button>
+                        </div>
                     </div>
-                    <div className="mt-auto space-y-2">
-                        <Button onClick={() => setView('settings')} variant={view === 'settings' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
-                            <Settings className="w-7 h-7"/>
-                        </Button>
-                    </div>
-                </div>
-            </Sidebar>
-            <main className="flex-1 overflow-y-auto">
-                {renderContent()}
-            </main>
-          </div>
+                </Sidebar>
+                <main className="flex-1 overflow-hidden">
+                    {renderContent()}
+                </main>
+            </div>
         </div>
         {selectedTask && (
              <TaskDetailsDialog
@@ -675,3 +677,5 @@ export default function Dashboard() {
         </Suspense>
     )
 }
+
+    
