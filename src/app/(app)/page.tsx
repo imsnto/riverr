@@ -137,6 +137,12 @@ function DashboardComponent() {
         return () => window.removeEventListener('resize', handleResize);
     }, [rightPanelView]);
 
+    // This is the fix: Reset the thread view when changing channels
+    useEffect(() => {
+        setRightPanelView(null);
+    }, [activeChannelId]);
+
+
     useEffect(() => {
         const fetchData = async () => {
             if (!appUser || !activeSpace) return;
@@ -435,7 +441,7 @@ function DashboardComponent() {
                 
               return (
                  <div className={cn(
-                    'grid h-full flex-1 transition-all duration-200 ease-in-out',
+                    'grid flex-1 overflow-hidden transition-all duration-200 ease-in-out',
                     threadOpen ? 'grid-cols-[220px_minmax(0,1fr)_400px]' : 'grid-cols-[220px_minmax(0,1fr)]'
                  )}>
                     <div className="hidden md:flex w-[220px] border-r h-full overflow-y-auto flex-col bg-muted/50">
@@ -697,6 +703,7 @@ export default function Dashboard() {
     
 
     
+
 
 
 
