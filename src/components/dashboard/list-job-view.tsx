@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Separator } from '../ui/separator';
 
 interface ListJobViewProps {
   template: JobFlowTemplate;
@@ -21,6 +22,9 @@ interface ListJobViewProps {
 }
 
 export default function ListJobView({ template, jobs, onJobClick }: ListJobViewProps) {
+  const activeJobs = jobs.filter(j => j.status !== 'completed');
+  const completedJobs = jobs.filter(j => j.status === 'completed');
+
   return (
     <div className="border rounded-lg">
       <Table>
@@ -34,7 +38,7 @@ export default function ListJobView({ template, jobs, onJobClick }: ListJobViewP
           </TableRow>
         </TableHeader>
         <TableBody>
-          {jobs.map(job => {
+          {activeJobs.map(job => {
             const currentPhase = template.phases.find(p => p.phaseIndex === job.currentPhaseIndex);
             return (
               <TableRow key={job.id}>
@@ -50,12 +54,40 @@ export default function ListJobView({ template, jobs, onJobClick }: ListJobViewP
           })}
         </TableBody>
       </Table>
-       {jobs.length === 0 && (
+       {activeJobs.length === 0 && (
             <div className="text-center py-12">
                 <h3 className="mt-2 text-sm font-semibold text-foreground">No active jobs</h3>
                 <p className="mt-1 text-sm text-muted-foreground">Launch a new job to see it here.</p>
             </div>
         )}
+      {completedJobs.length > 0 && (
+        <>
+            <div className="relative my-2">
+                <Separator />
+                <div className="absolute left-1/2 -translate-x-1/2 -top-3 bg-background px-2">
+                    <span className="text-xs font-medium text-muted-foreground">Completed</span>
+                </div>
+            </div>
+            <Table>
+                <TableBody>
+                {completedJobs.map(job => {
+                    const currentPhase = template.phases.find(p => p.phaseIndex === job.currentPhaseIndex);
+                    return (
+                    <TableRow key={job.id} className="opacity-60">
+                        <TableCell className="font-medium line-through">{job.name}</TableCell>
+                        <TableCell>{currentPhase?.name || 'N/A'}</TableCell>
+                        <TableCell><Badge>Completed</Badge></TableCell>
+                        <TableCell>{new Date(job.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-right">
+                        <Button variant="outline" size="sm" onClick={() => onJobClick(job)}>View Details</Button>
+                        </TableCell>
+                    </TableRow>
+                    )
+                })}
+                </TableBody>
+            </Table>
+        </>
+      )}
     </div>
   );
 }

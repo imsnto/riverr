@@ -16,6 +16,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Checkbox } from '../ui/checkbox';
 import { Badge } from '../ui/badge';
+import { Separator } from '../ui/separator';
 
 const getInitials = (name: string) => {
     return name ? name.split(' ').map(n => n[0]).join('') : '';
@@ -39,38 +40,22 @@ export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, al
     onUpdateTask({ ...task, status: newStatus });
   }
 
+  const activeJobs = jobs.filter(j => j.status !== 'completed');
+  const completedJobs = jobs.filter(j => j.status === 'completed');
+
   return (
     <div className="space-y-4">
-      {jobs.map(job => {
+      {activeJobs.map(job => {
         const currentPhase = template.phases.find(p => p.phaseIndex === job.currentPhaseIndex);
         const tasksForJobInPhase = jobFlowTasks
             .filter(jft => jft.jobId === job.id && jft.phaseIndex === job.currentPhaseIndex)
             .map(jft => tasks.find(t => t.id === jft.taskId))
             .filter((t): t is Task => !!t);
-        
-        const isJobCompleted = job.status === 'completed';
-
-        if (isJobCompleted) {
-             return (
-                 <Card key={job.id}>
-                    <div className="flex justify-between items-center w-full p-4">
-                        <div className="flex flex-col text-left">
-                            <h3 className="font-semibold text-lg line-through text-muted-foreground">{job.name}</h3>
-                             <Badge variant="secondary" className="w-fit mt-1 flex items-center gap-1.5 bg-green-100 text-green-800">
-                                <CheckCircle2 className="h-4 w-4" />
-                                Completed
-                            </Badge>
-                        </div>
-                         <Button onClick={() => onJobClick(job)} variant="outline">View Details</Button>
-                    </div>
-                </Card>
-             )
-        }
 
         return (
           <Card key={job.id}>
              <Accordion type="single" collapsible defaultValue="item-1">
-              <AccordionItem value="item-1">
+              <AccordionItem value="item-1" className="border-b-0">
                 <div className="flex justify-between items-center w-full p-4">
                     <AccordionTrigger className="p-0 hover:no-underline flex-1">
                         <div className="flex flex-col text-left">
@@ -120,12 +105,44 @@ export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, al
           </Card>
         );
       })}
-       {jobs.length === 0 && (
+
+      {activeJobs.length === 0 && (
             <div className="text-center py-12 border-2 border-dashed rounded-lg">
                 <h3 className="mt-2 text-sm font-semibold text-foreground">No active jobs</h3>
                 <p className="mt-1 text-sm text-muted-foreground">Launch a new job to see it here.</p>
             </div>
-        )}
+      )}
+
+      {completedJobs.length > 0 && (
+        <>
+            <div className="relative my-6">
+                <Separator />
+                <div className="absolute left-1/2 -translate-x-1/2 -top-3 bg-background px-2">
+                    <span className="text-sm font-medium text-muted-foreground">Completed Jobs</span>
+                </div>
+            </div>
+            <Accordion type="single" collapsible className="w-full space-y-4">
+                {completedJobs.map(job => (
+                     <Card key={job.id}>
+                        <AccordionItem value={job.id} className="border-b-0">
+                           <div className="flex justify-between items-center w-full p-4">
+                             <AccordionTrigger className="p-0 hover:no-underline flex-1">
+                                <div className="flex items-center gap-2 text-left">
+                                     <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                    <h3 className="font-semibold text-lg text-muted-foreground">{job.name}</h3>
+                                </div>
+                             </AccordionTrigger>
+                             <Button onClick={() => onJobClick(job)} variant="outline" className="ml-4">View Details</Button>
+                           </div>
+                           <AccordionContent className="p-4 pt-0">
+                               <p className="text-sm text-muted-foreground">This job was completed. View details for a full history.</p>
+                           </AccordionContent>
+                        </AccordionItem>
+                    </Card>
+                ))}
+            </Accordion>
+        </>
+      )}
     </div>
   );
 }
