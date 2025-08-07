@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Project, Task, TimeEntry, Space, User } from '@/lib/data';
 import WeeklyTimesheet from './weekly-timesheet';
@@ -29,22 +29,22 @@ interface TeamTimesheetsProps {
 
 export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, timeEntries, appUser }: TeamTimesheetsProps) {
   
-  // Get all unique users from all spaces the current user is a member of.
-  const allMemberIds = new Set<string>();
-  allSpaces.forEach(space => {
-    Object.keys(space.members).forEach(memberId => {
-      allMemberIds.add(memberId);
+  const usersInAccessibleSpaces = useMemo(() => {
+    const allMemberIds = new Set<string>();
+    allSpaces.forEach(space => {
+      Object.keys(space.members).forEach(memberId => {
+        allMemberIds.add(memberId);
+      });
     });
-  });
-  const usersInAccessibleSpaces = allUsers.filter(u => allMemberIds.has(u.id));
+    return allUsers.filter(u => allMemberIds.has(u.id));
+  }, [allSpaces, allUsers]);
 
-  const isAnySpaceAdmin = allSpaces.some(space => space.members[appUser.id]?.role === 'Admin');
-
-  // A more nuanced permission check: can see all timesheets if they are an admin in ANY of their spaces.
-  const canSeeAllTimesheets = isAnySpaceAdmin;
+  const canSeeAllTimesheets = useMemo(() => {
+    return allSpaces.some(space => space.members[appUser.id]?.role === 'Admin');
+  }, [allSpaces, appUser.id]);
 
   const [selectedUserId, setSelectedUserId] = useState(appUser.id);
-  const [viewMode, setViewMode] = useState<ViewMode>(canSeeAllTimesheets ? 'all-users' : 'single-user');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => canSeeAllTimesheets ? 'all-users' : 'single-user');
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const weekStartsOn = 0; // Sunday
