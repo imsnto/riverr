@@ -152,7 +152,11 @@ export const addSpace = async (space: Omit<Space, 'id'>) => {
 
 export const updateSpace = async (spaceId: string, data: Partial<Space>): Promise<void> => {
   const spaceRef = doc(db, 'spaces', spaceId);
-  await updateDoc(spaceRef, data);
+  // Create a clean copy of the data object, removing any keys with 'undefined' values.
+  const cleanData = Object.fromEntries(
+    Object.entries(data).filter(([_, value]) => value !== undefined)
+  );
+  await updateDoc(spaceRef, cleanData);
 };
 
 export const deleteSpace = async (spaceId: string): Promise<void> => {
@@ -514,4 +518,5 @@ export const reviewJobPhase = async (jobId: string, phaseIndex: number, userId: 
     
     await batch.commit();
 }
+
 

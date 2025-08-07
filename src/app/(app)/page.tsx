@@ -194,6 +194,7 @@ function DashboardComponent() {
             const newActiveSpace = updatedSpaces.find(s => s.id === activeSpace.id) || null;
             setActiveSpace(newActiveSpace);
         } catch(e) {
+            console.error("Failed to update space", e);
             toast({ variant: 'destructive', title: 'Update failed', description: 'Could not save space changes.' });
         }
     }
