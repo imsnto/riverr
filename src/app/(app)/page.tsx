@@ -457,7 +457,7 @@ function DashboardComponent() {
                             onAddMessage={handleAddMessage}
                         />
                     </div>
-                    <div className="w-[400px] border-l bg-card h-full">
+                    <div className="w-[400px] border-l bg-card h-full overflow-y-auto">
                       {rightPanelView === 'threads' && (
                         <AllThreadsView
                           messages={messages}
@@ -597,8 +597,9 @@ function DashboardComponent() {
 
     return (
       <SidebarProvider defaultOpen={false}>
-        <TopBar />
-        <div className="flex flex-1 pt-16">
+        <div className="h-screen flex flex-col">
+          <TopBar />
+          <div className="flex flex-1 pt-16 overflow-hidden">
             <Sidebar collapsible="icon">
                 <div className="flex flex-col h-full">
                     <div className="space-y-2 pt-4">
@@ -631,11 +632,10 @@ function DashboardComponent() {
                     </div>
                 </div>
             </Sidebar>
-            <div className="flex-1">
-                <main className="h-full">
-                    {renderContent()}
-                </main>
-            </div>
+            <main className="flex-1 overflow-y-auto">
+                {renderContent()}
+            </main>
+          </div>
         </div>
         {selectedTask && (
              <TaskDetailsDialog

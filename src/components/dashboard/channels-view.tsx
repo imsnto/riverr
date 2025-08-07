@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -295,7 +296,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
             <h3 className="text-lg font-semibold">#{activeChannel.name}</h3>
             <p className="text-sm text-muted-foreground">{activeChannel.description}</p>
           </div>
-          <ScrollArea className="flex-1" ref={scrollAreaRef}>
+          <ScrollArea className="flex-1">
             <div className="p-4 space-y-1">
               {channelMessages.map(renderMessage)}
             </div>
