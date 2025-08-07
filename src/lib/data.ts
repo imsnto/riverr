@@ -218,6 +218,28 @@ export interface JobFlowTask {
     reviewedBy?: string;
 }
 
+export interface Document {
+    id: string;
+    name: string;
+    content: string; // Markdown
+    createdBy: string; // userId
+    createdAt: string; // ISO 8601
+    updatedAt: string; // ISO 8601
+    spaceId: string;
+    type: 'sop' | 'notes' | 'report' | 'proposal';
+    isLocked: boolean;
+    allowedUserIds?: string[];
+    tags: string[];
+}
+
+export interface DocumentComment {
+    id: string;
+    docId: string;
+    userId: string;
+    content: string;
+    createdAt: string; // ISO 8601
+}
+
 
 // --- MOCK DATA ---
 export const adminMappings = {

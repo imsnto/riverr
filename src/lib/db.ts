@@ -18,7 +18,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions, jobFlowTemplates, JobFlowTemplate, Job, JobFlowTask, jobs, jobFlowTasks, JobFlowTaskTemplate, phaseTemplates, taskTemplates, PhaseTemplate, TaskTemplate, JobFlowPhase } from './data';
+import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions, jobFlowTemplates, JobFlowTemplate, Job, JobFlowTask, jobs, jobFlowTasks, JobFlowTaskTemplate, phaseTemplates, taskTemplates, PhaseTemplate, TaskTemplate, JobFlowPhase, Document } from './data';
 import { randomBytes } from 'crypto';
 
 // --- Seeding ---
@@ -529,4 +529,26 @@ export const reviewJobPhase = async (jobId: string, phaseIndex: number, userId: 
     })
     
     await batch.commit();
+}
+
+
+// --- Document Management ---
+export const getDocumentsInSpace = async (spaceId: string): Promise<Document[]> => {
+    const q = query(collection(db, 'documents'), where('spaceId', '==', spaceId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document));
+}
+
+export const addDocument = async (docData: Omit<Document, 'id'>): Promise<Document> => {
+    const docRef = await addDoc(collection(db, 'documents'), docData);
+    return { ...docData, id: docRef.id };
+}
+
+export const updateDocument = async (docId: string, data: Partial<Document>): Promise<void> => {
+    const docRef = doc(db, 'documents', docId);
+    await updateDoc(docRef, data);
+}
+
+export const deleteDocument = async (docId: string): Promise<void> => {
+    await deleteDoc(doc(db, 'documents', docId));
 }
