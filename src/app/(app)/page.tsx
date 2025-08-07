@@ -511,28 +511,28 @@ export default function Dashboard() {
                 <SidebarContent>
                     <SidebarMenu>
                         <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('overview')} isActive={view === 'overview'}>
-                                <BarChart /><span>Overview</span>
+                            <SidebarMenuButton onClick={() => setView('overview')} isActive={view === 'overview'} className="h-12 w-full justify-center rounded-none">
+                                <BarChart className="w-7 h-7"/>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                         <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('tasks')} isActive={view === 'tasks'}>
-                                <FolderKanban /><span>Tasks</span>
+                            <SidebarMenuButton onClick={() => setView('tasks')} isActive={view === 'tasks'} className="h-12 w-full justify-center rounded-none">
+                                <FolderKanban className="w-7 h-7"/>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                         <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('messages')} isActive={view === 'messages'}>
-                                <MessageSquare /><span>Messages</span>
+                            <SidebarMenuButton onClick={() => setView('messages')} isActive={view === 'messages'} className="h-12 w-full justify-center rounded-none">
+                                <MessageSquare className="w-7 h-7"/>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                         <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('timesheets')} isActive={view === 'timesheets'}>
-                                <Timer /><span>Timesheets</span>
+                            <SidebarMenuButton onClick={() => setView('timesheets')} isActive={view === 'timesheets'} className="h-12 w-full justify-center rounded-none">
+                                <Timer className="w-7 h-7"/>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                             <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('flows')} isActive={view === 'flows'}>
-                                <Workflow /><span>Flows</span>
+                            <SidebarMenuButton onClick={() => setView('flows')} isActive={view === 'flows'} className="h-12 w-full justify-center rounded-none">
+                                <Workflow className="w-7 h-7"/>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     </SidebarMenu>
@@ -540,8 +540,8 @@ export default function Dashboard() {
                 <SidebarFooter>
                     <SidebarMenu>
                             <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('settings')} isActive={view === 'settings'}>
-                                <Settings /><span>Settings</span>
+                            <SidebarMenuButton onClick={() => setView('settings')} isActive={view === 'settings'} className="h-12 w-full justify-center rounded-none">
+                                <Settings className="w-7 h-7"/>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     </SidebarMenu>
