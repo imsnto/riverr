@@ -199,6 +199,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
     }
     
     const project = projects.find(p => p.id === task.project_id);
+    const isFlowTask = !project;
     const subtasks = allTasks.filter(t => t.parentId === task.id);
     
     const totalTimeTracked = timeEntries.reduce((acc, entry) => acc + entry.duration, 0);
@@ -401,11 +402,28 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                     {/* Left Panel: Task Details */}
                     <ScrollArea className="md:col-span-2">
                         <div className="p-6 flex flex-col gap-6">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Button variant="outline" size="sm" className="pointer-events-none">
-                                    {project?.name || 'Task'}
-                                </Button>
-                                <span>/ {task?.id?.substring(0,6)}...</span>
+                             <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Button variant="outline" size="sm" className="pointer-events-none">
+                                        {project?.name || 'Job Flow'}
+                                    </Button>
+                                    <span>/ {task?.id?.substring(0,6)}...</span>
+                               </div>
+                                {isFlowTask && (
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="is-complete-checkbox"
+                                            checked={task.status === 'Done'}
+                                            onCheckedChange={(checked) => handleFieldChange('status', checked ? 'Done' : 'Pending')}
+                                        />
+                                        <label
+                                            htmlFor="is-complete-checkbox"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Mark as Complete
+                                        </label>
+                                    </div>
+                                )}
                            </div>
                            <Input 
                                 defaultValue={task.name}
@@ -421,18 +439,20 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
 
                             {/* Details Grid */}
                             <div className="space-y-4">
-                                <DetailRow icon={CircleDot} label="Status">
-                                    <Select value={task.status} onValueChange={(value) => handleFieldChange('status', value)}>
-                                        <SelectTrigger className="h-8">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {statuses.map(status => (
-                                                <SelectItem key={status} value={status}>{status}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </DetailRow>
+                                {!isFlowTask && (
+                                    <DetailRow icon={CircleDot} label="Status">
+                                        <Select value={task.status} onValueChange={(value) => handleFieldChange('status', value)}>
+                                            <SelectTrigger className="h-8">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {statuses.map(status => (
+                                                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </DetailRow>
+                                )}
                                  <DetailRow icon={Users} label="Assignees">
                                     <Select value={task.assigned_to} onValueChange={(value) => handleFieldChange('assigned_to', value)}>
                                         <SelectTrigger className="h-8">
