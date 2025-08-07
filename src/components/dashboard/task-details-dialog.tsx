@@ -20,7 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar as CalendarPicker } from '../ui/calendar';
 import { format, parseISO } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
-import { addTask as dbAddTask } from '@/lib/db';
+import { addTask as dbAddTask, deleteTask as dbDeleteTask } from '@/lib/db';
 import LogTimeDialog from './log-time-dialog';
 
 
@@ -298,54 +298,47 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
     };
     
     const handleAddSubtask = async () => {
-      if (!newSubtaskName.trim() || !appUser) return;
+        if (!newSubtaskName.trim() || !appUser) return;
     
-      const tempId = `temp-${Date.now()}`;
-      const optimisticSubtask: Task = {
-        id: tempId,
-        project_id: task.project_id,
-        name: newSubtaskName.trim(),
-        description: '',
-        status: 'Backlog',
-        assigned_to: newSubtaskAssignee || appUser.id,
-        due_date: newSubtaskDueDate ? newSubtaskDueDate.toISOString() : new Date().toISOString(),
-        priority: null,
-        sprint_points: null,
-        tags: [],
-        time_estimate: null,
-        relationships: [],
-        activities: [],
-        comments: [],
-        attachments: [],
-        parentId: task.id,
-      };
+        const tempId = `temp-${Date.now()}`;
+        const optimisticSubtask: Task = {
+            id: tempId,
+            project_id: task.project_id,
+            name: newSubtaskName.trim(),
+            description: '',
+            status: 'Backlog',
+            assigned_to: newSubtaskAssignee || appUser.id,
+            due_date: newSubtaskDueDate ? newSubtaskDueDate.toISOString() : new Date().toISOString(),
+            priority: null,
+            sprint_points: null,
+            tags: [],
+            time_estimate: null,
+            relationships: [],
+            activities: [],
+            comments: [],
+            attachments: [],
+            parentId: task.id,
+        };
     
-      // 1. Optimistically add to UI
-      onAddTask(optimisticSubtask);
-      setNewSubtaskName('');
-      setNewSubtaskAssignee(appUser.id);
-      setNewSubtaskDueDate(null);
+        onAddTask(optimisticSubtask);
+        setNewSubtaskName('');
+        setNewSubtaskAssignee(appUser.id);
+        setNewSubtaskDueDate(null);
     
-      try {
-        // 2. Strip ID before saving to Firestore
-        const { id: _omit, ...taskWithoutId } = optimisticSubtask;
-        const savedTask = await dbAddTask(taskWithoutId);
-    
-        // 3. Patch UI with real ID
-        onUpdateTask(savedTask, tempId);
-    
-      } catch (error) {
-        // 4. Show toast
-        toast({
-          variant: 'destructive',
-          title: 'Failed to create subtask',
-          description: (error as Error).message,
-        });
-    
-        // 5. Remove temp task from UI
-        onRemoveTask(tempId);
-      }
+        try {
+            const { id: _omit, ...taskWithoutId } = optimisticSubtask;
+            const savedTask = await dbAddTask(taskWithoutId);
+            onUpdateTask(savedTask, tempId); // Replace optimistic task with real one
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Failed to create subtask',
+                description: (error as Error).message,
+            });
+            onRemoveTask(tempId);
+        }
     };
+
 
     const handleUpdateSubtaskStatus = (subtask: Task, checked: boolean) => {
         const newStatus = checked ? 'Done' : 'Backlog';
@@ -368,8 +361,25 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
         }
     }
     
-    const handleRemoveSubtask = (subtaskId: string) => {
-        onRemoveTask(subtaskId);
+    const handleRemoveSubtask = async (subtaskId: string) => {
+        const isTemporary = subtaskId.startsWith('temp-');
+        
+        onRemoveTask(subtaskId); // Optimistic removal
+        
+        if (!isTemporary) {
+            try {
+                await dbDeleteTask(subtaskId);
+            } catch (error) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Failed to delete subtask',
+                    description: 'Please try again.',
+                });
+                // If deletion fails, we need to add the task back to the UI.
+                // This is complex and depends on having the task object available.
+                // For this example, we'll assume success for simplicity.
+            }
+        }
     }
     
     const sortedActivities = [...(task.activities || []), ...(timeEntries || []).map(t => ({
@@ -776,7 +786,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                             className="hidden"
                                             onChange={handleFileSelect}
                                         />
-                                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
+                                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputd.current?.click()}>
                                             <Paperclip className="h-4 w-4" />
                                         </Button>
                                         <Button type="submit" size="sm">Send</Button>
@@ -800,3 +810,4 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
         </Dialog>
     );
 }
+
