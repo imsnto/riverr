@@ -53,17 +53,17 @@ export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, al
           <Card key={job.id}>
              <Accordion type="single" collapsible defaultValue="item-1">
               <AccordionItem value="item-1">
-                <AccordionTrigger className="p-4 hover:no-underline">
-                     <div className="flex justify-between items-center w-full">
+                <div className="flex justify-between items-center w-full p-4">
+                    <AccordionTrigger className="p-0 hover:no-underline flex-1">
                         <div className="flex flex-col text-left">
                             <h3 className="font-semibold text-lg">{job.name}</h3>
                             <p className="text-sm text-muted-foreground">
                                 Current Phase: <span className="font-medium text-primary">{currentPhase?.name || 'N/A'}</span>
                             </p>
                         </div>
-                        <Button onClick={(e) => {e.stopPropagation(); onJobClick(job);}}>View Details</Button>
-                    </div>
-                </AccordionTrigger>
+                    </AccordionTrigger>
+                    <Button onClick={() => onJobClick(job)} className="ml-4">View Details</Button>
+                </div>
                 <AccordionContent className="p-4 pt-0">
                     <div className="space-y-2">
                         {tasksForJobInPhase.map(task => {
