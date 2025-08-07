@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Document, User } from '@/lib/data';
-import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
@@ -54,40 +53,67 @@ interface NewDocumentDialogProps {
   spaceId: string;
   spaceMembers: User[];
   onCreate: (docData: Omit<Document, 'id' | 'createdAt' | 'updatedAt' | 'content' | 'comments' | 'tags' | 'type' | 'isLocked'>) => void;
+  isEditing?: boolean;
+  initialData?: DocumentFormValues;
+  onEditSave?: (data: Partial<Document>) => void;
 }
 
-export default function NewDocumentDialog({ isOpen, onOpenChange, spaceId, spaceMembers, onCreate }: NewDocumentDialogProps) {
-  const { toast } = useToast();
+export default function NewDocumentDialog({ 
+    isOpen, 
+    onOpenChange, 
+    spaceId, 
+    spaceMembers, 
+    onCreate,
+    isEditing = false,
+    initialData,
+    onEditSave
+}: NewDocumentDialogProps) {
   const form = useForm<DocumentFormValues>({
     resolver: zodResolver(documentSchema),
-    defaultValues: {
+    defaultValues: initialData || {
       name: '',
       access: 'public',
       allowedUserIds: [],
     },
   });
 
+  useEffect(() => {
+    if (isOpen) {
+        form.reset(initialData || { name: '', access: 'public', allowedUserIds: [] });
+    }
+  }, [isOpen, initialData, form]);
+
   const accessValue = form.watch('access');
 
   const onSubmit = (values: DocumentFormValues) => {
-    const docData: Omit<Document, 'id' | 'createdAt' | 'updatedAt' | 'content' | 'comments' | 'tags' | 'type' | 'isLocked'> = {
+    const sharingData: Partial<Document> = {
         name: values.name,
-        spaceId: spaceId,
         isPublic: values.access === 'public',
         allowedUserIds: values.access === 'private' ? values.allowedUserIds : [],
     };
+
+    if (isEditing && onEditSave) {
+        onEditSave(sharingData);
+    } else {
+        const createData = {
+            ...sharingData,
+            name: values.name,
+            spaceId: spaceId,
+        } as Omit<Document, 'id' | 'createdAt' | 'updatedAt' | 'content' | 'comments' | 'tags' | 'type' | 'isLocked'>;
+        onCreate(createData);
+    }
     
-    onCreate(docData);
     onOpenChange(false);
-    form.reset();
   };
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Create New Document</DialogTitle>
-          <DialogDescription>Fill in the details to create a new document.</DialogDescription>
+          <DialogTitle>{isEditing ? 'Edit Sharing Settings' : 'Create New Document'}</DialogTitle>
+          <DialogDescription>
+            {isEditing ? 'Update who can access this document.' : 'Fill in the details to create a new document.'}
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
@@ -98,7 +124,7 @@ export default function NewDocumentDialog({ isOpen, onOpenChange, spaceId, space
                 <FormItem>
                   <FormLabel>Document Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Q4 Marketing Plan" {...field} />
+                    <Input placeholder="e.g., Q4 Marketing Plan" {...field} disabled={isEditing} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -160,7 +186,7 @@ export default function NewDocumentDialog({ isOpen, onOpenChange, spaceId, space
 
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit">Create Document</Button>
+              <Button type="submit">Save</Button>
             </DialogFooter>
           </form>
         </Form>

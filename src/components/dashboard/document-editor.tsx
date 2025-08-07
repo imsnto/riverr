@@ -5,7 +5,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Document, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Bot, Save, Trash2, MessageSquare, CheckCircle2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Bot, Trash2, MessageSquare, CheckCircle2, Loader2, Share2, Globe, Lock } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import TiptapEditor, { useEditor } from '@/components/document/TiptapEditor';
@@ -14,6 +14,8 @@ import CommentsPanel from './CommentsPanel';
 import AssistantPanel from './AssistantPanel';
 import { useRouter } from 'next/navigation';
 import { Editor } from '@tiptap/react';
+import NewDocumentDialog from './new-document-dialog';
+import { updateDocument } from '@/lib/db';
 
 // Debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -48,6 +50,7 @@ export default function DocumentEditor({
 }: DocumentEditorProps) {
   const [document, setDocument] = useState(initialDocument);
   const [sidebarView, setSidebarView] = useState<'ai' | 'comments' | null>(null);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const { appUser } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -61,23 +64,23 @@ export default function DocumentEditor({
     setEditor(editor);
   }, []);
 
-  const handleSave = useCallback(async () => {
-    if (!document.name.trim()) {
+  const handleSave = useCallback(async (docToSave: Document) => {
+    if (!docToSave.name.trim()) {
       toast({ variant: 'destructive', title: 'Title is required' });
       return;
     }
     setIsSaving(true);
-    const docToSave = { ...document, updatedAt: new Date().toISOString() };
-    await onSave(docToSave);
+    const updatedDoc = { ...docToSave, updatedAt: new Date().toISOString() };
+    await onSave(updatedDoc);
+    setDocument(updatedDoc);
     setIsSaving(false);
-    setLastSaved(new Date(docToSave.updatedAt));
-  }, [document, onSave, toast]);
+    setLastSaved(new Date(updatedDoc.updatedAt));
+  }, [onSave, toast]);
   
-  // Effect for autosaving
+  // Effect for autosaving content and title changes
   useEffect(() => {
-    // Only save if the debounced value is different from the last known saved state
     if (debouncedDocument && (debouncedDocument.content !== initialDocument.content || debouncedDocument.name !== initialDocument.name)) {
-      handleSave();
+      handleSave(debouncedDocument);
     }
   }, [debouncedDocument, handleSave, initialDocument]);
 
@@ -111,13 +114,20 @@ export default function DocumentEditor({
         comments: [...(document.comments || []), newComment]
     };
     
-    setDocument(updatedDoc);
-    await onSave(updatedDoc);
+    await handleSave(updatedDoc);
+  };
+
+  const handleSharingSave = async (sharingData: Partial<Document>) => {
+      const updatedDoc = { ...document, ...sharingData };
+      await handleSave(updatedDoc);
+      setIsShareOpen(false);
+      toast({ title: 'Sharing settings updated' });
   };
   
   if (!appUser) return null;
 
   return (
+    <>
     <div className="flex flex-row gap-0 h-screen">
       <div className="flex-1 flex flex-col p-4 md:p-8">
         <div className="flex items-center gap-2 mb-4">
@@ -146,6 +156,10 @@ export default function DocumentEditor({
                     </>
                 )}
             </div>
+            <Button size="sm" variant="outline" onClick={() => setIsShareOpen(true)}>
+                {document.isPublic ? <Globe className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
+                Share
+            </Button>
           <Button size="sm" variant="destructive" onClick={handleDelete}>
             <Trash2 className="mr-2 h-4 w-4" /> Delete
           </Button>
@@ -188,5 +202,20 @@ export default function DocumentEditor({
         </div>
       )}
     </div>
+    <NewDocumentDialog
+        isOpen={isShareOpen}
+        onOpenChange={setIsShareOpen}
+        spaceId={document.spaceId}
+        spaceMembers={allUsers.filter(u => u.role !== 'Admin')} // Simplified logic for space members
+        onCreate={() => {}} // Not used for editing
+        isEditing={true}
+        initialData={{
+            name: document.name,
+            access: document.isPublic ? 'public' : 'private',
+            allowedUserIds: document.allowedUserIds || []
+        }}
+        onEditSave={handleSharingSave}
+    />
+    </>
   );
 }

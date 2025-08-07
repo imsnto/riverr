@@ -1,17 +1,19 @@
 
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
 import { Document, User, Space } from '@/lib/data';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, FileText, Search } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Plus, FileText, Search, Users, Globe } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { addDocument } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import NewDocumentDialog from './new-document-dialog';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Tooltip, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { TooltipContent } from '@radix-ui/react-tooltip';
 
 interface DocumentsViewProps {
   documents: Document[];
@@ -19,6 +21,11 @@ interface DocumentsViewProps {
   appUser: User;
   allUsers: User[];
 }
+
+const getInitials = (name: string) => {
+    if (!name) return '';
+    return name.split(' ').map(n => n[0]).join('');
+};
 
 export default function DocumentsView({ documents, activeSpace, appUser, allUsers }: DocumentsViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -84,23 +91,68 @@ export default function DocumentsView({ documents, activeSpace, appUser, allUser
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredDocuments.map(doc => (
-              <Card key={doc.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push(`/documents/${doc.id}`)}>
-                <CardHeader>
-                  <CardTitle className="flex items-start gap-2 text-base">
-                      <FileText className="h-5 w-5 mt-1 text-muted-foreground" />
-                      <span className="flex-1">{doc.name}</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-muted-foreground">
-                    Updated {new Date(doc.updatedAt).toLocaleDateString()}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+           <TooltipProvider>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredDocuments.map(doc => {
+                    const sharedWithUsers = doc.isPublic ? [] : allUsers.filter(u => doc.allowedUserIds?.includes(u.id));
+                    return (
+                        <Card key={doc.id} className="hover:shadow-md transition-shadow flex flex-col">
+                            <div className="cursor-pointer flex-grow" onClick={() => router.push(`/documents/${doc.id}`)}>
+                                <CardHeader>
+                                    <CardTitle className="flex items-start gap-2 text-base">
+                                        <FileText className="h-5 w-5 mt-1 text-muted-foreground flex-shrink-0" />
+                                        <span className="flex-1">{doc.name}</span>
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-xs text-muted-foreground">
+                                        Updated {new Date(doc.updatedAt).toLocaleDateString()}
+                                    </p>
+                                </CardContent>
+                            </div>
+                            <CardFooter className="p-3 pt-0 mt-auto">
+                                <div className="flex items-center gap-2">
+                                    {doc.isPublic ? (
+                                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                            <Globe className="h-3 w-3" />
+                                            <span>Public</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center -space-x-2">
+                                            {sharedWithUsers.slice(0, 3).map(user => (
+                                                <Tooltip key={user.id}>
+                                                    <TooltipTrigger asChild>
+                                                        <Avatar className="h-6 w-6 border-2 border-background">
+                                                            <AvatarImage src={user.avatarUrl} />
+                                                            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                                                        </Avatar>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent><p>{user.name}</p></TooltipContent>
+                                                </Tooltip>
+                                            ))}
+                                            {sharedWithUsers.length > 3 && (
+                                                 <Tooltip>
+                                                     <TooltipTrigger asChild>
+                                                        <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium border-2 border-background">
+                                                            +{sharedWithUsers.length - 3}
+                                                        </div>
+                                                     </TooltipTrigger>
+                                                      <TooltipContent>
+                                                        <p>
+                                                            {sharedWithUsers.slice(3).map(u => u.name).join(', ')}
+                                                        </p>
+                                                      </TooltipContent>
+                                                 </Tooltip>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </CardFooter>
+                        </Card>
+                    )
+                })}
+              </div>
+          </TooltipProvider>
           {filteredDocuments.length === 0 && (
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
               <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
