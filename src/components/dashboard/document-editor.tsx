@@ -28,7 +28,7 @@ interface DocumentEditorProps {
   onBack: () => void;
   onSave: (doc: Omit<Document, 'id' | 'createdAt' | 'updatedAt'>, docId?: string) => Promise<Document | null>;
   onDelete: (docId: string) => void;
-  onCreate: (doc: Omit<Document, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  onCreate: (doc: Omit<Document, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Document | null>;
   spaceId: string;
   appUser: User;
   allUsers: User[];
@@ -68,9 +68,9 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
     };
     
     if (document) {
-        await onSave(docData, document.id);
+        return onSave(docData, document.id);
     } else {
-        await onCreate(docData);
+        return onCreate(docData);
     }
   };
   
@@ -164,8 +164,8 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
                             </div>
                         </TooltipProvider>
                     </div>
-                     <ScrollArea className="flex-1">
-                        <div className="p-8 prose dark:prose-invert max-w-none">
+                     <ScrollArea className="flex-1 h-full">
+                        <div className="p-8 prose dark:prose-invert max-w-none h-full">
                             <Textarea
                                 value={content}
                                 onChange={(e) => setContent(e.target.value)}
@@ -401,5 +401,3 @@ function CommentsPanel({ document, onClose, allUsers, appUser, onPostComment }: 
         </div>
     );
 }
-
-    
