@@ -107,7 +107,7 @@ export default function JobFlowBoard({
   return (
     <>
       <div className="flex h-full gap-6">
-        <aside className="w-64 flex-shrink-0 border-r pr-6">
+        <aside className="w-56 flex-shrink-0 border-r pr-6">
           <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">Workflows</h2>
           </div>
@@ -143,9 +143,9 @@ export default function JobFlowBoard({
             </div>
           ) : (
               <div className="flex flex-col items-center justify-center h-full text-center bg-card rounded-lg">
-                  <LayoutTemplate className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-semibold">No workflow selected</h3>
-                  <p className="text-muted-foreground">Select a workflow from the list to view its jobs.</p>
+                  <LayoutTemplate className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <h3 className="mt-2 text-sm font-semibold text-foreground">No workflow selected</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Select a workflow from the list to view its jobs.</p>
               </div>
           )}
         </main>

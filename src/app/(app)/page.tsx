@@ -468,7 +468,7 @@ export default function Dashboard() {
                 const isTemplateView = ['templates', 'phases', 'tasks'].includes(flowsView);
                 return (
                      <div className="flex flex-col h-full">
-                        <div className="flex items-center border-b p-2">
+                        <div className="flex items-center p-2">
                             <Button 
                                 variant="ghost" 
                                 onClick={() => setFlowsView('job_flows')}
