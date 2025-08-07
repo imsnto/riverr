@@ -5,11 +5,13 @@ import React, { useState, useTransition, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Bot, Loader2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { assistInDocument, AssistInDocumentOutput } from '@/ai/flows/assist-in-document';
+import { assistInDocument } from '@/ai/flows/assist-in-document';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
+import type { Editor } from '@tiptap/react';
+import { marked } from 'marked';
 
 interface Message {
   role: 'user' | 'model';
@@ -22,7 +24,7 @@ const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
 };
 
-export default function AssistantPanel({ fullDocument, onClose, onInsert }: { fullDocument: string, onClose: () => void, onInsert: (text: string) => void }) {
+export default function AssistantPanel({ fullDocument, onClose, editor }: { fullDocument: string, onClose: () => void, editor: Editor | null }) {
     const [history, setHistory] = useState<Message[]>([]);
     const [request, setRequest] = useState('');
     const [isPending, startTransition] = useTransition();
@@ -75,7 +77,9 @@ export default function AssistantPanel({ fullDocument, onClose, onInsert }: { fu
     }
 
     const handleInsert = (modification: string) => {
-        onInsert(modification);
+        if (!editor) return;
+        const html = marked(modification);
+        editor.commands.insertContent(html);
     }
 
     return (

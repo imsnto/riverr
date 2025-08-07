@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { EditorContent, useEditor } from '@tiptap/react';
+import { Editor, EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Bold from '@tiptap/extension-bold';
 import Italic from '@tiptap/extension-italic';
@@ -20,8 +20,9 @@ import { FontFamily } from '@tiptap/extension-font-family';
 import { FontSize } from '@/lib/tiptap-fontsize';
 
 import { Toolbar } from './TiptapToolbar';
+export { useEditor };
 
-export default function TiptapEditor({ content, onChange, onBlur }: { content: string; onChange: (html: string) => void, onBlur?: () => void }) {
+export default function TiptapEditor({ content, onChange, onBlur, onEditorInstance }: { content: string; onChange: (html: string) => void, onBlur?: () => void, onEditorInstance?: (editor: Editor) => void }) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -55,15 +56,13 @@ export default function TiptapEditor({ content, onChange, onBlur }: { content: s
       if (onBlur) {
         onBlur();
       }
+    },
+    onCreate: ({ editor }) => {
+        if (onEditorInstance) {
+            onEditorInstance(editor);
+        }
     }
   });
-  
-  useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content, false);
-    }
-  }, [content, editor]);
-
 
   return (
     <div className="border rounded-lg overflow-hidden">

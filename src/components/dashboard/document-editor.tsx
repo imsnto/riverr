@@ -1,18 +1,19 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Document, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Bot, Save, Trash2, MessageSquare } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import TiptapEditor from '@/components/document/TiptapEditor';
+import TiptapEditor, { useEditor } from '@/components/document/TiptapEditor';
 import { useAuth } from '@/hooks/use-auth';
 import CommentsPanel from './CommentsPanel';
 import AssistantPanel from './AssistantPanel';
 import { useRouter } from 'next/navigation';
+import { Editor } from '@tiptap/react';
 
 interface DocumentEditorProps {
   initialDocument: Document;
@@ -32,10 +33,7 @@ export default function DocumentEditor({
   const { appUser } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-
-  useEffect(() => {
-    setDocument(initialDocument);
-  }, [initialDocument]);
+  const [editor, setEditor] = useState<Editor | null>(null);
 
   const handleContentChange = (newContent: string) => {
     setDocument(prev => ({ ...prev, content: newContent }));
@@ -115,7 +113,12 @@ export default function DocumentEditor({
         </div>
 
         <div className="flex-1 py-4 flex flex-col">
-          <TiptapEditor content={document.content} onChange={handleContentChange} onBlur={handleSave}/>
+          <TiptapEditor 
+            content={document.content} 
+            onChange={handleContentChange} 
+            onBlur={handleSave}
+            onEditorInstance={setEditor}
+          />
         </div>
       </div>
 
@@ -125,7 +128,7 @@ export default function DocumentEditor({
             <AssistantPanel
               fullDocument={document.content}
               onClose={() => setSidebarView(null)}
-              onInsert={(text) => handleContentChange(`${document.content}\n\n${text}`)}
+              editor={editor}
             />
           )}
           {sidebarView === 'comments' && (
