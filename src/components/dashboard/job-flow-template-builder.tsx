@@ -130,84 +130,90 @@ function TemplateForm({
 
   return (
     <Form {...form}>
-      <form id="job-flow-template-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="name">Template Name</Label>
-          <Input id="name" {...register('name')} placeholder="e.g., Standard Client Onboarding" />
-          {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
-          <Textarea id="description" {...register('description')} placeholder="A brief description of this workflow." />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="defaultView">Default View</Label>
-           <Controller
-              control={control}
-              name="defaultView"
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a default view" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="kanban">Kanban (Horizontal)</SelectItem>
-                    <SelectItem value="stepper">Stepper (Vertical)</SelectItem>
-                    <SelectItem value="list">List (Table)</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-        </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 flex flex-col flex-1">
+        <div className="flex-1 space-y-6 overflow-y-auto px-6">
+            <div className="space-y-2">
+            <Label htmlFor="name">Template Name</Label>
+            <Input id="name" {...register('name')} placeholder="e.g., Standard Client Onboarding" />
+            {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+            </div>
+            <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea id="description" {...register('description')} placeholder="A brief description of this workflow." />
+            </div>
+            <div className="space-y-2">
+            <Label htmlFor="defaultView">Default View</Label>
+            <Controller
+                control={control}
+                name="defaultView"
+                render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select a default view" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="kanban">Kanban (Horizontal)</SelectItem>
+                        <SelectItem value="stepper">Stepper (Vertical)</SelectItem>
+                        <SelectItem value="list">List (Table)</SelectItem>
+                    </SelectContent>
+                    </Select>
+                )}
+                />
+            </div>
 
-        <Separator />
-        
-        <Label>Phases</Label>
-        <div className="space-y-3 p-3 border rounded-lg bg-muted/20">
-           {fields.map((field, index) => (
-             <PhaseItem key={field.id} control={control} index={index} remove={remove} move={move} allUsers={allUsers} errors={errors} watch={watch} />
-           ))}
-            {errors.phases && typeof errors.phases.message === 'string' && <p className="text-sm text-destructive">{errors.phases.message}</p>}
+            <Separator />
+            
+            <Label>Phases</Label>
+            <div className="space-y-3 p-3 border rounded-lg bg-muted/20">
+            {fields.map((field, index) => (
+                <PhaseItem key={field.id} control={control} index={index} remove={remove} move={move} allUsers={allUsers} errors={errors} watch={watch} />
+            ))}
+                {errors.phases && typeof errors.phases.message === 'string' && <p className="text-sm text-destructive">{errors.phases.message}</p>}
 
-            <div className="flex gap-2">
-                 <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => append({ id: `phase-${Date.now()}`, name: 'New Phase', tasks: [{ id: `task-${Date.now()}`, titleTemplate: 'New Task', descriptionTemplate: '', defaultAssigneeId: '', estimatedDurationDays: 1, subtaskTemplates: [] }], requiresReview: false })}
-                    className="w-full"
-                >
-                    <Plus className="mr-2 h-4 w-4" /> Add New Phase
-                </Button>
-                 <Dialog>
-                    <DialogTrigger asChild>
-                        <Button type="button" variant="secondary" size="sm" className="w-full">
-                            <Plus className="mr-2 h-4 w-4" /> Add Phase From Template
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Add Phase From Template</DialogTitle>
-                            <DialogDescription>Select a pre-built phase to add to this flow.</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-2 py-4">
-                            {phaseTemplates.map(pt => (
-                                <DialogTrigger key={pt.id} asChild>
-                                    <button
-                                        onClick={() => handleAddPhaseFromTemplate(pt)}
-                                        className="w-full text-left p-2 rounded-md hover:bg-accent"
-                                    >
-                                        <p className="font-semibold">{pt.name}</p>
-                                        <p className="text-sm text-muted-foreground">{pt.description}</p>
-                                    </button>
-                                </DialogTrigger>
-                            ))}
-                            {phaseTemplates.length === 0 && <p className="text-sm text-muted-foreground text-center">No phase templates found.</p>}
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                <div className="flex gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => append({ id: `phase-${Date.now()}`, name: 'New Phase', tasks: [{ id: `task-${Date.now()}`, titleTemplate: 'New Task', descriptionTemplate: '', defaultAssigneeId: '', estimatedDurationDays: 1, subtaskTemplates: [] }], requiresReview: false })}
+                        className="w-full"
+                    >
+                        <Plus className="mr-2 h-4 w-4" /> Add New Phase
+                    </Button>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button type="button" variant="secondary" size="sm" className="w-full">
+                                <Plus className="mr-2 h-4 w-4" /> Add Phase From Template
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Add Phase From Template</DialogTitle>
+                                <DialogDescription>Select a pre-built phase to add to this flow.</DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-2 py-4">
+                                {phaseTemplates.map(pt => (
+                                    <DialogTrigger key={pt.id} asChild>
+                                        <button
+                                            onClick={() => handleAddPhaseFromTemplate(pt)}
+                                            className="w-full text-left p-2 rounded-md hover:bg-accent"
+                                        >
+                                            <p className="font-semibold">{pt.name}</p>
+                                            <p className="text-sm text-muted-foreground">{pt.description}</p>
+                                        </button>
+                                    </DialogTrigger>
+                                ))}
+                                {phaseTemplates.length === 0 && <p className="text-sm text-muted-foreground text-center">No phase templates found.</p>}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
         </div>
+        <DialogFooter className="p-6 pt-4 border-t bg-muted/50 sticky bottom-0">
+            <Button type="button" variant="ghost" onClick={closeDialog}>Cancel</Button>
+            <Button type="submit">Save Template</Button>
+        </DialogFooter>
       </form>
     </Form>
   );
@@ -522,20 +528,16 @@ export default function JobFlowTemplateBuilder({
               Assemble a sequence of phases to build a complete workflow.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto p-6">
-            <TemplateForm
-              onSave={handleSave}
-              closeDialog={() => setIsFormOpen(false)}
-              phaseTemplates={phaseTemplates}
-              allUsers={allUsers}
-            />
-          </div>
-          <DialogFooter className="p-6 pt-4 border-t bg-muted/50">
-            <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancel</Button>
-            <Button type="submit" form="job-flow-template-form">Save Template</Button>
-          </DialogFooter>
+          <TemplateForm
+            onSave={handleSave}
+            closeDialog={() => setIsFormOpen(false)}
+            phaseTemplates={phaseTemplates}
+            allUsers={allUsers}
+          />
         </DialogContent>
       </Dialog>
     </>
   );
 }
+
+  

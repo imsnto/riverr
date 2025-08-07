@@ -90,70 +90,76 @@ function TemplateForm({ onSave, allUsers, closeDialog, taskTemplates }: { onSave
 
   return (
     <Form {...form}>
-    <form id="phase-template-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-       <div className="space-y-2">
-        <Label htmlFor="name">Phase Template Name</Label>
-        <Input id="name" {...register('name')} placeholder="e.g., Client Kick-off" />
-        {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Textarea id="description" {...register('description')} placeholder="A brief description of this phase." />
-      </div>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 flex-1 flex flex-col">
+       <div className="flex-1 overflow-y-auto px-6 space-y-6">
+            <div className="space-y-2">
+                <Label htmlFor="name">Phase Template Name</Label>
+                <Input id="name" {...register('name')} placeholder="e.g., Client Kick-off" />
+                {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea id="description" {...register('description')} placeholder="A brief description of this phase." />
+            </div>
 
-      <Separator />
-      
-      <Label>Tasks in this phase</Label>
-      <PhaseTasks control={control} allUsers={allUsers} errors={errors} taskTemplates={taskTemplates} />
-      
-      <div className="pt-4 space-y-2">
-          <Controller
-              control={control}
-              name={`requiresReview`}
-              render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
-                      <FormControl>
-                          <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                          />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                          <FormLabel>
-                              Requires Review
-                          </FormLabel>
-                          <p className="text-xs text-muted-foreground">
-                              If checked, this phase must be manually approved before the flow can continue.
-                          </p>
-                      </div>
-                  </FormItem>
-              )}
-          />
-          {requiresReview && (
-             <FormField
-                control={form.control}
-                name="defaultReviewerId"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Default Reviewer</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+            <Separator />
+            
+            <Label>Tasks in this phase</Label>
+            <PhaseTasks control={control} allUsers={allUsers} errors={errors} taskTemplates={taskTemplates} />
+            
+            <div className="pt-4 space-y-2">
+                <Controller
+                    control={control}
+                    name={`requiresReview`}
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
                             <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a default reviewer" />
-                                </SelectTrigger>
+                                <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                />
                             </FormControl>
-                            <SelectContent>
-                                {allUsers.map(user => (
-                                    <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
+                            <div className="space-y-1 leading-none">
+                                <FormLabel>
+                                    Requires Review
+                                </FormLabel>
+                                <p className="text-xs text-muted-foreground">
+                                    If checked, this phase must be manually approved before the flow can continue.
+                                </p>
+                            </div>
+                        </FormItem>
+                    )}
+                />
+                {requiresReview && (
+                    <FormField
+                        control={form.control}
+                        name="defaultReviewerId"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Default Reviewer</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a default reviewer" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {allUsers.map(user => (
+                                            <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 )}
-            />
-          )}
-      </div>
+            </div>
+        </div>
+        <DialogFooter className="p-6 pt-4 border-t bg-muted/50 sticky bottom-0">
+            <Button type="button" variant="ghost" onClick={closeDialog}>Cancel</Button>
+            <Button type="submit">Save Template</Button>
+        </DialogFooter>
     </form>
     </Form>
   )
@@ -410,15 +416,11 @@ export default function PhaseTemplateBuilder({ templates, allUsers, onSave, task
                             Define the tasks for a reusable workflow phase.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="flex-1 overflow-y-auto p-6">
-                      <TemplateForm onSave={handleSave} allUsers={allUsers} closeDialog={() => setIsFormOpen(false)} taskTemplates={taskTemplates} />
-                    </div>
-                     <DialogFooter className="p-6 pt-4 border-t bg-muted/50">
-                        <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancel</Button>
-                        <Button type="submit" form="phase-template-form">Save Template</Button>
-                    </DialogFooter>
+                    <TemplateForm onSave={handleSave} allUsers={allUsers} closeDialog={() => setIsFormOpen(false)} taskTemplates={taskTemplates} />
                 </DialogContent>
             </Dialog>
         </>
     );
 }
+
+  
