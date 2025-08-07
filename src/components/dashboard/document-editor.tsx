@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Document, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,6 +78,10 @@ export default function DocumentEditor({
     await onSave(updatedDoc);
   };
   
+  const onEditorInstance = useCallback((editor: Editor) => {
+    setEditor(editor);
+  }, []);
+  
   if (!appUser) return null;
 
   return (
@@ -117,7 +121,7 @@ export default function DocumentEditor({
             content={document.content} 
             onChange={handleContentChange} 
             onBlur={handleSave}
-            onEditorInstance={setEditor}
+            onEditorInstance={onEditorInstance}
           />
         </div>
       </div>
