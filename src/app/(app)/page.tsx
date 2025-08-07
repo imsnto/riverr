@@ -422,7 +422,7 @@ function DashboardComponent() {
               const SimplifiedProjects = projects.filter(p => p.space_id === activeSpace?.id).map(p => ({ id: p.id, name: p.name }));
                 
               return (
-                 <div className="grid grid-cols-[auto_1fr_auto] h-full">
+                 <div className="grid grid-cols-[220px_1fr_400px] h-full">
                     <div className="w-[220px] border-r h-full overflow-y-auto flex flex-col bg-muted/50">
                         <div className="p-4 flex justify-between items-center">
                             <h3 className="font-semibold text-lg">Channels</h3>
@@ -598,7 +598,7 @@ function DashboardComponent() {
     return (
       <SidebarProvider defaultOpen={false}>
         <TopBar />
-        <div className="flex flex-1 h-screen pt-16">
+        <div className="flex flex-1 pt-16">
             <Sidebar collapsible="icon">
                 <div className="flex flex-col h-full">
                     <div className="space-y-2 pt-4">
