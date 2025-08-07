@@ -187,17 +187,18 @@ function DashboardComponent() {
     const handleUpdateActiveSpace = async (updatedData: Partial<Space>) => {
         if (!activeSpace) return;
         
-        const optimisticSpace = { ...activeSpace, ...updatedData };
-        setActiveSpace(optimisticSpace);
-        setUserSpaces(prev => prev.map(s => s.id === activeSpace.id ? optimisticSpace : s));
-        
         try {
             await dbUpdateSpace(activeSpace.id, updatedData);
+            // Refetch all data to ensure consistency
+            const updatedSpaces = await getSpacesForUser(appUser!.id);
+            setUserSpaces(updatedSpaces);
+            const newActiveSpace = updatedSpaces.find(s => s.id === activeSpace.id) || null;
+            setActiveSpace(newActiveSpace);
+            if (newActiveSpace) {
+                await fetchData(newActiveSpace);
+            }
         } catch(e) {
             toast({ variant: 'destructive', title: 'Update failed', description: 'Could not save space changes.' });
-            // Revert optimistic update
-            setActiveSpace(activeSpace);
-            setUserSpaces(userSpaces);
         }
     }
     

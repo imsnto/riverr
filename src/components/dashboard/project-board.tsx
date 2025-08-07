@@ -129,10 +129,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   
   const tasks = allTasks.filter(t => t.project_id === project.id && !t.parentId);
   const statuses = activeSpace.statuses || defaultStatuses;
-  const setStatuses = (newStatuses: Status[]) => {
-    onUpdateActiveSpace({ statuses: newStatuses });
-  }
-
+  
   const closingStatusName = activeSpace.closingStatusName;
   const activeStatuses = statuses.filter(s => s.name !== closingStatusName);
   const closingStatus = statuses.find(s => s.name === closingStatusName);
@@ -166,7 +163,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   const handleAddNewColumn = () => {
     const newStatusName = `New Status ${statuses.length + 1}`;
     const randomColor = STATUS_COLORS[statuses.length % STATUS_COLORS.length];
-    setStatuses([...statuses, { name: newStatusName, color: randomColor.color }]);
+    onUpdateActiveSpace({ statuses: [...statuses, { name: newStatusName, color: randomColor.color }] });
   }
 
   const handleRenameColumn = (oldName: string) => {
@@ -178,8 +175,10 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         toast({ variant: 'destructive', title: 'Status name already exists.'});
         return;
     }
-    onUpdateTasks(allTasks.map(t => t.status === oldName ? { ...t, status: newColumnName } : t));
     
+    // This part is tricky. We need to update tasks in the DB.
+    // The parent component should handle this logic.
+    // For now, let's just update the status name in the space.
     const newSpaceData: Partial<Space> = {
         statuses: statuses.map(s => s.name === oldName ? { ...s, name: newColumnName } : s)
     };
@@ -187,6 +186,9 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         newSpaceData.closingStatusName = newColumnName;
     }
     onUpdateActiveSpace(newSpaceData);
+    
+    // Update tasks locally for immediate feedback, but they need to be persisted.
+    onUpdateTasks(allTasks.map(t => t.status === oldName ? { ...t, status: newColumnName } : t));
 
     setEditingColumn(null);
     setNewColumnName("");
@@ -197,12 +199,20 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         toast({ variant: 'destructive', title: 'Cannot delete the last column.'});
         return;
     }
-    if (activeSpace.closingStatusName === columnToDelete) {
-        onUpdateActiveSpace({ closingStatusName: undefined });
-    }
+    
     const defaultColumn = statuses.find(s => s.name !== columnToDelete)!;
+    
+    const newSpaceData: Partial<Space> = {
+        statuses: statuses.filter(s => s.name !== columnToDelete)
+    };
+
+    if (activeSpace.closingStatusName === columnToDelete) {
+        newSpaceData.closingStatusName = undefined;
+    }
+    onUpdateActiveSpace(newSpaceData);
+
+    // Update tasks that were in the deleted column
     onUpdateTasks(allTasks.map(t => t.status === columnToDelete ? { ...t, status: defaultColumn.name } : t));
-    setStatuses(statuses.filter(s => s.name !== columnToDelete));
   }
 
   const handleChangeColor = (statusName: string, color: string) => {
