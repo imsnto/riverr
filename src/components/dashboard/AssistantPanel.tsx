@@ -33,7 +33,10 @@ export default function AssistantPanel({ fullDocument, onClose, onInsert }: { fu
 
     useEffect(() => {
         if (scrollAreaRef.current) {
-          scrollAreaRef.current.scrollTo(0, scrollAreaRef.current.scrollHeight);
+          const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+          if (viewport) {
+            viewport.scrollTop = viewport.scrollHeight;
+          }
         }
     }, [history]);
 
