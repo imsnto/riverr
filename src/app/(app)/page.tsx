@@ -164,7 +164,7 @@ function DashboardComponent() {
                 setChannels(fetchedChannels);
                 setJobFlowTemplates(jobTemplates);
                 setJobs(fetchedJobs);
-                setJobFlowTasks(fetchedJobFlowTasks);
+                setJobFlowTasks(jobFlowTasks);
                 setPhaseTemplates(phaseTpls);
                 setTaskTemplates(taskTpls);
                 setDocuments(fetchedDocuments);
@@ -431,9 +431,13 @@ function DashboardComponent() {
               const activeChannel = channels.find(c => c.id === activeChannelId);
               const channelMembers = activeChannel ? allUsers.filter(u => activeChannel.members.includes(u.id)) : [];
               const SimplifiedProjects = projects.filter(p => p.space_id === activeSpace?.id).map(p => ({ id: p.id, name: p.name }));
+              const threadOpen = rightPanelView === 'thread' || rightPanelView === 'threads';
                 
               return (
-                 <div className={cn("grid h-full transition-[grid-template-columns] duration-200 md:grid-cols-[220px_1fr]", rightPanelView && "md:grid-cols-[220px_1fr_400px]")}>
+                 <div className={cn(
+                    'grid h-full transition-all duration-200 ease-in-out',
+                    threadOpen ? 'grid-cols-[220px_minmax(0,1fr)_400px]' : 'grid-cols-[220px_minmax(0,1fr)]'
+                 )}>
                     <div className="hidden md:flex w-[220px] border-r h-full overflow-y-auto flex-col bg-muted/50">
                         <div className="p-4 flex justify-between items-center">
                             <h3 className="font-semibold text-lg">Channels</h3>
@@ -468,14 +472,8 @@ function DashboardComponent() {
                             onAddMessage={handleAddMessage}
                         />
                     </div>
-                     {rightPanelView && (
-                        <div
-                            className={cn(
-                                'fixed right-0 top-16 h-[calc(100vh-4rem)] w-full max-w-[400px] bg-card border-l shadow-lg z-50 transition-transform duration-300 ease-in-out',
-                                'md:relative md:top-0 md:h-full md:w-[400px]',
-                                rightPanelView ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
-                            )}
-                        >
+                     {threadOpen && (
+                        <div className="w-[400px] border-l bg-card h-full overflow-y-auto">
                             {rightPanelView === 'threads' && (
                                 <AllThreadsView
                                 messages={messages}
@@ -616,9 +614,9 @@ function DashboardComponent() {
 
     return (
       <SidebarProvider defaultOpen={false}>
-        <div className="h-screen flex flex-col">
+        <div className="flex flex-col">
           <TopBar />
-           <div className="flex-1 flex pt-16 overflow-hidden">
+           <div className="flex flex-1 pt-16">
                 <Sidebar collapsible="icon">
                     <div className="flex flex-col h-full">
                         <div className="space-y-2 pt-4">
@@ -651,7 +649,7 @@ function DashboardComponent() {
                         </div>
                     </div>
                 </Sidebar>
-                <main className="flex-1 flex flex-col overflow-hidden relative">
+                <main className="flex-1 flex flex-col overflow-hidden">
                     {renderContent()}
                 </main>
             </div>
@@ -698,5 +696,6 @@ export default function Dashboard() {
     
 
     
+
 
 
