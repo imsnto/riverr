@@ -7,7 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { User, Task, Project, Space, Status } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { MoreHorizontal, Plus, Edit, Trash2, Palette, Calendar, MessageSquare } from 'lucide-react';
+import { MoreHorizontal, Plus, Edit, Trash2, Palette, Calendar, MessageSquare, Archive, CheckCircle } from 'lucide-react';
 import { Button, buttonVariants } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '../ui/dropdown-menu';
@@ -132,6 +132,10 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     onUpdateActiveSpace({ statuses: newStatuses });
   }
 
+  const closingStatusName = activeSpace.closingStatusName;
+  const activeStatuses = statuses.filter(s => s.name !== closingStatusName);
+  const closingStatus = statuses.find(s => s.name === closingStatusName);
+
   const handleDragStart = (e: DragEvent<HTMLDivElement>, taskId: string) => {
     e.dataTransfer.setData('taskId', taskId);
     setDraggedTask(taskId);
@@ -204,7 +208,16 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         return;
     }
     onUpdateTasks(allTasks.map(t => t.status === oldName ? { ...t, status: newColumnName } : t));
-    setStatuses(statuses.map(s => s.name === oldName ? { ...s, name: newColumnName } : s));
+    
+    // Also update closing status name if it was the one being renamed
+    const newSpaceData: Partial<Space> = {
+        statuses: statuses.map(s => s.name === oldName ? { ...s, name: newColumnName } : s)
+    };
+    if (activeSpace.closingStatusName === oldName) {
+        newSpaceData.closingStatusName = newColumnName;
+    }
+    onUpdateActiveSpace(newSpaceData);
+
     setEditingColumn(null);
     setNewColumnName("");
   }
@@ -214,6 +227,9 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         toast({ variant: 'destructive', title: 'Cannot delete the last column.'});
         return;
     }
+    if (activeSpace.closingStatusName === columnToDelete) {
+        onUpdateActiveSpace({ closingStatusName: undefined });
+    }
     const defaultColumn = statuses.find(s => s.name !== columnToDelete)!;
     onUpdateTasks(allTasks.map(t => t.status === columnToDelete ? { ...t, status: defaultColumn.name } : t));
     setStatuses(statuses.filter(s => s.name !== columnToDelete));
@@ -222,6 +238,145 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   const handleChangeColor = (statusName: string, color: string) => {
     setStatuses(statuses.map(s => s.name === statusName ? { ...s, color: color } : s));
   }
+
+  const handleSetClosingStatus = (statusName: string) => {
+    onUpdateActiveSpace({ closingStatusName: statusName });
+  }
+
+  const renderStatusColumn = (status: Status) => (
+      <div
+        key={status.name}
+        className="flex-shrink-0 w-80"
+      >
+        <div className="flex justify-between items-center mb-4 px-1">
+             {editingColumn === status.name ? (
+                <Input 
+                    defaultValue={status.name}
+                    onChange={(e) => setNewColumnName(e.target.value)}
+                    onBlur={() => handleRenameColumn(status.name)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleRenameColumn(status.name)}}
+                    autoFocus
+                    className="h-8"
+                />
+            ) : (
+                <div className="flex items-center gap-2">
+                    <span 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: status.color }}
+                    />
+                    <h2 className="text-lg font-semibold">{status.name}</h2>
+                    {closingStatusName === status.name && (
+                       <CheckCircle className="h-4 w-4 text-primary" />
+                    )}
+                </div>
+            )}
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => { setEditingColumn(status.name); setNewColumnName(status.name); }}>
+                        <Edit className="mr-2 h-4 w-4" /> Rename
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                            <Palette className="mr-2 h-4 w-4" />
+                            <span>Change Color</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                            <DropdownMenuSubContent className="w-60 p-2">
+                                 <div className="grid grid-cols-5 gap-2 mb-2">
+                                    {STATUS_COLORS.map(color => (
+                                        <button
+                                            key={color.name}
+                                            onClick={() => handleChangeColor(status.name, color.color)}
+                                            className={cn("w-8 h-8 rounded-md border-2", status.color === color.color ? 'border-primary' : 'border-transparent')}
+                                            style={{ backgroundColor: color.color }}
+                                            aria-label={color.name}
+                                        />
+                                    ))}
+                                </div>
+                                <Input
+                                    type="text"
+                                    defaultValue={status.color}
+                                    className="h-8"
+                                    onBlur={(e) => handleChangeColor(status.name, e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleChangeColor(status.name, e.currentTarget.value)}}
+                                />
+                            </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSeparator />
+
+                    <DropdownMenuItem onClick={() => handleSetClosingStatus(status.name)}>
+                        <Archive className="mr-2 h-4 w-4" /> 
+                        {closingStatusName === status.name ? "Unset as closing status" : "Set as closing status"}
+                    </DropdownMenuItem>
+                    
+                    <DropdownMenuSeparator />
+
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" /> <span>Delete</span>
+                            </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will delete the "{status.name}" column. All tasks in this column will be moved to the first column. This action cannot be undone.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteColumn(status.name)} className={cn(buttonVariants({ variant: "destructive" }))}>Continue</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+        <div 
+          className="bg-primary/5 rounded-lg p-2 max-h-[calc(100vh-16rem)] overflow-y-auto min-h-[5rem]"
+          onDragOver={handleDragOver}
+          onDrop={(e) => handleDrop(e, status.name)}
+        >
+          {tasks
+            .filter(task => task.status === status.name)
+            .map(task => (
+              <div
+                key={task.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, task.id)}
+                onDragEnd={handleDragEnd}
+                onDrop={(e) => {
+                    e.stopPropagation();
+                    handleDrop(e, status.name, task.id);
+                }}
+                 onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }}
+              >
+                <TaskCard 
+                  task={task} 
+                  project={project}
+                  onClick={() => onTaskClick(task)} 
+                  onUpdateTask={handleUpdateTask}
+                  isDragging={draggedTask === task.id}
+                  allUsers={allUsers}
+                />
+              </div>
+            ))}
+        </div>
+      </div>
+  );
 
   return (
     <>
@@ -233,134 +388,13 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         </Button>
       </div>
       <div className="flex gap-6 overflow-x-auto pb-4">
-        {statuses.map(status => (
-          <div
-            key={status.name}
-            className="flex-shrink-0 w-80"
-          >
-            <div className="flex justify-between items-center mb-4 px-1">
-                 {editingColumn === status.name ? (
-                    <Input 
-                        defaultValue={status.name}
-                        onChange={(e) => setNewColumnName(e.target.value)}
-                        onBlur={() => handleRenameColumn(status.name)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleRenameColumn(status.name)}}
-                        autoFocus
-                        className="h-8"
-                    />
-                ) : (
-                    <div className="flex items-center gap-2">
-                        <span 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: status.color }}
-                        />
-                        <h2 className="text-lg font-semibold">{status.name}</h2>
-                    </div>
-                )}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-6 w-6">
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => { setEditingColumn(status.name); setNewColumnName(status.name); }}>
-                            <Edit className="mr-2 h-4 w-4" /> Rename
-                        </DropdownMenuItem>
-
-                        <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                                <Palette className="mr-2 h-4 w-4" />
-                                <span>Change Color</span>
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                                <DropdownMenuSubContent className="w-60 p-2">
-                                     <div className="grid grid-cols-5 gap-2 mb-2">
-                                        {STATUS_COLORS.map(color => (
-                                            <button
-                                                key={color.name}
-                                                onClick={() => handleChangeColor(status.name, color.color)}
-                                                className={cn("w-8 h-8 rounded-md border-2", status.color === color.color ? 'border-primary' : 'border-transparent')}
-                                                style={{ backgroundColor: color.color }}
-                                                aria-label={color.name}
-                                            />
-                                        ))}
-                                    </div>
-                                    <Input
-                                        type="text"
-                                        defaultValue={status.color}
-                                        className="h-8"
-                                        onBlur={(e) => handleChangeColor(status.name, e.target.value)}
-                                        onKeyDown={(e) => { if (e.key === 'Enter') handleChangeColor(status.name, e.currentTarget.value)}}
-                                    />
-                                </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                        </DropdownMenuSub>
-
-                        <DropdownMenuSeparator />
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
-                                    <Trash2 className="mr-2 h-4 w-4" /> <span>Delete</span>
-                                </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This will delete the "{status.name}" column. All tasks in this column will be moved to the first column. This action cannot be undone.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteColumn(status.name)} className={cn(buttonVariants({ variant: "destructive" }))}>Continue</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-            <div 
-              className="bg-primary/5 rounded-lg p-2 max-h-[calc(100vh-16rem)] overflow-y-auto min-h-[5rem]"
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, status.name)}
-            >
-              {tasks
-                .filter(task => task.status === status.name)
-                .map(task => (
-                  <div
-                    key={task.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, task.id)}
-                    onDragEnd={handleDragEnd}
-                    onDrop={(e) => {
-                        e.stopPropagation();
-                        handleDrop(e, status.name, task.id);
-                    }}
-                     onDragOver={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }}
-                  >
-                    <TaskCard 
-                      task={task} 
-                      project={project}
-                      onClick={() => onTaskClick(task)} 
-                      onUpdateTask={handleUpdateTask}
-                      isDragging={draggedTask === task.id}
-                      allUsers={allUsers}
-                    />
-                  </div>
-                ))}
-            </div>
-          </div>
-        ))}
-         <div className="flex-shrink-0 w-80">
+        {activeStatuses.map(renderStatusColumn)}
+        <div className="flex-shrink-0 w-80">
             <Button variant="outline" className="w-full" onClick={handleAddNewColumn}>
                 <Plus className="mr-2 h-4 w-4" /> Add Status
             </Button>
         </div>
+         {closingStatus && renderStatusColumn(closingStatus)}
       </div>
     </>
   );

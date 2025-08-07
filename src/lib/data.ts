@@ -31,6 +31,7 @@ export interface Space {
   name: string;
   members: Record<string, SpaceMember>; // key is user ID
   statuses: Status[];
+  closingStatusName?: string;
 }
 
 export interface Project {
@@ -242,7 +243,8 @@ export const spaces: Space[] = [
             { name: 'In Progress', color: '#3b82f6' },
             { name: 'In Review', color: '#f59e0b' },
             { name: 'Done', color: '#22c55e' },
-        ]
+        ],
+        closingStatusName: 'Done'
     },
      { 
         id: 'space-2', 
@@ -412,7 +414,7 @@ export const jobFlowTasks: JobFlowTask[] = [
     // New for job-4 (jft-1)
     { id: 'jftask-5', jobId: 'job-4', taskId: 'task-jft-5', phaseIndex: 0, createdAt: '2024-08-05T14:00:00Z' },
     { id: 'jftask-6', jobId: 'job-4', taskId: 'task-jft-6', phaseIndex: 1, createdAt: '2024-08-05T14:00:00Z' },
-    { id: 'jftask-7', jobId: 'job-4', taskId: 'task-jft-7', phaseIndex: 2, createdAt: '2024-08-05T14:00:00Z' },
+    { id: 'jftask-7', jobId: 'job-4', taskId: 'task-jft-7', phaseIndex: 2, createdAt: '2024-08-05T14:00:00Z', reviewedBy: 'user-1' },
     { id: 'jftask-8', jobId: 'job-4', taskId: 'task-jft-8', phaseIndex: 3, createdAt: '2024-08-05T14:00:00Z' },
 
     // New for job-5 (jft-2)

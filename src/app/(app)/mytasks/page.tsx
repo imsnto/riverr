@@ -131,14 +131,17 @@ export default function MyTasksPage() {
     };
 
     const filteredTasks = useMemo(() => {
+        if (!activeSpace) return [];
+        const closingStatus = activeSpace.closingStatusName;
         return tasks
             .filter(task => {
                 const nameMatch = task.name.toLowerCase().includes(filter.toLowerCase());
                 const projectMatch = projectFilter === 'all' || task.project_id === projectFilter;
-                return nameMatch && projectMatch;
+                const statusMatch = !closingStatus || task.status !== closingStatus;
+                return nameMatch && projectMatch && statusMatch;
             })
             .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
-    }, [tasks, filter, projectFilter]);
+    }, [tasks, filter, projectFilter, activeSpace]);
 
     if (isLoading || !activeSpace) {
         return <LoadingState />;
