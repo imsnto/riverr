@@ -113,69 +113,69 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
 
   return (
     <div className="flex flex-row gap-0 h-full">
-        <div className="flex-1 flex flex-col p-4">
-            <div className="flex items-center gap-2 mb-4">
-                <Button variant="ghost" size="icon" onClick={onBack}>
-                    <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <Input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Untitled Document"
-                    className="text-2xl font-bold border-none focus-visible:ring-0 p-0 h-auto"
-                />
-            </div>
+        <div className="flex-1 flex flex-col">
+            <div className="p-4 md:p-8 flex flex-col h-full">
+                <div className="flex items-center gap-2 mb-4">
+                    <Button variant="ghost" size="icon" onClick={onBack}>
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <Input
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="Untitled Document"
+                        className="text-2xl font-bold border-none focus-visible:ring-0 p-0 h-auto"
+                    />
+                </div>
 
-            <div className="flex items-center gap-2 mb-4 border-b pb-2">
-                 <Button size="sm" onClick={handleSave}><Save className="mr-2 h-4 w-4"/> Save</Button>
-                 {document && (
-                     <Button size="sm" variant="destructive" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4"/> Delete</Button>
-                 )}
-                 <Separator orientation="vertical" className="h-6 mx-2" />
-                 <Button size="sm" variant="outline" onClick={() => setSidebarView(sidebarView === 'comments' ? null : 'comments')}>
-                    <MessageSquare className="mr-2 h-4 w-4" /> Comments
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setSidebarView(sidebarView === 'ai' ? null : 'ai')}>
-                    <Bot className="mr-2 h-4 w-4" /> AI Assistant
-                </Button>
-            </div>
-            
-             <div className="flex-1 py-4">
-                <div className="bg-background shadow-sm h-full max-w-4xl mx-auto border-x border-t">
-                    {/* Toolbar Placeholder */}
-                    <div className="p-2 border-b sticky top-0 bg-background z-10">
-                        <TooltipProvider>
-                            <div className="flex items-center gap-1">
-                                <Tooltip>
-                                    <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Bold/></Button></TooltipTrigger>
-                                    <TooltipContent><p>Bold</p></TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Italic/></Button></TooltipTrigger>
-                                    <TooltipContent><p>Italic</p></TooltipContent>
-                                </Tooltip>
-                                <Separator orientation="vertical" className="h-6 mx-2" />
-                                <Tooltip>
-                                    <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Heading1/></Button></TooltipTrigger>
-                                    <TooltipContent><p>Heading 1</p></TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Heading2/></Button></TooltipTrigger>
-                                    <TooltipContent><p>Heading 2</p></TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><List/></Button></TooltipTrigger>
-                                    <TooltipContent><p>Bulleted List</p></TooltipContent>
-                                </Tooltip>
-                            </div>
-                        </TooltipProvider>
-                    </div>
-                     <div className="prose dark:prose-invert max-w-none">
+                <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                    <Button size="sm" onClick={handleSave}><Save className="mr-2 h-4 w-4"/> Save</Button>
+                    {document && (
+                        <Button size="sm" variant="destructive" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4"/> Delete</Button>
+                    )}
+                    <Separator orientation="vertical" className="h-6 mx-2" />
+                    <Button size="sm" variant="outline" onClick={() => setSidebarView(sidebarView === 'comments' ? null : 'comments')}>
+                        <MessageSquare className="mr-2 h-4 w-4" /> Comments
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setSidebarView(sidebarView === 'ai' ? null : 'ai')}>
+                        <Bot className="mr-2 h-4 w-4" /> AI Assistant
+                    </Button>
+                </div>
+                
+                <div className="flex-1 py-4">
+                    <div className="prose dark:prose-invert max-w-4xl mx-auto">
+                        {/* Toolbar Placeholder */}
+                        <div className="p-2 border-b sticky top-0 bg-background z-10 rounded-t-lg">
+                            <TooltipProvider>
+                                <div className="flex items-center gap-1">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Bold/></Button></TooltipTrigger>
+                                        <TooltipContent><p>Bold</p></TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Italic/></Button></TooltipTrigger>
+                                        <TooltipContent><p>Italic</p></TooltipContent>
+                                    </Tooltip>
+                                    <Separator orientation="vertical" className="h-6 mx-2" />
+                                    <Tooltip>
+                                        <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Heading1/></Button></TooltipTrigger>
+                                        <TooltipContent><p>Heading 1</p></TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Heading2/></Button></TooltipTrigger>
+                                        <TooltipContent><p>Heading 2</p></TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><List/></Button></TooltipTrigger>
+                                        <TooltipContent><p>Bulleted List</p></TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            </TooltipProvider>
+                        </div>
                         <TextareaAutosize
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             placeholder="Start writing your document here. Use Markdown for formatting..."
-                            className="w-full text-base resize-none border-none focus-visible:ring-0 p-8 m-0 bg-transparent min-h-screen"
+                            className="w-full text-base resize-none border-x border-b rounded-b-lg p-8 m-0 bg-transparent min-h-screen"
                         />
                     </div>
                 </div>
@@ -405,3 +405,5 @@ function CommentsPanel({ document, onClose, allUsers, appUser, onPostComment }: 
         </div>
     );
 }
+
+    
