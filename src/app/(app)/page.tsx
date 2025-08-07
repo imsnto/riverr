@@ -251,6 +251,14 @@ export default function Dashboard() {
             return null;
         }
     }
+
+     const handleRemoveTask = (taskId: string) => {
+        setTasks(prev => prev.filter(t => t.id !== taskId));
+        dbDeleteTask(taskId).catch(() => {
+            toast({ variant: 'destructive', title: 'Delete failed', description: 'Could not delete task from DB.' });
+            // Note: UI state is not reverted here for simplicity
+        });
+    };
     
     const handleSaveSpace = async (spaceData: Omit<Space, 'id'>, spaceId?: string) => {
         if (spaceId) { // Update existing
@@ -492,7 +500,7 @@ export default function Dashboard() {
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
-                         <div className="flex-1 overflow-auto p-4 md:p-8">
+                         <div className="flex-1 overflow-auto">
                             {renderFlowsContent()}
                         </div>
                     </div>
@@ -511,7 +519,7 @@ export default function Dashboard() {
                         </aside>
                         <main className="flex-1 overflow-auto">
                            {settingsView === 'users' && <UserSettings allUsers={allUsers} allSpaces={userSpaces} appUser={appUser} onInvite={() => {}} handleInvite={handleInvite} />}
-                           {settingsView === 'spaces' && <SpaceSettings allSpaces={userSpaces} allUsers={allUsers} appUser={appUser} onSave={handleSaveSpace} onDelete={handleDeleteSpace} />}
+                           {settingsView === 'spaces' && <SpaceSettings allSpaces={userSpaces} allUsers={allUsers} appUser={appUser} onSave={handleSaveAndClose} onDelete={handleDeleteSpace} />}
                         </main>
                     </div>
                 )
@@ -567,8 +575,8 @@ export default function Dashboard() {
                     if (!isOpen) setSelectedTask(null);
                 }}
                 onUpdateTask={handleUpdateTask}
-                onAddTask={(task) => handleAddTask(task)}
-                onRemoveTask={(taskId) => setTasks(prev => prev.filter(t => t.id !== taskId))}
+                onAddTask={(task, tempId) => onUpdateTask(task, tempId)} // Re-route to onUpdateTask for subtasks
+                onRemoveTask={handleRemoveTask}
                 onTaskSelect={setSelectedTask}
                 onLogTime={handleLogTime}
                 statuses={activeSpace!.statuses.map(s => s.name)}

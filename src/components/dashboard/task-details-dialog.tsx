@@ -20,7 +20,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar as CalendarPicker } from '../ui/calendar';
 import { format, parseISO } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
-import { addTask as dbAddTask, deleteTask as dbDeleteTask } from '@/lib/db';
 import LogTimeDialog from './log-time-dialog';
 
 
@@ -157,7 +156,7 @@ interface TaskDetailsDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     onUpdateTask: (task: Task, tempId?: string) => void;
-    onAddTask: (task: Task) => void;
+    onAddTask: (task: Task, tempId?: string) => void;
     onRemoveTask: (taskId: string) => void;
     onTaskSelect: (task: Task) => void;
     onLogTime: (timeData: Omit<TimeEntry, 'id'>) => void;
@@ -320,23 +319,13 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
             parentId: task.id,
         };
     
-        onAddTask(optimisticSubtask);
+        // Optimistically add the subtask to the UI
+        onAddTask(optimisticSubtask, tempId);
+
         setNewSubtaskName('');
         setNewSubtaskAssignee(appUser.id);
         setNewSubtaskDueDate(null);
     
-        try {
-            const { id: _omit, ...taskWithoutId } = optimisticSubtask;
-            const savedTask = await dbAddTask(taskWithoutId);
-            onUpdateTask(savedTask, tempId); // Replace optimistic task with real one
-        } catch (error) {
-            toast({
-                variant: 'destructive',
-                title: 'Failed to create subtask',
-                description: (error as Error).message,
-            });
-            onRemoveTask(tempId);
-        }
     };
 
 
@@ -362,24 +351,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
     }
     
     const handleRemoveSubtask = async (subtaskId: string) => {
-        const isTemporary = subtaskId.startsWith('temp-');
-        
-        onRemoveTask(subtaskId); // Optimistic removal
-        
-        if (!isTemporary) {
-            try {
-                await dbDeleteTask(subtaskId);
-            } catch (error) {
-                 toast({
-                    variant: 'destructive',
-                    title: 'Failed to delete subtask',
-                    description: 'Please try again.',
-                });
-                // If deletion fails, we need to add the task back to the UI.
-                // This is complex and depends on having the task object available.
-                // For this example, we'll assume success for simplicity.
-            }
-        }
+        onRemoveTask(subtaskId); // Optimistic removal from UI
     }
     
     const sortedActivities = [...(task.activities || []), ...(timeEntries || []).map(t => ({
