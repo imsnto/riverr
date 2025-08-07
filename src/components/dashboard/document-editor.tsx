@@ -113,8 +113,8 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
   }
 
   return (
-    <div className="flex flex-row gap-0">
-        <div className="flex-1 flex flex-col p-4 overflow-hidden">
+    <div className="flex flex-row gap-0 h-full">
+        <div className="flex-1 flex flex-col p-4 overflow-y-auto">
             <div className="flex items-center gap-2 mb-4">
                 <Button variant="ghost" size="icon" onClick={onBack}>
                     <ArrowLeft className="h-5 w-5" />
@@ -141,7 +141,7 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
                 </Button>
             </div>
             
-             <div className="p-4 rounded-lg flex-1">
+             <div className="flex-1 py-4">
                 <div className="bg-background shadow-sm h-full max-w-4xl mx-auto border-x border-t">
                     {/* Toolbar Placeholder */}
                     <div className="p-2 border-b sticky top-0 bg-background z-10">
