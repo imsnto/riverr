@@ -6,7 +6,7 @@ import { Document, User, DocumentComment } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Bot, Loader2, Save, Trash2, X, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Bot, Loader2, Save, Trash2, X, MessageSquare, Bold, Italic, Heading1, Heading2, List } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { assistInDocument } from '@/ai/flows/assist-in-document';
 import { Separator } from '../ui/separator';
@@ -16,6 +16,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 const getInitials = (name: string) => {
     if (!name) return '';
@@ -105,8 +106,8 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
   }
 
   return (
-    <div className="h-full flex flex-col md:flex-row gap-4">
-        <div className="flex-1 flex flex-col p-4">
+    <div className="h-full flex flex-col md:flex-row gap-0">
+        <div className="flex-1 flex flex-col p-4 h-full">
             <div className="flex items-center gap-2 mb-4">
                 <Button variant="ghost" size="icon" onClick={onBack}>
                     <ArrowLeft className="h-5 w-5" />
@@ -133,14 +134,46 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
                 </Button>
             </div>
             
-            <div className="flex-1 bg-muted/30 p-4 rounded-lg">
-                <div className="bg-background p-8 rounded-md border shadow-sm h-full">
-                    <Textarea
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        placeholder="Start writing your document here. Use Markdown for formatting..."
-                        className="flex-1 w-full h-full text-base resize-none border-none focus-visible:ring-0 p-0"
-                    />
+            <div className="flex-1 flex flex-col bg-muted/30 p-4 rounded-lg overflow-hidden">
+                <div className="bg-background rounded-md border shadow-sm h-full flex flex-col">
+                    {/* Toolbar Placeholder */}
+                    <div className="p-2 border-b">
+                        <TooltipProvider>
+                            <div className="flex items-center gap-1">
+                                <Tooltip>
+                                    <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Bold/></Button></TooltipTrigger>
+                                    <TooltipContent><p>Bold</p></TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Italic/></Button></TooltipTrigger>
+                                    <TooltipContent><p>Italic</p></TooltipContent>
+                                </Tooltip>
+                                <Separator orientation="vertical" className="h-6 mx-2" />
+                                <Tooltip>
+                                    <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Heading1/></Button></TooltipTrigger>
+                                    <TooltipContent><p>Heading 1</p></TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Heading2/></Button></TooltipTrigger>
+                                    <TooltipContent><p>Heading 2</p></TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><List/></Button></TooltipTrigger>
+                                    <TooltipContent><p>Bulleted List</p></TooltipContent>
+                                </Tooltip>
+                            </div>
+                        </TooltipProvider>
+                    </div>
+                     <ScrollArea className="flex-1">
+                        <div className="p-8 prose dark:prose-invert max-w-none">
+                            <Textarea
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                placeholder="Start writing your document here. Use Markdown for formatting..."
+                                className="w-full h-full text-base resize-none border-none focus-visible:ring-0 p-0 m-0"
+                            />
+                        </div>
+                    </ScrollArea>
                 </div>
             </div>
         </div>
@@ -368,3 +401,5 @@ function CommentsPanel({ document, onClose, allUsers, appUser, onPostComment }: 
         </div>
     );
 }
+
+    
