@@ -205,12 +205,18 @@ export default function Dashboard() {
         await dbDeleteProject(projectId);
     };
 
-    const handleUpdateTask = async (updatedTask: Task) => {
+    const handleUpdateTask = async (updatedTask: Task, tempId?: string) => {
         setTasks(prevTasks => {
-            return prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t);
+            const taskIndex = prevTasks.findIndex(t => t.id === (tempId || updatedTask.id));
+            if (taskIndex !== -1) {
+                const newTasks = [...prevTasks];
+                newTasks[taskIndex] = updatedTask;
+                return newTasks;
+            }
+            return [...prevTasks, updatedTask];
         });
 
-        if (selectedTask && selectedTask.id === updatedTask.id) {
+        if (selectedTask && selectedTask.id === (tempId || updatedTask.id)) {
             setSelectedTask(updatedTask);
         }
 
@@ -329,7 +335,7 @@ export default function Dashboard() {
 
     const renderContent = () => {
         switch(view) {
-            case 'overview': return <div className="p-4 md:p-8"><Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} /></div>;
+            case 'overview': return <div className="p-4 md:p-8"><Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} jobFlowTasks={jobFlowTasks} onUpdateTask={handleUpdateTask} onTaskSelect={setSelectedTask} /></div>;
             case 'tasks': return <div className="p-4 md:p-8"><TaskBoard 
                                     tasks={memoizedTasks} 
                                     onUpdateTasks={setTasks} 

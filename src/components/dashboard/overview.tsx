@@ -3,10 +3,11 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Project, Task, TimeEntry, User, Job, JobFlowTemplate } from '@/lib/data';
+import { Project, Task, TimeEntry, User, Job, JobFlowTemplate, JobFlowTask } from '@/lib/data';
 import { CheckCircle, Clock, FolderKanban, GitBranch, UserCheck } from 'lucide-react';
 import ProjectDetailsDialog from './project-details-dialog';
 import { Button } from '../ui/button';
+import JobDetailsDialog from './job-details-dialog';
 
 interface OverviewProps {
   projects: Project[];
@@ -16,10 +17,25 @@ interface OverviewProps {
   allUsers: User[];
   jobs: Job[];
   jobFlowTemplates: JobFlowTemplate[];
+  jobFlowTasks: JobFlowTask[];
+  onUpdateTask: (task: Task) => void;
+  onTaskSelect: (task: Task) => void;
 }
 
-export default function Overview({ projects, tasks, timeEntries, appUser, allUsers, jobs, jobFlowTemplates }: OverviewProps) {
+export default function Overview({ 
+  projects, 
+  tasks, 
+  timeEntries, 
+  appUser, 
+  allUsers, 
+  jobs, 
+  jobFlowTemplates, 
+  jobFlowTasks,
+  onUpdateTask,
+  onTaskSelect
+}: OverviewProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
   if (!appUser) return null;
 
@@ -59,9 +75,17 @@ export default function Overview({ projects, tasks, timeEntries, appUser, allUse
       
       const reviewerId = currentPhase.defaultReviewerId;
       const actualReviewerId = job.roleUserMapping[reviewerId!] || reviewerId;
+      
+      const phaseTasks = jobFlowTasks
+          .filter(jft => jft.jobId === job.id && jft.phaseIndex === job.currentPhaseIndex)
+          .map(jft => tasks.find(t => t.id === jft.taskId)).filter(Boolean) as Task[];
+          
+      const allTasksDone = phaseTasks.every(t => t.status === 'Done');
 
-      return actualReviewerId === appUser.id;
+      return actualReviewerId === appUser.id && allTasksDone;
   });
+
+  const selectedJobTemplate = selectedJob ? jobFlowTemplates.find(t => t.id === selectedJob.workflowTemplateId) : undefined;
 
   return (
     <>
@@ -84,7 +108,7 @@ export default function Overview({ projects, tasks, timeEntries, appUser, allUse
                       <p className="font-semibold">{job.name}</p>
                       <p className="text-sm text-muted-foreground">Ready for review: <span className="font-medium">{phase?.name}</span></p>
                     </div>
-                    <Button>Review</Button>
+                    <Button onClick={() => setSelectedJob(job)}>Review</Button>
                   </div>
                 )
               })}
@@ -175,6 +199,23 @@ export default function Overview({ projects, tasks, timeEntries, appUser, allUse
           tasks={tasks.filter(t => t.project_id === selectedProject.id)}
           allUsers={allUsers}
         />
+      )}
+       {selectedJob && selectedJobTemplate && (
+          <JobDetailsDialog
+            isOpen={!!selectedJob}
+            onOpenChange={(isOpen) => {
+                if (!isOpen) setSelectedJob(null);
+            }}
+            job={selectedJob}
+            template={selectedJobTemplate}
+            jobFlowTasks={jobFlowTasks.filter(jft => jft.jobId === selectedJob.id)}
+            tasks={tasks}
+            allUsers={allUsers}
+            onAdvancePhase={() => {}}
+            onReviewSubmit={() => {}}
+            onUpdateTask={onUpdateTask}
+            onTaskSelect={onTaskSelect}
+          />
       )}
     </>
   );
