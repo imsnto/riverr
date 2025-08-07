@@ -164,7 +164,7 @@ function DashboardComponent() {
                 setChannels(fetchedChannels);
                 setJobFlowTemplates(jobTemplates);
                 setJobs(fetchedJobs);
-                setJobFlowTasks(jobFlowTasks);
+                setJobFlowTasks(fetchedJobFlowTasks);
                 setPhaseTemplates(phaseTpls);
                 setTaskTemplates(taskTpls);
                 setDocuments(fetchedDocuments);
@@ -614,7 +614,7 @@ function DashboardComponent() {
 
     return (
       <SidebarProvider defaultOpen={false}>
-        <div className="flex flex-col">
+        <div className="flex flex-col h-screen">
           <TopBar />
            <div className="flex flex-1 pt-16">
                 <Sidebar collapsible="icon">
@@ -696,6 +696,7 @@ export default function Dashboard() {
     
 
     
+
 
 
 
