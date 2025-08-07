@@ -113,6 +113,10 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
       reactions: [],
     };
     
+    if (activeThreadId) {
+        messageData.thread_id = activeThreadId;
+    }
+    
     setNewMessage('');
     setAttachments([]);
     setIsTagging(false);
@@ -287,6 +291,8 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
       </div>
     );
   }
+  
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
