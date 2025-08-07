@@ -431,11 +431,11 @@ function DashboardComponent() {
               const activeChannel = channels.find(c => c.id === activeChannelId);
               const channelMembers = activeChannel ? allUsers.filter(u => activeChannel.members.includes(u.id)) : [];
               const SimplifiedProjects = projects.filter(p => p.space_id === activeSpace?.id).map(p => ({ id: p.id, name: p.name }));
-              const threadOpen = rightPanelView === 'thread' || rightPanelView === 'threads';
+              const threadOpen = rightPanelView === 'thread' || rightPanelView === 'threads' || rightPanelView === 'task-from-thread';
                 
               return (
                  <div className={cn(
-                    'grid h-full transition-all duration-200 ease-in-out',
+                    'grid flex-1 overflow-hidden transition-all duration-200 ease-in-out',
                     threadOpen ? 'grid-cols-[220px_minmax(0,1fr)_400px]' : 'grid-cols-[220px_minmax(0,1fr)]'
                  )}>
                     <div className="hidden md:flex w-[220px] border-r h-full overflow-y-auto flex-col bg-muted/50">
@@ -473,7 +473,10 @@ function DashboardComponent() {
                         />
                     </div>
                      {threadOpen && (
-                        <div className="w-[400px] border-l bg-card h-full overflow-y-auto">
+                        <div className={cn(
+                          'fixed md:relative top-16 md:top-0 right-0 z-40 w-full md:w-[400px] h-[calc(100vh-4rem)] md:h-full bg-card border-l shadow-lg transition-transform duration-300 md:translate-x-0 overflow-y-auto',
+                           rightPanelView ? 'translate-x-0' : 'translate-x-full'
+                        )}>
                             {rightPanelView === 'threads' && (
                                 <AllThreadsView
                                 messages={messages}
@@ -616,7 +619,7 @@ function DashboardComponent() {
       <SidebarProvider defaultOpen={false}>
         <div className="flex flex-col h-screen">
           <TopBar />
-           <div className="flex flex-1 pt-16">
+           <div className="flex flex-1 pt-16 overflow-hidden">
                 <Sidebar collapsible="icon">
                     <div className="flex flex-col h-full">
                         <div className="space-y-2 pt-4">
@@ -696,6 +699,7 @@ export default function Dashboard() {
     
 
     
+
 
 
 
