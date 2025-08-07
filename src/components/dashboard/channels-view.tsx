@@ -56,7 +56,6 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
   const [tagQuery, setTagQuery] = useState('');
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
-  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -112,15 +111,10 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
       attachments: newAttachments,
       reactions: [],
     };
-
-    if (replyingTo) {
-        messageData.thread_id = replyingTo.thread_id || replyingTo.id;
-    }
     
     setNewMessage('');
     setAttachments([]);
     setIsTagging(false);
-    setReplyingTo(null);
 
     await onAddMessage(messageData);
   };
@@ -161,12 +155,6 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
         return m;
     }));
   };
-
-  const handleReplyClick = (message: Message) => {
-    setReplyingTo(message);
-    messageInputRef.current?.focus();
-  }
-
 
   const filteredMembers = channelMembers.filter(member => 
     member.name.toLowerCase().includes(tagQuery.toLowerCase()) && member.id !== appUser?.id
@@ -243,7 +231,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
             </div>
           )}
            {threadReplies.length > 0 && (
-             <div className="mt-2 flex items-center gap-2 text-sm">
+             <div className="mt-2 flex items-center gap-2 text-sm flex-nowrap">
                 <div className="flex -space-x-2">
                     {repliers.slice(0,3).map(replyUser => (
                         <Avatar key={replyUser.id} className="h-5 w-5 border-2 border-background">
@@ -252,7 +240,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
                         </Avatar>
                     ))}
                 </div>
-                <Button variant="link" size="sm" className="h-auto p-0 text-primary font-semibold" onClick={() => onViewThread(message)}>
+                <Button variant="link" size="sm" className="h-auto p-0 text-primary font-semibold whitespace-nowrap" onClick={() => onViewThread(message)}>
                     {threadReplies.length} {threadReplies.length > 1 ? 'replies' : 'reply'}
                 </Button>
                 <span className="text-muted-foreground text-xs whitespace-nowrap">Last reply today at {new Date(threadReplies[threadReplies.length-1].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -276,7 +264,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
                 </div>
               </PopoverContent>
             </Popover>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleReplyClick(message)}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onViewThread(message)}>
                 <MessageSquare className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onCreateTask(message)}>
@@ -300,10 +288,10 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       {activeChannel ? (
         <>
-          <div className="p-4 border-b">
+          <div className="p-4 border-b flex-shrink-0">
             <h3 className="text-lg font-semibold">#{activeChannel.name}</h3>
             <p className="text-sm text-muted-foreground">{activeChannel.description}</p>
           </div>
@@ -312,13 +300,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
               {channelMessages.map(renderMessage)}
             </div>
           </ScrollArea>
-          <div className="p-4 border-t bg-card">
-            {replyingTo && (
-                <div className="text-xs text-muted-foreground mb-2 px-3 py-1 bg-muted rounded-md">
-                    Replying to <strong>{allUsers.find(u => u.id === replyingTo.user_id)?.name}</strong>
-                    <Button variant="ghost" size="sm" className="h-auto p-0 ml-2" onClick={() => setReplyingTo(null)}>&times;</Button>
-                </div>
-            )}
+          <div className="p-4 border-t bg-card flex-shrink-0">
             {attachments.length > 0 && (
                 <div className="mb-2 space-y-2">
                     {attachments.map((file, i) => (
