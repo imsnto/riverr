@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
@@ -134,7 +135,7 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
                 </Button>
             </div>
             
-            <div className="flex-1 flex flex-col bg-muted/30 p-4 rounded-lg overflow-hidden">
+             <div className="flex-1 flex flex-col bg-muted/30 p-4 rounded-lg overflow-hidden">
                 <div className="bg-background rounded-md border shadow-sm h-full flex flex-col">
                     {/* Toolbar Placeholder */}
                     <div className="p-2 border-b">

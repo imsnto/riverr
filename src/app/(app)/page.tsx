@@ -348,7 +348,7 @@ function DashboardComponent() {
        }
     }
     
-     const handleSaveDocument = async (doc: Omit<Document, 'id' | 'createdAt' | 'updatedAt'>, docId?: string) => {
+     const handleSaveDocument = async (doc: Omit<Document, 'id' | 'createdAt' | 'updatedAt'>, docId?: string): Promise<Document> => {
         const now = new Date().toISOString();
         if (docId) {
             const updatedDocData = { ...doc, updatedAt: now };
@@ -358,13 +358,17 @@ function DashboardComponent() {
             toast({ title: 'Document Saved' });
             return fullDoc;
         } else {
-            const newDocData = { ...doc, createdAt: now, updatedAt: now, comments: [] };
+            const newDocData = { ...doc, createdAt: now, updatedAt: now };
             const newDoc = await addDocument(newDocData);
             setDocuments(prev => [...prev, newDoc]);
             toast({ title: 'Document Created' });
             return newDoc;
         }
     };
+
+     const updateLocalDocument = (doc: Document) => {
+        setDocuments(prev => prev.map(d => d.id === doc.id ? doc : d));
+     }
     
     const handleDeleteDocument = async (docId: string) => {
         await dbDeleteDocument(docId);
@@ -478,16 +482,15 @@ function DashboardComponent() {
             case 'timesheets': return <div className="p-4 md:p-8"><TeamTimesheets allSpaces={userSpaces} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} /></div>;
             case 'reports': return <div className="p-4 md:p-8"><MeetingReview slackMeetingLogs={slackLogs} projects={projects} allUsers={allUsers} /></div>;
             case 'documents':
-                return <div className="p-4 md:p-8">
-                    <DocumentsView
+                return <DocumentsView
                         documents={documents.filter(d => d.spaceId === activeSpace?.id)}
                         onSave={handleSaveDocument}
                         onDelete={handleDeleteDocument}
                         activeSpaceId={activeSpace!.id}
                         appUser={appUser!}
                         allUsers={allUsers.filter(u => activeSpace?.members[u.id])}
-                    />
-                </div>;
+                        onDocumentUpdate={updateLocalDocument}
+                    />;
             case 'flows': 
                 const renderFlowsContent = () => {
                     switch(flowsView) {
