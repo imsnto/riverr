@@ -1,3 +1,4 @@
+
 'use client';
 
 import { type Editor } from '@tiptap/react';
@@ -140,7 +141,7 @@ export function Toolbar({ editor }: Props) {
           {FONT_SIZES.map(size => (
              <DropdownMenuItem 
               key={size}
-              onClick={() => editor.chain().focus().setFontSize(size).run()}
+              onClick={() => editor.chain().focus().setMark('textStyle', { fontSize: size }).run()}
               className={editor.isActive('textStyle', { fontSize: size }) ? 'is-active' : ''}
              >
                 {size}
