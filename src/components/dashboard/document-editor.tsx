@@ -6,7 +6,7 @@ import React, { useState, useEffect, useTransition, useRef } from 'react';
 import { Document, User, DocumentComment } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Bot, Loader2, Save, Trash2, X, MessageSquare, Bold, Italic, Heading1, Heading2, List, Pilcrow, Heading3, Quote } from 'lucide-react';
+import { ArrowLeft, Bot, Loader2, Save, Trash2, X, MessageSquare, Bold, Italic, Heading1, Heading2, List, Pilcrow, Heading3, Quote, ListOrdered } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { assistInDocument } from '@/ai/flows/assist-in-document';
 import { Separator } from '../ui/separator';
@@ -103,6 +103,10 @@ const MarkdownToolbar = ({ textareaRef, onContentChange }: { textareaRef: React.
                     <Tooltip>
                         <TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => applyStyle('ul')}><List/></Button></TooltipTrigger>
                         <TooltipContent><p>Bulleted List</p></TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => applyStyle('ol')}><ListOrdered/></Button></TooltipTrigger>
+                        <TooltipContent><p>Numbered List</p></TooltipContent>
                     </Tooltip>
                      <Tooltip>
                         <TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => applyStyle('blockquote')}><Quote/></Button></TooltipTrigger>
@@ -212,7 +216,7 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
   }
 
   return (
-    <div className="flex flex-row gap-0 h-full">
+    <div className="flex flex-row gap-0">
         <div className="flex-1 flex flex-col p-4 md:p-8">
             <div className="flex items-center gap-2 mb-4">
                 <Button variant="ghost" size="icon" onClick={onBack}>
