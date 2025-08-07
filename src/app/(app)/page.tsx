@@ -335,7 +335,7 @@ export default function Dashboard() {
 
     const renderContent = () => {
         switch(view) {
-            case 'overview': return <div className="p-4 md:p-8"><Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} jobFlowTasks={jobFlowTasks} onUpdateTask={handleUpdateTask} onTaskSelect={setSelectedTask} onJobLaunched={() => fetchData(activeSpace!)} /></div>;
+            case 'overview': return <div className="p-4 md:p-8"><Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} jobFlowTasks={jobFlowTasks} onUpdateTask={handleUpdateTask} onTaskSelect={setSelectedTask} onDataRefresh={() => fetchData(activeSpace!)} /></div>;
             case 'tasks': return <div className="p-4 md:p-8"><TaskBoard 
                                     tasks={memoizedTasks} 
                                     onUpdateTasks={setTasks} 

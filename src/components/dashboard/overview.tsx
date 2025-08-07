@@ -22,7 +22,7 @@ interface OverviewProps {
   jobFlowTasks: JobFlowTask[];
   onUpdateTask: (task: Task) => void;
   onTaskSelect: (task: Task) => void;
-  onJobLaunched: () => void;
+  onDataRefresh: () => void;
 }
 
 export default function Overview({ 
@@ -31,21 +31,16 @@ export default function Overview({
   timeEntries, 
   appUser, 
   allUsers, 
-  jobs: initialJobs, 
+  jobs, 
   jobFlowTemplates, 
   jobFlowTasks,
   onUpdateTask,
   onTaskSelect,
-  onJobLaunched
+  onDataRefresh
 }: OverviewProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const { toast } = useToast();
-
-  React.useEffect(() => {
-    setJobs(initialJobs);
-  }, [initialJobs]);
 
   if (!appUser) return null;
 
@@ -56,23 +51,8 @@ export default function Overview({
     try {
         await updateJobPhase(job, template, tasks, jobFlowTasks);
         toast({ title: "Phase Advanced!", description: `Job "${job.name}" has moved to the next phase.` });
-        
-        const nextPhaseIndex = job.currentPhaseIndex + 1;
-        const nextPhase = template.phases.find(p => p.phaseIndex === nextPhaseIndex);
-        
-        setJobs(prevJobs => prevJobs.map(j => {
-            if (j.id === job.id) {
-                return {
-                    ...j,
-                    currentPhaseIndex: nextPhase ? nextPhaseIndex : j.currentPhaseIndex,
-                    status: nextPhase ? j.status : 'completed'
-                };
-            }
-            return j;
-        }));
-
         setSelectedJob(null);
-        onJobLaunched();
+        onDataRefresh();
     } catch (error) {
         console.error("Failed to advance phase:", error);
         toast({ variant: 'destructive', title: 'Failed to advance phase' });
