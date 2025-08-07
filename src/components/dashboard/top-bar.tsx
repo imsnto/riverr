@@ -2,7 +2,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { useSidebar, SidebarTrigger } from "@/components/ui/sidebar" 
+import { useSidebar } from "@/components/ui/sidebar" 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -83,7 +83,6 @@ const getInitials = (name: string) => {
 
 
 export function TopBar({ className, activeSpace, onSpaceChange, allSpaces }: { className?: string; activeSpace: Space | null, onSpaceChange: (spaceId: string) => void; allSpaces: Space[] }) {
-  const { toggleSidebar } = useSidebar()
   const router = useRouter();
   const { signOut, appUser } = useAuth();
 
@@ -102,7 +101,6 @@ export function TopBar({ className, activeSpace, onSpaceChange, allSpaces }: { c
       )}
     >
       <div className="flex items-center gap-2">
-        <SidebarTrigger onClick={toggleSidebar} />
         {activeSpace && <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />}
       </div>
       <div className="flex items-center gap-4">
