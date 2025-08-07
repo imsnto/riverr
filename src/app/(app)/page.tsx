@@ -191,8 +191,7 @@ function DashboardComponent() {
             await dbUpdateSpace(activeSpace.id, updatedData);
             const updatedSpaces = await getSpacesForUser(appUser!.id);
             setUserSpaces(updatedSpaces);
-            const newActiveSpace = updatedSpaces.find(s => s.id === activeSpace.id) || null;
-            setActiveSpace(newActiveSpace);
+            setActiveSpace(updatedSpaces.find(s => s.id === activeSpace.id) || null);
         } catch(e) {
             console.error("Failed to update space", e);
             toast({ variant: 'destructive', title: 'Update failed', description: 'Could not save space changes.' });
