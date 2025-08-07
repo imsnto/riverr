@@ -10,6 +10,7 @@ import { Check, Circle, Loader2, GitBranch, Briefcase, User as UserIcon, CheckCi
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Separator } from '../ui/separator';
 import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
 
 interface JobDetailsDialogProps {
   isOpen: boolean;
@@ -50,6 +51,11 @@ export default function JobDetailsDialog({
     .filter((t): t is Task => !!t);
 
   const areAllTasksComplete = tasksForCurrentPhase.every(t => t.status === 'Done');
+
+  const handleUpdateTaskStatus = (task: Task, isComplete: boolean) => {
+    const newStatus = isComplete ? 'Done' : 'Pending';
+    onUpdateTask({ ...task, status: newStatus });
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -107,13 +113,17 @@ export default function JobDetailsDialog({
                                     return (
                                         <div key={task.id} className="text-sm text-muted-foreground p-2 border rounded-md flex items-center justify-between">
                                             <div className="flex items-center gap-2">
+                                                 <Checkbox 
+                                                    id={`task-complete-${task.id}`} 
+                                                    checked={isComplete} 
+                                                    onCheckedChange={(checked) => handleUpdateTaskStatus(task, !!checked)}
+                                                 />
                                                  <Button variant="link" onClick={() => onTaskSelect(task)} className="p-0 h-auto text-sm text-card-foreground hover:text-primary">
-                                                    <span className={cn(isComplete && 'line-through')}>{task.name}</span>
+                                                    <label htmlFor={`task-complete-${task.id}`} className={cn("cursor-pointer", isComplete && 'line-through text-muted-foreground')}>{task.name}</label>
                                                  </Button>
                                             </div>
                                              {assignee && (
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-xs">{task.status}</span>
                                                     <Avatar className="h-6 w-6">
                                                         <AvatarImage src={assignee.avatarUrl} />
                                                         <AvatarFallback>{getInitials(assignee.name)}</AvatarFallback>
