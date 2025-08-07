@@ -31,7 +31,7 @@ export default function Overview({
   timeEntries, 
   appUser, 
   allUsers, 
-  jobs, 
+  jobs: initialJobs, 
   jobFlowTemplates, 
   jobFlowTasks,
   onUpdateTask,
@@ -40,7 +40,12 @@ export default function Overview({
 }: OverviewProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    setJobs(initialJobs);
+  }, [initialJobs]);
 
   if (!appUser) return null;
 
@@ -51,8 +56,24 @@ export default function Overview({
     try {
         await updateJobPhase(job, template, tasks, jobFlowTasks);
         toast({ title: "Phase Advanced!", description: `Job "${job.name}" has moved to the next phase.` });
-        onJobLaunched(); // This will refresh all job data
+        
+        // Manually update the local state to ensure UI reflects the change immediately
+        const nextPhaseIndex = job.currentPhaseIndex + 1;
+        const nextPhase = template.phases.find(p => p.phaseIndex === nextPhaseIndex);
+        
+        setJobs(prevJobs => prevJobs.map(j => {
+            if (j.id === job.id) {
+                return {
+                    ...j,
+                    currentPhaseIndex: nextPhase ? nextPhaseIndex : j.currentPhaseIndex,
+                    status: nextPhase ? j.status : 'completed'
+                };
+            }
+            return j;
+        }));
+
         setSelectedJob(null); // Close dialog on success
+        onJobLaunched(); // Also call parent refresh for good measure
     } catch (error) {
         console.error("Failed to advance phase:", error);
         toast({ variant: 'destructive', title: 'Failed to advance phase' });
