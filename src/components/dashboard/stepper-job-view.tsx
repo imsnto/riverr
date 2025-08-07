@@ -17,6 +17,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Checkbox } from '../ui/checkbox';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 const getInitials = (name: string) => {
     return name ? name.split(' ').map(n => n[0]).join('') : '';
@@ -36,6 +37,11 @@ interface StepperJobViewProps {
 export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, allUsers, onJobClick, onUpdateTask, onTaskSelect }: StepperJobViewProps) {
     
   const handleUpdateTaskStatus = (task: Task, isComplete: boolean) => {
+    const subtasks = tasks.filter(t => t.parentId === task.id);
+    if (isComplete && subtasks.some(st => st.status !== 'Done')) {
+        // This case should be prevented by disabled checkbox, but as a safeguard.
+        return;
+    }
     const newStatus = isComplete ? 'Done' : 'Pending';
     onUpdateTask({ ...task, status: newStatus });
   }
@@ -44,6 +50,7 @@ export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, al
   const completedJobs = jobs.filter(j => j.status === 'completed');
 
   return (
+    <TooltipProvider>
     <div className="space-y-4">
       {activeJobs.map(job => {
         const currentPhase = template.phases.find(p => p.phaseIndex === job.currentPhaseIndex);
@@ -72,14 +79,30 @@ export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, al
                         {tasksForJobInPhase.length > 0 ? tasksForJobInPhase.map(task => {
                             const assignee = allUsers.find(u => u.id === task.assigned_to);
                             const isComplete = task.status === 'Done';
+                            const subtasks = tasks.filter(t => t.parentId === task.id);
+                            const allSubtasksComplete = subtasks.every(st => st.status === 'Done');
+                            const isCheckboxDisabled = subtasks.length > 0 && !allSubtasksComplete;
+
                             return (
                                 <div key={task.id} className="flex items-center justify-between p-2 border rounded-md">
                                     <div className="flex items-center gap-2">
-                                         <Checkbox 
-                                            id={`task-complete-stepper-${task.id}`} 
-                                            checked={isComplete} 
-                                            onCheckedChange={(checked) => handleUpdateTaskStatus(task, !!checked)}
-                                         />
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                 <div className={cn(isCheckboxDisabled && "cursor-not-allowed")}>
+                                                    <Checkbox 
+                                                        id={`task-complete-stepper-${task.id}`} 
+                                                        checked={isComplete} 
+                                                        onCheckedChange={(checked) => handleUpdateTaskStatus(task, !!checked)}
+                                                        disabled={isCheckboxDisabled}
+                                                    />
+                                                </div>
+                                            </TooltipTrigger>
+                                            {isCheckboxDisabled && (
+                                                <TooltipContent>
+                                                    <p>Complete all subtasks to mark this task as done.</p>
+                                                </TooltipContent>
+                                            )}
+                                        </Tooltip>
                                          <Button variant="link" onClick={() => onTaskSelect(task)} className={cn("p-0 h-auto", isComplete && 'line-through text-muted-foreground')}>
                                             {task.name}
                                          </Button>
@@ -144,5 +167,6 @@ export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, al
         </>
       )}
     </div>
+    </TooltipProvider>
   );
 }

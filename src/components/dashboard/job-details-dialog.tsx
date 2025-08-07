@@ -13,6 +13,7 @@ import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { Badge } from '../ui/badge';
 import { useAuth } from '@/hooks/use-auth';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface JobDetailsDialogProps {
   isOpen: boolean;
@@ -60,6 +61,11 @@ export default function JobDetailsDialog({
   const isSubmittedForReview = jftForCurrentPhase.length > 0 && jftForCurrentPhase.every(jft => jft.reviewedBy);
 
   const handleUpdateTaskStatus = (task: Task, isComplete: boolean) => {
+    const subtasks = tasks.filter(t => t.parentId === task.id);
+    if (isComplete && subtasks.some(st => st.status !== 'Done')) {
+        // This case should be prevented by disabled checkbox, but as a safeguard.
+        return;
+    }
     const newStatus = isComplete ? 'Done' : 'Pending';
     onUpdateTask({ ...task, status: newStatus });
   }
@@ -87,6 +93,7 @@ export default function JobDetailsDialog({
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh] pr-6">
+            <TooltipProvider>
             <div className="relative pl-6">
                 {/* Vertical Connector Line */}
                 <div className="absolute left-9 top-4 bottom-4 w-0.5 bg-border" />
@@ -152,15 +159,30 @@ export default function JobDetailsDialog({
                                 {phaseTasks.length > 0 ? phaseTasks.map(task => {
                                     const assignee = allUsers.find(u => u.id === task.assigned_to);
                                     const isComplete = task.status === 'Done';
+                                    const subtasks = tasks.filter(t => t.parentId === task.id);
+                                    const allSubtasksComplete = subtasks.every(st => st.status === 'Done');
+                                    const isCheckboxDisabled = phaseStatus !== 'in-progress' || (subtasks.length > 0 && !allSubtasksComplete);
+
                                     return (
                                         <div key={task.id} className="text-sm text-muted-foreground p-2 border rounded-md flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                                 <Checkbox 
-                                                    id={`task-complete-${task.id}`} 
-                                                    checked={isComplete} 
-                                                    onCheckedChange={(checked) => handleUpdateTaskStatus(task, !!checked)}
-                                                    disabled={phaseStatus !== 'in-progress'}
-                                                 />
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className={cn(isCheckboxDisabled && "cursor-not-allowed")}>
+                                                            <Checkbox 
+                                                                id={`task-complete-${task.id}`} 
+                                                                checked={isComplete} 
+                                                                onCheckedChange={(checked) => handleUpdateTaskStatus(task, !!checked)}
+                                                                disabled={isCheckboxDisabled}
+                                                            />
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    {isCheckboxDisabled && subtasks.length > 0 && (
+                                                        <TooltipContent>
+                                                            <p>Complete all subtasks to mark this task as done.</p>
+                                                        </TooltipContent>
+                                                    )}
+                                                </Tooltip>
                                                  <label htmlFor={`task-complete-${task.id}`} className={cn("cursor-pointer", isComplete && 'line-through text-muted-foreground')}>
                                                     <Button variant="link" onClick={() => onTaskSelect(task)} className="p-0 h-auto text-sm text-card-foreground hover:text-primary">
                                                         {task.name}
@@ -186,6 +208,7 @@ export default function JobDetailsDialog({
                     );
                 })}
             </div>
+            </TooltipProvider>
         </ScrollArea>
         {!isJobCompleted && currentPhase && areAllTasksComplete && (
             <DialogFooter>
