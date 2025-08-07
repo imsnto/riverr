@@ -6,7 +6,6 @@ import React, { useState, useEffect, useTransition, useRef } from 'react';
 import { Document, User, DocumentComment } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Bot, Loader2, Save, Trash2, X, MessageSquare, Bold, Italic, Heading1, Heading2, List } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { assistInDocument } from '@/ai/flows/assist-in-document';
@@ -114,7 +113,7 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
 
   return (
     <div className="flex flex-row gap-0 h-full">
-        <div className="flex-1 flex flex-col p-4 overflow-y-auto">
+        <div className="flex-1 flex flex-col p-4">
             <div className="flex items-center gap-2 mb-4">
                 <Button variant="ghost" size="icon" onClick={onBack}>
                     <ArrowLeft className="h-5 w-5" />
@@ -176,7 +175,7 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             placeholder="Start writing your document here. Use Markdown for formatting..."
-                            className="w-full text-base resize-none border-none focus-visible:ring-0 p-8 m-0 bg-transparent min-h-[60vh]"
+                            className="w-full text-base resize-none border-none focus-visible:ring-0 p-8 m-0 bg-transparent min-h-screen"
                         />
                     </div>
                 </div>
@@ -263,12 +262,12 @@ function AssistantPanel({ fullDocument, onClose, onInsert }: { fullDocument: str
             </div>
             <div className="p-4 border-t">
                  <form onSubmit={handleSubmit}>
-                    <Textarea 
+                    <TextareaAutosize 
                         placeholder="Your request..." 
                         value={request} 
                         onChange={e => setRequest(e.target.value)}
                         className="mb-2"
-                        rows={3}
+                        minRows={3}
                     />
                     <Button type="submit" className="w-full" disabled={isPending}>Send</Button>
                 </form>
@@ -365,12 +364,12 @@ function CommentsPanel({ document, onClose, allUsers, appUser, onPostComment }: 
             <div className="p-4 border-t">
                 <Popover open={isTagging} onOpenChange={setIsTagging}>
                     <PopoverTrigger asChild>
-                        <Textarea 
+                        <TextareaAutosize 
                             placeholder="Write a comment... use @ to mention users" 
                             value={newComment}
                             onChange={handleInputChange}
                             className="mb-2"
-                            rows={3}
+                            minRows={3}
                         />
                     </PopoverTrigger>
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
