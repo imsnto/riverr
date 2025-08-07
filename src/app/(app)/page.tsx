@@ -445,14 +445,14 @@ function DashboardComponent() {
                     threadOpen ? 'grid-cols-[1fr_400px]' : 'grid-cols-1'
                  )}>
                     <div className="flex h-full">
-                        <div className="hidden md:flex w-[220px] border-r h-full overflow-y-auto flex-col bg-muted/50">
+                        <div className="hidden md:flex w-[220px] border-r h-full flex-col bg-muted/50">
                             <div className="p-4 flex justify-between items-center">
                                 <h3 className="font-semibold text-lg">Channels</h3>
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsCreateChannelOpen(true)}>
                                     <Plus className="h-4 w-4"/>
                                 </Button>
                             </div>
-                            <div className="space-y-1 p-2 flex-1">
+                            <div className="space-y-1 p-2 flex-1 overflow-y-auto">
                                 {channels.filter(c => c.space_id === activeSpace?.id).map(channel => (
                                 <Button 
                                     key={channel.id} 
@@ -705,6 +705,7 @@ export default function Dashboard() {
     
 
     
+
 
 
 
