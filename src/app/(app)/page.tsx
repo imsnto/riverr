@@ -300,6 +300,28 @@ function DashboardComponent() {
         await dbAddInvite(inviteData);
         toast({ title: 'Invite Sent!', description: `An invitation email has been sent to ${values.email}`});
     }
+    
+    const handleAddMessage = async (messageData: Omit<Message, 'id'>) => {
+        const optimisticMessage: Message = { ...messageData, id: `temp-${Date.now()}` };
+        setMessages(prev => [...prev, optimisticMessage]);
+
+        if (messageData.thread_id) {
+            setMessages(prev => prev.map(m => m.id === messageData.thread_id ? { ...m, reply_count: (m.reply_count || 0) + 1 } : m));
+        }
+
+        try {
+            const savedMessage = await dbAddMessage(messageData);
+            setMessages(prev => prev.map(m => m.id === optimisticMessage.id ? savedMessage : m));
+        } catch (err) {
+            console.error("Failed to send message", err);
+            toast({ variant: 'destructive', title: 'Send failed', description: 'Could not send message.' });
+            setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+            if (messageData.thread_id) {
+                setMessages(prev => prev.map(m => m.id === messageData.thread_id ? { ...m, reply_count: (m.reply_count || 0) - 1 } : m));
+            }
+        }
+    };
+
 
     const handleViewThread = (thread: Message) => {
         setActiveThread(thread);
@@ -439,6 +461,7 @@ function DashboardComponent() {
                              setMessages={setMessages}
                              onCreateTask={handleCreateTaskFromThread}
                              onViewThread={handleViewThread}
+                             onAddMessage={handleAddMessage}
                           />
                        </div>
                     </div>
@@ -459,6 +482,7 @@ function DashboardComponent() {
                             allUsers={allUsers}
                             setMessages={setMessages}
                             onClose={() => setRightPanelView('threads')}
+                            onAddMessage={handleAddMessage}
                          />
                       )}
                       {rightPanelView === 'task-from-thread' && activeThread && (

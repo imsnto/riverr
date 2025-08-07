@@ -9,7 +9,6 @@ import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { Send, X, Paperclip, File, ImageIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { addMessage } from '@/lib/db';
 
 const getInitials = (name: string) => {
     if (!name) return '';
@@ -36,9 +35,10 @@ interface ThreadViewProps {
     allUsers: User[];
     setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
     onClose: () => void;
+    onAddMessage: (message: Omit<Message, 'id'>) => Promise<void>;
 }
 
-export default function ThreadView({ thread, messages, allUsers, setMessages, onClose }: ThreadViewProps) {
+export default function ThreadView({ thread, messages, allUsers, setMessages, onClose, onAddMessage }: ThreadViewProps) {
     const { appUser } = useAuth();
     const [newMessage, setNewMessage] = useState('');
     const [attachments, setAttachments] = useState<File[]>([]);
@@ -65,8 +65,7 @@ export default function ThreadView({ thread, messages, allUsers, setMessages, on
             type: file.type.startsWith('image/') ? 'image' : 'file',
         }));
 
-        const optimisticMessage: Message = {
-            id: `temp-${Date.now()}`,
+        const messageData: Omit<Message, 'id'> = {
             channel_id: thread.channel_id,
             user_id: appUser.id,
             content: newMessage,
@@ -75,27 +74,11 @@ export default function ThreadView({ thread, messages, allUsers, setMessages, on
             thread_id: thread.id,
             reactions: [],
         };
-
-        setMessages(prev => [...prev, optimisticMessage]);
-        setMessages(prev => prev.map(m => m.id === thread.id ? { ...m, reply_count: (m.reply_count || 0) + 1 } : m));
-
+        
         setNewMessage('');
         setAttachments([]);
-
-        try {
-            const savedMessage = await addMessage({
-                channel_id: thread.channel_id,
-                user_id: appUser.id,
-                content: newMessage,
-                attachments: newAttachments,
-                thread_id: thread.id,
-            });
-            setMessages(prev => prev.map(m => m.id === optimisticMessage.id ? savedMessage : m));
-        } catch (err) {
-            setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
-            setMessages(prev => prev.map(m => m.id === thread.id ? { ...m, reply_count: (m.reply_count || 0) - 1 } : m));
-            setNewMessage(newMessage);
-        }
+        
+        await onAddMessage(messageData);
     };
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,4 +190,3 @@ export default function ThreadView({ thread, messages, allUsers, setMessages, on
         </div>
     );
 }
-

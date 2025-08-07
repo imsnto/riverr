@@ -9,7 +9,6 @@ import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Send, MessageCircleMore, Paperclip, File, ImageIcon, SmilePlus, MessageSquare, MoreHorizontal, CheckCircle2 } from 'lucide-react';
-import { addMessage } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command } from '@/components/ui/command';
@@ -47,9 +46,10 @@ interface ChannelsViewProps {
   onCreateTask: (message: Message) => void;
   onViewThread: (message: Message) => void;
   statuses: Status[];
+  onAddMessage: (message: Omit<Message, 'id'>) => Promise<void>;
 }
 
-export default function ChannelsView({ channels, messages, allUsers, tasks, activeChannelId, setMessages, onCreateTask, onViewThread, statuses }: ChannelsViewProps) {
+export default function ChannelsView({ channels, messages, allUsers, tasks, activeChannelId, setMessages, onCreateTask, onViewThread, statuses, onAddMessage }: ChannelsViewProps) {
   const { appUser } = useAuth();
   const [newMessage, setNewMessage] = useState('');
   const [isTagging, setIsTagging] = useState(false);
@@ -104,8 +104,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
         type: file.type.startsWith('image/') ? 'image' : 'file',
     }));
 
-    const optimisticMessage: Message = {
-      id: `temp-${Date.now()}`,
+    const messageData: Omit<Message, 'id'> = {
       channel_id: activeChannelId,
       user_id: appUser.id,
       content: newMessage,
@@ -115,34 +114,12 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
       reactions: [],
     }
     
-    setMessages(prev => [...prev, optimisticMessage]);
-    if (replyingTo) {
-        const parentId = replyingTo.thread_id || replyingTo.id;
-        setMessages(prev => prev.map(m => m.id === parentId ? { ...m, reply_count: (m.reply_count || 0) + 1 } : m));
-    }
-
     setNewMessage('');
     setAttachments([]);
     setIsTagging(false);
     setReplyingTo(null);
 
-    try {
-        const savedMessage = await addMessage({
-            channel_id: activeChannelId,
-            user_id: appUser.id,
-            content: newMessage,
-            attachments: newAttachments,
-            thread_id: replyingTo?.thread_id || replyingTo?.id,
-        });
-        setMessages(prev => prev.map(m => m.id === optimisticMessage.id ? savedMessage : m));
-    } catch(err) {
-        setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
-        if (replyingTo) {
-          const parentId = replyingTo.thread_id || replyingTo.id;
-          setMessages(prev => prev.map(m => m.id === parentId ? { ...m, reply_count: (m.reply_count || 0) - 1 } : m));
-        }
-        setNewMessage(newMessage); 
-    }
+    await onAddMessage(messageData);
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
