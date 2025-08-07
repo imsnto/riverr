@@ -13,6 +13,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import { Card } from '@/components/ui/card';
 
 const getInitials = (name: string) => {
     return name ? name.split(' ').map(n => n[0]).join('') : '';
