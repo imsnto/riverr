@@ -118,9 +118,11 @@ export default function JobDetailsDialog({
                                                     checked={isComplete} 
                                                     onCheckedChange={(checked) => handleUpdateTaskStatus(task, !!checked)}
                                                  />
-                                                 <Button variant="link" onClick={() => onTaskSelect(task)} className="p-0 h-auto text-sm text-card-foreground hover:text-primary">
-                                                    <label htmlFor={`task-complete-${task.id}`} className={cn("cursor-pointer", isComplete && 'line-through text-muted-foreground')}>{task.name}</label>
-                                                 </Button>
+                                                 <label htmlFor={`task-complete-${task.id}`} className={cn("cursor-pointer", isComplete && 'line-through text-muted-foreground')}>
+                                                    <Button variant="link" onClick={() => onTaskSelect(task)} className="p-0 h-auto text-sm text-card-foreground hover:text-primary">
+                                                        {task.name}
+                                                    </Button>
+                                                 </label>
                                             </div>
                                              {assignee && (
                                                 <div className="flex items-center gap-2">
