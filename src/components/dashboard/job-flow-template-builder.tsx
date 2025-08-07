@@ -225,7 +225,11 @@ const PhaseItem = ({ control, index, remove, move, allUsers, errors, watch }: { 
         <div className="bg-card p-4 rounded-lg border space-y-4">
             <div className="flex items-center gap-2">
                  <GripVertical className="h-5 w-5 text-muted-foreground cursor-move" />
-                 <Input {...control.register(`phases.${index}.name`)} placeholder="Phase Name" className="font-semibold text-base border-none p-0 h-auto focus-visible:ring-0" />
+                 <Controller
+                    control={control}
+                    name={`phases.${index}.name`}
+                    render={({ field }) => <Input {...field} placeholder="Phase Name" className="font-semibold text-base border-none p-0 h-auto focus-visible:ring-0" />}
+                 />
                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => remove(index)}>
                    <Trash2 className="h-4 w-4 text-destructive" />
                  </Button>
@@ -238,12 +242,20 @@ const PhaseItem = ({ control, index, remove, move, allUsers, errors, watch }: { 
                         {/* Task Content */}
                         <div className="space-y-1">
                            <Label className="text-xs">Task Title Template</Label>
-                           <Input {...control.register(`phases.${index}.tasks.${taskIndex}.titleTemplate`)} placeholder="e.g., Schedule meeting" className="bg-background h-8"/>
+                           <Controller
+                             control={control}
+                             name={`phases.${index}.tasks.${taskIndex}.titleTemplate`}
+                             render={({ field }) => <Input {...field} placeholder="e.g., Schedule meeting" className="bg-background h-8"/>}
+                           />
                            {errors.phases?.[index]?.tasks?.[taskIndex]?.titleTemplate && <p className="text-sm text-destructive">{errors.phases[index].tasks[taskIndex].titleTemplate.message}</p>}
                        </div>
                         <div className="space-y-1">
                            <Label className="text-xs">Task Description Template (optional)</Label>
-                           <Textarea {...control.register(`phases.${index}.tasks.${taskIndex}.descriptionTemplate`)} placeholder="Use variables for dynamic content" className="bg-background" rows={2}/>
+                            <Controller
+                                control={control}
+                                name={`phases.${index}.tasks.${taskIndex}.descriptionTemplate`}
+                                render={({ field }) => <Textarea {...field} placeholder="Use variables for dynamic content" className="bg-background" rows={2}/>}
+                            />
                        </div>
                         <div className="grid grid-cols-2 gap-4">
                            <div className="space-y-1">
@@ -268,12 +280,16 @@ const PhaseItem = ({ control, index, remove, move, allUsers, errors, watch }: { 
                            </div>
                            <div className="space-y-1">
                                <Label className="text-xs">Duration (days)</Label>
-                               <Input 
-                                   type="number"
-                                   {...control.register(`phases.${index}.tasks.${taskIndex}.estimatedDurationDays`)}
-                                   placeholder="e.g., 5"
-                                   className="bg-background h-8"
-                                   min="1"
+                               <Controller
+                                   control={control}
+                                   name={`phases.${index}.tasks.${taskIndex}.estimatedDurationDays`}
+                                   render={({ field }) => <Input 
+                                        type="number"
+                                        {...field}
+                                        placeholder="e.g., 5"
+                                        className="bg-background h-8"
+                                        min="1"
+                                   />}
                                />
                                {errors.phases?.[index]?.tasks?.[taskIndex]?.estimatedDurationDays && <p className="text-sm text-destructive">{errors.phases[index].tasks[taskIndex].estimatedDurationDays.message}</p>}
                            </div>
@@ -365,17 +381,25 @@ const Subtasks = ({ control, taskIndex, allUsers, errors, phaseIndex }: { contro
             {fields.map((subtaskField, subtaskIndex) => (
                 <div key={subtaskField.id} className="space-y-2 p-2 border rounded-md bg-background">
                     <div className="flex items-start gap-2">
-                        <Input
-                            {...control.register(`phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates.${subtaskIndex}.titleTemplate`)}
-                            placeholder="e.g., Send follow-up email"
-                            className="bg-background h-8 flex-1"
+                        <Controller
+                            control={control}
+                            name={`phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates.${subtaskIndex}.titleTemplate`}
+                            render={({ field }) => <Input
+                                {...field}
+                                placeholder="e.g., Send follow-up email"
+                                className="bg-background h-8 flex-1"
+                            />}
                         />
-                        <Input 
-                            type="number"
-                            {...control.register(`phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates.${subtaskIndex}.estimatedDurationDays`)}
-                            placeholder="Days"
-                            className="bg-background h-8 w-20"
-                            min="0"
+                         <Controller
+                            control={control}
+                            name={`phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates.${subtaskIndex}.estimatedDurationDays`}
+                            render={({ field }) => <Input 
+                                type="number"
+                                {...field}
+                                placeholder="Days"
+                                className="bg-background h-8 w-20"
+                                min="0"
+                            />}
                         />
                         <Button type="button" variant="ghost" size="icon" onClick={() => remove(subtaskIndex)} className="h-8 w-8">
                             <Trash2 className="h-4 w-4 text-destructive" />
@@ -515,5 +539,3 @@ export default function JobFlowTemplateBuilder({
     </>
   );
 }
-
-    
