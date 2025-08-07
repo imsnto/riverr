@@ -276,6 +276,11 @@ export const getChannelsInSpace = async (spaceId: string): Promise<Channel[]> =>
     return querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as Channel))
 }
 
+export const addChannel = async (channel: Omit<Channel, 'id'>): Promise<Channel> => {
+  const docRef = await addDoc(collection(db, 'channels'), channel);
+  return { ...channel, id: docRef.id };
+};
+
 export const getMessagesInChannel = async (channelId: string): Promise<Message[]> => {
     const q = query(collection(db, 'messages'), where('channel_id', '==', channelId));
     const querySnapshot = await getDocs(q);

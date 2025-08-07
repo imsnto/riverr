@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
-import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown, ClipboardCheck, BookOpen } from 'lucide-react';
+import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown, ClipboardCheck, BookOpen, Plus } from 'lucide-react';
 import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, Invite, Status, JobFlowTemplate, Job, JobFlowTask, PhaseTemplate, TaskTemplate, Activity, Document } from '@/lib/data';
 import TaskBoard from '@/components/dashboard/task-board';
 import { useToast } from '@/hooks/use-toast';
@@ -36,6 +36,7 @@ import {
     addTimeEntry as dbAddTimeEntry,
     addInvite as dbAddInvite,
     addMessage as dbAddMessage,
+    addChannel as dbAddChannel,
     addJobFlowTemplate as dbAddJobFlowTemplate,
     addPhaseTemplate as dbAddPhaseTemplate,
     addTaskTemplate as dbAddTaskTemplate,
@@ -51,6 +52,7 @@ import ChannelsView from '@/components/dashboard/channels-view';
 import ThreadView from '@/components/dashboard/thread-view';
 import AllThreadsView from '@/components/dashboard/all-threads-view';
 import CreateTaskFromThreadDialog from '@/components/dashboard/create-task-from-thread-dialog';
+import CreateChannelDialog from '@/components/dashboard/create-channel-dialog';
 import TaskDetailsDialog from '@/components/dashboard/task-details-dialog';
 import SpaceSettings from '@/components/dashboard/space-settings';
 import UserSettings from '@/components/dashboard/user-settings';
@@ -108,6 +110,7 @@ function DashboardComponent() {
     const [activeThread, setActiveThread] = useState<Message | null>(null);
     const [readThreadIds, setReadThreadIds] = useState<Set<string>>(new Set());
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
     
      useEffect(() => {
         const viewFromParams = searchParams.get('view') as View;
@@ -329,6 +332,13 @@ function DashboardComponent() {
              setMessages(prev => prev.map(m => m.id === activeThread!.id ? messageWithTask : m));
        }
     }
+
+    const handleAddChannel = async (channelData: Omit<Channel, 'id'>) => {
+        const newChannel = await dbAddChannel(channelData);
+        setChannels(prev => [...prev, newChannel]);
+        setActiveChannelId(newChannel.id);
+        toast({ title: "Channel Created", description: `#${newChannel.name} has been created.` });
+    };
     
      const handleSaveDocument = async (doc: Omit<Document, 'id' | 'createdAt' | 'updatedAt'>, docId?: string): Promise<Document> => {
         const now = new Date().toISOString();
@@ -399,11 +409,14 @@ function DashboardComponent() {
                             </div>
                        </div>
                        <div className="flex-1 grid grid-cols-[250px_1fr] overflow-hidden">
-                          <div className="border-r h-full overflow-y-auto">
-                              <div className="p-4">
+                          <div className="border-r h-full overflow-y-auto flex flex-col">
+                              <div className="p-4 flex justify-between items-center">
                                 <h3 className="font-semibold text-lg">Channels</h3>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsCreateChannelOpen(true)}>
+                                    <Plus className="h-4 w-4"/>
+                                </Button>
                               </div>
-                              <div className="space-y-1 p-2">
+                              <div className="space-y-1 p-2 flex-1">
                                 {channels.filter(c => c.space_id === activeSpace?.id).map(channel => (
                                   <Button 
                                     key={channel.id} 
@@ -628,6 +641,13 @@ function DashboardComponent() {
                 projects={projects}
              />
         )}
+        <CreateChannelDialog
+            isOpen={isCreateChannelOpen}
+            onOpenChange={setIsCreateChannelOpen}
+            spaceId={activeSpace.id}
+            spaceMembers={allUsers.filter(u => activeSpace.members[u.id])}
+            onCreateChannel={handleAddChannel}
+        />
       </SidebarProvider>
     );
 }
