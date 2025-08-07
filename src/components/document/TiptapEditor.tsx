@@ -14,13 +14,17 @@ import Blockquote from '@tiptap/extension-blockquote';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Youtube from '@tiptap/extension-youtube';
+import TextStyle from '@tiptap/extension-text-style';
+import { FontFamily } from '@tiptap/extension-font-family';
 
 import { Toolbar } from './TiptapToolbar';
 
 export default function TiptapEditor({ content, onChange }: { content: string; onChange: (html: string) => void }) {
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        textStyle: false, // Must be disabled to use the custom TextStyle extension below
+      }),
       Bold,
       Italic,
       Underline,
@@ -32,6 +36,8 @@ export default function TiptapEditor({ content, onChange }: { content: string; o
       Link.configure({ openOnClick: false }),
       Image,
       Youtube.configure({ inline: false, width: 640, height: 360 }),
+      TextStyle,
+      FontFamily,
     ],
     content,
     editorProps: {

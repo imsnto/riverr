@@ -18,12 +18,20 @@ import {
   Image as ImageIcon,
   Link as LinkIcon,
   Youtube,
+  Pilcrow,
+  CaseSensitive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Toggle } from '@/components/ui/toggle';
 import { EditLink } from './EditLink';
 import { useCallback } from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 
 type Props = {
   editor: Editor;
@@ -50,6 +58,67 @@ export function Toolbar({ editor }: Props) {
 
   return (
     <div className="flex flex-wrap items-center gap-1 p-2 border-b">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="w-24 justify-start">
+            {editor.isActive('heading', { level: 1 }) && 'Heading 1'}
+            {editor.isActive('heading', { level: 2 }) && 'Heading 2'}
+            {editor.isActive('heading', { level: 3 }) && 'Heading 3'}
+            {!editor.isActive('heading') && 'Paragraph'}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().setParagraph().run()}
+          >
+            <Pilcrow className="mr-2" />
+            Paragraph
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          >
+            <Heading1 className="mr-2" />
+            Heading 1
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          >
+            <Heading2 className="mr-2" />
+            Heading 2
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+          >
+            <Heading3 className="mr-2" />
+            Heading 3
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="w-24 justify-start">
+            <span style={{ fontFamily: editor.getAttributes('textStyle').fontFamily }}>
+              {editor.getAttributes('textStyle').fontFamily || 'Inter'}
+            </span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem onClick={() => editor.chain().focus().setFontFamily('Inter').run()}>
+            Inter
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => editor.chain().focus().setFontFamily('Arial').run()}>
+            Arial
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => editor.chain().focus().setFontFamily('monospace').run()}>
+            Monospace
+          </DropdownMenuItem>
+           <DropdownMenuItem onClick={() => editor.chain().focus().unsetFontFamily().run()}>
+            Default
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       <Toggle
         size="sm"
         pressed={editor.isActive('bold')}
@@ -79,28 +148,7 @@ export function Toolbar({ editor }: Props) {
         <Strikethrough className="h-4 w-4" />
       </Toggle>
       <Separator orientation="vertical" className="h-8" />
-      <Toggle
-        size="sm"
-        pressed={editor.isActive('heading', { level: 1 })}
-        onPressedChange={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-      >
-        <Heading1 className="h-4 w-4" />
-      </Toggle>
-      <Toggle
-        size="sm"
-        pressed={editor.isActive('heading', { level: 2 })}
-        onPressedChange={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-      >
-        <Heading2 className="h-4 w-4" />
-      </Toggle>
-      <Toggle
-        size="sm"
-        pressed={editor.isActive('heading', { level: 3 })}
-        onPressedChange={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-      >
-        <Heading3 className="h-4 w-4" />
-      </Toggle>
-      <Separator orientation="vertical" className="h-8" />
+      
       <Toggle
         size="sm"
         pressed={editor.isActive('bulletList')}
