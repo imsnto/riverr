@@ -18,6 +18,8 @@ import { TopBar } from '@/components/dashboard/top-bar';
 import { Sidebar, SidebarProvider } from '@/components/ui/sidebar';
 import { BarChart, FolderKanban, MessageSquare, Timer, Workflow, Settings, ClipboardCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const LoadingState = () => (
     <div className="flex h-screen items-center justify-center">
@@ -39,6 +41,7 @@ export default function MyTasksPage() {
 
     const [filter, setFilter] = useState('');
     const [projectFilter, setProjectFilter] = useState('all');
+    const [showCompleted, setShowCompleted] = useState(false);
 
     const activeSpace = userSpaces.length > 0 ? userSpaces[0] : null;
 
@@ -137,11 +140,20 @@ export default function MyTasksPage() {
             .filter(task => {
                 const nameMatch = task.name.toLowerCase().includes(filter.toLowerCase());
                 const projectMatch = projectFilter === 'all' || task.project_id === projectFilter;
-                const statusMatch = !closingStatus || task.status !== closingStatus;
+                
+                let statusMatch = true;
+                if (closingStatus) {
+                    if (showCompleted) {
+                        statusMatch = task.status === closingStatus;
+                    } else {
+                        statusMatch = task.status !== closingStatus;
+                    }
+                }
+
                 return nameMatch && projectMatch && statusMatch;
             })
-            .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
-    }, [tasks, filter, projectFilter, activeSpace]);
+            .sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime());
+    }, [tasks, filter, projectFilter, activeSpace, showCompleted]);
 
     if (isLoading || !activeSpace) {
         return <LoadingState />;
@@ -184,7 +196,13 @@ export default function MyTasksPage() {
                 </Sidebar>
 
                 <main className="flex-1 overflow-auto p-4 md:p-8">
-                    <h1 className="text-3xl font-bold mb-4">My Tasks</h1>
+                    <div className="flex justify-between items-center mb-4">
+                        <h1 className="text-3xl font-bold">My Tasks</h1>
+                        <div className="flex items-center space-x-2">
+                            <Switch id="show-completed" checked={showCompleted} onCheckedChange={setShowCompleted} />
+                            <Label htmlFor="show-completed">Show Completed</Label>
+                        </div>
+                    </div>
                     <div className="flex justify-between items-center mb-4">
                         <Input
                             placeholder="Filter by name..."
@@ -240,7 +258,7 @@ export default function MyTasksPage() {
                     </div>
                      {filteredTasks.length === 0 && (
                         <div className="text-center py-12">
-                            <p className="text-muted-foreground">You have no tasks matching the current filters.</p>
+                            <p className="text-muted-foreground">{showCompleted ? "You have no completed tasks." : "You have no active tasks matching the current filters."}</p>
                         </div>
                     )}
                 </main>
