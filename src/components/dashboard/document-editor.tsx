@@ -33,9 +33,10 @@ interface DocumentEditorProps {
   spaceId: string;
   appUser: User;
   allUsers: User[];
+  onDocumentUpdate: (doc: Document) => void;
 }
 
-export default function DocumentEditor({ document, onBack, onSave, onDelete, onCreate, spaceId, appUser, allUsers }: DocumentEditorProps) {
+export default function DocumentEditor({ document, onBack, onSave, onDelete, onCreate, spaceId, appUser, allUsers, onDocumentUpdate }: DocumentEditorProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [sidebarView, setSidebarView] = useState<'ai' | 'comments' | null>(null);
@@ -103,7 +104,10 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
         comments: [...(document.comments || []), newComment],
     };
     
-    await onSave(docData, document.id);
+    const updatedDoc = await onSave(docData, document.id);
+    if (updatedDoc) {
+      onDocumentUpdate(updatedDoc);
+    }
   }
 
   return (
@@ -165,13 +169,13 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
                             </div>
                         </TooltipProvider>
                     </div>
-                     <ScrollArea className="flex-1 h-full">
-                        <div className="p-8 prose dark:prose-invert max-w-none h-full">
+                     <ScrollArea className="flex-1">
+                        <div className="prose dark:prose-invert max-w-none h-full">
                             <Textarea
                                 value={content}
                                 onChange={(e) => setContent(e.target.value)}
                                 placeholder="Start writing your document here. Use Markdown for formatting..."
-                                className="w-full h-full text-base resize-none border-none focus-visible:ring-0 p-0 m-0"
+                                className="w-full h-full text-base resize-none border-none focus-visible:ring-0 p-8 m-0"
                             />
                         </div>
                     </ScrollArea>
