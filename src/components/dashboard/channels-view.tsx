@@ -192,13 +192,13 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
         onMouseEnter={() => setHoveredMessageId(message.id)}
         onMouseLeave={() => setHoveredMessageId(null)}
       >
-        <Avatar>
+        <Avatar className="h-8 w-8">
           <AvatarImage src={user?.avatarUrl} />
           <AvatarFallback>{user ? getInitials(user.name) : '?'}</AvatarFallback>
         </Avatar>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-semibold">{user?.name}</span>
+            <span className="font-semibold text-sm">{user?.name}</span>
             <span className="text-xs text-muted-foreground">
               {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
