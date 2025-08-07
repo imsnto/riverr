@@ -189,14 +189,10 @@ function DashboardComponent() {
         
         try {
             await dbUpdateSpace(activeSpace.id, updatedData);
-            // Refetch all data to ensure consistency
             const updatedSpaces = await getSpacesForUser(appUser!.id);
             setUserSpaces(updatedSpaces);
             const newActiveSpace = updatedSpaces.find(s => s.id === activeSpace.id) || null;
             setActiveSpace(newActiveSpace);
-            if (newActiveSpace) {
-                await fetchData(newActiveSpace);
-            }
         } catch(e) {
             toast({ variant: 'destructive', title: 'Update failed', description: 'Could not save space changes.' });
         }
@@ -226,7 +222,7 @@ function DashboardComponent() {
                 newTasks[taskIndex] = updatedTask;
                 return newTasks;
             }
-            return prevTasks; // Should already be in the list if it's an update
+            return [...prevTasks, updatedTask];
         });
 
         if (selectedTask && selectedTask.id === (tempId || updatedTask.id)) {
