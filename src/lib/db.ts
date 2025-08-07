@@ -18,7 +18,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions, jobFlowTemplates, JobFlowTemplate, Job, JobFlowTask, jobs, jobFlowTasks, JobFlowTaskTemplate, phaseTemplates, taskTemplates, PhaseTemplate, TaskTemplate } from './data';
+import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, users, spaces, projects, tasks, timeEntries, slackMeetingLogs, channels, messages, Invite, SpaceMember, Permissions, jobFlowTemplates, JobFlowTemplate, Job, JobFlowTask, jobs, jobFlowTasks, JobFlowTaskTemplate, phaseTemplates, taskTemplates, PhaseTemplate, TaskTemplate, JobFlowPhase } from './data';
 import { randomBytes } from 'crypto';
 
 // --- Seeding ---
@@ -290,6 +290,11 @@ export const addMessage = async (message: Omit<Message, 'id'>): Promise<Message>
 export const getJobFlowTemplates = async (): Promise<JobFlowTemplate[]> => {
     const querySnapshot = await getDocs(collection(db, 'job_flow_templates'));
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JobFlowTemplate));
+};
+
+export const addJobFlowTemplate = async (template: Omit<JobFlowTemplate, 'id'>): Promise<JobFlowTemplate> => {
+    const docRef = await addDoc(collection(db, 'job_flow_templates'), template);
+    return { ...template, id: docRef.id };
 };
 
 export const getPhaseTemplates = async (): Promise<PhaseTemplate[]> => {

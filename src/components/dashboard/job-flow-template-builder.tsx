@@ -2,10 +2,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { JobFlowTemplate, User, PhaseTemplate } from '@/lib/data';
+import { JobFlowTemplate, User, PhaseTemplate, TaskTemplate, JobFlowTaskTemplate, JobFlowPhase } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, MoreHorizontal, Edit, Trash2, LayoutTemplate, FilePlus } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash2, LayoutTemplate, FilePlus, GripVertical } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Form, FormControl, FormItem, FormLabel } from '../ui/form';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
+import { Checkbox } from '../ui/checkbox';
 
 interface JobFlowTemplateBuilderProps {
   templates: JobFlowTemplate[];
@@ -34,10 +35,28 @@ interface JobFlowTemplateBuilderProps {
   onSave: (template: Omit<JobFlowTemplate, 'id'>) => void;
 }
 
+const subtaskTemplateSchema = z.object({
+  id: z.string().optional(),
+  titleTemplate: z.string().min(1, 'Subtask title cannot be empty'),
+  defaultAssigneeId: z.string().min(1, "Assignee is required"),
+  estimatedDurationDays: z.coerce.number().min(0, "Duration must be positive").default(0),
+});
+
+const taskTemplateSchema = z.object({
+  id: z.string().optional(),
+  titleTemplate: z.string().min(1, 'Task title is required'),
+  descriptionTemplate: z.string().optional(),
+  defaultAssigneeId: z.string().min(1, 'Default assignee is required'),
+  estimatedDurationDays: z.coerce.number().min(1, "Duration must be at least 1 day"),
+  subtaskTemplates: z.array(subtaskTemplateSchema).optional(),
+});
+
+
 const jobFlowPhaseSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  // other fields from PhaseTemplate are just for display, not part of the final saved data
+  id: z.string().optional(),
+  name: z.string().min(1, 'Phase name is required'),
+  tasks: z.array(taskTemplateSchema).min(1, 'At least one task is required'),
+  requiresReview: z.boolean().default(false),
 });
 
 const jobFlowTemplateSchema = z.object({
@@ -53,10 +72,12 @@ function TemplateForm({
   onSave,
   closeDialog,
   phaseTemplates,
+  allUsers
 }: {
   onSave: (data: JobFlowTemplateFormValues) => void;
   closeDialog: () => void;
   phaseTemplates: PhaseTemplate[];
+  allUsers: User[];
 }) {
   const form = useForm<JobFlowTemplateFormValues>({
     resolver: zodResolver(jobFlowTemplateSchema),
@@ -75,24 +96,25 @@ function TemplateForm({
   });
 
   const onSubmit = (data: JobFlowTemplateFormValues) => {
-    // We need to map the form data (which is simplified) back to the full JobFlowPhase structure.
-    const fullPhaseData = data.phases.map((formPhase, index) => {
-      const originalTemplate = phaseTemplates.find(p => p.id === formPhase.id);
-      if (!originalTemplate) {
-        throw new Error(`Could not find original phase template for ${formPhase.name}`);
-      }
-      return {
-        ...originalTemplate,
-        phaseIndex: index // Re-assign index based on final order
-      };
-    });
-    
-    onSave({ ...data, phases: fullPhaseData });
+    const finalData = {
+      ...data,
+      phases: data.phases.map((phase, index) => ({
+        ...phase,
+        id: `phase-${Date.now()}-${index}`,
+        phaseIndex: index
+      }))
+    }
+    onSave(finalData as Omit<JobFlowTemplate, 'id'>);
     closeDialog();
   };
   
   const handleAddPhaseFromTemplate = (template: PhaseTemplate) => {
-    append({ id: template.id, name: template.name });
+    append({ 
+        id: template.id, 
+        name: template.name,
+        tasks: template.tasks,
+        requiresReview: template.requiresReview
+    });
   }
 
   return (
@@ -130,58 +152,168 @@ function TemplateForm({
         <Separator />
         
         <Label>Phases</Label>
-        <div className="space-y-3 p-3 border rounded-lg">
+        <div className="space-y-3 p-3 border rounded-lg bg-muted/20">
            {fields.map((field, index) => (
-             <div key={field.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
-               <span className="font-medium">{field.name}</span>
-               <div className="flex items-center gap-1">
-                 <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={index === 0} onClick={() => move(index, index - 1)}>↑</Button>
-                 <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={index === fields.length - 1} onClick={() => move(index, index + 1)}>↓</Button>
-                 <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => remove(index)}>
-                   <Trash2 className="h-3 w-3 text-destructive" />
-                 </Button>
-               </div>
-             </div>
+             <PhaseItem key={field.id} control={control} index={index} remove={remove} move={move} allUsers={allUsers} errors={errors} />
            ))}
-            {errors.phases && <p className="text-sm text-destructive">{errors.phases.message}</p>}
+            {errors.phases && typeof errors.phases.message === 'string' && <p className="text-sm text-destructive">{errors.phases.message}</p>}
 
-             <Dialog>
-                <DialogTrigger asChild>
-                    <Button type="button" variant="outline" size="sm" className="w-full">
-                        <Plus className="mr-2 h-4 w-4" /> Add Phase From Template
-                    </Button>
-                </DialogTrigger>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Add Phase From Template</DialogTitle>
-                        <DialogDescription>Select a pre-built phase to add to this flow.</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-2 py-4">
-                        {phaseTemplates.map(pt => (
-                            <DialogTrigger key={pt.id} asChild>
-                                <button
-                                    onClick={() => handleAddPhaseFromTemplate(pt)}
-                                    className="w-full text-left p-2 rounded-md hover:bg-accent"
-                                >
-                                    <p className="font-semibold">{pt.name}</p>
-                                    <p className="text-sm text-muted-foreground">{pt.description}</p>
-                                </button>
-                            </DialogTrigger>
-                        ))}
-                        {phaseTemplates.length === 0 && <p className="text-sm text-muted-foreground text-center">No phase templates found.</p>}
-                    </div>
-                </DialogContent>
-            </Dialog>
+            <div className="flex gap-2">
+                 <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append({ id: `phase-${Date.now()}`, name: 'New Phase', tasks: [{ id: `task-${Date.now()}`, titleTemplate: 'New Task', defaultAssigneeId: '', estimatedDurationDays: 1, subtaskTemplates: [] }], requiresReview: false })}
+                    className="w-full"
+                >
+                    <Plus className="mr-2 h-4 w-4" /> Add New Phase
+                </Button>
+                 <Dialog>
+                    <DialogTrigger asChild>
+                        <Button type="button" variant="secondary" size="sm" className="w-full">
+                            <Plus className="mr-2 h-4 w-4" /> Add Phase From Template
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Add Phase From Template</DialogTitle>
+                            <DialogDescription>Select a pre-built phase to add to this flow.</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-2 py-4">
+                            {phaseTemplates.map(pt => (
+                                <DialogTrigger key={pt.id} asChild>
+                                    <button
+                                        onClick={() => handleAddPhaseFromTemplate(pt)}
+                                        className="w-full text-left p-2 rounded-md hover:bg-accent"
+                                    >
+                                        <p className="font-semibold">{pt.name}</p>
+                                        <p className="text-sm text-muted-foreground">{pt.description}</p>
+                                    </button>
+                                </DialogTrigger>
+                            ))}
+                            {phaseTemplates.length === 0 && <p className="text-sm text-muted-foreground text-center">No phase templates found.</p>}
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            </div>
         </div>
       </form>
     </Form>
   );
 }
 
+const PhaseItem = ({ control, index, remove, move, allUsers, errors }: { control: any, index: number, remove: (index: number) => void, move: (from: number, to: number) => void, allUsers: User[], errors: any }) => {
+    const { fields, append, remove: removeTask } = useFieldArray({
+        control,
+        name: `phases.${index}.tasks`
+    });
+
+    return (
+        <div className="bg-card p-4 rounded-lg border space-y-4">
+            <div className="flex items-center gap-2">
+                 <GripVertical className="h-5 w-5 text-muted-foreground cursor-move" />
+                 <Input {...control.register(`phases.${index}.name`)} placeholder="Phase Name" className="font-semibold text-base border-none p-0 h-auto focus-visible:ring-0" />
+                 <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => remove(index)}>
+                   <Trash2 className="h-4 w-4 text-destructive" />
+                 </Button>
+            </div>
+             {errors.phases?.[index]?.name && <p className="text-sm text-destructive pl-7">{errors.phases[index].name.message}</p>}
+
+             <div className="pl-7 space-y-3">
+                {fields.map((taskField, taskIndex) => (
+                    <div key={taskField.id} className="rounded-md border p-3 bg-muted/50 space-y-3 relative">
+                        {/* Task Content */}
+                        <div className="space-y-1">
+                           <Label className="text-xs">Task Title Template</Label>
+                           <Input {...control.register(`phases.${index}.tasks.${taskIndex}.titleTemplate`)} placeholder="e.g., Schedule meeting" className="bg-background h-8"/>
+                           {errors.phases?.[index]?.tasks?.[taskIndex]?.titleTemplate && <p className="text-sm text-destructive">{errors.phases[index].tasks[taskIndex].titleTemplate.message}</p>}
+                       </div>
+                        <div className="grid grid-cols-2 gap-4">
+                           <div className="space-y-1">
+                               <Label className="text-xs">Default Assignee</Label>
+                               <Controller
+                                   control={control}
+                                   name={`phases.${index}.tasks.${taskIndex}.defaultAssigneeId`}
+                                   render={({ field }) => (
+                                   <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                           <SelectTrigger className="bg-background h-8">
+                                               <SelectValue placeholder="Select an assignee" />
+                                           </SelectTrigger>
+                                           <SelectContent>
+                                               {allUsers.map(user => (
+                                                   <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                                               ))}
+                                           </SelectContent>
+                                   </Select>
+                                   )}
+                               />
+                               {errors.phases?.[index]?.tasks?.[taskIndex]?.defaultAssigneeId && <p className="text-sm text-destructive">{errors.phases[index].tasks[taskIndex].defaultAssigneeId.message}</p>}
+                           </div>
+                           <div className="space-y-1">
+                               <Label className="text-xs">Duration (days)</Label>
+                               <Input 
+                                   type="number"
+                                   {...control.register(`phases.${index}.tasks.${taskIndex}.estimatedDurationDays`)}
+                                   placeholder="e.g., 5"
+                                   className="bg-background h-8"
+                                   min="1"
+                               />
+                               {errors.phases?.[index]?.tasks?.[taskIndex]?.estimatedDurationDays && <p className="text-sm text-destructive">{errors.phases[index].tasks[taskIndex].estimatedDurationDays.message}</p>}
+                           </div>
+                       </div>
+                       
+                       <Button type="button" variant="ghost" size="icon" onClick={() => removeTask(taskIndex)} className="absolute -top-2 -right-2 h-6 w-6">
+                           <Trash2 className="h-3 w-3 text-destructive" />
+                       </Button>
+                   </div>
+                ))}
+                {errors.phases?.[index]?.tasks && typeof errors.phases[index].tasks.message === 'string' && (
+                     <p className="text-sm text-destructive">{errors.phases[index].tasks.message}</p>
+                 )}
+
+                 <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append({ id: `task-${Date.now()}`, titleTemplate: '', defaultAssigneeId: '', estimatedDurationDays: 1, subtaskTemplates: [] })}
+                    className="w-full"
+                >
+                    <Plus className="mr-2 h-4 w-4" /> Add Task
+                </Button>
+             </div>
+              <div>
+                  <Controller
+                      control={control}
+                      name={`phases.${index}.requiresReview`}
+                      render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 shadow-sm bg-background">
+                              <FormControl>
+                                  <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                  />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                  <FormLabel>
+                                      Requires Review
+                                  </FormLabel>
+                                  <p className="text-xs text-muted-foreground">
+                                      If checked, this phase must be manually approved before the flow can continue.
+                                  </p>
+                              </div>
+                          </FormItem>
+                      )}
+                  />
+              </div>
+        </div>
+    )
+}
+
 export default function JobFlowTemplateBuilder({
   templates,
   phaseTemplates,
   onSave,
+  allUsers,
 }: JobFlowTemplateBuilderProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
 
@@ -250,7 +382,7 @@ export default function JobFlowTemplateBuilder({
         </CardContent>
       </Card>
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
           <DialogHeader className="p-6 pb-4 border-b">
             <DialogTitle>Create New Job Flow Template</DialogTitle>
             <DialogDescription>
@@ -262,6 +394,7 @@ export default function JobFlowTemplateBuilder({
               onSave={handleSave}
               closeDialog={() => setIsFormOpen(false)}
               phaseTemplates={phaseTemplates}
+              allUsers={allUsers}
             />
           </div>
           <DialogFooter className="p-6 pt-4 border-t bg-muted/50">

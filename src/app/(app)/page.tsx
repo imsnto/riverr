@@ -36,6 +36,7 @@ import {
     addTimeEntry as dbAddTimeEntry,
     addInvite as dbAddInvite,
     addMessage as dbAddMessage,
+    addJobFlowTemplate as dbAddJobFlowTemplate,
     addPhaseTemplate as dbAddPhaseTemplate,
     addTaskTemplate as dbAddTaskTemplate,
 } from '@/lib/db';
@@ -434,7 +435,10 @@ export default function Dashboard() {
                                                     templates={jobFlowTemplates} 
                                                     phaseTemplates={phaseTemplates}
                                                     allUsers={allUsers}
-                                                    onSave={() => {}}
+                                                    onSave={async (data) => {
+                                                        const newTemplate = await dbAddJobFlowTemplate(data);
+                                                        setJobFlowTemplates(prev => [...prev, newTemplate]);
+                                                    }}
                                                  />;
                         case 'phases': return <PhaseTemplateBuilder
                                                   templates={phaseTemplates}
@@ -570,5 +574,3 @@ export default function Dashboard() {
         </SidebarProvider>
     );
 }
-
-    
