@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown, ClipboardCheck } from 'lucide-react';
@@ -59,7 +59,7 @@ import { Button } from '@/components/ui/button';
 import { TopBar } from '@/components/dashboard/top-bar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 
 type View = 'overview' | 'tasks' | 'mytasks' | 'messages' | 'timesheets' | 'reports' | 'flows' | 'settings';
@@ -72,9 +72,10 @@ const LoadingState = () => (
     </div>
 );
 
-export default function Dashboard() {
+function DashboardComponent() {
     const { appUser, userSpaces, setUserSpaces } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { toast } = useToast();
     
     const [activeSpace, setActiveSpace] = useState<Space | null>(null);
@@ -102,6 +103,13 @@ export default function Dashboard() {
     const [activeThread, setActiveThread] = useState<Message | null>(null);
     const [readThreadIds, setReadThreadIds] = useState<Set<string>>(new Set());
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    
+     useEffect(() => {
+        const viewFromParams = searchParams.get('view') as View;
+        if (viewFromParams && Object.values(['overview', 'tasks', 'mytasks', 'messages', 'timesheets', 'reports', 'flows', 'settings']).includes(viewFromParams)) {
+            setView(viewFromParams);
+        }
+    }, [searchParams]);
     
     const fetchData = async (space: Space) => {
         setIsLoading(true);
@@ -592,4 +600,12 @@ export default function Dashboard() {
         )}
       </SidebarProvider>
     );
+}
+
+export default function Dashboard() {
+    return (
+        <Suspense fallback={<LoadingState />}>
+            <DashboardComponent />
+        </Suspense>
+    )
 }
