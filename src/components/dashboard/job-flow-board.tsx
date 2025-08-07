@@ -1,10 +1,10 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { JobFlowTemplate, Job, JobFlowTask, Task, User, Space, Project } from '@/lib/data';
 import { Button } from '@/components/ui/button';
-import { Plus, LayoutTemplate } from 'lucide-react';
+import { Plus, LayoutTemplate, Kanban, Rows, ChevronsUpDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import LaunchJobDialog from './launch-job-dialog';
 import JobDetailsDialog from './job-details-dialog';
@@ -12,6 +12,9 @@ import KanbanJobView from './kanban-job-view';
 import StepperJobView from './stepper-job-view';
 import ListJobView from './list-job-view';
 import { updateJobPhase } from '@/lib/db';
+import { Separator } from '../ui/separator';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface JobFlowBoardProps {
     activeSpace: Space;
@@ -41,6 +44,17 @@ export default function JobFlowBoard({
     const [isJobDetailsOpen, setIsJobDetailsOpen] = useState(false);
     const [selectedJob, setSelectedJob] = useState<Job | null>(null);
     const { toast } = useToast();
+    
+    const [viewMode, setViewMode] = useState<'kanban' | 'stepper' | 'list' | null>(null);
+    const selectedTemplate = jobFlowTemplates.find(t => t.id === selectedTemplateId);
+
+    useEffect(() => {
+        if (selectedTemplate) {
+            setViewMode(selectedTemplate.defaultView);
+        } else {
+            setViewMode(null);
+        }
+    }, [selectedTemplate]);
 
     const handleLaunchNewJob = () => {
         if (!selectedTemplate) {
@@ -71,13 +85,12 @@ export default function JobFlowBoard({
     };
 
 
-    const selectedTemplate = jobFlowTemplates.find(t => t.id === selectedTemplateId);
     const filteredJobs = jobs.filter(j => j.workflowTemplateId === selectedTemplateId);
 
     const renderView = () => {
-        if (!selectedTemplate) return null;
+        if (!selectedTemplate || !viewMode) return null;
 
-        switch (selectedTemplate.defaultView) {
+        switch (viewMode) {
             case 'kanban':
                 return <KanbanJobView 
                             template={selectedTemplate} 
@@ -105,7 +118,7 @@ export default function JobFlowBoard({
     };
 
   return (
-    <>
+    <TooltipProvider>
       <div className="flex h-full gap-6">
         <aside className="w-56 flex-shrink-0 border-r pr-6">
           <div className="flex justify-between items-center mb-4">
@@ -126,20 +139,43 @@ export default function JobFlowBoard({
               ))}
           </div>
         </aside>
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-auto">
           {selectedTemplate ? (
-            <div>
+            <div className="flex flex-col h-full">
               <div className="flex justify-between items-center mb-4">
                 <div>
                     <h1 className="text-2xl font-bold">{selectedTemplate.name}</h1>
                     <p className="text-muted-foreground">{selectedTemplate.description}</p>
                 </div>
-                <Button onClick={handleLaunchNewJob}>
-                  <Plus className="mr-2 h-4" />
-                  Launch Job
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                           <Button variant={viewMode === 'kanban' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('kanban')}><Kanban /></Button>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Kanban View</p></TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant={viewMode === 'stepper' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('stepper')}><ChevronsUpDown /></Button>
+                        </TooltipTrigger>
+                         <TooltipContent><p>Stepper View</p></TooltipContent>
+                    </Tooltip>
+                     <Tooltip>
+                        <TooltipTrigger asChild>
+                           <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}><Rows /></Button>
+                        </TooltipTrigger>
+                         <TooltipContent><p>List View</p></TooltipContent>
+                    </Tooltip>
+                    <Separator orientation="vertical" className="h-6 mx-2" />
+                    <Button onClick={handleLaunchNewJob}>
+                        <Plus className="mr-2 h-4" />
+                        Launch Job
+                    </Button>
+                </div>
               </div>
-              {renderView()}
+              <div className="flex-1 overflow-y-auto">
+                {renderView()}
+              </div>
             </div>
           ) : (
               <div className="flex flex-col items-center justify-center h-full text-center bg-card rounded-lg">
@@ -176,6 +212,6 @@ export default function JobFlowBoard({
             onTaskSelect={onTaskSelect}
           />
       )}
-    </>
+    </TooltipProvider>
   );
 }
