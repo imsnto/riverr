@@ -99,7 +99,7 @@ function TemplateForm({
     },
   });
 
-  const { register, control, handleSubmit, formState: { errors } } = form;
+  const { register, control, handleSubmit, formState: { errors }, watch } = form;
   const { fields, append, remove, move } = useFieldArray({
     control,
     name: "phases"
@@ -165,7 +165,7 @@ function TemplateForm({
         <Label>Phases</Label>
         <div className="space-y-3 p-3 border rounded-lg bg-muted/20">
            {fields.map((field, index) => (
-             <PhaseItem key={field.id} control={control} index={index} remove={remove} move={move} allUsers={allUsers} errors={errors} />
+             <PhaseItem key={field.id} control={control} index={index} remove={remove} move={move} allUsers={allUsers} errors={errors} watch={watch} />
            ))}
             {errors.phases && typeof errors.phases.message === 'string' && <p className="text-sm text-destructive">{errors.phases.message}</p>}
 
@@ -213,13 +213,13 @@ function TemplateForm({
   );
 }
 
-const PhaseItem = ({ control, index, remove, move, allUsers, errors }: { control: any, index: number, remove: (index: number) => void, move: (from: number, to: number) => void, allUsers: User[], errors: any }) => {
+const PhaseItem = ({ control, index, remove, move, allUsers, errors, watch }: { control: any, index: number, remove: (index: number) => void, move: (from: number, to: number) => void, allUsers: User[], errors: any, watch: any }) => {
     const { fields, append, remove: removeTask } = useFieldArray({
         control,
         name: `phases.${index}.tasks`
     });
 
-    const requiresReview = control.watch(`phases.${index}.requiresReview`);
+    const requiresReview = watch(`phases.${index}.requiresReview`);
 
     return (
         <div className="bg-card p-4 rounded-lg border space-y-4">
@@ -515,3 +515,5 @@ export default function JobFlowTemplateBuilder({
     </>
   );
 }
+
+    
