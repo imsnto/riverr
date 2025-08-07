@@ -5,8 +5,8 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
-import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown, ClipboardCheck } from 'lucide-react';
-import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, Invite, Status, JobFlowTemplate, Job, JobFlowTask, PhaseTemplate, TaskTemplate, Activity } from '@/lib/data';
+import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown, ClipboardCheck, BookOpen } from 'lucide-react';
+import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, Invite, Status, JobFlowTemplate, Job, JobFlowTask, PhaseTemplate, TaskTemplate, Activity, Document } from '@/lib/data';
 import TaskBoard from '@/components/dashboard/task-board';
 import { useToast } from '@/hooks/use-toast';
 import TeamTimesheets from '@/components/dashboard/team-timesheets';
@@ -41,6 +41,10 @@ import {
     addTaskTemplate as dbAddTaskTemplate,
     deleteTask as dbDeleteTask,
     updateJob as dbUpdateJob,
+    getDocumentsInSpace,
+    addDocument,
+    updateDocument,
+    deleteDocument as dbDeleteDocument,
 } from '@/lib/db';
 import MeetingReview from '@/components/dashboard/meeting-review';
 import ChannelsView from '@/components/dashboard/channels-view';
@@ -60,9 +64,10 @@ import { TopBar } from '@/components/dashboard/top-bar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
+import DocumentsView from '@/components/dashboard/documents-view';
 
 
-type View = 'overview' | 'tasks' | 'mytasks' | 'messages' | 'timesheets' | 'reports' | 'flows' | 'settings';
+type View = 'overview' | 'tasks' | 'mytasks' | 'messages' | 'timesheets' | 'reports' | 'flows' | 'settings' | 'documents';
 type SettingsView = 'users' | 'spaces';
 type FlowsView = 'job_flows' | 'templates' | 'phases' | 'tasks';
 
@@ -91,6 +96,7 @@ function DashboardComponent() {
     const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
     const [jobs, setJobs] = useState<Job[]>([]);
     const [jobFlowTasks, setJobFlowTasks] = useState<JobFlowTask[]>([]);
+    const [documents, setDocuments] = useState<Document[]>([]);
     
     const [view, setView] = useState<View>('overview');
     const [settingsView, setSettingsView] = useState<SettingsView>('users');
@@ -106,7 +112,7 @@ function DashboardComponent() {
     
      useEffect(() => {
         const viewFromParams = searchParams.get('view') as View;
-        if (viewFromParams && Object.values(['overview', 'tasks', 'mytasks', 'messages', 'timesheets', 'reports', 'flows', 'settings']).includes(viewFromParams)) {
+        if (viewFromParams && Object.values(['overview', 'tasks', 'mytasks', 'messages', 'timesheets', 'reports', 'flows', 'settings', 'documents']).includes(viewFromParams)) {
             setView(viewFromParams);
         }
     }, [searchParams]);
@@ -118,7 +124,7 @@ function DashboardComponent() {
             // First, fetch data that doesn't have dependencies
             const [
                 users, allTasks, fetchedProjects, fetchedChannels, jobTemplates, 
-                fetchedJobs, fetchedJobFlowTasks, phaseTpls, taskTpls
+                fetchedJobs, fetchedJobFlowTasks, phaseTpls, taskTpls, fetchedDocuments
             ] = await Promise.all([
                 getAllUsers(),
                 getAllTasks(), // In a larger app, this should be paginated/filtered
@@ -129,6 +135,7 @@ function DashboardComponent() {
                 Promise.all(spaces.map(s => getAllJobFlowTasks(s.id))).then(jft => jft.flat()),
                 Promise.all(spaces.map(s => getPhaseTemplates(s.id))).then(pt => pt.flat()),
                 Promise.all(spaces.map(s => getTaskTemplates(s.id))).then(tt => tt.flat()),
+                Promise.all(spaces.map(s => getDocumentsInSpace(s.id))).then(d => d.flat()),
             ]);
 
             setAllUsers(users);
@@ -140,6 +147,7 @@ function DashboardComponent() {
             setJobFlowTasks(fetchedJobFlowTasks);
             setPhaseTemplates(phaseTpls);
             setTaskTemplates(taskTpls);
+            setDocuments(fetchedDocuments);
 
             // Now, fetch data that depends on the results above
             const [fetchedTimeEntries, fetchedSlackLogs, fetchedMessages] = await Promise.all([
@@ -339,6 +347,29 @@ function DashboardComponent() {
              setMessages(prev => prev.map(m => m.id === activeThread!.id ? messageWithTask : m));
        }
     }
+    
+     const handleSaveDocument = async (doc: Omit<Document, 'id' | 'createdAt' | 'updatedAt'>, docId?: string) => {
+        const now = new Date().toISOString();
+        if (docId) {
+            const updatedDoc = { ...doc, updatedAt: now };
+            await updateDocument(docId, updatedDoc);
+            setDocuments(prev => prev.map(d => d.id === docId ? { ...d, ...updatedDoc } : d));
+            toast({ title: 'Document Saved' });
+        } else {
+            const newDocData = { ...doc, createdAt: now, updatedAt: now };
+            const newDoc = await addDocument(newDocData);
+            setDocuments(prev => [...prev, newDoc]);
+            toast({ title: 'Document Created' });
+            return newDoc;
+        }
+        return null;
+    };
+    
+    const handleDeleteDocument = async (docId: string) => {
+        await dbDeleteDocument(docId);
+        setDocuments(prev => prev.filter(d => d.id !== docId));
+        toast({ title: 'Document Deleted' });
+    };
 
     const memoizedTasks = useMemo(() => tasks, [tasks]);
 
@@ -445,6 +476,16 @@ function DashboardComponent() {
             )
             case 'timesheets': return <div className="p-4 md:p-8"><TeamTimesheets allSpaces={userSpaces} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} /></div>;
             case 'reports': return <div className="p-4 md:p-8"><MeetingReview slackMeetingLogs={slackLogs} projects={projects} allUsers={allUsers} /></div>;
+            case 'documents':
+                return <div className="p-4 md:p-8">
+                    <DocumentsView
+                        documents={documents.filter(d => d.spaceId === activeSpace?.id)}
+                        onSave={handleSaveDocument}
+                        onDelete={handleDeleteDocument}
+                        activeSpaceId={activeSpace!.id}
+                        appUser={appUser!}
+                    />
+                </div>;
             case 'flows': 
                 const renderFlowsContent = () => {
                     switch(flowsView) {
@@ -493,7 +534,7 @@ function DashboardComponent() {
                 }
                 const isTemplateView = ['templates', 'phases', 'tasks'].includes(flowsView);
                 return (
-                     <div className="flex flex-col h-full p-4 md:p-8">
+                     <div className="flex flex-col h-full p-4 md:px-8 md:pt-8">
                         <div className="flex items-center p-2">
                             <Button 
                                 variant="ghost" 
@@ -563,6 +604,9 @@ function DashboardComponent() {
                         </Button>
                         <Button onClick={() => setView('messages')} variant={view === 'messages' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
                             <MessageSquare className="w-7 h-7"/>
+                        </Button>
+                        <Button onClick={() => setView('documents')} variant={view === 'documents' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                            <BookOpen className="w-7 h-7"/>
                         </Button>
                         <Button onClick={() => setView('timesheets')} variant={view === 'timesheets' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
                             <Timer className="w-7 h-7"/>

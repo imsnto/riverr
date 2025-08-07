@@ -16,7 +16,7 @@ import { updateTask, addTask, deleteTask, addTimeEntry } from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import { TopBar } from '@/components/dashboard/top-bar';
 import { Sidebar, SidebarProvider } from '@/components/ui/sidebar';
-import { BarChart, FolderKanban, MessageSquare, Timer, Workflow, Settings, ClipboardCheck } from 'lucide-react';
+import { BarChart, FolderKanban, MessageSquare, Timer, Workflow, Settings, ClipboardCheck, BookOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -179,6 +179,9 @@ export default function MyTasksPage() {
                             </Button>
                             <Button onClick={() => router.push('/?view=messages')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">
                                 <MessageSquare className="w-7 h-7"/>
+                            </Button>
+                            <Button onClick={() => router.push('/?view=documents')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">
+                                <BookOpen className="w-7 h-7"/>
                             </Button>
                             <Button onClick={() => router.push('/?view=timesheets')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">
                                 <Timer className="w-7 h-7"/>
