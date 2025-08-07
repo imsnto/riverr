@@ -39,7 +39,11 @@ export function EditLink({ editor }: { editor: Editor }) {
         <Toggle
           size="sm"
           pressed={editor.isActive('link')}
-          onPressedChange={setLink}
+          onPressedChange={() => {
+            // if link is active, popover will be open, so we don't want to open prompt
+            if (editor.isActive('link')) return;
+            setLink();
+          }}
         >
           <LinkIcon className="h-4 w-4" />
         </Toggle>
