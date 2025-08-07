@@ -6,7 +6,7 @@ import React, { useState, useEffect, useTransition, useRef } from 'react';
 import { Document, User, DocumentComment } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Bot, Loader2, Save, Trash2, X, MessageSquare, Bold, Italic, Heading1, Heading2, List } from 'lucide-react';
+import { ArrowLeft, Bot, Loader2, Save, Trash2, X, MessageSquare, Bold, Italic, Heading1, Heading2, List, Pilcrow, Heading3, Quote } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { assistInDocument } from '@/ai/flows/assist-in-document';
 import { Separator } from '../ui/separator';
@@ -25,6 +25,96 @@ const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
 };
 
+const MarkdownToolbar = ({ textareaRef, onContentChange }: { textareaRef: React.RefObject<HTMLTextAreaElement>, onContentChange: (newContent: string) => void }) => {
+    const applyStyle = (syntax: 'bold' | 'italic' | 'h1' | 'h2' | 'h3' | 'ul' | 'ol' | 'blockquote') => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = textarea.value.substring(start, end);
+        let newText;
+
+        switch (syntax) {
+            case 'bold':
+                newText = `**${selectedText}**`;
+                break;
+            case 'italic':
+                newText = `*${selectedText}*`;
+                break;
+            case 'h1':
+                newText = `# ${selectedText}`;
+                break;
+            case 'h2':
+                newText = `## ${selectedText}`;
+                break;
+            case 'h3':
+                newText = `### ${selectedText}`;
+                break;
+             case 'ul':
+                newText = selectedText.split('\n').map(line => `- ${line}`).join('\n');
+                break;
+            case 'ol':
+                newText = selectedText.split('\n').map((line, index) => `${index + 1}. ${line}`).join('\n');
+                break;
+            case 'blockquote':
+                newText = `> ${selectedText}`;
+                break;
+            default:
+                newText = selectedText;
+        }
+
+        const updatedContent = textarea.value.substring(0, start) + newText + textarea.value.substring(end);
+        onContentChange(updatedContent);
+
+        // Re-focus and select the newly formatted text
+        setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(start, start + newText.length);
+        }, 0);
+    };
+
+    return (
+        <div className="p-2 border-b sticky top-0 bg-background z-10 rounded-t-lg">
+            <TooltipProvider>
+                <div className="flex items-center gap-1">
+                    <Tooltip>
+                        <TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => applyStyle('h1')}><Heading1/></Button></TooltipTrigger>
+                        <TooltipContent><p>Heading 1</p></TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => applyStyle('h2')}><Heading2/></Button></TooltipTrigger>
+                        <TooltipContent><p>Heading 2</p></TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => applyStyle('h3')}><Heading3/></Button></TooltipTrigger>
+                        <TooltipContent><p>Heading 3</p></TooltipContent>
+                    </Tooltip>
+                     <Separator orientation="vertical" className="h-6 mx-2" />
+                    <Tooltip>
+                        <TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => applyStyle('bold')}><Bold/></Button></TooltipTrigger>
+                        <TooltipContent><p>Bold</p></TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => applyStyle('italic')}><Italic/></Button></TooltipTrigger>
+                        <TooltipContent><p>Italic</p></TooltipContent>
+                    </Tooltip>
+                    <Separator orientation="vertical" className="h-6 mx-2" />
+                    <Tooltip>
+                        <TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => applyStyle('ul')}><List/></Button></TooltipTrigger>
+                        <TooltipContent><p>Bulleted List</p></TooltipContent>
+                    </Tooltip>
+                     <Tooltip>
+                        <TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => applyStyle('blockquote')}><Quote/></Button></TooltipTrigger>
+                        <TooltipContent><p>Blockquote</p></TooltipContent>
+                    </Tooltip>
+                </div>
+            </TooltipProvider>
+        </div>
+    );
+};
+
+
 interface DocumentEditorProps {
   document: Document | null;
   onBack: () => void;
@@ -42,6 +132,8 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
   const [content, setContent] = useState('');
   const [sidebarView, setSidebarView] = useState<'ai' | 'comments' | null>(null);
   const { toast } = useToast();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
 
   useEffect(() => {
     if (document) {
@@ -70,11 +162,19 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
         comments: document?.comments || [],
     };
     
+    let savedDoc;
     if (document) {
-        return onSave(docData, document.id);
+        savedDoc = await onSave(docData, document.id);
     } else {
-        return onCreate(docData);
+        savedDoc = await onCreate(docData);
     }
+
+    if(savedDoc) {
+      onDocumentUpdate(savedDoc);
+      toast({ title: "Document Saved!"});
+    }
+
+    return savedDoc;
   };
   
   const handleDelete = () => {
@@ -113,71 +213,43 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
 
   return (
     <div className="flex flex-row gap-0 h-full">
-        <div className="flex-1 flex flex-col">
-            <div className="p-4 md:p-8 flex flex-col flex-1">
-                <div className="flex items-center gap-2 mb-4">
-                    <Button variant="ghost" size="icon" onClick={onBack}>
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                    <Input
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Untitled Document"
-                        className="text-2xl font-bold border-none focus-visible:ring-0 p-0 h-auto"
-                    />
-                </div>
+        <div className="flex-1 flex flex-col p-4 md:p-8">
+            <div className="flex items-center gap-2 mb-4">
+                <Button variant="ghost" size="icon" onClick={onBack}>
+                    <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <Input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Untitled Document"
+                    className="text-2xl font-bold border-none focus-visible:ring-0 p-0 h-auto"
+                />
+            </div>
 
-                <div className="flex items-center gap-2 mb-4 border-b pb-2">
-                    <Button size="sm" onClick={handleSave}><Save className="mr-2 h-4 w-4"/> Save</Button>
-                    {document && (
-                        <Button size="sm" variant="destructive" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4"/> Delete</Button>
-                    )}
-                    <Separator orientation="vertical" className="h-6 mx-2" />
-                    <Button size="sm" variant="outline" onClick={() => setSidebarView(sidebarView === 'comments' ? null : 'comments')}>
-                        <MessageSquare className="mr-2 h-4 w-4" /> Comments
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setSidebarView(sidebarView === 'ai' ? null : 'ai')}>
-                        <Bot className="mr-2 h-4 w-4" /> AI Assistant
-                    </Button>
-                </div>
-                
-                <div className="flex-1 py-4">
-                    <div className="prose dark:prose-invert max-w-4xl mx-auto">
-                        {/* Toolbar Placeholder */}
-                        <div className="p-2 border-b sticky top-0 bg-background z-10 rounded-t-lg">
-                            <TooltipProvider>
-                                <div className="flex items-center gap-1">
-                                    <Tooltip>
-                                        <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Bold/></Button></TooltipTrigger>
-                                        <TooltipContent><p>Bold</p></TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Italic/></Button></TooltipTrigger>
-                                        <TooltipContent><p>Italic</p></TooltipContent>
-                                    </Tooltip>
-                                    <Separator orientation="vertical" className="h-6 mx-2" />
-                                    <Tooltip>
-                                        <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Heading1/></Button></TooltipTrigger>
-                                        <TooltipContent><p>Heading 1</p></TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><Heading2/></Button></TooltipTrigger>
-                                        <TooltipContent><p>Heading 2</p></TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild><Button variant="ghost" size="icon" disabled><List/></Button></TooltipTrigger>
-                                        <TooltipContent><p>Bulleted List</p></TooltipContent>
-                                    </Tooltip>
-                                </div>
-                            </TooltipProvider>
-                        </div>
-                        <TextareaAutosize
-                            value={content}
-                            onChange={(e) => setContent(e.target.value)}
-                            placeholder="Start writing your document here. Use Markdown for formatting..."
-                            className="w-full text-base resize-none border-x rounded-b-lg p-8 m-0 bg-transparent focus:outline-none"
-                        />
-                    </div>
+            <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                <Button size="sm" onClick={handleSave}><Save className="mr-2 h-4 w-4"/> Save</Button>
+                {document && (
+                    <Button size="sm" variant="destructive" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4"/> Delete</Button>
+                )}
+                <Separator orientation="vertical" className="h-6 mx-2" />
+                <Button size="sm" variant="outline" onClick={() => setSidebarView(sidebarView === 'comments' ? null : 'comments')}>
+                    <MessageSquare className="mr-2 h-4 w-4" /> Comments
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setSidebarView(sidebarView === 'ai' ? null : 'ai')}>
+                    <Bot className="mr-2 h-4 w-4" /> AI Assistant
+                </Button>
+            </div>
+            
+            <div className="flex-1 py-4 flex flex-col">
+                <div className="prose dark:prose-invert max-w-4xl mx-auto w-full flex-1 flex flex-col border rounded-lg">
+                    <MarkdownToolbar textareaRef={textareaRef} onContentChange={setContent} />
+                    <TextareaAutosize
+                        ref={textareaRef}
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        placeholder="Start writing your document here. Use Markdown for formatting..."
+                        className="w-full text-base resize-none rounded-b-lg p-8 m-0 bg-transparent flex-1 focus:outline-none"
+                    />
                 </div>
             </div>
         </div>
@@ -405,5 +477,3 @@ function CommentsPanel({ document, onClose, allUsers, appUser, onPostComment }: 
         </div>
     );
 }
-
-    
