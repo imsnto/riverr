@@ -21,7 +21,7 @@ import { FontSize } from '@/lib/tiptap-fontsize';
 
 import { Toolbar } from './TiptapToolbar';
 
-export default function TiptapEditor({ content, onChange }: { content: string; onChange: (html: string) => void }) {
+export default function TiptapEditor({ content, onChange, onBlur }: { content: string; onChange: (html: string) => void, onBlur?: () => void }) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -51,7 +51,19 @@ export default function TiptapEditor({ content, onChange }: { content: string; o
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
+    onBlur: () => {
+      if (onBlur) {
+        onBlur();
+      }
+    }
   });
+  
+  useEffect(() => {
+    if (editor && content !== editor.getHTML()) {
+      editor.commands.setContent(content, false);
+    }
+  }, [content, editor]);
+
 
   return (
     <div className="border rounded-lg overflow-hidden">

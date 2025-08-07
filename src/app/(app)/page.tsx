@@ -112,7 +112,7 @@ function DashboardComponent() {
     
      useEffect(() => {
         const viewFromParams = searchParams.get('view') as View;
-        if (viewFromParams && Object.values(['overview', 'tasks', 'mytasks', 'messages', 'timesheets', 'reports', 'flows', 'settings', 'documents']).includes(viewFromParams)) {
+        if (viewFromParams && Object.values(['overview', 'tasks', 'mytasks', 'messages', 'timesheets', 'reports', 'flows', 'settings']).includes(viewFromParams)) {
             setView(viewFromParams);
         }
     }, [searchParams]);
@@ -482,19 +482,8 @@ function DashboardComponent() {
             case 'timesheets': return <div className="p-4 md:p-8"><TeamTimesheets allSpaces={userSpaces} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} /></div>;
             case 'reports': return <div className="p-4 md:p-8"><MeetingReview slackMeetingLogs={slackLogs} projects={projects} allUsers={allUsers} /></div>;
             case 'documents':
-                return (
-                    <div className="p-4 md:p-8">
-                        <DocumentsView
-                            documents={documents.filter(d => d.spaceId === activeSpace?.id)}
-                            onSave={handleSaveDocument}
-                            onDelete={handleDeleteDocument}
-                            activeSpaceId={activeSpace!.id}
-                            appUser={appUser!}
-                            allUsers={allUsers.filter(u => activeSpace?.members[u.id])}
-                            onDocumentUpdate={updateLocalDocument}
-                        />
-                    </div>
-                );
+                 router.push('/documents');
+                 return null;
             case 'flows': 
                 const renderFlowsContent = () => {
                     switch(flowsView) {
@@ -614,7 +603,7 @@ function DashboardComponent() {
                         <Button onClick={() => setView('messages')} variant={view === 'messages' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
                             <MessageSquare className="w-7 h-7"/>
                         </Button>
-                        <Button onClick={() => setView('documents')} variant={view === 'documents' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                        <Button onClick={() => router.push('/documents')} variant={view === 'documents' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
                             <BookOpen className="w-7 h-7"/>
                         </Button>
                         <Button onClick={() => setView('timesheets')} variant={view === 'timesheets' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">

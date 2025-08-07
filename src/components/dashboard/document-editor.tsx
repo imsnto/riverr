@@ -5,88 +5,64 @@ import React, { useEffect, useState } from 'react';
 import { Document, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Bot, Save, Trash2, MessageSquare, X } from 'lucide-react';
+import { ArrowLeft, Bot, Save, Trash2, MessageSquare } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { TiptapEditor } from '@/components/document/TiptapEditor';
 import { useAuth } from '@/hooks/use-auth';
 import CommentsPanel from './CommentsPanel';
 import AssistantPanel from './AssistantPanel';
-import TiptapEditor from '@/components/document/TiptapEditor';
+import { useRouter } from 'next/navigation';
 
 interface DocumentEditorProps {
-  document: Document | null;
-  onBack: () => void;
-  onSave: (doc: Omit<Document, 'id' | 'createdAt' | 'updatedAt'>, docId?: string) => Promise<Document | null>;
-  onDelete: (docId: string) => void;
-  onCreate: (doc: Omit<Document, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Document | null>;
-  spaceId: string;
-  appUser: User;
+  initialDocument: Document;
   allUsers: User[];
-  onDocumentUpdate: (doc: Document) => void;
+  onSave: (doc: Document) => Promise<void>;
+  onDelete: (docId: string) => Promise<void>;
 }
 
 export default function DocumentEditor({
-  document,
-  onBack,
+  initialDocument,
+  allUsers,
   onSave,
   onDelete,
-  onCreate,
-  spaceId,
-  appUser,
-  allUsers,
-  onDocumentUpdate
 }: DocumentEditorProps) {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+  const [document, setDocument] = useState(initialDocument);
   const [sidebarView, setSidebarView] = useState<'ai' | 'comments' | null>(null);
+  const { appUser } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
-    if (document) {
-      setTitle(document.name);
-      setContent(document.content);
-    } else {
-      setTitle('Untitled Document');
-      setContent('');
-    }
-  }, [document]);
+    setDocument(initialDocument);
+  }, [initialDocument]);
+
+  const handleContentChange = (newContent: string) => {
+    setDocument(prev => ({ ...prev, content: newContent }));
+  }
+  
+  const handleTitleChange = (newTitle: string) => {
+    setDocument(prev => ({ ...prev, name: newTitle }));
+  }
 
   const handleSave = async () => {
-    if (!title.trim()) {
+    if (!document.name.trim()) {
       toast({ variant: 'destructive', title: 'Title is required' });
       return;
     }
-
-    const docData = {
-      name: title,
-      content,
-      spaceId,
-      createdBy: document?.createdBy || appUser.id,
-      type: document?.type || 'notes',
-      isLocked: document?.isLocked || false,
-      tags: document?.tags || [],
-      comments: document?.comments || []
-    };
-
-    const savedDoc = document
-      ? await onSave(docData, document.id)
-      : await onCreate(docData);
-
-    if (savedDoc) {
-      onDocumentUpdate(savedDoc);
-      toast({ title: 'Document Saved!' });
-    }
+    const docToSave = { ...document, updatedAt: new Date().toISOString() };
+    await onSave(docToSave);
+    toast({ title: 'Document Saved!' });
   };
 
-  const handleDelete = () => {
-    if (document) {
-      onDelete(document.id);
-      onBack();
-    }
+  const handleDelete = async () => {
+    await onDelete(document.id);
+    toast({ title: 'Document Deleted' });
+    router.push('/documents');
   };
 
   const handlePostComment = async (commentContent: string) => {
-    if (!document) return;
+    if (!appUser) return;
 
     const newComment = {
       id: `comment-${Date.now()}`,
@@ -95,29 +71,28 @@ export default function DocumentEditor({
       createdAt: new Date().toISOString()
     };
 
-    const updatedDoc = await onSave(
-      {
+    const updatedDoc = {
         ...document,
         comments: [...(document.comments || []), newComment]
-      },
-      document.id
-    );
-
-    if (updatedDoc) {
-      onDocumentUpdate(updatedDoc);
-    }
+    };
+    
+    setDocument(updatedDoc);
+    await onSave(updatedDoc);
   };
+  
+  if (!appUser) return null;
 
   return (
-    <div className="flex flex-row gap-0">
+    <div className="flex flex-row gap-0 h-screen">
       <div className="flex-1 flex flex-col p-4 md:p-8">
         <div className="flex items-center gap-2 mb-4">
-          <Button variant="ghost" size="icon" onClick={onBack}>
+          <Button variant="ghost" size="icon" onClick={() => router.push('/documents')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={document.name}
+            onChange={(e) => handleTitleChange(e.target.value)}
+            onBlur={handleSave}
             placeholder="Untitled Document"
             className="text-2xl font-bold border-none focus-visible:ring-0 p-0 h-auto"
           />
@@ -127,14 +102,12 @@ export default function DocumentEditor({
           <Button size="sm" onClick={handleSave}>
             <Save className="mr-2 h-4 w-4" /> Save
           </Button>
-          {document && (
-            <Button size="sm" variant="destructive" onClick={handleDelete}>
-              <Trash2 className="mr-2 h-4 w-4" /> Delete
-            </Button>
-          )}
+          <Button size="sm" variant="destructive" onClick={handleDelete}>
+            <Trash2 className="mr-2 h-4 w-4" /> Delete
+          </Button>
           <Separator orientation="vertical" className="h-6 mx-2" />
           <Button size="sm" variant="outline" onClick={() => setSidebarView(sidebarView === 'comments' ? null : 'comments')}>
-            <MessageSquare className="mr-2 h-4 w-4" /> Comments
+            <MessageSquare className="mr-2 h-4 w-4" /> Comments ({document.comments?.length || 0})
           </Button>
           <Button size="sm" variant="outline" onClick={() => setSidebarView(sidebarView === 'ai' ? null : 'ai')}>
             <Bot className="mr-2 h-4 w-4" /> AI Assistant
@@ -142,20 +115,20 @@ export default function DocumentEditor({
         </div>
 
         <div className="flex-1 py-4 flex flex-col">
-          <TiptapEditor content={content} onChange={setContent} />
+          <TiptapEditor content={document.content} onChange={handleContentChange} onBlur={handleSave}/>
         </div>
       </div>
 
       {sidebarView && (
-        <div className="w-full md:w-80 lg:w-96 border-l bg-card flex-shrink-0 flex flex-col h-screen sticky top-0">
+        <div className="w-full md:w-80 lg:w-96 border-l bg-card flex-shrink-0 flex flex-col h-full sticky top-0">
           {sidebarView === 'ai' && (
             <AssistantPanel
-              fullDocument={content}
+              fullDocument={document.content}
               onClose={() => setSidebarView(null)}
-              onInsert={(text) => setContent((prev) => `${prev}\n\n${text}`)}
+              onInsert={(text) => handleContentChange(`${document.content}\n\n${text}`)}
             />
           )}
-          {sidebarView === 'comments' && document && (
+          {sidebarView === 'comments' && (
             <CommentsPanel
               document={document}
               onClose={() => setSidebarView(null)}

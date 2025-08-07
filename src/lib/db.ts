@@ -539,6 +539,15 @@ export const getDocumentsInSpace = async (spaceId: string): Promise<Document[]> 
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document));
 }
 
+export const getDocument = async (docId: string): Promise<Document | null> => {
+  const docRef = doc(db, 'documents', docId);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() } as Document;
+  }
+  return null;
+}
+
 export const addDocument = async (docData: Omit<Document, 'id'>): Promise<Document> => {
     const docRef = await addDoc(collection(db, 'documents'), docData);
     return { ...docData, id: docRef.id };
