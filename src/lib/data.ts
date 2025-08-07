@@ -1,4 +1,5 @@
 
+
 // src/lib/data.ts
 export interface User {
   id: string;
@@ -234,6 +235,7 @@ export interface Document {
     createdAt: string; // ISO 8601
     updatedAt: string; // ISO 8601
     spaceId: string;
+    isPublic: boolean;
     type: 'sop' | 'notes' | 'report' | 'proposal';
     isLocked: boolean;
     allowedUserIds?: string[];

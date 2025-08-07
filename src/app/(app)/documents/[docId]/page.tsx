@@ -43,8 +43,10 @@ export default function DocumentPage({ params }: DocumentPageProps) {
                 ]);
                 
                 if (docData) {
-                    const userHasAccess = userSpaces.some(space => space.id === docData.spaceId && space.members[appUser.id]);
-                    if (userHasAccess) {
+                    const userIsInSpace = userSpaces.some(space => space.id === docData.spaceId);
+                    const userHasAccess = docData.isPublic || (docData.allowedUserIds && docData.allowedUserIds.includes(appUser.id));
+
+                    if (userIsInSpace && userHasAccess) {
                         setDocument(docData);
                         setAllUsers(usersData);
                     } else {
