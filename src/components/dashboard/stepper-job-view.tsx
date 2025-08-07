@@ -28,9 +28,10 @@ interface StepperJobViewProps {
   allUsers: User[];
   onJobClick: (job: Job) => void;
   onUpdateTask: (task: Task) => void;
+  onTaskSelect: (task: Task) => void;
 }
 
-export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, allUsers, onJobClick, onUpdateTask }: StepperJobViewProps) {
+export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, allUsers, onJobClick, onUpdateTask, onTaskSelect }: StepperJobViewProps) {
     
   const handleUpdateTaskStatus = (task: Task, isComplete: boolean) => {
     const newStatus = isComplete ? 'Done' : 'Pending';
@@ -72,13 +73,13 @@ export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, al
                                 <div key={task.id} className="flex items-center justify-between p-2 border rounded-md">
                                     <div className="flex items-center gap-2">
                                          <Checkbox 
-                                            id={`task-complete-${task.id}`} 
+                                            id={`task-complete-stepper-${task.id}`} 
                                             checked={isComplete} 
                                             onCheckedChange={(checked) => handleUpdateTaskStatus(task, !!checked)}
                                          />
-                                         <label htmlFor={`task-complete-${task.id}`} className={cn("cursor-pointer", isComplete && 'line-through text-muted-foreground')}>
+                                         <Button variant="link" onClick={() => onTaskSelect(task)} className={cn("p-0 h-auto", isComplete && 'line-through text-muted-foreground')}>
                                             {task.name}
-                                         </label>
+                                         </Button>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs text-muted-foreground">{task.status}</span>

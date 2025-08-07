@@ -106,6 +106,7 @@ export default function JobFlowBoard({
                             allUsers={allUsers}
                             onJobClick={handleJobClick}
                             onUpdateTask={onUpdateTask}
+                            onTaskSelect={onTaskSelect}
                         />;
             case 'list':
                 return <ListJobView 
