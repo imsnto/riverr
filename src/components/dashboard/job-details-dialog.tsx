@@ -55,6 +55,10 @@ export default function JobDetailsDialog({
 
   const areAllTasksComplete = tasksForCurrentPhase.every(t => t.status === 'Done');
 
+  const jftForCurrentPhase = jobFlowTasks.filter(jft => jft.phaseIndex === job.currentPhaseIndex);
+  const isSubmittedForReview = jftForCurrentPhase.length > 0 && jftForCurrentPhase.every(jft => jft.reviewedBy);
+
+
   const handleUpdateTaskStatus = (task: Task, isComplete: boolean) => {
     const newStatus = isComplete ? 'Done' : 'Pending';
     onUpdateTask({ ...task, status: newStatus });
@@ -78,30 +82,34 @@ export default function JobDetailsDialog({
                 <div className="absolute left-9 top-4 bottom-4 w-0.5 bg-border" />
                 
                 {template.phases.map((phase, index) => {
-                    let phaseStatus: 'completed' | 'in-progress' | 'pending' = 'pending';
+                    const phaseTaskLinks = jobFlowTasks.filter(jft => jft.phaseIndex === phase.phaseIndex);
+                    const phaseTasks = phaseTaskLinks.map(jft => tasks.find(t => t.id === jft.taskId)).filter(Boolean) as Task[];
+                    const allPhaseTasksComplete = phaseTasks.every(t => t.status === 'Done');
+                    const phaseSubmittedForReview = allPhaseTasksComplete && phase.requiresReview && phaseTaskLinks.some(jft => !!jft.reviewedBy);
+
+                    let phaseStatus: 'completed' | 'in-progress' | 'pending' | 'awaiting-review' = 'pending';
                     if (job.currentPhaseIndex > phase.phaseIndex) {
                         phaseStatus = 'completed';
                     } else if (job.currentPhaseIndex === phase.phaseIndex) {
-                        phaseStatus = 'in-progress';
+                        phaseStatus = phaseSubmittedForReview ? 'awaiting-review' : 'in-progress';
                     }
 
-                    const phaseTaskLinks = jobFlowTasks.filter(jft => jft.phaseIndex === phase.phaseIndex);
-                    const phaseTasks = phaseTaskLinks.map(jft => tasks.find(t => t.id === jft.taskId)).filter(Boolean) as Task[];
+                    const reviewerId = phase.defaultReviewerId ? job.roleUserMapping[phase.defaultReviewerId] || phase.defaultReviewerId : null;
+                    const reviewer = reviewerId ? allUsers.find(u => u.id === reviewerId) : null;
 
                     const statusIcon = {
                         completed: <Check className="h-5 w-5 text-white" />,
                         'in-progress': <Loader2 className="h-5 w-5 animate-spin text-primary" />,
                         pending: <Circle className="h-5 w-5 text-muted-foreground/50" />,
+                        'awaiting-review': <UserCheck className="h-5 w-5 text-primary" />,
                     };
 
                     const statusColor = {
                         completed: 'bg-primary',
                         'in-progress': 'border-2 border-primary bg-background',
                         pending: 'bg-muted',
+                        'awaiting-review': 'border-2 border-primary bg-background',
                     };
-
-                    const reviewerId = phase.defaultReviewerId ? job.roleUserMapping[phase.defaultReviewerId] || phase.defaultReviewerId : null;
-                    const reviewer = reviewerId ? allUsers.find(u => u.id === reviewerId) : null;
                     
                     return (
                         <div key={phase.id} className="relative flex items-start gap-6 pb-8">
@@ -112,12 +120,22 @@ export default function JobDetailsDialog({
                             </div>
                             <div className="flex-1 pt-1.5">
                                 <p className="font-semibold">{phase.name}</p>
-                                {phase.requiresReview && (
+                                {phaseSubmittedForReview && reviewer ? (
+                                    <div className="mt-2 flex items-center gap-2 rounded-md border bg-primary/10 p-2">
+                                        <Avatar className="h-6 w-6">
+                                            <AvatarImage src={reviewer.avatarUrl} />
+                                            <AvatarFallback>{getInitials(reviewer.name)}</AvatarFallback>
+                                        </Avatar>
+                                        <p className="text-sm font-medium text-primary">
+                                            Submitted for review to {reviewer.name}
+                                        </p>
+                                    </div>
+                                ) : (phase.requiresReview && (
                                      <Badge variant="outline" className="mt-1">
                                         <UserCheck className="h-3 w-3 mr-1.5" />
                                         Review by: {reviewer?.name || 'Unknown'}
                                      </Badge>
-                                )}
+                                ))}
                                 <div className="mt-2 space-y-2">
                                 {phaseTasks.length > 0 ? phaseTasks.map(task => {
                                     const assignee = allUsers.find(u => u.id === task.assigned_to);
@@ -129,6 +147,7 @@ export default function JobDetailsDialog({
                                                     id={`task-complete-${task.id}`} 
                                                     checked={isComplete} 
                                                     onCheckedChange={(checked) => handleUpdateTaskStatus(task, !!checked)}
+                                                    disabled={phaseStatus !== 'in-progress'}
                                                  />
                                                  <label htmlFor={`task-complete-${task.id}`} className={cn("cursor-pointer", isComplete && 'line-through text-muted-foreground')}>
                                                     <Button variant="link" onClick={() => onTaskSelect(task)} className="p-0 h-auto text-sm text-card-foreground hover:text-primary">
@@ -159,7 +178,9 @@ export default function JobDetailsDialog({
         {currentPhase && areAllTasksComplete && (
             <DialogFooter>
                 {currentPhase.requiresReview ? (
-                    <Button onClick={onReviewSubmit}>Submit for Review</Button>
+                    <Button onClick={onReviewSubmit} disabled={isSubmittedForReview}>
+                        {isSubmittedForReview ? 'Submitted for Review' : 'Submit for Review'}
+                    </Button>
                 ) : (
                     <Button onClick={onAdvancePhase}>Complete Phase</Button>
                 )}
