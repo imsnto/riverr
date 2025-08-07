@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ArrowLeft, Bot, Save, Trash2, MessageSquare } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { TiptapEditor } from '@/components/document/TiptapEditor';
+import TiptapEditor from '@/components/document/TiptapEditor';
 import { useAuth } from '@/hooks/use-auth';
 import CommentsPanel from './CommentsPanel';
 import AssistantPanel from './AssistantPanel';
