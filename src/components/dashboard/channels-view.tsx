@@ -63,8 +63,9 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
 
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo(0, scrollAreaRef.current.scrollHeight);
+    const viewport = scrollAreaRef.current?.querySelector('div[data-radix-scroll-area-viewport]');
+    if (viewport) {
+      viewport.scrollTop = viewport.scrollHeight;
     }
   }, [messages, activeChannelId]);
 
