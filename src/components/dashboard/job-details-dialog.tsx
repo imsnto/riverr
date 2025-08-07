@@ -12,6 +12,7 @@ import { Separator } from '../ui/separator';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { Badge } from '../ui/badge';
+import { useAuth } from '@/hooks/use-auth';
 
 interface JobDetailsDialogProps {
   isOpen: boolean;
@@ -44,8 +45,8 @@ export default function JobDetailsDialog({
   onUpdateTask,
   onTaskSelect,
 }: JobDetailsDialogProps) {
-
-  if (!template) return null;
+  const { appUser } = useAuth();
+  if (!template || !appUser) return null;
   
   const currentPhase = template.phases.find(p => p.phaseIndex === job.currentPhaseIndex);
   const tasksForCurrentPhase = jobFlowTasks
@@ -58,11 +59,13 @@ export default function JobDetailsDialog({
   const jftForCurrentPhase = jobFlowTasks.filter(jft => jft.phaseIndex === job.currentPhaseIndex);
   const isSubmittedForReview = jftForCurrentPhase.length > 0 && jftForCurrentPhase.every(jft => jft.reviewedBy);
 
-
   const handleUpdateTaskStatus = (task: Task, isComplete: boolean) => {
     const newStatus = isComplete ? 'Done' : 'Pending';
     onUpdateTask({ ...task, status: newStatus });
   }
+
+  const reviewerId = currentPhase?.defaultReviewerId ? job.roleUserMapping[currentPhase.defaultReviewerId] || currentPhase.defaultReviewerId : null;
+  const isCurrentUserTheReviewer = appUser.id === reviewerId;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -94,8 +97,8 @@ export default function JobDetailsDialog({
                         phaseStatus = phaseSubmittedForReview ? 'awaiting-review' : 'in-progress';
                     }
 
-                    const reviewerId = phase.defaultReviewerId ? job.roleUserMapping[phase.defaultReviewerId] || phase.defaultReviewerId : null;
-                    const reviewer = reviewerId ? allUsers.find(u => u.id === reviewerId) : null;
+                    const phaseReviewerId = phase.defaultReviewerId ? job.roleUserMapping[phase.defaultReviewerId] || phase.defaultReviewerId : null;
+                    const reviewer = phaseReviewerId ? allUsers.find(u => u.id === phaseReviewerId) : null;
 
                     const statusIcon = {
                         completed: <Check className="h-5 w-5 text-white" />,
@@ -178,9 +181,13 @@ export default function JobDetailsDialog({
         {currentPhase && areAllTasksComplete && (
             <DialogFooter>
                 {currentPhase.requiresReview ? (
-                    <Button onClick={onReviewSubmit} disabled={isSubmittedForReview}>
-                        {isSubmittedForReview ? 'Submitted for Review' : 'Submit for Review'}
-                    </Button>
+                     isCurrentUserTheReviewer && isSubmittedForReview ? (
+                        <Button onClick={onAdvancePhase}>Approve and Complete Phase</Button>
+                    ) : (
+                        <Button onClick={onReviewSubmit} disabled={isSubmittedForReview}>
+                            {isSubmittedForReview ? 'Submitted for Review' : 'Submit for Review'}
+                        </Button>
+                    )
                 ) : (
                     <Button onClick={onAdvancePhase}>Complete Phase</Button>
                 )}

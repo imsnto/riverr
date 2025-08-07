@@ -88,7 +88,7 @@ export default function Dashboard() {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [jobFlowTasks, setJobFlowTasks] = useState<JobFlowTask[]>([]);
     
-    const [view, setView] = useState<View>('tasks');
+    const [view, setView] = useState<View>('overview');
     const [settingsView, setSettingsView] = useState<SettingsView>('users');
     const [flowsView, setFlowsView] = useState<FlowsView>('job_flows');
     const [isLoading, setIsLoading] = useState(true);
@@ -335,7 +335,7 @@ export default function Dashboard() {
 
     const renderContent = () => {
         switch(view) {
-            case 'overview': return <div className="p-4 md:p-8"><Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} jobFlowTasks={jobFlowTasks} onUpdateTask={handleUpdateTask} onTaskSelect={setSelectedTask} /></div>;
+            case 'overview': return <div className="p-4 md:p-8"><Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} jobFlowTasks={jobFlowTasks} onUpdateTask={handleUpdateTask} onTaskSelect={setSelectedTask} onJobLaunched={() => fetchData(activeSpace!)} /></div>;
             case 'tasks': return <div className="p-4 md:p-8"><TaskBoard 
                                     tasks={memoizedTasks} 
                                     onUpdateTasks={setTasks} 
@@ -348,7 +348,7 @@ export default function Dashboard() {
                                     onDeleteProject={handleDeleteProject}
                                     onTaskSelect={setSelectedTask}
                                     onUpdateTask={handleUpdateTask}
-                                    onAddTask={(task) => {handleAddTask(task)}}
+                                    onAddTask={handleAddTask}
                                 /></div>;
             case 'messages': 
               const channelMembers = channels.find(c => c.id === activeChannelId)?.members.map(id => allUsers.find(u => u.id === id)).filter(Boolean) as User[];
@@ -517,7 +517,7 @@ export default function Dashboard() {
                         </aside>
                         <main className="flex-1 overflow-auto">
                            {settingsView === 'users' && <UserSettings allUsers={allUsers} allSpaces={userSpaces} appUser={appUser} onInvite={() => {}} handleInvite={handleInvite} />}
-                           {settingsView === 'spaces' && <SpaceSettings allSpaces={userSpaces} allUsers={allUsers} appUser={appUser} onSave={handleSaveAndClose} onDelete={handleDeleteSpace} />}
+                           {settingsView === 'spaces' && <SpaceSettings allSpaces={userSpaces} allUsers={allUsers} appUser={appUser} onSave={handleSaveSpace} onDelete={handleDeleteSpace} />}
                         </main>
                     </div>
                 )

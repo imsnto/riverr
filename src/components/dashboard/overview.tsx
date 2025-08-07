@@ -8,6 +8,8 @@ import { CheckCircle, Clock, FolderKanban, GitBranch, UserCheck } from 'lucide-r
 import ProjectDetailsDialog from './project-details-dialog';
 import { Button } from '../ui/button';
 import JobDetailsDialog from './job-details-dialog';
+import { updateJobPhase, reviewJobPhase } from '@/lib/db';
+import { useToast } from '@/hooks/use-toast';
 
 interface OverviewProps {
   projects: Project[];
@@ -20,6 +22,7 @@ interface OverviewProps {
   jobFlowTasks: JobFlowTask[];
   onUpdateTask: (task: Task) => void;
   onTaskSelect: (task: Task) => void;
+  onJobLaunched: () => void;
 }
 
 export default function Overview({ 
@@ -32,12 +35,29 @@ export default function Overview({
   jobFlowTemplates, 
   jobFlowTasks,
   onUpdateTask,
-  onTaskSelect
+  onTaskSelect,
+  onJobLaunched
 }: OverviewProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const { toast } = useToast();
 
   if (!appUser) return null;
+
+  const handleAdvancePhase = async (job: Job) => {
+    const template = jobFlowTemplates.find(t => t.id === job.workflowTemplateId);
+    if (!template) return;
+    
+    try {
+        await updateJobPhase(job, template, tasks, jobFlowTasks);
+        toast({ title: "Phase Advanced!", description: `Job "${job.name}" has moved to the next phase.` });
+        onJobLaunched(); // This will refresh all job data
+        setSelectedJob(null); // Close dialog on success
+    } catch (error) {
+        console.error("Failed to advance phase:", error);
+        toast({ variant: 'destructive', title: 'Failed to advance phase' });
+    }
+  };
 
   const userProjects = projects.filter(p => p.members.includes(appUser.id));
   const userTasks = tasks.filter(t => t.assigned_to === appUser.id);
@@ -75,14 +95,19 @@ export default function Overview({
       
       const reviewerId = currentPhase.defaultReviewerId;
       const actualReviewerId = job.roleUserMapping[reviewerId!] || reviewerId;
+      if (actualReviewerId !== appUser.id) return false;
       
-      const phaseTasks = jobFlowTasks
-          .filter(jft => jft.jobId === job.id && jft.phaseIndex === job.currentPhaseIndex)
-          .map(jft => tasks.find(t => t.id === jft.taskId)).filter(Boolean) as Task[];
-          
-      const allTasksDone = phaseTasks.every(t => t.status === 'Done');
+      const phaseTaskLinks = jobFlowTasks.filter(jft => jft.jobId === job.id && jft.phaseIndex === job.currentPhaseIndex);
+      if (phaseTaskLinks.length === 0) return false; // No tasks submitted yet
+      
+      // Check if tasks are done and if review has been submitted (at least one jft has reviewedBy)
+      const phaseTasks = phaseTaskLinks.map(jft => tasks.find(t => t.id === jft.taskId)).filter(Boolean) as Task[];
+      const allTasksDone = phaseTasks.length > 0 && phaseTasks.every(t => t.status === 'Done');
+      const isSubmitted = phaseTaskLinks.every(jft => !!jft.reviewedBy);
 
-      return actualReviewerId === appUser.id && allTasksDone;
+      // We want to show items that are submitted but the reviewer (me) hasn't approved yet.
+      // The approval action is advancing the phase. So if it's submitted for review to me, show it.
+      return allTasksDone && isSubmitted;
   });
 
   const selectedJobTemplate = selectedJob ? jobFlowTemplates.find(t => t.id === selectedJob.workflowTemplateId) : undefined;
@@ -211,7 +236,7 @@ export default function Overview({
             jobFlowTasks={jobFlowTasks.filter(jft => jft.jobId === selectedJob.id)}
             tasks={tasks}
             allUsers={allUsers}
-            onAdvancePhase={() => {}}
+            onAdvancePhase={() => handleAdvancePhase(selectedJob)}
             onReviewSubmit={() => {}}
             onUpdateTask={onUpdateTask}
             onTaskSelect={onTaskSelect}
