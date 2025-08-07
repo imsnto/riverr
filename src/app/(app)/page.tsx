@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
-import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart } from 'lucide-react';
+import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown } from 'lucide-react';
 import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, Invite, Status, JobFlowTemplate, Job, JobFlowTask, PhaseTemplate, TaskTemplate, Activity } from '@/lib/data';
 import TaskBoard from '@/components/dashboard/task-board';
 import { useToast } from '@/hooks/use-toast';
@@ -56,6 +56,8 @@ import TaskTemplateBuilder from '@/components/dashboard/task-template-builder';
 import JobFlowBoard from '@/components/dashboard/job-flow-board';
 import { Button } from '@/components/ui/button';
 import { TopBar } from '@/components/dashboard/top-bar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 
 type View = 'overview' | 'tasks' | 'messages' | 'timesheets' | 'reports' | 'flows' | 'settings';
@@ -463,20 +465,34 @@ export default function Dashboard() {
                         default: return null;
                     }
                 }
+                const isTemplateView = ['templates', 'phases', 'tasks'].includes(flowsView);
                 return (
-                     <div className="flex gap-6 h-full">
-                        <aside className="w-56 flex-shrink-0 border-r pr-6">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-xl font-bold">Flows</h2>
-                            </div>
-                            <div className="space-y-1">
-                                <Button variant={flowsView === 'job_flows' ? 'secondary' : 'ghost'} onClick={() => setFlowsView('job_flows')} className="w-full justify-start">Job Flows</Button>
-                                <Button variant={flowsView === 'templates' ? 'secondary' : 'ghost'} onClick={() => setFlowsView('templates')} className="w-full justify-start">Flow Templates</Button>
-                                <Button variant={flowsView === 'phases' ? 'secondary' : 'ghost'} onClick={() => setFlowsView('phases')} className="w-full justify-start">Phase Templates</Button>
-                                <Button variant={flowsView === 'tasks' ? 'secondary' : 'ghost'} onClick={() => setFlowsView('tasks')} className="w-full justify-start">Task Templates</Button>
-                            </div>
-                        </aside>
-                         <main className="flex-1 overflow-auto">
+                     <div className="flex flex-col h-full">
+                        <div className="flex items-center border-b p-2">
+                            <Button 
+                                variant="ghost" 
+                                onClick={() => setFlowsView('job_flows')}
+                                className={cn(flowsView === 'job_flows' && 'bg-accent')}
+                            >
+                                Job Flows
+                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button 
+                                        variant="ghost" 
+                                        className={cn(isTemplateView && 'bg-accent')}
+                                    >
+                                        Templates <ChevronDown className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuItem onClick={() => setFlowsView('templates')}>Flow Templates</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setFlowsView('phases')}>Phase Templates</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setFlowsView('tasks')}>Task Templates</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                         <main className="flex-1 overflow-auto p-4">
                             {renderFlowsContent()}
                         </main>
                     </div>
