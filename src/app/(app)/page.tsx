@@ -424,14 +424,8 @@ function DashboardComponent() {
               return (
                  <div className="grid grid-cols-1 md:grid-cols-[1fr_400px] h-[calc(100vh-4rem)]">
                     <div className="flex flex-col h-full">
-                       <div className="flex justify-between items-center p-4 border-b">
-                            <div className="flex items-center gap-2">
-                                <MessageSquare className="h-5 w-5" />
-                                <h2 className="text-xl font-bold">Messages</h2>
-                            </div>
-                       </div>
-                       <div className="flex-1 grid grid-cols-[250px_1fr] overflow-hidden">
-                          <div className="border-r h-full overflow-y-auto flex flex-col">
+                       <div className="flex-1 grid grid-cols-[220px_1fr] overflow-hidden">
+                          <div className="border-r h-full overflow-y-auto flex flex-col bg-muted/50">
                               <div className="p-4 flex justify-between items-center">
                                 <h3 className="font-semibold text-lg">Channels</h3>
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsCreateChannelOpen(true)}>
@@ -577,7 +571,7 @@ function DashboardComponent() {
                             </DropdownMenu>
                         </div>
                          <div className="flex-1 overflow-auto">
-                            {renderFlowsContent()}
+                            {renderContent()}
                         </div>
                     </div>
                 )

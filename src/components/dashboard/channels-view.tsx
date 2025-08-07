@@ -111,11 +111,8 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
       timestamp: new Date().toISOString(),
       attachments: newAttachments,
       reactions: [],
+      ...(replyingTo && { thread_id: replyingTo.thread_id || replyingTo.id }),
     };
-
-    if (replyingTo) {
-        messageData.thread_id = replyingTo.thread_id || replyingTo.id;
-    }
     
     setNewMessage('');
     setAttachments([]);
