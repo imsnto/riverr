@@ -14,6 +14,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '../ui/checkbox';
 
 const getInitials = (name: string) => {
     return name ? name.split(' ').map(n => n[0]).join('') : '';
@@ -26,10 +27,16 @@ interface StepperJobViewProps {
   jobFlowTasks: JobFlowTask[];
   allUsers: User[];
   onJobClick: (job: Job) => void;
+  onUpdateTask: (task: Task) => void;
 }
 
-export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, allUsers, onJobClick }: StepperJobViewProps) {
+export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, allUsers, onJobClick, onUpdateTask }: StepperJobViewProps) {
     
+  const handleUpdateTaskStatus = (task: Task, isComplete: boolean) => {
+    const newStatus = isComplete ? 'Done' : 'Pending';
+    onUpdateTask({ ...task, status: newStatus });
+  }
+
   return (
     <div className="space-y-4">
       {jobs.map(job => {
@@ -60,11 +67,18 @@ export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, al
                     <div className="space-y-2">
                         {tasksForJobInPhase.map(task => {
                             const assignee = allUsers.find(u => u.id === task.assigned_to);
+                            const isComplete = task.status === 'Done';
                             return (
                                 <div key={task.id} className="flex items-center justify-between p-2 border rounded-md">
                                     <div className="flex items-center gap-2">
-                                        {task.status === 'Done' ? <Check className="h-4 w-4 text-green-500" /> : <Circle className="h-4 w-4 text-muted-foreground" />}
-                                        <span className={cn(task.status === 'Done' && 'line-through text-muted-foreground')}>{task.name}</span>
+                                         <Checkbox 
+                                            id={`task-complete-${task.id}`} 
+                                            checked={isComplete} 
+                                            onCheckedChange={(checked) => handleUpdateTaskStatus(task, !!checked)}
+                                         />
+                                         <label htmlFor={`task-complete-${task.id}`} className={cn("cursor-pointer", isComplete && 'line-through text-muted-foreground')}>
+                                            {task.name}
+                                         </label>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs text-muted-foreground">{task.status}</span>
