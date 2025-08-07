@@ -141,13 +141,13 @@ export function Toolbar({ editor }: Props) {
           {FONT_SIZES.map(size => (
              <DropdownMenuItem 
               key={size}
-              onClick={() => editor.chain().focus().setFontSize(size).run()}
+              onClick={() => editor.chain().focus().setMark('textStyle', { fontSize: size }).run()}
               className={editor.isActive('textStyle', { fontSize: size }) ? 'is-active' : ''}
              >
                 {size}
              </DropdownMenuItem>
           ))}
-          <DropdownMenuItem onClick={() => editor.chain().focus().unsetFontSize().run()}>
+          <DropdownMenuItem onClick={() => editor.chain().focus().unsetAllMarks().run()}>
             Default
           </DropdownMenuItem>
         </DropdownMenuContent>
