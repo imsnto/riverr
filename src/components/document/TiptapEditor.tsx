@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -51,12 +52,6 @@ export default function TiptapEditor({ content, onChange }: { content: string; o
       onChange(editor.getHTML());
     },
   });
-
-  useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content);
-    }
-  }, [content, editor]);
 
   return (
     <div className="border rounded-lg overflow-hidden">
