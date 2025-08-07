@@ -163,6 +163,7 @@ export interface JobFlowPhase {
     name: string;
     tasks: JobFlowTaskTemplate[];
     requiresReview: boolean;
+    defaultReviewerId?: string;
 }
 
 export interface JobFlowTemplate {
@@ -179,6 +180,7 @@ export interface PhaseTemplate {
     description?: string;
     tasks: JobFlowTaskTemplate[];
     requiresReview: boolean;
+    defaultReviewerId?: string;
 }
 
 export interface TaskTemplate {
@@ -333,7 +335,8 @@ export const phaseTemplates: PhaseTemplate[] = [
                 ]
             }
         ],
-        requiresReview: true
+        requiresReview: true,
+        defaultReviewerId: 'user-1'
     }
 ]
 
@@ -350,7 +353,7 @@ export const jobFlowTemplates: JobFlowTemplate[] = [
       { id: 'phase-2', phaseIndex: 1, name: 'Contact Made', requiresReview: false, tasks: [
         { id: 'task-tpl-j1-p2-t1', titleTemplate: 'Initial Outreach Call with {{job_name}}', defaultAssigneeId: 'user-1', estimatedDurationDays: 1 }
       ]},
-      { id: 'phase-3', phaseIndex: 2, name: 'Demo Scheduled', requiresReview: true, tasks: [
+      { id: 'phase-3', phaseIndex: 2, name: 'Demo Scheduled', requiresReview: true, defaultReviewerId: 'user-1', tasks: [
          { id: 'task-tpl-j1-p3-t1', titleTemplate: 'Schedule Product Demo for {{job_name}}', defaultAssigneeId: 'user-2', estimatedDurationDays: 2 }
       ]},
       { id: 'phase-4', phaseIndex: 3, name: 'Proposal Sent', requiresReview: false, tasks: [
@@ -364,7 +367,7 @@ export const jobFlowTemplates: JobFlowTemplate[] = [
     description: 'A checklist for onboarding new employees.',
     defaultView: 'stepper',
     phases: [
-      { id: 'phase-j2-1', phaseIndex: 0, name: 'Pre-Onboarding', requiresReview: true, tasks: [
+      { id: 'phase-j2-1', phaseIndex: 0, name: 'Pre-Onboarding', requiresReview: true, defaultReviewerId: 'user-4', tasks: [
           { id: 'task-tpl-j2-p1-t1', titleTemplate: 'Send Welcome Packet to {{job_name}}', defaultAssigneeId: 'user-4', estimatedDurationDays: 1},
           { id: 'task-tpl-j2-p1-t2', titleTemplate: 'Setup IT Equipment for {{job_name}}', defaultAssigneeId: 'user-1', estimatedDurationDays: 2}
       ]},

@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { JobFlowTemplate, User, PhaseTemplate, TaskTemplate, JobFlowTaskTemplate, JobFlowPhase } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, MoreHorizontal, Edit, Trash2, LayoutTemplate, FilePlus, GripVertical } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash2, LayoutTemplate, FilePlus, GripVertical, UserCheck } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -57,7 +57,17 @@ const jobFlowPhaseSchema = z.object({
   name: z.string().min(1, 'Phase name is required'),
   tasks: z.array(taskTemplateSchema).min(1, 'At least one task is required'),
   requiresReview: z.boolean().default(false),
+  defaultReviewerId: z.string().optional(),
+}).refine(data => {
+    if (data.requiresReview && !data.defaultReviewerId) {
+        return false;
+    }
+    return true;
+}, {
+    message: "A reviewer must be selected when 'Requires Review' is checked.",
+    path: ["defaultReviewerId"],
 });
+
 
 const jobFlowTemplateSchema = z.object({
   name: z.string().min(1, 'Template name is required'),
@@ -113,7 +123,8 @@ function TemplateForm({
         id: template.id, 
         name: template.name,
         tasks: template.tasks,
-        requiresReview: template.requiresReview
+        requiresReview: template.requiresReview,
+        defaultReviewerId: template.defaultReviewerId,
     });
   }
 
@@ -208,6 +219,8 @@ const PhaseItem = ({ control, index, remove, move, allUsers, errors }: { control
         name: `phases.${index}.tasks`
     });
 
+    const requiresReview = control.watch(`phases.${index}.requiresReview`);
+
     return (
         <div className="bg-card p-4 rounded-lg border space-y-4">
             <div className="flex items-center gap-2">
@@ -281,7 +294,7 @@ const PhaseItem = ({ control, index, remove, move, allUsers, errors }: { control
                     <Plus className="mr-2 h-4 w-4" /> Add Task
                 </Button>
              </div>
-              <div>
+              <div className="space-y-2">
                   <Controller
                       control={control}
                       name={`phases.${index}.requiresReview`}
@@ -304,6 +317,29 @@ const PhaseItem = ({ control, index, remove, move, allUsers, errors }: { control
                           </FormItem>
                       )}
                   />
+                  {requiresReview && (
+                      <Controller
+                          control={control}
+                          name={`phases.${index}.defaultReviewerId`}
+                          render={({ field }) => (
+                            <FormItem>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a reviewer" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {allUsers.map(user => (
+                                            <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.phases?.[index]?.defaultReviewerId && <p className="text-sm text-destructive">{errors.phases[index].defaultReviewerId.message}</p>}
+                            </FormItem>
+                          )}
+                      />
+                  )}
               </div>
         </div>
     )

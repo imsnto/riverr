@@ -6,11 +6,12 @@ import { Job, JobFlowTemplate, JobFlowTask, Task, User, Status } from '@/lib/dat
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Check, Circle, Loader2, GitBranch, Briefcase, User as UserIcon, CheckCircle2 } from 'lucide-react';
+import { Check, Circle, Loader2, GitBranch, Briefcase, User as UserIcon, CheckCircle2, UserCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Separator } from '../ui/separator';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
+import { Badge } from '../ui/badge';
 
 interface JobDetailsDialogProps {
   isOpen: boolean;
@@ -96,6 +97,9 @@ export default function JobDetailsDialog({
                         'in-progress': 'border-2 border-primary bg-background',
                         pending: 'bg-muted',
                     };
+
+                    const reviewerId = phase.defaultReviewerId ? job.roleUserMapping[phase.defaultReviewerId] || phase.defaultReviewerId : null;
+                    const reviewer = reviewerId ? allUsers.find(u => u.id === reviewerId) : null;
                     
                     return (
                         <div key={phase.id} className="relative flex items-start gap-6 pb-8">
@@ -106,6 +110,12 @@ export default function JobDetailsDialog({
                             </div>
                             <div className="flex-1 pt-1.5">
                                 <p className="font-semibold">{phase.name}</p>
+                                {phase.requiresReview && (
+                                     <Badge variant="outline" className="mt-1">
+                                        <UserCheck className="h-3 w-3 mr-1.5" />
+                                        Review by: {reviewer?.name || 'Unknown'}
+                                     </Badge>
+                                )}
                                 <div className="mt-2 space-y-2">
                                 {phaseTasks.length > 0 ? phaseTasks.map(task => {
                                     const assignee = allUsers.find(u => u.id === task.assigned_to);

@@ -329,7 +329,7 @@ export default function Dashboard() {
 
     const renderContent = () => {
         switch(view) {
-            case 'overview': return <Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers}/>;
+            case 'overview': return <Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} />;
             case 'tasks': return <TaskBoard 
                                     tasks={memoizedTasks} 
                                     onUpdateTasks={setTasks} 
@@ -492,7 +492,7 @@ export default function Dashboard() {
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
-                         <div className="flex-1 overflow-auto">
+                         <div className="flex-1 overflow-auto p-4 md:p-8">
                             {renderFlowsContent()}
                         </div>
                     </div>

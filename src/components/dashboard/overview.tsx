@@ -3,9 +3,10 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Project, Task, TimeEntry, User } from '@/lib/data';
-import { CheckCircle, Clock, FolderKanban } from 'lucide-react';
+import { Project, Task, TimeEntry, User, Job, JobFlowTemplate } from '@/lib/data';
+import { CheckCircle, Clock, FolderKanban, GitBranch, UserCheck } from 'lucide-react';
 import ProjectDetailsDialog from './project-details-dialog';
+import { Button } from '../ui/button';
 
 interface OverviewProps {
   projects: Project[];
@@ -13,9 +14,11 @@ interface OverviewProps {
   timeEntries: TimeEntry[];
   appUser: User | null;
   allUsers: User[];
+  jobs: Job[];
+  jobFlowTemplates: JobFlowTemplate[];
 }
 
-export default function Overview({ projects, tasks, timeEntries, appUser, allUsers }: OverviewProps) {
+export default function Overview({ projects, tasks, timeEntries, appUser, allUsers, jobs, jobFlowTemplates }: OverviewProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   if (!appUser) return null;
@@ -47,10 +50,47 @@ export default function Overview({ projects, tasks, timeEntries, appUser, allUse
     }
     return parts.join(' ');
   };
+  
+  const pendingReviews = jobs.filter(job => {
+      const template = jobFlowTemplates.find(t => t.id === job.workflowTemplateId);
+      if (!template) return false;
+      const currentPhase = template.phases.find(p => p.phaseIndex === job.currentPhaseIndex);
+      if (!currentPhase || !currentPhase.requiresReview) return false;
+      
+      const reviewerId = currentPhase.defaultReviewerId;
+      const actualReviewerId = job.roleUserMapping[reviewerId!] || reviewerId;
+
+      return actualReviewerId === appUser.id;
+  });
 
   return (
     <>
       <div className="space-y-6">
+         {pendingReviews.length > 0 && (
+          <Card className="border-primary/50 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-primary">
+                <UserCheck className="h-5 w-5" />
+                You have items to review
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {pendingReviews.map(job => {
+                const template = jobFlowTemplates.find(t => t.id === job.workflowTemplateId);
+                const phase = template?.phases.find(p => p.phaseIndex === job.currentPhaseIndex);
+                return (
+                  <div key={job.id} className="flex justify-between items-center bg-card p-3 rounded-md">
+                    <div>
+                      <p className="font-semibold">{job.name}</p>
+                      <p className="text-sm text-muted-foreground">Ready for review: <span className="font-medium">{phase?.name}</span></p>
+                    </div>
+                    <Button>Review</Button>
+                  </div>
+                )
+              })}
+            </CardContent>
+          </Card>
+        )}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useAuth } from '@/hooks/use-auth';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '../ui/checkbox';
-import { Form, FormControl, FormItem, FormLabel } from '../ui/form';
+import { Form, FormControl, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Separator } from '../ui/separator';
 
 interface PhaseTemplateBuilderProps {
@@ -56,6 +56,15 @@ const phaseTemplateSchema = z.object({
   description: z.string().optional(),
   tasks: z.array(taskTemplateSchema).min(1, 'At least one task is required'),
   requiresReview: z.boolean().default(false),
+  defaultReviewerId: z.string().optional(),
+}).refine(data => {
+    if (data.requiresReview && !data.defaultReviewerId) {
+        return false;
+    }
+    return true;
+}, {
+    message: "A reviewer must be selected when 'Requires Review' is checked.",
+    path: ["defaultReviewerId"],
 });
 
 type PhaseTemplateFormValues = z.infer<typeof phaseTemplateSchema>;
@@ -71,7 +80,8 @@ function TemplateForm({ onSave, allUsers, closeDialog, taskTemplates }: { onSave
     },
   });
 
-  const { register, control, handleSubmit, formState: { errors } } = form;
+  const { register, control, handleSubmit, watch, formState: { errors } } = form;
+  const requiresReview = watch('requiresReview');
   
   const onSubmit = (data: PhaseTemplateFormValues) => {
       onSave(data);
@@ -96,7 +106,7 @@ function TemplateForm({ onSave, allUsers, closeDialog, taskTemplates }: { onSave
       <Label>Tasks in this phase</Label>
       <PhaseTasks control={control} allUsers={allUsers} errors={errors} taskTemplates={taskTemplates} />
       
-      <div className="pt-4">
+      <div className="pt-4 space-y-2">
           <Controller
               control={control}
               name={`requiresReview`}
@@ -119,6 +129,30 @@ function TemplateForm({ onSave, allUsers, closeDialog, taskTemplates }: { onSave
                   </FormItem>
               )}
           />
+          {requiresReview && (
+             <FormField
+                control={form.control}
+                name="defaultReviewerId"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Default Reviewer</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a default reviewer" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {allUsers.map(user => (
+                                    <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+          )}
       </div>
     </form>
     </Form>
