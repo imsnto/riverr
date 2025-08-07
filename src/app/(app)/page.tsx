@@ -356,6 +356,7 @@ function DashboardComponent() {
             const fullDoc = { ...documents.find(d => d.id === docId)!, ...updatedDocData};
             setDocuments(prev => prev.map(d => d.id === docId ? fullDoc : d));
             toast({ title: 'Document Saved' });
+            return fullDoc;
         } else {
             const newDocData = { ...doc, createdAt: now, updatedAt: now, comments: [] };
             const newDoc = await addDocument(newDocData);
@@ -363,7 +364,6 @@ function DashboardComponent() {
             toast({ title: 'Document Created' });
             return newDoc;
         }
-        return null;
     };
     
     const handleDeleteDocument = async (docId: string) => {

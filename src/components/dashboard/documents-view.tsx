@@ -44,10 +44,10 @@ export default function DocumentsView({ documents, onSave, onDelete, activeSpace
     setIsCreating(false);
   }
   
-  const handleSaveAndSelect = async (docData: Omit<Document, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newDoc = await onSave(docData);
-    if (newDoc) {
-      handleSelectDoc(newDoc);
+  const handleSaveAndSelect = async (docData: Omit<Document, 'id' | 'createdAt' | 'updatedAt'>, docId?: string) => {
+    const savedDoc = await onSave(docData, docId);
+    if (savedDoc) {
+      handleSelectDoc(savedDoc);
     }
   }
 
@@ -56,7 +56,7 @@ export default function DocumentsView({ documents, onSave, onDelete, activeSpace
       <DocumentEditor
         document={selectedDoc}
         onBack={handleBackToList}
-        onSave={onSave}
+        onSave={handleSaveAndSelect}
         onDelete={onDelete}
         spaceId={activeSpaceId}
         appUser={appUser}
