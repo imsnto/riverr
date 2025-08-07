@@ -44,7 +44,17 @@ export default function LaunchJobDialog({ isOpen, onOpenChange, template, allUse
     const { appUser } = useAuth();
    
     const uniqueAssigneeIds = useMemo(() => {
-        const ids = new Set(template.phases.map(p => p.defaultAssigneeId));
+        const ids = new Set<string>();
+        template.phases.forEach(phase => {
+            phase.tasks.forEach(task => {
+                ids.add(task.defaultAssigneeId);
+                if (task.subtaskTemplates) {
+                    task.subtaskTemplates.forEach(subtask => {
+                        ids.add(subtask.defaultAssigneeId);
+                    });
+                }
+            });
+        });
         return Array.from(ids);
     }, [template]);
     
@@ -130,30 +140,31 @@ export default function LaunchJobDialog({ isOpen, onOpenChange, template, allUse
                                 {uniqueAssigneeIds.map(assigneeId => {
                                     const defaultUser = allUsers.find(u => u.id === assigneeId);
                                     return (
-                                        <FormField
-                                            key={assigneeId}
-                                            control={form.control}
-                                            name={`roleUserMapping.${assigneeId}`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="font-normal text-muted-foreground">
-                                                        Assign user for default role: <span className="font-semibold text-foreground">{defaultUser?.name || 'Unknown User'}</span>
-                                                    </FormLabel>
-                                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                        <FormControl>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select a user" />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            {allUsers.map(user => (
-                                                                <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </FormItem>
-                                            )}
-                                        />
+                                        <div key={assigneeId}>
+                                            <FormField
+                                                control={form.control}
+                                                name={`roleUserMapping.${assigneeId}`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="font-normal text-muted-foreground">
+                                                            Assign user for default role: <span className="font-semibold text-foreground">{defaultUser?.name || 'Unknown User'}</span>
+                                                        </FormLabel>
+                                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                            <FormControl>
+                                                                <SelectTrigger>
+                                                                    <SelectValue placeholder="Select a user" />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                {allUsers.map(user => (
+                                                                    <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
                                     );
                                 })}
                             </div>
