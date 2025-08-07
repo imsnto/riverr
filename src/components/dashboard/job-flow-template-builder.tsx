@@ -130,7 +130,7 @@ function TemplateForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 flex flex-col flex-1">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 flex flex-col flex-1 overflow-hidden">
         <div className="flex-1 space-y-6 overflow-y-auto px-6">
             <div className="space-y-2">
             <Label htmlFor="name">Template Name</Label>
@@ -210,7 +210,7 @@ function TemplateForm({
                 </div>
             </div>
         </div>
-        <DialogFooter className="p-6 pt-4 border-t bg-muted/50 sticky bottom-0">
+        <DialogFooter className="p-6 pt-4 border-t bg-background sticky bottom-0">
             <Button type="button" variant="ghost" onClick={closeDialog}>Cancel</Button>
             <Button type="submit">Save Template</Button>
         </DialogFooter>
@@ -541,3 +541,5 @@ export default function JobFlowTemplateBuilder({
 }
 
   
+
+    

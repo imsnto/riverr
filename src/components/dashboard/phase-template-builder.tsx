@@ -90,7 +90,7 @@ function TemplateForm({ onSave, allUsers, closeDialog, taskTemplates }: { onSave
 
   return (
     <Form {...form}>
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 flex-1 flex flex-col">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 flex-1 flex flex-col overflow-hidden">
        <div className="flex-1 overflow-y-auto px-6 space-y-6">
             <div className="space-y-2">
                 <Label htmlFor="name">Phase Template Name</Label>
@@ -156,7 +156,7 @@ function TemplateForm({ onSave, allUsers, closeDialog, taskTemplates }: { onSave
                 )}
             </div>
         </div>
-        <DialogFooter className="p-6 pt-4 border-t bg-muted/50 sticky bottom-0">
+        <DialogFooter className="p-6 pt-4 border-t bg-background sticky bottom-0">
             <Button type="button" variant="ghost" onClick={closeDialog}>Cancel</Button>
             <Button type="submit">Save Template</Button>
         </DialogFooter>
@@ -424,3 +424,5 @@ export default function PhaseTemplateBuilder({ templates, allUsers, onSave, task
 }
 
   
+
+    

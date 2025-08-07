@@ -70,54 +70,58 @@ function TemplateForm({ onSave, allUsers, closeDialog }: { onSave: (data: TaskTe
 
   return (
     <Form {...form}>
-    <form id="task-template-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="rounded-md border p-4 space-y-4 bg-card">
-        <div className="space-y-1">
-            <Label className="text-sm">Task Title Template</Label>
-            <Input {...register('titleTemplate')} placeholder="e.g., Prepare report for {{client_name}}" className="bg-background"/>
-            {errors.titleTemplate && <p className="text-sm text-destructive">{errors.titleTemplate.message}</p>}
-        </div>
-        <div className="space-y-1">
-            <Label className="text-sm">Task Description Template (optional)</Label>
-            <Textarea {...register('descriptionTemplate')} placeholder="Use variables for dynamic content" className="bg-background" rows={2}/>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto px-6 space-y-4">
             <div className="space-y-1">
-                <Label className="text-sm">Default Assignee</Label>
-                <Controller
-                    control={control}
-                    name="defaultAssigneeId"
-                    render={({ field }) => (
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <SelectTrigger className="bg-background">
-                                <SelectValue placeholder="Select a default assignee" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {allUsers.map(user => (
-                                    <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                    </Select>
-                    )}
-                />
-                {errors.defaultAssigneeId && <p className="text-sm text-destructive">{errors.defaultAssigneeId.message}</p>}
+                <Label className="text-sm">Task Title Template</Label>
+                <Input {...register('titleTemplate')} placeholder="e.g., Prepare report for {{client_name}}" className="bg-background"/>
+                {errors.titleTemplate && <p className="text-sm text-destructive">{errors.titleTemplate.message}</p>}
             </div>
             <div className="space-y-1">
-                <Label className="text-sm">Duration (days)</Label>
-                <Input 
-                    type="number"
-                    {...register('estimatedDurationDays')}
-                    placeholder="e.g., 5"
-                    className="bg-background"
-                    min="1"
-                />
-                {errors.estimatedDurationDays && <p className="text-sm text-destructive">{errors.estimatedDurationDays.message}</p>}
+                <Label className="text-sm">Task Description Template (optional)</Label>
+                <Textarea {...register('descriptionTemplate')} placeholder="Use variables for dynamic content" className="bg-background" rows={2}/>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                    <Label className="text-sm">Default Assignee</Label>
+                    <Controller
+                        control={control}
+                        name="defaultAssigneeId"
+                        render={({ field }) => (
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <SelectTrigger className="bg-background">
+                                    <SelectValue placeholder="Select a default assignee" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {allUsers.map(user => (
+                                        <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                        </Select>
+                        )}
+                    />
+                    {errors.defaultAssigneeId && <p className="text-sm text-destructive">{errors.defaultAssigneeId.message}</p>}
+                </div>
+                <div className="space-y-1">
+                    <Label className="text-sm">Duration (days)</Label>
+                    <Input 
+                        type="number"
+                        {...register('estimatedDurationDays')}
+                        placeholder="e.g., 5"
+                        className="bg-background"
+                        min="1"
+                    />
+                    {errors.estimatedDurationDays && <p className="text-sm text-destructive">{errors.estimatedDurationDays.message}</p>}
+                </div>
+            </div>
+            
+            <Separator className="my-2" />
+            <Subtasks control={control} allUsers={allUsers} errors={errors} />
         </div>
-        
-        <Separator className="my-2" />
-        <Subtasks control={control} allUsers={allUsers} errors={errors} />
-      </div>
+        <DialogFooter className="p-6 pt-4 border-t bg-background sticky bottom-0">
+            <Button type="button" variant="ghost" onClick={closeDialog}>Cancel</Button>
+            <Button type="submit">Save Template</Button>
+        </DialogFooter>
     </form>
     </Form>
   )
@@ -259,15 +263,12 @@ export default function TaskTemplateBuilder({ templates, allUsers, onSave }: Tas
                             Define a reusable task with its own subtasks.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="flex-1 overflow-y-auto p-6">
-                      <TemplateForm onSave={handleSave} allUsers={allUsers} closeDialog={() => setIsFormOpen(false)} />
-                    </div>
-                     <DialogFooter className="p-6 pt-4 border-t bg-muted/50">
-                        <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancel</Button>
-                        <Button type="submit" form="task-template-form">Save Template</Button>
-                    </DialogFooter>
+                    <TemplateForm onSave={handleSave} allUsers={allUsers} closeDialog={() => setIsFormOpen(false)} />
                 </DialogContent>
             </Dialog>
         </>
     );
 }
+
+
+    
