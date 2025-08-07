@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
-import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown } from 'lucide-react';
+import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown, ClipboardCheck } from 'lucide-react';
 import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, Invite, Status, JobFlowTemplate, Job, JobFlowTask, PhaseTemplate, TaskTemplate, Activity } from '@/lib/data';
 import TaskBoard from '@/components/dashboard/task-board';
 import { useToast } from '@/hooks/use-toast';
@@ -59,9 +59,10 @@ import { Button } from '@/components/ui/button';
 import { TopBar } from '@/components/dashboard/top-bar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 
-type View = 'overview' | 'tasks' | 'messages' | 'timesheets' | 'reports' | 'flows' | 'settings';
+type View = 'overview' | 'tasks' | 'mytasks' | 'messages' | 'timesheets' | 'reports' | 'flows' | 'settings';
 type SettingsView = 'users' | 'spaces';
 type FlowsView = 'job_flows' | 'templates' | 'phases' | 'tasks';
 
@@ -73,6 +74,7 @@ const LoadingState = () => (
 
 export default function Dashboard() {
     const { appUser, userSpaces, setUserSpaces } = useAuth();
+    const router = useRouter();
     const { toast } = useToast();
     
     const [activeSpace, setActiveSpace] = useState<Space | null>(null);
@@ -351,6 +353,9 @@ export default function Dashboard() {
                                     onUpdateTask={handleUpdateTask}
                                     onAddTask={handleAddTask}
                                 /></div>;
+            case 'mytasks':
+                router.push('/mytasks'); // Should not render, just redirect
+                return null;
             case 'messages': 
               const channelMembers = channels.find(c => c.id === activeChannelId)?.members.map(id => allUsers.find(u => u.id === id)).filter(Boolean) as User[];
               const SimplifiedProjects = projects.map(p => ({ id: p.id, name: p.name }));
@@ -538,6 +543,9 @@ export default function Dashboard() {
                         </Button>
                         <Button onClick={() => setView('tasks')} variant={view === 'tasks' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
                             <FolderKanban className="w-7 h-7"/>
+                        </Button>
+                        <Button onClick={() => setView('mytasks')} variant={view === 'mytasks' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                            <ClipboardCheck className="w-7 h-7"/>
                         </Button>
                         <Button onClick={() => setView('messages')} variant={view === 'messages' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
                             <MessageSquare className="w-7 h-7"/>
