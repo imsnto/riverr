@@ -60,6 +60,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -164,10 +165,6 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
   const filteredMembers = channelMembers.filter(member => 
     member.name.toLowerCase().includes(tagQuery.toLowerCase()) && member.id !== appUser?.id
   );
-
-  if (channels.length === 0) {
-    return <div className="flex h-full items-center justify-center text-muted-foreground">No channels in this space.</div>;
-  }
 
   const renderMessage = (message: Message) => {
     const user = allUsers.find(u => u.id === message.user_id);
@@ -291,9 +288,11 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
       </div>
     );
   }
-  
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
 
+  if (channels.length === 0) {
+    return <div className="flex h-full items-center justify-center text-muted-foreground">No channels in this space.</div>;
+  }
+  
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {activeChannel ? (
