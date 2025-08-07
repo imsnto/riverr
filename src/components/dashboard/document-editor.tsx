@@ -95,7 +95,7 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
         type: document.type,
         isLocked: document.isLocked,
         tags: document.tags,
-        comments: [...document.comments, newComment],
+        comments: [...(document.comments || []), newComment],
     };
     
     await onSave(docData, document.id);
