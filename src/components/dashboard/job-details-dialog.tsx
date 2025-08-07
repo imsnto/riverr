@@ -22,6 +22,7 @@ interface JobDetailsDialogProps {
   tasks: Task[];
   allUsers: User[];
   onAdvancePhase: () => void;
+  onReviewSubmit: () => void;
   onUpdateTask: (task: Task) => void;
   onTaskSelect: (task: Task) => void;
 }
@@ -39,6 +40,7 @@ export default function JobDetailsDialog({
   tasks,
   allUsers,
   onAdvancePhase,
+  onReviewSubmit,
   onUpdateTask,
   onTaskSelect,
 }: JobDetailsDialogProps) {
@@ -157,7 +159,7 @@ export default function JobDetailsDialog({
         {currentPhase && areAllTasksComplete && (
             <DialogFooter>
                 {currentPhase.requiresReview ? (
-                    <Button>Submit for Review</Button>
+                    <Button onClick={onReviewSubmit}>Submit for Review</Button>
                 ) : (
                     <Button onClick={onAdvancePhase}>Complete Phase</Button>
                 )}

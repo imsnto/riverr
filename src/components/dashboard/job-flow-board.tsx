@@ -11,10 +11,11 @@ import JobDetailsDialog from './job-details-dialog';
 import KanbanJobView from './kanban-job-view';
 import StepperJobView from './stepper-job-view';
 import ListJobView from './list-job-view';
-import { updateJobPhase } from '@/lib/db';
+import { updateJobPhase, reviewJobPhase } from '@/lib/db';
 import { Separator } from '../ui/separator';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { useAuth } from '@/hooks/use-auth';
 
 interface JobFlowBoardProps {
     activeSpace: Space;
@@ -44,6 +45,7 @@ export default function JobFlowBoard({
     const [isJobDetailsOpen, setIsJobDetailsOpen] = useState(false);
     const [selectedJob, setSelectedJob] = useState<Job | null>(null);
     const { toast } = useToast();
+    const { appUser } = useAuth();
     
     const [viewMode, setViewMode] = useState<'kanban' | 'stepper' | 'list' | null>(null);
     const selectedTemplate = jobFlowTemplates.find(t => t.id === selectedTemplateId);
@@ -81,6 +83,19 @@ export default function JobFlowBoard({
         } catch (error) {
             console.error("Failed to advance phase:", error);
             toast({ variant: 'destructive', title: 'Failed to advance phase' });
+        }
+    };
+    
+    const handleReviewSubmit = async (job: Job) => {
+        if (!appUser) return;
+        try {
+            await reviewJobPhase(job.id, job.currentPhaseIndex, appUser.id);
+            toast({ title: "Phase Submitted!", description: `Phase has been submitted for final review and completion.` });
+            onJobLaunched();
+            setIsJobDetailsOpen(false);
+        } catch (error) {
+            console.error("Failed to submit for review:", error);
+            toast({ variant: 'destructive', title: 'Failed to submit review' });
         }
     };
 
@@ -210,6 +225,7 @@ export default function JobFlowBoard({
             tasks={tasks}
             allUsers={allUsers}
             onAdvancePhase={() => handleAdvancePhase(selectedJob)}
+            onReviewSubmit={() => handleReviewSubmit(selectedJob)}
             onUpdateTask={onUpdateTask}
             onTaskSelect={onTaskSelect}
           />
