@@ -135,7 +135,7 @@ export default function JobFlowBoard({
                     <p className="text-muted-foreground">{selectedTemplate.description}</p>
                 </div>
                 <Button onClick={handleLaunchNewJob}>
-                  <Plus className="mr-2 h-4 w-4" />
+                  <Plus className="mr-2 h-4" />
                   Launch Job
                 </Button>
               </div>

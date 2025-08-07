@@ -425,7 +425,7 @@ export default function Dashboard() {
             case 'flows': 
                 const renderFlowsContent = () => {
                     switch(flowsView) {
-                        case 'job_flows': return <JobFlowBoard 
+                        case 'job_flows': return <div className="p-4"><JobFlowBoard 
                                                     activeSpace={activeSpace!} 
                                                     allUsers={allUsers} 
                                                     jobFlowTemplates={jobFlowTemplates}
@@ -435,8 +435,8 @@ export default function Dashboard() {
                                                     onJobLaunched={() => fetchData(activeSpace!)}
                                                     onUpdateTask={handleUpdateTask}
                                                     onTaskSelect={setSelectedTask}
-                                                 />;
-                        case 'templates': return <JobFlowTemplateBuilder 
+                                                 /></div>;
+                        case 'templates': return <div className="p-4"><JobFlowTemplateBuilder 
                                                     templates={jobFlowTemplates} 
                                                     phaseTemplates={phaseTemplates}
                                                     allUsers={allUsers}
@@ -444,8 +444,8 @@ export default function Dashboard() {
                                                         const newTemplate = await dbAddJobFlowTemplate(data);
                                                         setJobFlowTemplates(prev => [...prev, newTemplate]);
                                                     }}
-                                                 />;
-                        case 'phases': return <PhaseTemplateBuilder
+                                                 /></div>;
+                        case 'phases': return <div className="p-4"><PhaseTemplateBuilder
                                                   templates={phaseTemplates}
                                                   allUsers={allUsers}
                                                   taskTemplates={taskTemplates}
@@ -453,15 +453,15 @@ export default function Dashboard() {
                                                       const newTemplate = await dbAddPhaseTemplate(data);
                                                       setPhaseTemplates(prev => [...prev, newTemplate]);
                                                   }}
-                                              />;
-                        case 'tasks': return <TaskTemplateBuilder 
+                                              /></div>;
+                        case 'tasks': return <div className="p-4"><TaskTemplateBuilder 
                                                 templates={taskTemplates}
                                                 allUsers={allUsers}
                                                 onSave={async (data) => {
                                                     const newTemplate = await dbAddTaskTemplate(data);
                                                     setTaskTemplates(prev => [...prev, newTemplate]);
                                                 }}
-                                            />;
+                                            /></div>;
                         default: return null;
                     }
                 }
@@ -492,7 +492,7 @@ export default function Dashboard() {
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
-                         <main className="flex-1 overflow-auto p-4">
+                         <main className="flex-1 overflow-auto">
                             {renderFlowsContent()}
                         </main>
                     </div>
