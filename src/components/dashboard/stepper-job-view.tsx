@@ -4,7 +4,7 @@
 import React from 'react';
 import { Job, JobFlowTemplate, Task, JobFlowTask, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
-import { Check, Circle, Loader2, ChevronsRight } from 'lucide-react';
+import { Check, Circle, Loader2, ChevronsRight, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import {
@@ -13,8 +13,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Checkbox } from '../ui/checkbox';
+import { Badge } from '../ui/badge';
 
 const getInitials = (name: string) => {
     return name ? name.split(' ').map(n => n[0]).join('') : '';
@@ -47,7 +48,24 @@ export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, al
             .map(jft => tasks.find(t => t.id === jft.taskId))
             .filter((t): t is Task => !!t);
         
-        const isPhaseComplete = tasksForJobInPhase.every(t => t.status === 'Done');
+        const isJobCompleted = job.status === 'completed';
+
+        if (isJobCompleted) {
+             return (
+                 <Card key={job.id}>
+                    <div className="flex justify-between items-center w-full p-4">
+                        <div className="flex flex-col text-left">
+                            <h3 className="font-semibold text-lg line-through text-muted-foreground">{job.name}</h3>
+                             <Badge variant="secondary" className="w-fit mt-1 flex items-center gap-1.5 bg-green-100 text-green-800">
+                                <CheckCircle2 className="h-4 w-4" />
+                                Completed
+                            </Badge>
+                        </div>
+                         <Button onClick={() => onJobClick(job)} variant="outline">View Details</Button>
+                    </div>
+                </Card>
+             )
+        }
 
         return (
           <Card key={job.id}>
@@ -66,7 +84,7 @@ export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, al
                 </div>
                 <AccordionContent className="p-4 pt-0">
                     <div className="space-y-2">
-                        {tasksForJobInPhase.map(task => {
+                        {tasksForJobInPhase.length > 0 ? tasksForJobInPhase.map(task => {
                             const assignee = allUsers.find(u => u.id === task.assigned_to);
                             const isComplete = task.status === 'Done';
                             return (
@@ -92,7 +110,9 @@ export default function StepperJobView({ template, jobs, tasks, jobFlowTasks, al
                                     </div>
                                 </div>
                             )
-                        })}
+                        }) : (
+                            <p className="text-sm text-muted-foreground text-center italic py-4">No tasks for this phase yet.</p>
+                        )}
                     </div>
                 </AccordionContent>
               </AccordionItem>

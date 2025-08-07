@@ -66,6 +66,7 @@ export default function JobDetailsDialog({
 
   const reviewerId = currentPhase?.defaultReviewerId ? job.roleUserMapping[currentPhase.defaultReviewerId] || currentPhase.defaultReviewerId : null;
   const isCurrentUserTheReviewer = appUser.id === reviewerId;
+  const isJobCompleted = job.status === 'completed';
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -74,6 +75,12 @@ export default function JobDetailsDialog({
           <DialogTitle className="flex items-center gap-2">
             <GitBranch className="h-6 w-6" />
             Job Details: {job.name}
+            {isJobCompleted && (
+                <Badge variant="secondary" className="flex items-center gap-1.5 bg-green-100 text-green-800">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Job Completed
+                </Badge>
+            )}
           </DialogTitle>
           <DialogDescription>
             Tracking progress for the "{template.name}" workflow.
@@ -88,10 +95,12 @@ export default function JobDetailsDialog({
                     const phaseTaskLinks = jobFlowTasks.filter(jft => jft.phaseIndex === phase.phaseIndex);
                     const phaseTasks = phaseTaskLinks.map(jft => tasks.find(t => t.id === jft.taskId)).filter(Boolean) as Task[];
                     const allPhaseTasksComplete = phaseTasks.every(t => t.status === 'Done');
-                    const phaseSubmittedForReview = allPhaseTasksComplete && phase.requiresReview && phaseTaskLinks.some(jft => !!jft.reviewedBy);
+                    
+                    const jftForPhase = jobFlowTasks.filter(jft => jft.phaseIndex === phase.phaseIndex);
+                    const phaseSubmittedForReview = jftForPhase.length > 0 && jftForPhase.every(jft => !!jft.reviewedBy);
 
                     let phaseStatus: 'completed' | 'in-progress' | 'pending' | 'awaiting-review' = 'pending';
-                    if (job.currentPhaseIndex > phase.phaseIndex) {
+                    if (isJobCompleted || job.currentPhaseIndex > phase.phaseIndex) {
                         phaseStatus = 'completed';
                     } else if (job.currentPhaseIndex === phase.phaseIndex) {
                         phaseStatus = phaseSubmittedForReview ? 'awaiting-review' : 'in-progress';
@@ -123,7 +132,7 @@ export default function JobDetailsDialog({
                             </div>
                             <div className="flex-1 pt-1.5">
                                 <p className="font-semibold">{phase.name}</p>
-                                {phaseSubmittedForReview && reviewer ? (
+                                {phaseStatus === 'awaiting-review' && reviewer ? (
                                     <div className="mt-2 flex items-center gap-2 rounded-md border bg-primary/10 p-2">
                                         <Avatar className="h-6 w-6">
                                             <AvatarImage src={reviewer.avatarUrl} />
@@ -133,7 +142,7 @@ export default function JobDetailsDialog({
                                             Submitted for review to {reviewer.name}
                                         </p>
                                     </div>
-                                ) : (phase.requiresReview && (
+                                ) : (phase.requiresReview && phaseStatus !== 'completed' && (
                                      <Badge variant="outline" className="mt-1">
                                         <UserCheck className="h-3 w-3 mr-1.5" />
                                         Review by: {reviewer?.name || 'Unknown'}
@@ -178,7 +187,7 @@ export default function JobDetailsDialog({
                 })}
             </div>
         </ScrollArea>
-        {currentPhase && areAllTasksComplete && (
+        {!isJobCompleted && currentPhase && areAllTasksComplete && (
             <DialogFooter>
                 {currentPhase.requiresReview ? (
                      isCurrentUserTheReviewer && isSubmittedForReview ? (
