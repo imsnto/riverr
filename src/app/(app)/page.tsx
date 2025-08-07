@@ -473,10 +473,7 @@ function DashboardComponent() {
                         />
                     </div>
                      {threadOpen && (
-                        <div className={cn(
-                          'fixed md:relative top-16 md:top-0 right-0 z-40 w-full md:w-[400px] h-[calc(100vh-4rem)] md:h-full bg-card border-l shadow-lg transition-transform duration-300 md:translate-x-0',
-                           rightPanelView ? 'translate-x-0' : 'translate-x-full'
-                        )}>
+                        <div className="w-[400px] border-l bg-card h-full overflow-y-auto">
                             {rightPanelView === 'threads' && (
                                 <AllThreadsView
                                 messages={messages}
@@ -700,6 +697,7 @@ export default function Dashboard() {
     
 
     
+
 
 
 
