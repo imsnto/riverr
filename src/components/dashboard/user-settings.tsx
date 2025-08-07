@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { User, Space, Invite, SpaceMember } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,9 +31,16 @@ interface UserSettingsProps {
 }
 
 export default function UserSettings({ allUsers: initialUsers, allSpaces, appUser, onInvite, handleInvite }: UserSettingsProps) {
-  const [allUsers, setAllUsers] = useState<User[]>(initialUsers);
-  const [isInviteOpen, setIsInviteOpen] = useState(false);
   const { toast } = useToast();
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+
+  const usersInMySpaces = useMemo(() => {
+    const memberIds = new Set<string>();
+    allSpaces.forEach(space => {
+        Object.keys(space.members).forEach(id => memberIds.add(id));
+    });
+    return initialUsers.filter(user => memberIds.has(user.id));
+  }, [initialUsers, allSpaces]);
   
   const getRoleInSpace = (user: User, space: Space): SpaceMember | null => {
       return space.members[user.id] || null;
@@ -42,7 +49,7 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, appUse
   const handleRemoveUser = (userId: string) => {
     // This would be a more complex operation, removing user from all spaces, etc.
     // For now, we just toast.
-    const userToRemove = allUsers.find(u => u.id === userId);
+    const userToRemove = initialUsers.find(u => u.id === userId);
     toast({
         variant: 'destructive',
         title: 'Action Not Implemented',
@@ -82,7 +89,7 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, appUse
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {allUsers.map(user => (
+                        {usersInMySpaces.map(user => (
                             <TableRow key={user.id}>
                                 <TableCell>
                                     <div className="flex items-center gap-3">
