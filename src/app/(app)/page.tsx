@@ -425,7 +425,7 @@ export default function Dashboard() {
             case 'flows': 
                 const renderFlowsContent = () => {
                     switch(flowsView) {
-                        case 'job_flows': return <div className="p-4"><JobFlowBoard 
+                        case 'job_flows': return <JobFlowBoard 
                                                     activeSpace={activeSpace!} 
                                                     allUsers={allUsers} 
                                                     jobFlowTemplates={jobFlowTemplates}
@@ -435,7 +435,7 @@ export default function Dashboard() {
                                                     onJobLaunched={() => fetchData(activeSpace!)}
                                                     onUpdateTask={handleUpdateTask}
                                                     onTaskSelect={setSelectedTask}
-                                                 /></div>;
+                                                 />;
                         case 'templates': return <div className="p-4"><JobFlowTemplateBuilder 
                                                     templates={jobFlowTemplates} 
                                                     phaseTemplates={phaseTemplates}
@@ -492,9 +492,9 @@ export default function Dashboard() {
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
-                         <main className="flex-1 overflow-auto">
+                         <div className="flex-1 overflow-auto">
                             {renderFlowsContent()}
-                        </main>
+                        </div>
                     </div>
                 )
             case 'settings': 
