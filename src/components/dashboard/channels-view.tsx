@@ -111,8 +111,11 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
       timestamp: new Date().toISOString(),
       attachments: newAttachments,
       reactions: [],
-      ...(replyingTo && { thread_id: replyingTo.thread_id || replyingTo.id }),
     };
+
+    if (replyingTo) {
+        messageData.thread_id = replyingTo.thread_id || replyingTo.id;
+    }
     
     setNewMessage('');
     setAttachments([]);
@@ -240,7 +243,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
             </div>
           )}
            {threadReplies.length > 0 && (
-             <div className="mt-2 flex items-center gap-2">
+             <div className="mt-2 flex items-center gap-2 text-sm">
                 <div className="flex -space-x-2">
                     {repliers.slice(0,3).map(replyUser => (
                         <Avatar key={replyUser.id} className="h-5 w-5 border-2 border-background">
@@ -249,10 +252,10 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
                         </Avatar>
                     ))}
                 </div>
-                <Button variant="link" size="sm" className="h-auto p-0 text-primary" onClick={() => onViewThread(message)}>
+                <Button variant="link" size="sm" className="h-auto p-0 text-primary font-semibold" onClick={() => onViewThread(message)}>
                     {threadReplies.length} {threadReplies.length > 1 ? 'replies' : 'reply'}
                 </Button>
-                <span className="text-xs text-muted-foreground">Last reply today at {new Date(threadReplies[threadReplies.length-1].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="text-muted-foreground text-xs whitespace-nowrap">Last reply today at {new Date(threadReplies[threadReplies.length-1].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
              </div>
            )}
         </div>
