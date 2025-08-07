@@ -3,10 +3,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarFooter } from '@/components/ui/sidebar';
-import { FolderKanban, MessageSquare, Timer, Settings, UserPlus, FilePlus, Bot, Workflow, BarChart } from 'lucide-react';
+import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from '@/components/ui/sidebar';
+import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart } from 'lucide-react';
 import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, Invite, Status, JobFlowTemplate, Job, JobFlowTask, PhaseTemplate, TaskTemplate, Activity } from '@/lib/data';
-import Header from '@/components/dashboard/header';
 import TaskBoard from '@/components/dashboard/task-board';
 import { useToast } from '@/hooks/use-toast';
 import TeamTimesheets from '@/components/dashboard/team-timesheets';
@@ -56,6 +55,7 @@ import PhaseTemplateBuilder from '@/components/dashboard/phase-template-builder'
 import TaskTemplateBuilder from '@/components/dashboard/task-template-builder';
 import JobFlowBoard from '@/components/dashboard/job-flow-board';
 import { Button } from '@/components/ui/button';
+import { TopBar } from '@/components/dashboard/top-bar';
 
 
 type View = 'overview' | 'tasks' | 'messages' | 'timesheets' | 'reports' | 'flows' | 'settings';
@@ -321,7 +321,7 @@ export default function Dashboard() {
 
     const memoizedTasks = useMemo(() => tasks, [tasks]);
 
-    if (!appUser || !activeSpace || isLoading) {
+    if (!appUser || isLoading) {
         return <LoadingState />;
     }
 
@@ -331,8 +331,8 @@ export default function Dashboard() {
             case 'tasks': return <TaskBoard 
                                     tasks={memoizedTasks} 
                                     onUpdateTasks={setTasks} 
-                                    projects={projects.filter(p => p.space_id === activeSpace.id)} 
-                                    activeSpace={activeSpace}
+                                    projects={projects.filter(p => p.space_id === activeSpace!.id)} 
+                                    activeSpace={activeSpace!}
                                     allUsers={allUsers}
                                     onUpdateActiveSpace={handleUpdateActiveSpace}
                                     onAddProject={handleAddProject}
@@ -378,7 +378,7 @@ export default function Dashboard() {
                              messages={messages}
                              allUsers={allUsers}
                              tasks={tasks}
-                             statuses={activeSpace.statuses}
+                             statuses={activeSpace!.statuses}
                              activeChannelId={activeChannelId}
                              setMessages={setMessages}
                              onCreateTask={handleCreateTaskFromThread}
@@ -418,19 +418,19 @@ export default function Dashboard() {
                     </div>
                 </div>
             )
-            case 'timesheets': return <TeamTimesheets space={activeSpace} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} />;
+            case 'timesheets': return <TeamTimesheets space={activeSpace!} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} />;
             case 'reports': return <MeetingReview slackMeetingLogs={slackLogs} projects={projects} allUsers={allUsers} />;
             case 'flows': 
                 const renderFlowsContent = () => {
                     switch(flowsView) {
                         case 'job_flows': return <JobFlowBoard 
-                                                    activeSpace={activeSpace} 
+                                                    activeSpace={activeSpace!} 
                                                     allUsers={allUsers} 
                                                     jobFlowTemplates={jobFlowTemplates}
                                                     jobs={jobs}
                                                     jobFlowTasks={jobFlowTasks}
                                                     tasks={tasks}
-                                                    onJobLaunched={() => fetchData(activeSpace)}
+                                                    onJobLaunched={() => fetchData(activeSpace!)}
                                                     onUpdateTask={handleUpdateTask}
                                                     onTaskSelect={setSelectedTask}
                                                  />;
@@ -504,56 +504,54 @@ export default function Dashboard() {
     }
 
     return (
-      <div className="flex flex-col h-screen">
-        <Header activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={userSpaces} appUser={appUser} />
-        <div className="flex flex-1 overflow-hidden">
-            <SidebarProvider defaultOpen={false}>
-                <Sidebar collapsible="icon">
-                    <SidebarContent>
-                        <SidebarMenu>
+      <SidebarProvider defaultOpen={false}>
+        <TopBar activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={userSpaces} />
+        <div className="flex flex-1 h-screen pt-16">
+            <Sidebar collapsible="icon">
+                <SidebarContent>
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton onClick={() => setView('overview')} isActive={view === 'overview'}>
+                                <BarChart /><span>Overview</span>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton onClick={() => setView('tasks')} isActive={view === 'tasks'}>
+                                <FolderKanban /><span>Tasks</span>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton onClick={() => setView('messages')} isActive={view === 'messages'}>
+                                <MessageSquare /><span>Messages</span>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton onClick={() => setView('timesheets')} isActive={view === 'timesheets'}>
+                                <Timer /><span>Timesheets</span>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
                             <SidebarMenuItem>
-                                <SidebarMenuButton onClick={() => setView('overview')} isActive={view === 'overview'}>
-                                    <BarChart /><span>Overview</span>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
+                            <SidebarMenuButton onClick={() => setView('flows')} isActive={view === 'flows'}>
+                                <Workflow /><span>Flows</span>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
+                </SidebarContent>
+                <SidebarFooter>
+                    <SidebarMenu>
                             <SidebarMenuItem>
-                                <SidebarMenuButton onClick={() => setView('tasks')} isActive={view === 'tasks'}>
-                                    <FolderKanban /><span>Tasks</span>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton onClick={() => setView('messages')} isActive={view === 'messages'}>
-                                    <MessageSquare /><span>Messages</span>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton onClick={() => setView('timesheets')} isActive={view === 'timesheets'}>
-                                    <Timer /><span>Timesheets</span>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                             <SidebarMenuItem>
-                                <SidebarMenuButton onClick={() => setView('flows')} isActive={view === 'flows'}>
-                                    <Workflow /><span>Flows</span>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        </SidebarMenu>
-                    </SidebarContent>
-                    <SidebarFooter>
-                        <SidebarMenu>
-                             <SidebarMenuItem>
-                                <SidebarMenuButton onClick={() => setView('settings')} isActive={view === 'settings'}>
-                                    <Settings /><span>Settings</span>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        </SidebarMenu>
-                    </SidebarFooter>
-                </Sidebar>
-                <div className="flex-1 overflow-auto">
-                    <main className="p-4 md:p-8 flex-1">
-                        {renderContent()}
-                    </main>
-                </div>
-            </SidebarProvider>
+                            <SidebarMenuButton onClick={() => setView('settings')} isActive={view === 'settings'}>
+                                <Settings /><span>Settings</span>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
+                </SidebarFooter>
+            </Sidebar>
+            <div className="flex-1 overflow-auto">
+                <main className="p-4 md:p-8 flex-1">
+                    {activeSpace ? renderContent() : <LoadingState />}
+                </main>
+            </div>
         </div>
         {selectedTask && (
              <TaskDetailsDialog
@@ -571,10 +569,10 @@ export default function Dashboard() {
                 onRemoveTask={(taskId) => setTasks(prev => prev.filter(t => t.id !== taskId))}
                 onTaskSelect={setSelectedTask}
                 onLogTime={handleLogTime}
-                statuses={activeSpace.statuses.map(s => s.name)}
+                statuses={activeSpace!.statuses.map(s => s.name)}
                 projects={projects}
              />
         )}
-      </div>
+      </SidebarProvider>
     );
 }

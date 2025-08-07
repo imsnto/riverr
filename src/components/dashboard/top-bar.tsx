@@ -1,6 +1,8 @@
+// components/dashboard/top-bar.tsx
+"use client"
 
-'use client';
-
+import { cn } from "@/lib/utils"
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar" 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,7 +17,6 @@ import { Space, User } from '@/lib/data';
 import { LifeBuoy, LogOut, User as UserIcon, ChevronsUpDown, Check } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import { cn } from '@/lib/utils';
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
@@ -75,32 +76,33 @@ function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProp
   )
 }
 
+const getInitials = (name: string) => {
+    if (!name) return '';
+    return name.split(' ').map(n => n[0]).join('');
+}
 
-export default function Header({ activeSpace, onSpaceChange, allSpaces, appUser }: { activeSpace: Space; onSpaceChange: (spaceId: string) => void; allSpaces: Space[], appUser: User | null }) {
+
+export function TopBar({ className, activeSpace, onSpaceChange, allSpaces }: { className?: string; activeSpace: Space | null, onSpaceChange: (spaceId: string) => void; allSpaces: Space[] }) {
+  const { toggleSidebar } = useSidebar()
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { signOut, appUser } = useAuth();
+
+  if (!appUser) return null;
 
   const handleLogout = async () => {
     await signOut();
     router.push('/login');
   };
 
-  const getInitials = (name: string) => {
-    if (!name) return '';
-    return name.split(' ').map(n => n[0]).join('');
-  }
-  
-  if (!appUser) {
-    return (
-       <header className="sticky top-0 z-10 flex h-16 items-center justify-end border-b bg-card px-4 md:px-8">
-        <p>Loading user...</p>
-       </header>
-    );
-  }
-
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-card px-4 md:px-8">
-      <div>
+    <header
+      className={cn(
+        "fixed top-0 z-20 flex h-16 items-center justify-between border-b bg-background px-4 shadow-sm w-full",
+        className
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <SidebarTrigger onClick={toggleSidebar} />
         {activeSpace && <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />}
       </div>
       <div className="flex items-center gap-4">
@@ -138,5 +140,5 @@ export default function Header({ activeSpace, onSpaceChange, allSpaces, appUser 
         </DropdownMenu>
       </div>
     </header>
-  );
+  )
 }
