@@ -22,6 +22,7 @@ interface JobFlowBoardProps {
     tasks: Task[];
     onJobLaunched: () => void;
     onUpdateTask: (task: Task) => void;
+    onTaskSelect: (task: Task) => void;
 }
 
 export default function JobFlowBoard({ 
@@ -33,6 +34,7 @@ export default function JobFlowBoard({
     tasks,
     onJobLaunched,
     onUpdateTask,
+    onTaskSelect,
 }: JobFlowBoardProps) {
     const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(jobFlowTemplates.length > 0 ? jobFlowTemplates[0].id : null);
     const [isLaunchJobOpen, setIsLaunchJobOpen] = useState(false);
@@ -171,6 +173,7 @@ export default function JobFlowBoard({
             allUsers={allUsers}
             onAdvancePhase={() => handleAdvancePhase(selectedJob)}
             onUpdateTask={onUpdateTask}
+            onTaskSelect={onTaskSelect}
           />
       )}
     </>

@@ -430,6 +430,7 @@ export default function Dashboard() {
                                                     tasks={tasks}
                                                     onJobLaunched={() => fetchData(activeSpace)}
                                                     onUpdateTask={handleUpdateTask}
+                                                    onTaskSelect={setSelectedTask}
                                                  />;
                         case 'templates': return <JobFlowTemplateBuilder 
                                                     templates={jobFlowTemplates} 
@@ -503,9 +504,6 @@ export default function Dashboard() {
     return (
         <SidebarProvider defaultOpen={false}>
             <Sidebar collapsible="icon">
-                <SidebarHeader>
-                    <h2 className="text-xl font-semibold px-2">TimeFlow</h2>
-                </SidebarHeader>
                 <SidebarContent>
                     <SidebarMenu>
                         <SidebarMenuItem>

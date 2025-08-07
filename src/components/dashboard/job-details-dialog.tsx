@@ -21,6 +21,7 @@ interface JobDetailsDialogProps {
   allUsers: User[];
   onAdvancePhase: () => void;
   onUpdateTask: (task: Task) => void;
+  onTaskSelect: (task: Task) => void;
 }
 
 const getInitials = (name: string) => {
@@ -37,6 +38,7 @@ export default function JobDetailsDialog({
   allUsers,
   onAdvancePhase,
   onUpdateTask,
+  onTaskSelect,
 }: JobDetailsDialogProps) {
 
   if (!template) return null;
@@ -105,20 +107,18 @@ export default function JobDetailsDialog({
                                     return (
                                         <div key={task.id} className="text-sm text-muted-foreground p-2 border rounded-md flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                                <button onClick={() => onUpdateTask({ ...task, status: isComplete ? 'Pending' : 'Done' })}>
-                                                {isComplete ? (
-                                                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                                                ) : (
-                                                    <Circle className="h-5 w-5 text-muted-foreground" />
-                                                )}
-                                                </button>
-                                                <span className={cn(isComplete && 'line-through')}>{task.name}</span>
+                                                 <Button variant="link" onClick={() => onTaskSelect(task)} className="p-0 h-auto text-sm text-card-foreground hover:text-primary">
+                                                    <span className={cn(isComplete && 'line-through')}>{task.name}</span>
+                                                 </Button>
                                             </div>
                                              {assignee && (
-                                                <Avatar className="h-6 w-6">
-                                                    <AvatarImage src={assignee.avatarUrl} />
-                                                    <AvatarFallback>{getInitials(assignee.name)}</AvatarFallback>
-                                                </Avatar>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs">{task.status}</span>
+                                                    <Avatar className="h-6 w-6">
+                                                        <AvatarImage src={assignee.avatarUrl} />
+                                                        <AvatarFallback>{getInitials(assignee.name)}</AvatarFallback>
+                                                    </Avatar>
+                                                </div>
                                              )}
                                         </div>
                                     )
