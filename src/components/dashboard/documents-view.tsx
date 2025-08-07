@@ -15,9 +15,10 @@ interface DocumentsViewProps {
   onDelete: (docId: string) => void;
   activeSpaceId: string;
   appUser: User;
+  allUsers: User[];
 }
 
-export default function DocumentsView({ documents, onSave, onDelete, activeSpaceId, appUser }: DocumentsViewProps) {
+export default function DocumentsView({ documents, onSave, onDelete, activeSpaceId, appUser, allUsers }: DocumentsViewProps) {
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,6 +60,7 @@ export default function DocumentsView({ documents, onSave, onDelete, activeSpace
         onDelete={onDelete}
         spaceId={activeSpaceId}
         appUser={appUser}
+        allUsers={allUsers}
         onCreate={handleSaveAndSelect}
       />
     );

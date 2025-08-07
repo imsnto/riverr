@@ -10,6 +10,14 @@ import { ArrowLeft, Bot, Loader2, Save, Trash2, X, MessageSquare } from 'lucide-
 import { useToast } from '@/hooks/use-toast';
 import { assistInDocument } from '@/ai/flows/assist-in-document';
 import { Separator } from '../ui/separator';
+import { useAuth } from '@/hooks/use-auth';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { ScrollArea } from '../ui/scroll-area';
+
+const getInitials = (name: string) => {
+    if (!name) return '';
+    return name.split(' ').map(n => n[0]).join('');
+};
 
 interface DocumentEditorProps {
   document: Document | null;
@@ -19,9 +27,10 @@ interface DocumentEditorProps {
   onCreate: (doc: Omit<Document, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   spaceId: string;
   appUser: User;
+  allUsers: User[];
 }
 
-export default function DocumentEditor({ document, onBack, onSave, onDelete, onCreate, spaceId, appUser }: DocumentEditorProps) {
+export default function DocumentEditor({ document, onBack, onSave, onDelete, onCreate, spaceId, appUser, allUsers }: DocumentEditorProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [sidebarView, setSidebarView] = useState<'ai' | 'comments' | null>(null);
@@ -51,6 +60,7 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
         type: document?.type || 'notes',
         isLocked: document?.isLocked || false,
         tags: document?.tags || [],
+        comments: document?.comments || [],
     };
     
     if (document) {
@@ -65,6 +75,30 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
         onDelete(document.id);
         onBack();
     }
+  }
+
+  const handlePostComment = async (commentContent: string) => {
+    if (!document) return;
+
+    const newComment: DocumentComment = {
+        id: `comment-${Date.now()}`,
+        userId: appUser.id,
+        content: commentContent,
+        createdAt: new Date().toISOString(),
+    };
+
+    const docData = {
+        name: document.name,
+        content: document.content,
+        spaceId: document.spaceId,
+        createdBy: document.createdBy,
+        type: document.type,
+        isLocked: document.isLocked,
+        tags: document.tags,
+        comments: [...document.comments, newComment],
+    };
+    
+    await onSave(docData, document.id);
   }
 
   return (
@@ -117,10 +151,13 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
                         onInsert={(text) => setContent(prev => `${prev}\n\n${text}`)}
                     />
                 )}
-                {sidebarView === 'comments' && (
+                {sidebarView === 'comments' && document && (
                     <CommentsPanel
                         document={document}
                         onClose={() => setSidebarView(null)}
+                        appUser={appUser}
+                        allUsers={allUsers}
+                        onPostComment={handlePostComment}
                     />
                 )}
             </div>
@@ -199,10 +236,29 @@ function AssistantPanel({ fullDocument, onClose, onInsert }: { fullDocument: str
     )
 }
 
-function CommentsPanel({ document, onClose }: { document: Document | null, onClose: () => void }) {
-    // Placeholder for comments functionality
-    // In a real app, you would fetch comments for the document.
-    const comments: DocumentComment[] = [];
+function CommentsPanel({ document, onClose, allUsers, appUser, onPostComment }: { document: Document, onClose: () => void, allUsers: User[], appUser: User, onPostComment: (content: string) => void }) {
+    const [newComment, setNewComment] = useState('');
+    const comments = document.comments || [];
+
+    const handlePost = () => {
+        if (!newComment.trim()) return;
+        onPostComment(newComment);
+        setNewComment('');
+    }
+
+    const renderCommentContent = (content: string) => {
+        const parts = content.split(/(@\w+)/g);
+        return parts.map((part, index) => {
+            if (part.startsWith('@')) {
+                const userName = part.substring(1);
+                const user = allUsers.find(u => u.name.toLowerCase() === userName.toLowerCase());
+                if (user) {
+                    return <strong key={index} className="bg-primary/20 text-primary px-1 rounded-sm">@{user.name}</strong>;
+                }
+            }
+            return part;
+        });
+    }
 
     return (
         <div className="flex flex-col h-full">
@@ -210,24 +266,45 @@ function CommentsPanel({ document, onClose }: { document: Document | null, onClo
                 <h3 className="font-semibold flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Comments</h3>
                 <Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button>
             </div>
-            <div className="flex-1 p-4 overflow-y-auto">
-                {comments.length === 0 ? (
-                    <div className="text-center text-sm text-muted-foreground pt-8">
-                        No comments yet.
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {/* Map over comments here */}
-                    </div>
-                )}
-            </div>
+            <ScrollArea className="flex-1">
+                <div className="p-4 space-y-4">
+                    {comments.length === 0 ? (
+                        <div className="text-center text-sm text-muted-foreground pt-8">
+                            No comments yet.
+                        </div>
+                    ) : (
+                        comments.map(comment => {
+                             const user = allUsers.find(u => u.id === comment.userId);
+                             return (
+                                <div key={comment.id} className="flex items-start gap-3">
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage src={user?.avatarUrl} />
+                                        <AvatarFallback>{user ? getInitials(user.name) : '?'}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-semibold">{user?.name}</span>
+                                            <span className="text-xs text-muted-foreground">
+                                                {new Date(comment.createdAt).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">{renderCommentContent(comment.content)}</p>
+                                    </div>
+                                </div>
+                             )
+                        })
+                    )}
+                </div>
+            </ScrollArea>
             <div className="p-4 border-t">
                  <Textarea 
-                    placeholder="Write a comment..." 
+                    placeholder="Write a comment... use @ to mention users" 
+                    value={newComment}
+                    onChange={e => setNewComment(e.target.value)}
                     className="mb-2"
                     rows={3}
                 />
-                <Button className="w-full">Post Comment</Button>
+                <Button className="w-full" onClick={handlePost}>Post Comment</Button>
             </div>
         </div>
     );

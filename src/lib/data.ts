@@ -1,3 +1,4 @@
+
 // src/lib/data.ts
 export interface User {
   id: string;
@@ -218,6 +219,13 @@ export interface JobFlowTask {
     reviewedBy?: string;
 }
 
+export interface DocumentComment {
+    id: string;
+    userId: string;
+    content: string;
+    createdAt: string; // ISO 8601
+}
+
 export interface Document {
     id: string;
     name: string;
@@ -230,15 +238,10 @@ export interface Document {
     isLocked: boolean;
     allowedUserIds?: string[];
     tags: string[];
+    comments: DocumentComment[];
 }
 
-export interface DocumentComment {
-    id: string;
-    docId: string;
-    userId: string;
-    content: string;
-    createdAt: string; // ISO 8601
-}
+
 
 
 // --- MOCK DATA ---

@@ -351,12 +351,13 @@ function DashboardComponent() {
      const handleSaveDocument = async (doc: Omit<Document, 'id' | 'createdAt' | 'updatedAt'>, docId?: string) => {
         const now = new Date().toISOString();
         if (docId) {
-            const updatedDoc = { ...doc, updatedAt: now };
-            await updateDocument(docId, updatedDoc);
-            setDocuments(prev => prev.map(d => d.id === docId ? { ...d, ...updatedDoc } : d));
+            const updatedDocData = { ...doc, updatedAt: now };
+            await updateDocument(docId, updatedDocData);
+            const fullDoc = { ...documents.find(d => d.id === docId)!, ...updatedDocData};
+            setDocuments(prev => prev.map(d => d.id === docId ? fullDoc : d));
             toast({ title: 'Document Saved' });
         } else {
-            const newDocData = { ...doc, createdAt: now, updatedAt: now };
+            const newDocData = { ...doc, createdAt: now, updatedAt: now, comments: [] };
             const newDoc = await addDocument(newDocData);
             setDocuments(prev => [...prev, newDoc]);
             toast({ title: 'Document Created' });
@@ -484,6 +485,7 @@ function DashboardComponent() {
                         onDelete={handleDeleteDocument}
                         activeSpaceId={activeSpace!.id}
                         appUser={appUser!}
+                        allUsers={allUsers.filter(u => activeSpace?.members[u.id])}
                     />
                 </div>;
             case 'flows': 
