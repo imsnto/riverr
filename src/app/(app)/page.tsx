@@ -631,7 +631,7 @@ function DashboardComponent() {
                     </div>
                 </div>
             </Sidebar>
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1">
                 <main className="h-full">
                     {renderContent()}
                 </main>
