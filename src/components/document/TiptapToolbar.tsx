@@ -1,4 +1,3 @@
-
 'use client';
 
 import { type Editor } from '@tiptap/react';
@@ -55,6 +54,8 @@ export function Toolbar({ editor }: Props) {
     if (url) {
       editor.commands.setYoutubeVideo({
         src: url,
+        width: 640,
+        height: 360,
       });
     }
   };
