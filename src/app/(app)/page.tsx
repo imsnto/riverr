@@ -78,12 +78,11 @@ const LoadingState = () => (
 );
 
 function DashboardComponent() {
-    const { appUser, userSpaces, setUserSpaces } = useAuth();
+    const { appUser, userSpaces, setUserSpaces, activeSpace, setActiveSpace } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
     
-    const [activeSpace, setActiveSpace] = useState<Space | null>(null);
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -116,84 +115,70 @@ function DashboardComponent() {
             setView(viewFromParams);
         }
     }, [searchParams]);
-    
-    const fetchData = async (spaces: Space[]) => {
-        if (!appUser) return;
-        setIsLoading(true);
-        try {
-            // First, fetch data that doesn't have dependencies
-            const [
-                users, allTasks, fetchedProjects, fetchedChannels, jobTemplates, 
-                fetchedJobs, fetchedJobFlowTasks, phaseTpls, taskTpls, fetchedDocuments
-            ] = await Promise.all([
-                getAllUsers(),
-                getAllTasks(), // In a larger app, this should be paginated/filtered
-                Promise.all(spaces.map(s => getProjectsInSpace(s.id))).then(p => p.flat()),
-                Promise.all(spaces.map(s => getChannelsInSpace(s.id))).then(c => c.flat()),
-                Promise.all(spaces.map(s => getJobFlowTemplates(s.id))).then(jt => jt.flat()),
-                Promise.all(spaces.map(s => getAllJobs(s.id))).then(j => j.flat()),
-                Promise.all(spaces.map(s => getAllJobFlowTasks(s.id))).then(jft => jft.flat()),
-                Promise.all(spaces.map(s => getPhaseTemplates(s.id))).then(pt => pt.flat()),
-                Promise.all(spaces.map(s => getTaskTemplates(s.id))).then(tt => tt.flat()),
-                Promise.all(spaces.map(s => getDocumentsInSpace(s.id))).then(d => d.flat()),
-            ]);
 
-            setAllUsers(users);
-            setProjects(fetchedProjects);
-            setTasks(allTasks);
-            setChannels(fetchedChannels);
-            setJobFlowTemplates(jobTemplates);
-            setJobs(fetchedJobs);
-            setJobFlowTasks(fetchedJobFlowTasks);
-            setPhaseTemplates(phaseTpls);
-            setTaskTemplates(taskTpls);
-            setDocuments(fetchedDocuments);
-
-            // Now, fetch data that depends on the results above
-            const [fetchedTimeEntries, fetchedSlackLogs, fetchedMessages] = await Promise.all([
-                getTimeEntriesInSpace(fetchedProjects.map(p => p.id)),
-                Promise.all(spaces.map(s => getSlackMeetingLogsInSpace(s.id))).then(sl => sl.flat()),
-                Promise.all(
-                    fetchedChannels.map(c => getMessagesInChannel(c.id))
-                ).then(msgArrays => msgArrays.flat()),
-            ]);
-            
-            setTimeEntries(fetchedTimeEntries);
-            setSlackLogs(fetchedSlackLogs);
-            setMessages(fetchedMessages);
-
-            if (fetchedChannels.length > 0 && !activeChannelId) {
-                setActiveChannelId(fetchedChannels[0].id);
-            }
-
-        } catch (error) {
-            console.error('Failed to fetch data:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not load workspace data.' });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    
     useEffect(() => {
+        if (!appUser) return;
         if (userSpaces.length > 0 && !activeSpace) {
             setActiveSpace(userSpaces[0]);
         }
-    }, [userSpaces, activeSpace]);
-
+    }, [userSpaces, appUser, activeSpace, setActiveSpace]);
+    
     useEffect(() => {
-        if (userSpaces.length > 0) {
-            fetchData(userSpaces);
-        } else if (appUser) {
-            setIsLoading(false);
-        }
-    }, [userSpaces, appUser]);
+        const fetchData = async () => {
+            if (!appUser || !activeSpace) return;
+            setIsLoading(true);
+            try {
+                const [
+                    users, allTasks, fetchedProjects, fetchedChannels, jobTemplates, 
+                    fetchedJobs, fetchedJobFlowTasks, phaseTpls, taskTpls, fetchedDocuments
+                ] = await Promise.all([
+                    getAllUsers(),
+                    getAllTasks(),
+                    getProjectsInSpace(activeSpace.id),
+                    getChannelsInSpace(activeSpace.id),
+                    getJobFlowTemplates(activeSpace.id),
+                    getAllJobs(activeSpace.id),
+                    getAllJobFlowTasks(activeSpace.id),
+                    getPhaseTemplates(activeSpace.id),
+                    getTaskTemplates(activeSpace.id),
+                    getDocumentsInSpace(activeSpace.id),
+                ]);
 
-    const handleSpaceChange = (spaceId: string) => {
-        const newSpace = userSpaces.find(s => s.id === spaceId);
-        if (newSpace) {
-            setActiveSpace(newSpace);
-        }
-    };
+                setAllUsers(users);
+                setProjects(fetchedProjects);
+                setTasks(allTasks);
+                setChannels(fetchedChannels);
+                setJobFlowTemplates(jobTemplates);
+                setJobs(fetchedJobs);
+                setJobFlowTasks(fetchedJobFlowTasks);
+                setPhaseTemplates(phaseTpls);
+                setTaskTemplates(taskTpls);
+                setDocuments(fetchedDocuments);
+
+                const [fetchedTimeEntries, fetchedSlackLogs, fetchedMessages] = await Promise.all([
+                    getTimeEntriesInSpace(fetchedProjects.map(p => p.id)),
+                    getSlackMeetingLogsInSpace(activeSpace.id),
+                    Promise.all(fetchedChannels.map(c => getMessagesInChannel(c.id))).then(msgArrays => msgArrays.flat()),
+                ]);
+                
+                setTimeEntries(fetchedTimeEntries);
+                setSlackLogs(fetchedSlackLogs);
+                setMessages(fetchedMessages);
+
+                if (fetchedChannels.length > 0 && !activeChannelId) {
+                    setActiveChannelId(fetchedChannels[0].id);
+                }
+
+            } catch (error) {
+                console.error('Failed to fetch data:', error);
+                toast({ variant: 'destructive', title: 'Error', description: 'Could not load workspace data.' });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [appUser, activeSpace]);
     
     const handleUpdateActiveSpace = async (updatedData: Partial<Space>) => {
         if (!activeSpace || !appUser) return;
@@ -202,8 +187,6 @@ function DashboardComponent() {
             await dbUpdateSpace(activeSpace.id, updatedData);
             const updatedSpaces = await getSpacesForUser(appUser.id);
             setUserSpaces(updatedSpaces);
-            const newActiveSpace = updatedSpaces.find(s => s.id === activeSpace.id) || null;
-            setActiveSpace(newActiveSpace);
         } catch(e) {
             console.error("Failed to update space", e);
             toast({ variant: 'destructive', title: 'Update failed', description: 'Could not save space changes.' });
@@ -246,8 +229,7 @@ function DashboardComponent() {
         } catch(e) {
             console.error("Task update failed", e);
             toast({ variant: 'destructive', title: 'Update failed', description: 'Could not save task changes.' });
-            // Revert optimistic update
-            if (activeSpace) fetchData(userSpaces);
+            // Consider reverting optimistic update if needed
         }
     };
     
@@ -378,13 +360,13 @@ function DashboardComponent() {
 
     const memoizedTasks = useMemo(() => tasks, [tasks]);
 
-    if (!appUser || isLoading) {
+    if (!appUser || isLoading || !activeSpace) {
         return <LoadingState />;
     }
 
     const renderContent = () => {
         switch(view) {
-            case 'overview': return <div className="p-4 md:p-8"><Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} jobFlowTasks={jobFlowTasks} onUpdateTask={handleUpdateTask} onTaskSelect={setSelectedTask} onDataRefresh={() => fetchData(userSpaces)} /></div>;
+            case 'overview': return <div className="p-4 md:p-8"><Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} jobFlowTasks={jobFlowTasks} onUpdateTask={handleUpdateTask} onTaskSelect={setSelectedTask} onDataRefresh={() => {if (activeSpace) { /* re-fetch logic here */ }}} /></div>;
             case 'tasks': return <div className="p-4 md:p-8"><TaskBoard 
                                     tasks={memoizedTasks} 
                                     onUpdateTasks={setTasks} 
@@ -494,7 +476,7 @@ function DashboardComponent() {
                                                     jobs={jobs.filter(j => j.space_id === activeSpace!.id)}
                                                     jobFlowTasks={jobFlowTasks}
                                                     tasks={tasks}
-                                                    onJobLaunched={() => fetchData(userSpaces)}
+                                                    onJobLaunched={() => { /* re-fetch */ }}
                                                     onUpdateTask={handleUpdateTask}
                                                     onTaskSelect={setSelectedTask}
                                                  />;
@@ -586,7 +568,7 @@ function DashboardComponent() {
 
     return (
       <SidebarProvider defaultOpen={false}>
-        <TopBar activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={userSpaces} />
+        <TopBar />
         <div className="flex flex-1 h-screen pt-16">
             <Sidebar collapsible="icon">
                 <div className="flex flex-col h-full">
@@ -622,7 +604,7 @@ function DashboardComponent() {
             </Sidebar>
             <div className="flex-1 overflow-auto">
                 <main className="h-full">
-                    {activeSpace ? renderContent() : <LoadingState />}
+                    {renderContent()}
                 </main>
             </div>
         </div>

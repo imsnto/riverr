@@ -1,7 +1,7 @@
 // src/app/(app)/mytasks/page.tsx
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Task, Project, User, TimeEntry } from '@/lib/data';
 import { getAllTasks, getProjectsInSpace, getAllUsers, getTimeEntriesInSpace } from '@/lib/db';
@@ -28,7 +28,7 @@ const LoadingState = () => (
 );
 
 export default function MyTasksPage() {
-    const { appUser, userSpaces, signOut } = useAuth();
+    const { appUser, userSpaces, activeSpace, setActiveSpace, signOut } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
 
@@ -43,10 +43,19 @@ export default function MyTasksPage() {
     const [projectFilter, setProjectFilter] = useState('all');
     const [showCompleted, setShowCompleted] = useState(false);
 
-    const activeSpace = userSpaces.length > 0 ? userSpaces[0] : null;
+    useEffect(() => {
+        if (!appUser) {
+            router.push('/login');
+            return;
+        }
 
-    React.useEffect(() => {
-        if (!appUser) return;
+        if (userSpaces.length > 0 && !activeSpace) {
+            setActiveSpace(userSpaces[0]);
+        }
+    }, [userSpaces, appUser, activeSpace, setActiveSpace, router]);
+
+    useEffect(() => {
+        if (!appUser || !activeSpace) return;
 
         const fetchData = async () => {
             setIsLoading(true);
@@ -54,7 +63,7 @@ export default function MyTasksPage() {
                 const [allTasks, allUsersData, projectsData] = await Promise.all([
                     getAllTasks(),
                     getAllUsers(),
-                    getProjectsInSpace(activeSpace!.id),
+                    getProjectsInSpace(activeSpace.id),
                 ]);
 
                 const projectIds = projectsData.map(p => p.id);
@@ -73,11 +82,7 @@ export default function MyTasksPage() {
             }
         };
 
-        if (activeSpace) {
-            fetchData();
-        } else {
-             setIsLoading(false);
-        }
+        fetchData();
 
     }, [appUser, activeSpace, toast]);
     
@@ -163,7 +168,7 @@ export default function MyTasksPage() {
 
     return (
         <SidebarProvider defaultOpen={false}>
-            <TopBar activeSpace={activeSpace} onSpaceChange={() => {}} allSpaces={userSpaces} />
+            <TopBar />
             <div className="flex flex-1 h-screen pt-16">
                  <Sidebar collapsible="icon">
                      <div className="flex flex-col h-full">
@@ -180,7 +185,7 @@ export default function MyTasksPage() {
                             <Button onClick={() => router.push('/?view=messages')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">
                                 <MessageSquare className="w-7 h-7"/>
                             </Button>
-                            <Button onClick={() => router.push('/?view=documents')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">
+                            <Button onClick={() => router.push('/documents')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">
                                 <BookOpen className="w-7 h-7"/>
                             </Button>
                             <Button onClick={() => router.push('/?view=timesheets')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">

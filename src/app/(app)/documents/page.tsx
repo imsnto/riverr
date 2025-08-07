@@ -19,35 +19,44 @@ const LoadingState = () => (
 );
 
 export default function DocumentsPage() {
-    const { appUser, userSpaces, signOut } = useAuth();
+    const { appUser, userSpaces, activeSpace, setActiveSpace, signOut } = useAuth();
     const router = useRouter();
 
     const [documents, setDocuments] = useState<Document[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    
-    const activeSpace = userSpaces.length > 0 ? userSpaces[0] : null;
 
     useEffect(() => {
-        if (activeSpace && appUser) {
-            setIsLoading(true);
-            Promise.all([
-                getDocumentsInSpace(activeSpace.id),
-                getAllUsers(),
-            ]).then(([docs, users]) => {
-                setDocuments(docs);
-                setAllUsers(users);
-                setIsLoading(false);
-            }).catch(error => {
-                console.error("Failed to fetch document data:", error);
-                setIsLoading(false);
-            });
-        } else if (!appUser) {
+        if (!appUser) {
             router.push('/login');
-        } else {
-             setIsLoading(false);
+            return;
         }
-    }, [activeSpace, appUser, router]);
+
+        if (userSpaces.length > 0 && !activeSpace) {
+            setActiveSpace(userSpaces[0]);
+        }
+    }, [userSpaces, appUser, activeSpace, setActiveSpace, router]);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            if (activeSpace && appUser) {
+                setIsLoading(true);
+                try {
+                    const [docs, users] = await Promise.all([
+                        getDocumentsInSpace(activeSpace.id),
+                        getAllUsers(),
+                    ]);
+                    setDocuments(docs);
+                    setAllUsers(users);
+                } catch (error) {
+                    console.error("Failed to fetch document data:", error);
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+        };
+        fetchData();
+    }, [activeSpace, appUser]);
 
     if (isLoading || !activeSpace || !appUser) {
         return <LoadingState />;
@@ -55,7 +64,7 @@ export default function DocumentsPage() {
 
     return (
         <SidebarProvider defaultOpen={false}>
-            <TopBar activeSpace={activeSpace} onSpaceChange={() => {}} allSpaces={userSpaces} />
+            <TopBar />
             <div className="flex flex-1 h-screen pt-16">
                  <Sidebar collapsible="icon">
                      <div className="flex flex-col h-full">

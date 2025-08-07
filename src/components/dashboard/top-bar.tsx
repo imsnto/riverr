@@ -23,7 +23,7 @@ import { useAuth } from '@/hooks/use-auth';
 
 interface SpaceSwitcherProps {
   spaces: Space[];
-  activeSpace: Space;
+  activeSpace: Space | null;
   onSpaceChange: (spaceId: string) => void;
 }
 
@@ -54,8 +54,8 @@ function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProp
                 <CommandItem
                   key={space.id}
                   value={space.id}
-                  onSelect={(currentValue) => {
-                    onSpaceChange(currentValue)
+                  onSelect={() => {
+                    onSpaceChange(space.id)
                     setOpen(false)
                   }}
                 >
@@ -82,15 +82,22 @@ const getInitials = (name: string) => {
 }
 
 
-export function TopBar({ className, activeSpace, onSpaceChange, allSpaces }: { className?: string; activeSpace: Space | null, onSpaceChange: (spaceId: string) => void; allSpaces: Space[] }) {
+export function TopBar({ className }: { className?: string }) {
   const router = useRouter();
-  const { signOut, appUser } = useAuth();
+  const { signOut, appUser, userSpaces, activeSpace, setActiveSpace } = useAuth();
 
   if (!appUser) return null;
 
   const handleLogout = async () => {
     await signOut();
     router.push('/login');
+  };
+
+  const handleSpaceChange = (spaceId: string) => {
+    const newSpace = userSpaces.find(s => s.id === spaceId);
+    if (newSpace) {
+      setActiveSpace(newSpace);
+    }
   };
 
   return (
@@ -101,7 +108,7 @@ export function TopBar({ className, activeSpace, onSpaceChange, allSpaces }: { c
       )}
     >
       <div className="flex items-center gap-2">
-        {activeSpace && <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />}
+        {activeSpace && <SpaceSwitcher spaces={userSpaces} activeSpace={activeSpace} onSpaceChange={handleSpaceChange} />}
       </div>
       <div className="flex items-center gap-4">
         <DropdownMenu>
