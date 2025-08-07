@@ -174,7 +174,7 @@ function TemplateForm({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => append({ id: `phase-${Date.now()}`, name: 'New Phase', tasks: [{ id: `task-${Date.now()}`, titleTemplate: 'New Task', defaultAssigneeId: '', estimatedDurationDays: 1, subtaskTemplates: [] }], requiresReview: false })}
+                    onClick={() => append({ id: `phase-${Date.now()}`, name: 'New Phase', tasks: [{ id: `task-${Date.now()}`, titleTemplate: 'New Task', descriptionTemplate: '', defaultAssigneeId: '', estimatedDurationDays: 1, subtaskTemplates: [] }], requiresReview: false })}
                     className="w-full"
                 >
                     <Plus className="mr-2 h-4 w-4" /> Add New Phase
@@ -241,6 +241,10 @@ const PhaseItem = ({ control, index, remove, move, allUsers, errors }: { control
                            <Input {...control.register(`phases.${index}.tasks.${taskIndex}.titleTemplate`)} placeholder="e.g., Schedule meeting" className="bg-background h-8"/>
                            {errors.phases?.[index]?.tasks?.[taskIndex]?.titleTemplate && <p className="text-sm text-destructive">{errors.phases[index].tasks[taskIndex].titleTemplate.message}</p>}
                        </div>
+                        <div className="space-y-1">
+                           <Label className="text-xs">Task Description Template (optional)</Label>
+                           <Textarea {...control.register(`phases.${index}.tasks.${taskIndex}.descriptionTemplate`)} placeholder="Use variables for dynamic content" className="bg-background" rows={2}/>
+                       </div>
                         <div className="grid grid-cols-2 gap-4">
                            <div className="space-y-1">
                                <Label className="text-xs">Default Assignee</Label>
@@ -274,6 +278,9 @@ const PhaseItem = ({ control, index, remove, move, allUsers, errors }: { control
                                {errors.phases?.[index]?.tasks?.[taskIndex]?.estimatedDurationDays && <p className="text-sm text-destructive">{errors.phases[index].tasks[taskIndex].estimatedDurationDays.message}</p>}
                            </div>
                        </div>
+
+                       <Separator className="my-2" />
+                       <Subtasks control={control} taskIndex={taskIndex} allUsers={allUsers} errors={errors} phaseIndex={index} />
                        
                        <Button type="button" variant="ghost" size="icon" onClick={() => removeTask(taskIndex)} className="absolute -top-2 -right-2 h-6 w-6">
                            <Trash2 className="h-3 w-3 text-destructive" />
@@ -344,6 +351,72 @@ const PhaseItem = ({ control, index, remove, move, allUsers, errors }: { control
         </div>
     )
 }
+
+
+const Subtasks = ({ control, taskIndex, allUsers, errors, phaseIndex }: { control: any; taskIndex: number; allUsers: User[], errors: any, phaseIndex: number }) => {
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: `phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates`,
+    });
+
+    return (
+        <div className="space-y-2 pl-4 border-l-2">
+            <Label className="text-xs">Subtask Templates</Label>
+            {fields.map((subtaskField, subtaskIndex) => (
+                <div key={subtaskField.id} className="space-y-2 p-2 border rounded-md bg-background">
+                    <div className="flex items-start gap-2">
+                        <Input
+                            {...control.register(`phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates.${subtaskIndex}.titleTemplate`)}
+                            placeholder="e.g., Send follow-up email"
+                            className="bg-background h-8 flex-1"
+                        />
+                        <Input 
+                            type="number"
+                            {...control.register(`phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates.${subtaskIndex}.estimatedDurationDays`)}
+                            placeholder="Days"
+                            className="bg-background h-8 w-20"
+                            min="0"
+                        />
+                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(subtaskIndex)} className="h-8 w-8">
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                    </div>
+                    <div>
+                         <Controller
+                            control={control}
+                            name={`phases.${phaseIndex}.tasks.${taskIndex}.subtaskTemplates.${subtaskIndex}.defaultAssigneeId`}
+                            render={({ field }) => (
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <SelectTrigger className="bg-muted/50 h-8 text-xs">
+                                        <SelectValue placeholder="Assign subtask..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {allUsers.map(user => (
+                                            <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                            </Select>
+                            )}
+                        />
+                        {errors.phases?.[phaseIndex]?.tasks?.[taskIndex]?.subtaskTemplates?.[subtaskIndex]?.defaultAssigneeId && (
+                            <p className="text-sm text-destructive">{errors.phases[phaseIndex].tasks[taskIndex].subtaskTemplates[subtaskIndex].defaultAssigneeId.message}</p>
+                        )}
+                    </div>
+                </div>
+            ))}
+             <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full h-8"
+                onClick={() => append({ id: `subtask-${Date.now()}`, titleTemplate: '', defaultAssigneeId: '', estimatedDurationDays: 0 })}
+            >
+                <Plus className="mr-2 h-4 w-4" /> Add Subtask Template
+            </Button>
+        </div>
+    );
+};
+
 
 export default function JobFlowTemplateBuilder({
   templates,
