@@ -106,7 +106,7 @@ function DashboardComponent() {
     
     // For messaging
     const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
-    const [rightPanelView, setRightPanelView] = useState<'threads' | 'thread' | 'task-from-thread' | null>('threads');
+    const [rightPanelView, setRightPanelView] = useState<'threads' | 'thread' | 'task-from-thread' | null>(null);
     const [activeThread, setActiveThread] = useState<Message | null>(null);
     const [readThreadIds, setReadThreadIds] = useState<Set<string>>(new Set());
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -427,15 +427,15 @@ function DashboardComponent() {
             case 'mytasks':
                 router.push('/mytasks'); // Should not render, just redirect
                 return null;
-            case 'messages': 
+            case 'messages': {
               const activeChannel = channels.find(c => c.id === activeChannelId);
               const channelMembers = activeChannel ? allUsers.filter(u => activeChannel.members.includes(u.id)) : [];
-              const SimplifiedProjects = projects.filter(p => p.space_id === activeSpace?.id).map(p => ({ id: p.id, name: p.name }));
+              const simplifiedProjects = projects.filter(p => p.space_id === activeSpace?.id).map(p => ({ id: p.id, name: p.name }));
               const threadOpen = rightPanelView === 'thread' || rightPanelView === 'threads' || rightPanelView === 'task-from-thread';
                 
               return (
                  <div className={cn(
-                    'grid flex-1 overflow-hidden transition-all duration-200 ease-in-out',
+                    'grid h-full flex-1 transition-all duration-200 ease-in-out',
                     threadOpen ? 'grid-cols-[220px_minmax(0,1fr)_400px]' : 'grid-cols-[220px_minmax(0,1fr)]'
                  )}>
                     <div className="hidden md:flex w-[220px] border-r h-full overflow-y-auto flex-col bg-muted/50">
@@ -474,7 +474,7 @@ function DashboardComponent() {
                     </div>
                      {threadOpen && (
                         <div className={cn(
-                          'fixed md:relative top-16 md:top-0 right-0 z-40 w-full md:w-[400px] h-[calc(100vh-4rem)] md:h-full bg-card border-l shadow-lg transition-transform duration-300 md:translate-x-0 overflow-y-auto',
+                          'fixed md:relative top-16 md:top-0 right-0 z-40 w-full md:w-[400px] h-[calc(100vh-4rem)] md:h-full bg-card border-l shadow-lg transition-transform duration-300 md:translate-x-0',
                            rightPanelView ? 'translate-x-0' : 'translate-x-full'
                         )}>
                             {rightPanelView === 'threads' && (
@@ -502,14 +502,15 @@ function DashboardComponent() {
                                     onOpenChange={() => setRightPanelView('threads')}
                                     message={activeThread}
                                     channelMembers={channelMembers.map(u => ({ id: u.id, name: u.name }))}
-                                    projects={SimplifiedProjects}
+                                    projects={simplifiedProjects}
                                     onTaskCreated={handleCreateTask}
                                 />
                             )}
                         </div>
                     )}
                 </div>
-            )
+              );
+            }
             case 'timesheets': return <div className="p-4 md:p-8"><TeamTimesheets allSpaces={userSpaces} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} /></div>;
             case 'reports': return <div className="p-4 md:p-8"><MeetingReview slackMeetingLogs={slackLogs} projects={projects} allUsers={allUsers} /></div>;
             case 'documents':
@@ -589,7 +590,7 @@ function DashboardComponent() {
                             </DropdownMenu>
                         </div>
                          <div className="flex-1 overflow-auto">
-                            {renderContent()}
+                            {renderFlowsContent()}
                         </div>
                     </div>
                 )
@@ -699,6 +700,7 @@ export default function Dashboard() {
     
 
     
+
 
 
 
