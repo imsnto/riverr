@@ -150,7 +150,7 @@ export default function Overview({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{userProjects.length}</div>
-              <p className="text-xs text-muted-foreground">Active and assigned projects</p>
+              <p className="text-xs text-muted-foreground">Across all my spaces</p>
             </CardContent>
           </Card>
           <Card>

@@ -228,9 +228,18 @@ export const deleteTask = async (taskId: string): Promise<void> => {
 // --- Time & Log Management ---
 export const getTimeEntriesInSpace = async (projectIds: string[]): Promise<TimeEntry[]> => {
     if (!projectIds || projectIds.length === 0) return [];
-    const q = query(collection(db, 'time_entries'), where('project_id', 'in', projectIds));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimeEntry));
+    
+    // Firestore 'in' queries are limited to 30 items. 
+    // If there are more projects, we need to split into multiple queries.
+    const results: TimeEntry[] = [];
+    for (let i = 0; i < projectIds.length; i += 30) {
+        const chunk = projectIds.slice(i, i + 30);
+        const q = query(collection(db, 'time_entries'), where('project_id', 'in', chunk));
+        const querySnapshot = await getDocs(q);
+        const chunkResults = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimeEntry));
+        results.push(...chunkResults);
+    }
+    return results;
 }
 
 export const addTimeEntry = async (timeData: Omit<TimeEntry, 'id'>): Promise<TimeEntry> => {

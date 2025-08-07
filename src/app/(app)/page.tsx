@@ -111,23 +111,24 @@ function DashboardComponent() {
         }
     }, [searchParams]);
     
-    const fetchData = async (space: Space) => {
+    const fetchData = async (spaces: Space[]) => {
+        if (!appUser) return;
         setIsLoading(true);
         try {
             // First, fetch data that doesn't have dependencies
             const [
-                users, fetchedProjects, allTasks, fetchedChannels, jobTemplates, 
+                users, allTasks, fetchedProjects, fetchedChannels, jobTemplates, 
                 fetchedJobs, fetchedJobFlowTasks, phaseTpls, taskTpls
             ] = await Promise.all([
                 getAllUsers(),
-                getProjectsInSpace(space.id),
                 getAllTasks(), // In a larger app, this should be paginated/filtered
-                getChannelsInSpace(space.id),
-                getJobFlowTemplates(space.id),
-                getAllJobs(space.id),
-                getAllJobFlowTasks(space.id),
-                getPhaseTemplates(space.id),
-                getTaskTemplates(space.id),
+                Promise.all(spaces.map(s => getProjectsInSpace(s.id))).then(p => p.flat()),
+                Promise.all(spaces.map(s => getChannelsInSpace(s.id))).then(c => c.flat()),
+                Promise.all(spaces.map(s => getJobFlowTemplates(s.id))).then(jt => jt.flat()),
+                Promise.all(spaces.map(s => getAllJobs(s.id))).then(j => j.flat()),
+                Promise.all(spaces.map(s => getAllJobFlowTasks(s.id))).then(jft => jft.flat()),
+                Promise.all(spaces.map(s => getPhaseTemplates(s.id))).then(pt => pt.flat()),
+                Promise.all(spaces.map(s => getTaskTemplates(s.id))).then(tt => tt.flat()),
             ]);
 
             setAllUsers(users);
@@ -143,7 +144,7 @@ function DashboardComponent() {
             // Now, fetch data that depends on the results above
             const [fetchedTimeEntries, fetchedSlackLogs, fetchedMessages] = await Promise.all([
                 getTimeEntriesInSpace(fetchedProjects.map(p => p.id)),
-                getSlackMeetingLogsInSpace(space.id),
+                Promise.all(spaces.map(s => getSlackMeetingLogsInSpace(s.id))).then(sl => sl.flat()),
                 Promise.all(
                     fetchedChannels.map(c => getMessagesInChannel(c.id))
                 ).then(msgArrays => msgArrays.flat()),
@@ -172,10 +173,12 @@ function DashboardComponent() {
     }, [userSpaces, activeSpace]);
 
     useEffect(() => {
-        if (activeSpace) {
-            fetchData(activeSpace);
+        if (userSpaces.length > 0) {
+            fetchData(userSpaces);
+        } else if (appUser) {
+            setIsLoading(false);
         }
-    }, [activeSpace]);
+    }, [userSpaces, appUser]);
 
     const handleSpaceChange = (spaceId: string) => {
         const newSpace = userSpaces.find(s => s.id === spaceId);
@@ -236,7 +239,7 @@ function DashboardComponent() {
             console.error("Task update failed", e);
             toast({ variant: 'destructive', title: 'Update failed', description: 'Could not save task changes.' });
             // Revert optimistic update
-            if (activeSpace) fetchData(activeSpace);
+            if (activeSpace) fetchData(userSpaces);
         }
     };
     
@@ -345,7 +348,7 @@ function DashboardComponent() {
 
     const renderContent = () => {
         switch(view) {
-            case 'overview': return <div className="p-4 md:p-8"><Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} jobFlowTasks={jobFlowTasks} onUpdateTask={handleUpdateTask} onTaskSelect={setSelectedTask} onDataRefresh={() => fetchData(activeSpace!)} /></div>;
+            case 'overview': return <div className="p-4 md:p-8"><Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} jobFlowTasks={jobFlowTasks} onUpdateTask={handleUpdateTask} onTaskSelect={setSelectedTask} onDataRefresh={() => fetchData(userSpaces)} /></div>;
             case 'tasks': return <div className="p-4 md:p-8"><TaskBoard 
                                     tasks={memoizedTasks} 
                                     onUpdateTasks={setTasks} 
@@ -364,8 +367,9 @@ function DashboardComponent() {
                 router.push('/mytasks'); // Should not render, just redirect
                 return null;
             case 'messages': 
-              const channelMembers = channels.find(c => c.id === activeChannelId)?.members.map(id => allUsers.find(u => u.id === id)).filter(Boolean) as User[];
-              const SimplifiedProjects = projects.map(p => ({ id: p.id, name: p.name }));
+              const activeChannel = channels.find(c => c.id === activeChannelId);
+              const channelMembers = activeChannel ? allUsers.filter(u => activeChannel.members.includes(u.id)) : [];
+              const SimplifiedProjects = projects.filter(p => p.space_id === activeSpace?.id).map(p => ({ id: p.id, name: p.name }));
                 
               return (
                  <div className="grid grid-cols-1 md:grid-cols-[1fr_400px] h-[calc(100vh-4rem)]">
@@ -382,7 +386,7 @@ function DashboardComponent() {
                                 <h3 className="font-semibold text-lg">Channels</h3>
                               </div>
                               <div className="space-y-1 p-2">
-                                {channels.map(channel => (
+                                {channels.filter(c => c.space_id === activeSpace?.id).map(channel => (
                                   <Button 
                                     key={channel.id} 
                                     variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
@@ -439,7 +443,7 @@ function DashboardComponent() {
                     </div>
                 </div>
             )
-            case 'timesheets': return <div className="p-4 md:p-8"><TeamTimesheets space={activeSpace!} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} /></div>;
+            case 'timesheets': return <div className="p-4 md:p-8"><TeamTimesheets allSpaces={userSpaces} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} /></div>;
             case 'reports': return <div className="p-4 md:p-8"><MeetingReview slackMeetingLogs={slackLogs} projects={projects} allUsers={allUsers} /></div>;
             case 'flows': 
                 const renderFlowsContent = () => {
@@ -447,17 +451,17 @@ function DashboardComponent() {
                         case 'job_flows': return <JobFlowBoard 
                                                     activeSpace={activeSpace!} 
                                                     allUsers={allUsers} 
-                                                    jobFlowTemplates={jobFlowTemplates}
-                                                    jobs={jobs}
+                                                    jobFlowTemplates={jobFlowTemplates.filter(t => t.space_id === activeSpace!.id)}
+                                                    jobs={jobs.filter(j => j.space_id === activeSpace!.id)}
                                                     jobFlowTasks={jobFlowTasks}
                                                     tasks={tasks}
-                                                    onJobLaunched={() => fetchData(activeSpace!)}
+                                                    onJobLaunched={() => fetchData(userSpaces)}
                                                     onUpdateTask={handleUpdateTask}
                                                     onTaskSelect={setSelectedTask}
                                                  />;
                         case 'templates': return <div className="p-4"><JobFlowTemplateBuilder 
-                                                    templates={jobFlowTemplates} 
-                                                    phaseTemplates={phaseTemplates}
+                                                    templates={jobFlowTemplates.filter(t => t.space_id === activeSpace!.id)} 
+                                                    phaseTemplates={phaseTemplates.filter(t => t.space_id === activeSpace!.id)}
                                                     allUsers={allUsers}
                                                     activeSpaceId={activeSpace!.id}
                                                     onSave={async (data) => {
@@ -466,9 +470,9 @@ function DashboardComponent() {
                                                     }}
                                                  /></div>;
                         case 'phases': return <div className="p-4"><PhaseTemplateBuilder
-                                                  templates={phaseTemplates}
+                                                  templates={phaseTemplates.filter(t => t.space_id === activeSpace!.id)}
                                                   allUsers={allUsers}
-                                                  taskTemplates={taskTemplates}
+                                                  taskTemplates={taskTemplates.filter(t => t.space_id === activeSpace!.id)}
                                                   activeSpaceId={activeSpace!.id}
                                                   onSave={async (data) => {
                                                       const newTemplate = await dbAddPhaseTemplate(data);
@@ -476,7 +480,7 @@ function DashboardComponent() {
                                                   }}
                                               /></div>;
                         case 'tasks': return <div className="p-4"><TaskTemplateBuilder 
-                                                templates={taskTemplates}
+                                                templates={taskTemplates.filter(t => t.space_id === activeSpace!.id)}
                                                 allUsers={allUsers}
                                                 activeSpaceId={activeSpace!.id}
                                                 onSave={async (data) => {

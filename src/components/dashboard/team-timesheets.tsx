@@ -19,7 +19,7 @@ const getInitials = (name: string) => {
 type ViewMode = 'all-users' | 'single-user';
 
 interface TeamTimesheetsProps {
-  space: Space;
+  allSpaces: Space[];
   allUsers: User[];
   projects: Project[];
   tasks: Task[];
@@ -27,10 +27,21 @@ interface TeamTimesheetsProps {
   appUser: User;
 }
 
-export default function TeamTimesheets({ space, allUsers, projects, tasks, timeEntries, appUser }: TeamTimesheetsProps) {
-  const usersInSpace = allUsers.filter(u => space.members[u.id]);
-  const currentUserPermissions = space.members[appUser.id];
-  const canSeeAllTimesheets = currentUserPermissions?.role === 'Admin' || currentUserPermissions?.permissions?.canSeeAllTimesheets;
+export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, timeEntries, appUser }: TeamTimesheetsProps) {
+  
+  // Get all unique users from all spaces the current user is a member of.
+  const allMemberIds = new Set<string>();
+  allSpaces.forEach(space => {
+    Object.keys(space.members).forEach(memberId => {
+      allMemberIds.add(memberId);
+    });
+  });
+  const usersInAccessibleSpaces = allUsers.filter(u => allMemberIds.has(u.id));
+
+  const isAnySpaceAdmin = allSpaces.some(space => space.members[appUser.id]?.role === 'Admin');
+
+  // A more nuanced permission check: can see all timesheets if they are an admin in ANY of their spaces.
+  const canSeeAllTimesheets = isAnySpaceAdmin;
 
   const [selectedUserId, setSelectedUserId] = useState(appUser.id);
   const [viewMode, setViewMode] = useState<ViewMode>(canSeeAllTimesheets ? 'all-users' : 'single-user');
@@ -51,18 +62,20 @@ export default function TeamTimesheets({ space, allUsers, projects, tasks, timeE
     setCurrentDate(new Date());
   }
 
-  const selectedUser = usersInSpace.find(u => u.id === selectedUserId) || (usersInSpace.length > 0 ? usersInSpace[0] : null);
+  const selectedUser = usersInAccessibleSpaces.find(u => u.id === selectedUserId) || appUser;
 
   const handleUserSelectAndSwitchView = (userId: string) => {
     setSelectedUserId(userId);
     setViewMode('single-user');
   };
   
-  if (usersInSpace.length === 0) {
-    return <div className="text-center p-8">No users in this space.</div>;
+  if (usersInAccessibleSpaces.length === 0) {
+    return <div className="text-center p-8">No users found in your spaces.</div>;
   }
   
-  const statuses = space.statuses ? space.statuses.map(s => s.name) : [];
+  // Flatten all statuses from all spaces into a single list for the dialog
+  const allStatuses = allSpaces.flatMap(s => s.statuses.map(status => status.name));
+  const uniqueStatuses = [...new Set(allStatuses)];
 
 
   if (viewMode === 'single-user' && selectedUser) {
@@ -87,7 +100,7 @@ export default function TeamTimesheets({ space, allUsers, projects, tasks, timeE
                   </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                  {usersInSpace.map(user => (
+                  {usersInAccessibleSpaces.map(user => (
                       <SelectItem key={user.id} value={user.id}>
                            <div className="flex items-center gap-2">
                               <Avatar className="h-6 w-6">
@@ -112,8 +125,8 @@ export default function TeamTimesheets({ space, allUsers, projects, tasks, timeE
               onPrevWeek={handlePreviousWeek}
               onNextWeek={handleNextWeek}
               onThisWeek={handleThisWeek}
-              allUsers={usersInSpace}
-              statuses={statuses}
+              allUsers={usersInAccessibleSpaces}
+              statuses={uniqueStatuses}
              />
           </CardContent>
         </Card>
@@ -125,7 +138,7 @@ export default function TeamTimesheets({ space, allUsers, projects, tasks, timeE
      <AllUsersTimesheet 
         onUserSelect={handleUserSelectAndSwitchView}
         timeEntries={timeEntries}
-        users={usersInSpace}
+        users={usersInAccessibleSpaces}
         weekStart={startOfCurrentWeek}
         onPrevWeek={handlePreviousWeek}
         onNextWeek={handleNextWeek}
