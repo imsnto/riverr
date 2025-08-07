@@ -1,11 +1,11 @@
 
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Document, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Bot, Save, Trash2, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Bot, Save, Trash2, MessageSquare, CheckCircle2, Loader2 } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import TiptapEditor, { useEditor } from '@/components/document/TiptapEditor';
@@ -14,6 +14,24 @@ import CommentsPanel from './CommentsPanel';
 import AssistantPanel from './AssistantPanel';
 import { useRouter } from 'next/navigation';
 import { Editor } from '@tiptap/react';
+
+// Debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 
 interface DocumentEditorProps {
   initialDocument: Document;
@@ -34,6 +52,35 @@ export default function DocumentEditor({
   const { toast } = useToast();
   const router = useRouter();
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date>(new Date(initialDocument.updatedAt));
+
+  const debouncedDocument = useDebounce(document, 2000); // 2-second delay
+
+  const onEditorInstance = useCallback((editor: Editor) => {
+    setEditor(editor);
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    if (!document.name.trim()) {
+      toast({ variant: 'destructive', title: 'Title is required' });
+      return;
+    }
+    setIsSaving(true);
+    const docToSave = { ...document, updatedAt: new Date().toISOString() };
+    await onSave(docToSave);
+    setIsSaving(false);
+    setLastSaved(new Date(docToSave.updatedAt));
+  }, [document, onSave, toast]);
+  
+  // Effect for autosaving
+  useEffect(() => {
+    // Only save if the debounced value is different from the last known saved state
+    if (debouncedDocument && (debouncedDocument.content !== initialDocument.content || debouncedDocument.name !== initialDocument.name)) {
+      handleSave();
+    }
+  }, [debouncedDocument, handleSave, initialDocument]);
+
 
   const handleContentChange = (newContent: string) => {
     setDocument(prev => ({ ...prev, content: newContent }));
@@ -42,16 +89,6 @@ export default function DocumentEditor({
   const handleTitleChange = (newTitle: string) => {
     setDocument(prev => ({ ...prev, name: newTitle }));
   }
-
-  const handleSave = async () => {
-    if (!document.name.trim()) {
-      toast({ variant: 'destructive', title: 'Title is required' });
-      return;
-    }
-    const docToSave = { ...document, updatedAt: new Date().toISOString() };
-    await onSave(docToSave);
-    toast({ title: 'Document Saved!' });
-  };
 
   const handleDelete = async () => {
     await onDelete(document.id);
@@ -78,10 +115,6 @@ export default function DocumentEditor({
     await onSave(updatedDoc);
   };
   
-  const onEditorInstance = useCallback((editor: Editor) => {
-    setEditor(editor);
-  }, []);
-  
   if (!appUser) return null;
 
   return (
@@ -94,16 +127,25 @@ export default function DocumentEditor({
           <Input
             value={document.name}
             onChange={(e) => handleTitleChange(e.target.value)}
-            onBlur={handleSave}
             placeholder="Untitled Document"
             className="text-2xl font-bold border-none focus-visible:ring-0 p-0 h-auto"
           />
         </div>
 
-        <div className="flex items-center gap-2 mb-4 border-b pb-2">
-          <Button size="sm" onClick={handleSave}>
-            <Save className="mr-2 h-4 w-4" /> Save
-          </Button>
+        <div className="flex items-center gap-4 mb-4 border-b pb-2">
+           <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {isSaving ? (
+                    <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Saving...</span>
+                    </>
+                ) : (
+                    <>
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        <span>Saved at {lastSaved.toLocaleTimeString()}</span>
+                    </>
+                )}
+            </div>
           <Button size="sm" variant="destructive" onClick={handleDelete}>
             <Trash2 className="mr-2 h-4 w-4" /> Delete
           </Button>
@@ -120,7 +162,6 @@ export default function DocumentEditor({
           <TiptapEditor 
             content={document.content} 
             onChange={handleContentChange} 
-            onBlur={handleSave}
             onEditorInstance={onEditorInstance}
           />
         </div>
