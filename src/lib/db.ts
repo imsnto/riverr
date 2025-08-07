@@ -291,8 +291,9 @@ export const addMessage = async (message: Omit<Message, 'id'>): Promise<Message>
 }
 
 // --- Job Flow Management ---
-export const getJobFlowTemplates = async (): Promise<JobFlowTemplate[]> => {
-    const querySnapshot = await getDocs(collection(db, 'job_flow_templates'));
+export const getJobFlowTemplates = async (spaceId: string): Promise<JobFlowTemplate[]> => {
+    const q = query(collection(db, 'job_flow_templates'), where('space_id', '==', spaceId));
+    const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JobFlowTemplate));
 };
 
@@ -301,13 +302,15 @@ export const addJobFlowTemplate = async (template: Omit<JobFlowTemplate, 'id'>):
     return { ...template, id: docRef.id };
 };
 
-export const getPhaseTemplates = async (): Promise<PhaseTemplate[]> => {
-    const querySnapshot = await getDocs(collection(db, 'phase_templates'));
+export const getPhaseTemplates = async (spaceId: string): Promise<PhaseTemplate[]> => {
+    const q = query(collection(db, 'phase_templates'), where('space_id', '==', spaceId));
+    const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PhaseTemplate));
 };
 
-export const getTaskTemplates = async (): Promise<TaskTemplate[]> => {
-    const querySnapshot = await getDocs(collection(db, 'task_templates'));
+export const getTaskTemplates = async (spaceId: string): Promise<TaskTemplate[]> => {
+    const q = query(collection(db, 'task_templates'), where('space_id', '==', spaceId));
+    const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TaskTemplate));
 };
 
@@ -518,5 +521,3 @@ export const reviewJobPhase = async (jobId: string, phaseIndex: number, userId: 
     
     await batch.commit();
 }
-
-

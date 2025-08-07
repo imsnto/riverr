@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -33,6 +34,7 @@ interface PhaseTemplateBuilderProps {
   allUsers: User[];
   onSave: (template: Omit<PhaseTemplate, 'id'>) => void;
   taskTemplates: TaskTemplate[];
+  activeSpaceId: string;
 }
 
 const subtaskTemplateSchema = z.object({
@@ -57,6 +59,7 @@ const phaseTemplateSchema = z.object({
   tasks: z.array(taskTemplateSchema).min(1, 'At least one task is required'),
   requiresReview: z.boolean().default(false),
   defaultReviewerId: z.string().optional(),
+  space_id: z.string(),
 }).refine(data => {
     if (data.requiresReview && !data.defaultReviewerId) {
         return false;
@@ -69,7 +72,7 @@ const phaseTemplateSchema = z.object({
 
 type PhaseTemplateFormValues = z.infer<typeof phaseTemplateSchema>;
 
-function TemplateForm({ onSave, allUsers, closeDialog, taskTemplates }: { onSave: (data: PhaseTemplateFormValues) => void, allUsers: User[], closeDialog: () => void, taskTemplates: TaskTemplate[] }) {
+function TemplateForm({ onSave, allUsers, closeDialog, taskTemplates, activeSpaceId }: { onSave: (data: PhaseTemplateFormValues) => void, allUsers: User[], closeDialog: () => void, taskTemplates: TaskTemplate[], activeSpaceId: string }) {
   const form = useForm<PhaseTemplateFormValues>({
     resolver: zodResolver(phaseTemplateSchema),
     defaultValues: {
@@ -77,6 +80,7 @@ function TemplateForm({ onSave, allUsers, closeDialog, taskTemplates }: { onSave
       description: '',
       tasks: [{ id: `task-${Date.now()}`, titleTemplate: '', descriptionTemplate: '', defaultAssigneeId: '', estimatedDurationDays: 1, subtaskTemplates: [] }],
       requiresReview: false,
+      space_id: activeSpaceId,
     },
   });
 
@@ -345,7 +349,7 @@ const Subtasks = ({ control, taskIndex, allUsers, errors }: { control: any; task
 };
 
 
-export default function PhaseTemplateBuilder({ templates, allUsers, onSave, taskTemplates }: PhaseTemplateBuilderProps) {
+export default function PhaseTemplateBuilder({ templates, allUsers, onSave, taskTemplates, activeSpaceId }: PhaseTemplateBuilderProps) {
     const [isFormOpen, setIsFormOpen] = useState(false);
     
     const handleSave = (data: PhaseTemplateFormValues) => {
@@ -416,13 +420,9 @@ export default function PhaseTemplateBuilder({ templates, allUsers, onSave, task
                             Define the tasks for a reusable workflow phase.
                         </DialogDescription>
                     </DialogHeader>
-                    <TemplateForm onSave={handleSave} allUsers={allUsers} closeDialog={() => setIsFormOpen(false)} taskTemplates={taskTemplates} />
+                    <TemplateForm onSave={handleSave} allUsers={allUsers} closeDialog={() => setIsFormOpen(false)} taskTemplates={taskTemplates} activeSpaceId={activeSpaceId} />
                 </DialogContent>
             </Dialog>
         </>
     );
 }
-
-  
-
-    

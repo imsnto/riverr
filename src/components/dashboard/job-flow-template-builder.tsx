@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -33,6 +34,7 @@ interface JobFlowTemplateBuilderProps {
   phaseTemplates: PhaseTemplate[];
   allUsers: User[];
   onSave: (template: Omit<JobFlowTemplate, 'id'>) => void;
+  activeSpaceId: string;
 }
 
 const subtaskTemplateSchema = z.object({
@@ -74,6 +76,7 @@ const jobFlowTemplateSchema = z.object({
   description: z.string().optional(),
   phases: z.array(jobFlowPhaseSchema).min(1, 'At least one phase is required'),
   defaultView: z.enum(['kanban', 'stepper', 'list']),
+  space_id: z.string(),
 });
 
 type JobFlowTemplateFormValues = z.infer<typeof jobFlowTemplateSchema>;
@@ -82,12 +85,14 @@ function TemplateForm({
   onSave,
   closeDialog,
   phaseTemplates,
-  allUsers
+  allUsers,
+  activeSpaceId,
 }: {
   onSave: (data: JobFlowTemplateFormValues) => void;
   closeDialog: () => void;
   phaseTemplates: PhaseTemplate[];
   allUsers: User[];
+  activeSpaceId: string;
 }) {
   const form = useForm<JobFlowTemplateFormValues>({
     resolver: zodResolver(jobFlowTemplateSchema),
@@ -96,6 +101,7 @@ function TemplateForm({
       description: '',
       phases: [],
       defaultView: 'kanban',
+      space_id: activeSpaceId,
     },
   });
 
@@ -453,6 +459,7 @@ export default function JobFlowTemplateBuilder({
   phaseTemplates,
   onSave,
   allUsers,
+  activeSpaceId
 }: JobFlowTemplateBuilderProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
 
@@ -533,13 +540,10 @@ export default function JobFlowTemplateBuilder({
             closeDialog={() => setIsFormOpen(false)}
             phaseTemplates={phaseTemplates}
             allUsers={allUsers}
+            activeSpaceId={activeSpaceId}
           />
         </DialogContent>
       </Dialog>
     </>
   );
 }
-
-  
-
-    

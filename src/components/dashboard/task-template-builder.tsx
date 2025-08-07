@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -30,6 +31,7 @@ interface TaskTemplateBuilderProps {
   templates: TaskTemplate[];
   allUsers: User[];
   onSave: (template: Omit<TaskTemplate, 'id'>) => void;
+  activeSpaceId: string;
 }
 
 const subtaskTemplateSchema = z.object({
@@ -45,11 +47,12 @@ const taskTemplateSchema = z.object({
   defaultAssigneeId: z.string().min(1, 'Default assignee is required'),
   estimatedDurationDays: z.coerce.number().min(1, "Duration must be at least 1 day"),
   subtaskTemplates: z.array(subtaskTemplateSchema).optional(),
+  space_id: z.string(),
 });
 
 type TaskTemplateFormValues = z.infer<typeof taskTemplateSchema>;
 
-function TemplateForm({ onSave, allUsers, closeDialog }: { onSave: (data: TaskTemplateFormValues) => void, allUsers: User[], closeDialog: () => void }) {
+function TemplateForm({ onSave, allUsers, closeDialog, activeSpaceId }: { onSave: (data: TaskTemplateFormValues) => void, allUsers: User[], closeDialog: () => void, activeSpaceId: string }) {
   const form = useForm<TaskTemplateFormValues>({
     resolver: zodResolver(taskTemplateSchema),
     defaultValues: {
@@ -58,6 +61,7 @@ function TemplateForm({ onSave, allUsers, closeDialog }: { onSave: (data: TaskTe
       defaultAssigneeId: '',
       estimatedDurationDays: 1,
       subtaskTemplates: [],
+      space_id: activeSpaceId,
     },
   });
 
@@ -192,7 +196,7 @@ const Subtasks = ({ control, allUsers, errors }: { control: any; allUsers: User[
 };
 
 
-export default function TaskTemplateBuilder({ templates, allUsers, onSave }: TaskTemplateBuilderProps) {
+export default function TaskTemplateBuilder({ templates, allUsers, onSave, activeSpaceId }: TaskTemplateBuilderProps) {
     const [isFormOpen, setIsFormOpen] = useState(false);
     
     const handleSave = (data: TaskTemplateFormValues) => {
@@ -263,12 +267,9 @@ export default function TaskTemplateBuilder({ templates, allUsers, onSave }: Tas
                             Define a reusable task with its own subtasks.
                         </DialogDescription>
                     </DialogHeader>
-                    <TemplateForm onSave={handleSave} allUsers={allUsers} closeDialog={() => setIsFormOpen(false)} />
+                    <TemplateForm onSave={handleSave} allUsers={allUsers} closeDialog={() => setIsFormOpen(false)} activeSpaceId={activeSpaceId} />
                 </DialogContent>
             </Dialog>
         </>
     );
 }
-
-
-    

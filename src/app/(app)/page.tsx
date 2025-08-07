@@ -123,11 +123,11 @@ function DashboardComponent() {
                 getProjectsInSpace(space.id),
                 getAllTasks(), // In a larger app, this should be paginated/filtered
                 getChannelsInSpace(space.id),
-                getJobFlowTemplates(),
+                getJobFlowTemplates(space.id),
                 getAllJobs(space.id),
                 getAllJobFlowTasks(space.id),
-                getPhaseTemplates(),
-                getTaskTemplates(),
+                getPhaseTemplates(space.id),
+                getTaskTemplates(space.id),
             ]);
 
             setAllUsers(users);
@@ -185,13 +185,14 @@ function DashboardComponent() {
     };
     
     const handleUpdateActiveSpace = async (updatedData: Partial<Space>) => {
-        if (!activeSpace) return;
+        if (!activeSpace || !appUser) return;
         
         try {
             await dbUpdateSpace(activeSpace.id, updatedData);
-            const updatedSpaces = await getSpacesForUser(appUser!.id);
+            const updatedSpaces = await getSpacesForUser(appUser.id);
             setUserSpaces(updatedSpaces);
-            setActiveSpace(updatedSpaces.find(s => s.id === activeSpace.id) || null);
+            const newActiveSpace = updatedSpaces.find(s => s.id === activeSpace.id) || null;
+            setActiveSpace(newActiveSpace);
         } catch(e) {
             console.error("Failed to update space", e);
             toast({ variant: 'destructive', title: 'Update failed', description: 'Could not save space changes.' });
@@ -235,7 +236,7 @@ function DashboardComponent() {
             console.error("Task update failed", e);
             toast({ variant: 'destructive', title: 'Update failed', description: 'Could not save task changes.' });
             // Revert optimistic update
-            fetchData(activeSpace!);
+            if (activeSpace) fetchData(activeSpace);
         }
     };
     
@@ -458,6 +459,7 @@ function DashboardComponent() {
                                                     templates={jobFlowTemplates} 
                                                     phaseTemplates={phaseTemplates}
                                                     allUsers={allUsers}
+                                                    activeSpaceId={activeSpace!.id}
                                                     onSave={async (data) => {
                                                         const newTemplate = await dbAddJobFlowTemplate(data);
                                                         setJobFlowTemplates(prev => [...prev, newTemplate]);
@@ -467,6 +469,7 @@ function DashboardComponent() {
                                                   templates={phaseTemplates}
                                                   allUsers={allUsers}
                                                   taskTemplates={taskTemplates}
+                                                  activeSpaceId={activeSpace!.id}
                                                   onSave={async (data) => {
                                                       const newTemplate = await dbAddPhaseTemplate(data);
                                                       setPhaseTemplates(prev => [...prev, newTemplate]);
@@ -475,6 +478,7 @@ function DashboardComponent() {
                         case 'tasks': return <div className="p-4"><TaskTemplateBuilder 
                                                 templates={taskTemplates}
                                                 allUsers={allUsers}
+                                                activeSpaceId={activeSpace!.id}
                                                 onSave={async (data) => {
                                                     const newTemplate = await dbAddTaskTemplate(data);
                                                     setTaskTemplates(prev => [...prev, newTemplate]);

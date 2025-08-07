@@ -170,6 +170,7 @@ export interface JobFlowPhase {
 export interface JobFlowTemplate {
     id: string;
     name: string;
+    space_id: string;
     description: string;
     phases: JobFlowPhase[];
     defaultView: 'kanban' | 'stepper' | 'list';
@@ -178,6 +179,7 @@ export interface JobFlowTemplate {
 export interface PhaseTemplate {
     id: string;
     name: string;
+    space_id: string;
     description?: string;
     tasks: JobFlowTaskTemplate[];
     requiresReview: boolean;
@@ -186,6 +188,7 @@ export interface PhaseTemplate {
 
 export interface TaskTemplate {
     id: string;
+    space_id: string;
     titleTemplate: string;
     descriptionTemplate?: string;
     defaultAssigneeId: string;
@@ -301,6 +304,7 @@ export const messages: Message[] = [
 export const taskTemplates: TaskTemplate[] = [
     {
         id: 'task-tpl-1',
+        space_id: 'space-1',
         titleTemplate: 'Client Kick-off Meeting',
         descriptionTemplate: 'Schedule and hold the initial kick-off meeting with {{job_name}}.',
         defaultAssigneeId: 'user-1', // Brad - Account Manager
@@ -312,6 +316,7 @@ export const taskTemplates: TaskTemplate[] = [
     },
     {
         id: 'task-tpl-2',
+        space_id: 'space-1',
         titleTemplate: 'Onboarding Call with {{job_name}}',
         defaultAssigneeId: 'user-3', // Charlie - Onboarding Specialist
         estimatedDurationDays: 1,
@@ -322,6 +327,7 @@ export const taskTemplates: TaskTemplate[] = [
 export const phaseTemplates: PhaseTemplate[] = [
     {
         id: 'phase-tpl-1',
+        space_id: 'space-1',
         name: 'Client Onboarding',
         description: 'Initial phase to onboard a new client.',
         tasks: [
@@ -345,6 +351,7 @@ export const phaseTemplates: PhaseTemplate[] = [
 export const jobFlowTemplates: JobFlowTemplate[] = [
   {
     id: 'jft-1',
+    space_id: 'space-1',
     name: 'Client Onboarding Pipeline',
     description: 'A standard pipeline for bringing new clients into the fold.',
     defaultView: 'kanban',
@@ -365,6 +372,7 @@ export const jobFlowTemplates: JobFlowTemplate[] = [
   },
    {
     id: 'jft-2',
+    space_id: 'space-1',
     name: 'New Employee Onboarding',
     description: 'A checklist for onboarding new employees.',
     defaultView: 'stepper',
@@ -380,6 +388,7 @@ export const jobFlowTemplates: JobFlowTemplate[] = [
   },
   {
     id: 'jft-3',
+    space_id: 'space-1',
     name: 'Simple Checklist',
     description: 'A basic list of tasks.',
     defaultView: 'list',
