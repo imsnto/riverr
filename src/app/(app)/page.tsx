@@ -205,33 +205,17 @@ export default function Dashboard() {
         await dbDeleteProject(projectId);
     };
 
-    const handleUpdateTask = async (updatedTask: Task, tempId?: string) => {
-        let newTasks: Task[] = [];
+    const handleUpdateTask = async (updatedTask: Task) => {
         setTasks(prevTasks => {
-            const taskIndex = prevTasks.findIndex(t => t.id === (tempId || updatedTask.id));
-            
-            if (taskIndex !== -1) {
-                newTasks = [...prevTasks];
-                newTasks[taskIndex] = updatedTask;
-                return newTasks;
-            }
-            newTasks = [...prevTasks, updatedTask];
-            return newTasks;
+            return prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t);
         });
 
-        if (selectedTask && selectedTask.id === (tempId || updatedTask.id)) {
+        if (selectedTask && selectedTask.id === updatedTask.id) {
             setSelectedTask(updatedTask);
         }
 
         try {
-            if (tempId) { // This is a new task that needs to be created
-                 const { id: _omit, ...taskWithoutId } = updatedTask;
-                 const savedTask = await dbAddTask(taskWithoutId);
-                 setTasks(prev => prev.map(t => t.id === tempId ? savedTask : t));
-                 if (selectedTask?.id === tempId) setSelectedTask(savedTask);
-            } else {
-                await dbUpdateTask(updatedTask.id, updatedTask);
-            }
+            await dbUpdateTask(updatedTask.id, updatedTask);
         } catch(e) {
             console.error("Task update failed", e);
             toast({ variant: 'destructive', title: 'Update failed', description: 'Could not save task changes.' });
@@ -240,14 +224,22 @@ export default function Dashboard() {
         }
     };
     
-    const handleAddTask = async (taskData: Omit<Task, 'id'>) => {
+    const handleAddTask = async (taskData: Omit<Task, 'id'>, tempId?: string) => {
+        // Optimistic update
+        const optimisticTask: Task = { ...taskData, id: tempId || `temp-${Date.now()}` };
+        setTasks(prev => [...prev, optimisticTask]);
+
         try {
-            const newTask = await dbAddTask(taskData);
-            setTasks(prev => [...prev, newTask]);
-            return newTask;
+            const savedTask = await dbAddTask(taskData);
+            // Replace optimistic task with saved task
+            setTasks(prev => prev.map(t => t.id === optimisticTask.id ? savedTask : t));
+            if (selectedTask?.id === optimisticTask.id) setSelectedTask(savedTask);
+            return savedTask;
         } catch (e) {
             console.error("Task add failed", e);
             toast({ variant: 'destructive', title: 'Create failed', description: 'Could not create new task.' });
+            // Revert optimistic update
+            setTasks(prev => prev.filter(t => t.id !== optimisticTask.id));
             return null;
         }
     }
@@ -337,8 +329,8 @@ export default function Dashboard() {
 
     const renderContent = () => {
         switch(view) {
-            case 'overview': return <Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} />;
-            case 'tasks': return <TaskBoard 
+            case 'overview': return <div className="p-4 md:p-8"><Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} /></div>;
+            case 'tasks': return <div className="p-4 md:p-8"><TaskBoard 
                                     tasks={memoizedTasks} 
                                     onUpdateTasks={setTasks} 
                                     projects={projects.filter(p => p.space_id === activeSpace!.id)} 
@@ -351,7 +343,7 @@ export default function Dashboard() {
                                     onTaskSelect={setSelectedTask}
                                     onUpdateTask={handleUpdateTask}
                                     onAddTask={(task) => {handleAddTask(task)}}
-                                />;
+                                /></div>;
             case 'messages': 
               const channelMembers = channels.find(c => c.id === activeChannelId)?.members.map(id => allUsers.find(u => u.id === id)).filter(Boolean) as User[];
               const SimplifiedProjects = projects.map(p => ({ id: p.id, name: p.name }));
@@ -428,8 +420,8 @@ export default function Dashboard() {
                     </div>
                 </div>
             )
-            case 'timesheets': return <TeamTimesheets space={activeSpace!} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} />;
-            case 'reports': return <MeetingReview slackMeetingLogs={slackLogs} projects={projects} allUsers={allUsers} />;
+            case 'timesheets': return <div className="p-4 md:p-8"><TeamTimesheets space={activeSpace!} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} /></div>;
+            case 'reports': return <div className="p-4 md:p-8"><MeetingReview slackMeetingLogs={slackLogs} projects={projects} allUsers={allUsers} /></div>;
             case 'flows': 
                 const renderFlowsContent = () => {
                     switch(flowsView) {
@@ -507,7 +499,7 @@ export default function Dashboard() {
                 )
             case 'settings': 
                 return (
-                    <div className="flex gap-6 h-full">
+                    <div className="flex gap-6 h-full p-4 md:p-8">
                         <aside className="w-56 flex-shrink-0 border-r pr-6">
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-xl font-bold">Settings</h2>
@@ -558,7 +550,7 @@ export default function Dashboard() {
                 </div>
             </Sidebar>
             <div className="flex-1 overflow-auto">
-                <main className="p-4 md:p-8 flex-1">
+                <main className="h-full">
                     {activeSpace ? renderContent() : <LoadingState />}
                 </main>
             </div>
@@ -575,7 +567,7 @@ export default function Dashboard() {
                     if (!isOpen) setSelectedTask(null);
                 }}
                 onUpdateTask={handleUpdateTask}
-                onAddTask={(task, tempId) => onUpdateTask(task, tempId)} // Re-route to onUpdateTask for subtasks
+                onAddTask={handleAddTask}
                 onRemoveTask={handleRemoveTask}
                 onTaskSelect={setSelectedTask}
                 onLogTime={handleLogTime}

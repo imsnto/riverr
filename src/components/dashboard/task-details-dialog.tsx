@@ -155,8 +155,8 @@ interface TaskDetailsDialogProps {
     timeEntries: TimeEntry[];
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    onUpdateTask: (task: Task, tempId?: string) => void;
-    onAddTask: (task: Task, tempId?: string) => void;
+    onUpdateTask: (task: Task) => void;
+    onAddTask: (task: Omit<Task, 'id'>, tempId: string) => Promise<Task | null>;
     onRemoveTask: (taskId: string) => void;
     onTaskSelect: (task: Task) => void;
     onLogTime: (timeData: Omit<TimeEntry, 'id'>) => void;
@@ -300,8 +300,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
         if (!newSubtaskName.trim() || !appUser) return;
     
         const tempId = `temp-${Date.now()}`;
-        const optimisticSubtask: Task = {
-            id: tempId,
+        const newSubtaskData: Omit<Task, 'id'> = {
             project_id: task.project_id,
             name: newSubtaskName.trim(),
             description: '',
@@ -319,13 +318,11 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
             parentId: task.id,
         };
     
-        // Optimistically add the subtask to the UI
-        onAddTask(optimisticSubtask, tempId);
-
         setNewSubtaskName('');
         setNewSubtaskAssignee(appUser.id);
         setNewSubtaskDueDate(null);
-    
+
+        await onAddTask(newSubtaskData, tempId);
     };
 
 
@@ -758,7 +755,7 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                             className="hidden"
                                             onChange={handleFileSelect}
                                         />
-                                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputd.current?.click()}>
+                                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
                                             <Paperclip className="h-4 w-4" />
                                         </Button>
                                         <Button type="submit" size="sm">Send</Button>
@@ -782,4 +779,3 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
         </Dialog>
     );
 }
-
