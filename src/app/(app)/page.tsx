@@ -482,15 +482,19 @@ function DashboardComponent() {
             case 'timesheets': return <div className="p-4 md:p-8"><TeamTimesheets allSpaces={userSpaces} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} /></div>;
             case 'reports': return <div className="p-4 md:p-8"><MeetingReview slackMeetingLogs={slackLogs} projects={projects} allUsers={allUsers} /></div>;
             case 'documents':
-                return <DocumentsView
-                        documents={documents.filter(d => d.spaceId === activeSpace?.id)}
-                        onSave={handleSaveDocument}
-                        onDelete={handleDeleteDocument}
-                        activeSpaceId={activeSpace!.id}
-                        appUser={appUser!}
-                        allUsers={allUsers.filter(u => activeSpace?.members[u.id])}
-                        onDocumentUpdate={updateLocalDocument}
-                    />;
+                return (
+                    <div className="p-4 md:p-8 flex flex-col h-full">
+                        <DocumentsView
+                            documents={documents.filter(d => d.spaceId === activeSpace?.id)}
+                            onSave={handleSaveDocument}
+                            onDelete={handleDeleteDocument}
+                            activeSpaceId={activeSpace!.id}
+                            appUser={appUser!}
+                            allUsers={allUsers.filter(u => activeSpace?.members[u.id])}
+                            onDocumentUpdate={updateLocalDocument}
+                        />
+                    </div>
+                );
             case 'flows': 
                 const renderFlowsContent = () => {
                     switch(flowsView) {

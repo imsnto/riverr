@@ -112,7 +112,7 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
 
   return (
     <div className="h-full flex flex-col md:flex-row gap-0">
-        <div className="flex-1 flex flex-col p-4 h-full">
+        <div className="flex-1 flex flex-col p-4 h-full overflow-hidden">
             <div className="flex items-center gap-2 mb-4">
                 <Button variant="ghost" size="icon" onClick={onBack}>
                     <ArrowLeft className="h-5 w-5" />

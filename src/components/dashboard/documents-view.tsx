@@ -16,9 +16,10 @@ interface DocumentsViewProps {
   activeSpaceId: string;
   appUser: User;
   allUsers: User[];
+  onDocumentUpdate: (doc: Document) => void;
 }
 
-export default function DocumentsView({ documents, onSave, onDelete, activeSpaceId, appUser, allUsers }: DocumentsViewProps) {
+export default function DocumentsView({ documents, onSave, onDelete, activeSpaceId, appUser, allUsers, onDocumentUpdate }: DocumentsViewProps) {
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,7 +49,9 @@ export default function DocumentsView({ documents, onSave, onDelete, activeSpace
     const savedDoc = await onSave(docData, docId);
     if (savedDoc) {
       handleSelectDoc(savedDoc);
+      onDocumentUpdate(savedDoc);
     }
+    return savedDoc;
   }
 
   if (selectedDoc || isCreating) {
@@ -62,6 +65,7 @@ export default function DocumentsView({ documents, onSave, onDelete, activeSpace
         appUser={appUser}
         allUsers={allUsers}
         onCreate={handleSaveAndSelect}
+        onDocumentUpdate={onDocumentUpdate}
       />
     );
   }
