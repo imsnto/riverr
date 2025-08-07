@@ -114,7 +114,7 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
   return (
     <div className="flex flex-row gap-0 h-full">
         <div className="flex-1 flex flex-col">
-            <div className="p-4 md:p-8 flex flex-col h-full">
+            <div className="p-4 md:p-8 flex flex-col flex-1">
                 <div className="flex items-center gap-2 mb-4">
                     <Button variant="ghost" size="icon" onClick={onBack}>
                         <ArrowLeft className="h-5 w-5" />
@@ -175,7 +175,7 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             placeholder="Start writing your document here. Use Markdown for formatting..."
-                            className="w-full text-base resize-none border-x border-b rounded-b-lg p-8 m-0 bg-transparent min-h-screen"
+                            className="w-full text-base resize-none border-x rounded-b-lg p-8 m-0 bg-transparent focus:outline-none"
                         />
                     </div>
                 </div>
