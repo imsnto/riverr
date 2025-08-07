@@ -422,7 +422,7 @@ function DashboardComponent() {
               const SimplifiedProjects = projects.filter(p => p.space_id === activeSpace?.id).map(p => ({ id: p.id, name: p.name }));
                 
               return (
-                 <div className="grid grid-cols-[auto_1fr_auto] h-[calc(100vh-4rem)]">
+                 <div className="grid grid-cols-[auto_1fr_auto] h-full">
                     <div className="w-[220px] border-r h-full overflow-y-auto flex flex-col bg-muted/50">
                         <div className="p-4 flex justify-between items-center">
                             <h3 className="font-semibold text-lg">Channels</h3>
