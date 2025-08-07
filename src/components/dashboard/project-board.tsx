@@ -69,7 +69,7 @@ const STATUS_COLORS = [
 ];
 
 
-const TaskCard = ({ task, project, onUpdateTask, onClick, isDragging, allUsers }: { task: Task, project?: Project, onUpdateTask: (task: Task) => void, onClick: () => void, isDragging: boolean, allUsers: User[] }) => {
+const TaskCard = ({ task, project, onClick, isDragging, allUsers }: { task: Task, project?: Project, onClick: () => void, isDragging: boolean, allUsers: User[] }) => {
   const assignee = allUsers.find(u => u.id === task.assigned_to);
 
   return (
@@ -111,6 +111,7 @@ interface ProjectBoardProps {
   onUpdateActiveSpace: (updatedSpace: Partial<Space>) => void;
   onNewTaskRequest: () => void;
   onTaskClick: (task: Task) => void;
+  onUpdateTask: (task: Task) => void;
 }
 
 const defaultStatuses: Status[] = [
@@ -120,7 +121,7 @@ const defaultStatuses: Status[] = [
     { name: 'Done', color: '#22c55e' },
 ]
 
-export default function ProjectBoard({ project, projects, allTasks, onUpdateTasks, activeSpace, allUsers, onUpdateActiveSpace, onNewTaskRequest, onTaskClick }: ProjectBoardProps) {
+export default function ProjectBoard({ project, projects, allTasks, onUpdateTasks, activeSpace, allUsers, onUpdateActiveSpace, onNewTaskRequest, onTaskClick, onUpdateTask }: ProjectBoardProps) {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
@@ -145,41 +146,15 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     e.preventDefault();
   };
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>, newStatus: string, targetTaskId?: string) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>, newStatus: string) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
-    const draggedTaskItem = allTasks.find(t => t.id === taskId);
-
-    if (!draggedTaskItem) return;
-
-    let newTasks = allTasks.filter(t => t.id !== taskId);
+    const task = allTasks.find(t => t.id === taskId);
     
-    const updatedTask = { ...draggedTaskItem, status: newStatus };
-
-    if (targetTaskId) {
-        const targetIndex = newTasks.findIndex(t => t.id === targetTaskId);
-        if (targetIndex !== -1) {
-            newTasks.splice(targetIndex, 0, updatedTask);
-        } else {
-             const statusTasks = newTasks.filter(t => t.status === newStatus);
-             const lastTaskOfStatus = statusTasks[statusTasks.length -1];
-             if(lastTaskOfStatus) {
-                newTasks.splice(newTasks.findIndex(t => t.id === lastTaskOfStatus.id) + 1, 0, updatedTask);
-             } else {
-                newTasks.push(updatedTask)
-             }
-        }
-    } else {
-        const statusTasks = newTasks.filter(t => t.status === newStatus);
-        const lastTaskOfStatus = statusTasks[statusTasks.length -1];
-        if(lastTaskOfStatus) {
-           newTasks.splice(newTasks.findIndex(t => t.id === lastTaskOfStatus.id) + 1, 0, updatedTask);
-        } else {
-           newTasks.push(updatedTask)
-        }
+    if (task && task.status !== newStatus) {
+        onUpdateTask({ ...task, status: newStatus });
     }
-    
-    onUpdateTasks(newTasks);
+
     setDraggedTask(null);
   };
 
@@ -187,10 +162,6 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   const handleDragEnd = () => {
     setDraggedTask(null);
   };
-
-  const handleUpdateTask = (updatedTask: Task) => {
-    onUpdateTasks(allTasks.map(task => task.id === updatedTask.id ? updatedTask : task));
-  }
 
   const handleAddNewColumn = () => {
     const newStatusName = `New Status ${statuses.length + 1}`;
@@ -209,7 +180,6 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     }
     onUpdateTasks(allTasks.map(t => t.status === oldName ? { ...t, status: newColumnName } : t));
     
-    // Also update closing status name if it was the one being renamed
     const newSpaceData: Partial<Space> = {
         statuses: statuses.map(s => s.name === oldName ? { ...s, name: newColumnName } : s)
     };
@@ -236,11 +206,11 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   }
 
   const handleChangeColor = (statusName: string, color: string) => {
-    setStatuses(statuses.map(s => s.name === statusName ? { ...s, color: color } : s));
+    onUpdateActiveSpace({ statuses: statuses.map(s => s.name === statusName ? { ...s, color: color } : s) });
   }
 
   const handleSetClosingStatus = (statusName: string) => {
-    onUpdateActiveSpace({ closingStatusName: statusName });
+    onUpdateActiveSpace({ closingStatusName: activeSpace.closingStatusName === statusName ? undefined : statusName });
   }
 
   const renderStatusColumn = (status: Status) => (
@@ -355,20 +325,11 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                 draggable
                 onDragStart={(e) => handleDragStart(e, task.id)}
                 onDragEnd={handleDragEnd}
-                onDrop={(e) => {
-                    e.stopPropagation();
-                    handleDrop(e, status.name, task.id);
-                }}
-                 onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }}
               >
                 <TaskCard 
                   task={task} 
                   project={project}
                   onClick={() => onTaskClick(task)} 
-                  onUpdateTask={handleUpdateTask}
                   isDragging={draggedTask === task.id}
                   allUsers={allUsers}
                 />

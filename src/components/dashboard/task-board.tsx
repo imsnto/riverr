@@ -27,7 +27,7 @@ interface TaskBoardProps {
   onDeleteProject: (projectId: string) => Promise<void>;
   onTaskSelect: (task: Task) => void;
   onUpdateTask: (task: Task, tempId?: string) => void;
-  onAddTask: (task: Task) => void;
+  onAddTask: (task: Omit<Task, 'id'>) => void;
 }
 
 export default function TaskBoard({ 
@@ -86,7 +86,7 @@ export default function TaskBoard({
     }
   }
 
-  const handleAddTaskDialog = (newTask: Task) => {
+  const handleAddTaskDialog = (newTask: Omit<Task, 'id'>) => {
     onAddTask(newTask);
     const statuses = activeSpace.statuses || [];
     if (!statuses.find(s => s.name === newTask.status)) {
@@ -153,6 +153,7 @@ export default function TaskBoard({
                   onUpdateActiveSpace={onUpdateActiveSpace}
                   onNewTaskRequest={() => setIsNewTaskDialogOpen(true)}
                   onTaskClick={(task) => onTaskSelect(task)}
+                  onUpdateTask={onUpdateTask}
               />
           ) : (
               <div className="flex flex-col items-center justify-center h-full text-center bg-card rounded-lg">

@@ -217,6 +217,7 @@ function DashboardComponent() {
     };
 
     const handleUpdateTask = async (updatedTask: Task, tempId?: string) => {
+        // Optimistic update
         setTasks(prevTasks => {
             const taskIndex = prevTasks.findIndex(t => t.id === (tempId || updatedTask.id));
             if (taskIndex !== -1) {
@@ -224,7 +225,7 @@ function DashboardComponent() {
                 newTasks[taskIndex] = updatedTask;
                 return newTasks;
             }
-            return [...prevTasks, updatedTask];
+            return prevTasks; // Should already be in the list if it's an update
         });
 
         if (selectedTask && selectedTask.id === (tempId || updatedTask.id)) {
@@ -237,13 +238,13 @@ function DashboardComponent() {
             console.error("Task update failed", e);
             toast({ variant: 'destructive', title: 'Update failed', description: 'Could not save task changes.' });
             // Revert optimistic update
-            setTasks(tasks);
+            fetchData(activeSpace!);
         }
     };
     
-    const handleAddTask = async (taskData: Omit<Task, 'id'>, tempId?: string) => {
+    const handleAddTask = async (taskData: Omit<Task, 'id'>) => {
         // Optimistic update
-        const optimisticTask: Task = { ...taskData, id: tempId || `temp-${Date.now()}` };
+        const optimisticTask: Task = { ...taskData, id: `temp-${Date.now()}` };
         setTasks(prev => [...prev, optimisticTask]);
 
         try {
@@ -552,7 +553,7 @@ function DashboardComponent() {
                         <Button onClick={() => setView('tasks')} variant={view === 'tasks' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
                             <FolderKanban className="w-7 h-7"/>
                         </Button>
-                        <Button onClick={() => setView('mytasks')} variant={view === 'mytasks' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                        <Button onClick={() => router.push('/mytasks')} variant={view === 'mytasks' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
                             <ClipboardCheck className="w-7 h-7"/>
                         </Button>
                         <Button onClick={() => setView('messages')} variant={view === 'messages' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">

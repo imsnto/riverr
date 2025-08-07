@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -17,7 +18,6 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { User, Task, Project } from '@/lib/data';
-import { addTask as dbAddTask } from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 
 const taskSchema = z.object({
@@ -34,7 +34,7 @@ type TaskFormValues = z.infer<typeof taskSchema>;
 interface NewTaskDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onTaskAdd: (task: Task) => void;
+  onTaskAdd: (task: Omit<Task, 'id'>) => void;
   projects: Project[];
   statuses: string[];
   allUsers: User[];
@@ -68,9 +68,9 @@ export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, project
             activities: [],
             comments: [],
             attachments: [],
+            parentId: null,
         };
-        const newTask = await dbAddTask(taskData);
-        onTaskAdd(newTask);
+        onTaskAdd(taskData);
         toast({ title: 'Task Created' });
         onOpenChange(false);
     } catch (e) {
