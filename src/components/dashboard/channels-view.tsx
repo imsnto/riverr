@@ -111,11 +111,8 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
       timestamp: new Date().toISOString(),
       attachments: newAttachments,
       reactions: [],
+      ...(replyingTo && { thread_id: replyingTo.thread_id || replyingTo.id }),
     };
-
-    if (replyingTo) {
-        messageData.thread_id = replyingTo.thread_id || replyingTo.id;
-    }
     
     setNewMessage('');
     setAttachments([]);
@@ -188,22 +185,22 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
     return (
         <div 
         key={message.id} 
-        className="flex items-start gap-3 group p-2 rounded-md hover:bg-accent/50"
+        className="flex items-start gap-3 group p-2 rounded-md"
         onMouseEnter={() => setHoveredMessageId(message.id)}
         onMouseLeave={() => setHoveredMessageId(null)}
       >
-        <Avatar className="h-8 w-8">
+        <Avatar className="h-9 w-9">
           <AvatarImage src={user?.avatarUrl} />
           <AvatarFallback>{user ? getInitials(user.name) : '?'}</AvatarFallback>
         </Avatar>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm">{user?.name}</span>
+            <span className="font-semibold text-base">{user?.name}</span>
             <span className="text-xs text-muted-foreground">
               {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
-          {message.content && <p className="text-sm">{renderMessageContent(message.content, allUsers)}</p>}
+          {message.content && <p className="text-base">{renderMessageContent(message.content, allUsers)}</p>}
           {message.attachments && message.attachments.length > 0 && (
             <div className="mt-2 space-y-2">
                 {message.attachments.map(att => (

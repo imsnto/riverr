@@ -91,18 +91,18 @@ export default function ThreadView({ thread, messages, allUsers, setMessages, on
         const user = allUsers.find(u => u.id === message.user_id);
         return (
              <div key={message.id} className="flex items-start gap-3 p-2 rounded-md">
-                <Avatar className="h-8 w-8">
+                <Avatar className="h-9 w-9">
                     <AvatarImage src={user?.avatarUrl} />
                     <AvatarFallback>{user ? getInitials(user.name) : '?'}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                     <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm">{user?.name}</span>
+                        <span className="font-semibold text-base">{user?.name}</span>
                         <span className="text-xs text-muted-foreground">
                             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                     </div>
-                    {message.content && <p className="text-sm">{renderMessageContent(message.content, allUsers)}</p>}
+                    {message.content && <p className="text-base">{renderMessageContent(message.content, allUsers)}</p>}
                     {message.attachments && message.attachments.length > 0 && (
                         <div className="mt-2 space-y-2">
                             {message.attachments.map(att => (
