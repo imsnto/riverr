@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { ScrollArea } from '../ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import TextareaAutosize from 'react-textarea-autosize';
+import { Textarea } from '@/components/ui/textarea';
 
 const getInitials = (name: string) => {
     if (!name) return '';
@@ -104,7 +104,7 @@ export default function CommentsPanel({ document, onClose, allUsers, appUser, on
             <div className="p-4 border-t">
                 <Popover open={isTagging} onOpenChange={setIsTagging}>
                     <PopoverTrigger asChild>
-                        <TextareaAutosize
+                         <Textarea
                             placeholder="Write a comment... use @ to mention users"
                             value={newComment}
                             onChange={handleInputChange}
@@ -140,7 +140,7 @@ export default function CommentsPanel({ document, onClose, allUsers, appUser, on
                     </Command>
                     </PopoverContent>
                 </Popover>
-                <Button className="w-full" onClick={handlePost}>Post Comment</Button>
+                <Button className="w-full" onClick={handlePost} disabled={!newComment.trim()}>Post Comment</Button>
             </div>
         </div>
     );

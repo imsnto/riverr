@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Bot, Loader2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { assistInDocument } from '@/ai/flows/assist-in-document';
-import TextareaAutosize from 'react-textarea-autosize';
+import { Textarea } from '@/components/ui/textarea';
 
 export default function AssistantPanel({ fullDocument, onClose, onInsert }: { fullDocument: string, onClose: () => void, onInsert: (text: string) => void }) {
     const [request, setRequest] = useState('');
@@ -62,15 +62,14 @@ export default function AssistantPanel({ fullDocument, onClose, onInsert }: { fu
                 )}
             </div>
             <div className="p-4 border-t">
-                 <form onSubmit={handleSubmit}>
-                    <TextareaAutosize
+                 <form onSubmit={handleSubmit} className="space-y-2">
+                    <Textarea
                         placeholder="Your request..."
                         value={request}
                         onChange={e => setRequest(e.target.value)}
-                        className="mb-2"
                         minRows={3}
                     />
-                    <Button type="submit" className="w-full" disabled={isPending}>Send</Button>
+                    <Button type="submit" className="w-full" disabled={isPending || !request.trim()}>Send</Button>
                 </form>
             </div>
         </div>
