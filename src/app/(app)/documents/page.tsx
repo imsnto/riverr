@@ -3,7 +3,7 @@
 'use client';
 import { useAuth } from '@/hooks/use-auth';
 import { getDocumentsInSpace, getAllUsers } from '@/lib/db';
-import { Document, User } from '@/lib/data';
+import { Document, User, Space } from '@/lib/data';
 import React, { useState, useEffect } from 'react';
 import DocumentsView from '@/components/dashboard/documents-view';
 import { TopBar } from '@/components/dashboard/top-bar';
@@ -92,8 +92,9 @@ export default function DocumentsPage() {
                 <main className="flex-1 overflow-auto">
                     <DocumentsView
                         documents={documents.filter(d => d.spaceId === activeSpace.id)}
-                        activeSpaceId={activeSpace.id}
+                        activeSpace={activeSpace}
                         appUser={appUser}
+                        allUsers={allUsers}
                     />
                 </main>
             </div>
