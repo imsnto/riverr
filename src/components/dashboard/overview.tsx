@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -101,7 +102,8 @@ export default function Overview({
       const phaseTaskLinks = jobFlowTasks.filter(jft => jft.jobId === job.id && jft.phaseIndex === job.currentPhaseIndex);
       if (phaseTaskLinks.length === 0) return false;
       
-      const isSubmittedForReview = phaseTaskLinks.every(jft => !!jft.reviewedBy);
+      // Check if ANY task link for this phase has been reviewed.
+      const isSubmittedForReview = phaseTaskLinks.some(jft => !!jft.reviewedBy);
       if (!isSubmittedForReview) return false;
 
       const phaseTasks = phaseTaskLinks.map(jft => tasks.find(t => t.id === jft.taskId)).filter(Boolean) as Task[];

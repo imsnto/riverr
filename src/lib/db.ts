@@ -464,14 +464,26 @@ export const updateJobPhase = async (
     tasks: Task[],
     jobFlowTasks: JobFlowTask[]
 ) => {
-    const currentPhase = template.phases.find(p => p.phaseIndex === job.currentPhaseIndex);
+    const currentPhaseIndex = job.currentPhaseIndex;
+    const currentPhase = template.phases.find(p => p.phaseIndex === currentPhaseIndex);
     if (!currentPhase) throw new Error("Current phase not found in template.");
+    
+    const batch = writeBatch(db);
+    
+    // Clear the review flag from the just-completed phase's tasks
+    const completedPhaseTasksQuery = query(collection(db, 'job_flow_tasks'), 
+        where('jobId', '==', job.id), 
+        where('phaseIndex', '==', currentPhaseIndex)
+    );
+    const completedPhaseTasksSnapshot = await getDocs(completedPhaseTasksQuery);
+    completedPhaseTasksSnapshot.forEach(doc => {
+        batch.update(doc.ref, { reviewedBy: null });
+    });
+
 
     // Logic to advance phase
-    const nextPhaseIndex = job.currentPhaseIndex + 1;
+    const nextPhaseIndex = currentPhaseIndex + 1;
     const nextPhase = template.phases.find(p => p.phaseIndex === nextPhaseIndex);
-
-    const batch = writeBatch(db);
 
     if (nextPhase) {
         await createTasksForPhase(batch, nextPhase, job.id, job.name, job.roleUserMapping);
@@ -502,3 +514,4 @@ export const reviewJobPhase = async (jobId: string, phaseIndex: number, userId: 
     
     await batch.commit();
 }
+
