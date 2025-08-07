@@ -126,6 +126,17 @@ function DashboardComponent() {
         }
     }, [userSpaces, appUser, activeSpace, setActiveSpace]);
     
+     useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 768 && rightPanelView) {
+                setRightPanelView(null); // Auto-close on small screens
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [rightPanelView]);
+
     useEffect(() => {
         const fetchData = async () => {
             if (!appUser || !activeSpace) return;
@@ -422,8 +433,8 @@ function DashboardComponent() {
               const SimplifiedProjects = projects.filter(p => p.space_id === activeSpace?.id).map(p => ({ id: p.id, name: p.name }));
                 
               return (
-                 <div className={cn('grid h-full transition-[grid-template-columns] duration-200', rightPanelView ? 'grid-cols-[220px_1fr_400px]' : 'grid-cols-[220px_1fr]')}>
-                    <div className="w-[220px] border-r h-full overflow-y-auto flex flex-col bg-muted/50">
+                 <div className={cn("grid h-full transition-[grid-template-columns] duration-200 md:grid-cols-[220px_1fr]", rightPanelView && "md:grid-cols-[220px_1fr_400px]")}>
+                    <div className="hidden md:flex w-[220px] border-r h-full overflow-y-auto flex-col bg-muted/50">
                         <div className="p-4 flex justify-between items-center">
                             <h3 className="font-semibold text-lg">Channels</h3>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsCreateChannelOpen(true)}>
@@ -458,36 +469,42 @@ function DashboardComponent() {
                         />
                     </div>
                      {rightPanelView && (
-                        <div className="w-[400px] border-l bg-card h-full overflow-y-auto">
-                        {rightPanelView === 'threads' && (
-                            <AllThreadsView
-                            messages={messages}
-                            allUsers={allUsers}
-                            appUser={appUser}
-                            onViewThread={handleViewThread}
-                            readThreadIds={readThreadIds}
-                            />
-                        )}
-                        {rightPanelView === 'thread' && activeThread && (
-                            <ThreadView
-                                thread={activeThread}
+                        <div
+                            className={cn(
+                                'fixed right-0 top-16 h-[calc(100vh-4rem)] w-full max-w-[400px] bg-card border-l shadow-lg z-50 transition-transform duration-300 ease-in-out',
+                                'md:relative md:top-0 md:h-full md:w-[400px]',
+                                rightPanelView ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
+                            )}
+                        >
+                            {rightPanelView === 'threads' && (
+                                <AllThreadsView
                                 messages={messages}
                                 allUsers={allUsers}
-                                setMessages={setMessages}
-                                onClose={() => setRightPanelView(null)}
-                                onAddMessage={handleAddMessage}
-                            />
-                        )}
-                        {rightPanelView === 'task-from-thread' && activeThread && (
-                            <CreateTaskFromThreadDialog
-                                isOpen={rightPanelView === 'task-from-thread'}
-                                onOpenChange={() => setRightPanelView('threads')}
-                                message={activeThread}
-                                channelMembers={channelMembers.map(u => ({ id: u.id, name: u.name }))}
-                                projects={SimplifiedProjects}
-                                onTaskCreated={handleCreateTask}
-                            />
-                        )}
+                                appUser={appUser}
+                                onViewThread={handleViewThread}
+                                readThreadIds={readThreadIds}
+                                />
+                            )}
+                            {rightPanelView === 'thread' && activeThread && (
+                                <ThreadView
+                                    thread={activeThread}
+                                    messages={messages}
+                                    allUsers={allUsers}
+                                    setMessages={setMessages}
+                                    onClose={() => setRightPanelView(null)}
+                                    onAddMessage={handleAddMessage}
+                                />
+                            )}
+                            {rightPanelView === 'task-from-thread' && activeThread && (
+                                <CreateTaskFromThreadDialog
+                                    isOpen={rightPanelView === 'task-from-thread'}
+                                    onOpenChange={() => setRightPanelView('threads')}
+                                    message={activeThread}
+                                    channelMembers={channelMembers.map(u => ({ id: u.id, name: u.name }))}
+                                    projects={SimplifiedProjects}
+                                    onTaskCreated={handleCreateTask}
+                                />
+                            )}
                         </div>
                     )}
                 </div>
@@ -599,9 +616,9 @@ function DashboardComponent() {
 
     return (
       <SidebarProvider defaultOpen={false}>
-        <div className="flex flex-col h-screen">
+        <div className="h-screen flex flex-col">
           <TopBar />
-           <div className="flex flex-1 pt-16 overflow-hidden">
+           <div className="flex-1 flex pt-16 overflow-hidden">
                 <Sidebar collapsible="icon">
                     <div className="flex flex-col h-full">
                         <div className="space-y-2 pt-4">
@@ -634,7 +651,7 @@ function DashboardComponent() {
                         </div>
                     </div>
                 </Sidebar>
-                <main className="flex-1 flex flex-col overflow-hidden">
+                <main className="flex-1 flex flex-col overflow-hidden relative">
                     {renderContent()}
                 </main>
             </div>
@@ -681,4 +698,5 @@ export default function Dashboard() {
     
 
     
+
 
