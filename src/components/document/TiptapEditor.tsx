@@ -16,6 +16,7 @@ import Image from '@tiptap/extension-image';
 import Youtube from '@tiptap/extension-youtube';
 import TextStyle from '@tiptap/extension-text-style';
 import { FontFamily } from '@tiptap/extension-font-family';
+import { FontSize } from '@/lib/tiptap-fontsize';
 
 import { Toolbar } from './TiptapToolbar';
 
@@ -23,7 +24,7 @@ export default function TiptapEditor({ content, onChange }: { content: string; o
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        textStyle: false, // Must be disabled to use the custom TextStyle extension below
+        textStyle: false, 
       }),
       Bold,
       Italic,
@@ -38,6 +39,7 @@ export default function TiptapEditor({ content, onChange }: { content: string; o
       Youtube.configure({ inline: false, width: 640, height: 360 }),
       TextStyle,
       FontFamily,
+      FontSize,
     ],
     content,
     editorProps: {
