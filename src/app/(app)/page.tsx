@@ -483,7 +483,7 @@ function DashboardComponent() {
             case 'reports': return <div className="p-4 md:p-8"><MeetingReview slackMeetingLogs={slackLogs} projects={projects} allUsers={allUsers} /></div>;
             case 'documents':
                 return (
-                    <div className="p-4 md:p-8 flex flex-col h-full">
+                    <div className="p-4 md:p-8">
                         <DocumentsView
                             documents={documents.filter(d => d.spaceId === activeSpace?.id)}
                             onSave={handleSaveDocument}

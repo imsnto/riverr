@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useTransition, useRef } from 'react';
 import { Document, User, DocumentComment } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import TextareaAutosize from 'react-textarea-autosize';
+
 
 const getInitials = (name: string) => {
     if (!name) return '';
@@ -111,8 +113,8 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
   }
 
   return (
-    <div className="h-full flex flex-col md:flex-row gap-0">
-        <div className="flex-1 flex flex-col p-4 h-full overflow-hidden">
+    <div className="flex flex-row gap-0">
+        <div className="flex-1 flex flex-col p-4 overflow-hidden">
             <div className="flex items-center gap-2 mb-4">
                 <Button variant="ghost" size="icon" onClick={onBack}>
                     <ArrowLeft className="h-5 w-5" />
@@ -139,10 +141,10 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
                 </Button>
             </div>
             
-             <div className="flex-1 flex flex-col bg-muted/30 p-4 rounded-lg overflow-hidden">
-                <div className="bg-background rounded-md border shadow-sm h-full flex flex-col">
+             <div className="p-4 rounded-lg flex-1">
+                <div className="bg-background shadow-sm h-full max-w-4xl mx-auto border-x border-t">
                     {/* Toolbar Placeholder */}
-                    <div className="p-2 border-b">
+                    <div className="p-2 border-b sticky top-0 bg-background z-10">
                         <TooltipProvider>
                             <div className="flex items-center gap-1">
                                 <Tooltip>
@@ -169,22 +171,20 @@ export default function DocumentEditor({ document, onBack, onSave, onDelete, onC
                             </div>
                         </TooltipProvider>
                     </div>
-                     <ScrollArea className="flex-1">
-                        <div className="prose dark:prose-invert max-w-none h-full">
-                            <Textarea
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                                placeholder="Start writing your document here. Use Markdown for formatting..."
-                                className="w-full h-full text-base resize-none border-none focus-visible:ring-0 p-8 m-0"
-                            />
-                        </div>
-                    </ScrollArea>
+                     <div className="prose dark:prose-invert max-w-none">
+                        <TextareaAutosize
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            placeholder="Start writing your document here. Use Markdown for formatting..."
+                            className="w-full text-base resize-none border-none focus-visible:ring-0 p-8 m-0 bg-transparent min-h-[60vh]"
+                        />
+                    </div>
                 </div>
             </div>
         </div>
 
        {sidebarView && (
-            <div className="w-full md:w-80 lg:w-96 border-l bg-card flex-shrink-0 flex flex-col h-full">
+            <div className="w-full md:w-80 lg:w-96 border-l bg-card flex-shrink-0 flex flex-col h-screen sticky top-0">
                 {sidebarView === 'ai' && (
                     <AssistantPanel 
                         fullDocument={content} 
