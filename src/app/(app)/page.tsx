@@ -39,6 +39,8 @@ import {
     addJobFlowTemplate as dbAddJobFlowTemplate,
     addPhaseTemplate as dbAddPhaseTemplate,
     addTaskTemplate as dbAddTaskTemplate,
+    deleteTask as dbDeleteTask,
+    updateJob as dbUpdateJob,
 } from '@/lib/db';
 import MeetingReview from '@/components/dashboard/meeting-review';
 import ChannelsView from '@/components/dashboard/channels-view';
@@ -502,73 +504,77 @@ export default function Dashboard() {
     }
 
     return (
-        <SidebarProvider defaultOpen={false}>
-            <Sidebar collapsible="icon">
-                <SidebarContent>
-                    <SidebarMenu>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('overview')} isActive={view === 'overview'}>
-                                <BarChart /> <span>Overview</span>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('tasks')} isActive={view === 'tasks'}>
-                                <FolderKanban /> <span>Tasks</span>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('messages')} isActive={view === 'messages'}>
-                                <MessageSquare /> <span>Messages</span>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('timesheets')} isActive={view === 'timesheets'}>
-                                <Timer /> <span>Timesheets</span>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                         <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('flows')} isActive={view === 'flows'}>
-                                <Workflow /> <span>Flows</span>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    </SidebarMenu>
-                </SidebarContent>
-                <SidebarFooter>
-                    <SidebarMenu>
-                         <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('settings')} isActive={view === 'settings'}>
-                                <Settings /> <span>Settings</span>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    </SidebarMenu>
-                </SidebarFooter>
-            </Sidebar>
-            <SidebarInset>
-                <Header activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={userSpaces} appUser={appUser} />
-                <main className="p-4 md:p-8 flex-1">
-                    {renderContent()}
-                </main>
-            </SidebarInset>
-            {selectedTask && (
-                 <TaskDetailsDialog
-                    key={selectedTask.id}
-                    task={selectedTask}
-                    isOpen={!!selectedTask}
-                    timeEntries={timeEntries.filter(t => t.task_id === selectedTask.id)}
-                    allUsers={allUsers}
-                    allTasks={tasks}
-                    onOpenChange={(isOpen) => {
-                        if (!isOpen) setSelectedTask(null);
-                    }}
-                    onUpdateTask={handleUpdateTask}
-                    onAddTask={(task) => handleAddTask(task)}
-                    onRemoveTask={(taskId) => setTasks(prev => prev.filter(t => t.id !== taskId))}
-                    onTaskSelect={setSelectedTask}
-                    onLogTime={handleLogTime}
-                    statuses={activeSpace.statuses.map(s => s.name)}
-                    projects={projects}
-                 />
-            )}
-        </SidebarProvider>
+      <div className="flex flex-col h-screen">
+        <Header activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={userSpaces} appUser={appUser} />
+        <div className="flex flex-1 overflow-hidden">
+            <SidebarProvider defaultOpen={false}>
+                <Sidebar collapsible="icon">
+                    <SidebarContent>
+                        <SidebarMenu>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => setView('overview')} isActive={view === 'overview'}>
+                                    <BarChart /><span>Overview</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => setView('tasks')} isActive={view === 'tasks'}>
+                                    <FolderKanban /><span>Tasks</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => setView('messages')} isActive={view === 'messages'}>
+                                    <MessageSquare /><span>Messages</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => setView('timesheets')} isActive={view === 'timesheets'}>
+                                    <Timer /><span>Timesheets</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                             <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => setView('flows')} isActive={view === 'flows'}>
+                                    <Workflow /><span>Flows</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </SidebarMenu>
+                    </SidebarContent>
+                    <SidebarFooter>
+                        <SidebarMenu>
+                             <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => setView('settings')} isActive={view === 'settings'}>
+                                    <Settings /><span>Settings</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </SidebarMenu>
+                    </SidebarFooter>
+                </Sidebar>
+                <div className="flex-1 overflow-auto">
+                    <main className="p-4 md:p-8 flex-1">
+                        {renderContent()}
+                    </main>
+                </div>
+            </SidebarProvider>
+        </div>
+        {selectedTask && (
+             <TaskDetailsDialog
+                key={selectedTask.id}
+                task={selectedTask}
+                isOpen={!!selectedTask}
+                timeEntries={timeEntries.filter(t => t.task_id === selectedTask.id)}
+                allUsers={allUsers}
+                allTasks={tasks}
+                onOpenChange={(isOpen) => {
+                    if (!isOpen) setSelectedTask(null);
+                }}
+                onUpdateTask={handleUpdateTask}
+                onAddTask={(task) => handleAddTask(task)}
+                onRemoveTask={(taskId) => setTasks(prev => prev.filter(t => t.id !== taskId))}
+                onTaskSelect={setSelectedTask}
+                onLogTime={handleLogTime}
+                statuses={activeSpace.statuses.map(s => s.name)}
+                projects={projects}
+             />
+        )}
+      </div>
     );
 }
