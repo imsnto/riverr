@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from '@/components/ui/sidebar';
+import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart } from 'lucide-react';
 import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, Invite, Status, JobFlowTemplate, Job, JobFlowTask, PhaseTemplate, TaskTemplate, Activity } from '@/lib/data';
 import TaskBoard from '@/components/dashboard/task-board';
@@ -508,44 +508,30 @@ export default function Dashboard() {
         <TopBar activeSpace={activeSpace} onSpaceChange={handleSpaceChange} allSpaces={userSpaces} />
         <div className="flex flex-1 h-screen pt-16">
             <Sidebar collapsible="icon">
-                <SidebarContent>
-                    <SidebarMenu>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('overview')} isActive={view === 'overview'} className="h-12 w-full justify-center rounded-none">
-                                <BarChart className="w-7 h-7"/>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('tasks')} isActive={view === 'tasks'} className="h-12 w-full justify-center rounded-none">
-                                <FolderKanban className="w-7 h-7"/>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('messages')} isActive={view === 'messages'} className="h-12 w-full justify-center rounded-none">
-                                <MessageSquare className="w-7 h-7"/>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('timesheets')} isActive={view === 'timesheets'} className="h-12 w-full justify-center rounded-none">
-                                <Timer className="w-7 h-7"/>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                            <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('flows')} isActive={view === 'flows'} className="h-12 w-full justify-center rounded-none">
-                                <Workflow className="w-7 h-7"/>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    </SidebarMenu>
-                </SidebarContent>
-                <SidebarFooter>
-                    <SidebarMenu>
-                            <SidebarMenuItem>
-                            <SidebarMenuButton onClick={() => setView('settings')} isActive={view === 'settings'} className="h-12 w-full justify-center rounded-none">
-                                <Settings className="w-7 h-7"/>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    </SidebarMenu>
-                </SidebarFooter>
+                <div className="flex flex-col h-full">
+                    <div className="flex-1 space-y-2">
+                        <Button onClick={() => setView('overview')} variant={view === 'overview' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                            <BarChart className="w-7 h-7"/>
+                        </Button>
+                        <Button onClick={() => setView('tasks')} variant={view === 'tasks' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                            <FolderKanban className="w-7 h-7"/>
+                        </Button>
+                        <Button onClick={() => setView('messages')} variant={view === 'messages' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                            <MessageSquare className="w-7 h-7"/>
+                        </Button>
+                        <Button onClick={() => setView('timesheets')} variant={view === 'timesheets' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                            <Timer className="w-7 h-7"/>
+                        </Button>
+                        <Button onClick={() => setView('flows')} variant={view === 'flows' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                            <Workflow className="w-7 h-7"/>
+                        </Button>
+                    </div>
+                    <div className="mt-auto space-y-2">
+                        <Button onClick={() => setView('settings')} variant={view === 'settings' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                            <Settings className="w-7 h-7"/>
+                        </Button>
+                    </div>
+                </div>
             </Sidebar>
             <div className="flex-1 overflow-auto">
                 <main className="p-4 md:p-8 flex-1">

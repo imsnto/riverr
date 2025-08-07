@@ -2,7 +2,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar" 
+import { useSidebar, SidebarTrigger } from "@/components/ui/sidebar" 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
