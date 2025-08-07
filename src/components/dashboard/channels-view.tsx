@@ -6,7 +6,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Channel, Message, User, Attachment, Reaction, Task, Status } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Send, MessageCircleMore, Paperclip, File, ImageIcon, SmilePlus, MessageSquare, MoreHorizontal, CheckCircle2 } from 'lucide-react';
@@ -15,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command } from '@/components/ui/command';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { Badge } from '../ui/badge';
+import { Textarea } from '../ui/textarea';
 
 const getInitials = (name: string) => {
   if (!name) return '';
@@ -58,7 +58,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const messageInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
 
@@ -73,7 +73,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
   const channelMessages = messages.filter(m => m.channel_id === activeChannelId && !m.thread_id);
   const channelMembers = activeChannel ? allUsers.filter(u => activeChannel.members.includes(u.id)) : [];
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setNewMessage(value);
 
@@ -330,7 +330,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
             <Popover open={isTagging} onOpenChange={setIsTagging}>
                 <PopoverTrigger asChild>
                     <form onSubmit={handleSendMessage} className="relative">
-                      <Input
+                      <Textarea
                         id="message-input"
                         ref={messageInputRef}
                         value={newMessage}
@@ -338,8 +338,15 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
                         placeholder={`Message #${activeChannel.name}`}
                         className="pr-20"
                         autoComplete="off"
+                        rows={3}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage(e);
+                          }
+                        }}
                       />
-                      <div className="absolute right-1 top-1/2 -translate-y-1/2 flex">
+                      <div className="absolute right-1 bottom-1 flex items-center gap-1">
                         <input
                             type="file"
                             multiple
@@ -387,3 +394,5 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
     </div>
   );
 }
+
+    
