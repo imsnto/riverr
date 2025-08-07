@@ -37,6 +37,8 @@ type Props = {
   editor: Editor;
 };
 
+const FONT_SIZES = ['12px', '14px', '16px', '18px', '24px', '30px', '36px'];
+
 export function Toolbar({ editor }: Props) {
   const addImage = useCallback(() => {
     const url = window.prompt('URL');
@@ -54,6 +56,15 @@ export function Toolbar({ editor }: Props) {
         src: url,
       });
     }
+  };
+
+  const currentFontSize = () => {
+    for (const size of FONT_SIZES) {
+      if (editor.isActive('textStyle', { fontSize: size })) {
+        return size;
+      }
+    }
+    return '16px'; // Default paragraph size
   };
 
   return (
@@ -114,6 +125,28 @@ export function Toolbar({ editor }: Props) {
             Monospace
           </DropdownMenuItem>
            <DropdownMenuItem onClick={() => editor.chain().focus().unsetFontFamily().run()}>
+            Default
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+       <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="w-20 justify-start">
+            <span>{currentFontSize()}</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          {FONT_SIZES.map(size => (
+             <DropdownMenuItem 
+              key={size}
+              onClick={() => editor.chain().focus().setFontSize(size).run()}
+              className={editor.isActive('textStyle', { fontSize: size }) ? 'is-active' : ''}
+             >
+                {size}
+             </DropdownMenuItem>
+          ))}
+          <DropdownMenuItem onClick={() => editor.chain().focus().unsetFontSize().run()}>
             Default
           </DropdownMenuItem>
         </DropdownMenuContent>
