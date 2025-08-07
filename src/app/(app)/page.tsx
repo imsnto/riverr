@@ -422,44 +422,42 @@ function DashboardComponent() {
               const SimplifiedProjects = projects.filter(p => p.space_id === activeSpace?.id).map(p => ({ id: p.id, name: p.name }));
                 
               return (
-                 <div className="grid grid-cols-1 md:grid-cols-[1fr_400px] h-[calc(100vh-4rem)]">
-                    <div className="flex flex-col h-full">
-                       <div className="flex-1 grid grid-cols-[220px_1fr] overflow-hidden">
-                          <div className="border-r h-full overflow-y-auto flex flex-col bg-muted/50">
-                              <div className="p-4 flex justify-between items-center">
-                                <h3 className="font-semibold text-lg">Channels</h3>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsCreateChannelOpen(true)}>
-                                    <Plus className="h-4 w-4"/>
-                                </Button>
-                              </div>
-                              <div className="space-y-1 p-2 flex-1">
-                                {channels.filter(c => c.space_id === activeSpace?.id).map(channel => (
-                                  <Button 
-                                    key={channel.id} 
-                                    variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
-                                    className="w-full justify-start"
-                                    onClick={() => setActiveChannelId(channel.id)}
-                                  >
-                                    # {channel.name}
-                                  </Button>
-                                ))}
-                              </div>
-                          </div>
-                          <ChannelsView
-                             channels={channels}
-                             messages={messages}
-                             allUsers={allUsers}
-                             tasks={tasks}
-                             statuses={activeSpace!.statuses}
-                             activeChannelId={activeChannelId}
-                             setMessages={setMessages}
-                             onCreateTask={handleCreateTaskFromThread}
-                             onViewThread={handleViewThread}
-                             onAddMessage={handleAddMessage}
-                          />
-                       </div>
+                 <div className="grid grid-cols-[auto_1fr_auto] h-[calc(100vh-4rem)]">
+                    <div className="w-[220px] border-r h-full overflow-y-auto flex flex-col bg-muted/50">
+                        <div className="p-4 flex justify-between items-center">
+                            <h3 className="font-semibold text-lg">Channels</h3>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsCreateChannelOpen(true)}>
+                                <Plus className="h-4 w-4"/>
+                            </Button>
+                        </div>
+                        <div className="space-y-1 p-2 flex-1">
+                            {channels.filter(c => c.space_id === activeSpace?.id).map(channel => (
+                            <Button 
+                                key={channel.id} 
+                                variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
+                                className="w-full justify-start"
+                                onClick={() => setActiveChannelId(channel.id)}
+                            >
+                                # {channel.name}
+                            </Button>
+                            ))}
+                        </div>
                     </div>
-                    <div className="border-l bg-card h-full">
+                    <div className="flex flex-col h-full overflow-hidden">
+                        <ChannelsView
+                            channels={channels}
+                            messages={messages}
+                            allUsers={allUsers}
+                            tasks={tasks}
+                            statuses={activeSpace!.statuses}
+                            activeChannelId={activeChannelId}
+                            setMessages={setMessages}
+                            onCreateTask={handleCreateTaskFromThread}
+                            onViewThread={handleViewThread}
+                            onAddMessage={handleAddMessage}
+                        />
+                    </div>
+                    <div className="w-[400px] border-l bg-card h-full">
                       {rightPanelView === 'threads' && (
                         <AllThreadsView
                           messages={messages}
