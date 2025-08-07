@@ -45,7 +45,8 @@ interface CreateChannelDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   spaceId: string;
   spaceMembers: User[];
-  onCreateChannel: (channelData: Omit<Channel, 'id'>) => void;
+  onSave: (channelData: Omit<Channel, 'id'>, channelId?: string) => void;
+  editingChannel: Channel | null;
 }
 
 export default function CreateChannelDialog({ 
@@ -53,7 +54,8 @@ export default function CreateChannelDialog({
     onOpenChange, 
     spaceId, 
     spaceMembers, 
-    onCreateChannel 
+    onSave,
+    editingChannel
 }: CreateChannelDialogProps) {
   const { appUser } = useAuth();
   
@@ -67,24 +69,30 @@ export default function CreateChannelDialog({
   });
   
   React.useEffect(() => {
-    if (isOpen && appUser) {
-      form.reset({
-        name: '',
-        description: '',
-        members: [appUser.id],
-      });
+    if (isOpen) {
+        if (editingChannel) {
+            form.reset({
+                name: editingChannel.name,
+                description: editingChannel.description,
+                members: editingChannel.members,
+            });
+        } else if (appUser) {
+            form.reset({
+                name: '',
+                description: '',
+                members: [appUser.id],
+            });
+        }
     }
-  }, [isOpen, appUser, form]);
+  }, [isOpen, appUser, editingChannel, form]);
 
   const onSubmit = (values: ChannelFormValues) => {
-    if (!appUser) return;
-    
     const channelData: Omit<Channel, 'id'> = {
         ...values,
         space_id: spaceId,
     };
     
-    onCreateChannel(channelData);
+    onSave(channelData, editingChannel?.id);
     onOpenChange(false);
   };
 
@@ -92,9 +100,9 @@ export default function CreateChannelDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Create New Channel</DialogTitle>
+          <DialogTitle>{editingChannel ? 'Edit Channel' : 'Create New Channel'}</DialogTitle>
           <DialogDescription>
-            Channels are where your team communicates. They’re best when organized around a topic.
+             {editingChannel ? `Update the details for #${editingChannel.name}.` : 'Channels are where your team communicates. They’re best when organized around a topic.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -133,12 +141,12 @@ export default function CreateChannelDialog({
               name="members"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Add Members</FormLabel>
+                  <FormLabel>Members</FormLabel>
                    <MemberSelect 
                         allUsers={spaceMembers} 
                         selectedUsers={field.value} 
                         onChange={field.onChange}
-                        creatorId={appUser?.id || null}
+                        creatorId={editingChannel ? null : appUser?.id || null}
                     />
                   <FormMessage />
                 </FormItem>
@@ -146,7 +154,7 @@ export default function CreateChannelDialog({
             />
             <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                <Button type="submit">Create Channel</Button>
+                <Button type="submit">Save</Button>
             </DialogFooter>
           </form>
         </Form>

@@ -281,6 +281,29 @@ export const addChannel = async (channel: Omit<Channel, 'id'>): Promise<Channel>
   return { ...channel, id: docRef.id };
 };
 
+export const updateChannel = async (channelId: string, data: Partial<Channel>): Promise<void> => {
+  const channelRef = doc(db, 'channels', channelId);
+  await updateDoc(channelRef, data);
+};
+
+export const deleteChannel = async (channelId: string): Promise<void> => {
+    const batch = writeBatch(db);
+
+    // Delete all messages in the channel
+    const messagesQuery = query(collection(db, 'messages'), where('channel_id', '==', channelId));
+    const messagesSnapshot = await getDocs(messagesQuery);
+    messagesSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+
+    // Delete the channel itself
+    const channelRef = doc(db, 'channels', channelId);
+    batch.delete(channelRef);
+
+    await batch.commit();
+}
+
+
 export const getMessagesInChannel = async (channelId: string): Promise<Message[]> => {
     const q = query(collection(db, 'messages'), where('channel_id', '==', channelId));
     const querySnapshot = await getDocs(q);

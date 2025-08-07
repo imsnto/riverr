@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
-import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown, ClipboardCheck, BookOpen, Plus } from 'lucide-react';
+import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown, ClipboardCheck, BookOpen, Plus, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, Invite, Status, JobFlowTemplate, Job, JobFlowTask, PhaseTemplate, TaskTemplate, Activity, Document } from '@/lib/data';
 import TaskBoard from '@/components/dashboard/task-board';
 import { useToast } from '@/hooks/use-toast';
@@ -37,6 +37,8 @@ import {
     addInvite as dbAddInvite,
     addMessage as dbAddMessage,
     addChannel as dbAddChannel,
+    updateChannel as dbUpdateChannel,
+    deleteChannel as dbDeleteChannel,
     addJobFlowTemplate as dbAddJobFlowTemplate,
     addPhaseTemplate as dbAddPhaseTemplate,
     addTaskTemplate as dbAddTaskTemplate,
@@ -61,12 +63,13 @@ import JobFlowTemplateBuilder from '@/components/dashboard/job-flow-template-bui
 import PhaseTemplateBuilder from '@/components/dashboard/phase-template-builder';
 import TaskTemplateBuilder from '@/components/dashboard/task-template-builder';
 import JobFlowBoard from '@/components/dashboard/job-flow-board';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { TopBar } from '@/components/dashboard/top-bar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DocumentsView from '@/components/dashboard/documents-view';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 
 type View = 'overview' | 'tasks' | 'mytasks' | 'messages' | 'timesheets' | 'reports' | 'flows' | 'settings' | 'documents';
@@ -110,7 +113,8 @@ function DashboardComponent() {
     const [activeThread, setActiveThread] = useState<Message | null>(null);
     const [readThreadIds, setReadThreadIds] = useState<Set<string>>(new Set());
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-    const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
+    const [isChannelFormOpen, setIsChannelFormOpen] = useState(false);
+    const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
     
      useEffect(() => {
         const viewFromParams = searchParams.get('view') as View;
@@ -372,13 +376,29 @@ function DashboardComponent() {
        }
     }
 
-    const handleAddChannel = async (channelData: Omit<Channel, 'id'>) => {
-        const newChannel = await dbAddChannel(channelData);
-        setChannels(prev => [...prev, newChannel]);
-        setActiveChannelId(newChannel.id);
-        toast({ title: "Channel Created", description: `#${newChannel.name} has been created.` });
+    const handleSaveChannel = async (channelData: Omit<Channel, 'id'>, channelId?: string) => {
+        if (channelId) {
+            await dbUpdateChannel(channelId, channelData);
+            setChannels(prev => prev.map(c => c.id === channelId ? { id: channelId, ...channelData } : c));
+            toast({ title: "Channel Updated" });
+        } else {
+            const newChannel = await dbAddChannel(channelData);
+            setChannels(prev => [...prev, newChannel]);
+            setActiveChannelId(newChannel.id);
+            toast({ title: "Channel Created" });
+        }
     };
     
+    const handleDeleteChannel = async (channelId: string) => {
+        await dbDeleteChannel(channelId);
+        setChannels(prev => prev.filter(c => c.id !== channelId));
+        if (activeChannelId === channelId) {
+            const firstChannel = channels.find(c => c.id !== channelId);
+            setActiveChannelId(firstChannel ? firstChannel.id : null);
+        }
+        toast({ title: "Channel Deleted" });
+    }
+
      const handleSaveDocument = async (doc: Omit<Document, 'id' | 'createdAt' | 'updatedAt'>, docId?: string): Promise<Document> => {
         const now = new Date().toISOString();
         if (docId) {
@@ -441,44 +461,76 @@ function DashboardComponent() {
                 
               return (
                  <div className={cn(
-                    'grid flex-1 overflow-hidden',
-                    threadOpen ? 'grid-cols-[1fr_400px]' : 'grid-cols-1'
+                    'grid flex-1 overflow-hidden transition-all duration-200 ease-in-out',
+                    threadOpen ? 'grid-cols-[220px_minmax(0,1fr)_400px]' : 'grid-cols-[220px_minmax(0,1fr)]'
                  )}>
-                    <div className="flex h-full">
-                        <div className="hidden md:flex w-[220px] border-r h-full flex-col bg-muted/50">
+                    <div className="flex h-full border-r">
+                        <div className="flex w-[220px] h-full flex-col bg-muted/50">
                             <div className="p-4 flex justify-between items-center">
                                 <h3 className="font-semibold text-lg">Channels</h3>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsCreateChannelOpen(true)}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingChannel(null); setIsChannelFormOpen(true);}}>
                                     <Plus className="h-4 w-4"/>
                                 </Button>
                             </div>
                             <div className="space-y-1 p-2 flex-1 overflow-y-auto">
                                 {channels.filter(c => c.space_id === activeSpace?.id).map(channel => (
-                                <Button 
-                                    key={channel.id} 
-                                    variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
-                                    className="w-full justify-start"
-                                    onClick={() => setActiveChannelId(channel.id)}
-                                >
-                                    # {channel.name}
-                                </Button>
+                                    <div key={channel.id} className="group relative">
+                                        <Button 
+                                            variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
+                                            className="w-full justify-start pr-8"
+                                            onClick={() => setActiveChannelId(channel.id)}
+                                        >
+                                            # {channel.name}
+                                        </Button>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover:opacity-100">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent>
+                                                <DropdownMenuItem onClick={() => {setEditingChannel(channel); setIsChannelFormOpen(true);}}>
+                                                    <Edit className="mr-2 h-4 w-4"/> Edit Channel
+                                                </DropdownMenuItem>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <DropdownMenuItem onSelect={e => e.preventDefault()} className="text-destructive">
+                                                            <Trash2 className="mr-2 h-4 w-4"/> Delete Channel
+                                                        </DropdownMenuItem>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                This action cannot be undone. This will permanently delete the #{channel.name} channel and all of its messages.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDeleteChannel(channel.id)} className={cn(buttonVariants({variant: 'destructive'}))}>Delete</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
                                 ))}
                             </div>
                         </div>
-                        <div className="flex flex-col h-full overflow-hidden flex-1">
-                            <ChannelsView
-                                channels={channels}
-                                messages={messages}
-                                allUsers={allUsers}
-                                tasks={tasks}
-                                statuses={activeSpace!.statuses}
-                                activeChannelId={activeChannelId}
-                                setMessages={setMessages}
-                                onCreateTask={handleCreateTaskFromThread}
-                                onViewThread={handleViewThread}
-                                onAddMessage={handleAddMessage}
-                            />
-                        </div>
+                    </div>
+                    <div className="flex flex-col h-full overflow-hidden flex-1">
+                        <ChannelsView
+                            channels={channels}
+                            messages={messages}
+                            allUsers={allUsers}
+                            tasks={tasks}
+                            statuses={activeSpace!.statuses}
+                            activeChannelId={activeChannelId}
+                            setMessages={setMessages}
+                            onCreateTask={handleCreateTaskFromThread}
+                            onViewThread={handleViewThread}
+                            onAddMessage={handleAddMessage}
+                        />
                     </div>
                      {threadOpen && (
                         <div className="w-[400px] border-l bg-card h-full overflow-y-auto">
@@ -684,11 +736,12 @@ function DashboardComponent() {
              />
         )}
         <CreateChannelDialog
-            isOpen={isCreateChannelOpen}
-            onOpenChange={setIsCreateChannelOpen}
+            isOpen={isChannelFormOpen}
+            onOpenChange={setIsChannelFormOpen}
             spaceId={activeSpace.id}
             spaceMembers={allUsers.filter(u => activeSpace.members[u.id])}
-            onCreateChannel={handleAddChannel}
+            onSave={handleSaveChannel}
+            editingChannel={editingChannel}
         />
       </SidebarProvider>
     );
@@ -701,17 +754,3 @@ export default function Dashboard() {
         </Suspense>
     )
 }
-
-    
-
-    
-
-
-
-
-
-
-
-
-
-
