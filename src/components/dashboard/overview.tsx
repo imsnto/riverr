@@ -57,7 +57,6 @@ export default function Overview({
         await updateJobPhase(job, template, tasks, jobFlowTasks);
         toast({ title: "Phase Advanced!", description: `Job "${job.name}" has moved to the next phase.` });
         
-        // Manually update the local state to ensure UI reflects the change immediately
         const nextPhaseIndex = job.currentPhaseIndex + 1;
         const nextPhase = template.phases.find(p => p.phaseIndex === nextPhaseIndex);
         
@@ -72,8 +71,8 @@ export default function Overview({
             return j;
         }));
 
-        setSelectedJob(null); // Close dialog on success
-        onJobLaunched(); // Also call parent refresh for good measure
+        setSelectedJob(null);
+        onJobLaunched();
     } catch (error) {
         console.error("Failed to advance phase:", error);
         toast({ variant: 'destructive', title: 'Failed to advance phase' });
@@ -111,6 +110,7 @@ export default function Overview({
   const pendingReviews = jobs.filter(job => {
       const template = jobFlowTemplates.find(t => t.id === job.workflowTemplateId);
       if (!template) return false;
+
       const currentPhase = template.phases.find(p => p.phaseIndex === job.currentPhaseIndex);
       if (!currentPhase || !currentPhase.requiresReview) return false;
       
@@ -119,16 +119,15 @@ export default function Overview({
       if (actualReviewerId !== appUser.id) return false;
       
       const phaseTaskLinks = jobFlowTasks.filter(jft => jft.jobId === job.id && jft.phaseIndex === job.currentPhaseIndex);
-      if (phaseTaskLinks.length === 0) return false; // No tasks submitted yet
+      if (phaseTaskLinks.length === 0) return false;
       
-      // Check if tasks are done and if review has been submitted (at least one jft has reviewedBy)
+      const isSubmittedForReview = phaseTaskLinks.every(jft => !!jft.reviewedBy);
+      if (!isSubmittedForReview) return false;
+
       const phaseTasks = phaseTaskLinks.map(jft => tasks.find(t => t.id === jft.taskId)).filter(Boolean) as Task[];
       const allTasksDone = phaseTasks.length > 0 && phaseTasks.every(t => t.status === 'Done');
-      const isSubmitted = phaseTaskLinks.every(jft => !!jft.reviewedBy);
 
-      // We want to show items that are submitted but the reviewer (me) hasn't approved yet.
-      // The approval action is advancing the phase. So if it's submitted for review to me, show it.
-      return allTasksDone && isSubmitted;
+      return allTasksDone;
   });
 
   const selectedJobTemplate = selectedJob ? jobFlowTemplates.find(t => t.id === selectedJob.workflowTemplateId) : undefined;
