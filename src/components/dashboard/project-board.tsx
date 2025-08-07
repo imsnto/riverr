@@ -4,7 +4,7 @@
 
 import React, { useState, DragEvent } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Task, Project, Space, Status } from '@/lib/data';
+import { User, Task, Project, Space, Status, Activity } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { MoreHorizontal, Plus, Edit, Trash2, Palette, Calendar, MessageSquare, Archive, CheckCircle } from 'lucide-react';
@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { useAuth } from '@/hooks/use-auth';
 
 const getInitials = (name: string) => {
     if (!name) return '';
@@ -126,6 +127,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
   const { toast } = useToast();
+  const { appUser } = useAuth();
   
   const tasks = allTasks.filter(t => t.project_id === project.id && !t.parentId);
   const statuses = activeSpace.statuses || defaultStatuses;
@@ -148,8 +150,21 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     const taskId = e.dataTransfer.getData('taskId');
     const task = allTasks.find(t => t.id === taskId);
     
-    if (task && task.status !== newStatus) {
-        onUpdateTask({ ...task, status: newStatus });
+    if (task && task.status !== newStatus && appUser) {
+        const newActivity: Activity = {
+            id: `act-${Date.now()}`,
+            user_id: appUser.id,
+            timestamp: new Date().toISOString(),
+            type: 'status_change',
+            from: task.status,
+            to: newStatus,
+        };
+        const updatedTask = { 
+            ...task, 
+            status: newStatus,
+            activities: [...(task.activities || []), newActivity],
+        };
+        onUpdateTask(updatedTask);
     }
 
     setDraggedTask(null);
@@ -176,9 +191,8 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         return;
     }
     
-    // This part is tricky. We need to update tasks in the DB.
-    // The parent component should handle this logic.
-    // For now, let's just update the status name in the space.
+    onUpdateTasks(allTasks.map(t => t.status === oldName ? { ...t, status: newColumnName } : t));
+    
     const newSpaceData: Partial<Space> = {
         statuses: statuses.map(s => s.name === oldName ? { ...s, name: newColumnName } : s)
     };
@@ -186,9 +200,6 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         newSpaceData.closingStatusName = newColumnName;
     }
     onUpdateActiveSpace(newSpaceData);
-    
-    // Update tasks locally for immediate feedback, but they need to be persisted.
-    onUpdateTasks(allTasks.map(t => t.status === oldName ? { ...t, status: newColumnName } : t));
 
     setEditingColumn(null);
     setNewColumnName("");
@@ -202,6 +213,8 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     
     const defaultColumn = statuses.find(s => s.name !== columnToDelete)!;
     
+    onUpdateTasks(allTasks.map(t => t.status === columnToDelete ? { ...t, status: defaultColumn.name } : t));
+
     const newSpaceData: Partial<Space> = {
         statuses: statuses.filter(s => s.name !== columnToDelete)
     };
@@ -210,9 +223,6 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         newSpaceData.closingStatusName = undefined;
     }
     onUpdateActiveSpace(newSpaceData);
-
-    // Update tasks that were in the deleted column
-    onUpdateTasks(allTasks.map(t => t.status === columnToDelete ? { ...t, status: defaultColumn.name } : t));
   }
 
   const handleChangeColor = (statusName: string, color: string) => {
