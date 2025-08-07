@@ -441,42 +441,44 @@ function DashboardComponent() {
                 
               return (
                  <div className={cn(
-                    'grid flex-1 overflow-hidden transition-all duration-200 ease-in-out',
-                    threadOpen ? 'grid-cols-[220px_minmax(0,1fr)_400px]' : 'grid-cols-[220px_minmax(0,1fr)]'
+                    'grid flex-1 overflow-hidden',
+                    threadOpen ? 'grid-cols-[1fr_400px]' : 'grid-cols-1'
                  )}>
-                    <div className="hidden md:flex w-[220px] border-r h-full overflow-y-auto flex-col bg-muted/50">
-                        <div className="p-4 flex justify-between items-center">
-                            <h3 className="font-semibold text-lg">Channels</h3>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsCreateChannelOpen(true)}>
-                                <Plus className="h-4 w-4"/>
-                            </Button>
+                    <div className="flex h-full">
+                        <div className="hidden md:flex w-[220px] border-r h-full overflow-y-auto flex-col bg-muted/50">
+                            <div className="p-4 flex justify-between items-center">
+                                <h3 className="font-semibold text-lg">Channels</h3>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsCreateChannelOpen(true)}>
+                                    <Plus className="h-4 w-4"/>
+                                </Button>
+                            </div>
+                            <div className="space-y-1 p-2 flex-1">
+                                {channels.filter(c => c.space_id === activeSpace?.id).map(channel => (
+                                <Button 
+                                    key={channel.id} 
+                                    variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
+                                    className="w-full justify-start"
+                                    onClick={() => setActiveChannelId(channel.id)}
+                                >
+                                    # {channel.name}
+                                </Button>
+                                ))}
+                            </div>
                         </div>
-                        <div className="space-y-1 p-2 flex-1">
-                            {channels.filter(c => c.space_id === activeSpace?.id).map(channel => (
-                            <Button 
-                                key={channel.id} 
-                                variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
-                                className="w-full justify-start"
-                                onClick={() => setActiveChannelId(channel.id)}
-                            >
-                                # {channel.name}
-                            </Button>
-                            ))}
+                        <div className="flex flex-col h-full overflow-hidden flex-1">
+                            <ChannelsView
+                                channels={channels}
+                                messages={messages}
+                                allUsers={allUsers}
+                                tasks={tasks}
+                                statuses={activeSpace!.statuses}
+                                activeChannelId={activeChannelId}
+                                setMessages={setMessages}
+                                onCreateTask={handleCreateTaskFromThread}
+                                onViewThread={handleViewThread}
+                                onAddMessage={handleAddMessage}
+                            />
                         </div>
-                    </div>
-                    <div className="flex flex-col h-full overflow-hidden">
-                        <ChannelsView
-                            channels={channels}
-                            messages={messages}
-                            allUsers={allUsers}
-                            tasks={tasks}
-                            statuses={activeSpace!.statuses}
-                            activeChannelId={activeChannelId}
-                            setMessages={setMessages}
-                            onCreateTask={handleCreateTaskFromThread}
-                            onViewThread={handleViewThread}
-                            onAddMessage={handleAddMessage}
-                        />
                     </div>
                      {threadOpen && (
                         <div className="w-[400px] border-l bg-card h-full overflow-y-auto">
@@ -703,6 +705,7 @@ export default function Dashboard() {
     
 
     
+
 
 
 
