@@ -445,23 +445,6 @@ function DashboardComponent() {
         toast({ title: 'Document Deleted' });
     };
 
-    const isThreadUnread = (parent: Message): boolean => {
-      if (!appUser) return false;
-      // ONLY consider replies (exclude the parent itself)
-      const repliesFromOthers = messages
-        .filter(m => m.thread_id === parent.id && m.user_id !== appUser.id);
-
-      if (repliesFromOthers.length === 0) return false;
-
-      const lastReplyFromOther = repliesFromOthers.reduce(
-        (max, m) => Math.max(max, new Date(m.timestamp).getTime()),
-        0
-      );
-
-      const lastThreadRead = threadReadAt.get(parent.id) ?? 0;
-      return lastReplyFromOther > lastThreadRead;
-    };
-    
     const memoizedTasks = useMemo(() => tasks, [tasks]);
 
     if (!appUser || isLoading || !activeSpace) {
@@ -508,32 +491,53 @@ function DashboardComponent() {
                 return allThreadMessages.some(m => m.user_id === appUser.id);
               });
               
+                const isParentUnread = (parent: Message): boolean => {
+                    if (!appUser) return false;
+                    if (parent.user_id === appUser.id) return false;
+                    const lastRead = parentReadAt.get(parent.id) ?? 0;
+                    const createdAt = new Date(parent.timestamp).getTime();
+                    return createdAt > lastRead;
+                };
+
+                const isThreadUnread = (parent: Message): boolean => {
+                  if (!appUser) return false;
+                  // ONLY consider replies (exclude the parent itself)
+                  const repliesFromOthers = messages
+                    .filter(m => m.thread_id === parent.id && m.user_id !== appUser.id);
+
+                  if (repliesFromOthers.length === 0) return false;
+
+                  const lastReplyFromOther = repliesFromOthers.reduce(
+                    (max, m) => Math.max(max, new Date(m.timestamp).getTime()),
+                    0
+                  );
+
+                  const lastThreadRead = threadReadAt.get(parent.id) ?? 0;
+                  return lastReplyFromOther > lastThreadRead;
+                };
+
               const unreadThreads = userInvolvedThreads.filter(isThreadUnread);
               const unreadThreadCount = unreadThreads.length;
-              
-              const isParentUnread = (parent: Message): boolean => {
-                if (!appUser) return false;
-                if (parent.user_id === appUser.id) return false;
-                const lastRead = parentReadAt.get(parent.id) ?? 0;
-                const createdAt = new Date(parent.timestamp).getTime();
-                return createdAt > lastRead;
-              };
 
-              const unreadParentsByChannel = channels.reduce((acc, channel) => {
-                const parents = messages.filter(m => m.channel_id === channel.id && !m.thread_id);
-                const unreadParents = parents.filter(isParentUnread).length;
-                if (unreadParents > 0) acc[channel.id] = unreadParents;
-                return acc;
-              }, {} as Record<string, number>);
+                const unreadParentsByChannel = useMemo(() => {
+                    const acc: Record<string, number> = {};
+                    channels.forEach(channel => {
+                        const parents = messages.filter(m => m.channel_id === channel.id && !m.thread_id);
+                        const count = parents.filter(isParentUnread).length;
+                        if (count > 0) acc[channel.id] = count;
+                    });
+                    return acc;
+                }, [channels, messages, parentReadAt, appUser?.id]);
 
-              const unreadThreadsByChannel = channels.reduce((acc, channel) => {
-                const channelParents = messages.filter(
-                    m => m.channel_id === channel.id && !m.thread_id && (m.reply_count ?? 0) > 0
-                );
-                const unreadCount = channelParents.filter(isThreadUnread).length;
-                if (unreadCount > 0) acc[channel.id] = unreadCount;
-                return acc;
-              }, {} as Record<string, number>);
+                const unreadThreadsByChannel = useMemo(() => {
+                    const acc: Record<string, number> = {};
+                    channels.forEach(channel => {
+                        const parents = messages.filter(m => m.channel_id === channel.id && !m.thread_id && (m.reply_count ?? 0) > 0);
+                        const count = parents.filter(isThreadUnread).length;
+                        if (count > 0) acc[channel.id] = count;
+                    });
+                    return acc;
+                }, [channels, messages, threadReadAt, appUser?.id]);
               
               const markChannelParentsRead = (channelId: string) => {
                 const now = Date.now();
@@ -582,10 +586,12 @@ function DashboardComponent() {
                             </div>
                             <div className="space-y-1 p-2 flex-1 overflow-y-auto">
                                 {channels.filter(c => c.space_id === activeSpace?.id).map(channel => {
-                                    const parentUnreadCount = unreadParentsByChannel[channel.id] || 0;
-                                    const threadUnreadCount = unreadThreadsByChannel[channel.id] || 0;
-                                    const hasParentUnreads = parentUnreadCount > 0;
-                                    const hasThreadUnreads = threadUnreadCount > 0;
+                                    const rawParentUnread = unreadParentsByChannel[channel.id] || 0;
+                                    const rawThreadUnread = unreadThreadsByChannel[channel.id] || 0;
+
+                                    // if this is the channel we just opened, hide parent unread immediately
+                                    const parentUnread = channel.id === activeChannelId ? 0 : rawParentUnread;
+                                    const threadUnread = rawThreadUnread;
 
                                     return (
                                         <div key={channel.id} className="group relative">
@@ -593,7 +599,7 @@ function DashboardComponent() {
                                                 variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
                                                 className={cn(
                                                     "w-full justify-start pr-8",
-                                                    hasParentUnreads && "font-bold"
+                                                    parentUnread > 0 && "font-bold"
                                                 )}
                                                 onClick={() => {
                                                     setActiveChannelId(channel.id);
@@ -602,13 +608,13 @@ function DashboardComponent() {
                                             >
                                                 # {channel.name}
                                                 <div className="ml-auto flex items-center gap-1.5">
-                                                     {hasThreadUnreads ? (
+                                                     {threadUnread > 0 ? (
                                                         <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
-                                                            {threadUnreadCount}
+                                                            {threadUnread}
                                                         </span>
-                                                    ) : hasParentUnreads ? (
+                                                    ) : parentUnread > 0 ? (
                                                         <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-muted-foreground/20 text-muted-foreground">
-                                                            {parentUnreadCount}
+                                                            {parentUnread}
                                                         </span>
                                                     ) : null}
                                                 </div>
