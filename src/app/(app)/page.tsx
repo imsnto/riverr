@@ -141,10 +141,20 @@ function DashboardComponent() {
         return () => window.removeEventListener('resize', handleResize);
     }, [rightPanelView]);
 
+    // This effect marks threads in a channel as read when the channel is viewed.
     useEffect(() => {
         if (activeChannelId) {
-            setRightPanelView(null);
+            const now = Date.now();
+            const threadsInChannel = messages.filter(m => m.channel_id === activeChannelId && !m.thread_id);
+            const newReadThreads = new Map(readThreads);
+            threadsInChannel.forEach(t => {
+                if (isThreadUnread(t)) {
+                    newReadThreads.set(t.id, now);
+                }
+            });
+            setReadThreads(newReadThreads);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeChannelId]);
 
 
@@ -635,7 +645,7 @@ function DashboardComponent() {
                                     isThreadUnread={isThreadUnread}
                                     onAddMessage={handleAddMessage}
                                     channels={channels}
-                                    threads={allThreadsInSpace}
+                                    threads={userInvolvedThreads}
                                 />
                             )}
                             {rightPanelView === 'thread' && activeThread && (
