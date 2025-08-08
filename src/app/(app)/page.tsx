@@ -70,6 +70,7 @@ import { cn } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DocumentsView from '@/components/dashboard/documents-view';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import MessagesLayout from '@/components/dashboard/messages-layout';
 
 
 type View = 'overview' | 'tasks' | 'mytasks' | 'messages' | 'timesheets' | 'reports' | 'flows' | 'settings' | 'documents';
@@ -148,7 +149,7 @@ function DashboardComponent() {
     useEffect(() => {
         if (!activeChannelId) return;
         markChannelParentsRead(activeChannelId);
-    }, [activeChannelId, messages]);
+    }, [activeChannelId, messages, markChannelParentsRead]);
 
     // Reset seen state when user/space changes
     useEffect(() => {
@@ -179,8 +180,8 @@ function DashboardComponent() {
         return messages.filter(parent => {
             if (parent.thread_id) return false; // only parent messages
             
-            const ch = channels.find(c => c.id === parent.channel_id);
-            if (!ch || ch.space_id !== activeSpace.id) return false;
+            const ch = channels.find(c => String(c.id) === String(parent.channel_id));
+            if (!ch || String(ch.space_id) !== String(activeSpace.id)) return false;
 
             const allMsgsInThread = [parent, ...messages.filter(m => m.thread_id === parent.id)];
             return allMsgsInThread.some(m => m.user_id === appUser.id);
@@ -196,7 +197,7 @@ function DashboardComponent() {
       const acc: Record<string, number> = {};
       channels.forEach(channel => {
         const parents = messages.filter(
-          m => m.channel_id === channel.id && !m.thread_id && (m.reply_count ?? 0) > 0
+          m => String(m.channel_id) === String(channel.id) && !m.thread_id && (m.reply_count ?? 0) > 0
         );
         const count = parents.filter(isThreadUnread).length;
         if (count) acc[channel.id] = count;
@@ -554,169 +555,176 @@ function DashboardComponent() {
               const simplifiedProjects = projects.filter(p => p.space_id === activeSpace?.id).map(p => ({ id: p.id, name: p.name }));
               const threadOpen = rightPanelView === 'thread' || rightPanelView === 'threads' || rightPanelView === 'task-from-thread';
               const unreadThreadCount = unreadThreads.length;
+              
+              const leftPanel = (
+                <div className="flex h-full flex-col">
+                    <div className="p-2">
+                        <Button 
+                            variant="ghost" 
+                            className="w-full justify-start text-base"
+                            onClick={() => {
+                                const opening = rightPanelView !== 'threads';
+                                setRightPanelView(opening ? 'threads' : null);
 
-              return (
-                 <div className={cn("grid h-full transition-all duration-200 ease-in-out min-h-0", threadOpen ? 'grid-cols-[220px_minmax(0,1fr)_400px]' : 'grid-cols-[220px_minmax(0,1fr)]')}>
-                    <div className="flex-col border-r bg-muted/50 hidden md:flex">
-                         <div className="flex h-full flex-col">
-                            <div className="p-2">
-                                <Button 
-                                    variant="ghost" 
-                                    className="w-full justify-start text-base"
-                                    onClick={() => {
-                                        const opening = rightPanelView !== 'threads';
-                                        setRightPanelView(opening ? 'threads' : null);
-
-                                        if (opening) {
-                                            const now = Date.now();
-                                            setThreadReadAt(prev => {
-                                                const next = new Map(prev);
-                                                userInvolvedThreads.forEach(t => next.set(t.id, now));
-                                                return next;
-                                            });
-                                        }
-                                    }}
-                                >
-                                    <MessageCircleMore className="mr-2 h-5 w-5" /> Threads
-                                    {unreadThreadCount > 0 && (
-                                        <span className="ml-auto bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">{unreadThreadCount}</span>
-                                    )}
-                                </Button>
-                            </div>
-                            <div className="p-4 flex justify-between items-center border-t">
-                                <h3 className="font-semibold text-lg">Channels</h3>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingChannel(null); setIsChannelFormOpen(true);}}>
-                                    <Plus className="h-4 w-4"/>
-                                </Button>
-                            </div>
-                            <div className="space-y-1 p-2 flex-1 overflow-y-auto">
-                                {channels.filter(c => c.space_id === activeSpace?.id).map(channel => {
-                                    
-                                    const parentUnreadRaw = messages.filter(m =>
-                                      String(m.channel_id) === String(channel.id) &&
-                                      !m.thread_id &&
-                                      String(m.user_id) !== String(appUser?.id) &&
-                                      !seenParentIds.has(String(m.id))
-                                    ).length;
-                                    
-                                    const threadUnread = unreadThreadsByChannel[channel.id] || 0;
-                                    
-                                    const parentUnread = String(channel.id) === String(activeChannelId) ? 0 : parentUnreadRaw;
-
-                                    return (
-                                        <div key={channel.id} className="group relative">
-                                            <Button 
-                                                variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
-                                                className={cn(
-                                                    "w-full justify-start pr-8",
-                                                    parentUnread > 0 && "font-bold"
-                                                )}
-                                                onClick={() => {
-                                                    markChannelParentsRead(channel.id);
-                                                    setActiveChannelId(channel.id);
-                                                }}
-                                            >
-                                                # {channel.name}
-                                                <div className="ml-auto flex items-center gap-1.5">
-                                                    {threadUnread > 0 ? (
-                                                        <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
-                                                            {threadUnread}
-                                                        </span>
-                                                    ) : parentUnread > 0 ? (
-                                                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-muted-foreground/20 text-muted-foreground">
-                                                            {parentUnread}
-                                                        </span>
-                                                    ) : null}
-                                                </div>
-                                            </Button>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover:opacity-100">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent>
-                                                    <DropdownMenuItem onClick={() => {setEditingChannel(channel); setIsChannelFormOpen(true);}}>
-                                                        <Edit className="mr-2 h-4 w-4"/> Edit Channel
-                                                    </DropdownMenuItem>
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <DropdownMenuItem onSelect={e => e.preventDefault()} className="text-destructive">
-                                                                <Trash2 className="mr-2 h-4 w-4"/> Delete Channel
-                                                            </DropdownMenuItem>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    This action cannot be undone. This will permanently delete the #{channel.name} channel and all of its messages.
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => handleDeleteChannel(channel.id)} className={cn(buttonVariants({variant: 'destructive'}))}>Delete</AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </div>
+                                if (opening) {
+                                    const now = Date.now();
+                                    setThreadReadAt(prev => {
+                                        const next = new Map(prev);
+                                        userInvolvedThreads.forEach(t => next.set(t.id, now));
+                                        return next;
+                                    });
+                                }
+                            }}
+                        >
+                            <MessageCircleMore className="mr-2 h-5 w-5" /> Threads
+                            {unreadThreadCount > 0 && (
+                                <span className="ml-auto bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">{unreadThreadCount}</span>
+                            )}
+                        </Button>
                     </div>
-                    <div className="flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
-                        <ChannelsView
-                            channels={channels}
-                            messages={messages.sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())}
+                    <div className="p-4 flex justify-between items-center border-t">
+                        <h3 className="font-semibold text-lg">Channels</h3>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingChannel(null); setIsChannelFormOpen(true);}}>
+                            <Plus className="h-4 w-4"/>
+                        </Button>
+                    </div>
+                    <div className="space-y-1 p-2 flex-1 overflow-y-auto">
+                        {channels.filter(c => String(c.space_id) === String(activeSpace?.id)).map(channel => {
+                            
+                            const parentUnreadRaw = messages.filter(m =>
+                              String(m.channel_id) === String(channel.id) &&
+                              !m.thread_id &&
+                              String(m.user_id) !== String(appUser?.id) &&
+                              !seenParentIds.has(String(m.id))
+                            ).length;
+                            
+                            const threadUnread = unreadThreadsByChannel[channel.id] || 0;
+                            
+                            const parentUnread = String(channel.id) === String(activeChannelId) ? 0 : parentUnreadRaw;
+
+                            return (
+                                <div key={channel.id} className="group relative">
+                                    <Button 
+                                        variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
+                                        className={cn(
+                                            "w-full justify-start pr-8",
+                                            parentUnread > 0 && "font-bold"
+                                        )}
+                                        onClick={() => {
+                                            markChannelParentsRead(channel.id);
+                                            setActiveChannelId(channel.id);
+                                        }}
+                                    >
+                                        # {channel.name}
+                                        <div className="ml-auto flex items-center gap-1.5">
+                                            {threadUnread > 0 ? (
+                                                <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
+                                                    {threadUnread}
+                                                </span>
+                                            ) : parentUnread > 0 ? (
+                                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-muted-foreground/20 text-muted-foreground">
+                                                    {parentUnread}
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                    </Button>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover:opacity-100">
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem onClick={() => {setEditingChannel(channel); setIsChannelFormOpen(true);}}>
+                                                <Edit className="mr-2 h-4 w-4"/> Edit Channel
+                                            </DropdownMenuItem>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <DropdownMenuItem onSelect={e => e.preventDefault()} className="text-destructive">
+                                                        <Trash2 className="mr-2 h-4 w-4"/> Delete Channel
+                                                    </DropdownMenuItem>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This action cannot be undone. This will permanently delete the #{channel.name} channel and all of its messages.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteChannel(channel.id)} className={cn(buttonVariants({variant: 'destructive'}))}>Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+              );
+
+              const centerPanel = (
+                 <ChannelsView
+                    channels={channels}
+                    messages={messages.sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())}
+                    allUsers={allUsers}
+                    tasks={tasks}
+                    statuses={activeSpace!.statuses}
+                    activeChannelId={activeChannelId}
+                    setMessages={setMessages}
+                    onCreateTask={handleCreateTaskFromThread}
+                    onViewThread={handleViewThread}
+                    onAddMessage={handleAddMessage}
+                />
+              );
+
+              const rightPanel = (
+                <>
+                    {rightPanelView === 'threads' && (
+                        <AllThreadsView
+                            messages={messages}
                             allUsers={allUsers}
-                            tasks={tasks}
-                            statuses={activeSpace!.statuses}
-                            activeChannelId={activeChannelId}
-                            setMessages={setMessages}
-                            onCreateTask={handleCreateTaskFromThread}
+                            appUser={appUser}
                             onViewThread={handleViewThread}
+                            isThreadUnread={isThreadUnread}
+                            onAddMessage={handleAddMessage}
+                            channels={channels}
+                            threads={userInvolvedThreads}
+                        />
+                    )}
+                    {rightPanelView === 'thread' && activeThread && (
+                        <ThreadView
+                            thread={activeThread}
+                            messages={messages}
+                            allUsers={allUsers}
+                            channels={channels}
+                            onClose={() => setRightPanelView(null)}
                             onAddMessage={handleAddMessage}
                         />
-                    </div>
-                     {threadOpen && (
-                        <div className="w-[400px] border-l bg-card h-full overflow-y-auto hidden md:block">
-                            {rightPanelView === 'threads' && (
-                                <AllThreadsView
-                                    messages={messages}
-                                    allUsers={allUsers}
-                                    appUser={appUser}
-                                    onViewThread={handleViewThread}
-                                    isThreadUnread={isThreadUnread}
-                                    onAddMessage={handleAddMessage}
-                                    channels={channels}
-                                    threads={userInvolvedThreads}
-                                />
-                            )}
-                            {rightPanelView === 'thread' && activeThread && (
-                                <ThreadView
-                                    thread={activeThread}
-                                    messages={messages}
-                                    allUsers={allUsers}
-                                    channels={channels}
-                                    onClose={() => setRightPanelView(null)}
-                                    onAddMessage={handleAddMessage}
-                                />
-                            )}
-                            {rightPanelView === 'task-from-thread' && activeThread && (
-                                <CreateTaskFromThreadDialog
-                                    isOpen={rightPanelView === 'task-from-thread'}
-                                    onOpenChange={() => setRightPanelView(null)}
-                                    message={activeThread}
-                                    channelMembers={channelMembers.map(u => ({ id: u.id, name: u.name }))}
-                                    projects={simplifiedProjects}
-                                    onTaskCreated={handleCreateTask}
-                                />
-                            )}
-                        </div>
                     )}
-                </div>
+                    {rightPanelView === 'task-from-thread' && activeThread && (
+                        <CreateTaskFromThreadDialog
+                            isOpen={rightPanelView === 'task-from-thread'}
+                            onOpenChange={() => setRightPanelView(null)}
+                            message={activeThread}
+                            channelMembers={channelMembers.map(u => ({ id: u.id, name: u.name }))}
+                            projects={simplifiedProjects}
+                            onTaskCreated={handleCreateTask}
+                        />
+                    )}
+                </>
+              );
+
+              return (
+                 <MessagesLayout
+                    left={leftPanel}
+                    center={centerPanel}
+                    right={rightPanel}
+                    threadOpen={threadOpen}
+                 />
               );
             }
             case 'timesheets': return <div className="p-4 md:p-8"><TeamTimesheets allSpaces={userSpaces} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} /></div>;
@@ -913,6 +921,8 @@ export default function Dashboard() {
 }
 
     
+
+
 
 
 
