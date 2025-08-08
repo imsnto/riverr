@@ -68,7 +68,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
     }
   }, [messages, activeChannelId]);
 
-  const activeChannel = channels.find(c => c.id === activeChannelId);
+  const activeChannel = channels.find(c => String(c.id) === String(activeChannelId));
 
   if (!activeChannel) {
     return (
@@ -82,28 +82,33 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
     );
   }
 
-  const channelMessages = messages.filter(m => m.channel_id === activeChannelId && !m.thread_id);
+  const channelMessages = messages.filter(m => String(m.channel_id) === String(activeChannelId) && !m.thread_id);
   const channelMembers = allUsers.filter(u => activeChannel.members.includes(u.id));
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setNewMessage(value);
 
-    const lastAt = value.lastIndexOf('@');
-    if (lastAt !== -1 && !value.slice(lastAt + 1).includes(' ')) {
-        setIsTagging(true);
-        setTagQuery(value.slice(lastAt + 1));
+    // Detect an active "@mention" at end of line/token
+    const mentionMatch = value.match(/(?:^|\s)@([^\s@]*)$/);
+    if (mentionMatch) {
+      setIsTagging(true);
+      setTagQuery(mentionMatch[1]); // the partial after @
     } else {
-        setIsTagging(false);
+      setIsTagging(false);
+      setTagQuery('');
     }
   }
 
   const handleUserTag = (userName: string) => {
-    const lastAt = newMessage.lastIndexOf('@');
-    setNewMessage(newMessage.slice(0, lastAt) + `@${userName} `);
+    // replace the last active mention token
+    setNewMessage(prev => prev.replace(/(?:^|\s)@([^\s@]*)$/, (m, g1) => {
+      const lead = m.startsWith('@') ? '' : m[0];     // keep leading space if present
+      return `${lead}@${userName} `;
+    }));
     setIsTagging(false);
     messageInputRef.current?.focus();
-  }
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,13 +179,13 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
   );
 
   const renderMessage = (message: Message) => {
-    const user = allUsers.find(u => u.id === message.user_id);
-    const threadReplies = messages.filter(m => m.thread_id === message.id);
+    const user = allUsers.find(u => String(u.id) === String(message.user_id));
+    const threadReplies = messages.filter(m => String(m.thread_id) === String(message.id));
     
     const uniqueReplierIds = new Set(threadReplies.map(r => r.user_id));
     const repliers = allUsers.filter(u => uniqueReplierIds.has(u.id));
 
-    const linkedTask = message.linked_task_id ? tasks.find(t => t.id === message.linked_task_id) : null;
+    const linkedTask = message.linked_task_id ? tasks.find(t => String(t.id) === String(message.linked_task_id)) : null;
     const taskStatus = linkedTask ? statuses.find(s => s.name === linkedTask.status) : null;
 
     return (
@@ -340,9 +345,22 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
                     className="pr-20"
                     autoComplete="off"
                     onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage(e);
+                        if (isTagging) {
+                            if ((e.key === 'Enter' || e.key === 'Tab') && filteredMembers[0]) {
+                                e.preventDefault();
+                                handleUserTag(filteredMembers[0].name);
+                                return;
+                            }
+                            if (e.key === 'Escape') {
+                                e.preventDefault();
+                                setIsTagging(false);
+                                return;
+                            }
+                        }
+                
+                        if (e.key === 'Enter' && !e.shiftKey && !isTagging) {
+                            e.preventDefault();
+                            handleSendMessage(e);
                         }
                     }}
                     />
