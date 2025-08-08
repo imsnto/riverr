@@ -146,7 +146,7 @@ function DashboardComponent() {
     }, [appUser, messages, threadReadAt]);
 
     const userInvolvedThreads = useMemo(() => {
-        if (!appUser || !activeSpace) return [];
+      if (!appUser || !activeSpace) return [];
         return messages.filter(parent => {
             if (parent.thread_id) return false; // Only parent messages
             const ch = channels.find(c => c.id === parent.channel_id);
@@ -161,16 +161,6 @@ function DashboardComponent() {
       () => userInvolvedThreads.filter(isThreadUnread),
       [userInvolvedThreads, isThreadUnread]
     );
-
-    const unreadParentsByChannel = useMemo(() => {
-      const acc: Record<string, number> = {};
-      channels.forEach(channel => {
-        const parents = messages.filter(m => m.channel_id === channel.id && !m.thread_id);
-        const count = parents.filter(isParentUnread).length;
-        if (count) acc[channel.id] = count;
-      });
-      return acc;
-    }, [channels, messages, isParentUnread]);
 
     const unreadThreadsByChannel = useMemo(() => {
       const acc: Record<string, number> = {};
@@ -574,10 +564,17 @@ function DashboardComponent() {
                             </div>
                             <div className="space-y-1 p-2 flex-1 overflow-y-auto">
                                 {channels.filter(c => c.space_id === activeSpace?.id).map(channel => {
-                                    const rawParent = unreadParentsByChannel[channel.id] || 0;
-                                    const rawThread = unreadThreadsByChannel[channel.id] || 0;
-                                    const parentUnread = channel.id === activeChannelId ? 0 : rawParent;
-                                    const threadUnread = rawThread;
+                                    const lastRead = channelParentReadAt.get(channel.id) ?? 0;
+                                    const parentUnreadRaw = messages.filter(m =>
+                                        m.channel_id === channel.id &&
+                                        !m.thread_id &&
+                                        m.user_id !== appUser?.id &&
+                                        new Date(m.timestamp).getTime() > lastRead
+                                    ).length;
+                                    
+                                    const parentUnread = channel.id === activeChannelId ? 0 : parentUnreadRaw;
+                                    const threadUnread = unreadThreadsByChannel[channel.id] || 0;
+
 
                                     return (
                                         <div key={channel.id} className="group relative">
@@ -588,8 +585,8 @@ function DashboardComponent() {
                                                     parentUnread > 0 && "font-bold"
                                                 )}
                                                 onClick={() => {
-                                                    setActiveChannelId(channel.id);
                                                     setChannelParentReadAt(prev => new Map(prev).set(channel.id, Date.now()));
+                                                    setActiveChannelId(channel.id);
                                                 }}
                                             >
                                                 # {channel.name}
@@ -889,6 +886,7 @@ export default function Dashboard() {
 }
 
     
+
 
 
 
