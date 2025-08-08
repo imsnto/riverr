@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
-import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown, ClipboardCheck, BookOpen, Plus, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown, ClipboardCheck, BookOpen, Plus, MoreHorizontal, Edit, Trash2, MessageCircleMore } from 'lucide-react';
 import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, Invite, Status, JobFlowTemplate, Job, JobFlowTask, PhaseTemplate, TaskTemplate, Activity, Document } from '@/lib/data';
 import TaskBoard from '@/components/dashboard/task-board';
 import { useToast } from '@/hooks/use-toast';
@@ -463,15 +463,41 @@ function DashboardComponent() {
               const channelMembers = activeChannel ? allUsers.filter(u => activeChannel.members.includes(u.id)) : [];
               const simplifiedProjects = projects.filter(p => p.space_id === activeSpace?.id).map(p => ({ id: p.id, name: p.name }));
               const threadOpen = rightPanelView === 'thread' || rightPanelView === 'threads' || rightPanelView === 'task-from-thread';
-                
+              const parentMessagesWithReplies = messages.filter(m => m.reply_count && m.reply_count > 0);
+              const userInvolvedThreads = parentMessagesWithReplies.filter(parent => {
+                    const threadMessages = messages.filter(m => m.thread_id === parent.id);
+                    const participants = new Set([parent.user_id, ...threadMessages.map(m => m.user_id)]);
+                    return participants.has(appUser.id);
+              });
+              const unreadThreadCount = userInvolvedThreads.filter(t => !readThreadIds.has(t.id)).length;
+              
+              const unreadChannelIds = new Set<string>();
+                userInvolvedThreads.forEach(thread => {
+                    if (!readThreadIds.has(thread.id)) {
+                        unreadChannelIds.add(thread.channel_id);
+                    }
+                });
+
               return (
                  <div className={cn(
                     'grid flex-1 overflow-hidden transition-all duration-200 ease-in-out',
                     threadOpen ? 'grid-cols-[220px_minmax(0,1fr)_400px]' : 'grid-cols-[220px_minmax(0,1fr)]'
                  )}>
-                    <div className="flex h-full border-r">
-                        <div className="flex w-[220px] h-full flex-col bg-muted/50">
-                            <div className="p-4 flex justify-between items-center">
+                    <div className="flex h-full flex-col bg-muted/50 border-r">
+                        <div className="flex w-full h-full flex-col">
+                            <div className="p-2">
+                                <Button 
+                                    variant="ghost" 
+                                    className="w-full justify-start text-base"
+                                    onClick={() => setRightPanelView('threads')}
+                                >
+                                    <MessageCircleMore className="mr-2 h-5 w-5" /> Threads
+                                    {unreadThreadCount > 0 && (
+                                        <span className="ml-auto bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">{unreadThreadCount}</span>
+                                    )}
+                                </Button>
+                            </div>
+                            <div className="p-4 flex justify-between items-center border-t">
                                 <h3 className="font-semibold text-lg">Channels</h3>
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingChannel(null); setIsChannelFormOpen(true);}}>
                                     <Plus className="h-4 w-4"/>
@@ -482,7 +508,10 @@ function DashboardComponent() {
                                     <div key={channel.id} className="group relative">
                                         <Button 
                                             variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
-                                            className="w-full justify-start pr-8"
+                                            className={cn(
+                                                "w-full justify-start pr-8",
+                                                unreadChannelIds.has(channel.id) && "font-bold text-primary"
+                                            )}
                                             onClick={() => setActiveChannelId(channel.id)}
                                         >
                                             # {channel.name}
@@ -762,3 +791,5 @@ export default function Dashboard() {
         </Suspense>
     )
 }
+
+    
