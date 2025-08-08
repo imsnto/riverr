@@ -194,6 +194,7 @@ function ReplyComposer({ thread, onAddMessage, allUsers, channels }: { thread: M
 
 
 interface AllThreadsViewProps {
+  threads: Message[];
   messages: Message[];
   allUsers: User[];
   appUser: User | null;
@@ -203,17 +204,10 @@ interface AllThreadsViewProps {
   channels: Channel[];
 }
 
-export default function AllThreadsView({ messages, allUsers, appUser, onViewThread, isThreadUnread, onAddMessage, channels }: AllThreadsViewProps) {
+export default function AllThreadsView({ threads, messages, allUsers, appUser, onViewThread, isThreadUnread, onAddMessage, channels }: AllThreadsViewProps) {
     if (!appUser) return null;
 
-    const parentMessagesWithReplies = messages.filter(m => m.reply_count && m.reply_count > 0);
-    const userInvolvedThreads = parentMessagesWithReplies.filter(parent => {
-        const threadMessages = messages.filter(m => m.thread_id === parent.id);
-        const participants = new Set([parent.user_id, ...threadMessages.map(m => m.user_id)]);
-        return participants.has(appUser.id);
-    });
-
-    const sortedThreads = userInvolvedThreads.sort((a,b) => {
+    const sortedThreads = threads.sort((a,b) => {
         const lastReplyA = messages.filter(m => m.thread_id === a.id).sort((x,y) => new Date(y.timestamp).getTime() - new Date(x.timestamp).getTime())[0] || a;
         const lastReplyB = messages.filter(m => m.thread_id === b.id).sort((x,y) => new Date(y.timestamp).getTime() - new Date(x.timestamp).getTime())[0] || b;
         return new Date(lastReplyB.timestamp).getTime() - new Date(lastReplyA.timestamp).getTime();
