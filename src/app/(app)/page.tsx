@@ -525,7 +525,12 @@ function DashboardComponent() {
               
               const unreadThreads = userInvolvedThreads.filter(isThreadUnread);
               const unreadThreadCount = unreadThreads.length;
-              const unreadChannelIds = new Set<string>(unreadThreads.map(t => t.channel_id));
+              
+              const unreadThreadsByChannel = unreadThreads.reduce((acc, thread) => {
+                acc[thread.channel_id] = (acc[thread.channel_id] || 0) + 1;
+                return acc;
+              }, {} as Record<string, number>);
+
 
               return (
                  <div className={cn("grid h-full min-h-0 transition-all duration-200 ease-in-out", threadOpen ? 'grid-cols-[220px_minmax(0,1fr)_400px]' : 'grid-cols-[220px_minmax(0,1fr)]')}>
@@ -558,51 +563,57 @@ function DashboardComponent() {
                                 </Button>
                             </div>
                             <div className="space-y-1 p-2 flex-1 overflow-y-auto">
-                                {channels.filter(c => c.space_id === activeSpace?.id).map(channel => (
-                                    <div key={channel.id} className="group relative">
-                                        <Button 
-                                            variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
-                                            className={cn(
-                                                "w-full justify-start pr-8",
-                                                unreadChannelIds.has(channel.id) && "font-bold"
-                                            )}
-                                            onClick={() => setActiveChannelId(channel.id)}
-                                        >
-                                            # {channel.name}
-                                        </Button>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover:opacity-100">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent>
-                                                <DropdownMenuItem onClick={() => {setEditingChannel(channel); setIsChannelFormOpen(true);}}>
-                                                    <Edit className="mr-2 h-4 w-4"/> Edit Channel
-                                                </DropdownMenuItem>
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <DropdownMenuItem onSelect={e => e.preventDefault()} className="text-destructive">
-                                                            <Trash2 className="mr-2 h-4 w-4"/> Delete Channel
-                                                        </DropdownMenuItem>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                This action cannot be undone. This will permanently delete the #{channel.name} channel and all of its messages.
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleDeleteChannel(channel.id)} className={cn(buttonVariants({variant: 'destructive'}))}>Delete</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                ))}
+                                {channels.filter(c => c.space_id === activeSpace?.id).map(channel => {
+                                    const unreadCount = unreadThreadsByChannel[channel.id] || 0;
+                                    return (
+                                        <div key={channel.id} className="group relative">
+                                            <Button 
+                                                variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
+                                                className={cn(
+                                                    "w-full justify-start pr-8",
+                                                    unreadCount > 0 && "font-bold"
+                                                )}
+                                                onClick={() => setActiveChannelId(channel.id)}
+                                            >
+                                                # {channel.name}
+                                                {unreadCount > 0 && (
+                                                     <span className="ml-auto bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">{unreadCount}</span>
+                                                )}
+                                            </Button>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover:opacity-100">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent>
+                                                    <DropdownMenuItem onClick={() => {setEditingChannel(channel); setIsChannelFormOpen(true);}}>
+                                                        <Edit className="mr-2 h-4 w-4"/> Edit Channel
+                                                    </DropdownMenuItem>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <DropdownMenuItem onSelect={e => e.preventDefault()} className="text-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4"/> Delete Channel
+                                                            </DropdownMenuItem>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    This action cannot be undone. This will permanently delete the #{channel.name} channel and all of its messages.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteChannel(channel.id)} className={cn(buttonVariants({variant: 'destructive'}))}>Delete</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    )
+                                })}
                             </div>
                         </div>
                     </div>

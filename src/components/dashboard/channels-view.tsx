@@ -82,7 +82,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
     );
   }
 
-  const channelMessages = messages.filter(m => m.channel_id === activeChannelId && !m.thread_id);
+  const channelMessages = messages.filter(m => m.channel_id === activeChannelId && !m.thread_id).sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   const channelMembers = allUsers.filter(u => activeChannel.members.includes(u.id));
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
