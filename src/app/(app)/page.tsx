@@ -82,6 +82,20 @@ const LoadingState = () => (
     </div>
 );
 
+function normalizeChannels(chs: Channel[]) {
+  return chs.map(c => ({ ...c, id: String(c.id), space_id: String(c.space_id) }));
+}
+
+function normalizeMessages(msgs: Message[]) {
+  return msgs.map(m => ({
+    ...m,
+    id: String(m.id),
+    channel_id: String(m.channel_id),
+    thread_id: m.thread_id ? String(m.thread_id) : undefined,
+    user_id: String(m.user_id),
+  }));
+}
+
 function DashboardComponent() {
     const { appUser, userSpaces, setUserSpaces, activeSpace, setActiveSpace } = useAuth();
     const router = useRouter();
@@ -120,8 +134,8 @@ function DashboardComponent() {
 
     const markChannelParentsRead = useCallback((channelId: string) => {
         const parentsNow = messages
-            .filter(m => m.channel_id === channelId && !m.thread_id)
-            .map(m => m.id);
+            .filter(m => String(m.channel_id) === String(channelId) && !m.thread_id)
+            .map(m => String(m.id));
 
         setSeenParentIds(prev => {
             const next = new Set(prev);
@@ -237,10 +251,12 @@ function DashboardComponent() {
                     activeSpace ? getDocumentsInSpace(activeSpace.id) : Promise.resolve([]),
                 ]);
 
+                const normalizedChannels = normalizeChannels(fetchedChannels);
+
                 setAllUsers(users);
                 setProjects(fetchedProjects);
                 setTasks(allTasks);
-                setChannels(fetchedChannels);
+                setChannels(normalizedChannels);
                 setJobFlowTemplates(jobTemplates);
                 setJobs(fetchedJobs);
                 setJobFlowTasks(fetchedJobFlowTasks);
@@ -255,15 +271,15 @@ function DashboardComponent() {
                 const [fetchedTimeEntries, fetchedSlackLogs, fetchedMessages] = await Promise.all([
                     getTimeEntriesInSpace(allProjectIds), // Get all time entries for the user
                     activeSpace ? getSlackMeetingLogsInSpace(activeSpace.id) : Promise.resolve([]),
-                    activeSpace ? Promise.all(fetchedChannels.map(c => getMessagesInChannel(c.id))).then(msgArrays => msgArrays.flat()) : Promise.resolve([]),
+                    activeSpace ? Promise.all(normalizedChannels.map(c => getMessagesInChannel(c.id))).then(msgArrays => msgArrays.flat()) : Promise.resolve([]),
                 ]);
                 
                 setTimeEntries(fetchedTimeEntries);
                 setSlackLogs(fetchedSlackLogs);
-                setMessages(fetchedMessages);
+                setMessages(normalizeMessages(fetchedMessages));
 
-                if (activeSpace && fetchedChannels.length > 0 && !activeChannelId) {
-                    setActiveChannelId(fetchedChannels[0].id);
+                if (activeSpace && normalizedChannels.length > 0 && !activeChannelId) {
+                    setActiveChannelId(String(normalizedChannels[0].id));
                 }
 
             } catch (error) {
@@ -577,16 +593,15 @@ function DashboardComponent() {
                                 {channels.filter(c => c.space_id === activeSpace?.id).map(channel => {
                                     
                                     const parentUnreadRaw = messages.filter(m =>
-                                      m.channel_id === channel.id &&
+                                      String(m.channel_id) === String(channel.id) &&
                                       !m.thread_id &&
-                                      m.user_id !== appUser?.id &&
-                                      !seenParentIds.has(m.id)
+                                      String(m.user_id) !== String(appUser?.id) &&
+                                      !seenParentIds.has(String(m.id))
                                     ).length;
                                     
                                     const threadUnread = unreadThreadsByChannel[channel.id] || 0;
                                     
-                                    // This is the key change: force parent count to 0 for the active channel
-                                    const parentUnread = channel.id === activeChannelId ? 0 : parentUnreadRaw;
+                                    const parentUnread = String(channel.id) === String(activeChannelId) ? 0 : parentUnreadRaw;
 
                                     return (
                                         <div key={channel.id} className="group relative">
@@ -898,6 +913,7 @@ export default function Dashboard() {
 }
 
     
+
 
 
 
