@@ -143,8 +143,10 @@ function DashboardComponent() {
 
     // This is the fix: Reset the thread view when changing channels
     useEffect(() => {
-        setRightPanelView(null);
-    }, [activeChannelId]);
+        if (view !== 'messages') {
+            setRightPanelView(null);
+        }
+    }, [activeChannelId, view]);
 
 
     useEffect(() => {
@@ -334,7 +336,9 @@ function DashboardComponent() {
         if (messageData.thread_id) {
             setMessages(prev => prev.map(m => m.id === messageData.thread_id ? { ...m, reply_count: (m.reply_count || 0) + 1 } : m));
             // Mark thread as read for the user sending the message
-            setReadThreads(prev => new Map(prev).set(messageData.thread_id!, Date.now()));
+            if (appUser && appUser.id === messageData.user_id) {
+                setReadThreads(prev => new Map(prev).set(messageData.thread_id!, Date.now()));
+            }
         }
 
         try {
@@ -480,12 +484,16 @@ function DashboardComponent() {
               });
               
               const isThreadUnread = (thread: Message): boolean => {
+                    if (appUser.id === thread.user_id && !thread.reply_count) return false;
                     const lastReadTime = readThreads.get(thread.id);
                     if (!lastReadTime) return true; // Never read
+                    
                     const lastReply = messages
                         .filter(m => m.thread_id === thread.id)
                         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-                    if (!lastReply) return false; // No replies yet
+                    if (!lastReply) return false; // No replies yet, but thread exists. Considered read.
+                    if (lastReply.user_id === appUser.id) return false; // Don't mark my own replies as unread for me
+                    
                     return new Date(lastReply.timestamp).getTime() > lastReadTime;
                 };
 
@@ -586,11 +594,13 @@ function DashboardComponent() {
                             <div className="w-[400px] border-l bg-card h-full overflow-y-auto hidden md:block">
                                 {rightPanelView === 'threads' && (
                                     <AllThreadsView
-                                    messages={messages}
-                                    allUsers={allUsers}
-                                    appUser={appUser}
-                                    onViewThread={handleViewThread}
-                                    isThreadUnread={isThreadUnread}
+                                        messages={messages}
+                                        allUsers={allUsers}
+                                        appUser={appUser}
+                                        onViewThread={handleViewThread}
+                                        isThreadUnread={isThreadUnread}
+                                        onAddMessage={handleAddMessage}
+                                        channels={channels}
                                     />
                                 )}
                                 {rightPanelView === 'thread' && activeThread && (
@@ -763,7 +773,8 @@ function DashboardComponent() {
                 </Sidebar>
                 <main className={cn(
                     "flex-1 flex flex-col",
-                    ['timesheets', 'messages'].includes(view) ? 'overflow-auto' : 'overflow-hidden'
+                    view === 'messages' && 'overflow-hidden',
+                    ['timesheets'].includes(view) && 'overflow-auto'
                 )}>
                     {renderContent()}
                 </main>
@@ -808,5 +819,3 @@ export default function Dashboard() {
         </Suspense>
     )
 }
-
-    
