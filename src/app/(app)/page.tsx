@@ -522,7 +522,7 @@ function DashboardComponent() {
                                             variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
                                             className={cn(
                                                 "w-full justify-start pr-8",
-                                                unreadChannelIds.has(channel.id) && "font-bold text-primary"
+                                                unreadChannelIds.has(channel.id) && "font-bold"
                                             )}
                                             onClick={() => setActiveChannelId(channel.id)}
                                         >
