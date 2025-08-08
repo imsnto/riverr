@@ -10,7 +10,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Send, MessageCircleMore, Paperclip, File, ImageIcon, SmilePlus, MessageSquare, MoreHorizontal, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command } from '@/components/ui/command';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { Badge } from '../ui/badge';
@@ -69,9 +69,6 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
   }, [messages, activeChannelId]);
 
   const activeChannel = channels.find(c => c.id === activeChannelId);
-  const channelMessages = messages.filter(m => m.channel_id === activeChannelId && !m.thread_id);
-  const channelMembers = activeChannel ? allUsers.filter(u => activeChannel.members.includes(u.id)) : [];
-
   if (!activeChannel) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -79,6 +76,9 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
       </div>
     );
   }
+
+  const channelMessages = messages.filter(m => m.channel_id === activeChannelId && !m.thread_id);
+  const channelMembers = allUsers.filter(u => activeChannel.members.includes(u.id));
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -324,8 +324,8 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
                 </div>
             )}
             <Popover open={isTagging} onOpenChange={setIsTagging}>
-                <PopoverTrigger asChild>
-                    <form onSubmit={handleSendMessage} className="relative">
+                <form onSubmit={handleSendMessage} className="relative">
+                    <PopoverAnchor asChild>
                       <Input
                         id="message-input"
                         ref={messageInputRef}
@@ -341,6 +341,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
                           }
                         }}
                       />
+                    </PopoverAnchor>
                       <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
                         <input
                             type="file"
@@ -357,8 +358,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
                         </Button>
                       </div>
                     </form>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
                     <Command>
                         <ScrollArea className="max-h-48">
                             {filteredMembers.length > 0 ? filteredMembers.map(member => (
