@@ -210,38 +210,6 @@ function DashboardComponent() {
         fetchData();
     }, [appUser, activeSpace, userSpaces, toast]);
     
-    // Effect to mark threads in a channel as read when the channel is viewed
-    useEffect(() => {
-        if (activeChannelId && appUser) {
-            const now = Date.now();
-            const newReadThreads = new Map(readThreads);
-            let updated = false;
-
-            messages.forEach(message => {
-                if (message.channel_id === activeChannelId) {
-                    // This handles parent messages of threads
-                    if(message.reply_count && message.reply_count > 0 && isThreadUnread(message)) {
-                        newReadThreads.set(message.id, now);
-                        updated = true;
-                    }
-                    // This handles individual replies in a thread, marking the parent as read
-                    if (message.thread_id) {
-                        const threadParent = messages.find(m => m.id === message.thread_id);
-                        if (threadParent && isThreadUnread(threadParent)) {
-                             newReadThreads.set(threadParent.id, now);
-                             updated = true;
-                        }
-                    }
-                }
-            });
-
-            if (updated) {
-                setReadThreads(newReadThreads);
-            }
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeChannelId, messages, appUser]);
-
 
     const handleUpdateActiveSpace = async (updatedData: Partial<Space>) => {
         if (!activeSpace || !appUser) return;
