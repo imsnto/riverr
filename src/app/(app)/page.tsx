@@ -473,29 +473,31 @@ function DashboardComponent() {
     const isThreadUnread = (thread: Message): boolean => {
         if (!appUser) return false;
     
-        // Get all messages in the thread, including the parent
         const allThreadMessages = [thread, ...messages.filter(m => m.thread_id === thread.id)];
         
-        // Find the last message in the thread sent by *another* user
-        const lastMessageFromOther = allThreadMessages
-            .filter(m => m.user_id !== appUser.id)
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-    
-        // If no message from another user exists, it can't be unread for the current user
-        if (!lastMessageFromOther) {
-            return false;
-        }
-    
-        // Get the last time the current user has seen this thread
+        // Find the timestamp of the latest message in the thread
+        const lastMessageTime = allThreadMessages.reduce((latest, msg) => {
+            const msgTime = new Date(msg.timestamp).getTime();
+            return msgTime > latest ? msgTime : latest;
+        }, 0);
+        
+        // Find the last time the user has seen this thread
         const lastReadTime = readThreads.get(thread.id);
-    
-        // If the thread has never been marked as read, it's unread
+        
+        // Find if there are messages from other users
+        const hasMessagesFromOthers = allThreadMessages.some(m => m.user_id !== appUser.id);
+        
+        // Never read before, and has messages from others
         if (!lastReadTime) {
-            return true;
+            return hasMessagesFromOthers;
         }
     
-        // If the last message from another user is newer than the last read time, it's unread
-        return new Date(lastMessageFromOther.timestamp).getTime() > lastReadTime;
+        // Find if there are messages from other users *after* the last read time
+        const hasUnreadFromOthers = allThreadMessages.some(m => 
+            m.user_id !== appUser.id && new Date(m.timestamp).getTime() > lastReadTime
+        );
+        
+        return hasUnreadFromOthers;
     };
     
     const memoizedTasks = useMemo(() => tasks, [tasks]);
