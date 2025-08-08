@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -19,10 +20,10 @@ const getInitials = (name: string) => {
 };
 
 const renderMessageContent = (content: string, allUsers: User[]) => {
-    const parts = content.split(/(@\w+)/g);
+    const parts = content.split(/(@[\w\s]+)/g).filter(Boolean);
     return parts.map((part, index) => {
         if (part.startsWith('@')) {
-            const userName = part.substring(1);
+            const userName = part.substring(1).trim();
             const user = allUsers.find(u => u.name === userName);
             if (user) {
                 return <strong key={index} className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400 px-1 rounded-sm">@{user.name}</strong>;
