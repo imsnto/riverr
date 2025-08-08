@@ -25,7 +25,7 @@ const renderMessageContent = (content: string, allUsers: User[]) => {
     return parts.map((part, index) => {
         if (part.startsWith('@')) {
             const userName = part.substring(1).trim();
-            const user = allUsers.find(u => u.name === userName);
+            const user = allUsers.find(u => u.name.toLowerCase() === userName.toLowerCase());
             if (user) {
                 return <strong key={index} className="text-blue-500 dark:text-blue-400">@{user.name}</strong>;
             }
