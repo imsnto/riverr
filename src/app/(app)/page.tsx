@@ -130,38 +130,14 @@ function DashboardComponent() {
     const [isChannelFormOpen, setIsChannelFormOpen] = useState(false);
     const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
 
-    const [seenParentIds, setSeenParentIds] = useState<Set<string>>(new Set());
+    const [channelLastReadAt, setChannelLastReadAt] = useState<Record<string, number>>({});
     const [threadReadAt, setThreadReadAt] = useState<Map<string, number>>(new Map());
 
-    const markChannelParentsRead = useCallback((channelId: string) => {
-        const parentsNow = messages
-            .filter(m => String(m.channel_id) === String(channelId) && !m.thread_id)
-            .map(m => String(m.id));
-
-        setSeenParentIds(prev => {
-            const next = new Set(prev);
-            parentsNow.forEach(id => next.add(id));
-            return next;
-        });
-    }, [messages]);
-
-    // This is a safety net for programmatic changes and new messages arriving.
-    useEffect(() => {
-        if (!activeChannelId) return;
-        markChannelParentsRead(activeChannelId);
-    }, [activeChannelId, messages, markChannelParentsRead]);
-
-    // Reset seen state when user/space changes
-    useEffect(() => {
-        setSeenParentIds(new Set());
-    }, [activeSpace?.id, appUser?.id]);
-
-    // helper: thread unread
     const isThreadUnread = React.useCallback((parent: Message) => {
       if (!appUser) return false;
       // ONLY consider replies (exclude the parent itself)
       const repliesFromOthers = messages
-        .filter(m => m.thread_id === parent.id && m.user_id !== appUser.id);
+        .filter(m => String(m.thread_id) === String(parent.id) && String(m.user_id) !== String(appUser.id));
 
       if (repliesFromOthers.length === 0) return false;
 
@@ -170,11 +146,10 @@ function DashboardComponent() {
         0
       );
 
-      const lastThreadRead = threadReadAt.get(parent.id) ?? 0;
+      const lastThreadRead = threadReadAt.get(String(parent.id)) ?? 0;
       return lastReplyFromOther > lastThreadRead;
     }, [appUser, messages, threadReadAt]);
     
-    // threads the user is involved in (across active space)
     const userInvolvedThreads = React.useMemo(() => {
         if (!appUser || !activeSpace) return [];
         return messages.filter(parent => {
@@ -183,8 +158,8 @@ function DashboardComponent() {
             const ch = channels.find(c => String(c.id) === String(parent.channel_id));
             if (!ch || String(ch.space_id) !== String(activeSpace.id)) return false;
 
-            const allMsgsInThread = [parent, ...messages.filter(m => m.thread_id === parent.id)];
-            return allMsgsInThread.some(m => m.user_id === appUser.id);
+            const allMsgsInThread = [parent, ...messages.filter(m => String(m.thread_id) === String(parent.id))];
+            return allMsgsInThread.some(m => String(m.user_id) === String(appUser.id));
         });
     }, [messages, channels, activeSpace, appUser]);
 
@@ -200,10 +175,15 @@ function DashboardComponent() {
           m => String(m.channel_id) === String(channel.id) && !m.thread_id && (m.reply_count ?? 0) > 0
         );
         const count = parents.filter(isThreadUnread).length;
-        if (count) acc[channel.id] = count;
+        if (count) acc[String(channel.id)] = count;
       });
       return acc;
     }, [channels, messages, isThreadUnread]);
+
+    const openChannel = (channelId: string) => {
+      setActiveChannelId(channelId);
+      setChannelLastReadAt(prev => ({ ...prev, [channelId]: Date.now() }));
+    };
     
      useEffect(() => {
         const viewFromParams = searchParams.get('view') as View;
@@ -229,6 +209,12 @@ function DashboardComponent() {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, [rightPanelView]);
+    
+    useEffect(() => {
+        if (activeChannelId) {
+            setChannelLastReadAt(prev => ({ ...prev, [activeChannelId]: Date.now() }));
+        }
+    }, [activeChannelId]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -437,7 +423,7 @@ function DashboardComponent() {
     const handleViewThread = (thread: Message) => {
         setActiveThread(thread);
         setRightPanelView('thread');
-        setThreadReadAt(prev => new Map(prev).set(thread.id, Date.now()));
+        setThreadReadAt(prev => new Map(prev).set(String(thread.id), Date.now()));
     };
     
      const handleCreateTaskFromThread = (message: Message) => {
@@ -570,7 +556,7 @@ function DashboardComponent() {
                                     const now = Date.now();
                                     setThreadReadAt(prev => {
                                         const next = new Map(prev);
-                                        userInvolvedThreads.forEach(t => next.set(t.id, now));
+                                        userInvolvedThreads.forEach(t => next.set(String(t.id), now));
                                         return next;
                                     });
                                 }
@@ -590,17 +576,16 @@ function DashboardComponent() {
                     </div>
                     <div className="space-y-1 p-2 flex-1 overflow-y-auto">
                         {channels.filter(c => String(c.space_id) === String(activeSpace?.id)).map(channel => {
-                            
+                            const lastRead = channelLastReadAt[channel.id] ?? 0;
                             const parentUnreadRaw = messages.filter(m =>
-                              String(m.channel_id) === String(channel.id) &&
-                              !m.thread_id &&
-                              String(m.user_id) !== String(appUser?.id) &&
-                              !seenParentIds.has(String(m.id))
+                                String(m.channel_id) === String(channel.id) &&
+                                !m.thread_id &&
+                                String(m.user_id) !== String(appUser?.id) &&
+                                new Date(m.timestamp).getTime() > lastRead
                             ).length;
                             
-                            const threadUnread = unreadThreadsByChannel[channel.id] || 0;
-                            
                             const parentUnread = String(channel.id) === String(activeChannelId) ? 0 : parentUnreadRaw;
+                            const threadUnread = unreadThreadsByChannel[channel.id] || 0;
 
                             return (
                                 <div key={channel.id} className="group relative">
@@ -610,10 +595,7 @@ function DashboardComponent() {
                                             "w-full justify-start pr-8",
                                             parentUnread > 0 && "font-bold"
                                         )}
-                                        onClick={() => {
-                                            markChannelParentsRead(channel.id);
-                                            setActiveChannelId(channel.id);
-                                        }}
+                                        onClick={() => openChannel(channel.id)}
                                     >
                                         # {channel.name}
                                         <div className="ml-auto flex items-center gap-1.5">
@@ -921,6 +903,7 @@ export default function Dashboard() {
 }
 
     
+
 
 
 
