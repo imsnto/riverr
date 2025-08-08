@@ -110,21 +110,21 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
 
   return (
     <>
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={onPrevWeek}><ChevronLeft /></Button>
             <Button variant="ghost" size="icon" onClick={onNextWeek}><ChevronRight /></Button>
-            <h3 className="text-xl font-semibold">{format(weekInterval.start, 'MMM d')} - {format(weekInterval.end, 'MMM d')}</h3>
+            <h3 className="text-xl font-semibold whitespace-nowrap">{format(weekInterval.start, 'MMM d')} - {format(weekInterval.end, 'MMM d')}</h3>
             <Button variant="outline" onClick={onThisWeek}>This week</Button>
           </div>
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground text-left sm:text-right">
               {user?.name}'s timezone: PKT (UTC+5)
           </div>
         </div>
         
         <div className="overflow-x-auto">
-          <div className="min-w-full inline-block align-middle">
+          <div className="min-w-[700px] inline-block align-middle w-full">
             <div className="border rounded-lg overflow-hidden">
               <table className="min-w-full divide-y divide-border">
                 <thead className="bg-card">
@@ -133,7 +133,8 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
                     {daysOfWeek.map((day, i) => (
                       <th key={day.toISOString()} scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                         <div className="flex justify-between items-end">
-                          <span>{format(day, 'E, MMM d')}</span>
+                          <span className="sm:hidden">{format(day, 'E')}</span>
+                          <span className="hidden sm:inline">{format(day, 'E, MMM d')}</span>
                           <span className="font-bold text-foreground">{dailyTotals[i].toFixed(1)}h</span>
                         </div>
                          <Progress value={(dailyTotals[i] / 8) * 100} className="h-1 mt-1 bg-primary/20" />
@@ -195,7 +196,7 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
             if (!isOpen) setSelectedTask(null);
           }}
           onUpdateTask={handleUpdateTask}
-          onAddTask={handleAddTask}
+          onAddTask={async (task) => { handleAddTask(task as Task); return task as Task;}}
           onRemoveTask={handleRemoveTask}
           onTaskSelect={setSelectedTask}
           onLogTime={handleLogTime}

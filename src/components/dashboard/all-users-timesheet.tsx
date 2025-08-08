@@ -57,7 +57,7 @@ export default function AllUsersTimesheet({ onUserSelect, users, timeEntries, we
     <div className="p-1 sm:p-4 rounded-lg bg-card text-card-foreground">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={onPrevWeek}>Previous week</Button>
+          <Button variant="outline" onClick={onPrevWeek} className="hidden sm:flex">Previous week</Button>
           <Button variant="ghost" size="icon" onClick={onPrevWeek}><ChevronLeft /></Button>
           <Button variant="ghost" size="icon" onClick={onNextWeek}><ChevronRight /></Button>
           <h3 className="text-lg font-semibold whitespace-nowrap">{format(weekInterval.start, 'MMM d')} - {format(weekInterval.end, 'MMM d')}</h3>
@@ -65,7 +65,7 @@ export default function AllUsersTimesheet({ onUserSelect, users, timeEntries, we
         </div>
         <div className="flex items-center gap-2">
           <Select defaultValue="all-members">
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="All members" />
             </SelectTrigger>
             <SelectContent>
