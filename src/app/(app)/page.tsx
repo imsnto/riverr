@@ -471,29 +471,26 @@ function DashboardComponent() {
     
         const allThreadMessages = [thread, ...messages.filter(m => m.thread_id === thread.id)];
         
-        // Find the timestamp of the latest message in the thread
-        const lastMessageTime = allThreadMessages.reduce((latest, msg) => {
-            const msgTime = new Date(msg.timestamp).getTime();
-            return msgTime > latest ? msgTime : latest;
-        }, 0);
+        // Find the timestamp of the last message in the thread from another user
+        const lastMessageFromOther = allThreadMessages
+            .filter(m => m.user_id !== appUser.id)
+            .sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
         
-        // Find the last time the user has seen this thread
+        // If no message from another user exists, it can't be unread for the current user.
+        if (!lastMessageFromOther) {
+            return false;
+        }
+
+        const lastMessageTime = new Date(lastMessageFromOther.timestamp).getTime();
         const lastReadTime = readThreads.get(thread.id);
         
-        // Find if there are messages from other users
-        const hasMessagesFromOthers = allThreadMessages.some(m => m.user_id !== appUser.id);
-        
-        // Never read before, and has messages from others
+        // If never read, it's unread.
         if (!lastReadTime) {
-            return hasMessagesFromOthers;
+            return true;
         }
     
-        // Find if there are messages from other users *after* the last read time
-        const hasUnreadFromOthers = allThreadMessages.some(m => 
-            m.user_id !== appUser.id && new Date(m.timestamp).getTime() > lastReadTime
-        );
-        
-        return hasUnreadFromOthers;
+        // If the last message from another user is newer than the last read time, it's unread.
+        return lastMessageTime > lastReadTime;
     };
     
     const memoizedTasks = useMemo(() => tasks, [tasks]);
@@ -541,21 +538,15 @@ function DashboardComponent() {
                     if (!m.reply_count || m.reply_count === 0) return false;
                     return true;
               });
-
-              const userInvolvedThreads = allThreadsInSpace.filter(parent => {
-                    const threadMessages = messages.filter(m => m.thread_id === parent.id);
-                    const participants = new Set([parent.user_id, ...threadMessages.map(m => m.user_id)]);
-                    return participants.has(appUser.id);
-              });
               
-              const unreadThreads = userInvolvedThreads.filter(isThreadUnread);
+              const unreadThreads = allThreadsInSpace.filter(isThreadUnread);
               const unreadThreadCount = unreadThreads.length;
               
               const unreadThreadsByChannel = channels.reduce((acc, channel) => {
                 const channelThreads = messages.filter(m => m.channel_id === channel.id && m.reply_count && m.reply_count > 0 && !m.thread_id);
-                const unreadInChannel = channelThreads.filter(isThreadUnread).length;
-                if (unreadInChannel > 0) {
-                    acc[channel.id] = unreadInChannel;
+                const unreadCount = channelThreads.filter(isThreadUnread).length;
+                if (unreadCount > 0) {
+                    acc[channel.id] = unreadCount;
                 }
                 return acc;
               }, {} as Record<string, number>);
@@ -671,7 +662,7 @@ function DashboardComponent() {
                                     isThreadUnread={isThreadUnread}
                                     onAddMessage={handleAddMessage}
                                     channels={channels}
-                                    threads={userInvolvedThreads}
+                                    threads={allThreadsInSpace}
                                 />
                             )}
                             {rightPanelView === 'thread' && activeThread && (
