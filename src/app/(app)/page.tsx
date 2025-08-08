@@ -440,7 +440,7 @@ function DashboardComponent() {
 
     const renderContent = () => {
         switch(view) {
-            case 'overview': return <div className="p-4 md:p-8"><Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} jobFlowTasks={jobFlowTasks} onUpdateTask={handleUpdateTask} onTaskSelect={setSelectedTask} onDataRefresh={() => {if (activeSpace) { /* re-fetch logic here */ }}} /></div>;
+            case 'overview': return <div className="p-4 md:p-8"><Overview projects={projects} tasks={tasks} timeEntries={timeEntries.filter(t => t.user_id === appUser.id)} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} jobFlowTasks={jobFlowTasks} onUpdateTask={handleUpdateTask} onTaskSelect={setSelectedTask} onDataRefresh={() => {if (activeSpace) { /* re-fetch logic here */ }}} /></div>;
             case 'tasks': return <div className="p-4 md:p-8"><TaskBoard 
                                     tasks={memoizedTasks} 
                                     onUpdateTasks={setTasks} 
@@ -715,7 +715,10 @@ function DashboardComponent() {
                         </div>
                     </div>
                 </Sidebar>
-                <main className="flex-1 flex flex-col overflow-hidden">
+                <main className={cn(
+                    "flex-1 flex flex-col",
+                    view === 'timesheets' ? 'overflow-auto' : 'overflow-hidden'
+                )}>
                     {renderContent()}
                 </main>
             </div>
