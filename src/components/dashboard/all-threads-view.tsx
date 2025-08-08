@@ -227,7 +227,7 @@ export default function AllThreadsView({ messages, allUsers, appUser, onViewThre
 
     return (
         <div className="flex flex-col h-full">
-            <div className="p-4 border-b">
+            <div className="p-4 border-b flex-shrink-0">
                 <h3 className="text-lg font-semibold">Threads</h3>
                 <p className="text-sm text-muted-foreground">All your thread conversations in one place.</p>
             </div>
