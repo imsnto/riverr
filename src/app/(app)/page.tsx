@@ -135,7 +135,7 @@ function DashboardComponent() {
     useEffect(() => {
         if (!activeChannelId) return;
         markChannelParentsRead(activeChannelId);
-    }, [activeChannelId, messages, markChannelParentsRead]);
+    }, [activeChannelId, messages]);
 
     // Reset seen state when user/space changes
     useEffect(() => {
@@ -162,17 +162,17 @@ function DashboardComponent() {
     
     // threads the user is involved in (across active space)
     const userInvolvedThreads = React.useMemo(() => {
+        if (!appUser || !activeSpace) return [];
         return messages.filter(parent => {
             if (parent.thread_id) return false; // only parent messages
-            if (!activeSpace) return false;
-
+            
             const ch = channels.find(c => c.id === parent.channel_id);
             if (!ch || ch.space_id !== activeSpace.id) return false;
 
             const allMsgsInThread = [parent, ...messages.filter(m => m.thread_id === parent.id)];
-            return allMsgsInThread.some(m => m.user_id === appUser?.id);
+            return allMsgsInThread.some(m => m.user_id === appUser.id);
         });
-    }, [messages, channels, activeSpace, appUser?.id]);
+    }, [messages, channels, activeSpace, appUser]);
 
     const unreadThreads = useMemo(
       () => userInvolvedThreads.filter(isThreadUnread),
@@ -584,7 +584,7 @@ function DashboardComponent() {
                                       !seenParentIds.has(m.id)
                                     ).length;
                                     
-                                    const parentUnread = channel.id === activeChannelId ? 0 : parentUnreadRaw;
+                                    const parentUnread = activeChannelId === channel.id ? 0 : parentUnreadRaw;
                                     const threadUnread = unreadThreadsByChannel[channel.id] || 0;
 
                                     return (
@@ -897,6 +897,7 @@ export default function Dashboard() {
 }
 
     
+
 
 
 
