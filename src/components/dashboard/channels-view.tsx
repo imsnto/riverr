@@ -82,7 +82,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
     );
   }
 
-  const channelMessages = messages.filter(m => m.channel_id === activeChannelId && !m.thread_id).sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  const channelMessages = messages.filter(m => m.channel_id === activeChannelId && !m.thread_id);
   const channelMembers = allUsers.filter(u => activeChannel.members.includes(u.id));
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,8 +176,9 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
   const renderMessage = (message: Message) => {
     const user = allUsers.find(u => u.id === message.user_id);
     const threadReplies = messages.filter(m => m.thread_id === message.id);
-    const uniqueReplierIds = [...new Set(threadReplies.map(r => r.user_id))];
-    const repliers = allUsers.filter(u => uniqueReplierIds.includes(u.id));
+    
+    const uniqueReplierIds = new Set(threadReplies.map(r => r.user_id));
+    const repliers = allUsers.filter(u => uniqueReplierIds.has(u.id));
 
     const linkedTask = message.linked_task_id ? tasks.find(t => t.id === message.linked_task_id) : null;
     const taskStatus = linkedTask ? statuses.find(s => s.name === linkedTask.status) : null;

@@ -472,16 +472,30 @@ function DashboardComponent() {
 
     const isThreadUnread = (thread: Message): boolean => {
         if (!appUser) return false;
-
+    
+        // Get all messages in the thread, including the parent
         const allThreadMessages = [thread, ...messages.filter(m => m.thread_id === thread.id)];
-        const lastMessageInThread = allThreadMessages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-
-        if (lastMessageInThread.user_id === appUser.id) return false;
-
+        
+        // Find the last message in the thread sent by *another* user
+        const lastMessageFromOther = allThreadMessages
+            .filter(m => m.user_id !== appUser.id)
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+    
+        // If no message from another user exists, it can't be unread for the current user
+        if (!lastMessageFromOther) {
+            return false;
+        }
+    
+        // Get the last time the current user has seen this thread
         const lastReadTime = readThreads.get(thread.id);
-        if (!lastReadTime) return true;
-
-        return new Date(lastMessageInThread.timestamp).getTime() > lastReadTime;
+    
+        // If the thread has never been marked as read, it's unread
+        if (!lastReadTime) {
+            return true;
+        }
+    
+        // If the last message from another user is newer than the last read time, it's unread
+        return new Date(lastMessageFromOther.timestamp).getTime() > lastReadTime;
     };
     
     const memoizedTasks = useMemo(() => tasks, [tasks]);
@@ -637,7 +651,7 @@ function DashboardComponent() {
                     <div className="flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
                         <ChannelsView
                             channels={channels}
-                            messages={messages}
+                            messages={messages.sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())}
                             allUsers={allUsers}
                             tasks={tasks}
                             statuses={activeSpace!.statuses}
