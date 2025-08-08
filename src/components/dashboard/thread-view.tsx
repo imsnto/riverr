@@ -26,7 +26,7 @@ const renderMessageContent = (content: string, allUsers: User[]) => {
             const userName = part.substring(1).trim();
             const user = allUsers.find(u => u.name === userName);
             if (user) {
-                return <strong key={index} className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400 px-1 rounded-sm">@{user.name}</strong>;
+                return <strong key={index} className="text-blue-500 font-semibold">@{user.name}</strong>;
             }
         }
         return part;
