@@ -2,13 +2,16 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Message, User, Attachment } from '@/lib/data';
+import { Message, User, Attachment, Channel } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { Send, X, Paperclip, File, ImageIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { Popover, PopoverContent, PopoverAnchor } from '../ui/popover';
+import { Command } from '../ui/command';
+import { cn } from '@/lib/utils';
 
 const getInitials = (name: string) => {
     if (!name) return '';
@@ -33,26 +36,55 @@ interface ThreadViewProps {
     thread: Message;
     messages: Message[];
     allUsers: User[];
-    setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+    channels: Channel[]; // Add channels prop
     onClose: () => void;
     onAddMessage: (message: Omit<Message, 'id'>) => Promise<void>;
 }
 
-export default function ThreadView({ thread, messages, allUsers, setMessages, onClose, onAddMessage }: ThreadViewProps) {
+export default function ThreadView({ thread, messages, allUsers, channels, onClose, onAddMessage }: ThreadViewProps) {
     const { appUser } = useAuth();
     const [newMessage, setNewMessage] = useState('');
     const [attachments, setAttachments] = useState<File[]>([]);
+    const [isTagging, setIsTagging] = useState(false);
+    const [tagQuery, setTagQuery] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const messageInputRef = useRef<HTMLInputElement>(null);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
+    
     const threadMessages = [thread, ...messages.filter(m => m.thread_id === thread.id)];
     const threadUser = allUsers.find(u => u.id === thread.user_id);
+    
+    const activeChannel = channels.find(c => c.id === thread.channel_id);
+    const channelMembers = activeChannel ? allUsers.filter(u => activeChannel.members.includes(u.id)) : [];
 
     useEffect(() => {
         if (scrollAreaRef.current) {
-          scrollAreaRef.current.scrollTo(0, scrollAreaRef.current.scrollHeight);
+          const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+          if (viewport) {
+            viewport.scrollTop = viewport.scrollHeight;
+          }
         }
     }, [messages, thread.id]);
     
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setNewMessage(value);
+
+        const lastAt = value.lastIndexOf('@');
+        if (lastAt !== -1 && !value.slice(lastAt + 1).includes(' ')) {
+            setIsTagging(true);
+            setTagQuery(value.slice(lastAt + 1));
+        } else {
+            setIsTagging(false);
+        }
+    }
+    
+    const handleUserTag = (userName: string) => {
+        const lastAt = newMessage.lastIndexOf('@');
+        setNewMessage(newMessage.slice(0, lastAt) + `@${userName} `);
+        setIsTagging(false);
+        messageInputRef.current?.focus();
+    }
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -77,6 +109,7 @@ export default function ThreadView({ thread, messages, allUsers, setMessages, on
         
         setNewMessage('');
         setAttachments([]);
+        setIsTagging(false);
         
         await onAddMessage(messageData);
     };
@@ -87,6 +120,10 @@ export default function ThreadView({ thread, messages, allUsers, setMessages, on
         }
     };
     
+     const filteredMembers = channelMembers.filter(member => 
+        member.name.toLowerCase().includes(tagQuery.toLowerCase()) && member.id !== appUser?.id
+    );
+
     const renderSingleMessage = (message: Message) => {
         const user = allUsers.find(u => u.id === message.user_id);
         return (
@@ -162,30 +199,61 @@ export default function ThreadView({ thread, messages, allUsers, setMessages, on
                         ))}
                     </div>
                 )}
-                <form onSubmit={handleSendMessage} className="relative">
-                    <Input
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder={`Reply to thread...`}
-                        className="pr-20"
-                        autoComplete="off"
-                    />
-                     <div className="absolute right-1 top-1/2 -translate-y-1/2 flex">
-                        <input
-                            type="file"
-                            multiple
-                            ref={fileInputRef}
-                            className="hidden"
-                            onChange={handleFileSelect}
-                        />
-                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
-                            <Paperclip className="h-4 w-4" />
-                        </Button>
-                        <Button type="submit" size="icon" className="h-8 w-8">
-                            <Send className="h-4 w-4" />
-                        </Button>
-                      </div>
-                </form>
+                <Popover open={isTagging} onOpenChange={setIsTagging}>
+                    <form onSubmit={handleSendMessage} className="relative">
+                         <PopoverAnchor asChild>
+                            <Input
+                                ref={messageInputRef}
+                                value={newMessage}
+                                onChange={handleInputChange}
+                                placeholder={`Reply to thread...`}
+                                className="pr-20"
+                                autoComplete="off"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault();
+                                      handleSendMessage(e);
+                                    }
+                                  }}
+                            />
+                        </PopoverAnchor>
+                         <div className="absolute right-1 top-1/2 -translate-y-1/2 flex">
+                            <input
+                                type="file"
+                                multiple
+                                ref={fileInputRef}
+                                className="hidden"
+                                onChange={handleFileSelect}
+                            />
+                            <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
+                                <Paperclip className="h-4 w-4" />
+                            </Button>
+                            <Button type="submit" size="icon" className="h-8 w-8">
+                                <Send className="h-4 w-4" />
+                            </Button>
+                          </div>
+                    </form>
+                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+                        <Command>
+                            <ScrollArea className="max-h-48">
+                                {filteredMembers.length > 0 ? filteredMembers.map(member => (
+                                    <div key={member.id} 
+                                        onClick={() => handleUserTag(member.name)}
+                                        className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent"
+                                    >
+                                        <Avatar className="h-6 w-6">
+                                            <AvatarImage src={member.avatarUrl} />
+                                            <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                                        </Avatar>
+                                        <span className="text-sm">{member.name}</span>
+                                    </div>
+                                )) : (
+                                    <div className="p-2 text-sm text-center text-muted-foreground">No users found</div>
+                                )}
+                            </ScrollArea>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
             </div>
         </div>
     );

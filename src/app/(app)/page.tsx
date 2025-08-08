@@ -483,8 +483,8 @@ function DashboardComponent() {
                     'grid flex-1 overflow-hidden transition-all duration-200 ease-in-out',
                     threadOpen ? 'grid-cols-[220px_minmax(0,1fr)_400px]' : 'grid-cols-[220px_minmax(0,1fr)]'
                  )}>
-                    <div className="flex h-full flex-col bg-muted/50 border-r">
-                        <div className="flex w-full h-full flex-col">
+                    <div className="flex flex-col border-r bg-muted/50">
+                        <div className="flex h-full flex-col">
                             <div className="p-2">
                                 <Button 
                                     variant="ghost" 
@@ -582,7 +582,7 @@ function DashboardComponent() {
                                     thread={activeThread}
                                     messages={messages}
                                     allUsers={allUsers}
-                                    setMessages={setMessages}
+                                    channels={channels}
                                     onClose={() => setRightPanelView(null)}
                                     onAddMessage={handleAddMessage}
                                 />
