@@ -145,28 +145,52 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     e.preventDefault();
   };
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>, newStatus: string) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>, newStatus: string, targetTaskId?: string) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
     const task = allTasks.find(t => t.id === taskId);
     
-    if (task && task.status !== newStatus && appUser) {
-        const newActivity: Activity = {
-            id: `act-${Date.now()}`,
-            user_id: appUser.id,
-            timestamp: new Date().toISOString(),
-            type: 'status_change',
-            from: task.status,
-            to: newStatus,
-        };
-        const updatedTask = { 
-            ...task, 
-            status: newStatus,
-            activities: [...(task.activities || []), newActivity],
-        };
-        onUpdateTask(updatedTask);
-    }
+    if (!task) return;
 
+    if (task.status !== newStatus) { // Different column drop
+        if (appUser) {
+            const newActivity: Activity = {
+                id: `act-${Date.now()}`,
+                user_id: appUser.id,
+                timestamp: new Date().toISOString(),
+                type: 'status_change',
+                from: task.status,
+                to: newStatus,
+            };
+            const updatedTask = { 
+                ...task, 
+                status: newStatus,
+                activities: [...(task.activities || []), newActivity],
+            };
+            onUpdateTask(updatedTask);
+        }
+    } else { // Same column drop
+        let reorderedTasks = [...allTasks];
+        const draggedItem = reorderedTasks.find(t => t.id === taskId);
+        if (!draggedItem) return;
+
+        const draggedIndex = reorderedTasks.findIndex(t => t.id === taskId);
+        reorderedTasks.splice(draggedIndex, 1);
+
+        if (targetTaskId) {
+            const targetIndex = reorderedTasks.findIndex(t => t.id === targetTaskId);
+            reorderedTasks.splice(targetIndex, 0, draggedItem);
+        } else {
+             // Dropped on the column but not on a specific task, add to end
+            const lastTaskInColumnIndex = reorderedTasks.map(t => t.status === newStatus).lastIndexOf(true);
+            if(lastTaskInColumnIndex !== -1) {
+                reorderedTasks.splice(lastTaskInColumnIndex + 1, 0, draggedItem);
+            } else {
+                reorderedTasks.push(draggedItem);
+            }
+        }
+        onUpdateTasks(reorderedTasks);
+    }
     setDraggedTask(null);
   };
 
@@ -237,6 +261,8 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
       <div
         key={status.name}
         className="flex-shrink-0 w-80"
+        onDrop={(e) => handleDrop(e, status.name)}
+        onDragOver={handleDragOver}
       >
         <div className="flex justify-between items-center mb-4 px-1">
              {editingColumn === status.name ? (
@@ -334,8 +360,6 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         </div>
         <div 
           className="bg-primary/5 rounded-lg p-2 max-h-[calc(100vh-16rem)] overflow-y-auto min-h-[5rem]"
-          onDragOver={handleDragOver}
-          onDrop={(e) => handleDrop(e, status.name)}
         >
           {tasks
             .filter(task => task.status === status.name)
@@ -345,6 +369,8 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                 draggable
                 onDragStart={(e) => handleDragStart(e, task.id)}
                 onDragEnd={handleDragEnd}
+                onDrop={(e) => handleDrop(e, status.name, task.id)}
+                onDragOver={handleDragOver}
               >
                 <TaskCard 
                   task={task} 
