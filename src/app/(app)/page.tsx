@@ -511,6 +511,21 @@ function DashboardComponent() {
               const unreadThreads = userInvolvedThreads.filter(isThreadUnread);
               const unreadThreadCount = unreadThreads.length;
               
+              const isParentUnread = (parent: Message): boolean => {
+                if (!appUser) return false;
+                if (parent.user_id === appUser.id) return false;
+                const lastRead = parentReadAt.get(parent.id) ?? 0;
+                const createdAt = new Date(parent.timestamp).getTime();
+                return createdAt > lastRead;
+              };
+
+              const unreadParentsByChannel = channels.reduce((acc, channel) => {
+                const parents = messages.filter(m => m.channel_id === channel.id && !m.thread_id);
+                const unreadParents = parents.filter(isParentUnread).length;
+                if (unreadParents > 0) acc[channel.id] = unreadParents;
+                return acc;
+              }, {} as Record<string, number>);
+
               const unreadThreadsByChannel = channels.reduce((acc, channel) => {
                 const channelParents = messages.filter(
                     m => m.channel_id === channel.id && !m.thread_id && (m.reply_count ?? 0) > 0
@@ -519,6 +534,16 @@ function DashboardComponent() {
                 if (unreadCount > 0) acc[channel.id] = unreadCount;
                 return acc;
               }, {} as Record<string, number>);
+              
+              const markChannelParentsRead = (channelId: string) => {
+                const now = Date.now();
+                const parents = messages.filter(m => m.channel_id === channelId && !m.thread_id);
+                setParentReadAt(prev => {
+                    const next = new Map(prev);
+                    parents.forEach(p => next.set(p.id, now));
+                    return next;
+                });
+              };
 
 
               return (
@@ -557,21 +582,35 @@ function DashboardComponent() {
                             </div>
                             <div className="space-y-1 p-2 flex-1 overflow-y-auto">
                                 {channels.filter(c => c.space_id === activeSpace?.id).map(channel => {
-                                    const unreadCount = unreadThreadsByChannel[channel.id] || 0;
+                                    const parentUnreadCount = unreadParentsByChannel[channel.id] || 0;
+                                    const threadUnreadCount = unreadThreadsByChannel[channel.id] || 0;
+
                                     return (
                                         <div key={channel.id} className="group relative">
                                             <Button 
                                                 variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
                                                 className={cn(
                                                     "w-full justify-start pr-8",
-                                                    unreadCount > 0 && "font-bold"
+                                                    parentUnreadCount > 0 && "font-bold"
                                                 )}
-                                                onClick={() => setActiveChannelId(channel.id)}
+                                                onClick={() => {
+                                                    setActiveChannelId(channel.id);
+                                                    markChannelParentsRead(channel.id);
+                                                }}
                                             >
                                                 # {channel.name}
-                                                {unreadCount > 0 && (
-                                                     <span className="ml-auto bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">{unreadCount}</span>
-                                                )}
+                                                <div className="ml-auto flex items-center gap-1.5">
+                                                    {parentUnreadCount > 0 && (
+                                                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-muted-foreground/20 text-muted-foreground">
+                                                            {parentUnreadCount}
+                                                        </span>
+                                                    )}
+                                                    {threadUnreadCount > 0 && (
+                                                        <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
+                                                            {threadUnreadCount}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </Button>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
@@ -855,3 +894,5 @@ export default function Dashboard() {
         </Suspense>
     )
 }
+
+    
