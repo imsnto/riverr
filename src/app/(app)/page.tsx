@@ -538,8 +538,13 @@ function DashboardComponent() {
                     if (!m.reply_count || m.reply_count === 0) return false;
                     return true;
               });
+
+              const userInvolvedThreads = allThreadsInSpace.filter(thread => {
+                const allThreadMessages = [thread, ...messages.filter(m => m.thread_id === thread.id)];
+                return allThreadMessages.some(m => m.user_id === appUser.id);
+              });
               
-              const unreadThreads = allThreadsInSpace.filter(isThreadUnread);
+              const unreadThreads = userInvolvedThreads.filter(isThreadUnread);
               const unreadThreadCount = unreadThreads.length;
               
               const unreadThreadsByChannel = channels.reduce((acc, channel) => {
