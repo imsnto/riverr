@@ -116,8 +116,73 @@ function DashboardComponent() {
     const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
 
     // Separate read states for parent messages vs thread replies
-    const [parentReadAt, setParentReadAt] = useState<Map<string, number>>(new Map());
+    const [channelParentReadAt, setChannelParentReadAt] = useState<Map<string, number>>(new Map());
     const [threadReadAt, setThreadReadAt] = useState<Map<string, number>>(new Map());
+    
+    const isParentUnread = useCallback((parent: Message): boolean => {
+      if (!appUser) return false;
+      if (parent.user_id === appUser.id) return false;
+
+      const lastReadForChannel = channelParentReadAt.get(parent.channel_id) ?? 0;
+      const createdAt = new Date(parent.timestamp).getTime();
+      return createdAt > lastReadForChannel;
+    }, [appUser, channelParentReadAt]);
+    
+    const isThreadUnread = useCallback((parent: Message): boolean => {
+      if (!appUser) return false;
+      // ONLY consider replies (exclude the parent itself)
+      const repliesFromOthers = messages
+        .filter(m => m.thread_id === parent.id && m.user_id !== appUser.id);
+
+      if (repliesFromOthers.length === 0) return false;
+
+      const lastReplyFromOther = repliesFromOthers.reduce(
+        (max, m) => Math.max(max, new Date(m.timestamp).getTime()),
+        0
+      );
+
+      const lastThreadRead = threadReadAt.get(parent.id) ?? 0;
+      return lastReplyFromOther > lastThreadRead;
+    }, [appUser, messages, threadReadAt]);
+
+    const userInvolvedThreads = useMemo(() => {
+        if (!appUser || !activeSpace) return [];
+        return messages.filter(parent => {
+            if (parent.thread_id) return false; // Only parent messages
+            const ch = channels.find(c => c.id === parent.channel_id);
+            if (!ch || ch.space_id !== activeSpace.id) return false;
+
+            const allMsgsInThread = [parent, ...messages.filter(m => m.thread_id === parent.id)];
+            return allMsgsInThread.some(m => m.user_id === appUser.id);
+        });
+    }, [messages, channels, activeSpace, appUser]);
+
+    const unreadThreads = useMemo(
+      () => userInvolvedThreads.filter(isThreadUnread),
+      [userInvolvedThreads, isThreadUnread]
+    );
+
+    const unreadParentsByChannel = useMemo(() => {
+      const acc: Record<string, number> = {};
+      channels.forEach(channel => {
+        const parents = messages.filter(m => m.channel_id === channel.id && !m.thread_id);
+        const count = parents.filter(isParentUnread).length;
+        if (count) acc[channel.id] = count;
+      });
+      return acc;
+    }, [channels, messages, isParentUnread]);
+
+    const unreadThreadsByChannel = useMemo(() => {
+      const acc: Record<string, number> = {};
+      channels.forEach(channel => {
+        const parents = messages.filter(
+          m => m.channel_id === channel.id && !m.thread_id && (m.reply_count ?? 0) > 0
+        );
+        const count = parents.filter(isThreadUnread).length;
+        if (count) acc[channel.id] = count;
+      });
+      return acc;
+    }, [channels, messages, isThreadUnread]);
     
      useEffect(() => {
         const viewFromParams = searchParams.get('view') as View;
@@ -206,86 +271,11 @@ function DashboardComponent() {
         fetchData();
     }, [appUser, activeSpace, userSpaces, toast]);
 
-    const isParentUnread = useCallback((parent: Message): boolean => {
-      if (!appUser) return false;
-      if (parent.user_id === appUser.id) return false;
-      const lastRead = parentReadAt.get(parent.id) ?? 0;
-      const createdAt = new Date(parent.timestamp).getTime();
-      return createdAt > lastRead;
-    }, [appUser, parentReadAt]);
-
-    const isThreadUnread = useCallback((parent: Message): boolean => {
-      if (!appUser) return false;
-      // ONLY consider replies (exclude the parent itself)
-      const repliesFromOthers = messages
-        .filter(m => m.thread_id === parent.id && m.user_id !== appUser.id);
-
-      if (repliesFromOthers.length === 0) return false;
-
-      const lastReplyFromOther = repliesFromOthers.reduce(
-        (max, m) => Math.max(max, new Date(m.timestamp).getTime()),
-        0
-      );
-
-      const lastThreadRead = threadReadAt.get(parent.id) ?? 0;
-      return lastReplyFromOther > lastThreadRead;
-    }, [appUser, messages, threadReadAt]);
-
-    const userInvolvedThreads = useMemo(() => {
-        if (!appUser || !activeSpace) return [];
-        return messages.filter(parent => {
-            if (parent.thread_id) return false; // Only parent messages
-            const ch = channels.find(c => c.id === parent.channel_id);
-            if (!ch || ch.space_id !== activeSpace.id) return false;
-
-            const allMsgs = [parent, ...messages.filter(m => m.thread_id === parent.id)];
-            return allMsgs.some(m => m.user_id === appUser.id);
-        });
-    }, [messages, channels, activeSpace, appUser]);
-
-    const unreadThreads = useMemo(
-      () => userInvolvedThreads.filter(isThreadUnread),
-      [userInvolvedThreads, isThreadUnread]
-    );
-    
-    const unreadParentsByChannel = useMemo(() => {
-      const acc: Record<string, number> = {};
-      channels.forEach(channel => {
-        const parents = messages.filter(m => m.channel_id === channel.id && !m.thread_id);
-        const count = parents.filter(isParentUnread).length;
-        if (count) acc[channel.id] = count;
-      });
-      return acc;
-    }, [channels, messages, isParentUnread]);
-
-    const unreadThreadsByChannel = useMemo(() => {
-      const acc: Record<string, number> = {};
-      channels.forEach(channel => {
-        const parents = messages.filter(
-          m => m.channel_id === channel.id && !m.thread_id && (m.reply_count ?? 0) > 0
-        );
-        const count = parents.filter(isThreadUnread).length;
-        if (count) acc[channel.id] = count;
-      });
-      return acc;
-    }, [channels, messages, isThreadUnread]);
-    
-    const markChannelParentsRead = useCallback((channelId: string) => {
-      const now = Date.now();
-      const parents = messages.filter(m => m.channel_id === channelId && !m.thread_id);
-      setParentReadAt(prev => {
-        const next = new Map(prev);
-        parents.forEach(p => next.set(p.id, now));
-        return next;
-      });
-    }, [messages]);
-
     useEffect(() => {
-      if (!activeChannelId) return;
-      markChannelParentsRead(activeChannelId);
-    }, [activeChannelId, markChannelParentsRead]);
+        if (!activeChannelId) return;
+        setChannelParentReadAt(prev => new Map(prev).set(activeChannelId, Date.now()));
+    }, [activeChannelId]);
     
-
     const handleUpdateActiveSpace = async (updatedData: Partial<Space>) => {
         if (!activeSpace || !appUser) return;
         
@@ -563,9 +553,9 @@ function DashboardComponent() {
                                         if (opening) {
                                             const now = Date.now();
                                             setThreadReadAt(prev => {
-                                            const next = new Map(prev);
-                                            userInvolvedThreads.forEach(t => next.set(t.id, now));
-                                            return next;
+                                                const next = new Map(prev);
+                                                userInvolvedThreads.forEach(t => next.set(t.id, now));
+                                                return next;
                                             });
                                         }
                                     }}
@@ -599,7 +589,7 @@ function DashboardComponent() {
                                                 )}
                                                 onClick={() => {
                                                     setActiveChannelId(channel.id);
-                                                    markChannelParentsRead(channel.id);
+                                                    setChannelParentReadAt(prev => new Map(prev).set(channel.id, Date.now()));
                                                 }}
                                             >
                                                 # {channel.name}
@@ -899,5 +889,6 @@ export default function Dashboard() {
 }
 
     
+
 
 
