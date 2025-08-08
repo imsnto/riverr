@@ -115,7 +115,6 @@ function DashboardComponent() {
     const [isChannelFormOpen, setIsChannelFormOpen] = useState(false);
     const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
 
-    // Separate read states for parent messages vs thread replies
     const [seenParentIds, setSeenParentIds] = useState<Set<string>>(new Set());
     const [threadReadAt, setThreadReadAt] = useState<Map<string, number>>(new Map());
 
@@ -584,8 +583,10 @@ function DashboardComponent() {
                                       !seenParentIds.has(m.id)
                                     ).length;
                                     
-                                    const parentUnread = activeChannelId === channel.id ? 0 : parentUnreadRaw;
                                     const threadUnread = unreadThreadsByChannel[channel.id] || 0;
+                                    
+                                    // This is the key change: force parent count to 0 for the active channel
+                                    const parentUnread = channel.id === activeChannelId ? 0 : parentUnreadRaw;
 
                                     return (
                                         <div key={channel.id} className="group relative">
@@ -897,6 +898,7 @@ export default function Dashboard() {
 }
 
     
+
 
 
 
