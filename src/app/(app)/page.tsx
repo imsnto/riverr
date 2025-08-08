@@ -143,10 +143,8 @@ function DashboardComponent() {
 
     // This is the fix: Reset the thread view when changing channels
     useEffect(() => {
-        if (view !== 'messages') {
-            setRightPanelView(null);
-        }
-    }, [activeChannelId, view]);
+        setRightPanelView(null);
+    }, [activeChannelId]);
 
 
     useEffect(() => {
