@@ -149,23 +149,24 @@ function DashboardComponent() {
 
     useEffect(() => {
         const fetchData = async () => {
-            if (!appUser || !activeSpace) return;
+            if (!appUser) return;
             setIsLoading(true);
             try {
+                // Fetch data that is NOT space-dependent first
                 const [
                     users, allTasks, fetchedProjects, fetchedChannels, jobTemplates, 
                     fetchedJobs, fetchedJobFlowTasks, phaseTpls, taskTpls, fetchedDocuments
                 ] = await Promise.all([
                     getAllUsers(),
                     getAllTasks(),
-                    getProjectsInSpace(activeSpace.id),
-                    getChannelsInSpace(activeSpace.id),
-                    getJobFlowTemplates(activeSpace.id),
-                    getAllJobs(activeSpace.id),
-                    getAllJobFlowTasks(activeSpace.id),
-                    getPhaseTemplates(activeSpace.id),
-                    getTaskTemplates(activeSpace.id),
-                    getDocumentsInSpace(activeSpace.id),
+                    activeSpace ? getProjectsInSpace(activeSpace.id) : Promise.resolve([]),
+                    activeSpace ? getChannelsInSpace(activeSpace.id) : Promise.resolve([]),
+                    activeSpace ? getJobFlowTemplates(activeSpace.id) : Promise.resolve([]),
+                    activeSpace ? getAllJobs(activeSpace.id) : Promise.resolve([]),
+                    activeSpace ? getAllJobFlowTasks(activeSpace.id) : Promise.resolve([]),
+                    activeSpace ? getPhaseTemplates(activeSpace.id) : Promise.resolve([]),
+                    activeSpace ? getTaskTemplates(activeSpace.id) : Promise.resolve([]),
+                    activeSpace ? getDocumentsInSpace(activeSpace.id) : Promise.resolve([]),
                 ]);
 
                 setAllUsers(users);
@@ -178,18 +179,22 @@ function DashboardComponent() {
                 setPhaseTemplates(phaseTpls);
                 setTaskTemplates(taskTpls);
                 setDocuments(fetchedDocuments);
+                
+                // Fetch all projects across all user spaces to get all time entries
+                const allUserProjects = await Promise.all(userSpaces.map(s => getProjectsInSpace(s.id))).then(p => p.flat());
+                const allProjectIds = allUserProjects.map(p => p.id);
 
                 const [fetchedTimeEntries, fetchedSlackLogs, fetchedMessages] = await Promise.all([
-                    getTimeEntriesInSpace(fetchedProjects.map(p => p.id)),
-                    getSlackMeetingLogsInSpace(activeSpace.id),
-                    Promise.all(fetchedChannels.map(c => getMessagesInChannel(c.id))).then(msgArrays => msgArrays.flat()),
+                    getTimeEntriesInSpace(allProjectIds), // Get all time entries for the user
+                    activeSpace ? getSlackMeetingLogsInSpace(activeSpace.id) : Promise.resolve([]),
+                    activeSpace ? Promise.all(fetchedChannels.map(c => getMessagesInChannel(c.id))).then(msgArrays => msgArrays.flat()) : Promise.resolve([]),
                 ]);
                 
                 setTimeEntries(fetchedTimeEntries);
                 setSlackLogs(fetchedSlackLogs);
                 setMessages(fetchedMessages);
 
-                if (fetchedChannels.length > 0 && !activeChannelId) {
+                if (activeSpace && fetchedChannels.length > 0 && !activeChannelId) {
                     setActiveChannelId(fetchedChannels[0].id);
                 }
 
@@ -202,7 +207,7 @@ function DashboardComponent() {
         };
 
         fetchData();
-    }, [appUser, activeSpace]);
+    }, [appUser, activeSpace, userSpaces]);
     
     const handleUpdateActiveSpace = async (updatedData: Partial<Space>) => {
         if (!activeSpace || !appUser) return;
