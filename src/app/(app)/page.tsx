@@ -181,8 +181,8 @@ function DashboardComponent() {
     }, [channels, messages, isThreadUnread]);
 
     const openChannel = (channelId: string) => {
-      setActiveChannelId(channelId);
       setChannelLastReadAt(prev => ({ ...prev, [channelId]: Date.now() }));
+      setActiveChannelId(channelId);
     };
     
      useEffect(() => {
@@ -212,7 +212,7 @@ function DashboardComponent() {
     
     useEffect(() => {
         if (activeChannelId) {
-            setChannelLastReadAt(prev => ({ ...prev, [activeChannelId]: Date.now() }));
+             setChannelLastReadAt(prev => ({ ...prev, [activeChannelId]: Date.now() }));
         }
     }, [activeChannelId]);
 
@@ -595,7 +595,7 @@ function DashboardComponent() {
                                             "w-full justify-start pr-8",
                                             parentUnread > 0 && "font-bold"
                                         )}
-                                        onClick={() => openChannel(channel.id)}
+                                        onClick={() => openChannel(String(channel.id))}
                                     >
                                         # {channel.name}
                                         <div className="ml-auto flex items-center gap-1.5">
@@ -651,7 +651,7 @@ function DashboardComponent() {
               const centerPanel = (
                  <ChannelsView
                     channels={channels}
-                    messages={messages.sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())}
+                    messages={[...messages].sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())}
                     allUsers={allUsers}
                     tasks={tasks}
                     statuses={activeSpace!.statuses}
@@ -903,6 +903,7 @@ export default function Dashboard() {
 }
 
     
+
 
 
 
