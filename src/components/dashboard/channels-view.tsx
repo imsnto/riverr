@@ -22,7 +22,7 @@ const getInitials = (name: string) => {
 };
 
 const renderMessageContent = (content: string, allUsers: User[]) => {
-    const parts = content.split(/(@[\w\s]+)/g).filter(Boolean);
+    const parts = content.split(/(@\w+\s*\w*)/g).filter(Boolean);
     return parts.map((part, index) => {
         if (part.startsWith('@')) {
             const userName = part.substring(1).trim();
@@ -293,95 +293,93 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <>
-          <div className="p-4 border-b flex-shrink-0">
-            <h3 className="text-lg font-semibold">#{activeChannel.name}</h3>
-            <p className="text-sm text-muted-foreground">{activeChannel.description}</p>
-          </div>
-          <ScrollArea className="flex-1">
-            <div className="p-4 space-y-1">
-              {channelMessages.map(renderMessage)}
-            </div>
-          </ScrollArea>
-          <div className="p-4 border-t bg-card flex-shrink-0">
-            {attachments.length > 0 && (
-                <div className="mb-2 space-y-2">
-                    {attachments.map((file, i) => (
-                    <div key={i} className="flex items-center justify-between gap-2 text-sm bg-muted p-2 rounded-md">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                            {file.type.startsWith('image/') ? <ImageIcon className="h-4 w-4 flex-shrink-0" /> : <File className="h-4 w-4 flex-shrink-0" />}
-                            <span className="truncate">{file.name}</span>
-                        </div>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}
-                        >
-                        &times;
-                        </Button>
+    <div className="flex flex-col h-full">
+        <div className="p-4 border-b flex-shrink-0">
+        <h3 className="text-lg font-semibold">#{activeChannel.name}</h3>
+        <p className="text-sm text-muted-foreground">{activeChannel.description}</p>
+        </div>
+        <ScrollArea className="flex-1">
+        <div className="p-4 space-y-1">
+            {channelMessages.map(renderMessage)}
+        </div>
+        </ScrollArea>
+        <div className="p-4 border-t bg-card flex-shrink-0">
+        {attachments.length > 0 && (
+            <div className="mb-2 space-y-2">
+                {attachments.map((file, i) => (
+                <div key={i} className="flex items-center justify-between gap-2 text-sm bg-muted p-2 rounded-md">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                        {file.type.startsWith('image/') ? <ImageIcon className="h-4 w-4 flex-shrink-0" /> : <File className="h-4 w-4 flex-shrink-0" />}
+                        <span className="truncate">{file.name}</span>
                     </div>
-                    ))}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}
+                    >
+                    &times;
+                    </Button>
                 </div>
-            )}
-            <Popover open={isTagging} onOpenChange={setIsTagging}>
-                <form onSubmit={handleSendMessage} className="relative">
-                    <PopoverAnchor asChild>
-                      <Input
-                        id="message-input"
-                        ref={messageInputRef}
-                        value={newMessage}
-                        onChange={handleInputChange}
-                        placeholder={`Message #${activeChannel.name}`}
-                        className="pr-20"
-                        autoComplete="off"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendMessage(e);
-                          }
-                        }}
-                      />
-                    </PopoverAnchor>
-                      <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                        <input
-                            type="file"
-                            multiple
-                            ref={fileInputRef}
-                            className="hidden"
-                            onChange={handleFileSelect}
-                        />
-                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
-                            <Paperclip className="h-4 w-4" />
-                        </Button>
-                        <Button type="submit" size="icon" className="h-8 w-8">
-                            <Send className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </form>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
-                    <Command>
-                        <ScrollArea className="max-h-48">
-                            {filteredMembers.length > 0 ? filteredMembers.map(member => (
-                                <div key={member.id} 
-                                    onClick={() => handleUserTag(member.name)}
-                                    className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent"
-                                >
-                                    <Avatar className="h-6 w-6">
-                                        <AvatarImage src={member.avatarUrl} />
-                                        <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                                    </Avatar>
-                                    <span className="text-sm">{member.name}</span>
-                                </div>
-                            )) : (
-                                <div className="p-2 text-sm text-center text-muted-foreground">No users found</div>
-                            )}
-                        </ScrollArea>
-                    </Command>
-                </PopoverContent>
-            </Popover>
-          </div>
-        </>
+                ))}
+            </div>
+        )}
+        <Popover open={isTagging} onOpenChange={setIsTagging}>
+            <form onSubmit={handleSendMessage} className="relative">
+                <PopoverAnchor asChild>
+                    <Input
+                    id="message-input"
+                    ref={messageInputRef}
+                    value={newMessage}
+                    onChange={handleInputChange}
+                    placeholder={`Message #${activeChannel.name}`}
+                    className="pr-20"
+                    autoComplete="off"
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(e);
+                        }
+                    }}
+                    />
+                </PopoverAnchor>
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    <input
+                        type="file"
+                        multiple
+                        ref={fileInputRef}
+                        className="hidden"
+                        onChange={handleFileSelect}
+                    />
+                    <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
+                        <Paperclip className="h-4 w-4" />
+                    </Button>
+                    <Button type="submit" size="icon" className="h-8 w-8">
+                        <Send className="h-4 w-4" />
+                    </Button>
+                    </div>
+                </form>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+                <Command>
+                    <ScrollArea className="max-h-48">
+                        {filteredMembers.length > 0 ? filteredMembers.map(member => (
+                            <div key={member.id} 
+                                onClick={() => handleUserTag(member.name)}
+                                className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent"
+                            >
+                                <Avatar className="h-6 w-6">
+                                    <AvatarImage src={member.avatarUrl} />
+                                    <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm">{member.name}</span>
+                            </div>
+                        )) : (
+                            <div className="p-2 text-sm text-center text-muted-foreground">No users found</div>
+                        )}
+                    </ScrollArea>
+                </Command>
+            </PopoverContent>
+        </Popover>
+        </div>
     </div>
   );
 }
