@@ -584,6 +584,8 @@ function DashboardComponent() {
                                 {channels.filter(c => c.space_id === activeSpace?.id).map(channel => {
                                     const parentUnreadCount = unreadParentsByChannel[channel.id] || 0;
                                     const threadUnreadCount = unreadThreadsByChannel[channel.id] || 0;
+                                    const hasParentUnreads = parentUnreadCount > 0;
+                                    const hasThreadUnreads = threadUnreadCount > 0;
 
                                     return (
                                         <div key={channel.id} className="group relative">
@@ -591,7 +593,7 @@ function DashboardComponent() {
                                                 variant={activeChannelId === channel.id ? 'secondary' : 'ghost'} 
                                                 className={cn(
                                                     "w-full justify-start pr-8",
-                                                    parentUnreadCount > 0 && "font-bold"
+                                                    hasParentUnreads && "font-bold"
                                                 )}
                                                 onClick={() => {
                                                     setActiveChannelId(channel.id);
@@ -600,16 +602,15 @@ function DashboardComponent() {
                                             >
                                                 # {channel.name}
                                                 <div className="ml-auto flex items-center gap-1.5">
-                                                    {parentUnreadCount > 0 && (
-                                                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-muted-foreground/20 text-muted-foreground">
-                                                            {parentUnreadCount}
-                                                        </span>
-                                                    )}
-                                                    {threadUnreadCount > 0 && (
+                                                     {hasThreadUnreads ? (
                                                         <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
                                                             {threadUnreadCount}
                                                         </span>
-                                                    )}
+                                                    ) : hasParentUnreads ? (
+                                                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-muted-foreground/20 text-muted-foreground">
+                                                            {parentUnreadCount}
+                                                        </span>
+                                                    ) : null}
                                                 </div>
                                             </Button>
                                             <DropdownMenu>
