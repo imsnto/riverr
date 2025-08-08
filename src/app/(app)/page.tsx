@@ -472,20 +472,14 @@ function DashboardComponent() {
 
     const isThreadUnread = (thread: Message): boolean => {
         if (!appUser) return false;
-        
-        // A thread is unread if the last message is not from the current user
-        // and its timestamp is later than the user's last read time for this thread.
-        const lastReply = messages
-            .filter(m => m.thread_id === thread.id)
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-        
-        const lastMessageInThread = lastReply || thread;
 
-        // If I sent the last message, it's not unread for me.
+        const allThreadMessages = [thread, ...messages.filter(m => m.thread_id === thread.id)];
+        const lastMessageInThread = allThreadMessages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+
         if (lastMessageInThread.user_id === appUser.id) return false;
 
         const lastReadTime = readThreads.get(thread.id);
-        if (!lastReadTime) return true; // Never read this thread before.
+        if (!lastReadTime) return true;
 
         return new Date(lastMessageInThread.timestamp).getTime() > lastReadTime;
     };
