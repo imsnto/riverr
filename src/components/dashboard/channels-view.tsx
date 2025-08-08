@@ -28,7 +28,7 @@ const renderMessageContent = (content: string, allUsers: User[]) => {
             const userName = part.substring(1);
             const user = allUsers.find(u => u.name === userName);
             if (user) {
-                return <strong key={index} className="bg-primary/20 text-primary px-1 rounded-sm">@{user.name}</strong>;
+                return <strong key={index} className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400 px-1 rounded-sm">@{user.name}</strong>;
             }
         }
         return part;
@@ -69,6 +69,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
   }, [messages, activeChannelId]);
 
   const activeChannel = channels.find(c => c.id === activeChannelId);
+
   if (!activeChannel) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -85,7 +86,7 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
     setNewMessage(value);
 
     const lastAt = value.lastIndexOf('@');
-    if (lastAt !== -1 && !value.slice(lastAt + 1).includes(' ')) {
+    if (lastAt !== -1 && value.substring(lastAt + 1).match(/^\S*$/)) {
         setIsTagging(true);
         setTagQuery(value.slice(lastAt + 1));
     } else {

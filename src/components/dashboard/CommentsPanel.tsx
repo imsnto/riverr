@@ -54,7 +54,7 @@ export default function CommentsPanel({ document, onClose, allUsers, appUser, on
                 const userName = part.substring(1);
                 const user = allUsers.find(u => u.name.toLowerCase() === userName.toLowerCase());
                 if (user) {
-                    return <strong key={index} className="bg-primary/20 text-primary px-1 rounded-sm">@{user.name}</strong>;
+                    return <strong key={index} className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400 px-1 rounded-sm">@{user.name}</strong>;
                 }
             }
             return part;
