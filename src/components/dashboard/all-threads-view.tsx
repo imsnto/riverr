@@ -33,10 +33,10 @@ interface AllThreadsViewProps {
   allUsers: User[];
   appUser: User | null;
   onViewThread: (thread: Message) => void;
-  readThreadIds: Set<string>;
+  isThreadUnread: (thread: Message) => boolean;
 }
 
-export default function AllThreadsView({ messages, allUsers, appUser, onViewThread, readThreadIds }: AllThreadsViewProps) {
+export default function AllThreadsView({ messages, allUsers, appUser, onViewThread, isThreadUnread }: AllThreadsViewProps) {
     if (!appUser) return null;
 
     const parentMessagesWithReplies = messages.filter(m => m.reply_count && m.reply_count > 0);
@@ -52,7 +52,7 @@ export default function AllThreadsView({ messages, allUsers, appUser, onViewThre
         return new Date(lastReplyB.timestamp).getTime() - new Date(lastReplyA.timestamp).getTime();
     })
     
-    const firstUnreadIndex = sortedThreads.findIndex(t => !readThreadIds.has(t.id));
+    const firstUnreadIndex = sortedThreads.findIndex(isThreadUnread);
 
     if (sortedThreads.length === 0) {
         return <div className="flex h-full items-center justify-center text-muted-foreground">You have no threads yet.</div>;
@@ -70,7 +70,7 @@ export default function AllThreadsView({ messages, allUsers, appUser, onViewThre
                          const user = allUsers.find(u => u.id === thread.user_id);
                          const threadReplies = messages.filter(m => m.thread_id === thread.id);
                          const repliers = allUsers.filter(u => [...new Set(threadReplies.map(r => r.user_id))].includes(u.id));
-                         const isUnread = !readThreadIds.has(thread.id);
+                         const unread = isThreadUnread(thread);
                          const showUnreadSeparator = index === firstUnreadIndex;
 
 
@@ -84,7 +84,7 @@ export default function AllThreadsView({ messages, allUsers, appUser, onViewThre
                                         </div>
                                     </div>
                                 )}
-                                <button className={cn("w-full text-left p-4 hover:bg-accent/50", isUnread && "bg-primary/5")} onClick={() => onViewThread(thread)}>
+                                <button className={cn("w-full text-left p-4 hover:bg-accent/50", unread && "bg-primary/5")} onClick={() => onViewThread(thread)}>
                                     <div className="flex items-start gap-3">
                                         <Avatar>
                                             <AvatarImage src={user?.avatarUrl} />
@@ -92,7 +92,7 @@ export default function AllThreadsView({ messages, allUsers, appUser, onViewThre
                                         </Avatar>
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2">
-                                                <span className={cn("font-semibold", isUnread && "text-primary")}>{user?.name}</span>
+                                                <span className={cn("font-semibold", unread && "text-primary")}>{user?.name}</span>
                                                 <span className="text-xs text-muted-foreground">
                                                     {new Date(thread.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </span>
@@ -109,7 +109,7 @@ export default function AllThreadsView({ messages, allUsers, appUser, onViewThre
                                                 </Avatar>
                                             ))}
                                         </div>
-                                        <span className={cn("text-sm", isUnread ? "text-primary font-semibold" : "text-muted-foreground")}>
+                                        <span className={cn("text-sm", unread ? "text-primary font-semibold" : "text-muted-foreground")}>
                                             {thread.reply_count} {thread.reply_count! > 1 ? 'replies' : 'reply'}
                                         </span>
                                     </div>

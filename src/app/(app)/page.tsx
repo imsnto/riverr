@@ -111,7 +111,7 @@ function DashboardComponent() {
     const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
     const [rightPanelView, setRightPanelView] = useState<'threads' | 'thread' | 'task-from-thread' | null>(null);
     const [activeThread, setActiveThread] = useState<Message | null>(null);
-    const [readThreadIds, setReadThreadIds] = useState<Set<string>>(new Set());
+    const [readThreads, setReadThreads] = useState<Map<string, number>>(new Map());
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [isChannelFormOpen, setIsChannelFormOpen] = useState(false);
     const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
@@ -352,7 +352,7 @@ function DashboardComponent() {
     const handleViewThread = (thread: Message) => {
         setActiveThread(thread);
         setRightPanelView('thread');
-        setReadThreadIds(prev => new Set(prev).add(thread.id));
+        setReadThreads(prev => new Map(prev).set(thread.id, Date.now()));
     };
     
      const handleCreateTaskFromThread = (message: Message) => {
@@ -440,7 +440,13 @@ function DashboardComponent() {
 
     const renderContent = () => {
         switch(view) {
-            case 'overview': return <div className="p-4 md:p-8"><Overview projects={projects} tasks={tasks} timeEntries={timeEntries.filter(t => t.user_id === appUser.id)} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} jobFlowTasks={jobFlowTasks} onUpdateTask={handleUpdateTask} onTaskSelect={setSelectedTask} onDataRefresh={() => {if (activeSpace) { /* re-fetch logic here */ }}} /></div>;
+            case 'overview': {
+                const spaceTimeEntries = timeEntries.filter(entry => {
+                    const project = projects.find(p => p.id === entry.project_id);
+                    return project && project.space_id === activeSpace?.id;
+                });
+                 return <div className="p-4 md:p-8"><Overview projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} allUsers={allUsers} jobs={jobs} jobFlowTemplates={jobFlowTemplates} jobFlowTasks={jobFlowTasks} onUpdateTask={handleUpdateTask} onTaskSelect={setSelectedTask} onDataRefresh={() => {if (activeSpace) { /* re-fetch logic here */ }}} /></div>;
+            }
             case 'tasks': return <div className="p-4 md:p-8"><TaskBoard 
                                     tasks={memoizedTasks} 
                                     onUpdateTasks={setTasks} 
@@ -463,28 +469,32 @@ function DashboardComponent() {
               const channelMembers = activeChannel ? allUsers.filter(u => activeChannel.members.includes(u.id)) : [];
               const simplifiedProjects = projects.filter(p => p.space_id === activeSpace?.id).map(p => ({ id: p.id, name: p.name }));
               const threadOpen = rightPanelView === 'thread' || rightPanelView === 'threads' || rightPanelView === 'task-from-thread';
+              
               const parentMessagesWithReplies = messages.filter(m => m.reply_count && m.reply_count > 0);
               const userInvolvedThreads = parentMessagesWithReplies.filter(parent => {
                     const threadMessages = messages.filter(m => m.thread_id === parent.id);
                     const participants = new Set([parent.user_id, ...threadMessages.map(m => m.user_id)]);
                     return participants.has(appUser.id);
               });
-              const unreadThreadCount = userInvolvedThreads.filter(t => !readThreadIds.has(t.id)).length;
               
-              const unreadChannelIds = new Set<string>();
-                userInvolvedThreads.forEach(thread => {
-                    if (!readThreadIds.has(thread.id)) {
-                        unreadChannelIds.add(thread.channel_id);
-                    }
-                });
+              const isThreadUnread = (thread: Message): boolean => {
+                    const lastReadTime = readThreads.get(thread.id);
+                    if (!lastReadTime) return true; // Never read
+                    const lastReply = messages
+                        .filter(m => m.thread_id === thread.id)
+                        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+                    if (!lastReply) return false; // No replies yet
+                    return new Date(lastReply.timestamp).getTime() > lastReadTime;
+                };
+
+              const unreadThreads = userInvolvedThreads.filter(isThreadUnread);
+              const unreadThreadCount = unreadThreads.length;
+              const unreadChannelIds = new Set<string>(unreadThreads.map(t => t.channel_id));
 
               return (
-                 <div className={cn(
-                    'grid flex-1 overflow-hidden transition-all duration-200 ease-in-out',
-                    threadOpen ? 'grid-cols-[220px_minmax(0,1fr)_400px]' : 'grid-cols-[220px_minmax(0,1fr)]'
-                 )}>
-                    <div className="flex flex-col border-r bg-muted/50">
-                        <div className="flex h-full flex-col">
+                 <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] flex-1">
+                    <div className="flex-col border-r bg-muted/50 hidden md:flex">
+                         <div className="flex h-full flex-col">
                             <div className="p-2">
                                 <Button 
                                     variant="ghost" 
@@ -552,53 +562,58 @@ function DashboardComponent() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex flex-col h-full overflow-hidden flex-1">
-                        <ChannelsView
-                            channels={channels}
-                            messages={messages}
-                            allUsers={allUsers}
-                            tasks={tasks}
-                            statuses={activeSpace!.statuses}
-                            activeChannelId={activeChannelId}
-                            setMessages={setMessages}
-                            onCreateTask={handleCreateTaskFromThread}
-                            onViewThread={handleViewThread}
-                            onAddMessage={handleAddMessage}
-                        />
-                    </div>
-                     {threadOpen && (
-                        <div className="w-[400px] border-l bg-card h-full overflow-y-auto">
-                            {rightPanelView === 'threads' && (
-                                <AllThreadsView
+                    <div className={cn(
+                        "grid flex-1 overflow-hidden transition-all duration-200 ease-in-out",
+                        threadOpen ? 'grid-cols-[minmax(0,1fr)_400px]' : 'grid-cols-[minmax(0,1fr)]'
+                    )}>
+                        <div className="flex flex-col h-full overflow-hidden flex-1">
+                            <ChannelsView
+                                channels={channels}
                                 messages={messages}
                                 allUsers={allUsers}
-                                appUser={appUser}
+                                tasks={tasks}
+                                statuses={activeSpace!.statuses}
+                                activeChannelId={activeChannelId}
+                                setMessages={setMessages}
+                                onCreateTask={handleCreateTaskFromThread}
                                 onViewThread={handleViewThread}
-                                readThreadIds={readThreadIds}
-                                />
-                            )}
-                            {rightPanelView === 'thread' && activeThread && (
-                                <ThreadView
-                                    thread={activeThread}
+                                onAddMessage={handleAddMessage}
+                            />
+                        </div>
+                         {threadOpen && (
+                            <div className="w-[400px] border-l bg-card h-full overflow-y-auto hidden md:block">
+                                {rightPanelView === 'threads' && (
+                                    <AllThreadsView
                                     messages={messages}
                                     allUsers={allUsers}
-                                    channels={channels}
-                                    onClose={() => setRightPanelView(null)}
-                                    onAddMessage={handleAddMessage}
-                                />
-                            )}
-                            {rightPanelView === 'task-from-thread' && activeThread && (
-                                <CreateTaskFromThreadDialog
-                                    isOpen={rightPanelView === 'task-from-thread'}
-                                    onOpenChange={() => setRightPanelView('threads')}
-                                    message={activeThread}
-                                    channelMembers={channelMembers.map(u => ({ id: u.id, name: u.name }))}
-                                    projects={simplifiedProjects}
-                                    onTaskCreated={handleCreateTask}
-                                />
-                            )}
-                        </div>
-                    )}
+                                    appUser={appUser}
+                                    onViewThread={handleViewThread}
+                                    isThreadUnread={isThreadUnread}
+                                    />
+                                )}
+                                {rightPanelView === 'thread' && activeThread && (
+                                    <ThreadView
+                                        thread={activeThread}
+                                        messages={messages}
+                                        allUsers={allUsers}
+                                        channels={channels}
+                                        onClose={() => setRightPanelView(null)}
+                                        onAddMessage={handleAddMessage}
+                                    />
+                                )}
+                                {rightPanelView === 'task-from-thread' && activeThread && (
+                                    <CreateTaskFromThreadDialog
+                                        isOpen={rightPanelView === 'task-from-thread'}
+                                        onOpenChange={() => setRightPanelView('threads')}
+                                        message={activeThread}
+                                        channelMembers={channelMembers.map(u => ({ id: u.id, name: u.name }))}
+                                        projects={simplifiedProjects}
+                                        onTaskCreated={handleCreateTask}
+                                    />
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
               );
             }
@@ -746,7 +761,7 @@ function DashboardComponent() {
                 </Sidebar>
                 <main className={cn(
                     "flex-1 flex flex-col",
-                    view === 'timesheets' ? 'overflow-auto' : 'overflow-hidden'
+                    ['timesheets', 'messages'].includes(view) ? 'overflow-auto' : 'overflow-hidden'
                 )}>
                     {renderContent()}
                 </main>
