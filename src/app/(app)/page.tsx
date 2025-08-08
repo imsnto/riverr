@@ -142,7 +142,9 @@ function DashboardComponent() {
     }, [rightPanelView]);
 
     useEffect(() => {
-        setRightPanelView(null);
+        if (activeChannelId) {
+            setRightPanelView(null);
+        }
     }, [activeChannelId]);
 
 
@@ -216,11 +218,19 @@ function DashboardComponent() {
             let updated = false;
 
             messages.forEach(message => {
-                if (message.channel_id === activeChannelId && message.thread_id) {
-                    const threadParent = messages.find(m => m.id === message.thread_id);
-                    if (threadParent && isThreadUnread(threadParent)) {
-                         newReadThreads.set(threadParent.id, now);
-                         updated = true;
+                if (message.channel_id === activeChannelId) {
+                    // This handles parent messages of threads
+                    if(message.reply_count && message.reply_count > 0 && isThreadUnread(message)) {
+                        newReadThreads.set(message.id, now);
+                        updated = true;
+                    }
+                    // This handles individual replies in a thread, marking the parent as read
+                    if (message.thread_id) {
+                        const threadParent = messages.find(m => m.id === message.thread_id);
+                        if (threadParent && isThreadUnread(threadParent)) {
+                             newReadThreads.set(threadParent.id, now);
+                             updated = true;
+                        }
                     }
                 }
             });
@@ -229,6 +239,7 @@ function DashboardComponent() {
                 setReadThreads(newReadThreads);
             }
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeChannelId, messages, appUser]);
 
 
@@ -460,17 +471,23 @@ function DashboardComponent() {
     };
 
     const isThreadUnread = (thread: Message): boolean => {
-        if (!appUser || appUser.id === thread.user_id && !thread.reply_count) return false;
-        const lastReadTime = readThreads.get(thread.id);
-        if (!lastReadTime) return true; // Never read
+        if (!appUser) return false;
         
+        // A thread is unread if the last message is not from the current user
+        // and its timestamp is later than the user's last read time for this thread.
         const lastReply = messages
             .filter(m => m.thread_id === thread.id)
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-        if (!lastReply) return false; // No replies yet, but thread exists. Considered read.
-        if (lastReply.user_id === appUser.id) return false; // Don't mark my own replies as unread for me
         
-        return new Date(lastReply.timestamp).getTime() > lastReadTime;
+        const lastMessageInThread = lastReply || thread;
+
+        // If I sent the last message, it's not unread for me.
+        if (lastMessageInThread.user_id === appUser.id) return false;
+
+        const lastReadTime = readThreads.get(thread.id);
+        if (!lastReadTime) return true; // Never read this thread before.
+
+        return new Date(lastMessageInThread.timestamp).getTime() > lastReadTime;
     };
     
     const memoizedTasks = useMemo(() => tasks, [tasks]);
@@ -513,6 +530,8 @@ function DashboardComponent() {
               
               const allThreadsInSpace = messages.filter(m => {
                     if (m.thread_id) return false; // Only get parent messages
+                    const channelForMessage = channels.find(c => c.id === m.channel_id);
+                    if (!channelForMessage || channelForMessage.space_id !== activeSpace?.id) return false;
                     if (!m.reply_count || m.reply_count === 0) return false;
                     return true;
               });
@@ -526,14 +545,18 @@ function DashboardComponent() {
               const unreadThreads = userInvolvedThreads.filter(isThreadUnread);
               const unreadThreadCount = unreadThreads.length;
               
-              const unreadThreadsByChannel = unreadThreads.reduce((acc, thread) => {
-                acc[thread.channel_id] = (acc[thread.channel_id] || 0) + 1;
+              const unreadThreadsByChannel = channels.reduce((acc, channel) => {
+                const channelThreads = messages.filter(m => m.channel_id === channel.id && m.reply_count && m.reply_count > 0 && !m.thread_id);
+                const unreadInChannel = channelThreads.filter(isThreadUnread).length;
+                if (unreadInChannel > 0) {
+                    acc[channel.id] = unreadInChannel;
+                }
                 return acc;
               }, {} as Record<string, number>);
 
 
               return (
-                 <div className={cn("grid h-full min-h-0 transition-all duration-200 ease-in-out", threadOpen ? 'grid-cols-[220px_minmax(0,1fr)_400px]' : 'grid-cols-[220px_minmax(0,1fr)]')}>
+                 <div className={cn("grid h-full transition-all duration-200 ease-in-out min-h-0", threadOpen ? 'grid-cols-[220px_minmax(0,1fr)_400px]' : 'grid-cols-[220px_minmax(0,1fr)]')}>
                     <div className="flex-col border-r bg-muted/50 hidden md:flex">
                          <div className="flex h-full flex-col">
                             <div className="p-2">
@@ -658,7 +681,7 @@ function DashboardComponent() {
                             {rightPanelView === 'task-from-thread' && activeThread && (
                                 <CreateTaskFromThreadDialog
                                     isOpen={rightPanelView === 'task-from-thread'}
-                                    onOpenChange={() => setRightPanelView('threads')}
+                                    onOpenChange={() => setRightPanelView(null)}
                                     message={activeThread}
                                     channelMembers={channelMembers.map(u => ({ id: u.id, name: u.name }))}
                                     projects={simplifiedProjects}
