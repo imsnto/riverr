@@ -60,8 +60,6 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-
 
   useEffect(() => {
     const viewport = scrollAreaRef.current?.querySelector('div[data-radix-scroll-area-viewport]');
@@ -73,6 +71,14 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
   const activeChannel = channels.find(c => c.id === activeChannelId);
   const channelMessages = messages.filter(m => m.channel_id === activeChannelId && !m.thread_id);
   const channelMembers = activeChannel ? allUsers.filter(u => activeChannel.members.includes(u.id)) : [];
+
+  if (!activeChannel) {
+    return (
+      <div className="flex h-full items-center justify-center text-muted-foreground">
+        Select a channel to start messaging
+      </div>
+    );
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -113,10 +119,6 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
       attachments: newAttachments,
       reactions: [],
     };
-    
-    if (activeThreadId) {
-        messageData.thread_id = activeThreadId;
-    }
     
     setNewMessage('');
     setAttachments([]);
@@ -289,14 +291,9 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
     );
   }
 
-  if (channels.length === 0) {
-    return <div className="flex h-full items-center justify-center text-muted-foreground">No channels in this space.</div>;
-  }
-  
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {activeChannel ? (
-        <>
+      <>
           <div className="p-4 border-b flex-shrink-0">
             <h3 className="text-lg font-semibold">#{activeChannel.name}</h3>
             <p className="text-sm text-muted-foreground">{activeChannel.description}</p>
@@ -384,13 +381,6 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
             </Popover>
           </div>
         </>
-      ) : (
-        <div className="flex h-full items-center justify-center text-muted-foreground">
-          Select a channel to start messaging
-        </div>
-      )}
     </div>
   );
 }
-
-    
