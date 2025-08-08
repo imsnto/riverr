@@ -209,7 +209,7 @@ function DashboardComponent() {
         };
 
         fetchData();
-    }, [appUser, activeSpace, userSpaces]);
+    }, [appUser, activeSpace, userSpaces, toast]);
     
     const handleUpdateActiveSpace = async (updatedData: Partial<Space>) => {
         if (!activeSpace || !appUser) return;
@@ -502,7 +502,7 @@ function DashboardComponent() {
               const unreadChannelIds = new Set<string>(unreadThreads.map(t => t.channel_id));
 
               return (
-                 <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] flex-1">
+                 <div className={cn("grid h-full min-h-0 transition-all duration-200 ease-in-out", threadOpen ? 'grid-cols-[220px_minmax(0,1fr)_400px]' : 'grid-cols-[220px_minmax(0,1fr)]')}>
                     <div className="flex-col border-r bg-muted/50 hidden md:flex">
                          <div className="flex h-full flex-col">
                             <div className="p-2">
@@ -572,60 +572,55 @@ function DashboardComponent() {
                             </div>
                         </div>
                     </div>
-                    <div className={cn(
-                        "grid flex-1 overflow-hidden transition-all duration-200 ease-in-out",
-                        threadOpen ? 'grid-cols-[minmax(0,1fr)_400px]' : 'grid-cols-[minmax(0,1fr)]'
-                    )}>
-                        <div className="flex flex-col h-full min-h-0 min-w-0 overflow-hidden flex-1">
-                            <ChannelsView
-                                channels={channels}
-                                messages={messages}
-                                allUsers={allUsers}
-                                tasks={tasks}
-                                statuses={activeSpace!.statuses}
-                                activeChannelId={activeChannelId}
-                                setMessages={setMessages}
-                                onCreateTask={handleCreateTaskFromThread}
-                                onViewThread={handleViewThread}
-                                onAddMessage={handleAddMessage}
-                            />
-                        </div>
-                         {threadOpen && (
-                            <div className="w-[400px] border-l bg-card h-full overflow-y-auto hidden md:block">
-                                {rightPanelView === 'threads' && (
-                                    <AllThreadsView
-                                        messages={messages}
-                                        allUsers={allUsers}
-                                        appUser={appUser}
-                                        onViewThread={handleViewThread}
-                                        isThreadUnread={isThreadUnread}
-                                        onAddMessage={handleAddMessage}
-                                        channels={channels}
-                                    />
-                                )}
-                                {rightPanelView === 'thread' && activeThread && (
-                                    <ThreadView
-                                        thread={activeThread}
-                                        messages={messages}
-                                        allUsers={allUsers}
-                                        channels={channels}
-                                        onClose={() => setRightPanelView(null)}
-                                        onAddMessage={handleAddMessage}
-                                    />
-                                )}
-                                {rightPanelView === 'task-from-thread' && activeThread && (
-                                    <CreateTaskFromThreadDialog
-                                        isOpen={rightPanelView === 'task-from-thread'}
-                                        onOpenChange={() => setRightPanelView('threads')}
-                                        message={activeThread}
-                                        channelMembers={channelMembers.map(u => ({ id: u.id, name: u.name }))}
-                                        projects={simplifiedProjects}
-                                        onTaskCreated={handleCreateTask}
-                                    />
-                                )}
-                            </div>
-                        )}
+                    <div className="flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
+                        <ChannelsView
+                            channels={channels}
+                            messages={messages}
+                            allUsers={allUsers}
+                            tasks={tasks}
+                            statuses={activeSpace!.statuses}
+                            activeChannelId={activeChannelId}
+                            setMessages={setMessages}
+                            onCreateTask={handleCreateTaskFromThread}
+                            onViewThread={handleViewThread}
+                            onAddMessage={handleAddMessage}
+                        />
                     </div>
+                     {threadOpen && (
+                        <div className="w-[400px] border-l bg-card h-full overflow-y-auto hidden md:block">
+                            {rightPanelView === 'threads' && (
+                                <AllThreadsView
+                                    messages={messages}
+                                    allUsers={allUsers}
+                                    appUser={appUser}
+                                    onViewThread={handleViewThread}
+                                    isThreadUnread={isThreadUnread}
+                                    onAddMessage={handleAddMessage}
+                                    channels={channels}
+                                />
+                            )}
+                            {rightPanelView === 'thread' && activeThread && (
+                                <ThreadView
+                                    thread={activeThread}
+                                    messages={messages}
+                                    allUsers={allUsers}
+                                    channels={channels}
+                                    onClose={() => setRightPanelView(null)}
+                                    onAddMessage={handleAddMessage}
+                                />
+                            )}
+                            {rightPanelView === 'task-from-thread' && activeThread && (
+                                <CreateTaskFromThreadDialog
+                                    isOpen={rightPanelView === 'task-from-thread'}
+                                    onOpenChange={() => setRightPanelView('threads')}
+                                    message={activeThread}
+                                    channelMembers={channelMembers.map(u => ({ id: u.id, name: u.name }))}
+                                    projects={simplifiedProjects}
+                                    onTaskCreated={handleCreateTask}
+                                />
+                            )}
+                        </div>
+                    )}
                 </div>
               );
             }
@@ -772,7 +767,7 @@ function DashboardComponent() {
                     </div>
                 </Sidebar>
                 <main className={cn(
-                    "flex-1 flex flex-col",
+                    "flex-1 flex flex-col min-h-0",
                     view === 'messages' && 'overflow-hidden',
                     ['timesheets'].includes(view) && 'overflow-auto'
                 )}>
@@ -792,7 +787,10 @@ function DashboardComponent() {
                     if (!isOpen) setSelectedTask(null);
                 }}
                 onUpdateTask={handleUpdateTask}
-                onAddTask={handleAddTask}
+                onAddTask={async (taskData, tempId) => {
+                    const newTask = await handleAddTask(taskData);
+                    return newTask;
+                }}
                 onRemoveTask={handleRemoveTask}
                 onTaskSelect={setSelectedTask}
                 onLogTime={handleLogTime}
