@@ -208,6 +208,30 @@ function DashboardComponent() {
         fetchData();
     }, [appUser, activeSpace, userSpaces, toast]);
     
+    // Effect to mark threads in a channel as read when the channel is viewed
+    useEffect(() => {
+        if (activeChannelId && appUser) {
+            const now = Date.now();
+            const newReadThreads = new Map(readThreads);
+            let updated = false;
+
+            messages.forEach(message => {
+                if (message.channel_id === activeChannelId && message.thread_id) {
+                    const threadParent = messages.find(m => m.id === message.thread_id);
+                    if (threadParent && isThreadUnread(threadParent)) {
+                         newReadThreads.set(threadParent.id, now);
+                         updated = true;
+                    }
+                }
+            });
+
+            if (updated) {
+                setReadThreads(newReadThreads);
+            }
+        }
+    }, [activeChannelId, messages, appUser]);
+
+
     const handleUpdateActiveSpace = async (updatedData: Partial<Space>) => {
         if (!activeSpace || !appUser) return;
         
@@ -435,6 +459,20 @@ function DashboardComponent() {
         toast({ title: 'Document Deleted' });
     };
 
+    const isThreadUnread = (thread: Message): boolean => {
+        if (!appUser || appUser.id === thread.user_id && !thread.reply_count) return false;
+        const lastReadTime = readThreads.get(thread.id);
+        if (!lastReadTime) return true; // Never read
+        
+        const lastReply = messages
+            .filter(m => m.thread_id === thread.id)
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+        if (!lastReply) return false; // No replies yet, but thread exists. Considered read.
+        if (lastReply.user_id === appUser.id) return false; // Don't mark my own replies as unread for me
+        
+        return new Date(lastReply.timestamp).getTime() > lastReadTime;
+    };
+    
     const memoizedTasks = useMemo(() => tasks, [tasks]);
 
     if (!appUser || isLoading || !activeSpace) {
@@ -473,20 +511,6 @@ function DashboardComponent() {
               const simplifiedProjects = projects.filter(p => p.space_id === activeSpace?.id).map(p => ({ id: p.id, name: p.name }));
               const threadOpen = rightPanelView === 'thread' || rightPanelView === 'threads' || rightPanelView === 'task-from-thread';
               
-              const isThreadUnread = (thread: Message): boolean => {
-                    if (appUser.id === thread.user_id && !thread.reply_count) return false;
-                    const lastReadTime = readThreads.get(thread.id);
-                    if (!lastReadTime) return true; // Never read
-                    
-                    const lastReply = messages
-                        .filter(m => m.thread_id === thread.id)
-                        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-                    if (!lastReply) return false; // No replies yet, but thread exists. Considered read.
-                    if (lastReply.user_id === appUser.id) return false; // Don't mark my own replies as unread for me
-                    
-                    return new Date(lastReply.timestamp).getTime() > lastReadTime;
-                };
-
               const allThreadsInSpace = messages.filter(m => {
                     if (m.thread_id) return false; // Only get parent messages
                     if (!m.reply_count || m.reply_count === 0) return false;
@@ -779,8 +803,7 @@ function DashboardComponent() {
                 </Sidebar>
                 <main className={cn(
                     "flex-1 flex flex-col min-h-0",
-                    view === 'messages' && 'overflow-hidden',
-                    ['timesheets'].includes(view) && 'overflow-auto'
+                    view === 'messages' ? 'overflow-hidden' : 'overflow-auto'
                 )}>
                     {renderContent()}
                 </main>
