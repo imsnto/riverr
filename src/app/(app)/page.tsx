@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useMemo, Suspense, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
-import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown, ClipboardCheck, BookOpen, Plus, MoreHorizontal, Edit, Trash2, MessageCircleMore } from 'lucide-react';
+import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown, ClipboardCheck, BookOpen, Plus, MoreHorizontal, Edit, Trash2, MessageCircleMore, Hash } from 'lucide-react';
 import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, Invite, Status, JobFlowTemplate, Job, JobFlowTask, PhaseTemplate, TaskTemplate, Activity, Document } from '@/lib/data';
 import TaskBoard from '@/components/dashboard/task-board';
 import { useToast } from '@/hooks/use-toast';
@@ -116,19 +116,24 @@ function DashboardComponent() {
     const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
 
     // Separate read states for parent messages vs thread replies
-    const [channelParentReadAt, setChannelParentReadAt] = useState<Map<string, number>>(new Map());
+    const [channelParentReadAt, setChannelParentReadAt] = useState<Record<string, number>>({});
     const [threadReadAt, setThreadReadAt] = useState<Map<string, number>>(new Map());
+
+    const markChannelParentsRead = useCallback((channelId: string) => {
+        setChannelParentReadAt(prev => ({ ...prev, [channelId]: Date.now() }));
+    }, []);
     
-    const isParentUnread = useCallback((parent: Message): boolean => {
+    // helper: parent unread
+    const isParentUnread = React.useCallback((parent: Message) => {
       if (!appUser) return false;
       if (parent.user_id === appUser.id) return false;
-
-      const lastReadForChannel = channelParentReadAt.get(parent.channel_id) ?? 0;
+      const lastReadForChannel = channelParentReadAt[parent.channel_id] ?? 0;
       const createdAt = new Date(parent.timestamp).getTime();
       return createdAt > lastReadForChannel;
     }, [appUser, channelParentReadAt]);
-    
-    const isThreadUnread = useCallback((parent: Message): boolean => {
+
+    // helper: thread unread
+    const isThreadUnread = React.useCallback((parent: Message) => {
       if (!appUser) return false;
       // ONLY consider replies (exclude the parent itself)
       const repliesFromOthers = messages
@@ -144,11 +149,12 @@ function DashboardComponent() {
       const lastThreadRead = threadReadAt.get(parent.id) ?? 0;
       return lastReplyFromOther > lastThreadRead;
     }, [appUser, messages, threadReadAt]);
-
-    const userInvolvedThreads = useMemo(() => {
-      if (!appUser || !activeSpace) return [];
+    
+    // threads the user is involved in (across active space)
+    const userInvolvedThreads = React.useMemo(() => {
+        if (!appUser || !activeSpace) return [];
         return messages.filter(parent => {
-            if (parent.thread_id) return false; // Only parent messages
+            if (parent.thread_id) return false;
             const ch = channels.find(c => c.id === parent.channel_id);
             if (!ch || ch.space_id !== activeSpace.id) return false;
 
@@ -263,8 +269,8 @@ function DashboardComponent() {
 
     useEffect(() => {
         if (!activeChannelId) return;
-        setChannelParentReadAt(prev => new Map(prev).set(activeChannelId, Date.now()));
-    }, [activeChannelId]);
+        markChannelParentsRead(activeChannelId);
+    }, [activeChannelId, markChannelParentsRead]);
     
     const handleUpdateActiveSpace = async (updatedData: Partial<Space>) => {
         if (!activeSpace || !appUser) return;
@@ -564,17 +570,17 @@ function DashboardComponent() {
                             </div>
                             <div className="space-y-1 p-2 flex-1 overflow-y-auto">
                                 {channels.filter(c => c.space_id === activeSpace?.id).map(channel => {
-                                    const lastRead = channelParentReadAt.get(channel.id) ?? 0;
-                                    const parentUnreadRaw = messages.filter(m =>
-                                        m.channel_id === channel.id &&
-                                        !m.thread_id &&
-                                        m.user_id !== appUser?.id &&
-                                        new Date(m.timestamp).getTime() > lastRead
-                                    ).length;
                                     
+                                    const lastRead = channelParentReadAt[channel.id] ?? 0;
+                                    const parentUnreadRaw = messages.filter(m =>
+                                      m.channel_id === channel.id &&
+                                      !m.thread_id &&
+                                      m.user_id !== appUser?.id &&
+                                      new Date(m.timestamp).getTime() > lastRead
+                                    ).length;
+
                                     const parentUnread = channel.id === activeChannelId ? 0 : parentUnreadRaw;
                                     const threadUnread = unreadThreadsByChannel[channel.id] || 0;
-
 
                                     return (
                                         <div key={channel.id} className="group relative">
@@ -585,13 +591,13 @@ function DashboardComponent() {
                                                     parentUnread > 0 && "font-bold"
                                                 )}
                                                 onClick={() => {
-                                                    setChannelParentReadAt(prev => new Map(prev).set(channel.id, Date.now()));
+                                                    markChannelParentsRead(channel.id);
                                                     setActiveChannelId(channel.id);
                                                 }}
                                             >
                                                 # {channel.name}
                                                 <div className="ml-auto flex items-center gap-1.5">
-                                                     {threadUnread > 0 ? (
+                                                    {threadUnread > 0 ? (
                                                         <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
                                                             {threadUnread}
                                                         </span>
@@ -886,6 +892,7 @@ export default function Dashboard() {
 }
 
     
+
 
 
 
