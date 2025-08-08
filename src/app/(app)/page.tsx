@@ -802,7 +802,7 @@ function DashboardComponent() {
       <SidebarProvider defaultOpen={false}>
         <div className="flex flex-col h-screen">
           <TopBar />
-           <div className="flex flex-1 pt-16 overflow-hidden">
+           <div className="flex flex-1 pt-16 overflow-hidden min-h-0">
                 <Sidebar collapsible="icon">
                     <div className="flex flex-col h-full">
                         <div className="space-y-2 pt-4">
