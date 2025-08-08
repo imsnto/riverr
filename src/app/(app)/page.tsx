@@ -111,10 +111,13 @@ function DashboardComponent() {
     const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
     const [rightPanelView, setRightPanelView] = useState<'threads' | 'thread' | 'task-from-thread' | null>(null);
     const [activeThread, setActiveThread] = useState<Message | null>(null);
-    const [readThreads, setReadThreads] = useState<Map<string, number>>(new Map());
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [isChannelFormOpen, setIsChannelFormOpen] = useState(false);
     const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
+
+    // Separate read states for parent messages vs thread replies
+    const [parentReadAt, setParentReadAt] = useState<Map<string, number>>(new Map());
+    const [threadReadAt, setThreadReadAt] = useState<Map<string, number>>(new Map());
     
      useEffect(() => {
         const viewFromParams = searchParams.get('view') as View;
@@ -141,22 +144,20 @@ function DashboardComponent() {
         return () => window.removeEventListener('resize', handleResize);
     }, [rightPanelView]);
 
-    // This effect marks threads in a channel as read when the channel is viewed.
+    // Mark parent messages read on channel switch (only parents)
     useEffect(() => {
-        if (activeChannelId) {
-            const now = Date.now();
-            const threadsInChannel = messages.filter(m => m.channel_id === activeChannelId && !m.thread_id);
-            const newReadThreads = new Map(readThreads);
-            threadsInChannel.forEach(t => {
-                if (isThreadUnread(t)) {
-                    newReadThreads.set(t.id, now);
-                }
-            });
-            setReadThreads(newReadThreads);
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeChannelId]);
+      if (!activeChannelId) return;
+      const now = Date.now();
+      const parentsInChannel = messages.filter(
+        m => m.channel_id === activeChannelId && !m.thread_id // only parent msgs
+      );
 
+      setParentReadAt(prev => {
+        const next = new Map(prev);
+        parentsInChannel.forEach(p => next.set(p.id, now));
+        return next;
+      });
+    }, [activeChannelId, messages]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -360,11 +361,11 @@ function DashboardComponent() {
         }
     };
 
-
+    // Mark thread replies read only when opening a single thread
     const handleViewThread = (thread: Message) => {
         setActiveThread(thread);
         setRightPanelView('thread');
-        setReadThreads(prev => new Map(prev).set(thread.id, Date.now()));
+        setThreadReadAt(prev => new Map(prev).set(thread.id, Date.now()));
     };
     
      const handleCreateTaskFromThread = (message: Message) => {
@@ -444,31 +445,21 @@ function DashboardComponent() {
         toast({ title: 'Document Deleted' });
     };
 
-    const isThreadUnread = (thread: Message): boolean => {
-        if (!appUser) return false;
-    
-        const allThreadMessages = [thread, ...messages.filter(m => m.thread_id === thread.id)];
-        
-        // Find the timestamp of the last message in the thread from another user
-        const lastMessageFromOther = allThreadMessages
-            .filter(m => m.user_id !== appUser.id)
-            .sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-        
-        // If no message from another user exists, it can't be unread for the current user.
-        if (!lastMessageFromOther) {
-            return false;
-        }
+    const isThreadUnread = (parent: Message): boolean => {
+      if (!appUser) return false;
+      // ONLY consider replies (exclude the parent itself)
+      const repliesFromOthers = messages
+        .filter(m => m.thread_id === parent.id && m.user_id !== appUser.id);
 
-        const lastMessageTime = new Date(lastMessageFromOther.timestamp).getTime();
-        const lastReadTime = readThreads.get(thread.id);
-        
-        // If never read, it's unread.
-        if (!lastReadTime) {
-            return true;
-        }
-    
-        // If the last message from another user is newer than the last read time, it's unread.
-        return lastMessageTime > lastReadTime;
+      if (repliesFromOthers.length === 0) return false;
+
+      const lastReplyFromOther = repliesFromOthers.reduce(
+        (max, m) => Math.max(max, new Date(m.timestamp).getTime()),
+        0
+      );
+
+      const lastThreadRead = threadReadAt.get(parent.id) ?? 0;
+      return lastReplyFromOther > lastThreadRead;
     };
     
     const memoizedTasks = useMemo(() => tasks, [tasks]);
@@ -509,15 +500,10 @@ function DashboardComponent() {
               const simplifiedProjects = projects.filter(p => p.space_id === activeSpace?.id).map(p => ({ id: p.id, name: p.name }));
               const threadOpen = rightPanelView === 'thread' || rightPanelView === 'threads' || rightPanelView === 'task-from-thread';
               
-              const allThreadsInSpace = messages.filter(m => {
-                    if (m.thread_id) return false; // Only get parent messages
-                    const channelForMessage = channels.find(c => c.id === m.channel_id);
-                    if (!channelForMessage || channelForMessage.space_id !== activeSpace?.id) return false;
-                    if (!m.reply_count || m.reply_count === 0) return false;
-                    return true;
-              });
+               const userInvolvedThreads = messages.filter(thread => {
+                if(thread.thread_id) return false; // Only parent messages
+                if (!activeSpace || !channels.find(c => c.id === thread.channel_id && c.space_id === activeSpace.id)) return false; // Must be in active space
 
-              const userInvolvedThreads = allThreadsInSpace.filter(thread => {
                 const allThreadMessages = [thread, ...messages.filter(m => m.thread_id === thread.id)];
                 return allThreadMessages.some(m => m.user_id === appUser.id);
               });
@@ -526,11 +512,11 @@ function DashboardComponent() {
               const unreadThreadCount = unreadThreads.length;
               
               const unreadThreadsByChannel = channels.reduce((acc, channel) => {
-                const channelThreads = messages.filter(m => m.channel_id === channel.id && m.reply_count && m.reply_count > 0 && !m.thread_id);
-                const unreadCount = channelThreads.filter(isThreadUnread).length;
-                if (unreadCount > 0) {
-                    acc[channel.id] = unreadCount;
-                }
+                const channelParents = messages.filter(
+                    m => m.channel_id === channel.id && !m.thread_id && (m.reply_count ?? 0) > 0
+                );
+                const unreadCount = channelParents.filter(isThreadUnread).length;
+                if (unreadCount > 0) acc[channel.id] = unreadCount;
                 return acc;
               }, {} as Record<string, number>);
 
@@ -544,12 +530,16 @@ function DashboardComponent() {
                                     variant="ghost" 
                                     className="w-full justify-start text-base"
                                     onClick={() => {
-                                        setRightPanelView(rightPanelView === 'threads' ? null : 'threads');
-                                        if (rightPanelView !== 'threads') {
+                                        const opening = rightPanelView !== 'threads';
+                                        setRightPanelView(opening ? 'threads' : null);
+
+                                        if (opening) {
                                             const now = Date.now();
-                                            const newReadThreads = new Map(readThreads);
-                                            unreadThreads.forEach(t => newReadThreads.set(t.id, now));
-                                            setReadThreads(newReadThreads);
+                                            setThreadReadAt(prev => {
+                                            const next = new Map(prev);
+                                            userInvolvedThreads.forEach(t => next.set(t.id, now));
+                                            return next;
+                                            });
                                         }
                                     }}
                                 >
