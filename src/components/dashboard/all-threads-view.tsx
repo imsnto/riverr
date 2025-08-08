@@ -28,6 +28,27 @@ const renderMessageContent = (content: string, allUsers: User[]) => {
     });
 }
 
+const renderSingleMessage = (message: Message, allUsers: User[]) => {
+    const user = allUsers.find(u => u.id === message.user_id);
+    return (
+         <div key={message.id} className="flex items-start gap-3">
+            <Avatar className="h-8 w-8">
+                <AvatarImage src={user?.avatarUrl} />
+                <AvatarFallback>{user ? getInitials(user.name) : '?'}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+                <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm">{user?.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                        {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                </div>
+                {message.content && <p className="text-sm">{renderMessageContent(message.content, allUsers)}</p>}
+            </div>
+        </div>
+    )
+}
+
 interface AllThreadsViewProps {
   messages: Message[];
   allUsers: User[];
@@ -65,11 +86,9 @@ export default function AllThreadsView({ messages, allUsers, appUser, onViewThre
                 <p className="text-sm text-muted-foreground">All your thread conversations in one place.</p>
             </div>
             <ScrollArea className="flex-1">
-                <div className="p-0">
+                <div className="p-2">
                     {sortedThreads.map((thread, index) => {
-                         const user = allUsers.find(u => u.id === thread.user_id);
-                         const threadReplies = messages.filter(m => m.thread_id === thread.id);
-                         const repliers = allUsers.filter(u => [...new Set(threadReplies.map(r => r.user_id))].includes(u.id));
+                         const threadReplies = messages.filter(m => m.thread_id === thread.id).sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
                          const unread = isThreadUnread(thread);
                          const showUnreadSeparator = index === firstUnreadIndex;
 
@@ -77,43 +96,25 @@ export default function AllThreadsView({ messages, allUsers, appUser, onViewThre
                          return (
                             <div key={thread.id}>
                                 {showUnreadSeparator && (
-                                     <div className="relative px-4">
+                                     <div className="relative my-4 px-4">
                                         <Separator />
                                         <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
                                             <span className="bg-background px-2 text-xs text-primary font-semibold">Unread</span>
                                         </div>
                                     </div>
                                 )}
-                                <button className={cn("w-full text-left p-4 hover:bg-accent/50", unread && "bg-primary/5")} onClick={() => onViewThread(thread)}>
-                                    <div className="flex items-start gap-3">
-                                        <Avatar>
-                                            <AvatarImage src={user?.avatarUrl} />
-                                            <AvatarFallback>{user ? getInitials(user.name) : '?'}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className={cn("font-semibold", unread && "text-primary")}>{user?.name}</span>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {new Date(thread.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            </div>
-                                            <p className="text-sm text-muted-foreground">{renderMessageContent(thread.content, allUsers)}</p>
+                                <div className={cn("w-full text-left p-2 hover:bg-accent/50 rounded-lg", unread && "bg-primary/5")}>
+                                    <div className="space-y-4">
+                                        {renderSingleMessage(thread, allUsers)}
+                                        <div className="pl-6 border-l-2 ml-4 space-y-4">
+                                            {threadReplies.map(reply => renderSingleMessage(reply, allUsers))}
                                         </div>
                                     </div>
-                                    <div className="mt-2 flex items-center gap-2 pl-12">
-                                        <div className="flex -space-x-2">
-                                            {repliers.slice(0,3).map(replyUser => (
-                                                <Avatar key={replyUser.id} className="h-5 w-5 border-2 border-background">
-                                                    <AvatarImage src={replyUser?.avatarUrl} />
-                                                    <AvatarFallback>{replyUser ? getInitials(replyUser.name) : '?'}</AvatarFallback>
-                                                </Avatar>
-                                            ))}
-                                        </div>
-                                        <span className={cn("text-sm", unread ? "text-primary font-semibold" : "text-muted-foreground")}>
-                                            {thread.reply_count} {thread.reply_count! > 1 ? 'replies' : 'reply'}
-                                        </span>
-                                    </div>
-                                </button>
+                                    <Button variant="link" className="w-full justify-start mt-2" onClick={() => onViewThread(thread)}>
+                                        Reply to thread
+                                    </Button>
+                                </div>
+                                <Separator className="my-2" />
                             </div>
                          )
                     })}
