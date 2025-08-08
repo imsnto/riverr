@@ -21,7 +21,7 @@ const getInitials = (name: string) => {
 };
 
 const renderMessageContent = (content: string, allUsers: User[]) => {
-    const parts = content.split(/(@\w+\s*\w*)/g).filter(Boolean);
+    const parts = content.split(/(@[\w\s]+)/g).filter(Boolean);
     return parts.map((part, index) => {
         if (part.startsWith('@')) {
             const userName = part.substring(1).trim();
@@ -226,12 +226,12 @@ export default function AllThreadsView({ messages, allUsers, appUser, onViewThre
     }
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full min-h-0">
             <div className="p-4 border-b flex-shrink-0">
                 <h3 className="text-lg font-semibold">Threads</h3>
                 <p className="text-sm text-muted-foreground">All your thread conversations in one place.</p>
             </div>
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 min-h-0">
                 <div className="p-2">
                     {sortedThreads.map((thread, index) => {
                          const threadReplies = messages.filter(m => m.thread_id === thread.id).sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());

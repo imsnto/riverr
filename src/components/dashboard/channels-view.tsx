@@ -22,7 +22,7 @@ const getInitials = (name: string) => {
 };
 
 const renderMessageContent = (content: string, allUsers: User[]) => {
-    const parts = content.split(/(@\w+\s*\w*)/g).filter(Boolean);
+    const parts = content.split(/(@[\w\s]+)/g).filter(Boolean);
     return parts.map((part, index) => {
         if (part.startsWith('@')) {
             const userName = part.substring(1).trim();
@@ -293,12 +293,12 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
         <div className="p-4 border-b flex-shrink-0">
         <h3 className="text-lg font-semibold">#{activeChannel.name}</h3>
         <p className="text-sm text-muted-foreground">{activeChannel.description}</p>
         </div>
-        <ScrollArea className="flex-1">
+        <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0">
         <div className="p-4 space-y-1">
             {channelMessages.map(renderMessage)}
         </div>

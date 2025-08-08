@@ -576,7 +576,7 @@ function DashboardComponent() {
                         "grid flex-1 overflow-hidden transition-all duration-200 ease-in-out",
                         threadOpen ? 'grid-cols-[minmax(0,1fr)_400px]' : 'grid-cols-[minmax(0,1fr)]'
                     )}>
-                        <div className="flex flex-col h-full overflow-hidden flex-1">
+                        <div className="flex flex-col h-full min-h-0 min-w-0 overflow-hidden flex-1">
                             <ChannelsView
                                 channels={channels}
                                 messages={messages}
