@@ -176,8 +176,8 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
   const renderMessage = (message: Message) => {
     const user = allUsers.find(u => u.id === message.user_id);
     const threadReplies = messages.filter(m => m.thread_id === message.id);
-    const replierIds = [...new Set(threadReplies.map(r => r.user_id))];
-    const repliers = allUsers.filter(u => replierIds.includes(u.id));
+    const uniqueReplierIds = [...new Set(threadReplies.map(r => r.user_id))];
+    const repliers = allUsers.filter(u => uniqueReplierIds.includes(u.id));
 
     const linkedTask = message.linked_task_id ? tasks.find(t => t.id === message.linked_task_id) : null;
     const taskStatus = linkedTask ? statuses.find(s => s.name === linkedTask.status) : null;
