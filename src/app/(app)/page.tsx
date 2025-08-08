@@ -116,21 +116,31 @@ function DashboardComponent() {
     const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
 
     // Separate read states for parent messages vs thread replies
-    const [channelParentReadAt, setChannelParentReadAt] = useState<Record<string, number>>({});
+    const [seenParentIds, setSeenParentIds] = useState<Set<string>>(new Set());
     const [threadReadAt, setThreadReadAt] = useState<Map<string, number>>(new Map());
 
     const markChannelParentsRead = useCallback((channelId: string) => {
-        setChannelParentReadAt(prev => ({ ...prev, [channelId]: Date.now() }));
-    }, []);
-    
-    // helper: parent unread
-    const isParentUnread = React.useCallback((parent: Message) => {
-      if (!appUser) return false;
-      if (parent.user_id === appUser.id) return false;
-      const lastReadForChannel = channelParentReadAt[parent.channel_id] ?? 0;
-      const createdAt = new Date(parent.timestamp).getTime();
-      return createdAt > lastReadForChannel;
-    }, [appUser, channelParentReadAt]);
+        const parentsNow = messages
+            .filter(m => m.channel_id === channelId && !m.thread_id)
+            .map(m => m.id);
+
+        setSeenParentIds(prev => {
+            const next = new Set(prev);
+            parentsNow.forEach(id => next.add(id));
+            return next;
+        });
+    }, [messages]);
+
+    // This is a safety net for programmatic changes and new messages arriving.
+    useEffect(() => {
+        if (!activeChannelId) return;
+        markChannelParentsRead(activeChannelId);
+    }, [activeChannelId, messages, markChannelParentsRead]);
+
+    // Reset seen state when user/space changes
+    useEffect(() => {
+        setSeenParentIds(new Set());
+    }, [activeSpace?.id, appUser?.id]);
 
     // helper: thread unread
     const isThreadUnread = React.useCallback((parent: Message) => {
@@ -152,16 +162,17 @@ function DashboardComponent() {
     
     // threads the user is involved in (across active space)
     const userInvolvedThreads = React.useMemo(() => {
-        if (!appUser || !activeSpace) return [];
         return messages.filter(parent => {
-            if (parent.thread_id) return false;
+            if (parent.thread_id) return false; // only parent messages
+            if (!activeSpace) return false;
+
             const ch = channels.find(c => c.id === parent.channel_id);
             if (!ch || ch.space_id !== activeSpace.id) return false;
 
             const allMsgsInThread = [parent, ...messages.filter(m => m.thread_id === parent.id)];
-            return allMsgsInThread.some(m => m.user_id === appUser.id);
+            return allMsgsInThread.some(m => m.user_id === appUser?.id);
         });
-    }, [messages, channels, activeSpace, appUser]);
+    }, [messages, channels, activeSpace, appUser?.id]);
 
     const unreadThreads = useMemo(
       () => userInvolvedThreads.filter(isThreadUnread),
@@ -266,11 +277,6 @@ function DashboardComponent() {
 
         fetchData();
     }, [appUser, activeSpace, userSpaces, toast]);
-
-    useEffect(() => {
-        if (!activeChannelId) return;
-        markChannelParentsRead(activeChannelId);
-    }, [activeChannelId, markChannelParentsRead]);
     
     const handleUpdateActiveSpace = async (updatedData: Partial<Space>) => {
         if (!activeSpace || !appUser) return;
@@ -571,14 +577,13 @@ function DashboardComponent() {
                             <div className="space-y-1 p-2 flex-1 overflow-y-auto">
                                 {channels.filter(c => c.space_id === activeSpace?.id).map(channel => {
                                     
-                                    const lastRead = channelParentReadAt[channel.id] ?? 0;
                                     const parentUnreadRaw = messages.filter(m =>
                                       m.channel_id === channel.id &&
                                       !m.thread_id &&
                                       m.user_id !== appUser?.id &&
-                                      new Date(m.timestamp).getTime() > lastRead
+                                      !seenParentIds.has(m.id)
                                     ).length;
-
+                                    
                                     const parentUnread = channel.id === activeChannelId ? 0 : parentUnreadRaw;
                                     const threadUnread = unreadThreadsByChannel[channel.id] || 0;
 
@@ -892,6 +897,7 @@ export default function Dashboard() {
 }
 
     
+
 
 
 
