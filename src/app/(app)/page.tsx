@@ -367,10 +367,6 @@ function DashboardComponent() {
 
         if (messageData.thread_id) {
             setMessages(prev => prev.map(m => m.id === messageData.thread_id ? { ...m, reply_count: (m.reply_count || 0) + 1 } : m));
-            // Mark thread as read for the user sending the message
-            if (appUser && appUser.id === messageData.user_id) {
-                setReadThreads(prev => new Map(prev).set(messageData.thread_id!, Date.now()));
-            }
         }
 
         try {
