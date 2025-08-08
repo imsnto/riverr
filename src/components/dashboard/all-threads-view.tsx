@@ -12,7 +12,7 @@ import { Separator } from '../ui/separator';
 import { Input } from '../ui/input';
 import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover';
 import { Command } from '../ui/command';
-import { Send, Paperclip, File, ImageIcon } from 'lucide-react';
+import { Send, Paperclip, File, ImageIcon, Hash } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 
 const getInitials = (name: string) => {
@@ -27,7 +27,7 @@ const renderMessageContent = (content: string, allUsers: User[]) => {
             const userName = part.substring(1).trim();
             const user = allUsers.find(u => u.name === userName);
             if (user) {
-                return <strong key={index} className="text-blue-500 font-semibold">@{user.name}</strong>;
+                return <strong key={index} className="text-primary font-semibold">@{user.name}</strong>;
             }
         }
         return part;
@@ -231,7 +231,7 @@ export default function AllThreadsView({ threads, messages, allUsers, appUser, o
                          const threadReplies = messages.filter(m => m.thread_id === thread.id).sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
                          const unread = isThreadUnread(thread);
                          const showUnreadSeparator = index === firstUnreadIndex;
-
+                         const channel = channels.find(c => c.id === thread.channel_id);
 
                          return (
                             <div key={thread.id}>
@@ -239,11 +239,17 @@ export default function AllThreadsView({ threads, messages, allUsers, appUser, o
                                      <div className="relative my-4 px-4">
                                         <Separator />
                                         <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
-                                            <span className="bg-background px-2 text-xs text-primary font-semibold">Unread</span>
+                                            <span className="bg-card px-2 text-xs text-primary font-semibold">Unread</span>
                                         </div>
                                     </div>
                                 )}
                                 <div className={cn("w-full text-left p-2 rounded-lg", unread && "bg-primary/5")}>
+                                     {channel && (
+                                        <div className="px-3 pb-2 text-xs text-muted-foreground flex items-center gap-1.5">
+                                            <Hash className="h-3 w-3" />
+                                            {channel.name}
+                                        </div>
+                                     )}
                                     <div className="space-y-4">
                                         {renderSingleMessage(thread, allUsers)}
                                         <div className="pl-6 border-l-2 ml-4 space-y-4">

@@ -141,7 +141,6 @@ function DashboardComponent() {
         return () => window.removeEventListener('resize', handleResize);
     }, [rightPanelView]);
 
-    // This is the fix: Reset the thread view when changing channels
     useEffect(() => {
         setRightPanelView(null);
     }, [activeChannelId]);
@@ -488,8 +487,13 @@ function DashboardComponent() {
                     return new Date(lastReply.timestamp).getTime() > lastReadTime;
                 };
 
-              const parentMessagesWithReplies = messages.filter(m => m.reply_count && m.reply_count > 0);
-              const userInvolvedThreads = parentMessagesWithReplies.filter(parent => {
+              const allThreadsInSpace = messages.filter(m => {
+                    if (m.thread_id) return false; // Only get parent messages
+                    if (!m.reply_count || m.reply_count === 0) return false;
+                    return true;
+              });
+
+              const userInvolvedThreads = allThreadsInSpace.filter(parent => {
                     const threadMessages = messages.filter(m => m.thread_id === parent.id);
                     const participants = new Set([parent.user_id, ...threadMessages.map(m => m.user_id)]);
                     return participants.has(appUser.id);
@@ -498,8 +502,6 @@ function DashboardComponent() {
               const unreadThreads = userInvolvedThreads.filter(isThreadUnread);
               const unreadThreadCount = unreadThreads.length;
               const unreadChannelIds = new Set<string>(unreadThreads.map(t => t.channel_id));
-              
-              const channelThreads = activeChannelId ? userInvolvedThreads.filter(t => t.channel_id === activeChannelId) : [];
 
               return (
                  <div className={cn("grid h-full min-h-0 transition-all duration-200 ease-in-out", threadOpen ? 'grid-cols-[220px_minmax(0,1fr)_400px]' : 'grid-cols-[220px_minmax(0,1fr)]')}>
@@ -510,12 +512,13 @@ function DashboardComponent() {
                                     variant="ghost" 
                                     className="w-full justify-start text-base"
                                     onClick={() => {
-                                        setRightPanelView('threads');
-                                        // Mark all visible threads as read when opening the panel
-                                        const now = Date.now();
-                                        const newReadThreads = new Map(readThreads);
-                                        channelThreads.forEach(t => newReadThreads.set(t.id, now));
-                                        setReadThreads(newReadThreads);
+                                        setRightPanelView(rightPanelView === 'threads' ? null : 'threads');
+                                        if (rightPanelView !== 'threads') {
+                                            const now = Date.now();
+                                            const newReadThreads = new Map(readThreads);
+                                            unreadThreads.forEach(t => newReadThreads.set(t.id, now));
+                                            setReadThreads(newReadThreads);
+                                        }
                                     }}
                                 >
                                     <MessageCircleMore className="mr-2 h-5 w-5" /> Threads
@@ -604,7 +607,7 @@ function DashboardComponent() {
                                     isThreadUnread={isThreadUnread}
                                     onAddMessage={handleAddMessage}
                                     channels={channels}
-                                    threads={channelThreads}
+                                    threads={userInvolvedThreads}
                                 />
                             )}
                             {rightPanelView === 'thread' && activeThread && (
