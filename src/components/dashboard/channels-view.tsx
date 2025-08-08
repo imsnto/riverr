@@ -28,7 +28,7 @@ const renderMessageContent = (content: string, allUsers: User[]) => {
             const userName = part.substring(1).trim();
             const user = allUsers.find(u => u.name === userName);
             if (user) {
-                return <strong key={index} className="text-blue-500 font-semibold">@{user.name}</strong>;
+                return <strong key={index} className="text-primary font-semibold">@{user.name}</strong>;
             }
         }
         return part;
@@ -72,8 +72,12 @@ export default function ChannelsView({ channels, messages, allUsers, tasks, acti
 
   if (!activeChannel) {
     return (
-      <div className="flex h-full items-center justify-center text-muted-foreground">
-        Select a channel to start messaging
+      <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+        <MessageSquare className="h-16 w-16 text-muted-foreground/50" />
+        <div>
+            <h3 className="text-xl font-semibold">Welcome to Channels!</h3>
+            <p className="text-muted-foreground">Select a channel from the list on the left to view messages or start a new conversation.</p>
+        </div>
       </div>
     );
   }
