@@ -142,26 +142,19 @@ export default function MyTasksPage() {
     };
 
     const filteredTasks = useMemo(() => {
-        if (!activeSpace) return [];
-        const closingStatus = activeSpace.closingStatusName;
         return tasks
             .filter(task => {
                 const nameMatch = task.name.toLowerCase().includes(filter.toLowerCase());
                 const projectMatch = projectFilter === 'all' || task.project_id === projectFilter;
                 
-                let statusMatch = true;
-                if (closingStatus) {
-                    if (showCompleted) {
-                        statusMatch = task.status === closingStatus;
-                    } else {
-                        statusMatch = task.status !== closingStatus;
-                    }
-                }
-
+                const statusMatch = showCompleted
+                    ? task.status === 'Done'
+                    : task.status !== 'Done';
+                
                 return nameMatch && projectMatch && statusMatch;
             })
             .sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime());
-    }, [tasks, filter, projectFilter, activeSpace, showCompleted]);
+    }, [tasks, filter, projectFilter, showCompleted]);
 
     if (isLoading || !activeSpace) {
         return <LoadingState />;
@@ -176,7 +169,7 @@ export default function MyTasksPage() {
                  <Sidebar collapsible="icon">
                      <div className="flex flex-col h-full">
                         <div className="space-y-2 pt-4">
-                            <Button onClick={() => router.push('/?view=overview')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">
+                            <Button onClick={() => router.push('/')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">
                                 <BarChart className="w-7 h-7"/>
                             </Button>
                              <Button onClick={() => router.push('/mytasks')} variant={'secondary'} className="h-12 w-full justify-center rounded-none">
