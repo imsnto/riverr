@@ -1,10 +1,10 @@
 // src/app/(app)/mytasks/page.tsx
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { Task, Project, User, TimeEntry } from '@/lib/data';
-import { getTasksForUser, getProjectsInSpace, getAllUsers, getTimeEntriesInSpace } from '@/lib/db';
+import { Task, Project, User, TimeEntry, Document, Message } from '@/lib/data';
+import { getTasksForUser, getProjectsInSpace, getAllUsers, getTimeEntriesInSpace, getDocumentsInSpace, getMessagesInChannel, getChannelsInSpace } from '@/lib/db';
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,11 +16,13 @@ import { updateTask, addTask, deleteTask, addTimeEntry } from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import { TopBar } from '@/components/dashboard/top-bar';
 import { Sidebar, SidebarProvider } from '@/components/ui/sidebar';
-import { BarChart, FolderKanban, MessageSquare, Timer, Workflow, Settings, ClipboardCheck, BookOpen } from 'lucide-react';
+import { BarChart, FolderKanban, MessageSquare, Timer, Workflow, Settings, ClipboardCheck, BookOpen, AtSign } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import MentionsView from '@/components/dashboard/mentions-view';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const LoadingState = () => (
     <div className="flex h-screen items-center justify-center">
@@ -37,12 +39,45 @@ export default function MyTasksPage() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+    const [documents, setDocuments] = useState<Document[]>([]);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
     const [filter, setFilter] = useState('');
     const [projectFilter, setProjectFilter] = useState('all');
     const [showCompleted, setShowCompleted] = useState(false);
+    
+    const [lastMentionsReadAt, setLastMentionsReadAt] = useState<number>(Date.now());
+
+    const getUnreadMentions = useCallback(() => {
+        if (!appUser) return [];
+
+        const mentionRegex = new RegExp(`@${appUser.name}`, 'i');
+        const checkTime = lastMentionsReadAt;
+
+        const messageMentions = messages.filter(m =>
+            m.content.match(mentionRegex) &&
+            String(m.user_id) !== String(appUser.id) &&
+            new Date(m.timestamp).getTime() > checkTime
+        );
+
+        const taskMentions = tasks.flatMap(t => 
+            (t.activities || [])
+            .filter(a => a.comment && a.comment.match(mentionRegex) && String(a.user_id) !== String(appUser.id) && new Date(a.timestamp).getTime() > checkTime)
+            .map(a => ({...a, parentType: 'task', parentId: t.id, parentName: t.name}))
+        );
+
+        const docMentions = documents.flatMap(d => 
+            (d.comments || [])
+            .filter(c => c.content.match(mentionRegex) && String(c.userId) !== String(appUser.id) && new Date(c.createdAt).getTime() > checkTime)
+            .map(c => ({...c, parentType: 'document', parentId: d.id, parentName: d.name}))
+        );
+
+        return [...messageMentions, ...taskMentions, ...docMentions];
+    }, [appUser, messages, tasks, documents, lastMentionsReadAt]);
+
+    const unreadMentions = useMemo(() => getUnreadMentions(), [getUnreadMentions]);
 
     useEffect(() => {
         if (!appUser) {
@@ -61,21 +96,26 @@ export default function MyTasksPage() {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                // Fetch tasks for user and other data in parallel
-                const [userTasks, allUsersData, projectsData] = await Promise.all([
+                const [userTasks, allUsersData, projectsData, documentsData, channelsData] = await Promise.all([
                     getTasksForUser(appUser.id),
                     getAllUsers(),
                     getProjectsInSpace(activeSpace.id),
+                    getDocumentsInSpace(activeSpace.id),
+                    getChannelsInSpace(activeSpace.id),
                 ]);
 
-                // Once we have projects, we can fetch time entries
                 const projectIds = projectsData.map(p => p.id);
-                const timeEntriesData = await getTimeEntriesInSpace(projectIds);
+                const [timeEntriesData, messagesData] = await Promise.all([
+                    getTimeEntriesInSpace(projectIds),
+                    Promise.all(channelsData.map(c => getMessagesInChannel(c.id))).then(msgArrays => msgArrays.flat())
+                ]);
                 
                 setTasks(userTasks);
                 setProjects(projectsData);
                 setAllUsers(allUsersData);
                 setTimeEntries(timeEntriesData);
+                setDocuments(documentsData);
+                setMessages(messagesData);
 
             } catch (error) {
                 console.error("Failed to fetch tasks:", error);
@@ -209,6 +249,26 @@ export default function MyTasksPage() {
                             <Label htmlFor="show-completed">Show Completed</Label>
                         </div>
                     </div>
+                    
+                    {unreadMentions.length > 0 && (
+                        <Card className="mb-6 border-primary/50 bg-primary/5">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-primary">
+                                    <AtSign className="h-5 w-5" />
+                                    You have {unreadMentions.length} unread mention{unreadMentions.length > 1 ? 's' : ''}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <MentionsView 
+                                    mentions={unreadMentions}
+                                    allUsers={allUsers}
+                                    onClose={() => setLastMentionsReadAt(Date.now())}
+                                    isDialog={false}
+                                />
+                            </CardContent>
+                        </Card>
+                    )}
+
                     <div className="flex justify-between items-center mb-4">
                         <Input
                             placeholder="Filter by name..."

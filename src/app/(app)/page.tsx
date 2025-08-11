@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useMemo, Suspense, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
-import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown, ClipboardCheck, BookOpen, Plus, MoreHorizontal, Edit, Trash2, MessageCircleMore, Hash } from 'lucide-react';
+import { FolderKanban, MessageSquare, Timer, Settings, Workflow, BarChart, ChevronDown, ClipboardCheck, BookOpen, Plus, MoreHorizontal, Edit, Trash2, MessageCircleMore, Hash, AtSign } from 'lucide-react';
 import { Space, User, Project, Task, TimeEntry, SlackMeetingLog, Channel, Message, Invite, Status, JobFlowTemplate, Job, JobFlowTask, PhaseTemplate, TaskTemplate, Activity, Document } from '@/lib/data';
 import TaskBoard from '@/components/dashboard/task-board';
 import { useToast } from '@/hooks/use-toast';
@@ -72,6 +72,7 @@ import DocumentsView from '@/components/dashboard/documents-view';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import MessagesLayout from '@/components/dashboard/messages-layout';
 import { Separator } from '@/components/ui/separator';
+import MentionsView from '@/components/dashboard/mentions-view';
 
 
 type View = 'overview' | 'tasks' | 'mytasks' | 'messages' | 'timesheets' | 'reports' | 'flows' | 'settings' | 'documents';
@@ -125,7 +126,7 @@ function DashboardComponent() {
     
     // For messaging
     const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
-    const [rightPanelView, setRightPanelView] = useState<'threads' | 'thread' | 'task-from-thread' | null>(null);
+    const [rightPanelView, setRightPanelView] = useState<'threads' | 'thread' | 'task-from-thread' | 'mentions' | null>(null);
     const [activeThread, setActiveThread] = useState<Message | null>(null);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [isChannelFormOpen, setIsChannelFormOpen] = useState(false);
@@ -133,6 +134,7 @@ function DashboardComponent() {
 
     const [channelLastReadAt, setChannelLastReadAt] = useState<Record<string, number>>({});
     const [threadReadAt, setThreadReadAt] = useState<Map<string, number>>(new Map());
+    const [lastMentionsReadAt, setLastMentionsReadAt] = useState<number>(0);
 
     const isThreadUnread = React.useCallback((parent: Message) => {
       if (!appUser) return false;
@@ -168,6 +170,35 @@ function DashboardComponent() {
       () => userInvolvedThreads.filter(isThreadUnread),
       [userInvolvedThreads, isThreadUnread]
     );
+    
+    const getUnreadMentions = useCallback(() => {
+        if (!appUser) return [];
+
+        const mentionRegex = new RegExp(`@${appUser.name}`, 'i');
+        const checkTime = lastMentionsReadAt;
+
+        const messageMentions = messages.filter(m =>
+            mentionRegex.test(m.content) &&
+            String(m.user_id) !== String(appUser.id) &&
+            new Date(m.timestamp).getTime() > checkTime
+        );
+
+        const taskMentions = tasks.flatMap(t => 
+            (t.activities || [])
+            .filter(a => a.comment && mentionRegex.test(a.comment) && String(a.user_id) !== String(appUser.id) && new Date(a.timestamp).getTime() > checkTime)
+            .map(a => ({...a, parentType: 'task', parentId: t.id, parentName: t.name}))
+        );
+
+        const docMentions = documents.flatMap(d => 
+            (d.comments || [])
+            .filter(c => mentionRegex.test(c.content) && String(c.userId) !== String(appUser.id) && new Date(c.createdAt).getTime() > checkTime)
+            .map(c => ({...c, parentType: 'document', parentId: d.id, parentName: d.name}))
+        );
+
+        return [...messageMentions, ...taskMentions, ...docMentions];
+    }, [appUser, messages, tasks, documents, lastMentionsReadAt]);
+
+    const unreadMentions = useMemo(() => getUnreadMentions(), [getUnreadMentions]);
 
     const unreadThreadsByChannel = useMemo(() => {
       const acc: Record<string, number> = {};
@@ -182,19 +213,13 @@ function DashboardComponent() {
     }, [channels, messages, isThreadUnread]);
 
     const openChannel = (channelId: string) => {
-      setChannelLastReadAt(prev => ({ ...prev, [channelId]: Date.now() }));
       setActiveChannelId(channelId);
+      setChannelLastReadAt(prev => ({ ...prev, [String(channelId)]: Date.now() }));
     };
-
-    useEffect(() => {
-        if (activeChannelId) {
-            setChannelLastReadAt(prev => ({ ...prev, [activeChannelId]: Date.now() }));
-        }
-    }, [activeChannelId]);
     
      useEffect(() => {
         const viewFromParams = searchParams.get('view') as View;
-        if (viewFromParams && Object.values(['overview', 'tasks', 'mytasks', 'messages', 'timesheets', 'reports', 'flows', 'settings']).includes(viewFromParams)) {
+        if (viewFromParams && Object.values(['overview', 'tasks', 'mytasks', 'messages', 'timesheets', 'reports', 'flows', 'settings', 'documents']).includes(viewFromParams)) {
             setView(viewFromParams);
         }
     }, [searchParams]);
@@ -537,15 +562,16 @@ function DashboardComponent() {
                 router.push('/mytasks'); // Should not render, just redirect
                 return null;
             case 'messages': {
-              const activeChannel = channels.find(c => c.id === activeChannelId);
+              const activeChannel = channels.find(c => String(c.id) === String(activeChannelId));
               const channelMembers = activeChannel ? allUsers.filter(u => activeChannel.members.includes(u.id)) : [];
               const simplifiedProjects = projects.filter(p => p.space_id === activeSpace?.id).map(p => ({ id: p.id, name: p.name }));
-              const threadOpen = rightPanelView === 'thread' || rightPanelView === 'threads' || rightPanelView === 'task-from-thread';
+              const threadOpen = ['thread', 'threads', 'task-from-thread', 'mentions'].includes(rightPanelView || '');
               const unreadThreadCount = unreadThreads.length;
+              const unreadMentionCount = unreadMentions.length;
               
               const leftPanel = (
                 <div className="flex h-full flex-col">
-                    <div className="p-2">
+                    <div className="p-2 space-y-1">
                         <Button 
                             variant="ghost" 
                             className="w-full justify-start text-base"
@@ -568,6 +594,22 @@ function DashboardComponent() {
                                 <span className="ml-auto bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">{unreadThreadCount}</span>
                             )}
                         </Button>
+                        <Button 
+                            variant="ghost" 
+                            className="w-full justify-start text-base"
+                            onClick={() => {
+                                const opening = rightPanelView !== 'mentions';
+                                setRightPanelView(opening ? 'mentions' : null);
+                                if (opening) {
+                                    setLastMentionsReadAt(Date.now());
+                                }
+                            }}
+                        >
+                            <AtSign className="mr-2 h-5 w-5" /> Mentions
+                            {unreadMentionCount > 0 && (
+                                <span className="ml-auto bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">{unreadMentionCount}</span>
+                            )}
+                        </Button>
                     </div>
                     <div className="p-4 flex justify-between items-center border-t">
                         <h3 className="font-semibold text-lg">Channels</h3>
@@ -578,6 +620,7 @@ function DashboardComponent() {
                     <div className="space-y-1 p-2 flex-1 overflow-y-auto">
                         {channels.filter(c => String(c.space_id) === String(activeSpace?.id)).map(channel => {
                             const lastRead = channelLastReadAt[String(channel.id)] ?? 0;
+                            
                             const parentUnreadRaw = messages.filter(m =>
                                 String(m.channel_id) === String(channel.id) &&
                                 !m.thread_id &&
@@ -636,7 +679,7 @@ function DashboardComponent() {
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
                                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteChannel(channel.id)} className={cn(buttonVariants({variant: 'destructive'}))}>Delete</AlertDialogAction>
+                                                        <AlertDialogAction onClick={() => handleDeleteChannel(String(channel.id))} className={cn(buttonVariants({variant: 'destructive'}))}>Delete</AlertDialogAction>
                                                     </AlertDialogFooter>
                                                 </AlertDialogContent>
                                             </AlertDialog>
@@ -696,6 +739,13 @@ function DashboardComponent() {
                             channelMembers={channelMembers.map(u => ({ id: u.id, name: u.name }))}
                             projects={simplifiedProjects}
                             onTaskCreated={handleCreateTask}
+                        />
+                    )}
+                    {rightPanelView === 'mentions' && (
+                        <MentionsView 
+                            mentions={unreadMentions}
+                            allUsers={allUsers}
+                            onClose={() => setRightPanelView(null)}
                         />
                     )}
                 </>
@@ -904,21 +954,3 @@ export default function Dashboard() {
         </Suspense>
     )
 }
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
