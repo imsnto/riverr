@@ -11,6 +11,7 @@ import { Sidebar, SidebarProvider } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { BarChart, FolderKanban, ClipboardCheck, MessageSquare, BookOpen, Timer, Workflow, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Separator } from '@/components/ui/separator';
 
 const LoadingState = () => (
     <div className="flex h-screen items-center justify-center">
@@ -72,20 +73,22 @@ export default function DocumentsPage() {
                             <Button onClick={() => router.push('/')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">
                                 <BarChart className="w-7 h-7"/>
                             </Button>
-                            <Button onClick={() => router.push('/?view=tasks')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">
-                                <FolderKanban className="w-7 h-7"/>
-                            </Button>
                              <Button onClick={() => router.push('/mytasks')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">
                                 <ClipboardCheck className="w-7 h-7"/>
+                            </Button>
+                            
+                            <div className="px-3 py-2">
+                                <Separator />
+                            </div>
+
+                            <Button onClick={() => router.push('/?view=tasks')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">
+                                <FolderKanban className="w-7 h-7"/>
                             </Button>
                             <Button onClick={() => router.push('/?view=messages')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">
                                 <MessageSquare className="w-7 h-7"/>
                             </Button>
                             <Button onClick={() => router.push('/documents')} variant={'secondary'} className="h-12 w-full justify-center rounded-none">
                                 <BookOpen className="w-7 h-7"/>
-                            </Button>
-                            <Button onClick={() => router.push('/?view=timesheets')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">
-                                <Timer className="w-7 h-7"/>
                             </Button>
                             <Button onClick={() => router.push('/?view=flows')} variant={'ghost'} className="h-12 w-full justify-center rounded-none">
                                 <Workflow className="w-7 h-7"/>

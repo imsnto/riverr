@@ -71,10 +71,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import DocumentsView from '@/components/dashboard/documents-view';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import MessagesLayout from '@/components/dashboard/messages-layout';
+import { Separator } from '@/components/ui/separator';
 
 
 type View = 'overview' | 'tasks' | 'mytasks' | 'messages' | 'timesheets' | 'reports' | 'flows' | 'settings' | 'documents';
-type SettingsView = 'users' | 'spaces';
+type SettingsView = 'users' | 'spaces' | 'timesheets';
 type FlowsView = 'job_flows' | 'templates' | 'phases' | 'tasks';
 
 const LoadingState = () => (
@@ -184,6 +185,12 @@ function DashboardComponent() {
       setChannelLastReadAt(prev => ({ ...prev, [channelId]: Date.now() }));
       setActiveChannelId(channelId);
     };
+
+    useEffect(() => {
+        if (activeChannelId) {
+            setChannelLastReadAt(prev => ({ ...prev, [activeChannelId]: Date.now() }));
+        }
+    }, [activeChannelId]);
     
      useEffect(() => {
         const viewFromParams = searchParams.get('view') as View;
@@ -210,12 +217,6 @@ function DashboardComponent() {
         return () => window.removeEventListener('resize', handleResize);
     }, [rightPanelView]);
     
-    useEffect(() => {
-        if (activeChannelId) {
-             setChannelLastReadAt(prev => ({ ...prev, [activeChannelId]: Date.now() }));
-        }
-    }, [activeChannelId]);
-
     useEffect(() => {
         const fetchData = async () => {
             if (!appUser) return;
@@ -576,7 +577,7 @@ function DashboardComponent() {
                     </div>
                     <div className="space-y-1 p-2 flex-1 overflow-y-auto">
                         {channels.filter(c => String(c.space_id) === String(activeSpace?.id)).map(channel => {
-                            const lastRead = channelLastReadAt[channel.id] ?? 0;
+                            const lastRead = channelLastReadAt[String(channel.id)] ?? 0;
                             const parentUnreadRaw = messages.filter(m =>
                                 String(m.channel_id) === String(channel.id) &&
                                 !m.thread_id &&
@@ -585,7 +586,7 @@ function DashboardComponent() {
                             ).length;
                             
                             const parentUnread = String(channel.id) === String(activeChannelId) ? 0 : parentUnreadRaw;
-                            const threadUnread = unreadThreadsByChannel[channel.id] || 0;
+                            const threadUnread = unreadThreadsByChannel[String(channel.id)] || 0;
 
                             return (
                                 <div key={channel.id} className="group relative">
@@ -802,11 +803,13 @@ function DashboardComponent() {
                             <div className="space-y-1">
                                 <Button variant={settingsView === 'users' ? 'secondary' : 'ghost'} onClick={() => setSettingsView('users')} className="w-full justify-start">Users & Permissions</Button>
                                 <Button variant={settingsView === 'spaces' ? 'secondary' : 'ghost'} onClick={() => setSettingsView('spaces')} className="w-full justify-start">Spaces</Button>
+                                <Button variant={settingsView === 'timesheets' ? 'secondary' : 'ghost'} onClick={() => setSettingsView('timesheets')} className="w-full justify-start">Timesheets</Button>
                             </div>
                         </aside>
                         <main className="flex-1 overflow-auto">
                            {settingsView === 'users' && <UserSettings allUsers={allUsers} allSpaces={userSpaces} appUser={appUser} onInvite={() => {}} handleInvite={handleInvite} />}
                            {settingsView === 'spaces' && <SpaceSettings allSpaces={userSpaces} allUsers={allUsers} appUser={appUser} onSave={handleSaveSpace} onDelete={handleDeleteSpace} />}
+                           {settingsView === 'timesheets' && <TeamTimesheets allSpaces={userSpaces} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser} />}
                         </main>
                     </div>
                 )
@@ -825,20 +828,20 @@ function DashboardComponent() {
                             <Button onClick={() => setView('overview')} variant={view === 'overview' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
                                 <BarChart className="w-7 h-7"/>
                             </Button>
-                            <Button onClick={() => setView('tasks')} variant={view === 'tasks' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
-                                <FolderKanban className="w-7 h-7"/>
-                            </Button>
                             <Button onClick={() => router.push('/mytasks')} variant={view === 'mytasks' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
                                 <ClipboardCheck className="w-7 h-7"/>
+                            </Button>
+                            <div className="px-3 py-2">
+                                <Separator />
+                            </div>
+                            <Button onClick={() => setView('tasks')} variant={view === 'tasks' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
+                                <FolderKanban className="w-7 h-7"/>
                             </Button>
                             <Button onClick={() => setView('messages')} variant={view === 'messages' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
                                 <MessageSquare className="w-7 h-7"/>
                             </Button>
                             <Button onClick={() => router.push('/documents')} variant={view === 'documents' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
                                 <BookOpen className="w-7 h-7"/>
-                            </Button>
-                            <Button onClick={() => setView('timesheets')} variant={view === 'timesheets' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
-                                <Timer className="w-7 h-7"/>
                             </Button>
                             <Button onClick={() => setView('flows')} variant={view === 'flows' ? 'secondary' : 'ghost'} className="h-12 w-full justify-center rounded-none">
                                 <Workflow className="w-7 h-7"/>
@@ -903,6 +906,7 @@ export default function Dashboard() {
 }
 
     
+
 
 
 
