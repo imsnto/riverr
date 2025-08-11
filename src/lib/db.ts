@@ -202,6 +202,12 @@ export const getTasksInProject = async (projectId: string): Promise<Task[]> => {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
 };
 
+export const getTasksForUser = async (userId: string): Promise<Task[]> => {
+  const q = query(collection(db, 'tasks'), where('assigned_to', '==', userId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
+}
+
 export const getAllTasks = async (): Promise<Task[]> => {
   const querySnapshot = await getDocs(collection(db, 'tasks'));
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));

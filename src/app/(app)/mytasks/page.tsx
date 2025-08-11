@@ -4,7 +4,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Task, Project, User, TimeEntry } from '@/lib/data';
-import { getAllTasks, getProjectsInSpace, getAllUsers, getTimeEntriesInSpace } from '@/lib/db';
+import { getTasksForUser, getProjectsInSpace, getAllUsers, getTimeEntriesInSpace } from '@/lib/db';
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -61,16 +61,18 @@ export default function MyTasksPage() {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                const [allTasks, allUsersData, projectsData] = await Promise.all([
-                    getAllTasks(),
+                // Fetch tasks for user and other data in parallel
+                const [userTasks, allUsersData, projectsData] = await Promise.all([
+                    getTasksForUser(appUser.id),
                     getAllUsers(),
                     getProjectsInSpace(activeSpace.id),
                 ]);
 
+                // Once we have projects, we can fetch time entries
                 const projectIds = projectsData.map(p => p.id);
                 const timeEntriesData = await getTimeEntriesInSpace(projectIds);
-
-                setTasks(allTasks.filter(t => t.assigned_to === appUser.id));
+                
+                setTasks(userTasks);
                 setProjects(projectsData);
                 setAllUsers(allUsersData);
                 setTimeEntries(timeEntriesData);
