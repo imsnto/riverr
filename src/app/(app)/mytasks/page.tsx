@@ -3,7 +3,7 @@
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { Task, Project, User, TimeEntry, Document, Message } from '@/lib/data';
+import { Task, Project, User, TimeEntry, Document, Message, DocumentComment, Activity } from '@/lib/data';
 import { getTasksForUser, getProjectsInSpace, getAllUsers, getTimeEntriesInSpace, getDocumentsInSpace, getMessagesInChannel, getChannelsInSpace } from '@/lib/db';
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,12 @@ const LoadingState = () => (
     </div>
 );
 
+type Mention = (Message | Activity | DocumentComment) & {
+    parentType?: 'task' | 'document';
+    parentId?: string;
+    parentName?: string;
+};
+
 export default function MyTasksPage() {
     const { appUser, userSpaces, activeSpace, setActiveSpace, signOut } = useAuth();
     const router = useRouter();
@@ -50,10 +56,10 @@ export default function MyTasksPage() {
     
     const [lastMentionsReadAt, setLastMentionsReadAt] = useState<number>(Date.now());
 
-    const getUnreadMentions = useCallback(() => {
+    const getUnreadMentions = useCallback((): Mention[] => {
         if (!appUser) return [];
 
-        const mentionRegex = new RegExp(`@${appUser.name}`, 'i');
+        const mentionRegex = new RegExp(`@${appUser.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}`, 'i');
         const checkTime = lastMentionsReadAt;
 
         const messageMentions = messages.filter(m =>
@@ -64,14 +70,14 @@ export default function MyTasksPage() {
 
         const taskMentions = tasks.flatMap(t => 
             (t.activities || [])
-            .filter(a => a.comment && a.comment.match(mentionRegex) && String(a.user_id) !== String(appUser.id) && new Date(a.timestamp).getTime() > checkTime)
-            .map(a => ({...a, parentType: 'task', parentId: t.id, parentName: t.name}))
+            .filter(a => a.comment && mentionRegex.test(a.comment) && String(a.user_id) !== String(appUser.id) && new Date(a.timestamp).getTime() > checkTime)
+            .map(a => ({...a, parentType: 'task' as const, parentId: t.id, parentName: t.name}))
         );
 
         const docMentions = documents.flatMap(d => 
             (d.comments || [])
             .filter(c => c.content.match(mentionRegex) && String(c.userId) !== String(appUser.id) && new Date(c.createdAt).getTime() > checkTime)
-            .map(c => ({...c, parentType: 'document', parentId: d.id, parentName: d.name}))
+            .map(c => ({...c, parentType: 'document' as const, parentId: d.id, parentName: d.name}))
         );
 
         return [...messageMentions, ...taskMentions, ...docMentions];
@@ -152,8 +158,8 @@ export default function MyTasksPage() {
         }
     };
     
-    const handleAddTask = async (taskData: Omit<Task, 'id'>, tempId: string) => {
-        const optimisticTask: Task = { ...taskData, id: tempId };
+    const handleAddTask = async (taskData: Omit<Task, 'id'>) => {
+        const optimisticTask: Task = { ...taskData, id: `temp-${Date.now()}` };
         setTasks(prev => [...prev, optimisticTask]);
 
         try {
