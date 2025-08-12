@@ -147,15 +147,15 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>, status: string) => {
     e.preventDefault();
-    const columnTasks = tasks.filter(t => t.status === status);
+    const columnTasks = tasks
+      .filter(t => t.status === status)
+      .filter(t => t.id !== draggedTask); // Exclude dragged task
+
     const mouseY = e.clientY;
-  
     let closestTaskIndex = columnTasks.length;
-  
+
     for (let i = 0; i < columnTasks.length; i++) {
         const task = columnTasks[i];
-        if (task.id === draggedTask) continue; // Skip the currently dragged task
-
         const ref = taskCardRefs.current[task.id];
         if (ref) {
             const { top, height } = ref.getBoundingClientRect();
@@ -165,7 +165,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
             }
         }
     }
-  
+
     if (dropIndicator?.status !== status || dropIndicator?.index !== closestTaskIndex) {
         setDropIndicator({ status, index: closestTaskIndex });
     }
@@ -202,25 +202,13 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     }
 
     const tasksWithoutDragged = allTasks.filter(t => t.id !== taskId);
-
     const targetStatusTasks = tasksWithoutDragged.filter(t => t.status === newStatus);
     const otherStatusTasks = tasksWithoutDragged.filter(t => t.status !== newStatus);
     
-    let insertIndex = dropIndicator.index;
-    if (taskToMove.status === newStatus) {
-        const originalIndex = allTasks
-          .filter(t => t.status === newStatus)
-          .findIndex(t => t.id === taskId);
-
-        if (originalIndex !== -1 && originalIndex < insertIndex) {
-            insertIndex -= 1;
-        }
-    }
-    
-    targetStatusTasks.splice(Math.max(0, insertIndex), 0, updatedTask);
+    const insertIndex = Math.max(0, Math.min(dropIndicator.index, targetStatusTasks.length));
+    targetStatusTasks.splice(insertIndex, 0, updatedTask);
 
     const reorderedTasks = [...otherStatusTasks, ...targetStatusTasks];
-    
     onUpdateTasks(reorderedTasks);
 
     setDropIndicator(null);
@@ -292,10 +280,10 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   }
 
   const renderStatusColumn = (status: Status) => {
+      // Build the exact list we use everywhere (EXCLUDING the dragged card)
       let columnTasks = tasks.filter(task => task.status === status.name);
-      // When calculating the drop position, we should ignore the dragged task
       if (draggedTask) {
-         columnTasks = columnTasks.filter(t => t.id !== draggedTask);
+        columnTasks = columnTasks.filter(t => t.id !== draggedTask);
       }
       
       return (
@@ -404,7 +392,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
           className="bg-primary/5 rounded-lg p-2 max-h-[calc(100vh-16rem)] overflow-y-auto min-h-[5rem]"
         >
             <div className="space-y-0.5">
-            {tasks.filter(t => t.status === status.name).map((task, index) => {
+            {columnTasks.map((task, index) => {
                 const showIndicator = dropIndicator?.status === status.name && dropIndicator.index === index;
                 const isTaskBeingDragged = draggedTask === task.id;
                 return (
@@ -433,7 +421,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                     </React.Fragment>
                 );
             })}
-             {dropIndicator?.status === status.name && dropIndicator.index === tasks.filter(t => t.status === status.name).length && (
+             {dropIndicator?.status === status.name && dropIndicator.index === columnTasks.length && (
                 <div className="h-10 border-2 border-dashed border-primary rounded-lg" />
             )}
             </div>
