@@ -150,10 +150,12 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     const columnTasks = tasks.filter(t => t.status === status);
     const mouseY = e.clientY;
   
-    let closestTaskIndex = columnTasks.length; // Default to the end of the list
+    let closestTaskIndex = columnTasks.length;
   
     for (let i = 0; i < columnTasks.length; i++) {
         const task = columnTasks[i];
+        if (task.id === draggedTask) continue; // Skip the currently dragged task
+
         const ref = taskCardRefs.current[task.id];
         if (ref) {
             const { top, height } = ref.getBoundingClientRect();
@@ -179,46 +181,47 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   const handleDrop = (e: DragEvent<HTMLDivElement>, newStatus: string) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
-    
     if (!taskId || !dropIndicator) return;
-    
+
     const taskToMove = allTasks.find(t => t.id === taskId);
     if (!taskToMove) return;
 
-    // Create the updated task object first
-    const updatedTask = {
-        ...taskToMove,
-        status: newStatus,
-    };
+    const updatedTask = { ...taskToMove, status: newStatus };
+
+    if (taskToMove.status !== newStatus && appUser) {
+        const newActivity: Activity = {
+            id: `act-${Date.now()}`,
+            user_id: appUser.id,
+            timestamp: new Date().toISOString(),
+            type: 'status_change',
+            from: taskToMove.status,
+            to: newStatus,
+        };
+        updatedTask.activities = [...(taskToMove.activities || []), newActivity];
+        onUpdateTask(updatedTask);
+    }
+
+    const tasksWithoutDragged = allTasks.filter(t => t.id !== taskId);
+
+    const targetStatusTasks = tasksWithoutDragged.filter(t => t.status === newStatus);
+    const otherStatusTasks = tasksWithoutDragged.filter(t => t.status !== newStatus);
     
-    if (taskToMove.status !== newStatus) {
-        if (appUser) {
-            const newActivity: Activity = {
-                id: `act-${Date.now()}`,
-                user_id: appUser.id,
-                timestamp: new Date().toISOString(),
-                type: 'status_change',
-                from: taskToMove.status,
-                to: newStatus,
-            };
-            updatedTask.activities = [...(taskToMove.activities || []), newActivity];
-            onUpdateTask(updatedTask); // Persist status change immediately
+    let insertIndex = dropIndicator.index;
+    if (taskToMove.status === newStatus) {
+        const originalIndex = allTasks
+          .filter(t => t.status === newStatus)
+          .findIndex(t => t.id === taskId);
+
+        if (originalIndex !== -1 && originalIndex < insertIndex) {
+            insertIndex -= 1;
         }
     }
     
-    // Perform reordering on the local `allTasks` array
-    const tasksWithoutDragged = allTasks.filter(t => t.id !== taskId);
-    
-    // Find where to insert the task
-    const targetStatusTasks = tasksWithoutDragged.filter(t => t.status === newStatus);
-    const otherStatusTasks = tasksWithoutDragged.filter(t => t.status !== newStatus);
+    targetStatusTasks.splice(Math.max(0, insertIndex), 0, updatedTask);
 
-    // Insert the updated task at the correct position
-    targetStatusTasks.splice(dropIndicator.index, 0, updatedTask);
-    
     const reorderedTasks = [...otherStatusTasks, ...targetStatusTasks];
     
-    onUpdateTasks(reorderedTasks); // Update the local state for immediate UI feedback
+    onUpdateTasks(reorderedTasks);
 
     setDropIndicator(null);
     setDraggedTask(null);
@@ -289,7 +292,11 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   }
 
   const renderStatusColumn = (status: Status) => {
-      const columnTasks = tasks.filter(task => task.status === status.name);
+      let columnTasks = tasks.filter(task => task.status === status.name);
+      // When calculating the drop position, we should ignore the dragged task
+      if (draggedTask) {
+         columnTasks = columnTasks.filter(t => t.id !== draggedTask);
+      }
       
       return (
       <div
@@ -397,7 +404,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
           className="bg-primary/5 rounded-lg p-2 max-h-[calc(100vh-16rem)] overflow-y-auto min-h-[5rem]"
         >
             <div className="space-y-0.5">
-            {columnTasks.map((task, index) => {
+            {tasks.filter(t => t.status === status.name).map((task, index) => {
                 const showIndicator = dropIndicator?.status === status.name && dropIndicator.index === index;
                 const isTaskBeingDragged = draggedTask === task.id;
                 return (
@@ -426,7 +433,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                     </React.Fragment>
                 );
             })}
-             {dropIndicator?.status === status.name && dropIndicator.index === columnTasks.length && (
+             {dropIndicator?.status === status.name && dropIndicator.index === tasks.filter(t => t.status === status.name).length && (
                 <div className="h-10 border-2 border-dashed border-primary rounded-lg" />
             )}
             </div>
