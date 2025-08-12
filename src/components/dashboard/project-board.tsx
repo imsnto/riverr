@@ -146,28 +146,27 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   };
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>, status: string) => {
-      e.preventDefault();
-      const columnTasks = tasks.filter(t => t.status === status);
-      const mouseY = e.clientY;
-
-      let closestTaskIndex = columnTasks.length; // Default to the end of the list
-
-      for (let i = 0; i < columnTasks.length; i++) {
-          const task = columnTasks[i];
-          const ref = taskCardRefs.current[task.id];
-          if (ref) {
-              const { top, height } = ref.getBoundingClientRect();
-              const offset = mouseY - top;
-              if (offset < height / 2) {
-                  closestTaskIndex = i;
-                  break; 
-              }
-          }
-      }
-
-      if (dropIndicator?.status !== status || dropIndicator?.index !== closestTaskIndex) {
-          setDropIndicator({ status, index: closestTaskIndex });
-      }
+    e.preventDefault();
+    const columnTasks = tasks.filter(t => t.status === status);
+    const mouseY = e.clientY;
+  
+    let closestTaskIndex = columnTasks.length; // Default to the end of the list
+  
+    for (let i = 0; i < columnTasks.length; i++) {
+        const task = columnTasks[i];
+        const ref = taskCardRefs.current[task.id];
+        if (ref) {
+            const { top, height } = ref.getBoundingClientRect();
+            if (mouseY < top + height / 2) {
+                closestTaskIndex = i;
+                break;
+            }
+        }
+    }
+  
+    if (dropIndicator?.status !== status || dropIndicator?.index !== closestTaskIndex) {
+        setDropIndicator({ status, index: closestTaskIndex });
+    }
   };
   
   const handleColumnDragLeave = (e: DragEvent<HTMLDivElement>) => {
