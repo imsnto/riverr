@@ -146,26 +146,28 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   };
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>, status: string) => {
-    e.preventDefault();
-    const columnTasks = tasks.filter(t => t.status === status);
-    const mouseY = e.clientY;
-    
-    let closestTaskIndex = columnTasks.length;
+      e.preventDefault();
+      const columnTasks = tasks.filter(t => t.status === status);
+      const mouseY = e.clientY;
 
-    columnTasks.forEach((task, index) => {
-        const ref = taskCardRefs.current[task.id];
-        if (ref) {
-            const { top, height } = ref.getBoundingClientRect();
-            const offset = mouseY - (top + height / 2);
-            if (offset < 0 && index < closestTaskIndex) {
-                closestTaskIndex = index;
-            }
-        }
-    });
+      let closestTaskIndex = columnTasks.length; // Default to the end of the list
 
-    if (dropIndicator?.status !== status || dropIndicator?.index !== closestTaskIndex) {
-        setDropIndicator({ status, index: closestTaskIndex });
-    }
+      for (let i = 0; i < columnTasks.length; i++) {
+          const task = columnTasks[i];
+          const ref = taskCardRefs.current[task.id];
+          if (ref) {
+              const { top, height } = ref.getBoundingClientRect();
+              const offset = mouseY - top;
+              if (offset < height / 2) {
+                  closestTaskIndex = i;
+                  break; 
+              }
+          }
+      }
+
+      if (dropIndicator?.status !== status || dropIndicator?.index !== closestTaskIndex) {
+          setDropIndicator({ status, index: closestTaskIndex });
+      }
   };
   
   const handleColumnDragLeave = (e: DragEvent<HTMLDivElement>) => {
@@ -178,45 +180,46 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   const handleDrop = (e: DragEvent<HTMLDivElement>, newStatus: string) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
-    const taskIndex = allTasks.findIndex(t => t.id === taskId);
     
-    if (taskIndex === -1 || !dropIndicator) return;
+    if (!taskId || !dropIndicator) return;
+    
+    const taskToMove = allTasks.find(t => t.id === taskId);
+    if (!taskToMove) return;
 
-    const task = allTasks[taskIndex];
-    let updatedTask = { ...task };
-
-    if (task.status !== newStatus) {
+    // Create the updated task object first
+    const updatedTask = {
+        ...taskToMove,
+        status: newStatus,
+    };
+    
+    if (taskToMove.status !== newStatus) {
         if (appUser) {
             const newActivity: Activity = {
                 id: `act-${Date.now()}`,
                 user_id: appUser.id,
                 timestamp: new Date().toISOString(),
                 type: 'status_change',
-                from: task.status,
+                from: taskToMove.status,
                 to: newStatus,
             };
-            updatedTask = { 
-                ...task, 
-                status: newStatus,
-                activities: [...(task.activities || []), newActivity],
-            };
-            onUpdateTask(updatedTask);
+            updatedTask.activities = [...(taskToMove.activities || []), newActivity];
+            onUpdateTask(updatedTask); // Persist status change immediately
         }
     }
     
-    // Reordering logic
+    // Perform reordering on the local `allTasks` array
     const tasksWithoutDragged = allTasks.filter(t => t.id !== taskId);
-    const targetStatusTasks = tasksWithoutDragged.filter(t => t.status === newStatus);
     
-    targetStatusTasks.splice(dropIndicator.index, 0, updatedTask);
-
+    // Find where to insert the task
+    const targetStatusTasks = tasksWithoutDragged.filter(t => t.status === newStatus);
     const otherStatusTasks = tasksWithoutDragged.filter(t => t.status !== newStatus);
+
+    // Insert the updated task at the correct position
+    targetStatusTasks.splice(dropIndicator.index, 0, updatedTask);
     
     const reorderedTasks = [...otherStatusTasks, ...targetStatusTasks];
     
-    // In a real app with persistent ordering, you'd also update the order in the database here.
-    // For now, we update the local state to reflect the new order.
-    onUpdateTasks(reorderedTasks);
+    onUpdateTasks(reorderedTasks); // Update the local state for immediate UI feedback
 
     setDropIndicator(null);
     setDraggedTask(null);
