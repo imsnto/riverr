@@ -202,9 +202,12 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     }
 
     const tasksWithoutDragged = allTasks.filter(t => t.id !== taskId);
+    
+    // Split tasks into target column and others
     const targetStatusTasks = tasksWithoutDragged.filter(t => t.status === newStatus);
     const otherStatusTasks = tasksWithoutDragged.filter(t => t.status !== newStatus);
     
+    // Insert the task at the correct position
     const insertIndex = Math.max(0, Math.min(dropIndicator.index, targetStatusTasks.length));
     targetStatusTasks.splice(insertIndex, 0, updatedTask);
 
@@ -280,7 +283,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   }
 
   const renderStatusColumn = (status: Status) => {
-      // Build the exact list we use everywhere (EXCLUDING the dragged card)
+      // This list is now consistent between drag logic and render logic
       let columnTasks = tasks.filter(task => task.status === status.name);
       if (draggedTask) {
         columnTasks = columnTasks.filter(t => t.id !== draggedTask);
