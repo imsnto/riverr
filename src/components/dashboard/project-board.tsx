@@ -147,29 +147,34 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>, status: string) => {
     e.preventDefault();
-    const columnTasks = tasks
-      .filter(t => t.status === status)
-      .filter(t => t.id !== draggedTask); // Exclude dragged task
+
+    // Full visible list for THIS PROJECT + STATUS (no filtering out the dragged card)
+    const columnTasks = tasks.filter(t => t.status === status);
 
     const mouseY = e.clientY;
     let closestTaskIndex = columnTasks.length;
 
     for (let i = 0; i < columnTasks.length; i++) {
-        const task = columnTasks[i];
-        const ref = taskCardRefs.current[task.id];
-        if (ref) {
-            const { top, height } = ref.getBoundingClientRect();
-            if (mouseY < top + height / 2) {
-                closestTaskIndex = i;
-                break;
-            }
+        const t = columnTasks[i];
+
+        // Skip comparing against the dragged card’s own midpoint
+        if (t.id === draggedTask) continue;
+
+        const el = taskCardRefs.current[t.id];
+        if (!el) continue;
+
+        const { top, height } = el.getBoundingClientRect();
+        const mid = top + height / 2;
+        if (mouseY < mid) {
+        closestTaskIndex = i;
+        break;
         }
     }
 
     if (dropIndicator?.status !== status || dropIndicator?.index !== closestTaskIndex) {
         setDropIndicator({ status, index: closestTaskIndex });
     }
-  };
+    };
   
   const handleColumnDragLeave = (e: DragEvent<HTMLDivElement>) => {
     // Check if the relatedTarget (where the mouse entered) is outside the component
@@ -178,7 +183,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     }
   };
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>, newStatus: string) => {
+    const handleDrop = (e: DragEvent<HTMLDivElement>, newStatus: string) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
     if (!taskId || !dropIndicator) return;
@@ -186,37 +191,71 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     const taskToMove = allTasks.find(t => t.id === taskId);
     if (!taskToMove) return;
 
-    const updatedTask = { ...taskToMove, status: newStatus };
+    const sameColumn = taskToMove.status === newStatus;
 
-    if (taskToMove.status !== newStatus && appUser) {
-        const newActivity: Activity = {
-            id: `act-${Date.now()}`,
-            user_id: appUser.id,
-            timestamp: new Date().toISOString(),
-            type: 'status_change',
-            from: taskToMove.status,
-            to: newStatus,
-        };
-        updatedTask.activities = [...(taskToMove.activities || []), newActivity];
-        onUpdateTask(updatedTask);
+    // Project-scoped lists (avoid touching other projects)
+    const projectTasks = allTasks.filter(t => t.project_id === project.id && !t.parentId);
+    const otherTasks = allTasks.filter(t => !(t.project_id === project.id && !t.parentId));
+
+    // Build per-column lists from projectTasks
+    const sourceColumn = projectTasks.filter(t => t.status === taskToMove.status);
+    const targetColumn = projectTasks.filter(t => t.status === newStatus);
+
+    const fromIndex = sourceColumn.findIndex(t => t.id === taskId);
+
+    // Insert index is based on the *visible list* (which includes the dragged card)
+    // If dragging within the same column *downwards*, we need to shift by -1 after removal.
+    let insertIndex = dropIndicator.index;
+    if (sameColumn && fromIndex !== -1 && fromIndex < insertIndex) {
+        insertIndex -= 1;
     }
+    insertIndex = Math.max(0, Math.min(insertIndex, targetColumn.length));
 
-    const tasksWithoutDragged = allTasks.filter(t => t.id !== taskId);
-    
-    // Split tasks into target column and others
-    const targetStatusTasks = tasksWithoutDragged.filter(t => t.status === newStatus);
-    const otherStatusTasks = tasksWithoutDragged.filter(t => t.status !== newStatus);
-    
-    // Insert the task at the correct position
-    const insertIndex = Math.max(0, Math.min(dropIndicator.index, targetStatusTasks.length));
-    targetStatusTasks.splice(insertIndex, 0, updatedTask);
+    // Rebuild the new projectTasks order
+    const projectTasksWithoutDragged = projectTasks.filter(t => t.id !== taskId);
+    const newUpdatedTask = { ...taskToMove, status: newStatus };
 
-    const reorderedTasks = [...otherStatusTasks, ...targetStatusTasks];
-    onUpdateTasks(reorderedTasks);
+    // Recreate targetColumn from the filtered list to keep order coherent
+    const newTargetColumn = projectTasksWithoutDragged
+        .filter(t => t.status === newStatus);
+
+    newTargetColumn.splice(insertIndex, 0, newUpdatedTask);
+
+    // Reassemble projectTasks in status order: put back all non-target statuses, then new target status list
+    const rebuiltProjectTasks = [
+        ...projectTasksWithoutDragged.filter(t => t.status !== newStatus),
+        ...newTargetColumn,
+    ];
+
+    // Merge back with tasks from other projects unchanged
+    const newAllTasks = [
+        ...otherTasks,
+        ...rebuiltProjectTasks,
+    ];
+
+    // Persist status change activity if needed
+    if (!sameColumn && appUser) {
+        const newActivity: Activity = {
+        id: `act-${Date.now()}`,
+        user_id: appUser.id,
+        timestamp: new Date().toISOString(),
+        type: 'status_change',
+        from: taskToMove.status,
+        to: newStatus,
+        };
+        const taskWithActivity = { ...newUpdatedTask, activities: [...(newUpdatedTask.activities || []), newActivity] };
+        onUpdateTask(taskWithActivity); // Update task with new activity
+        
+        // Update the task in the reordered list as well
+        const finalTasks = newAllTasks.map(t => t.id === taskId ? taskWithActivity : t);
+        onUpdateTasks(finalTasks);
+    } else {
+        onUpdateTasks(newAllTasks);
+    }
 
     setDropIndicator(null);
     setDraggedTask(null);
-  };
+    };
 
 
   const handleDragEnd = () => {
@@ -283,11 +322,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   }
 
   const renderStatusColumn = (status: Status) => {
-      // This list is now consistent between drag logic and render logic
-      let columnTasks = tasks.filter(task => task.status === status.name);
-      if (draggedTask) {
-        columnTasks = columnTasks.filter(t => t.id !== draggedTask);
-      }
+      const columnTasks = tasks.filter(task => task.status === status.name);
       
       return (
       <div
