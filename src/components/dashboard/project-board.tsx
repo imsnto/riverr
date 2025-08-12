@@ -162,7 +162,10 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
             }
         }
     });
-    setDropIndicator({ status, index: closestTaskIndex });
+
+    if (dropIndicator?.status !== status || dropIndicator?.index !== closestTaskIndex) {
+        setDropIndicator({ status, index: closestTaskIndex });
+    }
   };
   
   const handleColumnDragLeave = (e: DragEvent<HTMLDivElement>) => {
