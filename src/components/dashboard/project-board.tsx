@@ -178,9 +178,12 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   const handleDrop = (e: DragEvent<HTMLDivElement>, newStatus: string) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
-    const task = allTasks.find(t => t.id === taskId);
+    const taskIndex = allTasks.findIndex(t => t.id === taskId);
     
-    if (!task) return;
+    if (taskIndex === -1 || !dropIndicator) return;
+
+    const task = allTasks[taskIndex];
+    let updatedTask = { ...task };
 
     if (task.status !== newStatus) {
         if (appUser) {
@@ -192,16 +195,29 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                 from: task.status,
                 to: newStatus,
             };
-            const updatedTask = { 
+            updatedTask = { 
                 ...task, 
                 status: newStatus,
                 activities: [...(task.activities || []), newActivity],
             };
             onUpdateTask(updatedTask);
         }
-    } else { // Same column reordering, which is not supported by this handler. Reordering is handled visually.
-        // In a more complex scenario with persistent ordering, you would handle it here.
     }
+    
+    // Reordering logic
+    const tasksWithoutDragged = allTasks.filter(t => t.id !== taskId);
+    const targetStatusTasks = tasksWithoutDragged.filter(t => t.status === newStatus);
+    
+    targetStatusTasks.splice(dropIndicator.index, 0, updatedTask);
+
+    const otherStatusTasks = tasksWithoutDragged.filter(t => t.status !== newStatus);
+    
+    const reorderedTasks = [...otherStatusTasks, ...targetStatusTasks];
+    
+    // In a real app with persistent ordering, you'd also update the order in the database here.
+    // For now, we update the local state to reflect the new order.
+    onUpdateTasks(reorderedTasks);
+
     setDropIndicator(null);
     setDraggedTask(null);
   };
