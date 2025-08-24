@@ -8,7 +8,7 @@ import React, {
   useCallback,
 } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { SidebarProvider, Sidebar } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import {
   FolderKanban,
   MessageSquare,
@@ -112,6 +112,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import DocumentsView from "@/components/dashboard/documents-view";
+import MyTasksView from "@/components/dashboard/my-tasks-view";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -125,12 +126,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import MessagesLayout from "@/components/dashboard/messages-layout";
 import { Separator } from "@/components/ui/separator";
-import MentionsView from "@/components/dashboard/mentions-view";
+import MentionsThreadList from "@/components/dashboard/mentions-thread-list";
+import AppSidebar from "@/components/dashboard/AppSidebar";
 
 type View =
   | "overview"
   | "tasks"
   | "mytasks"
+  | "mentions"
   | "messages"
   | "timesheets"
   | "reports"
@@ -227,6 +230,19 @@ function DashboardComponent() {
         0
       );
 
+      // New condition: if the user's own last message in this thread (parent or reply)
+      // is newer than (or equal to) the last reply from others, treat thread as read.
+      const myLastMessageTime = messages
+        .filter(
+          (m) =>
+            (String(m.thread_id) === String(parent.id) ||
+              String(m.id) === String(parent.id)) &&
+            String(m.user_id) === String(appUser.id)
+        )
+        .reduce((max, m) => Math.max(max, new Date(m.timestamp).getTime()), 0);
+
+      if (myLastMessageTime >= lastReplyFromOther) return false;
+
       const lastThreadRead = threadReadAt.get(String(parent.id)) ?? 0;
       return lastReplyFromOther > lastThreadRead;
     },
@@ -254,7 +270,7 @@ function DashboardComponent() {
       );
     });
   }, [messages, channels, activeSpace, appUser]);
-
+  console.log("UserInvolvedThreads:", userInvolvedThreads);
   const unreadThreads = useMemo(
     () => userInvolvedThreads.filter(isThreadUnread),
     [userInvolvedThreads, isThreadUnread]
@@ -820,8 +836,39 @@ function DashboardComponent() {
           </div>
         );
       case "mytasks":
-        router.push("/mytasks"); // Should not render, just redirect
-        return null;
+        return (
+          <div className="p-4 md:p-8">
+            <MyTasksView
+              appUser={appUser}
+              tasks={tasks}
+              projects={projects.filter((p) => p.space_id === activeSpace!.id)}
+              allUsers={allUsers}
+              documents={documents.filter((d) => d.spaceId === activeSpace!.id)}
+              messages={messages}
+              unreadMentions={unreadMentions}
+              onMentionsCleared={() => setLastMentionsReadAt(Date.now())}
+              onSelectTask={(t) => setSelectedTask(t)}
+              timeEntries={timeEntries}
+              statuses={activeSpace!.statuses}
+            />
+          </div>
+        );
+      case "mentions":
+        return (
+          <div className="p-4 md:p-8">
+            <MentionsThreadList
+              mentions={unreadMentions}
+              allUsers={allUsers}
+              messages={messages}
+              onOpenThread={(thread) => {
+                // Switch to messages view and open thread panel
+                setView("messages");
+                handleViewThread(thread);
+              }}
+              onClose={() => setRightPanelView(null)}
+            />
+          </div>
+        );
       case "messages": {
         const activeChannel = channels.find(
           (c) => String(c.id) === String(activeChannelId)
@@ -867,24 +914,6 @@ function DashboardComponent() {
                 {unreadThreadCount > 0 && (
                   <span className="ml-auto bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
                     {unreadThreadCount}
-                  </span>
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-base"
-                onClick={() => {
-                  const opening = rightPanelView !== "mentions";
-                  setRightPanelView(opening ? "mentions" : null);
-                  if (opening) {
-                    setLastMentionsReadAt(Date.now());
-                  }
-                }}
-              >
-                <AtSign className="mr-2 h-5 w-5" /> Mentions
-                {unreadMentionCount > 0 && (
-                  <span className="ml-auto bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
-                    {unreadMentionCount}
                   </span>
                 )}
               </Button>
@@ -1069,13 +1098,6 @@ function DashboardComponent() {
                 onTaskCreated={handleCreateTask}
               />
             )}
-            {rightPanelView === "mentions" && (
-              <MentionsView
-                mentions={unreadMentions}
-                allUsers={allUsers}
-                onClose={() => setRightPanelView(null)}
-              />
-            )}
           </>
         );
 
@@ -1112,8 +1134,16 @@ function DashboardComponent() {
           </div>
         );
       case "documents":
-        router.push("/documents");
-        return null;
+        return (
+          <div className="p-4 md:p-8">
+            <DocumentsView
+              documents={documents.filter((d) => d.spaceId === activeSpace!.id)}
+              activeSpace={activeSpace}
+              appUser={appUser}
+              allUsers={allUsers}
+            />
+          </div>
+        );
       case "flows":
         const renderFlowsContent = () => {
           switch (flowsView) {
@@ -1305,67 +1335,8 @@ function DashboardComponent() {
     <SidebarProvider defaultOpen={false}>
       <div className="flex flex-col h-screen">
         <TopBar />
-        <div className="flex flex-1 pt-16 overflow-hidden min-h-0">
-          <Sidebar collapsible="icon">
-            <div className="flex flex-col h-full">
-              <div className="space-y-2 pt-4">
-                <Button
-                  onClick={() => setView("overview")}
-                  variant={view === "overview" ? "secondary" : "ghost"}
-                  className="h-12 w-full justify-center rounded-none"
-                >
-                  <BarChart className="w-7 h-7" />
-                </Button>
-                <Button
-                  onClick={() => router.push("/mytasks")}
-                  variant={view === "mytasks" ? "secondary" : "ghost"}
-                  className="h-12 w-full justify-center rounded-none"
-                >
-                  <ClipboardCheck className="w-7 h-7" />
-                </Button>
-                <div className="px-3 py-2">
-                  <Separator />
-                </div>
-                <Button
-                  onClick={() => setView("tasks")}
-                  variant={view === "tasks" ? "secondary" : "ghost"}
-                  className="h-12 w-full justify-center rounded-none"
-                >
-                  <FolderKanban className="w-7 h-7" />
-                </Button>
-                <Button
-                  onClick={() => setView("messages")}
-                  variant={view === "messages" ? "secondary" : "ghost"}
-                  className="h-12 w-full justify-center rounded-none"
-                >
-                  <MessageSquare className="w-7 h-7" />
-                </Button>
-                <Button
-                  onClick={() => router.push("/documents")}
-                  variant={view === "documents" ? "secondary" : "ghost"}
-                  className="h-12 w-full justify-center rounded-none"
-                >
-                  <BookOpen className="w-7 h-7" />
-                </Button>
-                <Button
-                  onClick={() => setView("flows")}
-                  variant={view === "flows" ? "secondary" : "ghost"}
-                  className="h-12 w-full justify-center rounded-none"
-                >
-                  <Workflow className="w-7 h-7" />
-                </Button>
-              </div>
-              <div className="mt-auto space-y-2">
-                <Button
-                  onClick={() => setView("settings")}
-                  variant={view === "settings" ? "secondary" : "ghost"}
-                  className="h-12 w-full justify-center rounded-none"
-                >
-                  <Settings className="w-7 h-7" />
-                </Button>
-              </div>
-            </div>
-          </Sidebar>
+        <div className="flex flex-1 pt-16 overflow-hidden min-h-0 w-screen">
+          <AppSidebar view={view} onChangeView={setView} />
           <main
             className={cn(
               "flex-1 flex flex-col min-h-0",
