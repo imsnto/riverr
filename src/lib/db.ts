@@ -260,17 +260,17 @@ export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
   );
 };
 
-export const createDefaultHubForSpace = async (spaceId: string, userId: string, template: string = 'project-management') => {
-    const hubType = template === 'project-management' ? 'tasks' : 'custom';
+export const createDefaultHubForSpace = async (spaceId: string, userId: string, components: string[]) => {
     const hubData: Omit<Hub, 'id'> = {
         spaceId,
         name: 'Default Hub',
-        type: hubType,
+        type: 'custom',
         createdAt: new Date().toISOString(),
         createdBy: userId,
         isDefault: true,
         settings: {
-            defaultView: 'tasks'
+            components: components,
+            defaultView: components[0] || 'tasks',
         }
     };
     const hubRef = await addDoc(collection(db, 'hubs'), hubData);

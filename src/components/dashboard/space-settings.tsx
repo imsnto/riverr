@@ -22,7 +22,7 @@ const getInitials = (name: string) => {
 interface SpaceSettingsProps {
     allSpaces: Space[];
     allUsers: User[];
-    onSave: (space: Omit<Space, 'id'>, spaceId?: string) => void;
+    onSave: (space: Omit<Space, 'id' | 'statuses'>, spaceId?: string) => void;
     onDelete: (spaceId: string) => void;
     appUser: User | null;
 }
@@ -50,16 +50,14 @@ export default function SpaceSettings({ allUsers, onSave, onDelete, appUser }: S
     toast({ title: 'Space Deleted', description: 'The space has been successfully deleted.' });
   }
 
-  const handleSaveAndClose = async (spaceData: Omit<Space, 'id' | 'statuses'> & { template?: string }) => {
+  const handleSaveAndClose = async (spaceData: Omit<Space, 'id' | 'statuses'> & { hubComponents?: string[] }) => {
     if (selectedSpace) {
       onSave(spaceData, selectedSpace.id);
       toast({ title: 'Space Updated', description: 'The space has been successfully updated.' });
     } else {
-        const { template = 'project-management', ...cleanData } = spaceData;
+        const { hubComponents = [], ...cleanData } = spaceData;
         const newSpaceId = await dbAddSpace(cleanData);
-        if (template !== 'empty') {
-            await createDefaultHubForSpace(newSpaceId, appUser.id, template);
-        }
+        await createDefaultHubForSpace(newSpaceId, appUser.id, hubComponents);
         toast({ title: 'Space Created', description: 'The space and a default hub have been created.' });
     }
   };

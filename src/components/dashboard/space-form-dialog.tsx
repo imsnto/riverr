@@ -29,12 +29,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
 import { Badge } from '../ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import HubComponentEditor from './hub-component-editor';
 
 const spaceSchema = z.object({
   name: z.string().min(2, 'Space name must be at least 2 characters long.'),
   members: z.array(z.string()).min(1, 'At least one member is required.'),
-  template: z.string().optional(),
+  hubComponents: z.array(z.string()).default(['tasks', 'documents', 'messages']),
 });
 
 type SpaceFormValues = z.infer<typeof spaceSchema>;
@@ -42,7 +42,7 @@ type SpaceFormValues = z.infer<typeof spaceSchema>;
 interface SpaceFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (space: Omit<Space, 'id' | 'statuses'> & { template?: string }) => void;
+  onSave: (space: Omit<Space, 'id' | 'statuses'> & { hubComponents?: string[] }) => void;
   space: Space | null;
   allUsers: User[];
   currentUser: User;
@@ -54,7 +54,7 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
     defaultValues: {
       name: '',
       members: [currentUser.id],
-      template: 'project-management',
+      hubComponents: ['tasks', 'documents', 'messages'],
     },
   });
   
@@ -64,23 +64,21 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
           form.reset({
               name: space.name,
               members: Object.keys(space.members),
-              template: 'project-management',
+              hubComponents: ['tasks', 'documents', 'messages'], // Not editable for existing spaces yet
           });
       } else {
           form.reset({
               name: '',
               members: [currentUser.id],
-              template: 'project-management',
+              hubComponents: ['tasks', 'documents', 'messages'],
           })
       }
     }
   }, [space, currentUser, form, isOpen])
 
   const onSubmit = (values: SpaceFormValues) => {
-    // Convert the array of member IDs back into the required Record structure
     const membersMap: Record<string, SpaceMember> = {};
     values.members.forEach(memberId => {
-        // If editing, preserve existing role, otherwise default to Admin for creator, Member for others
         const existingMember = space?.members[memberId];
         if (existingMember) {
             membersMap[memberId] = existingMember;
@@ -92,7 +90,7 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
     const spaceData = {
         name: values.name,
         members: membersMap,
-        template: values.template,
+        hubComponents: values.hubComponents,
     };
     
     onSave(spaceData);
@@ -101,11 +99,11 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{space ? 'Edit Space' : 'Create Space'}</DialogTitle>
           <DialogDescription>
-            {space ? 'Update the details for your space.' : 'Fill in the details to create a new space.'}
+            {space ? 'Update the details for your space.' : 'Fill in the details to create a new space and its default hub.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -126,21 +124,13 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
             {!space && (
                  <FormField
                   control={form.control}
-                  name="template"
+                  name="hubComponents"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Hub Template</FormLabel>
-                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a template" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                <SelectItem value="project-management">Project Management</SelectItem>
-                                <SelectItem value="empty">None (start empty)</SelectItem>
-                            </SelectContent>
-                        </Select>
+                      <FormLabel>Default Hub Features</FormLabel>
+                        <FormControl>
+                            <HubComponentEditor selected={field.value} setSelected={field.onChange} />
+                        </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
