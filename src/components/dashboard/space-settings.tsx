@@ -1,4 +1,3 @@
-
 // src/components/dashboard/space-settings.tsx
 'use client';
 
@@ -21,7 +20,6 @@ const getInitials = (name: string) => {
 };
 
 interface SpaceSettingsProps {
-    allSpaces: Space[];
     allUsers: User[];
     onSave: (space: Omit<Space, 'id' | 'statuses'>, spaceId?: string) => void;
     onDelete: (spaceId: string) => void;
@@ -52,7 +50,7 @@ export default function SpaceSettings({ allUsers, onSave, onDelete, appUser }: S
     toast({ title: 'Space Deleted', description: 'The space has been successfully deleted.' });
   }
 
-  const handleSaveAndClose = async (spaceData: Omit<Space, 'id' | 'statuses'>, hubsData: HubFormValues[]) => {
+  const handleSaveAndClose = async (spaceData: Omit<Space, 'id'>, hubsData: HubFormValues[]) => {
     if (selectedSpace) {
       // Logic for updating a space and its hubs would go here
       onSave(spaceData, selectedSpace.id);
@@ -72,6 +70,7 @@ export default function SpaceSettings({ allUsers, onSave, onDelete, appUser }: S
                 settings: { components: hub.components, defaultView: hub.components[0] || 'tasks' },
                 isPrivate: hub.isPrivate,
                 memberIds: hub.isPrivate ? hub.memberIds : [],
+                statuses: hub.statuses
             };
             await addHub(finalHubData);
         }

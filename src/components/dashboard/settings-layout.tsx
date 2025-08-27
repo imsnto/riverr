@@ -1,0 +1,105 @@
+// src/components/dashboard/settings-layout.tsx
+'use client';
+
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import UserSettings from './user-settings';
+import SpaceSettings from './space-settings';
+import TeamTimesheets from './team-timesheets';
+import {
+  User,
+  Space,
+  Invite,
+  Project,
+  Task,
+  TimeEntry,
+  Hub,
+} from '@/lib/data';
+
+type SettingsView = 'users' | 'spaces' | 'timesheets';
+
+interface SettingsLayoutProps {
+  allUsers: User[];
+  allSpaces: Space[];
+  onSave: (space: Omit<Space, 'id' | 'statuses'>, spaceId?: string) => void;
+  onDelete: (spaceId: string) => void;
+  appUser: User | null;
+  onInvite: () => void;
+  handleInvite: (values: Omit<Invite, 'id' | 'token' | 'status'>) => void;
+  projects: Project[];
+  tasks: Task[];
+  timeEntries: TimeEntry[];
+  activeHub: Hub;
+}
+
+export default function SettingsLayout(props: SettingsLayoutProps) {
+  const [activeView, setActiveView] = useState<SettingsView>('users');
+
+  const navItems = [
+    { key: 'users', label: 'Users & Permissions' },
+    { key: 'spaces', label: 'Spaces' },
+    { key: 'timesheets', label: 'Timesheets' },
+  ];
+
+  const renderContent = () => {
+    switch (activeView) {
+      case 'users':
+        return (
+          <UserSettings
+            allUsers={props.allUsers}
+            allSpaces={props.allSpaces}
+            appUser={props.appUser}
+            onInvite={props.onInvite}
+            handleInvite={props.handleInvite}
+          />
+        );
+      case 'spaces':
+        return (
+          <SpaceSettings
+            allUsers={props.allUsers}
+            onSave={props.onSave}
+            onDelete={props.onDelete}
+            appUser={props.appUser}
+          />
+        );
+      case 'timesheets':
+        return (
+          <TeamTimesheets
+            allSpaces={props.allSpaces}
+            allUsers={props.allUsers}
+            projects={props.projects}
+            tasks={props.tasks}
+            timeEntries={props.timeEntries}
+            appUser={props.appUser!}
+            activeHub={props.activeHub}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div>
+      <h1 className="text-3xl font-bold mb-8">Settings</h1>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <aside className="md:col-span-1">
+          <nav className="flex flex-col space-y-2">
+            {navItems.map((item) => (
+              <Button
+                key={item.key}
+                variant={activeView === item.key ? 'secondary' : 'ghost'}
+                onClick={() => setActiveView(item.key as SettingsView)}
+                className="justify-start"
+              >
+                {item.label}
+              </Button>
+            ))}
+          </nav>
+        </aside>
+        <main className="md:col-span-3">{renderContent()}</main>
+      </div>
+    </div>
+  );
+}

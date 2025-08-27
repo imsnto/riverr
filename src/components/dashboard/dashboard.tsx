@@ -1,4 +1,3 @@
-
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -34,9 +33,7 @@ import Overview from './overview';
 import TaskBoard from './task-board';
 import MyTasksView from './my-tasks-view';
 import DocumentsView from './documents-view';
-import TeamTimesheets from './team-timesheets';
-import UserSettings from './user-settings';
-import SpaceSettings from './space-settings';
+import SettingsLayout from './settings-layout';
 import JobFlowTemplateBuilder from './job-flow-template-builder';
 import PhaseTemplateBuilder from './phase-template-builder';
 import TaskTemplateBuilder from './task-template-builder';
@@ -255,7 +252,7 @@ export default function Dashboard({ view }: { view: string }) {
     }
   }
 
-  const handleAddProject = async (project: Omit<Project, 'id'>) => {
+  const handleAddProject = async (project: Omit<Project, 'id' | 'hubId'>) => {
     const projectWithHub = { ...project, hubId: activeHub.id };
     const newProject = await db.addProject(projectWithHub);
     setProjects(prev => [...prev, newProject]);
@@ -371,8 +368,7 @@ export default function Dashboard({ view }: { view: string }) {
       case 'tasks': return <TaskBoard {...props} />;
       case 'mytasks': return <MyTasksView {...props} />;
       case 'documents': return <DocumentsView {...props} />;
-      case 'timesheets': return <TeamTimesheets {...props} />;
-      case 'settings': return <SpaceSettings {...props} />;
+      case 'settings': return <SettingsLayout {...props} />;
       case 'messages': return <MessagesLayout {...messagesProps} />;
       case 'mentions': return <MentionsThreadList {...props} mentions={unreadMentions} onClose={() => {}} onOpenThread={() => {}} />;
       case 'thread': return <ThreadView {...props} thread={activeThread!} onClose={() => setActiveThread(null)} />;
