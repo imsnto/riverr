@@ -4,7 +4,7 @@
 
 import React, { useState, DragEvent, useRef } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Task, Project, Space, Status, Activity } from '@/lib/data';
+import { User, Task, Project, Hub, Status, Activity } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { MoreHorizontal, Plus, Edit, Trash2, Palette, Calendar, MessageSquare, Archive, CheckCircle } from 'lucide-react';
@@ -107,9 +107,9 @@ interface ProjectBoardProps {
   projects: Project[];
   allTasks: Task[];
   onUpdateTasks: (tasks: Task[]) => void;
-  activeSpace: Space;
+  activeHub: Hub;
   allUsers: User[];
-  onUpdateActiveSpace: (updatedSpace: Partial<Space>) => void;
+  onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
   onNewTaskRequest: () => void;
   onTaskClick: (task: Task) => void;
   onUpdateTask: (task: Task) => void;
@@ -122,7 +122,7 @@ const defaultStatuses: Status[] = [
     { name: 'Done', color: '#22c55e' },
 ]
 
-export default function ProjectBoard({ project, projects, allTasks, onUpdateTasks, activeSpace, allUsers, onUpdateActiveSpace, onNewTaskRequest, onTaskClick, onUpdateTask }: ProjectBoardProps) {
+export default function ProjectBoard({ project, projects, allTasks, onUpdateTasks, activeHub, allUsers, onUpdateActiveHub, onNewTaskRequest, onTaskClick, onUpdateTask }: ProjectBoardProps) {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
@@ -130,9 +130,9 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   const { appUser } = useAuth();
   
   const tasks = allTasks.filter(t => t.project_id === project.id && !t.parentId);
-  const statuses = activeSpace.statuses || defaultStatuses;
+  const statuses = activeHub.statuses || defaultStatuses;
   
-  const closingStatusName = activeSpace.closingStatusName;
+  const closingStatusName = activeHub.closingStatusName;
   const activeStatuses = statuses.filter(s => s.name !== closingStatusName);
   const closingStatus = statuses.find(s => s.name === closingStatusName);
   
@@ -266,7 +266,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   const handleAddNewColumn = () => {
     const newStatusName = `New Status ${statuses.length + 1}`;
     const randomColor = STATUS_COLORS[statuses.length % STATUS_COLORS.length];
-    onUpdateActiveSpace({ statuses: [...statuses, { name: newStatusName, color: randomColor.color }] });
+    onUpdateActiveHub({ statuses: [...statuses, { name: newStatusName, color: randomColor.color }] });
   }
 
   const handleRenameColumn = (oldName: string) => {
@@ -281,13 +281,13 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     
     onUpdateTasks(allTasks.map(t => t.status === oldName ? { ...t, status: newColumnName } : t));
     
-    const newSpaceData: Partial<Space> = {
+    const newHubData: Partial<Hub> = {
         statuses: statuses.map(s => s.name === oldName ? { ...s, name: newColumnName } : s)
     };
-    if (activeSpace.closingStatusName === oldName) {
-        newSpaceData.closingStatusName = newColumnName;
+    if (activeHub.closingStatusName === oldName) {
+        newHubData.closingStatusName = newColumnName;
     }
-    onUpdateActiveSpace(newSpaceData);
+    onUpdateActiveHub(newHubData);
 
     setEditingColumn(null);
     setNewColumnName("");
@@ -303,22 +303,22 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     
     onUpdateTasks(allTasks.map(t => t.status === columnToDelete ? { ...t, status: defaultColumn.name } : t));
 
-    const newSpaceData: Partial<Space> = {
+    const newHubData: Partial<Hub> = {
         statuses: statuses.filter(s => s.name !== columnToDelete)
     };
 
-    if (activeSpace.closingStatusName === columnToDelete) {
-        newSpaceData.closingStatusName = undefined;
+    if (activeHub.closingStatusName === columnToDelete) {
+        newHubData.closingStatusName = undefined;
     }
-    onUpdateActiveSpace(newSpaceData);
+    onUpdateActiveHub(newHubData);
   }
 
   const handleChangeColor = (statusName: string, color: string) => {
-    onUpdateActiveSpace({ statuses: statuses.map(s => s.name === statusName ? { ...s, color: color } : s) });
+    onUpdateActiveHub({ statuses: statuses.map(s => s.name === statusName ? { ...s, color: color } : s) });
   }
 
   const handleSetClosingStatus = (statusName: string) => {
-    onUpdateActiveSpace({ closingStatusName: activeSpace.closingStatusName === statusName ? undefined : statusName });
+    onUpdateActiveHub({ closingStatusName: activeHub.closingStatusName === statusName ? undefined : statusName });
   }
 
   const renderStatusColumn = (status: Status) => {

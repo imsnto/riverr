@@ -17,7 +17,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { User, Task, Project } from '@/lib/data';
+import { User, Task, Project, Status } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
 const taskSchema = z.object({
@@ -36,7 +36,7 @@ interface NewTaskDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   onTaskAdd: (task: Omit<Task, 'id'>) => void;
   projects: Project[];
-  statuses: string[];
+  statuses: Status[];
   allUsers: User[];
 }
 
@@ -50,7 +50,7 @@ export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, project
       project_id: projects.length > 0 ? projects[0].id : '',
       assigned_to: '',
       due_date: new Date(),
-      status: statuses[0] || '',
+      status: statuses[0]?.name || '',
     },
   });
 
@@ -90,7 +90,7 @@ export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, project
             project_id: projects.length > 0 ? projects[0].id : '',
             assigned_to: '',
             due_date: new Date(),
-            status: statuses[0] || '',
+            status: statuses[0]?.name || '',
         })
     }
   }, [isOpen, projects, statuses, form])
@@ -230,8 +230,8 @@ export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, project
                     </FormControl>
                     <SelectContent>
                       {statuses.map(status => (
-                        <SelectItem key={status} value={status}>
-                          {status}
+                        <SelectItem key={status.name} value={status.name}>
+                          {status.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

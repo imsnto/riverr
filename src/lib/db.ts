@@ -54,6 +54,7 @@ import {
   Document,
   Hub,
   hubs,
+  Status,
 } from "./data";
 import { randomBytes } from "crypto";
 
@@ -230,6 +231,21 @@ export const addHub = async (hub: Omit<Hub, "id">): Promise<Hub> => {
   return { ...hub, id: docRef.id };
 };
 
+export const updateHub = async (
+  hubId: string,
+  data: Partial<Hub>
+): Promise<void> => {
+  const hubRef = doc(db, "hubs", hubId);
+  await updateDoc(hubRef, data);
+};
+
+const defaultStatuses: Status[] = [
+    { name: 'Backlog', color: '#6b7280' },
+    { name: 'In Progress', color: '#3b82f6' },
+    { name: 'In Review', color: '#f59e0b' },
+    { name: 'Done', color: '#22c55e' },
+];
+
 export const createDefaultHubForSpace = async (spaceId: string, userId: string, hubData: Partial<Omit<Hub, 'id' | 'spaceId'>>) => {
     const finalHubData: Omit<Hub, 'id'> = {
         name: hubData.name || 'Default Hub',
@@ -241,6 +257,8 @@ export const createDefaultHubForSpace = async (spaceId: string, userId: string, 
         settings: hubData.settings || { components: ['tasks', 'documents', 'messages'], defaultView: 'tasks' },
         isPrivate: hubData.isPrivate || false,
         memberIds: hubData.memberIds || [],
+        statuses: hubData.statuses || defaultStatuses,
+        closingStatusName: hubData.closingStatusName,
     };
     const hubRef = await addDoc(collection(db, 'hubs'), finalHubData);
     return { id: hubRef.id, ...finalHubData };

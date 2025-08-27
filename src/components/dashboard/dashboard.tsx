@@ -240,18 +240,18 @@ export default function Dashboard({ view }: { view: string }) {
       }
   }
 
-  const handleUpdateActiveSpace = async (updatedData: Partial<Space>) => {
-    if (!activeSpace) return;
+  const handleUpdateActiveHub = async (updatedData: Partial<Hub>) => {
+    if (!activeHub) return;
     try {
-        await db.updateSpace(activeSpace.id, updatedData);
-        const updatedSpace = { ...activeSpace, ...updatedData };
-        setActiveSpace(updatedSpace);
+        await db.updateHub(activeHub.id, updatedData);
+        const updatedHub = { ...activeHub, ...updatedData };
+        setActiveHub(updatedHub);
         
-        setUserSpaces(prev => prev.map(s => s.id === activeSpace.id ? updatedSpace : s));
+        setSpaceHubs(prev => prev.map(h => h.id === activeHub.id ? updatedHub : h));
         
-        toast({ title: 'Space updated successfully' });
+        toast({ title: 'Hub updated successfully' });
     } catch(e) {
-        toast({ variant: 'destructive', title: 'Failed to update space' });
+        toast({ variant: 'destructive', title: 'Failed to update hub' });
     }
   }
 
@@ -285,7 +285,7 @@ export default function Dashboard({ view }: { view: string }) {
     setTimeEntries(prev => [...prev, newTimeEntry]);
   };
   
-  const handleSpaceSave = async (spaceData: Omit<Space, 'id' | 'statuses'>, spaceId?: string) => {
+  const handleSpaceSave = async (spaceData: Omit<Space, 'id'>, spaceId?: string) => {
     if (spaceId) {
         await db.updateSpace(spaceId, spaceData);
         toast({ title: 'Space Updated', description: 'The space has been successfully updated.' });
@@ -311,10 +311,11 @@ export default function Dashboard({ view }: { view: string }) {
       tasks,
       projects,
       activeSpace,
+      activeHub,
       allUsers,
       appUser,
       onUpdateTasks: handleUpdateTasks,
-      onUpdateActiveSpace: handleUpdateActiveSpace,
+      onUpdateActiveHub: handleUpdateActiveHub,
       onAddProject: handleAddProject,
       onUpdateProject: handleUpdateProject,
       onDeleteProject: handleDeleteProject,
@@ -328,7 +329,7 @@ export default function Dashboard({ view }: { view: string }) {
       unreadMentions,
       onMentionsCleared: () => setLastMentionsRead(new Date().toISOString()),
       onSelectTask: setSelectedTask,
-      statuses: activeSpace?.statuses || [],
+      statuses: activeHub?.statuses || [],
       onSave: handleSpaceSave,
       onDelete: db.deleteSpace,
       onInvite: fetchData,
@@ -427,7 +428,7 @@ export default function Dashboard({ view }: { view: string }) {
           onRemoveTask={handleDeleteTask}
           onTaskSelect={setSelectedTask}
           onLogTime={handleLogTime}
-          statuses={activeSpace.statuses?.map(s => s.name) || []}
+          statuses={activeHub.statuses?.map(s => s.name) || []}
           allUsers={allUsers}
           allTasks={tasks}
           projects={projects}

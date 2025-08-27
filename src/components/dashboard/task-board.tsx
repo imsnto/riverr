@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Project, Space, Task, User, Status } from '@/lib/data';
+import { Project, Space, Task, User, Status, Hub } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Plus, Folder, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,9 +20,9 @@ interface TaskBoardProps {
   tasks: Task[];
   onUpdateTasks: (tasks: Task[]) => void;
   projects: Project[];
-  activeSpace: Space;
+  activeHub: Hub;
   allUsers: User[];
-  onUpdateActiveSpace: (updatedSpace: Partial<Space>) => void;
+  onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
   onAddProject: (project: Omit<Project, 'id'>) => Promise<void>;
   onUpdateProject: (projectId: string, project: Partial<Project>) => Promise<void>;
   onDeleteProject: (projectId: string) => Promise<void>;
@@ -35,9 +35,9 @@ export default function TaskBoard({
     tasks, 
     onUpdateTasks, 
     projects, 
-    activeSpace, 
+    activeHub, 
     allUsers, 
-    onUpdateActiveSpace,
+    onUpdateActiveHub,
     onAddProject,
     onUpdateProject,
     onDeleteProject,
@@ -50,7 +50,8 @@ export default function TaskBoard({
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const { toast } = useToast();
-  const { activeHub } = useAuth();
+  
+  const { activeSpace } = useAuth(); // Need this for project form dialog
 
   const handleCreateNewProject = () => {
     setEditingProject(null);
@@ -95,17 +96,17 @@ export default function TaskBoard({
 
   const handleAddTaskDialog = (newTask: Omit<Task, 'id'>) => {
     onAddTask(newTask);
-    const statuses = activeSpace.statuses || [];
+    const statuses = activeHub.statuses || [];
     if (!statuses.find(s => s.name === newTask.status)) {
         const randomColor = { name: 'Gray', color: '#6b7280' };
-        onUpdateActiveSpace({ statuses: [...statuses, { name: newTask.status, color: randomColor.color }] });
+        onUpdateActiveHub({ statuses: [...statuses, { name: newTask.status, color: randomColor.color }] });
     }
   };
 
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
-  const spaceMembers = allUsers.filter(u => activeSpace.members[u.id]);
-  const statuses = activeSpace.statuses || [];
+  const spaceMembers = allUsers.filter(u => activeSpace?.members[u.id]);
+  const statuses = activeHub.statuses || [];
 
   return (
     <>
@@ -155,9 +156,9 @@ export default function TaskBoard({
                   projects={projects}
                   allTasks={tasks}
                   onUpdateTasks={onUpdateTasks}
-                  activeSpace={activeSpace}
+                  activeHub={activeHub}
                   allUsers={allUsers}
-                  onUpdateActiveSpace={onUpdateActiveSpace}
+                  onUpdateActiveHub={onUpdateActiveHub}
                   onNewTaskRequest={() => setIsNewTaskDialogOpen(true)}
                   onTaskClick={(task) => onTaskSelect(task)}
                   onUpdateTask={onUpdateTask}
@@ -179,7 +180,7 @@ export default function TaskBoard({
           onOpenChange={setIsProjectFormOpen}
           onSave={handleSaveProject}
           project={editingProject}
-          spaceId={activeSpace.id}
+          spaceId={activeSpace?.id || ''}
           spaceMembers={spaceMembers}
         />
         {isNewTaskDialogOpen && (
@@ -188,7 +189,7 @@ export default function TaskBoard({
             onOpenChange={setIsNewTaskDialogOpen}
             onTaskAdd={handleAddTaskDialog}
             projects={selectedProject ? [selectedProject] : []}
-            statuses={statuses.map(s => s.name)}
+            statuses={statuses}
             allUsers={spaceMembers}
           />
         )}

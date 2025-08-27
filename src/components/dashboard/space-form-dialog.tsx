@@ -23,7 +23,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Space, User, SpaceMember, Hub } from '@/lib/data';
+import { Space, User, SpaceMember, Hub, Status } from '@/lib/data';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
@@ -35,11 +35,19 @@ import { Separator } from '../ui/separator';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 
+const defaultStatuses: Status[] = [
+    { name: 'Backlog', color: '#6b7280' },
+    { name: 'In Progress', color: '#3b82f6' },
+    { name: 'In Review', color: '#f59e0b' },
+    { name: 'Done', color: '#22c55e' },
+];
+
 const hubSchema = z.object({
   name: z.string().min(2, 'Hub name is required.'),
   components: z.array(z.string()).default(['tasks']),
   isPrivate: z.boolean().default(false),
   memberIds: z.array(z.string()).default([]),
+  statuses: z.array(z.object({ name: z.string(), color: z.string() })).default(defaultStatuses),
 });
 
 const spaceSchema = z.object({
@@ -54,7 +62,7 @@ type SpaceFormValues = z.infer<typeof spaceSchema>;
 interface SpaceFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (spaceData: Omit<Space, 'id' | 'statuses'>, hubData: HubFormValues[]) => void;
+  onSave: (spaceData: Omit<Space, 'id'>, hubData: HubFormValues[]) => void;
   space: Space | null;
   allUsers: User[];
   currentUser: User;
@@ -73,7 +81,8 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
           name: 'Default Hub',
           components: ['tasks', 'documents', 'messages'],
           isPrivate: false,
-          memberIds: [currentUser.id]
+          memberIds: [currentUser.id],
+          statuses: defaultStatuses
         }
       ]
     },
@@ -101,7 +110,8 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
               name: 'Default Hub',
               components: ['tasks', 'documents', 'messages'],
               isPrivate: false,
-              memberIds: [currentUser.id]
+              memberIds: [currentUser.id],
+              statuses: defaultStatuses,
             }
           ]
         });
@@ -153,7 +163,7 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
         </DialogHeader>
 
         {/* Scrollable form */}
-        <div className="overflow-y-auto px-6 py-4 space-y-6 flex-1">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
           <Form {...form}>
             <form id="space-form" className="space-y-6">
               {/* Space Name */}
@@ -261,6 +271,7 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
                       components: ['tasks'],
                       isPrivate: false,
                       memberIds: [currentUser.id],
+                      statuses: defaultStatuses,
                     })
                   }
                 >

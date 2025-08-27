@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Project, Task, TimeEntry, Space, User } from '@/lib/data';
+import { Project, Task, TimeEntry, Space, User, Hub } from '@/lib/data';
 import WeeklyTimesheet from './weekly-timesheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -25,9 +25,10 @@ interface TeamTimesheetsProps {
   tasks: Task[];
   timeEntries: TimeEntry[];
   appUser: User;
+  activeHub: Hub;
 }
 
-export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, timeEntries, appUser }: TeamTimesheetsProps) {
+export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, timeEntries, appUser, activeHub }: TeamTimesheetsProps) {
   
   const usersInAccessibleSpaces = useMemo(() => {
     const allMemberIds = new Set<string>();
@@ -74,7 +75,7 @@ export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, t
   }
   
   // Flatten all statuses from all spaces into a single list for the dialog
-  const allStatuses = allSpaces.flatMap(s => s.statuses.map(status => status.name));
+  const allStatuses = activeHub.statuses.map(s => s.name);
   const uniqueStatuses = [...new Set(allStatuses)];
 
 

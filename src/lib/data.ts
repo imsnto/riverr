@@ -19,8 +19,6 @@ export interface Space {
   id: string;
   name: string;
   members: Record<string, SpaceMember>; // Map of user IDs to their roles/permissions
-  statuses: Status[];
-  closingStatusName?: string;
 }
 
 export interface Hub {
@@ -34,6 +32,8 @@ export interface Hub {
   isDefault: boolean;
   memberIds?: string[];
   isPrivate?: boolean;
+  statuses: Status[];
+  closingStatusName?: string;
 }
 
 
@@ -304,9 +304,9 @@ export const users: Omit<User, 'id'>[] = [
   { name: 'Diana', email: 'diana@test.com', avatarUrl: 'https://placehold.co/100x100/EFEFEF/323333/png?text=D', role: 'Member' },
 ];
 
-export const spaces: Space[] = [
-  { id: 'space-1', name: "Brad's Personal Space", members: { 'user-1': { role: 'Admin' } }, statuses: [] },
-  { id: 'space-2', name: 'Client Work', members: { 'user-1': { role: 'Admin' }, 'user-2': { role: 'Member' }, 'user-3': { role: 'Member' } }, statuses: [] },
+export const spaces: Omit<Space, 'id'>[] = [
+  { id: 'space-1', name: "Brad's Personal Space", members: { 'user-1': { role: 'Admin' } } },
+  { id: 'space-2', name: 'Client Work', members: { 'user-1': { role: 'Admin' }, 'user-2': { role: 'Member' }, 'user-3': { role: 'Member' } } },
 ];
 
 export const hubs: Omit<Hub, "id">[] = [
@@ -318,6 +318,12 @@ export const hubs: Omit<Hub, "id">[] = [
         createdBy: 'user-1',
         settings: { defaultView: 'tasks' },
         isDefault: true,
+        statuses: [
+              { name: 'Backlog', color: '#6b7280' },
+              { name: 'In Progress', color: '#3b82f6' },
+              { name: 'In Review', color: '#f59e0b' },
+              { name: 'Done', color: '#22c55e' },
+        ],
     },
     {
         name: 'Support Tickets',
@@ -327,6 +333,11 @@ export const hubs: Omit<Hub, "id">[] = [
         createdBy: 'user-1',
         settings: { defaultView: 'inbox' },
         isDefault: false,
+        statuses: [
+              { name: 'New', color: '#6b7280' },
+              { name: 'Assigned', color: '#3b82f6' },
+              { name: 'Resolved', color: '#22c55e' },
+        ],
     },
     {
         name: 'Client Docs',
@@ -336,6 +347,7 @@ export const hubs: Omit<Hub, "id">[] = [
         createdBy: 'user-1',
         settings: { defaultView: 'documents' },
         isDefault: false,
+        statuses: [],
     }
 ];
 

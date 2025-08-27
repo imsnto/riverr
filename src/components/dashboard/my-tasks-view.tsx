@@ -1,3 +1,4 @@
+
 // src/components/dashboard/my-tasks-view.tsx
 "use client";
 import React, { useMemo, useState } from "react";
@@ -10,6 +11,8 @@ import {
   Message,
   Activity,
   DocumentComment,
+  Hub,
+  Status,
 } from "@/lib/data";
 import { Input } from "@/components/ui/input";
 import {
@@ -53,7 +56,7 @@ interface MyTasksViewProps {
   onMentionsCleared: () => void;
   onSelectTask: (task: Task) => void;
   timeEntries: TimeEntry[];
-  statuses: { name: string; color: string }[];
+  statuses: Status[];
 }
 
 const MyTasksView: React.FC<MyTasksViewProps> = ({
