@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -63,7 +62,7 @@ export default function HubPermissionDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[80vh] flex flex-col overflow-hidden p-0">
+      <DialogContent className="max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle>Set Hub Permissions</DialogTitle>
           <DialogDescription>
