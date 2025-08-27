@@ -45,6 +45,8 @@ import MentionsThreadList from './mentions-thread-list';
 import ThreadView from './thread-view';
 import AllThreadsView from './all-threads-view';
 import CreateTaskFromThreadDialog from './create-task-from-thread-dialog';
+import TaskDetailsDialog from './task-details-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -54,9 +56,10 @@ const isUnread = (mention: any, lastRead: string | null) => {
 };
 
 export default function Dashboard({ view }: { view: string }) {
-  const { appUser, signOut, activeSpace, userSpaces, setUserSpaces, setActiveSpace } = useAuth();
+  const { appUser, signOut, activeSpace, userSpaces, setUserSpaces, setActiveSpace, setActiveHub } = useAuth();
   const router = useRouter();
   const params = useParams();
+  const { toast } = useToast();
 
   const [currentView, setCurrentView] = useState<AppView>(view as AppView || 'overview');
   
@@ -212,6 +215,7 @@ export default function Dashboard({ view }: { view: string }) {
   const handleAddTask = async (task: Omit<Task, 'id'>) => {
     const newTask = await db.addTask(task);
     setTasks(prev => [...prev, newTask]);
+    return newTask;
   }
 
   const handleDeleteTask = async (taskId: string) => {
@@ -260,6 +264,12 @@ export default function Dashboard({ view }: { view: string }) {
   const handleCreateTaskFromThread = (thread: Message) => {
     setTaskFromThread(thread);
   };
+  
+  const handleLogTime = async (timeData: Omit<TimeEntry, 'id'>) => {
+    const newTimeEntry = await db.addTimeEntry(timeData);
+    setTimeEntries(prev => [...prev, newTimeEntry]);
+  };
+
 
   const renderView = () => {
     switch (currentView) {
@@ -296,11 +306,55 @@ export default function Dashboard({ view }: { view: string }) {
     <div className="flex h-screen bg-background text-foreground">
       <AppSidebar view={currentView} onChangeView={handleViewChange} />
       <div className="flex flex-col flex-1 overflow-hidden">
-        <TopBar activeSpace={activeSpace} allSpaces={userSpaces} onSpaceChange={() => {}} />
-        <main className="flex-1 overflow-y-auto p-8 pt-24">
+        <TopBar 
+          activeSpace={activeSpace} 
+          allSpaces={userSpaces} 
+          onSpaceChange={(spaceId) => {
+            const newSpace = userSpaces.find(s => s.id === spaceId);
+            if (newSpace) {
+              setActiveSpace(newSpace);
+              setActiveHub(null);
+              router.push(`/space/${spaceId}/hubs`);
+            }
+          }} 
+        />
+        <main className="flex-1 overflow-y-auto">
           {renderView()}
         </main>
       </div>
+
+       {selectedTask && (
+        <TaskDetailsDialog
+          task={selectedTask}
+          timeEntries={timeEntries.filter(t => t.task_id === selectedTask?.id)}
+          isOpen={!!selectedTask}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setSelectedTask(null);
+          }}
+          onUpdateTask={handleUpdateTask}
+          onAddTask={async (taskData, tempId) => {
+             const newTask = await handleAddTask(taskData);
+             return newTask;
+          }}
+          onRemoveTask={handleDeleteTask}
+          onTaskSelect={setSelectedTask}
+          onLogTime={handleLogTime}
+          statuses={activeSpace.statuses?.map(s => s.name) || []}
+          allUsers={allUsers}
+          allTasks={tasks}
+          projects={projects}
+        />
+      )}
+       {taskFromThread && (
+        <CreateTaskFromThreadDialog
+          isOpen={!!taskFromThread}
+          onOpenChange={() => setTaskFromThread(null)}
+          message={taskFromThread}
+          channelMembers={allUsers} // Simplified for now
+          projects={projects}
+          onTaskCreated={(taskData) => handleAddTask(taskData)}
+        />
+      )}
     </div>
   );
 }
