@@ -33,6 +33,8 @@ import HubComponentEditor from './hub-component-editor';
 import HubPermissionDialog from './hub-permission-dialog';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
+import { Card } from '@/components/ui/card';
+import { useAuth } from '@/hooks/use-auth';
 
 const hubSchema = z.object({
   name: z.string().min(2, 'Hub name is required.'),
