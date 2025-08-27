@@ -29,10 +29,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const spaceSchema = z.object({
   name: z.string().min(2, 'Space name must be at least 2 characters long.'),
   members: z.array(z.string()).min(1, 'At least one member is required.'),
+  template: z.string().optional(),
 });
 
 type SpaceFormValues = z.infer<typeof spaceSchema>;
@@ -40,7 +42,7 @@ type SpaceFormValues = z.infer<typeof spaceSchema>;
 interface SpaceFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (space: Omit<Space, 'id' | 'statuses'>) => void;
+  onSave: (space: Omit<Space, 'id' | 'statuses'> & { template?: string }) => void;
   space: Space | null;
   allUsers: User[];
   currentUser: User;
@@ -52,6 +54,7 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
     defaultValues: {
       name: '',
       members: [currentUser.id],
+      template: 'project-management',
     },
   });
   
@@ -61,11 +64,13 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
           form.reset({
               name: space.name,
               members: Object.keys(space.members),
+              template: 'project-management',
           });
       } else {
           form.reset({
               name: '',
               members: [currentUser.id],
+              template: 'project-management',
           })
       }
     }
@@ -86,7 +91,8 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
 
     const spaceData = {
         name: values.name,
-        members: membersMap
+        members: membersMap,
+        template: values.template,
     };
     
     onSave(spaceData);
@@ -117,6 +123,29 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
                 </FormItem>
               )}
             />
+            {!space && (
+                 <FormField
+                  control={form.control}
+                  name="template"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hub Template</FormLabel>
+                       <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a template" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="project-management">Project Management</SelectItem>
+                                <SelectItem value="empty">None (start empty)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            )}
             <FormField
               control={form.control}
               name="members"
@@ -170,7 +199,7 @@ function MemberSelect({ allUsers, selectedUsers, onChange, creatorId }: { allUse
              <div className="flex flex-wrap gap-1">
                  {selectedUsers.length > 0 ? selectedUsers.map(id => {
                      const user = allUsers.find(u => u.id === id);
-                     return <Badge variant="secondary" key={id}>{user?.name || 'Unknown'}</Badge>
+                     return <Badge variant="secondary" key={id}>{user?.name || 'Unknown'}</Badge>;
                  }) : "Select members..."}
              </div>
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -208,5 +237,3 @@ function MemberSelect({ allUsers, selectedUsers, onChange, creatorId }: { allUse
       </div>
     )
   }
-
-    

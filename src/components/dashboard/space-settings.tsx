@@ -1,3 +1,4 @@
+
 // src/components/dashboard/space-settings.tsx
 'use client';
 
@@ -27,7 +28,7 @@ interface SpaceSettingsProps {
 }
 
 export default function SpaceSettings({ allUsers, onSave, onDelete, appUser }: SpaceSettingsProps) {
-  const { userSpaces } = useAuth();
+  const { userSpaces, setUserSpaces } = useAuth();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
   const { toast } = useToast();
@@ -49,13 +50,16 @@ export default function SpaceSettings({ allUsers, onSave, onDelete, appUser }: S
     toast({ title: 'Space Deleted', description: 'The space has been successfully deleted.' });
   }
 
-  const handleSaveAndClose = async (spaceData: Omit<Space, 'id' | 'statuses'>) => {
+  const handleSaveAndClose = async (spaceData: Omit<Space, 'id' | 'statuses'> & { template?: string }) => {
     if (selectedSpace) {
       onSave(spaceData, selectedSpace.id);
       toast({ title: 'Space Updated', description: 'The space has been successfully updated.' });
     } else {
-        const newSpaceId = await dbAddSpace(spaceData);
-        await createDefaultHubForSpace(newSpaceId, appUser.id);
+        const { template = 'project-management', ...cleanData } = spaceData;
+        const newSpaceId = await dbAddSpace(cleanData);
+        if (template !== 'empty') {
+            await createDefaultHubForSpace(newSpaceId, appUser.id, template);
+        }
         toast({ title: 'Space Created', description: 'The space and a default hub have been created.' });
     }
   };

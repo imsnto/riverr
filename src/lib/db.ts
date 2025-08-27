@@ -1,3 +1,4 @@
+
 // src/lib/db.ts
 
 import {
@@ -15,6 +16,7 @@ import {
   arrayUnion,
   limit,
   Timestamp,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import {
@@ -258,11 +260,12 @@ export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
   );
 };
 
-export const createDefaultHubForSpace = async (spaceId: string, userId: string) => {
+export const createDefaultHubForSpace = async (spaceId: string, userId: string, template: string = 'project-management') => {
+    const hubType = template === 'project-management' ? 'tasks' : 'custom';
     const hubData: Omit<Hub, 'id'> = {
         spaceId,
         name: 'Default Hub',
-        type: 'tasks',
+        type: hubType,
         createdAt: new Date().toISOString(),
         createdBy: userId,
         isDefault: true,
