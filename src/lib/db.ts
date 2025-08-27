@@ -1,3 +1,4 @@
+
 // src/lib/db.ts
 
 import {
@@ -257,14 +258,14 @@ export const addHub = async (hub: Omit<Hub, "id">): Promise<Hub> => {
   return { ...hub, id: docRef.id };
 };
 
-export const createDefaultHubForSpace = async (spaceId: string, userId: string, hubData: Partial<Hub>) => {
+export const createDefaultHubForSpace = async (spaceId: string, userId: string, hubData: Partial<Omit<Hub, 'id' | 'spaceId'>>) => {
     const finalHubData: Omit<Hub, 'id'> = {
         name: hubData.name || 'Default Hub',
         spaceId,
         type: hubData.type || 'project-management',
         createdAt: new Date().toISOString(),
         createdBy: userId,
-        isDefault: true,
+        isDefault: hubData.isDefault || true,
         settings: hubData.settings || { components: ['tasks', 'documents', 'messages'], defaultView: 'tasks' },
         isPrivate: hubData.isPrivate || false,
         memberIds: hubData.memberIds || [],
@@ -272,6 +273,7 @@ export const createDefaultHubForSpace = async (spaceId: string, userId: string, 
     const hubRef = await addDoc(collection(db, 'hubs'), finalHubData);
     return { id: hubRef.id, ...finalHubData };
 };
+
 
 function getHubComponentsForTemplate(template: string) {
   switch (template) {

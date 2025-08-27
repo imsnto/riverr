@@ -11,8 +11,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import SpaceFormDialog from './space-form-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { createDefaultHubForSpace, addSpace as dbAddSpace } from '@/lib/db';
+import { createDefaultHubForSpace, addSpace as dbAddSpace, getSpacesForUser } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
+import { useRouter } from 'next/navigation';
 
 
 const getInitials = (name: string) => {
@@ -28,10 +29,11 @@ interface SpaceSettingsProps {
 }
 
 export default function SpaceSettings({ allUsers, onSave, onDelete, appUser }: SpaceSettingsProps) {
-  const { userSpaces, setUserSpaces } = useAuth();
+  const { userSpaces, setUserSpaces, setActiveSpace, setActiveHub } = useAuth();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
   const { toast } = useToast();
+  const router = useRouter();
 
   if (!appUser) return null;
 
@@ -50,21 +52,26 @@ export default function SpaceSettings({ allUsers, onSave, onDelete, appUser }: S
     toast({ title: 'Space Deleted', description: 'The space has been successfully deleted.' });
   }
 
-  const handleSaveAndClose = async (spaceData: Omit<Space, 'id' | 'statuses'> & { hubs: Omit<Hub, 'id' | 'spaceId' | 'createdAt' | 'createdBy'>[] }) => {
+  const handleSaveAndClose = async (spaceData: Omit<Space, 'id' | 'statuses'>, hubData: Omit<Hub, 'id' | 'spaceId' | 'createdAt' | 'createdBy'>) => {
     if (selectedSpace) {
       // Logic for updating a space and its hubs would go here
-      const { hubs, ...cleanSpaceData } = spaceData;
-      onSave(cleanSpaceData, selectedSpace.id);
+      onSave(spaceData, selectedSpace.id);
       toast({ title: 'Space Updated', description: 'The space has been successfully updated.' });
     } else {
-        const { hubs, ...cleanData } = spaceData;
-        const newSpaceId = await dbAddSpace(cleanData);
-        // Assuming the first hub is the one we want to create
-        if (hubs && hubs.length > 0) {
-            const defaultHubData = hubs[0];
-            await createDefaultHubForSpace(newSpaceId, appUser.id, defaultHubData);
+        const newSpaceId = await dbAddSpace(spaceData);
+        await createDefaultHubForSpace(newSpaceId, appUser.id, hubData);
+        
+        // Refresh spaces and set active
+        const updatedSpaces = await getSpacesForUser(appUser.id);
+        setUserSpaces(updatedSpaces);
+        const newSpace = updatedSpaces.find(s => s.id === newSpaceId);
+        if (newSpace) {
+            setActiveSpace(newSpace);
+            setActiveHub(null); // Clear hub so user is forced to select one
         }
+
         toast({ title: 'Space Created', description: 'The space and a default hub have been created.' });
+        router.push(`/space/${newSpaceId}/hubs`);
     }
   };
 
