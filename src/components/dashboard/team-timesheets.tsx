@@ -63,7 +63,7 @@ export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, t
     setCurrentDate(new Date());
   }
   
-  if (!activeHub) {
+  if (!activeHub || !activeHub.statuses) {
     return <div className="text-center p-8">Loading timesheet data...</div>;
   }
 
