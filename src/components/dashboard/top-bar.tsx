@@ -172,16 +172,16 @@ export function TopBar({
         className
       )}
     >
-      <div className="flex items-end gap-4">
+      <div className="flex items-center gap-4">
         {activeSpace && (
-            <div className="grid gap-1">
-                <Label className="text-xs text-muted-foreground px-1">Space</Label>
+            <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground">Space</Label>
                 <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />
             </div>
         )}
         {activeHub && (
-             <div className="grid gap-1">
-                <Label className="text-xs text-muted-foreground px-1">Hub</Label>
+             <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground">Hub</Label>
                 <HubSwitcher hubs={allHubs} activeHub={activeHub} onHubChange={onHubChange} />
             </div>
         )}
