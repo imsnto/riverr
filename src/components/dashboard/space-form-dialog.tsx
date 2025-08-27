@@ -138,9 +138,9 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full overflow-y-auto">
-            <div className="p-6 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <ScrollArea className="h-full">
+            <div className="p-6">
               <Form {...form}>
                 <form id="space-form" className="space-y-4">
                   <FormField

@@ -71,8 +71,8 @@ export default function HubPermissionDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
-            <ScrollArea className="h-full overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+            <ScrollArea className="h-full">
                 <div className="py-4 px-6 space-y-4">
                     <RadioGroup value={access} onValueChange={(value) => setAccess(value as 'all' | 'specific')}>
                     <div className="flex items-center space-x-2">
