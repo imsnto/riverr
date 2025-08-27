@@ -124,7 +124,7 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col overflow-hidden p-0">
         <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle>{space ? 'Edit Space' : 'Create Space'}</DialogTitle>
           <DialogDescription>
