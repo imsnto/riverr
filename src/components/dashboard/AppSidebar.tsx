@@ -1,3 +1,4 @@
+
 // src/components/dashboard/AppSidebar.tsx
 "use client";
 
@@ -13,6 +14,7 @@ import {
   BookOpen,
   Workflow,
   Settings,
+  Clock,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
@@ -59,6 +61,7 @@ const allBottomItems: {
   icon: React.ReactNode;
   fixed?: boolean;
 }[] = [
+  { key: "team-timesheets", icon: <Clock className="w-7 h-7" />, fixed: true },
   { key: "settings", icon: <Settings className="w-7 h-7" />, fixed: true },
 ];
 

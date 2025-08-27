@@ -25,10 +25,9 @@ interface TeamTimesheetsProps {
   tasks: Task[];
   timeEntries: TimeEntry[];
   appUser: User;
-  activeHub: Hub | null;
 }
 
-export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, timeEntries, appUser, activeHub }: TeamTimesheetsProps) {
+export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, timeEntries, appUser }: TeamTimesheetsProps) {
   
   const usersInAccessibleSpaces = useMemo(() => {
     const allMemberIds = new Set<string>();
@@ -62,10 +61,6 @@ export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, t
   const handleThisWeek = () => {
     setCurrentDate(new Date());
   }
-  
-  if (!activeHub || !activeHub.statuses) {
-    return <div className="text-center p-8">Loading timesheet data...</div>;
-  }
 
   const selectedUser = usersInAccessibleSpaces.find(u => u.id === selectedUserId) || appUser;
 
@@ -78,8 +73,7 @@ export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, t
     return <div className="text-center p-8">No users found in your spaces.</div>;
   }
   
-  // Flatten all statuses from all spaces into a single list for the dialog
-  const allStatuses = activeHub.statuses.map(s => s.name);
+  const allStatuses = projects.map(p => p.status);
   const uniqueStatuses = [...new Set(allStatuses)];
 
 

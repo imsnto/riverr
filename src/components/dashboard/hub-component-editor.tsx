@@ -18,7 +18,6 @@ const ALL_COMPONENTS = [
   { id: 'tasks', name: 'Task Board', description: 'Kanban board for tasks.' },
   { id: 'documents', name: 'Documents', description: 'Collaborative docs.' },
   { id: 'messages', name: 'Messages', description: 'Team chat and channels.' },
-  { id: 'timesheets', name: 'Timesheets', description: 'Track time for team.' },
   { id: 'flows', name: 'Workflows', description: 'Automated job flows.' },
 ];
 

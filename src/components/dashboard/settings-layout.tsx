@@ -23,7 +23,7 @@ type SettingsView = 'users' | 'spaces' | 'timesheets';
 interface SettingsLayoutProps {
   allUsers: User[];
   allSpaces: Space[];
-  onSave: (space: Omit<Space, 'id' | 'statuses'>, spaceId?: string) => void;
+  onSave: (space: Omit<Space, 'id'>, spaceId?: string) => void;
   onDelete: (spaceId: string) => void;
   appUser: User | null;
   onInvite: () => void;
@@ -49,9 +49,6 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
         return (
           <UserSettings
             allUsers={props.allUsers}
-            allSpaces={props.allSpaces}
-            appUser={props.appUser}
-            onInvite={props.onInvite}
             handleInvite={props.handleInvite}
           />
         );
@@ -73,7 +70,6 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             tasks={props.tasks}
             timeEntries={props.timeEntries}
             appUser={props.appUser!}
-            activeHub={props.activeHub}
           />
         );
       default:

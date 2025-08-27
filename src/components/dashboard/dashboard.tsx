@@ -1,3 +1,4 @@
+
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -46,6 +47,7 @@ import AllThreadsView from './all-threads-view';
 import CreateTaskFromThreadDialog from './create-task-from-thread-dialog';
 import TaskDetailsDialog from './task-details-dialog';
 import { useToast } from '@/hooks/use-toast';
+import TeamTimesheets from './team-timesheets';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -94,76 +96,86 @@ export default function Dashboard({ view }: { view: string }) {
 
 
   const fetchData = async () => {
-    if (!activeSpace || !appUser || !activeHub) return;
-    
-    const [
-      fetchedProjects, 
-      fetchedTasks, 
-      fetchedTimeEntries, 
-      fetchedSlackLogs, 
-      fetchedDocuments,
-      fetchedUsers,
-      fetchedJobFlowTemplates,
-      fetchedPhaseTemplates,
-      fetchedTaskTemplates,
-      fetchedJobs,
-      fetchedJobFlowTasks,
-      fetchedChannels,
-      fetchedMessages,
-      fetchedHubs,
-    ] = await Promise.all([
-      db.getProjectsInHub(activeHub.id),
-      db.getAllTasks(activeHub.id),
-      db.getTimeEntriesInHub(projects.map(p => p.id)),
-      db.getSlackMeetingLogsInSpace(activeSpace.id), // This is space-wide for now
-      db.getDocumentsInHub(activeHub.id),
-      db.getAllUsers(),
-      db.getJobFlowTemplates(activeHub.id),
-      db.getPhaseTemplates(activeHub.id),
-      db.getTaskTemplates(activeHub.id),
-      db.getAllJobs(activeHub.id),
-      db.getAllJobFlowTasks(activeHub.id),
-      db.getChannelsInHub(activeHub.id),
-      db.getMessagesInChannel(channels.map(c => c.id).join(',')), // This will need adjustment
-      db.getHubsForSpace(activeSpace.id),
-    ]);
-    
-    setProjects(fetchedProjects);
-    setTasks(fetchedTasks);
-    setTimeEntries(fetchedTimeEntries);
-    setSlackLogs(fetchedSlackLogs);
-    setDocuments(fetchedDocuments);
-    setAllUsers(fetchedUsers);
-    setJobFlowTemplates(fetchedJobFlowTemplates);
-    setPhaseTemplates(fetchedPhaseTemplates);
-    setTaskTemplates(fetchedTaskTemplates);
-    setJobs(fetchedJobs);
-    setJobFlowTasks(fetchedJobFlowTasks);
-    setChannels(fetchedChannels);
-    setSpaceHubs(fetchedHubs);
-
-    if (fetchedChannels.length > 0 && !activeChannelId) {
-      setActiveChannelId(fetchedChannels[0].id);
-    }
+    if (!appUser) return;
   
-    // Fetch messages for all channels
-    const allMessages = await Promise.all(
-      fetchedChannels.map(channel => db.getMessagesInChannel(channel.id))
-    ).then(results => results.flat());
-    setMessages(allMessages);
+    // Always fetch all users
+    const fetchedUsers = await db.getAllUsers();
+    setAllUsers(fetchedUsers);
+  
+    // Fetch all spaces for the user to get all project IDs for time entries
+    const allUserSpaces = await db.getSpacesForUser(appUser.id);
+    const allProjectIds: string[] = [];
+    for (const space of allUserSpaces) {
+      const hubs = await db.getHubsForSpace(space.id);
+      for (const hub of hubs) {
+        const hubProjects = await db.getProjectsInHub(hub.id);
+        allProjectIds.push(...hubProjects.map(p => p.id));
+      }
+    }
+    const fetchedTimeEntries = await db.getTimeEntriesInHub(allProjectIds);
+    setTimeEntries(fetchedTimeEntries);
+  
+    // Hub-specific data fetching
+    if (activeSpace && activeHub) {
+      const [
+        fetchedProjects,
+        fetchedTasks,
+        fetchedSlackLogs,
+        fetchedDocuments,
+        fetchedJobFlowTemplates,
+        fetchedPhaseTemplates,
+        fetchedTaskTemplates,
+        fetchedJobs,
+        fetchedJobFlowTasks,
+        fetchedChannels,
+        fetchedHubs,
+      ] = await Promise.all([
+        db.getProjectsInHub(activeHub.id),
+        db.getAllTasks(activeHub.id),
+        db.getSlackMeetingLogsInSpace(activeSpace.id), // This is space-wide for now
+        db.getDocumentsInHub(activeHub.id),
+        db.getJobFlowTemplates(activeHub.id),
+        db.getPhaseTemplates(activeHub.id),
+        db.getTaskTemplates(activeHub.id),
+        db.getAllJobs(activeHub.id),
+        db.getAllJobFlowTasks(activeHub.id),
+        db.getChannelsInHub(activeHub.id),
+        db.getHubsForSpace(activeSpace.id),
+      ]);
+      
+      setProjects(fetchedProjects);
+      setTasks(fetchedTasks);
+      setSlackLogs(fetchedSlackLogs);
+      setDocuments(fetchedDocuments);
+      setJobFlowTemplates(fetchedJobFlowTemplates);
+      setPhaseTemplates(fetchedPhaseTemplates);
+      setTaskTemplates(fetchedTaskTemplates);
+      setJobs(fetchedJobs);
+      setJobFlowTasks(fetchedJobFlowTasks);
+      setChannels(fetchedChannels);
+      setSpaceHubs(fetchedHubs);
+  
+      if (fetchedChannels.length > 0 && !activeChannelId) {
+        setActiveChannelId(fetchedChannels[0].id);
+      }
+    
+      // Fetch messages for all channels in the active hub
+      const allMessages = await Promise.all(
+        fetchedChannels.map(channel => db.getMessagesInChannel(channel.id))
+      ).then(results => results.flat());
+      setMessages(allMessages);
+    }
   };
 
 
   useEffect(() => {
-    if (appUser && activeSpace && activeHub) {
-      fetchData();
-    }
+    fetchData();
   }, [appUser, activeSpace, activeHub]);
 
   // Handle view change from sidebar
   const handleViewChange = (newView: AppView) => {
     setCurrentView(newView);
-    if (activeSpace && params.hubId) {
+    if (activeSpace && params.hubId && newView !== 'team-timesheets') {
       router.push(`/space/${activeSpace.id}/hub/${params.hubId}/${newView}`);
     }
   };
@@ -369,6 +381,7 @@ export default function Dashboard({ view }: { view: string }) {
       case 'mytasks': return <MyTasksView {...props} />;
       case 'documents': return <DocumentsView {...props} />;
       case 'settings': return <SettingsLayout {...props} />;
+      case 'team-timesheets': return <TeamTimesheets {...props} />;
       case 'messages': return <MessagesLayout {...messagesProps} />;
       case 'mentions': return <MentionsThreadList {...props} mentions={unreadMentions} onClose={() => {}} onOpenThread={() => {}} />;
       case 'thread': return <ThreadView {...props} thread={activeThread!} onClose={() => setActiveThread(null)} />;
