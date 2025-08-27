@@ -2,17 +2,20 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User as AppUser, Space, SpaceMember, Invite } from '@/lib/data';
+import { User as AppUser, Space, SpaceMember, Invite, Hub } from '@/lib/data';
 import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut, signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
 import { getUser, addUser, addSpace, getSpacesForUser, getInvitesForEmail, acceptInvite, declineInvite } from '@/lib/db';
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
+
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
 const LOCAL_STORAGE_KEY_USER = 'timeflow_user_v3';
-const LOCAL_STORAGE_KEY_ACTIVE_SPACE = 'timeflow_active_space_v1';
+const LOCAL_STORAGE_KEY_ACTIVE_SPACE = 'timeflow_active_space_v2';
+const LOCAL_STORAGE_KEY_ACTIVE_HUB = 'timeflow_active_hub_v2';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -25,6 +28,8 @@ interface AuthContextType {
   setUserSpaces: React.Dispatch<React.SetStateAction<Space[]>>;
   activeSpace: Space | null;
   setActiveSpace: (space: Space | null) => void;
+  activeHub: Hub | null;
+  setActiveHub: (hub: Hub | null) => void;
   pendingInvites: Invite[];
   acceptInvite: (invite: Invite) => Promise<void>;
   declineInvite: (inviteId: string) => Promise<void>;
@@ -39,6 +44,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [userSpaces, setUserSpaces] = useState<Space[]>([]);
   const [activeSpace, _setActiveSpace] = useState<Space | null>(null);
+  const [activeHub, _setActiveHub] = useState<Hub | null>(null);
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
 
   const setActiveSpace = (space: Space | null) => {
@@ -50,10 +56,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
+  const setActiveHub = (hub: Hub | null) => {
+    _setActiveHub(hub);
+    if (hub) {
+        localStorage.setItem(LOCAL_STORAGE_KEY_ACTIVE_HUB, JSON.stringify(hub));
+    } else {
+        localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_HUB);
+    }
+  }
+
+
   useEffect(() => {
     try {
         const cachedUser = localStorage.getItem(LOCAL_STORAGE_KEY_USER);
         const cachedSpace = localStorage.getItem(LOCAL_STORAGE_KEY_ACTIVE_SPACE);
+        const cachedHub = localStorage.getItem(LOCAL_STORAGE_KEY_ACTIVE_HUB);
+
         if (cachedUser) {
             const parsed = JSON.parse(cachedUser);
             setAppUser(parsed.appUser);
@@ -64,9 +82,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (cachedSpace) {
             _setActiveSpace(JSON.parse(cachedSpace));
         }
+        if (cachedHub) {
+            _setActiveHub(JSON.parse(cachedHub));
+        }
     } catch (e) {
         localStorage.removeItem(LOCAL_STORAGE_KEY_USER);
         localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_SPACE);
+        localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_HUB);
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -109,13 +131,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setPendingInvites(invites);
         localStorage.setItem(LOCAL_STORAGE_KEY_USER, JSON.stringify({ appUser: userProfile, firebaseUser: user, userSpaces: spaces }));
         
-        if (!activeSpace && spaces.length > 0) {
-            setActiveSpace(spaces[0]);
-        } else if (activeSpace) {
-            // Ensure active space is still valid
+        if (activeSpace) {
             const stillMember = spaces.find(s => s.id === activeSpace.id);
             if (!stillMember) {
-                setActiveSpace(spaces.length > 0 ? spaces[0] : null);
+                setActiveSpace(null);
+                setActiveHub(null);
             }
         }
         
@@ -126,9 +146,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setAppUser(null);
         setUserSpaces([]);
         setActiveSpace(null);
+        setActiveHub(null);
         setPendingInvites([]);
         localStorage.removeItem(LOCAL_STORAGE_KEY_USER);
         localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_SPACE);
+        localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_HUB);
         document.cookie = 'token=; Max-Age=0; path=/;';
         setStatus('unauthenticated');
       }
@@ -183,6 +205,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUserSpaces,
     activeSpace,
     setActiveSpace,
+    activeHub,
+    setActiveHub,
     pendingInvites,
     acceptInvite: handleAcceptInvite,
     declineInvite: handleDeclineInvite,
