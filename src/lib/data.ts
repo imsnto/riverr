@@ -27,7 +27,7 @@ export interface Hub {
   id: string;
   name: string;
   spaceId: string;
-  type: 'crm' | 'tasks' | 'inbox' | 'custom';
+  type: string;
   createdAt: string; // ISO String
   createdBy: string; // userId
   settings: { [key: string]: any };
@@ -368,5 +368,7 @@ export const phaseTemplates: PhaseTemplate[] = [];
 export const jobFlowTemplates: JobFlowTemplate[] = [];
 export const jobs: Job[] = [];
 export const jobFlowTasks: JobFlowTask[] = [];
+
+    
 
     

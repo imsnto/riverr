@@ -1,3 +1,4 @@
+
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -24,6 +25,7 @@ import {
   Status,
   Activity,
   DocumentComment,
+  Hub,
 } from '@/lib/data';
 import * as db from '@/lib/db';
 import { useRouter, useParams } from 'next/navigation';
@@ -274,7 +276,7 @@ export default function Dashboard({ view }: { view: string }) {
         toast({ title: 'Space Updated', description: 'The space has been successfully updated.' });
     } else {
         const newSpaceId = await db.addSpace(spaceData);
-        await db.createDefaultHubForSpace(newSpaceId, appUser.id);
+        await db.createDefaultHubForSpace(newSpaceId, appUser.id, 'project-management');
         toast({ title: 'Space Created', description: 'The space and a default hub have been created.' });
     }
     // After saving, refresh all user spaces to reflect changes
@@ -426,3 +428,5 @@ export default function Dashboard({ view }: { view: string }) {
     </div>
   );
 }
+
+    

@@ -260,7 +260,8 @@ export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
   );
 };
 
-export const createDefaultHubForSpace = async (spaceId: string, userId: string, components: string[]) => {
+export const createDefaultHubForSpace = async (spaceId: string, userId: string, template: string) => {
+    const components = getHubComponentsForTemplate(template);
     const hubData: Omit<Hub, 'id'> = {
         spaceId,
         name: 'Default Hub',
@@ -276,6 +277,17 @@ export const createDefaultHubForSpace = async (spaceId: string, userId: string, 
     const hubRef = await addDoc(collection(db, 'hubs'), hubData);
     return { id: hubRef.id, ...hubData };
 };
+
+function getHubComponentsForTemplate(template: string) {
+  switch (template) {
+    case 'project-management':
+      return [
+        'overview', 'tasks', 'documents', 'messages', 'flows', 'user-settings', 'space-settings'
+      ];
+    default:
+      return ['overview', 'tasks'];
+  }
+}
 
 // --- Project Management ---
 export const getProjectsInSpace = async (
@@ -868,3 +880,5 @@ export const updateDocument = async (
 export const deleteDocument = async (docId: string): Promise<void> => {
   await deleteDoc(doc(db, "documents", docId));
 };
+
+    
