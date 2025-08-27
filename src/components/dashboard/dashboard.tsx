@@ -268,12 +268,14 @@ export default function Dashboard({ view }: { view: string }) {
     setTimeEntries(prev => [...prev, newTimeEntry]);
   };
   
-  const handleSpaceSave = async (spaceData: Omit<Space, 'id'>, spaceId?: string) => {
+  const handleSpaceSave = async (spaceData: Omit<Space, 'id' | 'statuses'>, spaceId?: string) => {
     if (spaceId) {
         await db.updateSpace(spaceId, spaceData);
+        toast({ title: 'Space Updated', description: 'The space has been successfully updated.' });
     } else {
         const newSpaceId = await db.addSpace(spaceData);
         await db.createDefaultHubForSpace(newSpaceId, appUser.id);
+        toast({ title: 'Space Created', description: 'The space and a default hub have been created.' });
     }
     // After saving, refresh all user spaces to reflect changes
     const updatedSpaces = await db.getSpacesForUser(appUser.id);
@@ -354,7 +356,7 @@ export default function Dashboard({ view }: { view: string }) {
       case 'timesheets': return <TeamTimesheets {...props} />;
       case 'settings': return <SpaceSettings {...props} />;
       case 'messages': return <MessagesLayout {...messagesProps} />;
-      case 'mentions': return <MentionsThreadList {...props} onClose={() => {}} onOpenThread={() => {}} />;
+      case 'mentions': return <MentionsThreadList {...props} mentions={unreadMentions} onClose={() => {}} onOpenThread={() => {}} />;
       case 'thread': return <ThreadView {...props} thread={activeThread!} onClose={() => setActiveThread(null)} />;
       case 'all-threads': return <AllThreadsView {...props} isThreadUnread={() => false} />;
       case 'channels': return <ChannelsView {...props} activeChannelId={activeChannelId} setMessages={setMessages} onCreateTask={handleCreateTaskFromThread} />;
