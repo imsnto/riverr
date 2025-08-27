@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -69,8 +70,9 @@ export default function HubPermissionDialog({
             Choose who can access this hub. You can change this later.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-1 min-h-0">
-            <ScrollArea className="h-full">
+
+        <div className="flex-1 min-h-0 overflow-hidden">
+            <ScrollArea className="h-full overflow-y-auto">
                 <div className="py-4 px-6 space-y-4">
                     <RadioGroup value={access} onValueChange={(value) => setAccess(value as 'all' | 'specific')}>
                     <div className="flex items-center space-x-2">
@@ -98,6 +100,7 @@ export default function HubPermissionDialog({
                 </div>
             </ScrollArea>
         </div>
+        
         <DialogFooter className="mt-auto p-6 pt-4 border-t bg-background">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSave}>Save Permissions</Button>
