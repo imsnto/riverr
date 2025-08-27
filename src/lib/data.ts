@@ -25,14 +25,15 @@ export interface Space {
 
 export interface Hub {
   id: string;
-  name:string;
+  name: string;
   spaceId: string;
-  icon?: string;
-  color?: string;
-  components: string[]; // e.g. ['tasks', 'documents', 'contacts']
-  createdBy: string;
+  type: 'crm' | 'tasks' | 'inbox' | 'custom';
   createdAt: string; // ISO String
+  createdBy: string; // userId
+  settings: { [key: string]: any };
+  isDefault: boolean;
 }
+
 
 export interface HubPermission {
   id: string; // Composite key like `${userId}-${hubId}`
@@ -341,3 +342,5 @@ export const phaseTemplates: PhaseTemplate[] = [];
 export const jobFlowTemplates: JobFlowTemplate[] = [];
 export const jobs: Job[] = [];
 export const jobFlowTasks: JobFlowTask[] = [];
+
+    

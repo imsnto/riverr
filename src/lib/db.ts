@@ -1,3 +1,4 @@
+
 // src/lib/db.ts
 
 import {
@@ -49,6 +50,7 @@ import {
   TaskTemplate,
   JobFlowPhase,
   Document,
+  Hub,
 } from "./data";
 import { randomBytes } from "crypto";
 
@@ -234,6 +236,20 @@ export const updateSpace = async (
 
 export const deleteSpace = async (spaceId: string): Promise<void> => {
   await deleteDoc(doc(db, "spaces", spaceId));
+};
+
+// --- Hub Management ---
+export const addHub = async (hub: Omit<Hub, "id">): Promise<Hub> => {
+  const docRef = await addDoc(collection(db, "hubs"), hub);
+  return { ...hub, id: docRef.id };
+};
+
+export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
+  const q = query(collection(db, "hubs"), where("spaceId", "==", spaceId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(
+    (doc) => ({ id: doc.id, ...doc.data() } as Hub)
+  );
 };
 
 // --- Project Management ---
@@ -827,3 +843,5 @@ export const updateDocument = async (
 export const deleteDocument = async (docId: string): Promise<void> => {
   await deleteDoc(doc(db, "documents", docId));
 };
+
+    
