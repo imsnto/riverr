@@ -164,7 +164,9 @@ export default function Dashboard({ view }: { view: string }) {
   // Handle view change from sidebar
   const handleViewChange = (newView: AppView) => {
     setCurrentView(newView);
-    router.push(`/space/${activeSpace?.id}/hub/${params.hubId}/${newView}`);
+    if (activeSpace && params.hubId) {
+      router.push(`/space/${activeSpace.id}/hub/${params.hubId}/${newView}`);
+    }
   };
 
   // Switch to the correct view when URL changes
@@ -269,29 +271,89 @@ export default function Dashboard({ view }: { view: string }) {
     const newTimeEntry = await db.addTimeEntry(timeData);
     setTimeEntries(prev => [...prev, newTimeEntry]);
   };
+  
+  const handleSpaceSave = async (spaceData: Omit<Space, 'id'>) => {
+     if ('id' in spaceData) {
+        // This is an update
+     } else {
+        const newSpaceId = await db.addSpace(spaceData);
+        await db.createDefaultHubForSpace(newSpaceId, appUser.id);
+     }
+     fetchData();
+  }
 
 
   const renderView = () => {
+    const props = {
+      tasks,
+      projects,
+      activeSpace,
+      allUsers,
+      appUser,
+      onUpdateTasks: handleUpdateTasks,
+      onUpdateActiveSpace: handleUpdateActiveSpace,
+      onAddProject: handleAddProject,
+      onUpdateProject: handleUpdateProject,
+      onDeleteProject: handleDeleteProject,
+      onTaskSelect: setSelectedTask,
+      onUpdateTask: handleUpdateTask,
+      onAddTask: handleAddTask,
+      documents,
+      timeEntries,
+      allSpaces,
+      messages,
+      unreadMentions,
+      onMentionsCleared: () => setLastMentionsRead(new Date().toISOString()),
+      onSelectTask: setSelectedTask,
+      statuses: activeSpace?.statuses || [],
+      onSave: handleSpaceSave,
+      onDelete: db.deleteSpace,
+      onInvite: fetchData,
+      handleInvite: async (invite: any) => {
+          await db.addInvite({ ...invite, invitedBy: appUser.id, status: 'pending' });
+          fetchData();
+      },
+      onDataRefresh: fetchData,
+      jobs,
+      jobFlowTemplates,
+      jobFlowTasks,
+      onJobLaunched: fetchData,
+      // Messaging props
+      channels,
+      onViewThread: (thread: Message) => {
+          setActiveThread(thread);
+          handleViewChange('thread');
+      },
+      onAddMessage: handleAddMessage,
+       // Thread view specific prop
+      activeThread: activeThread,
+      onCloseThread: () => setActiveThread(null),
+    };
+
+    const messagesProps = {
+        left: (
+            <div className="p-4">
+                <h2 className="text-lg font-semibold">Channels</h2>
+                {channels.map(c => <div key={c.id}>{c.name}</div>)}
+            </div>
+        ),
+        center: <ChannelsView {...props} activeChannelId={activeChannelId} setMessages={setMessages} onCreateTask={handleCreateTaskFromThread} />,
+        right: activeThread ? <ThreadView {...props} thread={activeThread} onClose={() => setActiveThread(null)} /> : undefined,
+        threadOpen: !!activeThread,
+    };
+
     switch (currentView) {
-      case 'tasks':
-        return (
-          <TaskBoard
-            tasks={tasks}
-            onUpdateTasks={handleUpdateTasks}
-            projects={projects}
-            activeSpace={activeSpace}
-            allUsers={allUsers}
-            onUpdateActiveSpace={handleUpdateActiveSpace}
-            onAddProject={handleAddProject}
-            onUpdateProject={handleUpdateProject}
-            onDeleteProject={handleDeleteProject}
-            onTaskSelect={setSelectedTask}
-            onUpdateTask={handleUpdateTask}
-            onAddTask={handleAddTask}
-          />
-        );
-      case 'documents':
-         return <DocumentsView documents={documents} activeSpace={activeSpace} appUser={appUser} allUsers={allUsers}/>;
+      case 'overview': return <Overview {...props} />;
+      case 'tasks': return <TaskBoard {...props} />;
+      case 'mytasks': return <MyTasksView {...props} />;
+      case 'documents': return <DocumentsView {...props} />;
+      case 'timesheets': return <TeamTimesheets {...props} />;
+      case 'settings': return <SpaceSettings {...props} />;
+      case 'messages': return <MessagesLayout {...messagesProps} />;
+      case 'mentions': return <MentionsThreadList {...props} onClose={() => {}} onOpenThread={() => {}} />;
+      case 'thread': return <ThreadView {...props} thread={activeThread!} onClose={() => setActiveThread(null)} />;
+      case 'all-threads': return <AllThreadsView {...props} isThreadUnread={() => false} />;
+      case 'channels': return <ChannelsView {...props} activeChannelId={activeChannelId} setMessages={setMessages} onCreateTask={handleCreateTaskFromThread} />;
       default:
         return (
           <div className="p-8">
@@ -318,7 +380,7 @@ export default function Dashboard({ view }: { view: string }) {
             }
           }} 
         />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto p-8 pt-24">
           {renderView()}
         </main>
       </div>

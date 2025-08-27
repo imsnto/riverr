@@ -1,4 +1,3 @@
-
 // src/lib/db.ts
 
 import {
@@ -15,6 +14,7 @@ import {
   writeBatch,
   arrayUnion,
   limit,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import {
@@ -222,7 +222,7 @@ export const getAllSpaces = async (): Promise<Space[]> => {
   );
 };
 
-export const addSpace = async (space: Omit<Space, "id">) => {
+export const addSpace = async (space: Omit<Space, 'id'>) => {
   const docRef = await addDoc(collection(db, "spaces"), space);
   return docRef.id;
 };
@@ -255,6 +255,22 @@ export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
   return querySnapshot.docs.map(
     (doc) => ({ id: doc.id, ...doc.data() } as Hub)
   );
+};
+
+export const createDefaultHubForSpace = async (spaceId: string, userId: string) => {
+    const hubData: Omit<Hub, 'id'> = {
+        spaceId,
+        name: 'Default Hub',
+        type: 'tasks',
+        createdAt: new Date().toISOString(),
+        createdBy: userId,
+        isDefault: true,
+        settings: {
+            defaultView: 'tasks'
+        }
+    };
+    const hubRef = await addDoc(collection(db, 'hubs'), hubData);
+    return { id: hubRef.id, ...hubData };
 };
 
 // --- Project Management ---
@@ -848,5 +864,3 @@ export const updateDocument = async (
 export const deleteDocument = async (docId: string): Promise<void> => {
   await deleteDoc(doc(db, "documents", docId));
 };
-
-    

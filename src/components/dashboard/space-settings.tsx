@@ -1,4 +1,4 @@
-
+// src/components/dashboard/space-settings.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -10,15 +10,17 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import SpaceFormDialog from './space-form-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { createDefaultHubForSpace, addSpace as dbAddSpace } from '@/lib/db';
+
 
 const getInitials = (name: string) => {
-  return name.split(' ').map(n => n[0]).join('');
+  return name ? name.split(' ').map(n => n[0]).join('') : '';
 };
 
 interface SpaceSettingsProps {
     allSpaces: Space[];
     allUsers: User[];
-    onSave: (space: Omit<Space, 'id'>) => void;
+    onSave: (space: Omit<Space, 'id'>, spaceId?: string) => void;
     onDelete: (spaceId: string) => void;
     appUser: User | null;
 }
@@ -45,13 +47,14 @@ export default function SpaceSettings({ allSpaces, allUsers, onSave, onDelete, a
     toast({ title: 'Space Deleted', description: 'The space has been successfully deleted.' });
   }
 
-  const handleSaveAndClose = (spaceData: Omit<Space, 'id'|'statuses'>) => {
+  const handleSaveAndClose = async (spaceData: Omit<Space, 'id' | 'statuses'>) => {
     if (selectedSpace) {
-      onSave({ ...selectedSpace, ...spaceData });
+      onSave(spaceData, selectedSpace.id);
       toast({ title: 'Space Updated', description: 'The space has been successfully updated.' });
     } else {
-      onSave(spaceData);
-      toast({ title: 'Space Created', description: 'The space has been successfully created.' });
+        const newSpaceId = await dbAddSpace(spaceData);
+        await createDefaultHubForSpace(newSpaceId, appUser.id);
+        toast({ title: 'Space Created', description: 'The space and a default hub have been created.' });
     }
   };
 
@@ -129,5 +132,3 @@ export default function SpaceSettings({ allSpaces, allUsers, onSave, onDelete, a
     </>
   );
 }
-
-    
