@@ -70,7 +70,6 @@ export default function Dashboard({ view }: { view: string }) {
   const [slackLogs, setSlackLogs] = useState<SlackMeetingLog[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [allSpaces, setAllSpaces] = useState<Space[]>([]);
 
   // Messaging states
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -104,7 +103,6 @@ export default function Dashboard({ view }: { view: string }) {
       fetchedSlackLogs, 
       fetchedDocuments,
       fetchedUsers,
-      fetchedSpaces,
       fetchedJobFlowTemplates,
       fetchedPhaseTemplates,
       fetchedTaskTemplates,
@@ -119,7 +117,6 @@ export default function Dashboard({ view }: { view: string }) {
       db.getSlackMeetingLogsInSpace(activeSpace.id),
       db.getDocumentsInSpace(activeSpace.id),
       db.getAllUsers(),
-      db.getAllSpaces(),
       db.getJobFlowTemplates(activeSpace.id),
       db.getPhaseTemplates(activeSpace.id),
       db.getTaskTemplates(activeSpace.id),
@@ -135,7 +132,6 @@ export default function Dashboard({ view }: { view: string }) {
     setSlackLogs(fetchedSlackLogs);
     setDocuments(fetchedDocuments);
     setAllUsers(fetchedUsers);
-    setAllSpaces(fetchedSpaces);
     setJobFlowTemplates(fetchedJobFlowTemplates);
     setPhaseTemplates(fetchedPhaseTemplates);
     setTaskTemplates(fetchedTaskTemplates);
@@ -300,7 +296,7 @@ export default function Dashboard({ view }: { view: string }) {
       onAddTask: handleAddTask,
       documents,
       timeEntries,
-      allSpaces,
+      allSpaces: userSpaces,
       messages,
       unreadMentions,
       onMentionsCleared: () => setLastMentionsRead(new Date().toISOString()),

@@ -205,9 +205,10 @@ export const declineInvite = async (inviteId: string) => {
 
 // --- Space Management ---
 export const getSpacesForUser = async (userId: string): Promise<Space[]> => {
+  if (!userId) return [];
   const q = query(
     collection(db, "spaces"),
-    where(`members.${userId}`, "!=", null)
+    where(`members.${userId}.role`, 'in', ['Admin', 'Member'])
   );
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(

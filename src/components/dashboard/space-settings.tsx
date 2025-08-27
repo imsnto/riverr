@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import SpaceFormDialog from './space-form-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { createDefaultHubForSpace, addSpace as dbAddSpace } from '@/lib/db';
+import { useAuth } from '@/hooks/use-auth';
 
 
 const getInitials = (name: string) => {
@@ -25,7 +26,8 @@ interface SpaceSettingsProps {
     appUser: User | null;
 }
 
-export default function SpaceSettings({ allSpaces, allUsers, onSave, onDelete, appUser }: SpaceSettingsProps) {
+export default function SpaceSettings({ allUsers, onSave, onDelete, appUser }: SpaceSettingsProps) {
+  const { userSpaces } = useAuth();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
   const { toast } = useToast();
@@ -75,7 +77,7 @@ export default function SpaceSettings({ allSpaces, allUsers, onSave, onDelete, a
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {allSpaces.map(space => {
+            {userSpaces.map(space => {
               const members = Object.keys(space.members).map(id => allUsers.find(u => u.id === id)).filter(Boolean) as User[];
               return (
                 <div key={space.id} className="border p-4 rounded-lg flex justify-between items-center">

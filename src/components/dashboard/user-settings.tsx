@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import InviteUserDialog from './invite-user-dialog';
 import { addInvite } from '@/lib/db';
 import { randomBytes } from 'crypto';
+import { useAuth } from '@/hooks/use-auth';
 
 
 const getInitials = (name: string) => {
@@ -30,17 +31,19 @@ interface UserSettingsProps {
     handleInvite: (values: Omit<Invite, 'id' | 'token' | 'status'>) => void;
 }
 
-export default function UserSettings({ allUsers: initialUsers, allSpaces, appUser, onInvite, handleInvite }: UserSettingsProps) {
+export default function UserSettings({ allUsers: initialUsers, handleInvite }: UserSettingsProps) {
   const { toast } = useToast();
+  const { appUser, userSpaces } = useAuth();
   const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   const usersInMySpaces = useMemo(() => {
+    if (!userSpaces.length) return [];
     const memberIds = new Set<string>();
-    allSpaces.forEach(space => {
+    userSpaces.forEach(space => {
         Object.keys(space.members).forEach(id => memberIds.add(id));
     });
     return initialUsers.filter(user => memberIds.has(user.id));
-  }, [initialUsers, allSpaces]);
+  }, [initialUsers, userSpaces]);
   
   const getRoleInSpace = (user: User, space: Space): SpaceMember | null => {
       return space.members[user.id] || null;
@@ -105,7 +108,7 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, appUse
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex flex-wrap gap-2">
-                                        {allSpaces.map(space => {
+                                        {userSpaces.map(space => {
                                             const membership = getRoleInSpace(user, space);
                                             if (membership) {
                                                 return (
@@ -150,7 +153,7 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, appUse
             isOpen={isInviteOpen}
             onOpenChange={setIsInviteOpen}
             onInvite={handleInviteAndClose}
-            allSpaces={allSpaces}
+            allSpaces={userSpaces}
         />
     </>
   );
