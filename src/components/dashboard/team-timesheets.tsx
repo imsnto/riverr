@@ -25,7 +25,7 @@ interface TeamTimesheetsProps {
   tasks: Task[];
   timeEntries: TimeEntry[];
   appUser: User;
-  activeHub: Hub;
+  activeHub: Hub | null;
 }
 
 export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, timeEntries, appUser, activeHub }: TeamTimesheetsProps) {
@@ -61,6 +61,10 @@ export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, t
   
   const handleThisWeek = () => {
     setCurrentDate(new Date());
+  }
+  
+  if (!activeHub) {
+    return <div className="text-center p-8">Loading timesheet data...</div>;
   }
 
   const selectedUser = usersInAccessibleSpaces.find(u => u.id === selectedUserId) || appUser;

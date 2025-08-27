@@ -1,3 +1,4 @@
+
 // src/components/dashboard/settings-layout.tsx
 'use client';
 
@@ -30,7 +31,7 @@ interface SettingsLayoutProps {
   projects: Project[];
   tasks: Task[];
   timeEntries: TimeEntry[];
-  activeHub: Hub;
+  activeHub: Hub | null;
 }
 
 export default function SettingsLayout(props: SettingsLayoutProps) {
