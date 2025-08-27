@@ -63,8 +63,8 @@ export default function HubPermissionDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[80vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-h-[80vh] flex flex-col overflow-hidden p-0">
+        <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle>Set Hub Permissions</DialogTitle>
           <DialogDescription>
             Choose who can access this hub. You can change this later.
@@ -99,7 +99,7 @@ export default function HubPermissionDialog({
                 </div>
             </ScrollArea>
         </div>
-        <DialogFooter className="mt-auto pt-4 border-t">
+        <DialogFooter className="mt-auto p-6 pt-4 border-t bg-background">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSave}>Save Permissions</Button>
         </DialogFooter>
