@@ -1,9 +1,6 @@
-
 // src/app/(app)/space/[spaceId]/hub/[hubId]/[view]/page.tsx
-
 'use client';
-
-import React from 'react';
+import Dashboard from '@/components/dashboard/dashboard';
 
 interface HubPageProps {
   params: {
@@ -14,13 +11,6 @@ interface HubPageProps {
 }
 
 export default function HubPage({ params }: HubPageProps) {
-  // TODO: Fetch Hub data, permissions, and render the correct view component
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold">Hub View</h1>
-      <p>Space ID: {params.spaceId}</p>
-      <p>Hub ID: {params.hubId}</p>
-      <p>View: {params.view}</p>
-    </div>
-  );
+  // The Dashboard component now contains all the logic for layout and view rendering
+  return <Dashboard view={params.view} />;
 }

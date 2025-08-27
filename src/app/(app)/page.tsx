@@ -4,7 +4,6 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import Dashboard from '@/app/(app)/page';
 
 // This page is now a router/redirector based on auth and space/hub state.
 // The actual dashboard UI is now primarily rendered by the hub view at /space/[spaceId]/hub/[hubId]/[view]
@@ -21,7 +20,7 @@ export default function RootPage() {
         if (status === 'authenticated') {
             if (activeSpace && activeHub) {
                 // If we have a cached space AND hub, go directly to the hub's default view
-                 const defaultView = activeHub.isDefault ? (activeHub.settings?.defaultView || 'tasks') : 'tasks';
+                 const defaultView = activeHub.settings?.defaultView || 'tasks';
                 router.push(`/space/${activeSpace.id}/hub/${activeHub.id}/${defaultView}`);
             } else if (activeSpace) {
                 // If we only have a space, go to hub selection for that space
