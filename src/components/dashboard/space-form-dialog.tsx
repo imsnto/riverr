@@ -32,6 +32,7 @@ import { Badge } from '../ui/badge';
 import HubComponentEditor from './hub-component-editor';
 import HubPermissionDialog from './hub-permission-dialog';
 import { Separator } from '../ui/separator';
+import { ScrollArea } from '../ui/scroll-area';
 
 const hubSchema = z.object({
   name: z.string().min(2, 'Hub name is required.'),
@@ -123,102 +124,105 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0">
+        <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle>{space ? 'Edit Space' : 'Create Space'}</DialogTitle>
           <DialogDescription>
             {space ? 'Update the details for your space and hubs.' : 'Fill in the details to create a new space and its default hub.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Space Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Marketing Team" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="members"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Members</FormLabel>
-                  <MemberSelect 
-                    allUsers={allUsers} 
-                    selectedUsers={field.value} 
-                    onChange={field.onChange}
-                    creatorId={space ? null : currentUser.id}
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
+            <ScrollArea className="flex-1">
+              <div className="space-y-4 p-6">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Space Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., Marketing Team" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                  <FormField
+                    control={form.control}
+                    name="members"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Members</FormLabel>
+                        <MemberSelect 
+                          allUsers={allUsers} 
+                          selectedUsers={field.value} 
+                          onChange={field.onChange}
+                          creatorId={space ? null : currentUser.id}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-            <Separator />
-             <FormField
-                control={form.control}
-                name="hubs.0.name"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Default Hub Name</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )}
-             />
-             <FormField
-                control={form.control}
-                name="hubs.0.components"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Hub Features</FormLabel>
-                        <FormControl>
-                           <HubComponentEditor selected={field.value} setSelected={field.onChange} />
-                        </FormControl>
-                         <FormMessage />
-                    </FormItem>
-                )}
-             />
-              <FormField
-                control={form.control}
-                name="hubs.0" // Pass the whole hub object to the dialog
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Hub Permissions</FormLabel>
-                        <FormControl>
-                            <HubPermissionDialog
-                                isOpen={false} // This dialog will be controlled externally if needed, or integrated directly
-                                onOpenChange={() => {}}
-                                spaceUsers={allUsers.filter(u => form.getValues('members').includes(u.id))}
-                                onSave={(userIds, applyToAll) => {
-                                    field.onChange({
-                                        ...field.value,
-                                        permittedUsers: userIds,
-                                        applyToAll: applyToAll,
-                                    })
-                                }}
-                                // This is a simplified integration.
-                                // A real implementation might use a button to open the dialog.
-                                // For now, we assume it's part of the main form.
-                            />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
-            
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit">Save</Button>
-            </DialogFooter>
+                  <Separator />
+                  <FormField
+                      control={form.control}
+                      name="hubs.0.name"
+                      render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>Default Hub Name</FormLabel>
+                              <FormControl><Input {...field} /></FormControl>
+                              <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+                  <FormField
+                      control={form.control}
+                      name="hubs.0.components"
+                      render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>Hub Features</FormLabel>
+                              <FormControl>
+                                <HubComponentEditor selected={field.value} setSelected={field.onChange} />
+                              </FormControl>
+                              <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+                    <FormField
+                      control={form.control}
+                      name="hubs.0" // Pass the whole hub object to the dialog
+                      render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>Hub Permissions</FormLabel>
+                              <FormControl>
+                                  <HubPermissionDialog
+                                      isOpen={false} // This dialog will be controlled externally if needed, or integrated directly
+                                      onOpenChange={() => {}}
+                                      spaceUsers={allUsers.filter(u => form.getValues('members').includes(u.id))}
+                                      onSave={(userIds, applyToAll) => {
+                                          field.onChange({
+                                              ...field.value,
+                                              permittedUsers: userIds,
+                                              applyToAll: applyToAll,
+                                          })
+                                      }}
+                                      // This is a simplified integration.
+                                      // A real implementation might use a button to open the dialog.
+                                      // For now, we assume it's part of the main form.
+                                  />
+                              </FormControl>
+                              <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+                </div>
+              </ScrollArea>
+              <DialogFooter className="p-6 pt-4 border-t bg-background mt-auto">
+                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                <Button type="submit">Save</Button>
+              </DialogFooter>
           </form>
         </Form>
       </DialogContent>

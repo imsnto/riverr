@@ -20,6 +20,7 @@ import { Check, ChevronsUpDown } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Badge } from '../ui/badge';
 import { useAuth } from '@/hooks/use-auth';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface HubPermissionDialogProps {
   isOpen: boolean;
@@ -62,39 +63,41 @@ export default function HubPermissionDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Set Hub Permissions</DialogTitle>
           <DialogDescription>
             Choose who can access this hub. You can change this later.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4 space-y-4">
-            <RadioGroup value={access} onValueChange={(value) => setAccess(value as 'all' | 'specific')}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="all" id="r1" />
-                <Label htmlFor="r1">Allow all current and future members of this space</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="specific" id="r2" />
-                <Label htmlFor="r2">Allow only specific people</Label>
-              </div>
-            </RadioGroup>
-            {access === 'specific' && (
-                <div className="pl-6 pt-2">
-                     <MemberSelect 
-                        allUsers={otherSpaceUsers} 
-                        selectedUsers={selectedUsers} 
-                        onChange={setSelectedUsers}
-                        creatorId={appUser?.id || null}
-                    />
-                     <p className="text-xs text-muted-foreground mt-2">
-                        You will always have access to hubs you create.
-                    </p>
+        <ScrollArea className="flex-1 -mx-6">
+            <div className="py-4 px-6 space-y-4">
+                <RadioGroup value={access} onValueChange={(value) => setAccess(value as 'all' | 'specific')}>
+                <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="all" id="r1" />
+                    <Label htmlFor="r1">Allow all current and future members of this space</Label>
                 </div>
-            )}
-        </div>
-        <DialogFooter>
+                <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="specific" id="r2" />
+                    <Label htmlFor="r2">Allow only specific people</Label>
+                </div>
+                </RadioGroup>
+                {access === 'specific' && (
+                    <div className="pl-6 pt-2">
+                        <MemberSelect 
+                            allUsers={otherSpaceUsers} 
+                            selectedUsers={selectedUsers} 
+                            onChange={setSelectedUsers}
+                            creatorId={appUser?.id || null}
+                        />
+                        <p className="text-xs text-muted-foreground mt-2">
+                            You will always have access to hubs you create.
+                        </p>
+                    </div>
+                )}
+            </div>
+        </ScrollArea>
+        <DialogFooter className="mt-auto pt-4 border-t">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSave}>Save Permissions</Button>
         </DialogFooter>
@@ -163,4 +166,3 @@ function MemberSelect({ allUsers, selectedUsers, onChange, creatorId }: { allUse
       </div>
     );
 }
-
