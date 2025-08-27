@@ -25,7 +25,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Space, User, SpaceMember } from '@/lib/data';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
 import { Badge } from '../ui/badge';
@@ -42,7 +42,7 @@ type SpaceFormValues = z.infer<typeof spaceSchema>;
 interface SpaceFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (space: Omit<Space, 'id' | 'statuses'> & { hubComponents?: string[] }) => void;
+  onSave: (space: Omit<Space, 'id' | 'statuses'> & { hubComponents?: string[] }, spaceId?: string) => void;
   space: Space | null;
   allUsers: User[];
   currentUser: User;
@@ -93,7 +93,7 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
         hubComponents: values.hubComponents,
     };
     
-    onSave(spaceData);
+    onSave(spaceData, space?.id);
     onOpenChange(false);
   };
 

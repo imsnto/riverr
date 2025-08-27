@@ -32,6 +32,8 @@ export interface Hub {
   createdBy: string; // userId
   settings: { [key: string]: any };
   isDefault: boolean;
+  memberIds?: string[];
+  isPrivate?: boolean;
 }
 
 

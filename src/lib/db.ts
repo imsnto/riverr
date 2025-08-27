@@ -260,12 +260,12 @@ export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
   );
 };
 
-export const createDefaultHubForSpace = async (spaceId: string, userId: string, template: string) => {
-    const components = getHubComponentsForTemplate(template);
+export const createDefaultHubForSpace = async (spaceId: string, userId: string, template?: string) => {
+    const components = getHubComponentsForTemplate(template || 'project-management');
     const hubData: Omit<Hub, 'id'> = {
         spaceId,
         name: 'Default Hub',
-        type: 'custom',
+        type: template || 'project-management',
         createdAt: new Date().toISOString(),
         createdBy: userId,
         isDefault: true,
