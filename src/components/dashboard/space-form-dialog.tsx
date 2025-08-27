@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -27,14 +26,19 @@ import { Space, User, SpaceMember } from '@/lib/data';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
-import { Check, ChevronsUpDown, X } from 'lucide-react';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import { Badge } from '../ui/badge';
-import HubComponentEditor from './hub-component-editor';
 
 const spaceSchema = z.object({
   name: z.string().min(2, 'Space name must be at least 2 characters long.'),
   members: z.array(z.string()).min(1, 'At least one member is required.'),
-  hubComponents: z.array(z.string()).default(['tasks', 'documents', 'messages']),
+  hubs: z.array(
+    z.object({
+      name: z.string().min(2, 'Hub name required'),
+      features: z.array(z.string()),
+      permittedUsers: z.array(z.string()).min(1, 'At least one permitted user required'),
+    })
+  )
 });
 
 type SpaceFormValues = z.infer<typeof spaceSchema>;
@@ -42,7 +46,7 @@ type SpaceFormValues = z.infer<typeof spaceSchema>;
 interface SpaceFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (space: Omit<Space, 'id' | 'statuses'> & { hubComponents?: string[] }, spaceId?: string) => void;
+  onSave: (space: Omit<Space, 'id' | 'statuses'>) => void;
   space: Space | null;
   allUsers: User[];
   currentUser: User;
@@ -54,24 +58,30 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
     defaultValues: {
       name: '',
       members: [currentUser.id],
-      hubComponents: ['tasks', 'documents', 'messages'],
+      hubs: [
+        {
+          name: '',
+          features: [],
+          permittedUsers: [currentUser.id]
+        }
+      ]
     },
   });
-  
+
   React.useEffect(() => {
     if (isOpen) {
       if (space) {
-          form.reset({
-              name: space.name,
-              members: Object.keys(space.members),
-              hubComponents: ['tasks', 'documents', 'messages'], // Not editable for existing spaces yet
-          });
+        form.reset({
+          name: space.name,
+          members: Object.keys(space.members),
+          hubs: [] // TODO: populate from existing space hubs
+        });
       } else {
-          form.reset({
-              name: '',
-              members: [currentUser.id],
-              hubComponents: ['tasks', 'documents', 'messages'],
-          })
+        form.reset({
+          name: '',
+          members: [currentUser.id],
+          hubs: [{ name: '', features: [], permittedUsers: [currentUser.id] }]
+        });
       }
     }
   }, [space, currentUser, form, isOpen])
@@ -79,31 +89,31 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
   const onSubmit = (values: SpaceFormValues) => {
     const membersMap: Record<string, SpaceMember> = {};
     values.members.forEach(memberId => {
-        const existingMember = space?.members[memberId];
-        if (existingMember) {
-            membersMap[memberId] = existingMember;
-        } else {
-            membersMap[memberId] = { role: memberId === currentUser.id ? 'Admin' : 'Member' };
-        }
+      const existingMember = space?.members[memberId];
+      if (existingMember) {
+        membersMap[memberId] = existingMember;
+      } else {
+        membersMap[memberId] = { role: memberId === currentUser.id ? 'Admin' : 'Member' };
+      }
     });
 
     const spaceData = {
-        name: values.name,
-        members: membersMap,
-        hubComponents: values.hubComponents,
+      name: values.name,
+      members: membersMap,
+      hubs: values.hubs
     };
-    
-    onSave(spaceData, space?.id);
+
+    onSave(spaceData);
     onOpenChange(false);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>{space ? 'Edit Space' : 'Create Space'}</DialogTitle>
           <DialogDescription>
-            {space ? 'Update the details for your space.' : 'Fill in the details to create a new space and its default hub.'}
+            {space ? 'Update the details for your space and hubs.' : 'Fill in the details to create a new space and its default hub.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -121,40 +131,26 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
                 </FormItem>
               )}
             />
-            {!space && (
-                 <FormField
-                  control={form.control}
-                  name="hubComponents"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Default Hub Features</FormLabel>
-                        <FormControl>
-                            <HubComponentEditor selected={field.value} setSelected={field.onChange} />
-                        </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-            )}
             <FormField
               control={form.control}
               name="members"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Members</FormLabel>
-                   <MemberSelect 
-                        allUsers={allUsers} 
-                        selectedUsers={field.value} 
-                        onChange={field.onChange}
-                        creatorId={space ? null : currentUser.id}
-                    />
+                  <MemberSelect 
+                    allUsers={allUsers} 
+                    selectedUsers={field.value} 
+                    onChange={field.onChange}
+                    creatorId={space ? null : currentUser.id}
+                  />
                   <FormMessage />
                 </FormItem>
               )}
             />
+            {/* Hub Builder UI and Permissions Dialog handled via separate component, imported and placed here */}
             <DialogFooter>
-                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                <Button type="submit">Save</Button>
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button type="submit">Save</Button>
             </DialogFooter>
           </form>
         </Form>
@@ -163,67 +159,66 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
   );
 }
 
-
 function MemberSelect({ allUsers, selectedUsers, onChange, creatorId }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void, creatorId: string | null }) {
-    const [open, setOpen] = React.useState(false)
-  
-    const handleSelect = (userId: string) => {
-        if (creatorId && userId === creatorId) return;
+  const [open, setOpen] = React.useState(false);
 
-        const newSelected = selectedUsers.includes(userId)
-            ? selectedUsers.filter(id => id !== userId)
-            : [...selectedUsers, userId];
-        onChange(newSelected);
-    }
+  const handleSelect = (userId: string) => {
+    if (creatorId && userId === creatorId) return;
 
-    return (
-      <div>
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
-              className="w-full justify-between h-auto"
-            >
-             <div className="flex flex-wrap gap-1">
-                 {selectedUsers.length > 0 ? selectedUsers.map(id => {
-                     const user = allUsers.find(u => u.id === id);
-                     return <Badge variant="secondary" key={id}>{user?.name || 'Unknown'}</Badge>;
-                 }) : "Select members..."}
-             </div>
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-            <Command>
-              <CommandInput placeholder="Search users..." />
-              <CommandList>
-                <CommandEmpty>No users found.</CommandEmpty>
-                <CommandGroup>
-                  {allUsers.map((user) => (
-                    <CommandItem
-                      key={user.id}
-                      value={user.name}
-                      onSelect={() => handleSelect(user.id)}
+    const newSelected = selectedUsers.includes(userId)
+      ? selectedUsers.filter(id => id !== userId)
+      : [...selectedUsers, userId];
+    onChange(newSelected);
+  };
+
+  return (
+    <div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between h-auto"
+          >
+            <div className="flex flex-wrap gap-1">
+              {selectedUsers.length > 0 ? selectedUsers.map(id => {
+                const user = allUsers.find(u => u.id === id);
+                return <Badge variant="secondary" key={id}>{user?.name || 'Unknown'}</Badge>;
+              }) : "Select members..."}
+            </div>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+          <Command>
+            <CommandInput placeholder="Search users..." />
+            <CommandList>
+              <CommandEmpty>No users found.</CommandEmpty>
+              <CommandGroup>
+                {allUsers.map((user) => (
+                  <CommandItem
+                    key={user.id}
+                    value={user.name}
+                    onSelect={() => handleSelect(user.id)}
+                    className={cn(
+                      creatorId && user.id === creatorId && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <Check
                       className={cn(
-                        creatorId && user.id === creatorId && "opacity-50 cursor-not-allowed"
+                        "mr-2 h-4 w-4",
+                        selectedUsers.includes(user.id) ? "opacity-100" : "opacity-0"
                       )}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          selectedUsers.includes(user.id) ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      {user.name}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-      </div>
-    )
-  }
+                    />
+                    {user.name}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
