@@ -1,4 +1,3 @@
-
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -58,7 +57,7 @@ const isUnread = (mention: any, lastRead: string | null) => {
 };
 
 export default function Dashboard({ view }: { view: string }) {
-  const { appUser, signOut, activeSpace, userSpaces, setUserSpaces, setActiveSpace, setActiveHub } = useAuth();
+  const { appUser, signOut, activeSpace, userSpaces, setUserSpaces, setActiveSpace, activeHub, setActiveHub } = useAuth();
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
@@ -78,6 +77,7 @@ export default function Dashboard({ view }: { view: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [activeThread, setActiveThread] = useState<Message | null>(null);
+  const [spaceHubs, setSpaceHubs] = useState<Hub[]>([]);
   
   // Mentions
   const [lastMentionsRead, setLastMentionsRead] = useState<string | null>(null);
@@ -112,6 +112,7 @@ export default function Dashboard({ view }: { view: string }) {
       fetchedJobFlowTasks,
       fetchedChannels,
       fetchedMessages,
+      fetchedHubs,
     ] = await Promise.all([
       db.getProjectsInSpace(activeSpace.id),
       db.getAllTasks(),
@@ -126,6 +127,7 @@ export default function Dashboard({ view }: { view: string }) {
       db.getAllJobFlowTasks(activeSpace.id),
       db.getChannelsInSpace(activeSpace.id),
       db.getMessagesInChannel(channels.map(c => c.id).join(',')), // This will need adjustment
+      db.getHubsForSpace(activeSpace.id),
     ]);
     
     setProjects(fetchedProjects);
@@ -140,6 +142,7 @@ export default function Dashboard({ view }: { view: string }) {
     setJobs(fetchedJobs);
     setJobFlowTasks(fetchedJobFlowTasks);
     setChannels(fetchedChannels);
+    setSpaceHubs(fetchedHubs);
 
     if (fetchedChannels.length > 0 && !activeChannelId) {
       setActiveChannelId(fetchedChannels[0].id);
@@ -164,6 +167,15 @@ export default function Dashboard({ view }: { view: string }) {
     setCurrentView(newView);
     if (activeSpace && params.hubId) {
       router.push(`/space/${activeSpace.id}/hub/${params.hubId}/${newView}`);
+    }
+  };
+
+  const handleHubChange = (hubId: string) => {
+    const newHub = spaceHubs.find(h => h.id === hubId);
+    if (newHub && activeSpace) {
+      setActiveHub(newHub);
+      const defaultView = newHub.settings?.defaultView || 'tasks';
+      router.push(`/space/${activeSpace.id}/hub/${newHub.id}/${defaultView}`);
     }
   };
 
@@ -276,7 +288,7 @@ export default function Dashboard({ view }: { view: string }) {
         toast({ title: 'Space Updated', description: 'The space has been successfully updated.' });
     } else {
         const newSpaceId = await db.addSpace(spaceData);
-        await db.createDefaultHubForSpace(newSpaceId, appUser.id, 'project-management');
+        await db.createDefaultHubForSpace(newSpaceId, appUser.id, { name: 'Default Hub', type: 'project-management' });
         toast({ title: 'Space Created', description: 'The space and a default hub have been created.' });
     }
     // After saving, refresh all user spaces to reflect changes
@@ -386,7 +398,10 @@ export default function Dashboard({ view }: { view: string }) {
               setActiveHub(null);
               router.push(`/space/${spaceId}/hubs`);
             }
-          }} 
+          }}
+          allHubs={spaceHubs}
+          activeHub={activeHub}
+          onHubChange={handleHubChange}
         />
         <main className="flex-1 overflow-y-auto p-8 pt-24">
           {renderView()}
@@ -428,5 +443,3 @@ export default function Dashboard({ view }: { view: string }) {
     </div>
   );
 }
-
-    

@@ -1,4 +1,3 @@
-
 // src/lib/db.ts
 
 import {
@@ -247,35 +246,28 @@ export const deleteSpace = async (spaceId: string): Promise<void> => {
 };
 
 // --- Hub Management ---
+export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
+  const q = query(collection(db, 'hubs'), where('spaceId', '==', spaceId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Hub));
+};
+
 export const addHub = async (hub: Omit<Hub, "id">): Promise<Hub> => {
   const docRef = await addDoc(collection(db, "hubs"), hub);
   return { ...hub, id: docRef.id };
 };
 
-export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
-  const q = query(collection(db, "hubs"), where("spaceId", "==", spaceId));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(
-    (doc) => ({ id: doc.id, ...doc.data() } as Hub)
-  );
-};
-
-export const createDefaultHubForSpace = async (spaceId: string, userId: string, hubData: Omit<Hub, 'id' | 'spaceId' | 'createdAt' | 'createdBy' | 'isDefault'> & { applyToAll?: boolean, permittedUsers?: string[] }) => {
-    const { applyToAll, permittedUsers, components, ...restOfHubData } = hubData;
-
+export const createDefaultHubForSpace = async (spaceId: string, userId: string, hubData: Partial<Hub>) => {
     const finalHubData: Omit<Hub, 'id'> = {
-        ...restOfHubData,
+        name: hubData.name || 'Default Hub',
         spaceId,
-        type: 'project-management', // You might want to make this dynamic
+        type: hubData.type || 'project-management',
         createdAt: new Date().toISOString(),
         createdBy: userId,
         isDefault: true,
-        settings: {
-            components: components || [],
-            defaultView: (components && components.length > 0) ? components[0] : 'tasks',
-        },
-        isPrivate: !applyToAll,
-        memberIds: !applyToAll ? permittedUsers : [],
+        settings: hubData.settings || { components: ['tasks', 'documents', 'messages'], defaultView: 'tasks' },
+        isPrivate: hubData.isPrivate || false,
+        memberIds: hubData.memberIds || [],
     };
     const hubRef = await addDoc(collection(db, 'hubs'), finalHubData);
     return { id: hubRef.id, ...finalHubData };
@@ -883,5 +875,3 @@ export const updateDocument = async (
 export const deleteDocument = async (docId: string): Promise<void> => {
   await deleteDoc(doc(db, "documents", docId));
 };
-
-    

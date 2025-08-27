@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Space, User } from '@/lib/data';
+import { Space, User, Hub } from '@/lib/data';
 import { LifeBuoy, LogOut, User as UserIcon, ChevronsUpDown, Check } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
@@ -76,13 +76,84 @@ function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProp
   )
 }
 
+interface HubSwitcherProps {
+  hubs: Hub[];
+  activeHub: Hub | null;
+  onHubChange: (hubId: string) => void;
+}
+
+function HubSwitcher({ hubs, activeHub, onHubChange }: HubSwitcherProps) {
+  const [open, setOpen] = React.useState(false)
+
+  return (
+     <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-[200px] justify-between"
+          disabled={!activeHub}
+        >
+          {activeHub ? activeHub.name : "Select a hub"}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] p-0">
+        <Command>
+          <CommandInput placeholder="Search hub..." />
+          <CommandList>
+            <CommandEmpty>No hub found.</CommandEmpty>
+            <CommandGroup>
+              {hubs.map((hub) => (
+                <CommandItem
+                  key={hub.id}
+                  value={hub.id}
+                  onSelect={(currentValue) => {
+                    onHubChange(currentValue)
+                    setOpen(false)
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      activeHub?.id === hub.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {hub.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 const getInitials = (name: string) => {
     if (!name) return '';
     return name.split(' ').map(n => n[0]).join('');
 }
 
 
-export function TopBar({ className, activeSpace, onSpaceChange, allSpaces }: { className?: string; activeSpace: Space | null, onSpaceChange: (spaceId: string) => void; allSpaces: Space[] }) {
+export function TopBar({ 
+    className, 
+    activeSpace, 
+    onSpaceChange, 
+    allSpaces,
+    allHubs,
+    activeHub,
+    onHubChange
+}: { 
+    className?: string; 
+    activeSpace: Space | null, 
+    onSpaceChange: (spaceId: string) => void; 
+    allSpaces: Space[],
+    allHubs: Hub[],
+    activeHub: Hub | null,
+    onHubChange: (hubId: string) => void;
+}) {
   const router = useRouter();
   const { signOut, appUser } = useAuth();
 
@@ -102,6 +173,7 @@ export function TopBar({ className, activeSpace, onSpaceChange, allSpaces }: { c
     >
       <div className="flex items-center gap-2">
         {activeSpace && <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />}
+        {activeHub && <HubSwitcher hubs={allHubs} activeHub={activeHub} onHubChange={onHubChange} />}
       </div>
       <div className="flex items-center gap-4">
         <DropdownMenu>
