@@ -268,15 +268,23 @@ export default function Dashboard({ view }: { view: string }) {
     setTimeEntries(prev => [...prev, newTimeEntry]);
   };
   
-  const handleSpaceSave = async (spaceData: Omit<Space, 'id'>) => {
-     if ('id' in spaceData) {
-        // This is an update
-     } else {
+  const handleSpaceSave = async (spaceData: Omit<Space, 'id'>, spaceId?: string) => {
+    if (spaceId) {
+        await db.updateSpace(spaceId, spaceData);
+    } else {
         const newSpaceId = await db.addSpace(spaceData);
         await db.createDefaultHubForSpace(newSpaceId, appUser.id);
-     }
-     fetchData();
-  }
+    }
+    // After saving, refresh all user spaces to reflect changes
+    const updatedSpaces = await db.getSpacesForUser(appUser.id);
+    setUserSpaces(updatedSpaces);
+    
+    // If the active space was edited, update it. If a new space was created, switch to it.
+    if (spaceId) {
+        const updatedActiveSpace = updatedSpaces.find(s => s.id === spaceId);
+        if (updatedActiveSpace) setActiveSpace(updatedActiveSpace);
+    }
+ };
 
 
   const renderView = () => {

@@ -34,6 +34,7 @@ interface AuthContextType {
   acceptInvite: (invite: Invite) => Promise<void>;
   declineInvite: (inviteId: string) => Promise<void>;
   getUserPermissions: (spaceId: string) => SpaceMember | null;
+  isUserAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,6 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [activeSpace, _setActiveSpace] = useState<Space | null>(null);
   const [activeHub, _setActiveHub] = useState<Hub | null>(null);
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
+  const [isUserAdmin, setIsUserAdmin] = useState(false);
 
   const setActiveSpace = (space: Space | null) => {
     _setActiveSpace(space);
@@ -139,6 +141,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
         }
         
+        const isAdminInAnySpace = spaces.some(s => s.members[userProfile!.id]?.role === 'Admin');
+        setIsUserAdmin(isAdminInAnySpace);
+
         setStatus('authenticated');
 
       } else {
@@ -148,6 +153,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setActiveSpace(null);
         setActiveHub(null);
         setPendingInvites([]);
+        setIsUserAdmin(false);
         localStorage.removeItem(LOCAL_STORAGE_KEY_USER);
         localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_SPACE);
         localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_HUB);
@@ -211,6 +217,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     acceptInvite: handleAcceptInvite,
     declineInvite: handleDeclineInvite,
     getUserPermissions,
+    isUserAdmin,
   };
 
   return (
