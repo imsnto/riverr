@@ -20,6 +20,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { Label } from "../ui/label";
 
 interface SpaceSwitcherProps {
   spaces: Space[];
@@ -171,9 +172,19 @@ export function TopBar({
         className
       )}
     >
-      <div className="flex items-center gap-2">
-        {activeSpace && <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />}
-        {activeHub && <HubSwitcher hubs={allHubs} activeHub={activeHub} onHubChange={onHubChange} />}
+      <div className="flex items-end gap-4">
+        {activeSpace && (
+            <div className="grid gap-1">
+                <Label className="text-xs text-muted-foreground px-1">Space</Label>
+                <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />
+            </div>
+        )}
+        {activeHub && (
+             <div className="grid gap-1">
+                <Label className="text-xs text-muted-foreground px-1">Hub</Label>
+                <HubSwitcher hubs={allHubs} activeHub={activeHub} onHubChange={onHubChange} />
+            </div>
+        )}
       </div>
       <div className="flex items-center gap-4">
         <DropdownMenu>
