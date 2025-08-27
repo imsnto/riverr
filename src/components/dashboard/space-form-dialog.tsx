@@ -32,7 +32,6 @@ import { Badge } from '../ui/badge';
 import HubComponentEditor from './hub-component-editor';
 import HubPermissionDialog from './hub-permission-dialog';
 import { Separator } from '../ui/separator';
-import { ScrollArea } from '../ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -141,162 +140,164 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
     : undefined;
 
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-2xl p-0">
-          <DialogHeader className="p-6 pb-4 border-b">
-            <DialogTitle>{space ? 'Edit Space' : 'Create Space'}</DialogTitle>
-            <DialogDescription>
-              {space
-                ? 'Update the details for your space and hubs.'
-                : 'Fill in the details to create a new space and its hubs.'}
-            </DialogDescription>
-          </DialogHeader>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl p-0 flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <DialogHeader className="p-6 pb-4 border-b shrink-0">
+          <DialogTitle>{space ? 'Edit Space' : 'Create Space'}</DialogTitle>
+          <DialogDescription>
+            {space
+              ? 'Update the details for your space and hubs.'
+              : 'Fill in the details to create a new space and its hubs.'}
+          </DialogDescription>
+        </DialogHeader>
 
-          {/* SCROLLABLE SECTION */}
-          <div className="max-h-[70vh] overflow-y-auto">
-            <div className="p-6 space-y-6">
-              <Form {...form}>
-                <form id="space-form" className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Space Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Marketing Team" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+        {/* Scrollable form */}
+        <div className="overflow-y-auto px-6 py-4 space-y-6 flex-1">
+          <Form {...form}>
+            <form id="space-form" className="space-y-6">
+              {/* Space Name */}
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Space Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Marketing Team" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                  <FormField
-                    control={form.control}
-                    name="members"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Space Members</FormLabel>
-                        <MemberSelect
-                          allUsers={allUsers}
-                          selectedUsers={field.value}
-                          onChange={field.onChange}
-                          creatorId={space ? null : currentUser.id}
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              {/* Space Members */}
+              <FormField
+                control={form.control}
+                name="members"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Space Members</FormLabel>
+                    <MemberSelect
+                      allUsers={allUsers}
+                      selectedUsers={field.value}
+                      onChange={field.onChange}
+                      creatorId={space ? null : currentUser.id}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                  <Separator />
+              {/* Hubs */}
+              <Separator />
+              <div className="space-y-4">
+                <FormLabel>Hubs</FormLabel>
+                {fields.map((item, index) => (
+                  <Card key={item.id} className="bg-muted/50 p-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <FormField
+                        control={form.control}
+                        name={`hubs.${index}.name`}
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormControl>
+                              <Input
+                                placeholder="Hub Name"
+                                {...field}
+                                className="text-base font-semibold border-none p-0 bg-transparent focus-visible:ring-0"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      {fields.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => remove(index)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
 
-                  <div className="space-y-4">
-                    <FormLabel>Hubs</FormLabel>
-                    {fields.map((item, index) => (
-                      <Card key={item.id} className="bg-muted/50 p-4">
-                        <div className="flex justify-between items-center mb-4">
-                          <FormField
-                            control={form.control}
-                            name={`hubs.${index}.name`}
-                            render={({ field }) => (
-                              <FormItem className="flex-1">
-                                <FormControl>
-                                  <Input
-                                    placeholder="Hub Name"
-                                    {...field}
-                                    className="text-base font-semibold border-none p-0 bg-transparent focus-visible:ring-0"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          {fields.length > 1 && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => remove(index)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          )}
-                        </div>
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name={`hubs.${index}.components`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Features</FormLabel>
+                            <FormControl>
+                              <HubComponentEditor
+                                selected={field.value || []}
+                                setSelected={field.onChange}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onClick={() => setPermissionModalIndex(index)}
+                      >
+                        <Users className="mr-2 h-4 w-4" />
+                        Permissions
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
 
-                        <div className="space-y-4">
-                          <FormField
-                            control={form.control}
-                            name={`hubs.${index}.components`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs">Features</FormLabel>
-                                <FormControl>
-                                  <HubComponentEditor
-                                    selected={field.value || []}
-                                    setSelected={field.onChange}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <Button
-                            variant="outline"
-                            type="button"
-                            onClick={() => setPermissionModalIndex(index)}
-                          >
-                            <Users className="mr-2 h-4 w-4" />
-                            Permissions
-                          </Button>
-                        </div>
-                      </Card>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        append({
-                          name: `New Hub ${fields.length + 1}`,
-                          components: ['tasks'],
-                          isPrivate: false,
-                          memberIds: [currentUser.id],
-                        })
-                      }
-                    >
-                      <Plus className="mr-2 h-4 w-4" /> Add Another Hub
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </div>
-          </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    append({
+                      name: `New Hub ${fields.length + 1}`,
+                      components: ['tasks'],
+                      isPrivate: false,
+                      memberIds: [currentUser.id],
+                    })
+                  }
+                >
+                  <Plus className="mr-2 h-4 w-4" /> Add Another Hub
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
 
-          {/* STICKY FOOTER */}
-          <DialogFooter className="p-6 pt-4 border-t bg-background sticky bottom-0">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" form="space-form" onClick={form.handleSubmit(onSubmit)}>
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* PERMISSION MODAL */}
-      {permissionModalIndex !== null && (
-        <HubPermissionDialog
-          isOpen={permissionModalIndex !== null}
-          onOpenChange={() => setPermissionModalIndex(null)}
-          spaceUsers={allUsers.filter((u) =>
-            form.getValues('members').includes(u.id)
-          )}
-          onSave={handleHubPermissionsSave}
-          defaultPermissions={selectedHubPermissions}
-        />
-      )}
-    </>
+        {/* Footer - pinned to bottom of dialog */}
+        <DialogFooter className="p-6 pt-4 border-t bg-background shrink-0">
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="submit" form="space-form" onClick={form.handleSubmit(onSubmit)}>
+            Save
+          </Button>
+        </DialogFooter>
+
+        {/* Permissions modal */}
+        {permissionModalIndex !== null && (
+          <HubPermissionDialog
+            isOpen={permissionModalIndex !== null}
+            onOpenChange={() => setPermissionModalIndex(null)}
+            spaceUsers={allUsers.filter((u) =>
+              form.getValues('members').includes(u.id)
+            )}
+            onSave={handleHubPermissionsSave}
+            defaultPermissions={selectedHubPermissions}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
+
 
 function MemberSelect({ allUsers, selectedUsers, onChange, creatorId }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void, creatorId: string | null }) {
   const [open, setOpen] = React.useState(false);
