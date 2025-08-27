@@ -1,3 +1,4 @@
+
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -96,7 +97,7 @@ export default function Dashboard({ view }: { view: string }) {
 
 
   const fetchData = async () => {
-    if (!activeSpace || !appUser) return;
+    if (!activeSpace || !appUser || !activeHub) return;
     
     const [
       fetchedProjects, 
@@ -114,18 +115,18 @@ export default function Dashboard({ view }: { view: string }) {
       fetchedMessages,
       fetchedHubs,
     ] = await Promise.all([
-      db.getProjectsInSpace(activeSpace.id),
-      db.getAllTasks(),
-      db.getTimeEntriesInSpace(projects.map(p => p.id)),
-      db.getSlackMeetingLogsInSpace(activeSpace.id),
-      db.getDocumentsInSpace(activeSpace.id),
+      db.getProjectsInHub(activeHub.id),
+      db.getAllTasks(activeHub.id),
+      db.getTimeEntriesInHub(projects.map(p => p.id)),
+      db.getSlackMeetingLogsInSpace(activeSpace.id), // This is space-wide for now
+      db.getDocumentsInHub(activeHub.id),
       db.getAllUsers(),
-      db.getJobFlowTemplates(activeSpace.id),
-      db.getPhaseTemplates(activeSpace.id),
-      db.getTaskTemplates(activeSpace.id),
-      db.getAllJobs(activeSpace.id),
-      db.getAllJobFlowTasks(activeSpace.id),
-      db.getChannelsInSpace(activeSpace.id),
+      db.getJobFlowTemplates(activeHub.id),
+      db.getPhaseTemplates(activeHub.id),
+      db.getTaskTemplates(activeHub.id),
+      db.getAllJobs(activeHub.id),
+      db.getAllJobFlowTasks(activeHub.id),
+      db.getChannelsInHub(activeHub.id),
       db.getMessagesInChannel(channels.map(c => c.id).join(',')), // This will need adjustment
       db.getHubsForSpace(activeSpace.id),
     ]);
@@ -157,10 +158,10 @@ export default function Dashboard({ view }: { view: string }) {
 
 
   useEffect(() => {
-    if (appUser && activeSpace) {
+    if (appUser && activeSpace && activeHub) {
       fetchData();
     }
-  }, [appUser, activeSpace]);
+  }, [appUser, activeSpace, activeHub]);
 
   // Handle view change from sidebar
   const handleViewChange = (newView: AppView) => {
@@ -186,7 +187,7 @@ export default function Dashboard({ view }: { view: string }) {
     }
   }, [view, currentView]);
 
-  if (!appUser || !activeSpace) {
+  if (!appUser || !activeSpace || !activeHub) {
     return (
       <div className="flex h-screen items-center justify-center">
         <p>Loading your workspace...</p>
@@ -225,7 +226,8 @@ export default function Dashboard({ view }: { view: string }) {
   };
   
   const handleAddTask = async (task: Omit<Task, 'id'>) => {
-    const newTask = await db.addTask(task);
+    const taskWithHub = { ...task, hubId: activeHub.id };
+    const newTask = await db.addTask(taskWithHub);
     setTasks(prev => [...prev, newTask]);
     return newTask;
   }
@@ -254,7 +256,8 @@ export default function Dashboard({ view }: { view: string }) {
   }
 
   const handleAddProject = async (project: Omit<Project, 'id'>) => {
-    const newProject = await db.addProject(project);
+    const projectWithHub = { ...project, hubId: activeHub.id };
+    const newProject = await db.addProject(projectWithHub);
     setProjects(prev => [...prev, newProject]);
   }
 

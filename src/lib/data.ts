@@ -50,6 +50,7 @@ export interface Project {
   id: string;
   name: string;
   space_id: string;
+  hubId: string; // Hub scope
   members: string[]; // array of user IDs
   status: 'Active' | 'On Hold' | 'Archived';
   created_by: string; // user ID
@@ -60,6 +61,7 @@ export interface Task {
   name: string;
   description: string;
   project_id: string | null; // Can be null if it's a job flow task
+  hubId: string; // Hub scope
   status: string;
   assigned_to: string; // user ID
   due_date: string; // ISO string
@@ -79,6 +81,7 @@ export interface Document {
   name: string;
   content: string;
   spaceId: string;
+  hubId: string; // Hub scope
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -91,10 +94,11 @@ export interface Document {
 }
 
 export interface Channel {
-  id: string;
+  id:string;
   name: string;
   description: string;
   space_id: string;
+  hubId: string; // Hub scope
   members: string[]; // Array of user IDs
 }
 
@@ -213,6 +217,7 @@ export interface JobFlowTemplate {
   phases: JobFlowPhase[];
   defaultView: 'kanban' | 'stepper' | 'list';
   space_id: string;
+  hubId: string;
 }
 
 export interface JobFlowPhase {
@@ -245,6 +250,7 @@ export interface Job {
   name: string;
   workflowTemplateId: string;
   space_id: string;
+  hubId: string;
   currentPhaseIndex: number;
   status: 'active' | 'completed' | 'on-hold';
   createdAt: string; // ISO string
@@ -268,6 +274,7 @@ export interface JobFlowTask {
 export interface PhaseTemplate {
     id: string;
     space_id: string;
+    hubId: string;
     name: string;
     description?: string;
     tasks: JobFlowTaskTemplate[];
@@ -278,6 +285,7 @@ export interface PhaseTemplate {
 export interface TaskTemplate {
     id: string;
     space_id: string;
+    hubId: string;
     titleTemplate: string;
     descriptionTemplate?: string;
     defaultAssigneeId: string;
@@ -332,8 +340,7 @@ export const hubs: Omit<Hub, "id">[] = [
 ];
 
 export const projects: Project[] = [
-  { id: 'proj-1', name: 'Website Redesign', space_id: 'space-2', members: ['user-1', 'user-2'], status: 'Active', created_by: 'user-1' },
-  { id: 'proj-2', name: 'Mobile App', space_id: 'space-2', members: ['user-1', 'user-3'], status: 'Active', created_by: 'user-1' },
+  // This will be empty, projects should be created within hubs
 ];
 
 export const tasks: Task[] = [
@@ -371,6 +378,3 @@ export const jobFlowTemplates: JobFlowTemplate[] = [];
 export const jobs: Job[] = [];
 export const jobFlowTasks: JobFlowTask[] = [];
 
-    
-
-    

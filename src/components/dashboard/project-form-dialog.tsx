@@ -25,7 +25,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Project, User } from '@/lib/data';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { Badge } from '../ui/badge';
@@ -35,7 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 const projectSchema = z.object({
   name: z.string().min(2, 'Project name must be at least 2 characters long.'),
   members: z.array(z.string()).min(1, 'At least one member is required.'),
-  status: z.enum(['Active', 'Archived', 'On Hold']),
+  status: z.enum(['Active', 'On Hold', 'Archived']),
 });
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
@@ -43,7 +43,7 @@ type ProjectFormValues = z.infer<typeof projectSchema>;
 interface ProjectFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (project: Omit<Project, 'id'>, projectId?: string) => void;
+  onSave: (project: Omit<Project, 'id' | 'hubId'>, projectId?: string) => void;
   project: Project | null;
   spaceId: string;
   spaceMembers: User[];
@@ -201,7 +201,7 @@ function MemberSelect({ allUsers, selectedUsers, onChange, creatorId }: { allUse
             <Command>
               <CommandInput placeholder="Search users..." />
               <CommandList>
-                <CommandEmpty>No users found.</CommandEmpty>
+                <CommandEmpty>No spaces found.</CommandEmpty>
                 <CommandGroup>
                   {allUsers.map((user) => (
                     <CommandItem

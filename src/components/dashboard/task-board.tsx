@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState } from 'react';
@@ -14,6 +13,7 @@ import ProjectFormDialog from './project-form-dialog';
 import { useToast } from '@/hooks/use-toast';
 import NewTaskDialog from './new-task-dialog';
 import TaskDetailsDialog from './task-details-dialog';
+import { useAuth } from '@/hooks/use-auth';
 
 interface TaskBoardProps {
   tasks: Task[];
@@ -49,6 +49,7 @@ export default function TaskBoard({
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { activeHub } = useAuth();
 
   const handleCreateNewProject = () => {
     setEditingProject(null);
@@ -60,13 +61,18 @@ export default function TaskBoard({
     setIsProjectFormOpen(true);
   }
 
-  const handleSaveProject = async (values: Omit<Project, 'id'>, projectId?: string) => {
+  const handleSaveProject = async (values: Omit<Project, 'id' | 'hubId'>, projectId?: string) => {
+    if (!activeHub) {
+        toast({ variant: 'destructive', title: 'No active hub selected' });
+        return;
+    }
     try {
+        const projectData = { ...values, hubId: activeHub.id };
         if (projectId) {
-            await onUpdateProject(projectId, values);
+            await onUpdateProject(projectId, projectData);
             toast({ title: 'Project Updated' });
         } else {
-            await onAddProject(values);
+            await onAddProject(projectData);
             toast({ title: 'Project Created' });
         }
     } catch (e) {
