@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Space, User } from '@/lib/data';
+import { Hub, Space, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
@@ -50,14 +50,20 @@ export default function SpaceSettings({ allUsers, onSave, onDelete, appUser }: S
     toast({ title: 'Space Deleted', description: 'The space has been successfully deleted.' });
   }
 
-  const handleSaveAndClose = async (spaceData: Omit<Space, 'id' | 'statuses'> & { hubComponents?: string[] }) => {
+  const handleSaveAndClose = async (spaceData: Omit<Space, 'id' | 'statuses'> & { hubs: Omit<Hub, 'id' | 'spaceId' | 'createdAt' | 'createdBy'>[] }) => {
     if (selectedSpace) {
-      onSave(spaceData, selectedSpace.id);
+      // Logic for updating a space and its hubs would go here
+      const { hubs, ...cleanSpaceData } = spaceData;
+      onSave(cleanSpaceData, selectedSpace.id);
       toast({ title: 'Space Updated', description: 'The space has been successfully updated.' });
     } else {
-        const { hubComponents = [], ...cleanData } = spaceData;
+        const { hubs, ...cleanData } = spaceData;
         const newSpaceId = await dbAddSpace(cleanData);
-        await createDefaultHubForSpace(newSpaceId, appUser.id, hubComponents);
+        // Assuming the first hub is the one we want to create
+        if (hubs && hubs.length > 0) {
+            const defaultHubData = hubs[0];
+            await createDefaultHubForSpace(newSpaceId, appUser.id, defaultHubData);
+        }
         toast({ title: 'Space Created', description: 'The space and a default hub have been created.' });
     }
   };

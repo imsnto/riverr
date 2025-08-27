@@ -1,6 +1,7 @@
+
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -22,31 +23,36 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Space, User, SpaceMember } from '@/lib/data';
+import { Space, User, SpaceMember, Hub } from '@/lib/data';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import HubComponentEditor from './hub-component-editor';
+import HubPermissionDialog from './hub-permission-dialog';
+import { Separator } from '../ui/separator';
+
+const hubSchema = z.object({
+  name: z.string().min(2, 'Hub name is required.'),
+  components: z.array(z.string()).default([]),
+  applyToAll: z.boolean().default(true),
+  permittedUsers: z.array(z.string()).default([]),
+});
 
 const spaceSchema = z.object({
   name: z.string().min(2, 'Space name must be at least 2 characters long.'),
   members: z.array(z.string()).min(1, 'At least one member is required.'),
-  hubs: z.array(
-    z.object({
-      name: z.string().min(2, 'Hub name required'),
-      features: z.array(z.string()),
-      permittedUsers: z.array(z.string()).min(1, 'At least one permitted user required'),
-    })
-  )
+  hubs: z.array(hubSchema).min(1, 'At least one hub is required.'),
 });
 
+type HubFormValues = z.infer<typeof hubSchema>;
 type SpaceFormValues = z.infer<typeof spaceSchema>;
 
 interface SpaceFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (space: Omit<Space, 'id' | 'statuses'>) => void;
+  onSave: (space: Omit<Space, 'id' | 'statuses'> & { hubs: HubFormValues[] }) => void;
   space: Space | null;
   allUsers: User[];
   currentUser: User;
@@ -60,9 +66,10 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
       members: [currentUser.id],
       hubs: [
         {
-          name: '',
-          features: [],
-          permittedUsers: [currentUser.id]
+          name: 'Default Hub',
+          components: ['tasks', 'documents', 'messages'],
+          applyToAll: true,
+          permittedUsers: []
         }
       ]
     },
@@ -80,7 +87,14 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
         form.reset({
           name: '',
           members: [currentUser.id],
-          hubs: [{ name: '', features: [], permittedUsers: [currentUser.id] }]
+          hubs: [
+            {
+              name: 'Default Hub',
+              components: ['tasks', 'documents', 'messages'],
+              applyToAll: true,
+              permittedUsers: []
+            }
+          ]
         });
       }
     }
@@ -100,7 +114,7 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
     const spaceData = {
       name: values.name,
       members: membersMap,
-      hubs: values.hubs
+      hubs: values.hubs,
     };
 
     onSave(spaceData);
@@ -147,7 +161,60 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
                 </FormItem>
               )}
             />
-            {/* Hub Builder UI and Permissions Dialog handled via separate component, imported and placed here */}
+
+            <Separator />
+             <FormField
+                control={form.control}
+                name="hubs.0.name"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Default Hub Name</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+             />
+             <FormField
+                control={form.control}
+                name="hubs.0.components"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Hub Features</FormLabel>
+                        <FormControl>
+                           <HubComponentEditor selected={field.value} setSelected={field.onChange} />
+                        </FormControl>
+                         <FormMessage />
+                    </FormItem>
+                )}
+             />
+              <FormField
+                control={form.control}
+                name="hubs.0" // Pass the whole hub object to the dialog
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Hub Permissions</FormLabel>
+                        <FormControl>
+                            <HubPermissionDialog
+                                isOpen={false} // This dialog will be controlled externally if needed, or integrated directly
+                                onOpenChange={() => {}}
+                                spaceUsers={allUsers.filter(u => form.getValues('members').includes(u.id))}
+                                onSave={(userIds, applyToAll) => {
+                                    field.onChange({
+                                        ...field.value,
+                                        permittedUsers: userIds,
+                                        applyToAll: applyToAll,
+                                    })
+                                }}
+                                // This is a simplified integration.
+                                // A real implementation might use a button to open the dialog.
+                                // For now, we assume it's part of the main form.
+                            />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+            
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="submit">Save</Button>

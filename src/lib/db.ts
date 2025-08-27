@@ -260,22 +260,25 @@ export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
   );
 };
 
-export const createDefaultHubForSpace = async (spaceId: string, userId: string, template?: string) => {
-    const components = getHubComponentsForTemplate(template || 'project-management');
-    const hubData: Omit<Hub, 'id'> = {
+export const createDefaultHubForSpace = async (spaceId: string, userId: string, hubData: Omit<Hub, 'id' | 'spaceId' | 'createdAt' | 'createdBy' | 'isDefault'> & { applyToAll?: boolean, permittedUsers?: string[] }) => {
+    const { applyToAll, permittedUsers, components, ...restOfHubData } = hubData;
+
+    const finalHubData: Omit<Hub, 'id'> = {
+        ...restOfHubData,
         spaceId,
-        name: 'Default Hub',
-        type: template || 'project-management',
+        type: 'project-management', // You might want to make this dynamic
         createdAt: new Date().toISOString(),
         createdBy: userId,
         isDefault: true,
         settings: {
-            components: components,
-            defaultView: components[0] || 'tasks',
-        }
+            components: components || [],
+            defaultView: (components && components.length > 0) ? components[0] : 'tasks',
+        },
+        isPrivate: !applyToAll,
+        memberIds: !applyToAll ? permittedUsers : [],
     };
-    const hubRef = await addDoc(collection(db, 'hubs'), hubData);
-    return { id: hubRef.id, ...hubData };
+    const hubRef = await addDoc(collection(db, 'hubs'), finalHubData);
+    return { id: hubRef.id, ...finalHubData };
 };
 
 function getHubComponentsForTemplate(template: string) {
