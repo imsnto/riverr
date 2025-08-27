@@ -9,9 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Plus, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import SpaceFormDialog from './space-form-dialog';
+import SpaceFormDialog, { HubFormValues } from './space-form-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { createDefaultHubForSpace, addSpace as dbAddSpace, getSpacesForUser } from '@/lib/db';
+import { addHub, addSpace as dbAddSpace, getSpacesForUser } from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 
@@ -52,14 +52,29 @@ export default function SpaceSettings({ allUsers, onSave, onDelete, appUser }: S
     toast({ title: 'Space Deleted', description: 'The space has been successfully deleted.' });
   }
 
-  const handleSaveAndClose = async (spaceData: Omit<Space, 'id' | 'statuses'>, hubData: Omit<Hub, 'id' | 'spaceId' | 'createdAt' | 'createdBy'>) => {
+  const handleSaveAndClose = async (spaceData: Omit<Space, 'id' | 'statuses'>, hubsData: HubFormValues[]) => {
     if (selectedSpace) {
       // Logic for updating a space and its hubs would go here
       onSave(spaceData, selectedSpace.id);
       toast({ title: 'Space Updated', description: 'The space has been successfully updated.' });
     } else {
         const newSpaceId = await dbAddSpace(spaceData);
-        await createDefaultHubForSpace(newSpaceId, appUser.id, hubData);
+
+        // Create each hub from the form
+        for (const hub of hubsData) {
+            const finalHubData: Omit<Hub, 'id'> = {
+                name: hub.name,
+                spaceId: newSpaceId,
+                type: 'project-management', // You might want to make this configurable in the hub form later
+                createdAt: new Date().toISOString(),
+                createdBy: appUser.id,
+                isDefault: false, // You might need logic to determine the default hub
+                settings: { components: hub.components, defaultView: hub.components[0] || 'tasks' },
+                isPrivate: hub.isPrivate,
+                memberIds: hub.isPrivate ? hub.memberIds : [],
+            };
+            await addHub(finalHubData);
+        }
         
         // Refresh spaces and set active
         const updatedSpaces = await getSpacesForUser(appUser.id);
@@ -70,7 +85,7 @@ export default function SpaceSettings({ allUsers, onSave, onDelete, appUser }: S
             setActiveHub(null); // Clear hub so user is forced to select one
         }
 
-        toast({ title: 'Space Created', description: 'The space and a default hub have been created.' });
+        toast({ title: 'Space Created', description: `The space and its ${hubsData.length} hub(s) have been created.` });
         router.push(`/space/${newSpaceId}/hubs`);
     }
   };
