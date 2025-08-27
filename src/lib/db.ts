@@ -51,6 +51,7 @@ import {
   JobFlowPhase,
   Document,
   Hub,
+  hubs,
 } from "./data";
 import { randomBytes } from "crypto";
 
@@ -68,6 +69,10 @@ export const seedDatabase = async () => {
     users.forEach((user, i) => batch.set(doc(db, "users", userIds[i]), user));
 
     spaces.forEach((space) => batch.set(doc(db, "spaces", space.id), space));
+    hubs.forEach((hub) => {
+        const hubRef = doc(collection(db, "hubs"));
+        batch.set(hubRef, hub);
+    });
     projects.forEach((project) =>
       batch.set(doc(db, "projects", project.id), project)
     );

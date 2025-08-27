@@ -48,7 +48,6 @@ export interface Project {
   id: string;
   name: string;
   space_id: string;
-  hubId: string; // NEW
   members: string[]; // array of user IDs
   status: 'Active' | 'On Hold' | 'Archived';
   created_by: string; // user ID
@@ -59,7 +58,6 @@ export interface Task {
   name: string;
   description: string;
   project_id: string | null; // Can be null if it's a job flow task
-  hubId: string; // NEW
   status: string;
   assigned_to: string; // user ID
   due_date: string; // ISO string
@@ -79,7 +77,6 @@ export interface Document {
   name: string;
   content: string;
   spaceId: string;
-  hubId: string; // NEW
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -96,7 +93,6 @@ export interface Channel {
   name: string;
   description: string;
   space_id: string;
-  hubId: string; // NEW
   members: string[]; // Array of user IDs
 }
 
@@ -294,8 +290,8 @@ export interface TaskTemplate {
 export const users: Omit<User, 'id'>[] = [
   { name: 'Brad', email: 'brad@test.com', avatarUrl: 'https://placehold.co/100x100/EFEFEF/333333/png?text=B', role: 'Admin' },
   { name: 'Alice', email: 'alice@test.com', avatarUrl: 'https://placehold.co/100x100/EFEFEF/333333/png?text=A', role: 'Member' },
-  { name: 'Charlie', email: 'charlie@test.com', avatarUrl: 'https://placehold.co/100x100/EFEFEF/333333/png?text=C', role: 'Member' },
-  { name: 'Diana', email: 'diana@test.com', avatarUrl: 'https://placehold.co/100x100/EFEFEF/333333/png?text=D', role: 'Member' },
+  { name: 'Charlie', email: 'charlie@test.com', avatarUrl: 'https://placehold.co/100x100/EFEFEF/313333/png?text=C', role: 'Member' },
+  { name: 'Diana', email: 'diana@test.com', avatarUrl: 'https://placehold.co/100x100/EFEFEF/323333/png?text=D', role: 'Member' },
 ];
 
 export const spaces: Space[] = [
@@ -303,9 +299,39 @@ export const spaces: Space[] = [
   { id: 'space-2', name: 'Client Work', members: { 'user-1': { role: 'Admin' }, 'user-2': { role: 'Member' }, 'user-3': { role: 'Member' } }, statuses: [] },
 ];
 
+export const hubs: Omit<Hub, "id">[] = [
+    {
+        name: 'Client Onboarding',
+        spaceId: 'space-2',
+        type: 'tasks',
+        createdAt: new Date().toISOString(),
+        createdBy: 'user-1',
+        settings: { defaultView: 'tasks' },
+        isDefault: true,
+    },
+    {
+        name: 'Support Tickets',
+        spaceId: 'space-2',
+        type: 'inbox',
+        createdAt: new Date().toISOString(),
+        createdBy: 'user-1',
+        settings: { defaultView: 'inbox' },
+        isDefault: false,
+    },
+    {
+        name: 'Client Docs',
+        spaceId: 'space-2',
+        type: 'custom',
+        createdAt: new Date().toISOString(),
+        createdBy: 'user-1',
+        settings: { defaultView: 'documents' },
+        isDefault: false,
+    }
+];
+
 export const projects: Project[] = [
-  { id: 'proj-1', name: 'Website Redesign', space_id: 'space-2', hubId: 'hub-1', members: ['user-1', 'user-2'], status: 'Active', created_by: 'user-1' },
-  { id: 'proj-2', name: 'Mobile App', space_id: 'space-2', hubId: 'hub-1', members: ['user-1', 'user-3'], status: 'Active', created_by: 'user-1' },
+  { id: 'proj-1', name: 'Website Redesign', space_id: 'space-2', members: ['user-1', 'user-2'], status: 'Active', created_by: 'user-1' },
+  { id: 'proj-2', name: 'Mobile App', space_id: 'space-2', members: ['user-1', 'user-3'], status: 'Active', created_by: 'user-1' },
 ];
 
 export const tasks: Task[] = [
