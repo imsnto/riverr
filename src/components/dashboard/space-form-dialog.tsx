@@ -132,7 +132,7 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
             <ScrollArea className="flex-1">
               <div className="space-y-4 p-6">
                   <FormField
@@ -219,7 +219,7 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
                   />
                 </div>
               </ScrollArea>
-              <DialogFooter className="p-6 pt-4 border-t bg-background mt-auto">
+              <DialogFooter className="p-6 pt-4 border-t bg-background">
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
                 <Button type="submit">Save</Button>
               </DialogFooter>
