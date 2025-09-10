@@ -175,7 +175,7 @@ export default function Dashboard({ view }: { view: string }) {
   // Handle view change from sidebar
   const handleViewChange = (newView: AppView) => {
     setCurrentView(newView);
-    if (activeSpace && params.hubId && newView !== 'team-timesheets') {
+    if (activeSpace && params.hubId) {
       router.push(`/space/${activeSpace.id}/hub/${params.hubId}/${newView}`);
     }
   };
@@ -416,7 +416,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeHub={activeHub}
           onHubChange={handleHubChange}
         />
-        <main className="flex-1 overflow-y-auto p-8 pt-24">
+        <main className="flex-1 overflow-y-auto p-8 pt-20">
           {renderView()}
         </main>
       </div>

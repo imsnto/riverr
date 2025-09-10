@@ -168,7 +168,8 @@ export function TopBar({
   return (
     <header
       className={cn(
-        "fixed top-0 z-20 flex h-16 items-center justify-between border-b bg-background px-4 shadow-sm w-full",
+        "fixed top-0 left-0 right-0 z-20 flex h-16 items-center justify-between border-b bg-background px-4 shadow-sm",
+        "pl-[calc(var(--sidebar-width-icon)_+_1rem)]",
         className
       )}
     >
