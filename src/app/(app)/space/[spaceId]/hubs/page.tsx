@@ -13,12 +13,13 @@ import { Button } from '@/components/ui/button';
 export default function HubSelectionPage() {
   const params = useParams();
   const router = useRouter();
-  const { appUser, activeSpace, setActiveHub, getUserPermissions } = useAuth();
+  const { appUser, userSpaces, setActiveHub } = useAuth();
   const [hubs, setHubs] = useState<Hub[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const spaceId = params.spaceId as string;
   
-  const userPermissions = activeSpace ? getUserPermissions(activeSpace.id) : null;
+  const activeSpace = userSpaces.find(s => s.id === spaceId);
+  const userPermissions = activeSpace && appUser ? activeSpace.members[appUser.id] : null;
   const isSpaceAdmin = userPermissions?.role === 'Admin';
 
 
@@ -127,4 +128,3 @@ export default function HubSelectionPage() {
     </div>
   );
 }
-
