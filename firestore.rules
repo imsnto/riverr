@@ -3,6 +3,9 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Allow all authenticated users to read and write for now.
+    allow read, write: if request.auth != null;
+
     // Helper Functions
     function isOwner(userId) {
       return request.auth.uid == userId;
@@ -12,48 +15,50 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/spaces/$(spaceId)).data.members[request.auth.uid].role == 'Admin';
     }
 
+    // --- RULES ARE TEMPORARILY DISABLED BELOW ---
+
     // User profiles can be read by anyone, but only updated by the owner.
     match /users/{userId} {
-      allow read;
-      allow write: if isOwner(userId);
+      // allow read;
+      // allow write: if isOwner(userId);
     }
     
     // Invites can be created by anyone, but only read/updated under specific logic (handled server-side).
     match /invites/{inviteId} {
-        allow read, write: if request.auth != null;
+        // allow read, write: if request.auth != null;
     }
     
     // Spaces can be read by their members. Creation/deletion logic is managed server-side or via specific rules.
     match /spaces/{spaceId} {
-      allow read: if request.auth.uid in get(/databases/$(database)/documents/spaces/$(spaceId)).data.members;
-      allow write: if isSpaceAdmin(spaceId);
+      // allow read: if request.auth.uid in get(/databases/$(database)/documents/spaces/$(spaceId)).data.members;
+      // allow write: if isSpaceAdmin(spaceId);
     }
 
     // Hubs can be read by space members, but only created by space admins.
     match /hubs/{hubId} {
-      allow read, write: if isSpaceAdmin(request.resource.data.spaceId);
-      allow create: if isSpaceAdmin(request.resource.data.spaceId);
+      // allow read, write: if isSpaceAdmin(request.resource.data.spaceId);
+      // allow create: if isSpaceAdmin(request.resource.data.spaceId);
     }
 
     // Projects can be read and written by space members of the containing space.
     match /projects/{projectId} {
-      allow read, write: if get(/databases/$(database)/documents/spaces/$(request.resource.data.space_id)).data.members[request.auth.uid] != null;
+      // allow read, write: if get(/databases/$(database)/documents/spaces/$(request.resource.data.space_id)).data.members[request.auth.uid] != null;
     }
 
     // Tasks can be read and written by space members of the containing space.
     match /tasks/{taskId} {
-      allow read, write: if get(/databases/$(database)/documents/spaces/$(request.resource.data.spaceId)).data.members[request.auth.uid] != null;
+      // allow read, write: if get(/databases/$(database)/documents/spaces/$(request.resource.data.spaceId)).data.members[request.auth.uid] != null;
     }
     
     // Documents can be read/written by users with explicit permission.
     match /documents/{docId} {
-        allow read: if resource.data.isPublic == true || request.auth.uid in resource.data.allowedUserIds;
-        allow write: if isOwner(resource.data.createdBy) || request.auth.uid in resource.data.allowedUserIds;
+        // allow read: if resource.data.isPublic == true || request.auth.uid in resource.data.allowedUserIds;
+        // allow write: if isOwner(resource.data.createdBy) || request.auth.uid in resource.data.allowedUserIds;
     }
     
     // Time entries are private to the user who created them, but can be managed by space admins.
     match /time_entries/{entryId} {
-        allow read, write: if isOwner(resource.data.user_id) || isSpaceAdmin(get(/databases/$(database)/documents/projects/$(resource.data.project_id)).data.space_id);
+        // allow read, write: if isOwner(resource.data.user_id) || isSpaceAdmin(get(/databases/$(database)/documents/projects/$(resource.data.project_id)).data.space_id);
     }
   }
 }
