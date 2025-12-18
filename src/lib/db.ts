@@ -1,3 +1,4 @@
+
 // src/lib/db.ts
 
 import {
@@ -227,11 +228,12 @@ export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Hub));
 };
 
-export const addHub = (hub: Omit<Hub, 'id'>) => {
+export const addHub = async (hub: Omit<Hub, 'id'>) => {
   const collectionRef = collection(db, 'hubs');
   
-  addDoc(collectionRef, hub)
-    .catch(async (serverError) => {
+  try {
+    await addDoc(collectionRef, hub)
+  } catch (serverError) {
       const permissionError = new FirestorePermissionError({
         path: collectionRef.path,
         operation: 'create',
@@ -239,7 +241,7 @@ export const addHub = (hub: Omit<Hub, 'id'>) => {
       });
 
       errorEmitter.emit('permission-error', permissionError);
-    });
+  }
 };
 
 
