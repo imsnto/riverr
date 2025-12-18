@@ -3,6 +3,11 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // --- TEMPORARY OVERRIDE FOR HUB CREATION ---
+    match /hubs/{hubId} {
+      allow create: if true; 
+    }
+
     // Allow all authenticated users to read and write for now.
     allow read, write: if request.auth != null;
 
@@ -14,12 +19,6 @@ service cloud.firestore {
     function isSpaceAdmin(spaceId) {
       return get(/databases/$(database)/documents/spaces/$(spaceId)).data.members[request.auth.uid].role == 'Admin';
     }
-
-    // --- TEMPORARY OVERRIDE FOR HUB CREATION ---
-    match /hubs/{hubId} {
-      allow create: if request.auth != null;
-    }
-
 
     // --- RULES ARE TEMPORARILY DISABLED BELOW ---
 
