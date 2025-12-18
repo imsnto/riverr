@@ -228,12 +228,11 @@ export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Hub));
 };
 
-export const addHub = async (hub: Omit<Hub, 'id'>) => {
+export const addHub = (hub: Omit<Hub, 'id'>) => {
   const collectionRef = collection(db, 'hubs');
   
-  try {
-    await addDoc(collectionRef, hub)
-  } catch (serverError) {
+  addDoc(collectionRef, hub)
+    .catch(async (serverError) => {
       const permissionError = new FirestorePermissionError({
         path: collectionRef.path,
         operation: 'create',
@@ -241,7 +240,7 @@ export const addHub = async (hub: Omit<Hub, 'id'>) => {
       });
 
       errorEmitter.emit('permission-error', permissionError);
-  }
+  });
 };
 
 
@@ -870,3 +869,5 @@ export const updateDocument = async (
 export const deleteDocument = async (docId: string): Promise<void> => {
   await deleteDoc(doc(db, "documents", docId));
 };
+
+    
