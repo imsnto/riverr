@@ -15,6 +15,12 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/spaces/$(spaceId)).data.members[request.auth.uid].role == 'Admin';
     }
 
+    // --- TEMPORARY OVERRIDE FOR HUB CREATION ---
+    match /hubs/{hubId} {
+      allow create: if request.auth != null;
+    }
+
+
     // --- RULES ARE TEMPORARILY DISABLED BELOW ---
 
     // User profiles can be read by anyone, but only updated by the owner.
@@ -35,10 +41,10 @@ service cloud.firestore {
     }
 
     // Hubs can be read by space members, but only created by space admins.
-    match /hubs/{hubId} {
+    // match /hubs/{hubId} {
       // allow read, write: if isSpaceAdmin(request.resource.data.spaceId);
       // allow create: if isSpaceAdmin(request.resource.data.spaceId);
-    }
+    // }
 
     // Projects can be read and written by space members of the containing space.
     match /projects/{projectId} {
