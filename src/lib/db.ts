@@ -1,4 +1,3 @@
-
 // src/lib/db.ts
 
 import {
@@ -57,6 +56,8 @@ import {
   Status,
 } from "./data";
 import { randomBytes } from "crypto";
+import { FirestorePermissionError } from "./errors";
+import { errorEmitter } from "./error-emitter";
 
 // --- Seeding ---
 export const seedDatabase = async () => {
@@ -226,10 +227,21 @@ export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Hub));
 };
 
-export const addHub = async (hub: Omit<Hub, "id">): Promise<Hub> => {
-  const docRef = await addDoc(collection(db, "hubs"), hub);
-  return { ...hub, id: docRef.id };
+export const addHub = (hub: Omit<Hub, 'id'>) => {
+  const collectionRef = collection(db, 'hubs');
+  
+  addDoc(collectionRef, hub)
+    .catch(async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: collectionRef.path,
+        operation: 'create',
+        requestResourceData: hub,
+      });
+
+      errorEmitter.emit('permission-error', permissionError);
+    });
 };
+
 
 export const updateHub = async (
   hubId: string,
