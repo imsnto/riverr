@@ -97,74 +97,74 @@ export default function Dashboard({ view }: { view: string }) {
 
   const fetchData = async () => {
     if (!appUser) return;
-  
-    // Always fetch all users
-    const fetchedUsers = await db.getAllUsers();
-    setAllUsers(fetchedUsers);
-  
-    // Fetch all spaces for the user to get all project IDs for time entries
-    const allUserSpaces = await db.getSpacesForUser(appUser.id);
-    const allProjectIds: string[] = [];
-    for (const space of allUserSpaces) {
-      const hubs = await db.getHubsForSpace(space.id);
-      for (const hub of hubs) {
-        const hubProjects = await db.getProjectsInHub(hub.id);
-        allProjectIds.push(...hubProjects.map(p => p.id));
-      }
-    }
-    const fetchedTimeEntries = await db.getTimeEntriesInHub(allProjectIds);
-    setTimeEntries(fetchedTimeEntries);
-  
-    // Hub-specific data fetching
-    if (activeSpace && activeHub) {
-      const [
-        fetchedProjects,
-        fetchedTasks,
-        fetchedSlackLogs,
-        fetchedDocuments,
-        fetchedJobFlowTemplates,
-        fetchedPhaseTemplates,
-        fetchedTaskTemplates,
-        fetchedJobs,
-        fetchedJobFlowTasks,
-        fetchedChannels,
-        fetchedHubs,
-      ] = await Promise.all([
-        db.getProjectsInHub(activeHub.id),
-        db.getAllTasks(activeHub.id),
-        db.getSlackMeetingLogsInSpace(activeSpace.id), // This is space-wide for now
-        db.getDocumentsInHub(activeHub.id),
-        db.getJobFlowTemplates(activeHub.id),
-        db.getPhaseTemplates(activeHub.id),
-        db.getTaskTemplates(activeHub.id),
-        db.getAllJobs(activeHub.id),
-        db.getAllJobFlowTasks(activeHub.id),
-        db.getChannelsInHub(activeHub.id),
-        db.getHubsForSpace(activeSpace.id),
-      ]);
+
+        // Always fetch all users
+        const fetchedUsers = await db.getAllUsers();
+        setAllUsers(fetchedUsers);
       
-      setProjects(fetchedProjects);
-      setTasks(fetchedTasks);
-      setSlackLogs(fetchedSlackLogs);
-      setDocuments(fetchedDocuments);
-      setJobFlowTemplates(fetchedJobFlowTemplates);
-      setPhaseTemplates(fetchedPhaseTemplates);
-      setTaskTemplates(fetchedTaskTemplates);
-      setJobs(fetchedJobs);
-      setJobFlowTasks(fetchedJobFlowTasks);
-      setChannels(fetchedChannels);
-      setSpaceHubs(fetchedHubs);
-  
-      if (fetchedChannels.length > 0 && !activeChannelId) {
-        setActiveChannelId(fetchedChannels[0].id);
-      }
-    
-      // Fetch messages for all channels in the active hub
-      const allMessages = await Promise.all(
-        fetchedChannels.map(channel => db.getMessagesInChannel(channel.id))
-      ).then(results => results.flat());
-      setMessages(allMessages);
-    }
+        // Fetch all spaces for the user to get all project IDs for time entries
+        const allUserSpaces = await db.getSpacesForUser(appUser.id);
+        const allProjectIds: string[] = [];
+        for (const space of allUserSpaces) {
+          const hubs = await db.getHubsForSpace(space.id);
+          for (const hub of hubs) {
+            const hubProjects = await db.getProjectsInHub(hub.id);
+            allProjectIds.push(...hubProjects.map(p => p.id));
+          }
+        }
+        const fetchedTimeEntries = await db.getTimeEntriesInHub(allProjectIds);
+        setTimeEntries(fetchedTimeEntries);
+      
+        // Hub-specific data fetching
+        if (activeSpace && activeHub) {
+          const [
+            fetchedProjects,
+            fetchedTasks,
+            fetchedSlackLogs,
+            fetchedDocuments,
+            fetchedJobFlowTemplates,
+            fetchedPhaseTemplates,
+            fetchedTaskTemplates,
+            fetchedJobs,
+            fetchedJobFlowTasks,
+            fetchedChannels,
+            fetchedHubs,
+          ] = await Promise.all([
+            db.getProjectsInHub(activeHub.id),
+            db.getAllTasks(activeHub.id),
+            db.getSlackMeetingLogsInSpace(activeSpace.id), // This is space-wide for now
+            db.getDocumentsInHub(activeHub.id),
+            db.getJobFlowTemplates(activeHub.id),
+            db.getPhaseTemplates(activeHub.id),
+            db.getTaskTemplates(activeHub.id),
+            db.getAllJobs(activeHub.id),
+            db.getAllJobFlowTasks(activeHub.id),
+            db.getChannelsInHub(activeHub.id),
+            db.getHubsForSpace(activeSpace.id),
+          ]);
+          
+          setProjects(fetchedProjects);
+          setTasks(fetchedTasks);
+          setSlackLogs(fetchedSlackLogs);
+          setDocuments(fetchedDocuments);
+          setJobFlowTemplates(fetchedJobFlowTemplates);
+          setPhaseTemplates(fetchedPhaseTemplates);
+          setTaskTemplates(fetchedTaskTemplates);
+          setJobs(fetchedJobs);
+          setJobFlowTasks(fetchedJobFlowTasks);
+          setChannels(fetchedChannels);
+          setSpaceHubs(fetchedHubs);
+      
+          if (fetchedChannels.length > 0 && !activeChannelId) {
+            setActiveChannelId(fetchedChannels[0].id);
+          }
+        
+          // Fetch messages for all channels in the active hub
+          const allMessages = await Promise.all(
+            fetchedChannels.map(channel => db.getMessagesInChannel(channel.id))
+          ).then(results => results.flat());
+          setMessages(allMessages);
+        }
   };
 
 
@@ -235,7 +235,7 @@ export default function Dashboard({ view }: { view: string }) {
   };
   
   const handleAddTask = async (task: Omit<Task, 'id'>) => {
-    const taskWithHub = { ...task, hubId: activeHub.id };
+    const taskWithHub = { ...task, hubId: activeHub.id, spaceId: activeSpace.id };
     const newTask = await db.addTask(taskWithHub);
     setTasks(prev => [...prev, newTask]);
     return newTask;
@@ -290,7 +290,7 @@ export default function Dashboard({ view }: { view: string }) {
   };
   
   const handleLogTime = async (timeData: Omit<TimeEntry, 'id'>) => {
-    const newTimeEntry = await db.addTimeEntry(timeData);
+    const newTimeEntry = await db.addTimeEntry({...timeData, spaceId: activeSpace.id});
     setTimeEntries(prev => [...prev, newTimeEntry]);
   };
   

@@ -74,6 +74,7 @@ export interface Task {
   comments: Comment[];
   activities: Activity[];
   attachments: Attachment[];
+  spaceId: string;
 }
 
 export interface Document {
@@ -187,6 +188,7 @@ export interface TimeEntry {
   start_time: string; // ISO String
   end_time: string; // ISO String
   duration: number; // in hours
+  spaceId: string;
 }
 
 export interface SlackMeetingLog {

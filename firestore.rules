@@ -1,69 +1,109 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // --- TEMPORARY OVERRIDE FOR HUB CREATION ---
-    match /hubs/{hubId} {
-      allow create: if true; 
+   
+    function isAuthenticated() {
+      return request.auth != null;
     }
-
-    // Allow all authenticated users to read and write for now.
-    allow read, write: if request.auth != null;
-
-    // Helper Functions
+    
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-
+    
     function isSpaceAdmin(spaceId) {
-      return get(/databases/$(database)/documents/spaces/$(spaceId)).data.members[request.auth.uid].role == 'Admin';
+      return exists(/databases/$(database)/documents/spaces/$(spaceId)) &&
+      get(/databases/$(database)/documents/spaces/$(spaceId)).data.members[request.auth.uid].role == 'Admin';
     }
-
-    // --- RULES ARE TEMPORARILY DISABLED BELOW ---
-
-    // User profiles can be read by anyone, but only updated by the owner.
+    
+    function isExistInSpace(spaceId) {
+      return exists(/databases/$(database)/documents/spaces/$(spaceId)) &&
+      get(/databases/$(database)/documents/spaces/$(spaceId)).data.members[request.auth.uid] != null ;
+    }
+  
+    
     match /users/{userId} {
-      // allow read;
-      // allow write: if isOwner(userId);
+      allow update, delete: if isAuthenticated() && isOwner(userId);
+      allow create, read: if isAuthenticated();
     }
     
-    // Invites can be created by anyone, but only read/updated under specific logic (handled server-side).
-    match /invites/{inviteId} {
-        // allow read, write: if request.auth != null;
-    }
-    
-    // Spaces can be read by their members. Creation/deletion logic is managed server-side or via specific rules.
     match /spaces/{spaceId} {
-      // allow read: if request.auth.uid in get(/databases/$(database)/documents/spaces/$(spaceId)).data.members;
-      // allow write: if isSpaceAdmin(spaceId);
+      allow read, update, delete: if isAuthenticated() && isExistInSpace(spaceId);
+      allow create: if isAuthenticated();
+      allow list: if isAuthenticated() && 
+        resource.data.members[request.auth.uid].role in ['Admin', 'Member'];
     }
-
-    // Hubs can be read by space members, but only created by space admins.
-    // match /hubs/{hubId} {
-      // allow read, write: if isSpaceAdmin(request.resource.data.spaceId);
-      // allow create: if isSpaceAdmin(request.resource.data.spaceId);
-    // }
-
-    // Projects can be read and written by space members of the containing space.
+    
+    match /hubs/{hubId} {
+      allow read, update, list, delete: if isAuthenticated() && isExistInSpace(resource.data.spaceId);
+      allow create: if isAuthenticated() && isSpaceAdmin(request.resource.data.spaceId);
+    }
+    
     match /projects/{projectId} {
-      // allow read, write: if get(/databases/$(database)/documents/spaces/$(request.resource.data.space_id)).data.members[request.auth.uid] != null;
+      allow read, update, delete: if isAuthenticated() && isExistInSpace(resource.data.space_id);
+      allow create: if isAuthenticated() && isExistInSpace(request.resource.data.space_id);
+      allow list: if isAuthenticated();
     }
-
-    // Tasks can be read and written by space members of the containing space.
+    
     match /tasks/{taskId} {
-      // allow read, write: if get(/databases/$(database)/documents/spaces/$(request.resource.data.spaceId)).data.members[request.auth.uid] != null;
+      allow read, update, delete: if isAuthenticated() && isExistInSpace(resource.data.spaceId);
+      allow create: if isAuthenticated() && isExistInSpace(request.resource.data.spaceId);
+      allow list: if isAuthenticated();
     }
     
-    // Documents can be read/written by users with explicit permission.
-    match /documents/{docId} {
-        // allow read: if resource.data.isPublic == true || request.auth.uid in resource.data.allowedUserIds;
-        // allow write: if isOwner(resource.data.createdBy) || request.auth.uid in resource.data.allowedUserIds;
-    }
-    
-    // Time entries are private to the user who created them, but can be managed by space admins.
     match /time_entries/{entryId} {
-        // allow read, write: if isOwner(resource.data.user_id) || isSpaceAdmin(get(/databases/$(database)/documents/projects/$(resource.data.project_id)).data.space_id);
+      allow read, update, delete: if isAuthenticated() && isExistInSpace(resource.data.spaceId);
+      allow create: if isAuthenticated() && isExistInSpace(request.resource.data.spaceId);
+      allow list: if isAuthenticated();
     }
+    
+    match /documents/{documentId} {
+      allow read, update, delete: if isAuthenticated() && isExistInSpace(resource.data.spaceId);
+      allow create: if isAuthenticated() && isExistInSpace(request.resource.data.spaceId);
+      allow list: if isAuthenticated();
+    }
+    
+    match /channels/{entryId} {
+      allow read, update, delete: if isAuthenticated() && isExistInSpace(resource.data.space_id);
+      allow create: if isAuthenticated() && isExistInSpace(request.resource.data.space_id);
+      allow list: if isAuthenticated();
+    }
+    
+    match /invites/{inviteId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /task_templates/{entryId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /phase_templates/{entryId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /read_states/{entryId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /job_flow_tasks/{entryId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /job_flow_templates/{entryId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /jobs/{entryId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /messages/{entryId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /slack_meeting_logs/{entryId} {
+      allow read, write: if isAuthenticated();
+    }
+    
   }
 }
