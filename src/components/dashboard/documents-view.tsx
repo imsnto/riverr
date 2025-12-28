@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -66,7 +65,7 @@ export default function DocumentsView({ documents, activeSpace, appUser, allUser
 
   return (
     <>
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full p-8">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold">Documents</h1>

@@ -1,4 +1,3 @@
-
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -376,17 +375,17 @@ export default function Dashboard({ view }: { view: string }) {
     };
 
     switch (currentView) {
-      case 'overview': return <Overview {...props} />;
-      case 'tasks': return <TaskBoard {...props} />;
-      case 'mytasks': return <MyTasksView {...props} />;
+      case 'overview': return <div className="p-8"><Overview {...props} /></div>;
+      case 'tasks': return <div className="p-8"><TaskBoard {...props} /></div>;
+      case 'mytasks': return <div className="p-8"><MyTasksView {...props} /></div>;
       case 'documents': return <DocumentsView {...props} />;
-      case 'settings': return <SettingsLayout {...props} />;
-      case 'team-timesheets': return <TeamTimesheets {...props} />;
+      case 'settings': return <div className="p-8"><SettingsLayout {...props} /></div>;
+      case 'team-timesheets': return <div className="p-8"><TeamTimesheets {...props} /></div>;
       case 'messages': return <MessagesLayout {...messagesProps} />;
-      case 'mentions': return <MentionsThreadList {...props} mentions={unreadMentions} onClose={() => {}} onOpenThread={() => {}} />;
-      case 'thread': return <ThreadView {...props} thread={activeThread!} onClose={() => setActiveThread(null)} />;
-      case 'all-threads': return <AllThreadsView {...props} isThreadUnread={() => false} />;
-      case 'channels': return <ChannelsView {...props} activeChannelId={activeChannelId} setMessages={setMessages} onCreateTask={handleCreateTaskFromThread} />;
+      case 'mentions': return <div className="p-8"><MentionsThreadList {...props} mentions={unreadMentions} onClose={() => {}} onOpenThread={() => {}} /></div>;
+      case 'thread': return <div className="p-8"><ThreadView {...props} thread={activeThread!} onClose={() => setActiveThread(null)} /></div>;
+      case 'all-threads': return <div className="p-8"><AllThreadsView {...props} isThreadUnread={() => false} /></div>;
+      case 'channels': return <div className="p-8"><ChannelsView {...props} activeChannelId={activeChannelId} setMessages={setMessages} onCreateTask={handleCreateTaskFromThread} /></div>;
       default:
         return (
           <div className="p-8">
@@ -416,7 +415,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeHub={activeHub}
           onHubChange={handleHubChange}
         />
-        <main className="flex-1 overflow-y-auto p-8 pt-20">
+        <main className="flex-1 overflow-y-auto pt-16">
           {renderView()}
         </main>
       </div>
