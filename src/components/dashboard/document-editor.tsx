@@ -81,7 +81,7 @@ export default function DocumentEditor({
   
   // Effect for autosaving content and title changes
   useEffect(() => {
-    if (debouncedDocument && (debouncedDocument.content !== lastSavedDocument.content || debouncedDocument.name !== lastSavedDocument.name)) {
+    if (debouncedDocument && JSON.stringify(debouncedDocument) !== JSON.stringify(lastSavedDocument)) {
       handleSave(debouncedDocument);
     }
   }, [debouncedDocument, handleSave, lastSavedDocument]);

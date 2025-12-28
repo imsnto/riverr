@@ -105,7 +105,7 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) return null;
   const userDoc = querySnapshot.docs[0];
-  return { id: userDoc.id, ...userDoc.data() } as User;
+  return { id: userDoc.id, ...doc.data() } as User;
 };
 
 export const addUser = async (
@@ -630,6 +630,7 @@ const createSubtasks = (
       comments: [],
       attachments: [],
       parentId: parentTaskId,
+      spaceId: '',
     };
     const subtaskRef = doc(collection(db, "tasks"));
     batch.set(subtaskRef, subtaskData);
@@ -643,6 +644,7 @@ const createTasksForPhase = async (
   jobName: string,
   roleUserMapping: Record<string, string>,
   hubId: string,
+  spaceId: string,
 ) => {
   let lastDueDate = new Date();
   for (const taskTemplate of phase.tasks) {
@@ -683,6 +685,7 @@ const createTasksForPhase = async (
       comments: [],
       attachments: [],
       parentId: null,
+      spaceId: spaceId,
     };
     batch.set(taskRef, taskData);
     lastDueDate = dueDate; // Set the last due date for the next task in sequence
@@ -749,6 +752,7 @@ export const launchJob = async (
     jobName,
     roleUserMapping,
     hubId,
+    spaceId,
   );
 
   await batch.commit();
@@ -794,7 +798,8 @@ export const updateJobPhase = async (
       job.id,
       job.name,
       job.roleUserMapping,
-      job.hubId
+      job.hubId,
+      job.space_id
     );
 
     const jobRef = doc(db, "jobs", job.id);
@@ -863,11 +868,18 @@ export const updateDocument = async (
   data: Partial<Document>
 ): Promise<void> => {
   const docRef = doc(db, "documents", docId);
-  await updateDoc(docRef, data);
+  updateDoc(docRef, data)
+    .catch(async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'update',
+        requestResourceData: data,
+      });
+
+      errorEmitter.emit('permission-error', permissionError);
+  });
 };
 
 export const deleteDocument = async (docId: string): Promise<void> => {
   await deleteDoc(doc(db, "documents", docId));
 };
-
-    
