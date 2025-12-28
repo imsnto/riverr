@@ -66,7 +66,7 @@ export default function DocumentsView({ documents, activeSpace, appUser, allUser
 
   return (
     <>
-      <div className="flex flex-col p-4 md:p-8">
+      <div className="flex flex-col h-full">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold">Documents</h1>
@@ -92,7 +92,7 @@ export default function DocumentsView({ documents, activeSpace, appUser, allUser
 
         <div className="flex-1 overflow-y-auto">
            <TooltipProvider>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                 {filteredDocuments.map(doc => {
                     const sharedWithUsers = doc.isPublic ? [] : allUsers.filter(u => doc.allowedUserIds?.includes(u.id));
                     return (
