@@ -26,7 +26,7 @@ const taskSchema = z.object({
   project_id: z.string().min(1, 'Project is required'),
   assigned_to: z.string().min(1, 'Assignee is required'),
   due_date: z.date(),
-  status: z.string().min(1, "Status is required"),
+  status: z.string().optional(),
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
@@ -58,6 +58,7 @@ export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, project
     try {
         const taskData: Omit<Task, 'id'> = {
             ...values,
+            status: values.status || statuses[0]?.name || 'Backlog',
             description: values.description || '',
             due_date: values.due_date.toISOString(),
             priority: null,
