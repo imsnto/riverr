@@ -6,6 +6,7 @@ import { getDocument, getAllUsers, updateDocument, deleteDocument } from '@/lib/
 import { Document, User } from '@/lib/data';
 import React, { useState, useEffect } from 'react';
 import DocumentEditor from '@/components/dashboard/document-editor';
+import { useRouter } from 'next/navigation';
 
 const LoadingState = () => (
     <div className="flex h-screen items-center justify-center">
@@ -22,6 +23,7 @@ interface DocumentPageProps {
 export default function DocumentPage({ params }: DocumentPageProps) {
     const { docId } = params;
     const { appUser, userSpaces } = useAuth();
+    const router = useRouter();
 
     const [document, setDocument] = useState<Document | null>(null);
     const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -73,6 +75,7 @@ export default function DocumentPage({ params }: DocumentPageProps) {
     
     const handleDelete = async (id: string) => {
         await deleteDocument(id);
+        router.push('/?view=documents');
     };
 
     if (isLoading) {

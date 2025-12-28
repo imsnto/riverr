@@ -49,6 +49,7 @@ export default function DocumentEditor({
   onDelete,
 }: DocumentEditorProps) {
   const [document, setDocument] = useState(initialDocument);
+  const [lastSavedDocument, setLastSavedDocument] = useState(initialDocument);
   const [sidebarView, setSidebarView] = useState<'ai' | 'comments' | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const { appUser } = useAuth();
@@ -73,16 +74,17 @@ export default function DocumentEditor({
     const updatedDoc = { ...docToSave, updatedAt: new Date().toISOString() };
     await onSave(updatedDoc);
     setDocument(updatedDoc);
+    setLastSavedDocument(updatedDoc); // Update the last saved state
     setIsSaving(false);
     setLastSaved(new Date(updatedDoc.updatedAt));
   }, [onSave, toast]);
   
   // Effect for autosaving content and title changes
   useEffect(() => {
-    if (debouncedDocument && (debouncedDocument.content !== initialDocument.content || debouncedDocument.name !== initialDocument.name)) {
+    if (debouncedDocument && (debouncedDocument.content !== lastSavedDocument.content || debouncedDocument.name !== lastSavedDocument.name)) {
       handleSave(debouncedDocument);
     }
-  }, [debouncedDocument, handleSave, initialDocument]);
+  }, [debouncedDocument, handleSave, lastSavedDocument]);
 
 
   const handleContentChange = (newContent: string) => {
@@ -96,7 +98,7 @@ export default function DocumentEditor({
   const handleDelete = async () => {
     await onDelete(document.id);
     toast({ title: 'Document Deleted' });
-    router.push('/documents');
+    router.push('/?view=documents');
   };
 
   const handlePostComment = async (commentContent: string) => {
@@ -131,7 +133,7 @@ export default function DocumentEditor({
     <div className="flex flex-row gap-0 h-screen">
       <div className="flex-1 flex flex-col p-4 md:p-8">
         <div className="flex items-center gap-2 mb-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/documents')}>
+          <Button variant="ghost" size="icon" onClick={() => router.push('/?view=documents')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <Input
