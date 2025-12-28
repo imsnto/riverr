@@ -98,7 +98,7 @@ export default function DocumentEditor({
   const handleDelete = async () => {
     await onDelete(document.id);
     toast({ title: 'Document Deleted' });
-    router.push('/?view=documents');
+    router.back();
   };
 
   const handlePostComment = async (commentContent: string) => {
@@ -133,7 +133,7 @@ export default function DocumentEditor({
     <div className="flex flex-row gap-0 h-screen">
       <div className="flex-1 flex flex-col p-4 md:p-8">
         <div className="flex items-center gap-2 mb-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/?view=documents')}>
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <Input
