@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -65,8 +66,8 @@ export default function DocumentsView({ documents, activeSpace, appUser, allUser
 
   return (
     <>
-      <div className="flex flex-col h-full p-8">
-        <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col h-full">
+        <div className="flex justify-between items-center mb-6 px-4 md:px-8 pt-8">
           <div>
             <h1 className="text-3xl font-bold">Documents</h1>
             <p className="text-muted-foreground">
@@ -79,8 +80,8 @@ export default function DocumentsView({ documents, activeSpace, appUser, allUser
           </Button>
         </div>
         
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative mb-4 px-4 md:px-8">
+          <Search className="absolute left-3 md:left-11 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
               placeholder="Search documents..." 
               className="pl-10"
@@ -89,7 +90,7 @@ export default function DocumentsView({ documents, activeSpace, appUser, allUser
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8">
            <TooltipProvider>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                 {filteredDocuments.map(doc => {
