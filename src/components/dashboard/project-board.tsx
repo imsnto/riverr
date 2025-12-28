@@ -110,7 +110,7 @@ interface ProjectBoardProps {
   activeHub: Hub;
   allUsers: User[];
   onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
-  onNewTaskRequest: () => void;
+  onNewTaskRequest: (status?: string) => void;
   onTaskClick: (task: Task) => void;
   onUpdateTask: (task: Task) => void;
 }
@@ -354,77 +354,82 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                     )}
                 </div>
             )}
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-6 w-6">
-                        <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => { setEditingColumn(status.name); setNewColumnName(status.name); }}>
-                        <Edit className="mr-2 h-4 w-4" /> Rename
-                    </DropdownMenuItem>
+            <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onNewTaskRequest(status.name)}>
+                    <Plus className="h-4 w-4" />
+                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => { setEditingColumn(status.name); setNewColumnName(status.name); }}>
+                            <Edit className="mr-2 h-4 w-4" /> Rename
+                        </DropdownMenuItem>
 
-                    <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                            <Palette className="mr-2 h-4 w-4" />
-                            <span>Change Color</span>
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuPortal>
-                            <DropdownMenuSubContent className="w-60 p-2">
-                                 <div className="grid grid-cols-5 gap-2 mb-2">
-                                    {STATUS_COLORS.map(color => (
-                                        <button
-                                            key={color.name}
-                                            onClick={() => handleChangeColor(status.name, color.color)}
-                                            className={cn("w-8 h-8 rounded-md border-2", status.color === color.color ? 'border-primary' : 'border-transparent')}
-                                            style={{ backgroundColor: color.color }}
-                                            aria-label={color.name}
-                                        />
-                                    ))}
-                                </div>
-                                <Input
-                                    type="text"
-                                    defaultValue={status.color}
-                                    className="h-8"
-                                    onBlur={(e) => handleChangeColor(status.name, e.target.value)}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') handleChangeColor(status.name, e.currentTarget.value)}}
-                                />
-                            </DropdownMenuSubContent>
-                        </DropdownMenuPortal>
-                    </DropdownMenuSub>
+                        <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                                <Palette className="mr-2 h-4 w-4" />
+                                <span>Change Color</span>
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuPortal>
+                                <DropdownMenuSubContent className="w-60 p-2">
+                                    <div className="grid grid-cols-5 gap-2 mb-2">
+                                        {STATUS_COLORS.map(color => (
+                                            <button
+                                                key={color.name}
+                                                onClick={() => handleChangeColor(status.name, color.color)}
+                                                className={cn("w-8 h-8 rounded-md border-2", status.color === color.color ? 'border-primary' : 'border-transparent')}
+                                                style={{ backgroundColor: color.color }}
+                                                aria-label={color.name}
+                                            />
+                                        ))}
+                                    </div>
+                                    <Input
+                                        type="text"
+                                        defaultValue={status.color}
+                                        className="h-8"
+                                        onBlur={(e) => handleChangeColor(status.name, e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') handleChangeColor(status.name, e.currentTarget.value)}}
+                                    />
+                                </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                        </DropdownMenuSub>
 
-                    <DropdownMenuSeparator />
+                        <DropdownMenuSeparator />
 
-                    <DropdownMenuItem onClick={() => handleSetClosingStatus(status.name)}>
-                        <Archive className="mr-2 h-4 w-4" /> 
-                        {closingStatusName === status.name ? "Unset as closing status" : "Set as closing status"}
-                    </DropdownMenuItem>
-                    
-                    <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleSetClosingStatus(status.name)}>
+                            <Archive className="mr-2 h-4 w-4" /> 
+                            {closingStatusName === status.name ? "Unset as closing status" : "Set as closing status"}
+                        </DropdownMenuItem>
+                        
+                        <DropdownMenuSeparator />
 
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
-                                <Trash2 className="mr-2 h-4 w-4" /> <span>Delete</span>
-                            </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This will delete the "{status.name}" column. All tasks in this column will be moved to the first column. This action cannot be undone.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteColumn(status.name)} className={cn(buttonVariants({ variant: "destructive" }))}>Continue</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" /> <span>Delete</span>
+                                </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will delete the "{status.name}" column. All tasks in this column will be moved to the first column. This action cannot be undone.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteColumn(status.name)} className={cn(buttonVariants({ variant: "destructive" }))}>Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
 
-                </DropdownMenuContent>
-            </DropdownMenu>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         </div>
         <div 
           className="bg-primary/5 rounded-lg p-2 max-h-[calc(100vh-16rem)] overflow-y-auto min-h-[5rem]"
@@ -471,7 +476,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     <>
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">{project.name}</h1>
-        <Button onClick={onNewTaskRequest}>
+        <Button onClick={() => onNewTaskRequest()}>
           <Plus className="mr-2 h-4 w-4" />
           New Task
         </Button>

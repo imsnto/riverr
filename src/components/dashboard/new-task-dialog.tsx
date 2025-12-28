@@ -38,9 +38,10 @@ interface NewTaskDialogProps {
   projects: Project[];
   statuses: Status[];
   allUsers: User[];
+  defaultStatus?: string;
 }
 
-export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, projects, statuses, allUsers }: NewTaskDialogProps) {
+export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, projects, statuses, allUsers, defaultStatus }: NewTaskDialogProps) {
   const { toast } = useToast();
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
@@ -50,7 +51,7 @@ export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, project
       project_id: projects.length > 0 ? projects[0].id : '',
       assigned_to: '',
       due_date: new Date(),
-      status: statuses[0]?.name || '',
+      status: defaultStatus || (statuses.length > 0 ? statuses[0].name : ''),
     },
   });
 
@@ -91,10 +92,10 @@ export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, project
             project_id: projects.length > 0 ? projects[0].id : '',
             assigned_to: '',
             due_date: new Date(),
-            status: statuses[0]?.name || '',
+            status: defaultStatus || (statuses.length > 0 ? statuses[0].name : ''),
         })
     }
-  }, [isOpen, projects, statuses, form])
+  }, [isOpen, projects, statuses, form, defaultStatus])
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>

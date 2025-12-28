@@ -49,6 +49,7 @@ export default function TaskBoard({
   const [isProjectFormOpen, setIsProjectFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
+  const [defaultStatusForNewTask, setDefaultStatusForNewTask] = useState<string | undefined>(undefined);
   const { toast } = useToast();
   
   const { activeSpace } = useAuth(); // Need this for project form dialog
@@ -103,6 +104,10 @@ export default function TaskBoard({
     }
   };
 
+  const handleNewTaskRequest = (status?: string) => {
+    setDefaultStatusForNewTask(status);
+    setIsNewTaskDialogOpen(true);
+  }
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   const spaceMembers = allUsers.filter(u => activeSpace?.members[u.id]);
@@ -159,7 +164,7 @@ export default function TaskBoard({
                   activeHub={activeHub}
                   allUsers={allUsers}
                   onUpdateActiveHub={onUpdateActiveHub}
-                  onNewTaskRequest={() => setIsNewTaskDialogOpen(true)}
+                  onNewTaskRequest={handleNewTaskRequest}
                   onTaskClick={(task) => onTaskSelect(task)}
                   onUpdateTask={onUpdateTask}
               />
@@ -191,6 +196,7 @@ export default function TaskBoard({
             projects={selectedProject ? [selectedProject] : []}
             statuses={statuses}
             allUsers={spaceMembers}
+            defaultStatus={defaultStatusForNewTask}
           />
         )}
       </div>
