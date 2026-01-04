@@ -393,7 +393,6 @@ export default function Dashboard({ view }: { view: string }) {
     }
   };
 
-
   const renderView = () => {
     const props = {
       tasks,
@@ -433,8 +432,7 @@ export default function Dashboard({ view }: { view: string }) {
       // Messaging props
       channels,
       onViewThread: (thread: Message) => {
-          setActiveThread(thread);
-          handleViewChange('thread');
+        setActiveThread(thread);
       },
       onAddMessage: handleAddMessage,
        // Thread view specific prop
@@ -472,7 +470,6 @@ export default function Dashboard({ view }: { view: string }) {
       case 'team-timesheets': return <TeamTimesheets {...props} />;
       case 'messages': return <MessagesLayout {...messagesProps} />;
       case 'mentions': return <div className="p-8"><MentionsThreadList {...props} mentions={unreadMentions} onClose={() => {}} onOpenThread={() => {}} /></div>;
-      case 'thread': return <div className="p-8"><ThreadView {...props} thread={activeThread!} onClose={() => setActiveThread(null)} /></div>;
       case 'all-threads': return <div className="p-8"><AllThreadsView {...props} isThreadUnread={() => false} /></div>;
       case 'channels': return <div className="p-8"><ChannelsView {...props} activeChannelId={activeChannelId} setMessages={setMessages} onCreateTask={handleCreateTaskFromThread} /></div>;
       default:
