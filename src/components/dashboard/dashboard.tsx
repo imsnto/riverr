@@ -48,6 +48,7 @@ import { useToast } from '@/hooks/use-toast';
 import TeamTimesheets from './team-timesheets';
 import { SidebarProvider } from '../ui/sidebar';
 import ProjectFormDialog from './project-form-dialog';
+import ChannelList from './channel-list';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -375,6 +376,22 @@ export default function Dashboard({ view }: { view: string }) {
         if (updatedActiveSpace) setActiveSpace(updatedActiveSpace);
     }
  };
+ 
+  const handleSaveChannel = async (channelData: Omit<Channel, 'id'>, channelId?: string) => {
+    if (!activeHub) return;
+    const dataWithHub = { ...channelData, hubId: activeHub.id };
+
+    if (channelId) {
+      await db.updateChannel(channelId, dataWithHub);
+      setChannels(prev => prev.map(c => c.id === channelId ? { ...c, ...dataWithHub } : c));
+      toast({ title: 'Channel Updated' });
+    } else {
+      const newChannel = await db.addChannel(dataWithHub);
+      setChannels(prev => [...prev, newChannel]);
+      setActiveChannelId(newChannel.id);
+      toast({ title: 'Channel Created' });
+    }
+  };
 
 
   const renderView = () => {
@@ -427,10 +444,14 @@ export default function Dashboard({ view }: { view: string }) {
 
     const messagesProps = {
         left: (
-            <div className="p-4">
-                <h2 className="text-lg font-semibold">Channels</h2>
-                {channels.map(c => <div key={c.id}>{c.name}</div>)}
-            </div>
+           <ChannelList 
+             channels={channels}
+             activeChannelId={activeChannelId}
+             onChannelSelect={setActiveChannelId}
+             onSaveChannel={handleSaveChannel}
+             activeSpace={activeSpace}
+             appUser={appUser}
+            />
         ),
         center: <ChannelsView {...props} activeChannelId={activeChannelId} setMessages={setMessages} onCreateTask={handleCreateTaskFromThread} />,
         right: activeThread ? <ThreadView {...props} thread={activeThread} onClose={() => setActiveThread(null)} /> : undefined,

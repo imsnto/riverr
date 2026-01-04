@@ -97,7 +97,7 @@ export interface Document {
 export interface Channel {
   id:string;
   name: string;
-  description: string;
+  description?: string;
   space_id: string;
   hubId: string; // Hub scope
   members: string[]; // Array of user IDs
@@ -391,4 +391,3 @@ export const phaseTemplates: PhaseTemplate[] = [];
 export const jobFlowTemplates: JobFlowTemplate[] = [];
 export const jobs: Job[] = [];
 export const jobFlowTasks: JobFlowTask[] = [];
-
