@@ -373,8 +373,8 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
-                <DialogHeader className="p-6 pb-0">
-                   <DialogTitle className="sr-only">Task Details: {task?.name}</DialogTitle>
+                <DialogHeader className="p-6 pb-0 sr-only">
+                   <DialogTitle>Task Details: {task?.name}</DialogTitle>
                 </DialogHeader>
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 flex-1 overflow-hidden">
@@ -672,7 +672,8 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                             </div>
 
                             {/* Scrollable Feed */}
-                            <div className="flex-1 overflow-y-auto px-4 space-y-4">
+                            <ScrollArea className="flex-1">
+                                <div className="px-4 py-4 space-y-4">
                                 {sortedActivities.map((activity) => {
                                     if (activity.type === 'comment' && activity.comment_id) {
                                         const user = allUsers.find(u => u.id === activity.user_id);
@@ -722,7 +723,8 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                     }
                                     return <ActivityItem key={activity.id} activity={activity} allUsers={allUsers} />;
                                 })}
-                            </div>
+                                </div>
+                            </ScrollArea>
 
                             {/* Sticky Footer */}
                             <div className="p-4 border-t bg-card sticky bottom-0 z-10">
