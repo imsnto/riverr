@@ -48,6 +48,7 @@ import TaskDetailsDialog from './task-details-dialog';
 import { useToast } from '@/hooks/use-toast';
 import TeamTimesheets from './team-timesheets';
 import { SidebarProvider } from '../ui/sidebar';
+import ProjectFormDialog from './project-form-dialog';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -93,6 +94,11 @@ export default function Dashboard({ view }: { view: string }) {
   // Dialogs
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [taskFromThread, setTaskFromThread] = useState<Message | null>(null);
+  
+  // Project Management
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [isProjectFormOpen, setIsProjectFormOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
 
 
   const fetchData = async () => {
@@ -144,6 +150,13 @@ export default function Dashboard({ view }: { view: string }) {
           ]);
           
           setProjects(fetchedProjects);
+          if (!selectedProjectId && fetchedProjects.length > 0) {
+            setSelectedProjectId(fetchedProjects[0].id);
+          } else if (fetchedProjects.length === 0) {
+            setSelectedProjectId(null);
+          }
+
+
           setTasks(fetchedTasks);
           setSlackLogs(fetchedSlackLogs);
           setDocuments(fetchedDocuments);
@@ -171,6 +184,20 @@ export default function Dashboard({ view }: { view: string }) {
   useEffect(() => {
     fetchData();
   }, [appUser, activeSpace, activeHub]);
+  
+  useEffect(() => {
+    if (activeHub) {
+        db.getProjectsInHub(activeHub.id).then(fetchedProjects => {
+            setProjects(fetchedProjects);
+            if (!selectedProjectId && fetchedProjects.length > 0) {
+                setSelectedProjectId(fetchedProjects[0].id);
+            } else if (fetchedProjects.length === 0) {
+                setSelectedProjectId(null);
+            }
+        });
+    }
+  }, [activeHub, selectedProjectId])
+
 
   // Handle view change from sidebar
   const handleViewChange = (newView: AppView) => {
@@ -188,6 +215,16 @@ export default function Dashboard({ view }: { view: string }) {
       router.push(`/space/${activeSpace.id}/hub/${newHub.id}/${defaultView}`);
     }
   };
+  
+  const handleSelectProject = (projectId: string) => {
+    setSelectedProjectId(projectId);
+    setCurrentView('tasks');
+  }
+
+  const handleNewProject = () => {
+    setEditingProject(null);
+    setIsProjectFormOpen(true);
+  }
 
   // Switch to the correct view when URL changes
   useEffect(() => {
@@ -265,9 +302,11 @@ export default function Dashboard({ view }: { view: string }) {
   }
 
   const handleAddProject = async (project: Omit<Project, 'id' | 'hubId'>) => {
+    if (!activeHub) return;
     const projectWithHub = { ...project, hubId: activeHub.id };
     const newProject = await db.addProject(projectWithHub);
     setProjects(prev => [...prev, newProject]);
+    setSelectedProjectId(newProject.id);
   }
 
   const handleUpdateProject = async (projectId: string, data: Partial<Project>) => {
@@ -277,7 +316,11 @@ export default function Dashboard({ view }: { view: string }) {
   
   const handleDeleteProject = async (projectId: string) => {
       await db.deleteProject(projectId);
-      setProjects(prev => prev.filter(p => p.id !== projectId));
+      const newProjects = projects.filter(p => p.id !== projectId);
+      setProjects(newProjects);
+      if (selectedProjectId === projectId) {
+        setSelectedProjectId(newProjects.length > 0 ? newProjects[0].id : null);
+      }
   }
   
   const handleAddMessage = async (message: Omit<Message, 'id'>) => {
@@ -294,6 +337,26 @@ export default function Dashboard({ view }: { view: string }) {
     setTimeEntries(prev => [...prev, newTimeEntry]);
   };
   
+  const handleSaveProject = async (values: Omit<Project, 'id' | 'hubId'>, projectId?: string) => {
+    if (!activeHub) {
+        toast({ variant: 'destructive', title: 'No active hub selected' });
+        return;
+    }
+    try {
+        const projectData = { ...values, hubId: activeHub.id };
+        if (projectId) {
+            await handleUpdateProject(projectId, projectData);
+            toast({ title: 'Project Updated' });
+        } else {
+            await handleAddProject(projectData);
+            toast({ title: 'Project Created' });
+        }
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Save failed', description: 'Could not save the project.'})
+    }
+  }
+
+
   const handleSpaceSave = async (spaceData: Omit<Space, 'id'>, spaceId?: string) => {
     if (spaceId) {
         await db.updateSpace(spaceId, spaceData);
@@ -377,7 +440,12 @@ export default function Dashboard({ view }: { view: string }) {
 
     switch (currentView) {
       case 'overview': return <div className="p-8"><Overview {...props} /></div>;
-      case 'tasks': return <div className="p-8"><TaskBoard {...props} /></div>;
+      case 'tasks': return (
+        <TaskBoard 
+          {...props}
+          selectedProjectId={selectedProjectId}
+        />
+      );
       case 'mytasks': return <div className="p-8"><MyTasksView {...props} /></div>;
       case 'documents': return <DocumentsView {...props} />;
       case 'settings': return <div className="p-8"><SettingsLayout {...props} /></div>;
@@ -400,7 +468,14 @@ export default function Dashboard({ view }: { view: string }) {
   return (
     <SidebarProvider>
       <div className="flex h-screen bg-background text-foreground">
-        <AppSidebar view={currentView} onChangeView={handleViewChange} />
+        <AppSidebar
+          view={currentView}
+          onChangeView={handleViewChange}
+          projects={projects}
+          selectedProjectId={selectedProjectId}
+          onSelectProject={handleSelectProject}
+          onNewProject={handleNewProject}
+        />
         <div className="flex flex-col flex-1 overflow-hidden">
           <TopBar 
             activeSpace={activeSpace} 
@@ -421,6 +496,15 @@ export default function Dashboard({ view }: { view: string }) {
             {renderView()}
           </main>
         </div>
+
+        <ProjectFormDialog 
+          isOpen={isProjectFormOpen}
+          onOpenChange={setIsProjectFormOpen}
+          onSave={handleSaveProject}
+          project={editingProject}
+          spaceId={activeSpace?.id || ''}
+          spaceMembers={allUsers.filter(u => activeSpace?.members[u.id])}
+        />
 
         {selectedTask && (
           <TaskDetailsDialog
