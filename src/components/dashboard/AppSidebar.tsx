@@ -21,6 +21,7 @@ import {
   User as UserIcon,
   ChevronsUpDown,
   Check,
+  PanelLeft,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
@@ -335,37 +336,53 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         {appUser && (
             <>
               <Separator className={cn("my-2", !showLabels && "mx-auto w-12")} />
-               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                   <Button variant="ghost" className={cn("h-14 w-full justify-start rounded-md px-4", !showLabels && "px-0 justify-center w-14 mx-auto")}>
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={appUser.avatarUrl} alt={appUser.name} />
-                        <AvatarFallback>{getInitials(appUser.name)}</AvatarFallback>
-                      </Avatar>
-                      {showLabels && (
-                        <div className="ml-3 text-left">
-                          <p className="text-sm font-medium leading-none">{appUser.name}</p>
-                          <p className="text-xs leading-none text-muted-foreground">{appUser.email}</p>
-                        </div>
-                      )}
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuItem onClick={() => router.push('/profile')}>
-                    <UserIcon className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <LifeBuoy className="mr-2 h-4 w-4" />
-                    <span>Support</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className={cn("h-14 justify-start rounded-md px-4 flex-1", !showLabels && "px-0 justify-center w-14 mx-auto")}>
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage src={appUser.avatarUrl} alt={appUser.name} />
+                          <AvatarFallback>{getInitials(appUser.name)}</AvatarFallback>
+                        </Avatar>
+                        {showLabels && (
+                          <div className="ml-3 text-left">
+                            <p className="text-sm font-medium leading-none">{appUser.name}</p>
+                            <p className="text-xs leading-none text-muted-foreground">{appUser.email}</p>
+                          </div>
+                        )}
+                      </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuItem onClick={() => router.push('/profile')}>
+                      <UserIcon className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <LifeBuoy className="mr-2 h-4 w-4" />
+                      <span>Support</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
+                {!isMobile && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-14 w-14 transition-all duration-300",
+                      !showLabels && "rotate-180"
+                    )}
+                    onClick={toggleSidebar}
+                  >
+                    <PanelLeft />
+                  </Button>
+                )}
+              </div>
             </>
         )}
       </div>
