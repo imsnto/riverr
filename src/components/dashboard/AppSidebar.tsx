@@ -154,17 +154,18 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 {showLabels && (
                   <div className="pl-8 pr-2 space-y-1">
                     {projects.map(project => (
-                      <Button
-                        key={project.id}
-                        variant={selectedProjectId === project.id ? 'secondary' : 'ghost'}
-                        onClick={() => {
-                          onSelectProject(project.id);
-                          onChangeView('tasks');
-                        }}
-                        className="w-full justify-start h-8 text-sm"
-                      >
-                        {project.name}
-                      </Button>
+                      <div key={project.id}>
+                        <Button
+                          variant={selectedProjectId === project.id ? 'secondary' : 'ghost'}
+                          onClick={() => {
+                            onSelectProject(project.id);
+                            onChangeView('tasks');
+                          }}
+                          className="w-full justify-start h-8 text-sm"
+                        >
+                          {project.name}
+                        </Button>
+                      </div>
                     ))}
                      <Button
                         variant="ghost"
