@@ -401,7 +401,7 @@ export default function Dashboard({ view }: { view: string }) {
       unreadMentions,
       onMentionsCleared: () => setLastMentionsRead(new Date().toISOString()),
       onSelectTask: setSelectedTask,
-      statuses: activeHub?.statuses || [],
+      statuses: activeHub.statuses || [],
       onSave: handleSpaceSave,
       onDelete: db.deleteSpace,
       onInvite: fetchData,

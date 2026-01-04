@@ -179,7 +179,7 @@ export function TopBar({
       )}
     >
       <div className="flex items-center gap-4">
-        <SidebarTrigger onClick={toggleSidebar} className="md:hidden" />
+        <SidebarTrigger onClick={toggleSidebar} />
         {activeSpace && (
             <div className="hidden sm:flex items-center gap-2">
                 <Label className="text-sm text-muted-foreground">Space</Label>
