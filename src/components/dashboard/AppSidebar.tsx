@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { Sidebar } from "@/components/ui/sidebar";
+import { Sidebar, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import {
   BarChart,
@@ -16,14 +16,22 @@ import {
   Clock,
   ChevronDown,
   Plus,
+  LifeBuoy,
+  LogOut,
+  User as UserIcon,
+  ChevronsUpDown,
+  Check,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { useSidebar } from '@/components/ui/sidebar';
-import { Project } from "@/lib/data";
+import { Project, Space, Hub, User } from "@/lib/data";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 export type AppView =
   | "overview"
@@ -38,6 +46,122 @@ export type AppView =
   | "user-settings"
   | "space-settings";
 
+interface SpaceSwitcherProps {
+  spaces: Space[];
+  activeSpace: Space;
+  onSpaceChange: (spaceId: string) => void;
+}
+
+function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProps) {
+  const [open, setOpen] = React.useState(false)
+
+  return (
+     <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between"
+          disabled={!activeSpace}
+        >
+          <span className="truncate">{activeSpace ? activeSpace.name : "Select a space"}</span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+        <Command>
+          <CommandInput placeholder="Search space..." />
+          <CommandList>
+            <CommandEmpty>No space found.</CommandEmpty>
+            <CommandGroup>
+              {spaces.map((space) => (
+                <CommandItem
+                  key={space.id}
+                  value={space.name}
+                  onSelect={() => {
+                    onSpaceChange(space.id)
+                    setOpen(false)
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      activeSpace?.id === space.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {space.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+interface HubSwitcherProps {
+  hubs: Hub[];
+  activeHub: Hub | null;
+  onHubChange: (hubId: string) => void;
+}
+
+function HubSwitcher({ hubs, activeHub, onHubChange }: HubSwitcherProps) {
+  const [open, setOpen] = React.useState(false)
+
+  return (
+     <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between"
+          disabled={!activeHub}
+        >
+          <span className="truncate">{activeHub ? activeHub.name : "Select a hub"}</span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+        <Command>
+          <CommandInput placeholder="Search hub..." />
+          <CommandList>
+            <CommandEmpty>No hub found.</CommandEmpty>
+            <CommandGroup>
+              {hubs.map((hub) => (
+                <CommandItem
+                  key={hub.id}
+                  value={hub.name}
+                  onSelect={() => {
+                    onHubChange(hub.id)
+                    setOpen(false)
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      activeHub?.id === hub.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {hub.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+const getInitials = (name: string) => {
+    if (!name) return '';
+    return name.split(' ').map(n => n[0]).join('');
+}
+
+
 interface AppSidebarProps {
   view: AppView;
   onChangeView: (view: AppView) => void;
@@ -46,6 +170,12 @@ interface AppSidebarProps {
   onSelectProject: (projectId: string) => void;
   onNewProject: () => void;
   className?: string;
+  activeSpace: Space | null, 
+  onSpaceChange: (spaceId: string) => void; 
+  allSpaces: Space[],
+  allHubs: Hub[],
+  activeHub: Hub | null,
+  onHubChange: (hubId: string) => void;
 }
 
 const allTopItems: { key: AppView; icon: React.ReactNode; label: string; fixed?: boolean }[] = [
@@ -83,10 +213,21 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   selectedProjectId,
   onSelectProject,
   onNewProject,
+  activeSpace,
+  allSpaces,
+  onSpaceChange,
+  allHubs,
+  activeHub,
+  onHubChange,
 }) => {
-  const { activeHub } = useAuth();
-  const { isMobile, state } = useSidebar();
+  const { appUser, signOut } = useAuth();
+  const { isMobile, state, toggleSidebar } = useSidebar();
+  const router = useRouter();
 
+  const handleLogout = async () => {
+    await signOut();
+    router.push('/login');
+  };
 
   const hubComponents = activeHub?.settings?.components || [];
 
@@ -112,13 +253,16 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     const variant = isActive ? "secondary" : "ghost";
     const handleClick = () => {
       onChangeView(item.key);
+      if (isMobile) {
+        toggleSidebar();
+      }
     };
     return (
       <Button
         key={item.key}
         onClick={handleClick}
         variant={variant}
-        className="h-12 w-full justify-start rounded-md px-4"
+        className={cn("h-12 w-full justify-start rounded-md px-4", !showLabels && "px-0 justify-center w-12 mx-auto")}
       >
         {item.icon}
         {showLabels && <span className="ml-3">{item.label}</span>}
@@ -131,9 +275,16 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   return (
     <Sidebar collapsible="icon">
       <div className="flex flex-col h-full p-2">
-        <div className="space-y-1">
+         {showLabels && activeSpace && activeHub && (
+           <div className="p-2 space-y-2">
+             <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />
+             <HubSwitcher hubs={allHubs} activeHub={activeHub} onHubChange={onHubChange} />
+             <Separator />
+           </div>
+         )}
+        <div className="space-y-1 flex-1 overflow-y-auto">
           {topItems.map(renderButton)}
-          <div className="px-3 py-2">
+          <div className={cn("px-3 py-2", !showLabels && "px-0")}>
             <Separator />
           </div>
           {showTasks && (
@@ -141,7 +292,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               <CollapsibleTrigger asChild>
                  <Button
                     variant={view === 'tasks' ? 'secondary' : 'ghost'}
-                    className="h-12 w-full justify-between rounded-md px-4 group"
+                    className={cn("h-12 w-full justify-between rounded-md px-4 group", !showLabels && "px-0 justify-center w-12 mx-auto")}
                   >
                     <div className="flex items-center">
                       <FolderKanban className="w-5 h-5" />
@@ -181,6 +332,42 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           {middleItems.map(renderButton)}
         </div>
         <div className="mt-auto space-y-1">{bottomItems.map(renderButton)}</div>
+        {appUser && (
+            <>
+              <Separator className={cn("my-2", !showLabels && "mx-auto w-12")} />
+               <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                   <Button variant="ghost" className={cn("h-14 w-full justify-start rounded-md px-4", !showLabels && "px-0 justify-center w-14 mx-auto")}>
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={appUser.avatarUrl} alt={appUser.name} />
+                        <AvatarFallback>{getInitials(appUser.name)}</AvatarFallback>
+                      </Avatar>
+                      {showLabels && (
+                        <div className="ml-3 text-left">
+                          <p className="text-sm font-medium leading-none">{appUser.name}</p>
+                          <p className="text-xs leading-none text-muted-foreground">{appUser.email}</p>
+                        </div>
+                      )}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuItem onClick={() => router.push('/profile')}>
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <LifeBuoy className="mr-2 h-4 w-4" />
+                    <span>Support</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+        )}
       </div>
     </Sidebar>
   );

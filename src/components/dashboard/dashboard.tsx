@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { AppSidebar, AppView } from './AppSidebar';
-import { TopBar } from './top-bar';
 import { useAuth } from '@/hooks/use-auth';
 import {
   Space,
@@ -475,24 +474,22 @@ export default function Dashboard({ view }: { view: string }) {
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           onNewProject={handleNewProject}
+          activeSpace={activeSpace}
+          allSpaces={userSpaces}
+          onSpaceChange={(spaceId) => {
+            const newSpace = userSpaces.find(s => s.id === spaceId);
+            if (newSpace) {
+              setActiveSpace(newSpace);
+              setActiveHub(null);
+              router.push(`/space/${spaceId}/hubs`);
+            }
+          }}
+          allHubs={spaceHubs}
+          activeHub={activeHub}
+          onHubChange={handleHubChange}
         />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <TopBar 
-            activeSpace={activeSpace} 
-            allSpaces={userSpaces} 
-            onSpaceChange={(spaceId) => {
-              const newSpace = userSpaces.find(s => s.id === spaceId);
-              if (newSpace) {
-                setActiveSpace(newSpace);
-                setActiveHub(null);
-                router.push(`/space/${spaceId}/hubs`);
-              }
-            }}
-            allHubs={spaceHubs}
-            activeHub={activeHub}
-            onHubChange={handleHubChange}
-          />
-          <main className="flex-1 overflow-y-auto pt-16">
+          <main className="flex-1 overflow-y-auto">
             {renderView()}
           </main>
         </div>
