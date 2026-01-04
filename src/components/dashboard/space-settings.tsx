@@ -1,3 +1,4 @@
+
 // src/components/dashboard/space-settings.tsx
 'use client';
 
@@ -21,7 +22,7 @@ const getInitials = (name: string) => {
 
 interface SpaceSettingsProps {
     allUsers: User[];
-    onSave: (space: Omit<Space, 'id' | 'statuses'>, spaceId?: string) => void;
+    onSave: (space: Omit<Space, 'id'>, spaceId?: string) => void;
     onDelete: (spaceId: string) => void;
     appUser: User | null;
 }
