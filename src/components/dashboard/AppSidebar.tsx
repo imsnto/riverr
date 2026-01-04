@@ -1,4 +1,3 @@
-
 // src/components/dashboard/AppSidebar.tsx
 "use client";
 
@@ -19,6 +18,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { useSidebar } from '@/components/ui/sidebar';
 
 export type AppView =
   | "overview"
@@ -39,30 +39,32 @@ interface AppSidebarProps {
   className?: string;
 }
 
-const allTopItems: { key: AppView; icon: React.ReactNode; fixed?: boolean }[] = [
-  { key: "overview", icon: <BarChart className="w-7 h-7" />, fixed: true },
-  { key: "mytasks", icon: <ClipboardCheck className="w-7 h-7" />, fixed: true },
-  { key: "mentions", icon: <AtSign className="w-7 h-7" />, fixed: true },
+const allTopItems: { key: AppView; icon: React.ReactNode; label: string; fixed?: boolean }[] = [
+  { key: "overview", icon: <BarChart className="w-5 h-5" />, label: 'Overview', fixed: true },
+  { key: "mytasks", icon: <ClipboardCheck className="w-5 h-5" />, label: 'My Tasks', fixed: true },
+  { key: "mentions", icon: <AtSign className="w-5 h-5" />, label: 'Mentions', fixed: true },
 ];
 
 const allMiddleItems: {
   key: AppView;
   icon: React.ReactNode;
+  label: string;
   fixed?: boolean;
 }[] = [
-  { key: "tasks", icon: <FolderKanban className="w-7 h-7" /> },
-  { key: "messages", icon: <MessageSquare className="w-7 h-7" /> },
-  { key: "documents", icon: <BookOpen className="w-7 h-7" /> },
-  { key: "flows", icon: <Workflow className="w-7 h-7" /> },
+  { key: "tasks", icon: <FolderKanban className="w-5 h-5" />, label: 'Tasks' },
+  { key: "messages", icon: <MessageSquare className="w-5 h-5" />, label: 'Messages' },
+  { key: "documents", icon: <BookOpen className="w-5 h-5" />, label: 'Documents' },
+  { key: "flows", icon: <Workflow className="w-5 h-5" />, label: 'Flows' },
 ];
 
 const allBottomItems: {
   key: AppView;
   icon: React.ReactNode;
+  label: string;
   fixed?: boolean;
 }[] = [
-  { key: "team-timesheets", icon: <Clock className="w-7 h-7" />, fixed: true },
-  { key: "settings", icon: <Settings className="w-7 h-7" />, fixed: true },
+  { key: "team-timesheets", icon: <Clock className="w-5 h-5" />, label: 'Timesheets', fixed: true },
+  { key: "settings", icon: <Settings className="w-5 h-5" />, label: 'Settings', fixed: true },
 ];
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
@@ -71,6 +73,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 }) => {
   const router = useRouter();
   const { activeHub } = useAuth();
+  const { isMobile, state } = useSidebar();
+
 
   const hubComponents = activeHub?.settings?.components || [];
 
@@ -83,10 +87,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   const bottomItems = allBottomItems.filter(
     (item) => item.fixed || hubComponents.includes(item.key)
   );
+  
+  const showLabels = isMobile || state === 'expanded';
 
   const renderButton = (item: {
     key: AppView;
     icon: React.ReactNode;
+    label: string;
     fixed?: boolean;
   }) => {
     const isActive = view === item.key;
@@ -99,24 +106,25 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         key={item.key}
         onClick={handleClick}
         variant={variant}
-        className="h-12 w-full justify-center rounded-none"
+        className="h-12 w-full justify-start rounded-md px-4"
       >
         {item.icon}
+        {showLabels && <span className="ml-3">{item.label}</span>}
       </Button>
     );
   };
 
   return (
     <Sidebar collapsible="icon">
-      <div className="flex flex-col h-full">
-        <div className="space-y-2 pt-4">
+      <div className="flex flex-col h-full p-2">
+        <div className="space-y-1">
           {topItems.map(renderButton)}
           <div className="px-3 py-2">
             <Separator />
           </div>
           {middleItems.map(renderButton)}
         </div>
-        <div className="mt-auto space-y-2">{bottomItems.map(renderButton)}</div>
+        <div className="mt-auto space-y-1">{bottomItems.map(renderButton)}</div>
       </div>
     </Sidebar>
   );

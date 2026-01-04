@@ -21,8 +21,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-const SIDEBAR_WIDTH = "4.5rem"
-const SIDEBAR_WIDTH_ICON = "4.5rem"
+const SIDEBAR_WIDTH = "16rem" // Expanded width
+const SIDEBAR_WIDTH_ICON = "4.5rem" // Collapsed (icon-only) width
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
