@@ -51,12 +51,6 @@ export default function ThreadView({ thread, messages, allUsers, channels, onClo
     const fileInputRef = useRef<HTMLInputElement>(null);
     const messageInputRef = useRef<HTMLInputElement>(null);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
-    
-    const threadMessages = [thread, ...messages.filter(m => m.thread_id === thread.id)];
-    const threadUser = allUsers.find(u => u.id === thread.user_id);
-    
-    const activeChannel = channels.find(c => c.id === thread.channel_id);
-    const channelMembers = activeChannel ? allUsers.filter(u => activeChannel.members.includes(u.id)) : [];
 
     useEffect(() => {
         if (scrollAreaRef.current) {
@@ -65,7 +59,18 @@ export default function ThreadView({ thread, messages, allUsers, channels, onClo
             viewport.scrollTop = viewport.scrollHeight;
           }
         }
-    }, [messages, thread.id]);
+    }, [messages, thread?.id]);
+
+    if (!thread) {
+        return null; // or a loading/error state
+    }
+    
+    const threadMessages = [thread, ...messages.filter(m => m.thread_id === thread.id)];
+    const threadUser = allUsers.find(u => u.id === thread.user_id);
+    
+    const activeChannel = channels.find(c => c.id === thread.channel_id);
+    const channelMembers = activeChannel ? allUsers.filter(u => activeChannel.members.includes(u.id)) : [];
+
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
