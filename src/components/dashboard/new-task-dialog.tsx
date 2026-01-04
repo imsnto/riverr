@@ -99,14 +99,14 @@ export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, project
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] flex flex-col max-h-[90vh]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[425px] flex flex-col max-h-[90vh] p-0">
+        <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle>Create New Task</DialogTitle>
           <DialogDescription>Fill in the details for your new task.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-            <ScrollArea className="flex-1 pr-6 -mr-6">
+            <ScrollArea className="flex-1 px-6">
               <div className="space-y-4 py-4">
                 <FormField
                   control={form.control}
@@ -246,7 +246,7 @@ export default function NewTaskDialog({ isOpen, onOpenChange, onTaskAdd, project
                 />
               </div>
             </ScrollArea>
-            <DialogFooter className="pt-4 border-t">
+            <DialogFooter className="p-6 pt-4 border-t">
               <Button type="submit">Create Task</Button>
             </DialogFooter>
           </form>

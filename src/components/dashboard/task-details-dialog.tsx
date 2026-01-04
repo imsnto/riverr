@@ -379,15 +379,16 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 flex-1 overflow-hidden">
                     {/* Left Panel: Task Details */}
-                    <ScrollArea className="md:col-span-2">
-                        <div className="p-6 flex flex-col gap-6">
-                             <div className="flex justify-between items-start">
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Button variant="outline" size="sm" className="pointer-events-none">
-                                        {project?.name || 'Job Flow'}
-                                    </Button>
-                                    <span>/ {task?.id?.substring(0,6)}...</span>
-                               </div>
+                    <div className="md:col-span-2 flex flex-col h-full overflow-hidden">
+                        <ScrollArea className="flex-1">
+                            <div className="p-6 flex flex-col gap-6">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <Button variant="outline" size="sm" className="pointer-events-none">
+                                            {project?.name || 'Job Flow'}
+                                        </Button>
+                                        <span>/ {task?.id?.substring(0,6)}...</span>
+                                </div>
                                 {isFlowTask && (
                                     <div className="flex items-center space-x-2">
                                         <Checkbox
@@ -660,12 +661,12 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </ScrollArea>
+                            </div>
+                        </ScrollArea>
+                    </div>
                     
                     {/* Right Panel: Activity & Comments */}
                     <div className="col-span-1 border-l bg-card flex flex-col h-full overflow-hidden">
-                        <div className="flex flex-col h-full">
                             {/* Sticky Header */}
                             <div className="p-4 border-b bg-card sticky top-0 z-10">
                                 <h3 className="font-semibold">Activity</h3>
@@ -764,7 +765,6 @@ export default function TaskDetailsDialog({ task, timeEntries = [], isOpen, onOp
                                     </div>
                                 </form>
                             </div>
-                        </div>
                     </div>
                 </div>
                 {isLogTimeOpen && (
