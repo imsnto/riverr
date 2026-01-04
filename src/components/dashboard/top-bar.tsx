@@ -2,7 +2,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { useSidebar } from "@/components/ui/sidebar" 
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar" 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -157,6 +157,7 @@ export function TopBar({
 }) {
   const router = useRouter();
   const { signOut, appUser } = useAuth();
+  const { toggleSidebar } = useSidebar();
 
   if (!appUser) return null;
 
@@ -169,19 +170,24 @@ export function TopBar({
     <header
       className={cn(
         "fixed top-0 left-0 right-0 z-20 flex h-16 items-center justify-between border-b bg-background px-4 shadow-sm",
-        "pl-[calc(var(--sidebar-width-icon)_+_1rem)]",
+        "pl-[calc(var(--sidebar-width-icon)_+_1rem)] md:pl-[calc(var(--sidebar-width-icon)_+_1rem)]",
+        "group-data-[sidebar-collapsed=icon]:pl-[calc(var(--sidebar-width-icon)_+_1rem)]",
+        "md:group-data-[sidebar-state=expanded]:pl-[calc(var(--sidebar-width)_+_1rem)]",
+        "md:group-data-[sidebar-variant=inset]:pl-4 md:group-data-[sidebar-state=expanded]:pl-[calc(var(--sidebar-width)_+_calc(theme(spacing.4)*2.5))]",
+        "md:group-data-[sidebar-variant=floating]:pl-4 md:group-data-[sidebar-state=expanded]:pl-[calc(var(--sidebar-width)_+_calc(theme(spacing.4)*2.5))]",
         className
       )}
     >
       <div className="flex items-center gap-4">
+        <SidebarTrigger onClick={toggleSidebar} className="md:hidden" />
         {activeSpace && (
-            <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
                 <Label className="text-sm text-muted-foreground">Space</Label>
                 <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />
             </div>
         )}
         {activeHub && (
-             <div className="flex items-center gap-2">
+             <div className="hidden sm:flex items-center gap-2">
                 <Label className="text-sm text-muted-foreground">Hub</Label>
                 <HubSwitcher hubs={allHubs} activeHub={activeHub} onHubChange={onHubChange} />
             </div>

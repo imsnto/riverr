@@ -47,6 +47,7 @@ import CreateTaskFromThreadDialog from './create-task-from-thread-dialog';
 import TaskDetailsDialog from './task-details-dialog';
 import { useToast } from '@/hooks/use-toast';
 import TeamTimesheets from './team-timesheets';
+import { SidebarProvider } from '../ui/sidebar';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -380,7 +381,7 @@ export default function Dashboard({ view }: { view: string }) {
       case 'mytasks': return <div className="p-8"><MyTasksView {...props} /></div>;
       case 'documents': return <DocumentsView {...props} />;
       case 'settings': return <div className="p-8"><SettingsLayout {...props} /></div>;
-      case 'team-timesheets': return <div className="p-8"><TeamTimesheets {...props} /></div>;
+      case 'team-timesheets': return <TeamTimesheets {...props} />;
       case 'messages': return <MessagesLayout {...messagesProps} />;
       case 'mentions': return <div className="p-8"><MentionsThreadList {...props} mentions={unreadMentions} onClose={() => {}} onOpenThread={() => {}} /></div>;
       case 'thread': return <div className="p-8"><ThreadView {...props} thread={activeThread!} onClose={() => setActiveThread(null)} /></div>;
@@ -397,61 +398,63 @@ export default function Dashboard({ view }: { view: string }) {
   };
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
-      <AppSidebar view={currentView} onChangeView={handleViewChange} />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <TopBar 
-          activeSpace={activeSpace} 
-          allSpaces={userSpaces} 
-          onSpaceChange={(spaceId) => {
-            const newSpace = userSpaces.find(s => s.id === spaceId);
-            if (newSpace) {
-              setActiveSpace(newSpace);
-              setActiveHub(null);
-              router.push(`/space/${spaceId}/hubs`);
-            }
-          }}
-          allHubs={spaceHubs}
-          activeHub={activeHub}
-          onHubChange={handleHubChange}
-        />
-        <main className="flex-1 overflow-y-auto pt-16">
-          {renderView()}
-        </main>
-      </div>
+    <SidebarProvider>
+      <div className="flex h-screen bg-background text-foreground">
+        <AppSidebar view={currentView} onChangeView={handleViewChange} />
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <TopBar 
+            activeSpace={activeSpace} 
+            allSpaces={userSpaces} 
+            onSpaceChange={(spaceId) => {
+              const newSpace = userSpaces.find(s => s.id === spaceId);
+              if (newSpace) {
+                setActiveSpace(newSpace);
+                setActiveHub(null);
+                router.push(`/space/${spaceId}/hubs`);
+              }
+            }}
+            allHubs={spaceHubs}
+            activeHub={activeHub}
+            onHubChange={handleHubChange}
+          />
+          <main className="flex-1 overflow-y-auto pt-16">
+            {renderView()}
+          </main>
+        </div>
 
-       {selectedTask && (
-        <TaskDetailsDialog
-          task={selectedTask}
-          timeEntries={timeEntries.filter(t => t.task_id === selectedTask?.id)}
-          isOpen={!!selectedTask}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) setSelectedTask(null);
-          }}
-          onUpdateTask={handleUpdateTask}
-          onAddTask={async (taskData, tempId) => {
-             const newTask = await handleAddTask(taskData);
-             return newTask;
-          }}
-          onRemoveTask={handleDeleteTask}
-          onTaskSelect={setSelectedTask}
-          onLogTime={handleLogTime}
-          statuses={activeHub.statuses?.map(s => s.name) || []}
-          allUsers={allUsers}
-          allTasks={tasks}
-          projects={projects}
-        />
-      )}
-       {taskFromThread && (
-        <CreateTaskFromThreadDialog
-          isOpen={!!taskFromThread}
-          onOpenChange={() => setTaskFromThread(null)}
-          message={taskFromThread}
-          channelMembers={allUsers} // Simplified for now
-          projects={projects}
-          onTaskCreated={(taskData) => handleAddTask(taskData)}
-        />
-      )}
-    </div>
+        {selectedTask && (
+          <TaskDetailsDialog
+            task={selectedTask}
+            timeEntries={timeEntries.filter(t => t.task_id === selectedTask?.id)}
+            isOpen={!!selectedTask}
+            onOpenChange={(isOpen) => {
+              if (!isOpen) setSelectedTask(null);
+            }}
+            onUpdateTask={handleUpdateTask}
+            onAddTask={async (taskData, tempId) => {
+              const newTask = await handleAddTask(taskData);
+              return newTask;
+            }}
+            onRemoveTask={handleDeleteTask}
+            onTaskSelect={setSelectedTask}
+            onLogTime={handleLogTime}
+            statuses={activeHub.statuses?.map(s => s.name) || []}
+            allUsers={allUsers}
+            allTasks={tasks}
+            projects={projects}
+          />
+        )}
+        {taskFromThread && (
+          <CreateTaskFromThreadDialog
+            isOpen={!!taskFromThread}
+            onOpenChange={() => setTaskFromThread(null)}
+            message={taskFromThread}
+            channelMembers={allUsers} // Simplified for now
+            projects={projects}
+            onTaskCreated={(taskData) => handleAddTask(taskData)}
+          />
+        )}
+      </div>
+    </SidebarProvider>
   );
 }

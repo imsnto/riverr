@@ -134,40 +134,32 @@ const Sidebar = React.forwardRef<
   return (
     <div
       ref={ref}
-      className="group peer hidden md:block text-sidebar-foreground"
+      className={cn(
+        "group peer hidden md:block text-sidebar-foreground",
+        "data-[state=expanded]:w-[var(--sidebar-width)]",
+        "data-[state=collapsed][data-collapsible=icon]:w-[var(--sidebar-width-icon)]",
+        "data-[variant=inset][data-state=expanded]:w-[calc(var(--sidebar-width)_+_theme(spacing.4))]",
+        "data-[variant=inset][data-state=collapsed]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]",
+        "data-[variant=floating][data-state=expanded]:w-[calc(var(--sidebar-width)_+_theme(spacing.4))]",
+        "data-[variant=floating][data-state=collapsed]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]",
+        "transition-[width]",
+        className
+      )}
       data-state={state}
-      data-collapsible={state === "collapsed" ? collapsible : ""}
+      data-collapsible={collapsible}
       data-variant={variant}
       data-side={side}
+      {...props}
     >
-      <div className={cn(
-        "duration-200 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-linear",
-        "group-data-[collapsible=offcanvas]:w-0",
-        "group-data-[side=right]:rotate-180",
-        variant === "floating" || variant === "inset"
-          ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-          : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
-      )} />
       <div
+        data-sidebar="sidebar"
         className={cn(
-          "duration-200 fixed z-30 hidden h-full w-[--sidebar-width] transition-[left,right,width] ease-linear pt-0 md:flex",
-          "top-0",
-          side === "left"
-            ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
-            : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-          variant === "floating" || variant === "inset"
-            ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-            : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
-          className
+          "flex h-full w-full flex-col bg-sidebar",
+          variant === "inset" && "m-2 rounded-lg border",
+          variant === "floating" && "m-2 rounded-lg border shadow"
         )}
-        {...props}
       >
-        <div
-          data-sidebar="sidebar"
-          className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
-        >
-          {children}
-        </div>
+        {children}
       </div>
     </div>
   )
@@ -178,12 +170,14 @@ const SidebarTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<typeof Button>
 >(({ className, ...props }, ref) => {
+  const { isMobile, toggleSidebar } = useSidebar();
   return (
     <Button
       ref={ref}
       variant="ghost"
       size="icon"
-      className={cn(className)}
+      className={cn(className, !isMobile && "hidden")}
+      onClick={toggleSidebar}
       {...props}
     >
       <PanelLeft />
