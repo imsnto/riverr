@@ -52,7 +52,10 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
         return (
           <UserSettings
             allUsers={props.allUsers}
+            allSpaces={props.allSpaces}
+            appUser={props.appUser}
             handleInvite={props.handleInvite}
+            onInvite={() => {}}
           />
         );
       case 'spaces':
@@ -69,6 +72,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
           <HubSettings
             activeHub={props.activeHub}
             onUpdateHub={props.onUpdateActiveHub}
+            allUsers={props.allUsers}
           />
         );
       case 'timesheets':

@@ -31,7 +31,7 @@ interface UserSettingsProps {
     handleInvite: (values: Omit<Invite, 'id' | 'token' | 'status'>) => void;
 }
 
-export default function UserSettings({ allUsers: initialUsers, handleInvite }: UserSettingsProps) {
+export default function UserSettings({ allUsers: initialUsers, allSpaces, handleInvite }: UserSettingsProps) {
   const { toast } = useToast();
   const { appUser, userSpaces } = useAuth();
   const [isInviteOpen, setIsInviteOpen] = useState(false);
