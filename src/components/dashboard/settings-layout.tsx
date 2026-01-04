@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import UserSettings from './user-settings';
 import SpaceSettings from './space-settings';
+import HubSettings from './hub-settings';
 import TeamTimesheets from './team-timesheets';
 import {
   User,
@@ -18,7 +19,7 @@ import {
   Hub,
 } from '@/lib/data';
 
-type SettingsView = 'users' | 'spaces' | 'timesheets';
+type SettingsView = 'users' | 'spaces' | 'hub' | 'timesheets';
 
 interface SettingsLayoutProps {
   allUsers: User[];
@@ -32,6 +33,7 @@ interface SettingsLayoutProps {
   tasks: Task[];
   timeEntries: TimeEntry[];
   activeHub: Hub | null;
+  onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
 }
 
 export default function SettingsLayout(props: SettingsLayoutProps) {
@@ -40,6 +42,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
   const navItems = [
     { key: 'users', label: 'Users & Permissions' },
     { key: 'spaces', label: 'Spaces' },
+    { key: 'hub', label: 'Hub Settings', disabled: !props.activeHub },
     { key: 'timesheets', label: 'Timesheets' },
   ];
 
@@ -59,6 +62,13 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             onSave={props.onSave}
             onDelete={props.onDelete}
             appUser={props.appUser}
+          />
+        );
+      case 'hub':
+        return (
+          <HubSettings
+            activeHub={props.activeHub}
+            onUpdateHub={props.onUpdateActiveHub}
           />
         );
       case 'timesheets':
@@ -89,6 +99,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
                 variant={activeView === item.key ? 'secondary' : 'ghost'}
                 onClick={() => setActiveView(item.key as SettingsView)}
                 className="justify-start"
+                disabled={item.disabled}
               >
                 {item.label}
               </Button>
