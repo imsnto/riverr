@@ -437,7 +437,7 @@ export default function Dashboard({ view }: { view: string }) {
   
   const handleSendMessageFromAgent = (conversationId: string, messageContent: string, type: 'reply' | 'note') => {
     const newMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${Date.now()}-${Math.random()}`,
       conversationId: conversationId,
       authorId: appUser.id,
       type: type,
@@ -471,7 +471,6 @@ export default function Dashboard({ view }: { view: string }) {
       let updatedConversations: Conversation[];
   
       if (existingConversationIndex !== -1) {
-        // Conversation exists, update it
         const existingConversation = prevConvos[existingConversationIndex];
         conversationId = existingConversation.id;
         const updatedConversation: Conversation = {
@@ -479,12 +478,11 @@ export default function Dashboard({ view }: { view: string }) {
           lastMessage: content,
           lastMessageAt: timestamp,
           lastMessageAuthor: 'Preview User',
-          status: 'unassigned', // New message makes it unassigned
+          status: 'unassigned',
         };
         updatedConversations = [...prevConvos];
         updatedConversations[existingConversationIndex] = updatedConversation;
       } else {
-        // New conversation, create it
         conversationId = `conv-${timestamp}`;
         const newConversation: Conversation = {
           id: conversationId,
@@ -498,9 +496,8 @@ export default function Dashboard({ view }: { view: string }) {
         updatedConversations = [newConversation, ...prevConvos];
       }
   
-      // Create the new message
       const newMessage: ChatMessage = {
-        id: `msg-${Date.now()}`,
+        id: `msg-${Date.now()}-${Math.random()}`,
         conversationId: conversationId,
         authorId: previewContactId,
         type: 'message',
@@ -508,10 +505,9 @@ export default function Dashboard({ view }: { view: string }) {
         timestamp: timestamp,
       };
       
-      // Update messages state
       setChatMessages(prevMsgs => [...prevMsgs, newMessage]);
   
-      return updatedConversations;
+      return updatedConversations.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
     });
   };
 
