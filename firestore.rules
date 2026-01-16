@@ -105,5 +105,20 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
     
+    match /bots/{botId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /chat_contacts/{contactId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /conversations/{conversationId} {
+      allow read, write: if isAuthenticated();
+      
+      match /messages/{messageId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
   }
 }

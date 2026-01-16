@@ -22,6 +22,7 @@ import {
   ChevronsUpDown,
   Check,
   PanelLeft,
+  MessageCircle,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
@@ -45,7 +46,8 @@ export type AppView =
   | "settings"
   | "team-timesheets"
   | "user-settings"
-  | "space-settings";
+  | "space-settings"
+  | "inbox";
 
 interface SpaceSwitcherProps {
   spaces: Space[];
@@ -192,6 +194,7 @@ const allMiddleItems: {
   fixed?: boolean;
 }[] = [
   // Tasks are now handled separately
+  { key: "inbox", icon: <MessageCircle className="w-5 h-5" />, label: 'Inbox' },
   { key: "messages", icon: <MessageSquare className="w-5 h-5" />, label: 'Messages' },
   { key: "documents", icon: <BookOpen className="w-5 h-5" />, label: 'Documents' },
   { key: "flows", icon: <Workflow className="w-5 h-5" />, label: 'Flows' },

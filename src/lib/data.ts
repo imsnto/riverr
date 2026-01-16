@@ -295,6 +295,52 @@ export interface TaskTemplate {
     subtaskTemplates?: JobFlowSubtaskTemplate[];
 }
 
+// --- Chatbot / Inbox Interfaces ---
+export interface Bot {
+  id: string;
+  hubId: string;
+  name: string;
+  welcomeMessage?: string;
+  styleSettings?: {
+    primaryColor: string;
+    avatarUrl: string;
+  };
+}
+
+export interface ChatContact {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string;
+  location: string;
+  lastSeen: string;
+  companyName: string;
+  sessions: number;
+  companyId: string;
+  companyUsers: number;
+  companyPlan: string;
+  companySpend: string;
+}
+
+export interface Conversation {
+  id: string;
+  contactId: string;
+  assigneeId: string | null;
+  status: 'open' | 'unassigned' | 'closed';
+  lastMessage: string;
+  lastMessageAt: string; // ISO String
+  lastMessageAuthor: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  authorId: string; // Can be a ChatContact ID or a User ID
+  type: 'message' | 'note' | 'event';
+  content: string;
+  timestamp: string; // ISO String
+}
+
 
 
 // --- Mock Data (for initial setup) ---
