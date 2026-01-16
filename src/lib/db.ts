@@ -59,6 +59,7 @@ import {
   Conversation,
   ChatMessage,
   ChatContact,
+  Bot,
 } from "./data";
 import { randomBytes } from "crypto";
 import { FirestorePermissionError } from "./errors";
@@ -956,4 +957,51 @@ export const addConversation = async (conversation: Omit<Conversation, 'id'>): P
         errorEmitter.emit('permission-error', permissionError);
         throw serverError;
     }
+}
+
+
+// --- Bot Management ---
+export const getBots = async (hubId: string): Promise<Bot[]> => {
+  const q = query(collection(db, "bots"), where("hubId", "==", hubId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bot));
+};
+
+export const getBot = async (botId: string): Promise<Bot | null> => {
+  const botDoc = await getDoc(doc(db, "bots", botId));
+  return botDoc.exists() ? ({ id: botDoc.id, ...botDoc.data() } as Bot) : null;
+};
+
+export const addBot = async (bot: Omit<Bot, "id">): Promise<Bot> => {
+  const docRef = await addDoc(collection(db, "bots"), bot);
+  return { ...bot, id: docRef.id };
+};
+
+export const updateBot = async (botId: string, data: Partial<Bot>): Promise<void> => {
+  const botRef = doc(db, "bots", botId);
+  await updateDoc(botRef, data);
+};
+
+export const getOrCreateContact = async (contactId: string, details?: Partial<ChatContact>): Promise<ChatContact> => {
+  const contactRef = doc(db, 'chat_contacts', contactId);
+  const contactSnap = await getDoc(contactRef);
+  if (contactSnap.exists()) {
+    return { id: contactSnap.id, ...contactSnap.data() } as ChatContact;
+  } else {
+    const newContact: Omit<ChatContact, 'id'> = {
+      name: details?.name || 'Anonymous User',
+      email: details?.email || 'N/A',
+      avatarUrl: details?.avatarUrl || `https://placehold.co/100x100.png?text=${(details?.name?.[0] || 'U')}`,
+      location: details?.location || 'Unknown',
+      lastSeen: new Date().toISOString(),
+      companyName: 'N/A',
+      sessions: 1,
+      companyId: 'N/A',
+      companyUsers: 1,
+      companyPlan: 'N/A',
+      companySpend: '$0.00',
+    };
+    await setDoc(contactRef, newContact);
+    return { id: contactId, ...newContact };
+  }
 }

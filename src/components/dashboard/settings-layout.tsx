@@ -20,6 +20,7 @@ import {
   ChatContact,
   Conversation,
   ChatMessage,
+  Bot,
 } from '@/lib/data';
 import InboxSettings from './inbox-settings';
 
@@ -42,6 +43,9 @@ interface SettingsLayoutProps {
   chatMessages: ChatMessage[];
   chatContacts: ChatContact[];
   chatConversations: Conversation[];
+  bots: Bot[];
+  onBotUpdate: (botId: string, data: Partial<Bot>) => void;
+  onBotAdd: (bot: Omit<Bot, 'id'>) => void;
 }
 
 export default function SettingsLayout(props: SettingsLayoutProps) {
@@ -94,6 +98,9 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             chatConversations={props.chatConversations}
             allUsers={props.allUsers}
             appUser={props.appUser}
+            bots={props.bots}
+            onBotUpdate={props.onBotUpdate}
+            onBotAdd={props.onBotAdd}
          />;
       case 'timesheets':
         return (

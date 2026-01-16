@@ -143,6 +143,8 @@ export default function BotSettingsDialog({
   const [previewMessage, setPreviewMessage] = useState('');
   const [isPreviewMinimized, setIsPreviewMinimized] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [origin, setOrigin] = useState('');
+
 
   const form = useForm<BotSettingsFormValues>({
     resolver: zodResolver(botSettingsSchema),
@@ -170,6 +172,12 @@ export default function BotSettingsDialog({
       }
     }
   }, [messages, chatStarted]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+        setOrigin(window.location.origin);
+    }
+  }, [])
 
 
   useEffect(() => {
@@ -251,6 +259,15 @@ export default function BotSettingsDialog({
   };
 
   const promptButtons = [watchedValues.promptButton1, watchedValues.promptButton2, watchedValues.promptButton3].filter(Boolean);
+  const embedScript = `
+<script>
+    window.riverrChatConfig = { botId: "${bot.id}", hubId: "${bot.hubId}" };
+    var d=document,s=d.createElement('script');
+    s.src='${origin}/chatbot-loader.js';
+    s.async=true;
+    d.body.appendChild(s);
+</script>
+  `.trim();
 
 
   return (
@@ -398,6 +415,28 @@ export default function BotSettingsDialog({
                             />
                         </AccordionContent>
                     </AccordionItem>
+                     <AccordionItem value="installation">
+                        <AccordionTrigger>Installation</AccordionTrigger>
+                        <AccordionContent className="space-y-6">
+                            <div>
+                                <Label className="font-semibold">Embeddable Script</Label>
+                                <p className="text-sm text-muted-foreground mt-1 mb-2">To add this chatbot to your website, paste this code snippet before the closing <code>&lt;/body&gt;</code> tag of your HTML file.</p>
+                                <pre className="bg-muted p-4 rounded-md text-xs overflow-x-auto font-mono text-foreground">
+                                    <code>{embedScript}</code>
+                                </pre>
+                            </div>
+                            <div>
+                                <Label className="font-semibold">Webflow Installation</Label>
+                                <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1.5 mt-2">
+                                    <li>In your Webflow project, go to <strong>Project Settings</strong>.</li>
+                                    <li>Click on the <strong>Custom Code</strong> tab.</li>
+                                    <li>Find the <strong>Footer Code</strong> section.</li>
+                                    <li>Paste the code snippet from above into this box.</li>
+                                    <li>Click <strong>Save Changes</strong> and then <strong>Publish</strong> your site.</li>
+                                </ol>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
                 </Accordion>
             </form>
             </Form>
@@ -426,14 +465,14 @@ export default function BotSettingsDialog({
                 </div>
             ) : (
              <>
-                <div className="w-80 h-[600px] text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: watchedValues.backgroundColor }}>
+                <div className="w-80 h-[450px] text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: watchedValues.backgroundColor }}>
                     {/* Header */}
                     <div className="p-3 border-b flex items-center gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
                         <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" disabled>
                             <ChevronLeft className="h-5 w-5" />
                         </Button>
                         {watchedValues.logoUrl ? (
-                            <img src={watchedValues.logoUrl} alt="Bot Logo" className="h-6 w-6" />
+                            <img src={watchedValues.logoUrl} alt="Bot Logo" className="h-6 w-6 object-contain" />
                         ) : (
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 text-white">
                                 <path d="M12 2L13.84 7.64L19.5 9.5L13.84 11.36L12 17L10.16 11.36L4.5 9.5L10.16 7.64L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>

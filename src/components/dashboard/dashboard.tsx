@@ -28,6 +28,7 @@ import {
   ChatContact,
   Conversation,
   ChatMessage,
+  Bot,
 } from '@/lib/data';
 import * as db from '@/lib/db';
 import { useRouter, useParams } from 'next/navigation';
@@ -88,7 +89,8 @@ export default function Dashboard({ view }: { view: string }) {
   const [activeThread, setActiveThread] = useState<Message | null>(null);
   const [spaceHubs, setSpaceHubs] = useState<Hub[]>([]);
   
-  // Inbox state - Initialize as empty arrays
+  // Inbox state
+  const [bots, setBots] = useState<Bot[]>([]);
   const [chatContacts, setChatContacts] = useState<ChatContact[]>([]);
   const [chatConversations, setChatConversations] = useState<Conversation[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -121,15 +123,6 @@ export default function Dashboard({ view }: { view: string }) {
         // Always fetch all users
         const fetchedUsers = await db.getAllUsers();
         setAllUsers(fetchedUsers);
-
-        // Add preview user if it doesn't exist
-        const previewContactId = 'preview-contact-1';
-        if (!chatContacts.some(c => c.id === previewContactId)) {
-          setChatContacts(prev => [
-            ...prev,
-            { id: previewContactId, name: 'Preview User', email: 'preview@example.com', avatarUrl: 'https://i.pravatar.cc/150?u=preview', companyName: 'Your Website', location: 'Cyberspace', lastSeen: 'now', sessions: 1, companyId: 'preview-co', companyUsers: 1, companyPlan: 'N/A', companySpend: '$0.00' },
-          ])
-        }
       
         // Fetch all spaces for the user to get all project IDs for time entries
         const allUserSpaces = await db.getSpacesForUser(appUser.id);
@@ -159,6 +152,7 @@ export default function Dashboard({ view }: { view: string }) {
             fetchedChannels,
             fetchedHubs,
             fetchedConversations,
+            fetchedBots,
           ] = await Promise.all([
             db.getProjectsInHub(activeHub.id),
             db.getAllTasks(activeHub.id),
@@ -172,6 +166,7 @@ export default function Dashboard({ view }: { view: string }) {
             db.getChannelsInHub(activeHub.id),
             db.getHubsForSpace(activeSpace.id),
             db.getConversationsForHub(activeHub.id),
+            db.getBots(activeHub.id),
           ]);
           
           setProjects(fetchedProjects);
@@ -193,6 +188,7 @@ export default function Dashboard({ view }: { view: string }) {
           setChannels(fetchedChannels);
           setSpaceHubs(fetchedHubs);
           setChatConversations(fetchedConversations);
+          setBots(fetchedBots);
       
           if (fetchedChannels.length > 0 && !activeChannelId) {
             setActiveChannelId(fetchedChannels[0].id);
@@ -482,12 +478,18 @@ export default function Dashboard({ view }: { view: string }) {
 
   const handleSendMessageFromBotPreview = async (content: string) => {
     if (!activeHub) return;
-
-    const previewContactId = 'preview-contact-1';
+    
+    const contactId = 'preview-contact-1'; // Hardcoded for preview user
     const timestamp = new Date().toISOString();
 
+    // Ensure preview contact exists
+    const contact = await db.getOrCreateContact(contactId, { name: 'Preview User' });
+    if (!chatContacts.some(c => c.id === contactId)) {
+        setChatContacts(prev => [...prev, contact]);
+    }
+    
     let conversation: Conversation;
-    const existingConvo = chatConversations.find(c => c.contactId === previewContactId && c.hubId === activeHub.id);
+    const existingConvo = chatConversations.find(c => c.contactId === contactId && c.hubId === activeHub.id);
     
     if (existingConvo) {
         conversation = {
@@ -504,7 +506,7 @@ export default function Dashboard({ view }: { view: string }) {
     } else {
         const newConversationData: Omit<Conversation, 'id'> = {
             hubId: activeHub.id,
-            contactId: previewContactId,
+            contactId: contactId,
             assigneeId: null,
             status: 'unassigned',
             lastMessage: content,
@@ -516,7 +518,7 @@ export default function Dashboard({ view }: { view: string }) {
     
     const newMessageData: Omit<ChatMessage, 'id'> = {
         conversationId: conversation.id,
-        authorId: previewContactId,
+        authorId: contactId,
         type: 'message',
         content: content,
         timestamp: timestamp,
@@ -549,6 +551,17 @@ export default function Dashboard({ view }: { view: string }) {
       })
     );
   };
+  
+  const handleBotUpdate = async (botId: string, data: Partial<Bot>) => {
+    await db.updateBot(botId, data);
+    setBots(prev => prev.map(b => b.id === botId ? { ...b, ...data } : b));
+    toast({ title: "Bot Updated" });
+  }
+
+  const handleBotAdd = async (bot: Omit<Bot, 'id'>) => {
+      const newBot = await db.addBot(bot);
+      setBots(prev => [...prev, newBot]);
+  }
 
 
   const renderView = () => {
@@ -620,11 +633,12 @@ export default function Dashboard({ view }: { view: string }) {
         <TaskBoard 
           {...props}
           selectedProjectId={selectedProjectId}
+          onNewProject={handleNewProject}
         />
       );
       case 'mytasks': return <div className="p-8"><MyTasksView {...props} /></div>;
       case 'documents': return <DocumentsView {...props} />;
-      case 'settings': return <div className="p-8"><SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview} chatMessages={chatMessages} chatContacts={chatContacts} chatConversations={chatConversations} /></div>;
+      case 'settings': return <div className="p-8"><SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview} chatMessages={chatMessages} chatContacts={chatContacts} chatConversations={chatConversations} bots={bots} onBotUpdate={handleBotUpdate} onBotAdd={handleBotAdd} /></div>;
       case 'team-timesheets': return <TeamTimesheets {...props} />;
       case 'messages': return <MessagesLayout {...messagesProps} />;
       case 'inbox': return <InboxLayout 

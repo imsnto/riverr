@@ -26,55 +26,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
+import * as db from '@/lib/db';
 
-
-const initialMockBots: BotData[] = [
-  {
-    id: 'bot-1',
-    hubId: 'hub-1',
-    name: 'Fin',
-    welcomeMessage: 'Hi there, welcome to Intercom 👋\nWhat would you like help with?',
-    layout: 'default',
-    spaces: {
-        home: false,
-        messages: true,
-        tickets: true,
-    },
-    styleSettings: {
-      primaryColor: '#3b82f6',
-      backgroundColor: '#111827',
-      logoUrl: '',
-    },
-    promptButtons: [
-        'Choosing a pricing plan',
-        'Learn more about Intercom',
-        'Start a free 14-day trial',
-    ],
-    agentIds: [],
-  },
-  {
-    id: 'bot-2',
-    hubId: 'hub-1',
-    name: 'Sales Inquiries',
-    welcomeMessage: 'Hello! How can I help you with sales today?',
-    layout: 'default',
-    spaces: {
-        home: false,
-        messages: true,
-        tickets: false,
-    },
-    styleSettings: {
-      primaryColor: '#10b981',
-      backgroundColor: '#111827',
-      logoUrl: '',
-    },
-    promptButtons: [
-        'Get a demo',
-        'Talk to sales',
-    ],
-    agentIds: [],
-  },
-];
 
 interface InboxSettingsProps {
   onSendMessageFromBotPreview: (content: string) => void;
@@ -83,6 +36,9 @@ interface InboxSettingsProps {
   chatConversations: Conversation[];
   allUsers: User[];
   appUser: User | null;
+  bots: BotData[];
+  onBotUpdate: (botId: string, data: Partial<BotData>) => void;
+  onBotAdd: (bot: Omit<BotData, 'id'>) => void;
 }
 
 export default function InboxSettings({ 
@@ -92,8 +48,10 @@ export default function InboxSettings({
     chatConversations,
     allUsers,
     appUser,
+    bots,
+    onBotUpdate,
+    onBotAdd,
 }: InboxSettingsProps) {
-  const [bots, setBots] = useState<BotData[]>(initialMockBots);
   const [selectedBot, setSelectedBot] = useState<BotData | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -103,7 +61,7 @@ export default function InboxSettings({
   };
   
   const handleSaveBot = (updatedBot: BotData) => {
-    setBots(bots.map(b => b.id === updatedBot.id ? updatedBot : b));
+    onBotUpdate(updatedBot.id, updatedBot);
   };
 
   const previewContact = chatContacts.find(c => c.id === 'preview-contact-1');
