@@ -7,7 +7,7 @@ import { ChatContact, User } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
-import { AtSign, Calendar, Case, Clock, Compass, DollarSign, HardDrive, MapPin, Milestone, Users } from 'lucide-react';
+import { AtSign, Calendar, Briefcase, Clock, Compass, DollarSign, HardDrive, MapPin, Milestone, Users } from 'lucide-react';
 import { Badge } from '../ui/badge';
 
 interface InboxContactPanelProps {
@@ -89,7 +89,7 @@ export default function InboxContactPanel({ contact }: InboxContactPanelProps) {
                         <DetailRow icon={Clock} label="Last Seen" value="1hr ago" />
                         <DetailRow icon={Calendar} label="Created" value="2y ago" />
                         <DetailRow icon={Users} label="Users" value={contact.companyUsers} />
-                        <DetailRow icon={Case} label="Plan" value={contact.companyPlan} />
+                        <DetailRow icon={Briefcase} label="Plan" value={contact.companyPlan} />
                         <DetailRow icon={DollarSign} label="Spend" value={contact.companySpend} />
                     </div>
                 </div>
