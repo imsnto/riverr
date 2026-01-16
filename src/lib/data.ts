@@ -309,6 +309,7 @@ export interface Bot {
   };
   styleSettings?: {
     primaryColor: string;
+    backgroundColor: string;
     logoUrl: string;
   };
   promptButtons?: string[];
@@ -444,4 +445,3 @@ export const phaseTemplates: PhaseTemplate[] = [];
 export const jobFlowTemplates: JobFlowTemplate[] = [];
 export const jobs: Job[] = [];
 export const jobFlowTasks: JobFlowTask[] = [];
-

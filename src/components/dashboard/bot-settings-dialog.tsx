@@ -39,6 +39,7 @@ const botSettingsSchema = z.object({
   name: z.string().min(1, 'Bot name is required.'),
   welcomeMessage: z.string().optional(),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.'),
+  backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.'),
   logoUrl: z.string().url().optional().or(z.literal('')),
   showTickets: z.boolean(),
   promptButton1: z.string().optional(),
@@ -84,6 +85,7 @@ export default function BotSettingsDialog({
       name: '',
       welcomeMessage: 'Hi there',
       primaryColor: '#3b82f6',
+      backgroundColor: '#111827',
       logoUrl: '',
       showTickets: false,
       promptButton1: '',
@@ -110,6 +112,7 @@ export default function BotSettingsDialog({
         name: bot.name,
         welcomeMessage: bot.welcomeMessage || 'Hi there',
         primaryColor: bot.styleSettings?.primaryColor || '#3b82f6',
+        backgroundColor: bot.styleSettings?.backgroundColor || '#111827',
         logoUrl: bot.styleSettings?.logoUrl || '',
         showTickets: bot.spaces?.tickets ?? false,
         promptButton1: bot.promptButtons?.[0] || '',
@@ -136,13 +139,13 @@ export default function BotSettingsDialog({
         layout: 'default',
         spaces: {
             ...bot.spaces,
-            home: false,
             messages: true,
             tickets: values.showTickets,
         },
         styleSettings: {
             ...bot.styleSettings,
             primaryColor: values.primaryColor,
+            backgroundColor: values.backgroundColor,
             logoUrl: values.logoUrl || '',
         },
         promptButtons: [values.promptButton1, values.promptButton2, values.promptButton3].filter(Boolean) as string[],
@@ -270,10 +273,29 @@ export default function BotSettingsDialog({
                             />
                             <FormField
                                 control={form.control}
+                                name="backgroundColor"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Background Color</FormLabel>
+                                    <FormControl>
+                                    <div className="flex items-center gap-2">
+                                        <Input placeholder="#111827" {...field} />
+                                        <div
+                                        className="w-8 h-8 rounded-md border"
+                                        style={{ backgroundColor: field.value }}
+                                        ></div>
+                                    </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
                                 name="primaryColor"
                                 render={({ field }) => (
                                     <FormItem>
-                                    <FormLabel>Primary Color</FormLabel>
+                                    <FormLabel>Customer Message Color</FormLabel>
                                     <FormControl>
                                         <div className="flex items-center gap-2">
                                             <Input placeholder="#0057ff" {...field} />
@@ -301,9 +323,9 @@ export default function BotSettingsDialog({
 
         {/* Preview Section */}
         <div className="bg-muted/50 p-6 flex flex-col items-center justify-center rounded-r-lg relative overflow-hidden">
-             <div className="w-80 h-[600px] bg-zinc-900 text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+             <div className="w-80 h-[600px] text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: watchedValues.backgroundColor }}>
                 {/* Header */}
-                <div className="p-3 border-b border-zinc-700 flex items-center gap-3 shrink-0">
+                <div className="p-3 border-b flex items-center gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
                     <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" disabled>
                         <ChevronLeft className="h-5 w-5" />
                     </Button>
@@ -317,7 +339,7 @@ export default function BotSettingsDialog({
                     )}
                     <div>
                         <h3 className="font-bold text-white">{watchedValues.name}</h3>
-                        <p className="text-xs text-zinc-400">The team can also help</p>
+                        <p className="text-xs text-zinc-400">We'll reply as soon as we can</p>
                     </div>
                     <div className="ml-auto flex items-center">
                         <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700">
@@ -342,7 +364,7 @@ export default function BotSettingsDialog({
                         {(messages.length === 0 && !chatStarted) ? (
                             <div className="pt-2 space-y-2">
                                 {promptButtons.map((prompt, index) => (
-                                     <Button key={index} onClick={() => handlePromptClick(prompt)} variant="outline" className="w-full justify-center bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white rounded-full">
+                                     <Button key={index} onClick={() => handlePromptClick(prompt)} variant="outline" className="w-full justify-center bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white rounded-md">
                                         {prompt}
                                     </Button>
                                 ))}
@@ -354,8 +376,8 @@ export default function BotSettingsDialog({
                 </ScrollArea>
                 
                 {/* Footer */}
-                <div className="p-4 border-t border-zinc-700 shrink-0 space-y-3">
-                    {(chatStarted || messages.length > 0) && (
+                <div className="p-4 border-t shrink-0 space-y-3" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                    {(chatStarted || messages.length > 0) ? (
                         <div className="relative">
                         <Textarea 
                             placeholder="Message..."
@@ -369,9 +391,29 @@ export default function BotSettingsDialog({
                             <Send className="h-4 w-4" />
                          </Button>
                         </div>
+                    ) : (
+                         <div className="text-center">
+                            <Button className="w-full bg-zinc-800 hover:bg-zinc-700 text-white" onClick={() => setChatStarted(true)}>
+                                <MessageSquare className="h-4 w-4 mr-2" />
+                                Send us a message
+                            </Button>
+                        </div>
                     )}
-                    <div className="text-center text-xs text-zinc-500">
-                        By chatting with us, you agree to our <a href="#" className="underline">Privacy Policy</a>
+                    <div className="flex justify-between items-center text-xs text-zinc-500">
+                        <div className="flex items-center gap-3">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => { if (!chatStarted) setChatStarted(true); }}>
+                                <Home className="h-5 w-5" />
+                            </Button>
+                             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => { if (!chatStarted) setChatStarted(true); }}>
+                                <MessageSquare className="h-5 w-5" />
+                            </Button>
+                            {watchedValues.showTickets && (
+                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => { if (!chatStarted) setChatStarted(true); }}>
+                                    <Ticket className="h-5 w-5" />
+                                </Button>
+                            )}
+                        </div>
+                        <a href="#" className="underline">We run on Intercom</a>
                     </div>
                 </div>
              </div>

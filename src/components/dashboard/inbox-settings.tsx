@@ -35,6 +35,7 @@ const initialMockBots: BotData[] = [
     },
     styleSettings: {
       primaryColor: '#3b82f6',
+      backgroundColor: '#111827',
       logoUrl: '',
     },
     promptButtons: [
@@ -56,6 +57,7 @@ const initialMockBots: BotData[] = [
     },
     styleSettings: {
       primaryColor: '#10b981',
+      backgroundColor: '#111827',
       logoUrl: '',
     },
     promptButtons: [
