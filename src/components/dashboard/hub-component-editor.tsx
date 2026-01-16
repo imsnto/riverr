@@ -19,6 +19,7 @@ const ALL_COMPONENTS = [
   { id: 'inbox', name: 'Inbox', description: 'Live chat with website visitors & customers.' },
   { id: 'documents', name: 'Documents', description: 'Collaborative docs.' },
   { id: 'messages', name: 'Messages', description: 'Team chat and channels.' },
+  { id: 'help-center', name: 'Help Center', description: 'Customer-facing knowledge base.' },
   { id: 'flows', name: 'Workflows', description: 'Automated job flows.' },
 ];
 
