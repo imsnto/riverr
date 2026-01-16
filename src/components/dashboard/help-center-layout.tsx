@@ -6,13 +6,14 @@ import HelpCenterArticleEditor from './help-center-article-editor';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
 import HelpCenterFormDialog from './help-center-form-dialog';
-import { addHelpCenter, updateHelpCenter, getHelpCenterCollections, addHelpCenterCollection, updateHelpCenterCollection, deleteHelpCenterCollection } from '@/lib/db';
+import { addHelpCenter, updateHelpCenter, getHelpCenterCollections, addHelpCenterCollection, updateHelpCenterCollection, deleteHelpCenterCollection, updateHelpCenterArticle } from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterSettings from './help-center-settings';
 import HelpCenterArticleList from './help-center-article-list';
-import { Plus } from 'lucide-react';
+import { FolderPlus, Plus } from 'lucide-react';
 import HelpCenterCollectionsView from './help-center-collections-view';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
+import AddArticlesToCollectionDialog from './add-articles-to-collection-dialog';
 
 interface HelpCenterLayoutProps {
     helpCenters: HelpCenter[];
@@ -39,6 +40,7 @@ export default function HelpCenterLayout({
     const [editingHelpCenter, setEditingHelpCenter] = useState<HelpCenter | null>(null);
     const [isCollectionDialogOpen, setIsCollectionDialogOpen] = useState(false);
     const [editingCollection, setEditingCollection] = useState<HelpCenterCollection | null>(null);
+    const [isAddArticlesDialogOpen, setIsAddArticlesDialogOpen] = useState(false);
 
     const { toast } = useToast();
 
@@ -124,6 +126,41 @@ export default function HelpCenterLayout({
         setIsCollectionDialogOpen(false);
     }
 
+    const handleSelectCollection = (collection: HelpCenterCollection) => {
+        setView(`collection_${collection.id}`);
+    };
+    
+    const handleSaveArticlesToCollection = async (finalArticleIdsInCollection: string[]) => {
+        if (!activeHelpCenter || !view.startsWith('collection_') || !activeHub) return;
+    
+        const collectionId = view.split('_')[1];
+        if (!collectionId) return;
+    
+        const hubArticles = articles.filter(a => a.hubId === activeHub.id);
+        const updates: Promise<void>[] = [];
+    
+        hubArticles.forEach(article => {
+            const isInCollection = article.collectionIds.includes(collectionId);
+            const shouldBeInCollection = finalArticleIdsInCollection.includes(article.id);
+    
+            if (isInCollection && !shouldBeInCollection) {
+                // Remove it
+                const newCollectionIds = article.collectionIds.filter(id => id !== collectionId);
+                updates.push(updateHelpCenterArticle(article.id, { collectionIds: newCollectionIds }));
+            } else if (!isInCollection && shouldBeInCollection) {
+                // Add it
+                const newCollectionIds = [...article.collectionIds, collectionId];
+                updates.push(updateHelpCenterArticle(article.id, { collectionIds: newCollectionIds }));
+            }
+        });
+    
+        await Promise.all(updates);
+    
+        toast({ title: 'Collection updated' });
+        onDataRefresh();
+        setIsAddArticlesDialogOpen(false);
+    };
+
 
     const handleViewChange = (newView: string) => {
         setView(newView);
@@ -195,6 +232,7 @@ export default function HelpCenterLayout({
                         onAdd={handleCreateCollection}
                         onEdit={handleEditCollection}
                         onDelete={handleDeleteCollection}
+                        onSelectCollection={handleSelectCollection}
                     />
                 );
             }
@@ -213,9 +251,16 @@ export default function HelpCenterLayout({
             <div>
                 <div className="flex justify-between items-center mb-4">
                     <h1 className="text-2xl font-bold">{listTitle}</h1>
-                    <Button onClick={handleCreateArticle}>
-                        <Plus className="mr-2 h-4 w-4" /> New Article
-                    </Button>
+                    <div className="flex items-center gap-2">
+                         {view.startsWith('collection_') && !view.startsWith('collections_') && (
+                            <Button variant="outline" onClick={() => setIsAddArticlesDialogOpen(true)}>
+                                <FolderPlus className="mr-2 h-4 w-4" /> Add Articles
+                            </Button>
+                        )}
+                        <Button onClick={handleCreateArticle}>
+                            <Plus className="mr-2 h-4 w-4" /> New Article
+                        </Button>
+                    </div>
                 </div>
                 <HelpCenterArticleList
                     articles={filteredArticles}
@@ -252,6 +297,15 @@ export default function HelpCenterLayout({
                 onSave={handleSaveCollection}
                 collection={editingCollection}
             />
+            {view.startsWith('collection_') && !view.startsWith('collections_') && collections.find(c => c.id === view.split('_')[1]) && activeHub && (
+                <AddArticlesToCollectionDialog
+                    isOpen={isAddArticlesDialogOpen}
+                    onOpenChange={setIsAddArticlesDialogOpen}
+                    collection={collections.find(c => c.id === view.split('_')[1])!}
+                    allArticles={articles.filter(a => a.hubId === activeHub.id)}
+                    onSave={handleSaveArticlesToCollection}
+                />
+            )}
         </div>
     );
 }

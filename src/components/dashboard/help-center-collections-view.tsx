@@ -12,9 +12,10 @@ interface HelpCenterCollectionsViewProps {
   onAdd: () => void;
   onEdit: (collection: HelpCenterCollection) => void;
   onDelete: (collectionId: string) => void;
+  onSelectCollection: (collection: HelpCenterCollection) => void;
 }
 
-export default function HelpCenterCollectionsView({ collections, articles, onAdd, onEdit, onDelete }: HelpCenterCollectionsViewProps) {
+export default function HelpCenterCollectionsView({ collections, articles, onAdd, onEdit, onDelete, onSelectCollection }: HelpCenterCollectionsViewProps) {
     
     const getArticleCount = (collectionId: string) => {
         return articles.filter(a => a.collectionIds.includes(collectionId)).length;
@@ -40,7 +41,7 @@ export default function HelpCenterCollectionsView({ collections, articles, onAdd
                     </TableHeader>
                     <TableBody>
                         {collections.map(collection => (
-                            <TableRow key={collection.id}>
+                            <TableRow key={collection.id} onClick={() => onSelectCollection(collection)} className="cursor-pointer hover:bg-muted/50">
                                 <TableCell>
                                     <div className="flex items-center gap-4">
                                         <Folder className="h-5 w-5 text-muted-foreground" />
@@ -65,11 +66,11 @@ export default function HelpCenterCollectionsView({ collections, articles, onAdd
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent>
-                                            <DropdownMenuItem onClick={() => onEdit(collection)}>
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(collection); }}>
                                                 <Edit className="mr-2 h-4 w-4" />
                                                 Edit
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => onDelete(collection.id)} className="text-destructive">
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(collection.id); }} className="text-destructive">
                                                 <Trash2 className="mr-2 h-4 w-4" />
                                                 Delete
                                             </DropdownMenuItem>
