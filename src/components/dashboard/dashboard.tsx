@@ -49,6 +49,7 @@ import TeamTimesheets from './team-timesheets';
 import { SidebarProvider } from '../ui/sidebar';
 import ProjectFormDialog from './project-form-dialog';
 import ChannelList from './channel-list';
+import { ContentSkeleton } from './content-skeleton';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -234,10 +235,29 @@ export default function Dashboard({ view }: { view: string }) {
   }, [view, currentView]);
 
   if (!appUser || !activeSpace || !activeHub) {
+    // Show a skeleton while the main auth/space context is loading
     return (
-      <div className="flex h-screen items-center justify-center">
-        <p>Loading your workspace...</p>
-      </div>
+      <SidebarProvider>
+        <div className="flex h-screen bg-background text-foreground">
+          <AppSidebar
+            view={currentView}
+            onChangeView={handleViewChange}
+            projects={[]}
+            selectedProjectId={null}
+            onSelectProject={() => {}}
+            onNewProject={() => {}}
+            activeSpace={activeSpace}
+            allSpaces={userSpaces}
+            onSpaceChange={() => {}}
+            allHubs={[]}
+            activeHub={activeHub}
+            onHubChange={() => {}}
+          />
+          <main className="flex-1 overflow-y-auto">
+            <ContentSkeleton />
+          </main>
+        </div>
+      </SidebarProvider>
     );
   }
   

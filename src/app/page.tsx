@@ -4,6 +4,7 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
+import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
 
 export default function RootPage() {
     const { status, activeSpace, activeHub } = useAuth();
@@ -13,7 +14,19 @@ export default function RootPage() {
         if (status === 'unauthenticated') {
             router.push('/login');
         } else if (status === 'authenticated') {
-            if (activeSpace && activeHub) {
+            const lastSpace = localStorage.getItem('timeflow_active_space_v2');
+            const lastHub = localStorage.getItem('timeflow_active_hub_v2');
+
+            if (lastSpace && lastHub) {
+                try {
+                    const space = JSON.parse(lastSpace);
+                    const hub = JSON.parse(lastHub);
+                    const defaultView = hub.settings?.defaultView || 'tasks';
+                    router.push(`/space/${space.id}/hub/${hub.id}/${defaultView}`);
+                } catch (e) {
+                    router.push('/space-selection');
+                }
+            } else if (activeSpace && activeHub) {
                 const defaultView = activeHub.settings?.defaultView || 'tasks';
                 router.push(`/space/${activeSpace.id}/hub/${activeHub.id}/${defaultView}`);
             } else {
@@ -22,9 +35,5 @@ export default function RootPage() {
         }
     }, [status, router, activeSpace, activeHub]);
 
-    return (
-       <div className="flex h-screen items-center justify-center">
-            <p>Loading...</p>
-        </div>
-    );
+    return <DashboardSkeleton />;
 }
