@@ -1108,8 +1108,8 @@ export const addHelpCenterCollection = async (collectionData: Omit<HelpCenterCol
     return { id: docRef.id, ...collectionData };
 }
 
-export const getHelpCenterArticles = async (helpCenterId: string): Promise<HelpCenterArticle[]> => {
-    const q = query(collection(db, 'help_center_articles'), where('helpCenterId', '==', helpCenterId));
+export const getHelpCenterArticles = async (hubId: string): Promise<HelpCenterArticle[]> => {
+    const q = query(collection(db, 'help_center_articles'), where('hubId', '==', hubId));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenterArticle));
 }

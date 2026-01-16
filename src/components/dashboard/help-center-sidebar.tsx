@@ -22,17 +22,6 @@ interface HelpCenterSidebarProps {
 }
 
 export default function HelpCenterSidebar({ activeHelpCenter, collections, activeView, onViewChange, onCreateHelpCenter }: HelpCenterSidebarProps) {
-    if (!activeHelpCenter) {
-        return (
-             <aside className="w-80 border-r bg-card p-4">
-                 <h2 className="text-xl font-bold mb-4">Help Center</h2>
-                 <div className="text-center text-muted-foreground">
-                    <p>No help center found.</p>
-                    <Button className="mt-4" onClick={onCreateHelpCenter}>New Help Center</Button>
-                 </div>
-             </aside>
-        )
-    }
 
     return (
         <aside className="w-80 border-r bg-card p-4 flex flex-col">
@@ -56,30 +45,33 @@ export default function HelpCenterSidebar({ activeHelpCenter, collections, activ
                 </nav>
             </div>
             
-             <div className="mb-auto">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="w-full justify-start font-semibold text-base px-2 mb-2">
-                            {activeHelpCenter.name}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuItem>Switch Help Center</DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+            {activeHelpCenter ? (
+                 <div className="mb-auto">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="w-full justify-start font-semibold text-base px-2 mb-2">
+                                {activeHelpCenter.name}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem>Switch Help Center</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
 
-                <nav className="space-y-1">
-                    <Button variant={activeView === 'collections' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => onViewChange('collections')}>
-                        <Folder className="mr-2 h-4 w-4"/> Collections
-                    </Button>
-                    <Button variant={activeView === 'settings' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => onViewChange('settings')}>
-                        <Cog className="mr-2 h-4 w-4"/> Settings
-                    </Button>
-                </nav>
-            </div>
+                    <nav className="space-y-1">
+                        <Button variant={activeView === 'collections' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => onViewChange('collections')}>
+                            <Folder className="mr-2 h-4 w-4"/> Collections
+                        </Button>
+                        <Button variant={activeView === 'settings' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => onViewChange('settings')}>
+                            <Cog className="mr-2 h-4 w-4"/> Settings
+                        </Button>
+                    </nav>
+                </div>
+            ) : (
+                <div className="flex-1" />
+            )}
 
             <Button variant="outline" onClick={onCreateHelpCenter}>New Help Center</Button>
-
         </aside>
     );
 }

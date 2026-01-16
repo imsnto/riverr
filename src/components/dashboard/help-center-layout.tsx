@@ -19,7 +19,7 @@ interface HelpCenterLayoutProps {
 export default function HelpCenterLayout({ helpCenters, collections, articles, allUsers, onSaveArticle, onCreateHelpCenter }: HelpCenterLayoutProps) {
     const [view, setView] = useState('all_articles');
     const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
-    const { appUser } = useAuth();
+    const { appUser, activeHub } = useAuth();
     
     // For now, let's assume one help center.
     const activeHelpCenter = helpCenters.length > 0 ? helpCenters[0] : null;
@@ -40,7 +40,7 @@ export default function HelpCenterLayout({ helpCenters, collections, articles, a
         : filteredArticles[0];
 
     const handleCreateArticle = async () => {
-      if (!appUser || !activeHelpCenter) return;
+      if (!appUser || !activeHub) return;
       const newArticleData: Omit<HelpCenterArticle, 'id'> = {
         title: 'New Untitled Article',
         content: '<h1>Start writing...</h1>',
@@ -49,7 +49,8 @@ export default function HelpCenterLayout({ helpCenters, collections, articles, a
         authorId: appUser.id,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        helpCenterId: activeHelpCenter.id,
+        helpCenterId: activeHelpCenter ? activeHelpCenter.id : null,
+        hubId: activeHub.id,
       };
       
       const newArticle = await onSaveArticle(newArticleData);

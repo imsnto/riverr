@@ -374,7 +374,8 @@ export interface HelpCenterArticle {
   authorId: string;
   createdAt: string; // ISO String
   updatedAt: string; // ISO String
-  helpCenterId: string;
+  helpCenterId: string | null;
+  hubId: string;
 }
 
 
@@ -472,4 +473,3 @@ export const phaseTemplates: PhaseTemplate[] = [];
 export const jobFlowTemplates: JobFlowTemplate[] = [];
 export const jobs: Job[] = [];
 export const jobFlowTasks: JobFlowTask[] = [];
-

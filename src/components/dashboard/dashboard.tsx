@@ -165,6 +165,7 @@ export default function Dashboard({ view }: { view: string }) {
             fetchedConversations,
             fetchedBots,
             fetchedHelpCenters,
+            hubArticles,
           ] = await Promise.all([
             db.getProjectsInHub(activeHub.id),
             db.getAllTasks(activeHub.id),
@@ -180,6 +181,7 @@ export default function Dashboard({ view }: { view: string }) {
             db.getConversationsForHub(activeHub.id),
             db.getBots(activeHub.id),
             db.getHelpCenters(activeHub.id),
+            db.getHelpCenterArticles(activeHub.id),
           ]);
           
           setProjects(fetchedProjects);
@@ -203,14 +205,13 @@ export default function Dashboard({ view }: { view: string }) {
           setChatConversations(fetchedConversations);
           setBots(fetchedBots);
           setHelpCenters(fetchedHelpCenters);
+          setHelpCenterArticles(hubArticles);
 
           if (fetchedHelpCenters.length > 0) {
-            const [collections, articles] = await Promise.all([
-                db.getHelpCenterCollections(fetchedHelpCenters[0].id),
-                db.getHelpCenterArticles(fetchedHelpCenters[0].id)
-            ]);
+            const collections = await db.getHelpCenterCollections(fetchedHelpCenters[0].id);
             setHelpCenterCollections(collections);
-            setHelpCenterArticles(articles);
+          } else {
+            setHelpCenterCollections([]);
           }
       
           if (fetchedChannels.length > 0 && !activeChannelId) {

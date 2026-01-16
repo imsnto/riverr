@@ -131,11 +131,7 @@ service cloud.firestore {
     }
     
     match /chat_contacts/{contactId} {
-      // Anyone can create their own contact record.
-      allow create: if true;
-      // Anyone can get their own contact record if they know the ID. This is needed for the widget to resume sessions.
-      allow get: if true;
-      // Only authenticated users can update contact info or list all contacts.
+      allow create, get: if true;
       allow update, list: if isAuthenticated();
     }
     
@@ -150,13 +146,42 @@ service cloud.firestore {
     }
 
     match /help_centers/{hcId} {
-      allow read, write: if isAuthenticated();
+      allow create: if isAuthenticated() && (
+          let hubId = request.resource.data.hubId;
+          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
+          isExistInSpace(spaceId)
+      );
+      allow read, update, delete: if isAuthenticated() && (
+          let hubId = resource.data.hubId;
+          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
+          isExistInSpace(spaceId)
+      );
     }
     match /help_center_collections/{hccId} {
-      allow read, write: if isAuthenticated();
+       allow create: if isAuthenticated() && (
+          let helpCenter = get(/databases/$(database)/documents/help_centers/$(request.resource.data.helpCenterId));
+          let hubId = helpCenter.data.hubId;
+          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
+          isExistInSpace(spaceId)
+      );
+       allow read, update, delete: if isAuthenticated() && (
+          let helpCenter = get(/databases/$(database)/documents/help_centers/$(resource.data.helpCenterId));
+          let hubId = helpCenter.data.hubId;
+          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
+          isExistInSpace(spaceId)
+      );
     }
     match /help_center_articles/{hcaId} {
-      allow read, write: if isAuthenticated();
+      allow create: if isAuthenticated() && (
+          let hubId = request.resource.data.hubId;
+          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
+          isExistInSpace(spaceId)
+      );
+       allow read, update, delete: if isAuthenticated() && (
+          let hubId = resource.data.hubId;
+          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
+          isExistInSpace(spaceId)
+      );
     }
   }
 }
