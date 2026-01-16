@@ -9,6 +9,8 @@ import HelpCenterFormDialog from './help-center-form-dialog';
 import { addHelpCenter, updateHelpCenter } from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterSettings from './help-center-settings';
+import HelpCenterArticleList from './help-center-article-list';
+import { Plus } from 'lucide-react';
 
 interface HelpCenterLayoutProps {
     helpCenters: HelpCenter[];
@@ -45,15 +47,6 @@ export default function HelpCenterLayout({
         }
     }, [helpCenters, activeHelpCenter]);
 
-    useEffect(() => {
-        if (articles.length > 0 && !selectedArticleId) {
-            setSelectedArticleId(articles[0].id);
-        }
-        if(articles.length === 0) {
-            setSelectedArticleId(null);
-        }
-    }, [articles, selectedArticleId]);
-
     const handleCreateHelpCenter = () => {
         setEditingHelpCenter(null);
         setIsHcDialogOpen(true);
@@ -79,9 +72,14 @@ export default function HelpCenterLayout({
             await addHelpCenter({ name, hubId: activeHub.id });
             toast({ title: "Help Center created."});
         }
-        onDataRefresh(); // This is passed from `dashboard.tsx`
+        onDataRefresh();
         setIsHcDialogOpen(false);
         setEditingHelpCenter(null);
+    };
+
+    const handleViewChange = (newView: string) => {
+        setView(newView);
+        setSelectedArticleId(null);
     };
 
     const filteredArticles = articles.filter(article => {
@@ -97,16 +95,6 @@ export default function HelpCenterLayout({
         }
         return true; // all_articles
     });
-    
-    // If no article is selected, show the first one or a placeholder.
-    let articleToEdit = selectedArticleId 
-        ? articles.find(a => a.id === selectedArticleId) 
-        : filteredArticles[0];
-
-    // Make sure the article to edit is in the filtered list
-    if (articleToEdit && !filteredArticles.some(a => a.id === articleToEdit!.id)) {
-        articleToEdit = filteredArticles[0];
-    }
     
     const handleCreateArticle = async () => {
       if (!appUser || !activeHub) return;
@@ -129,29 +117,49 @@ export default function HelpCenterLayout({
     };
     
     const renderContent = () => {
+        if (selectedArticleId) {
+            const articleToEdit = articles.find(a => a.id === selectedArticleId);
+            if (articleToEdit) {
+                 return (
+                    <HelpCenterArticleEditor 
+                       key={articleToEdit.id}
+                       article={articleToEdit} 
+                       onSave={(article) => onSaveArticle(article)}
+                       allUsers={allUsers}
+                       appUser={appUser!}
+                       onBack={() => setSelectedArticleId(null)}
+                    />
+                );
+            }
+            // If article not found, reset
+            setSelectedArticleId(null);
+        }
+
         if (view.startsWith('settings_')) {
             return <HelpCenterSettings helpCenter={activeHelpCenter} />;
         }
         
-        if (articleToEdit) {
-            return (
-                <HelpCenterArticleEditor 
-                   key={articleToEdit.id}
-                   article={articleToEdit} 
-                   onSave={(article) => onSaveArticle(article)}
-                   allUsers={allUsers}
-                   appUser={appUser!}
-                />
-            );
+        let listTitle = "All Articles";
+        if (view === 'published') listTitle = "Published Articles";
+        if (view === 'draft') listTitle = "Draft Articles";
+        if (view.startsWith('collection_')) {
+            const collectionId = view.split('_')[1];
+            const collection = collections.find(c => c.id === collectionId);
+            listTitle = collection ? `Collection: ${collection.name}` : "Collection";
         }
 
         return (
-            <div className="flex h-full items-center justify-center text-center">
-                <div>
-                    <h2 className="text-2xl font-semibold">No Articles Yet</h2>
-                    <p className="text-muted-foreground">Create your first article to get started.</p>
-                    <Button onClick={handleCreateArticle} className="mt-4">New Article</Button>
+            <div>
+                <div className="flex justify-between items-center mb-4">
+                    <h1 className="text-2xl font-bold">{listTitle}</h1>
+                    <Button onClick={handleCreateArticle}>
+                        <Plus className="mr-2 h-4 w-4" /> New Article
+                    </Button>
                 </div>
+                <HelpCenterArticleList
+                    articles={filteredArticles}
+                    onSelectArticle={setSelectedArticleId}
+                />
             </div>
         );
     }
@@ -164,7 +172,7 @@ export default function HelpCenterLayout({
                 onSelectHelpCenter={setActiveHelpCenter}
                 collections={collections}
                 activeView={view}
-                onViewChange={setView}
+                onViewChange={handleViewChange}
                 onCreateHelpCenter={handleCreateHelpCenter}
                 onEditHelpCenter={handleEditHelpCenter}
             />
