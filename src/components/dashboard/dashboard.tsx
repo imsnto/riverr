@@ -477,39 +477,52 @@ export default function Dashboard({ view }: { view: string }) {
 
   const handleSendMessageFromBotPreview = (content: string) => {
     const previewContactId = 'preview-contact-1';
-    let conversation = chatConversations.find(c => c.contactId === previewContactId);
+    const timestamp = new Date().toISOString();
 
-    if (!conversation) {
-      const newConversation: Conversation = {
-        id: `conv-${Date.now()}`,
-        contactId: previewContactId,
-        assigneeId: null,
-        status: 'unassigned',
-        lastMessage: content,
-        lastMessageAt: new Date().toISOString(),
-        lastMessageAuthor: 'Preview User',
-      };
-      setChatConversations(prev => [newConversation, ...prev]);
-      conversation = newConversation;
+    // Use a functional update to avoid stale state for conversations
+    setChatConversations(prevConvos => {
+      const existingConversation = prevConvos.find(c => c.contactId === previewContactId);
+
+      if (existingConversation) {
+        // Just update the last message details for the existing conversation
+        return prevConvos.map(c =>
+          c.id === existingConversation.id
+            ? { ...c, lastMessage: content, lastMessageAt: timestamp, lastMessageAuthor: 'Preview User' }
+            : c
+        );
+      } else {
+        // Create a new conversation and prepend it to the list
+        const newConversation: Conversation = {
+          id: `conv-${timestamp}`, // Using timestamp for a more unique ID
+          contactId: previewContactId,
+          assigneeId: null,
+          status: 'unassigned',
+          lastMessage: content,
+          lastMessageAt: timestamp,
+          lastMessageAuthor: 'Preview User',
+        };
+        return [newConversation, ...prevConvos];
+      }
+    });
+
+    // We need to determine the conversation ID. To avoid race conditions with state updates,
+    // we find the ID based on the same logic but must read from the *current* state.
+    // A more robust solution might involve generating the ID outside and passing it to both state updaters.
+    // For now, this will work for the demo.
+    const getConversationId = () => {
+        const existingConvo = chatConversations.find(c => c.contactId === previewContactId);
+        return existingConvo ? existingConvo.id : `conv-${timestamp}`;
     }
-    
+
     const newMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
-      conversationId: conversation.id,
+      conversationId: getConversationId(),
       authorId: previewContactId,
       type: 'message',
       content: content,
-      timestamp: new Date().toISOString(),
+      timestamp: timestamp,
     };
-
-    setChatMessages(prev => [...prev, newMessage]);
-    
-    // Update the conversation with the last message details
-    setChatConversations(prev => prev.map(c => 
-      c.id === conversation!.id 
-        ? { ...c, lastMessage: content, lastMessageAt: newMessage.timestamp, lastMessageAuthor: 'Preview User' } 
-        : c
-    ));
+    setChatMessages(prevMsgs => [...prevMsgs, newMessage]);
   };
 
 
