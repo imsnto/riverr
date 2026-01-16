@@ -18,16 +18,17 @@ interface HelpCenterSidebarProps {
     collections: HelpCenterCollection[];
     activeView: string;
     onViewChange: (view: string) => void;
+    onCreateHelpCenter: () => void;
 }
 
-export default function HelpCenterSidebar({ activeHelpCenter, collections, activeView, onViewChange }: HelpCenterSidebarProps) {
+export default function HelpCenterSidebar({ activeHelpCenter, collections, activeView, onViewChange, onCreateHelpCenter }: HelpCenterSidebarProps) {
     if (!activeHelpCenter) {
         return (
              <aside className="w-80 border-r bg-card p-4">
                  <h2 className="text-xl font-bold mb-4">Help Center</h2>
                  <div className="text-center text-muted-foreground">
                     <p>No help center found.</p>
-                    <Button className="mt-4">New Help Center</Button>
+                    <Button className="mt-4" onClick={onCreateHelpCenter}>New Help Center</Button>
                  </div>
              </aside>
         )
@@ -77,7 +78,7 @@ export default function HelpCenterSidebar({ activeHelpCenter, collections, activ
                 </nav>
             </div>
 
-            <Button variant="outline">New Help Center</Button>
+            <Button variant="outline" onClick={onCreateHelpCenter}>New Help Center</Button>
 
         </aside>
     );

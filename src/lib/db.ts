@@ -1082,8 +1082,19 @@ export const getHelpCenters = async (hubId: string): Promise<HelpCenter[]> => {
 }
 
 export const addHelpCenter = async (helpCenter: Omit<HelpCenter, 'id'>): Promise<HelpCenter> => {
-    const docRef = await addDoc(collection(db, 'help_centers'), helpCenter);
-    return { id: docRef.id, ...helpCenter };
+    const collRef = collection(db, 'help_centers');
+    try {
+        const docRef = await addDoc(collRef, helpCenter);
+        return { id: docRef.id, ...helpCenter };
+    } catch (serverError) {
+        const permissionError = new FirestorePermissionError({
+            path: collRef.path,
+            operation: 'create',
+            requestResourceData: helpCenter,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw serverError;
+    }
 }
 
 export const getHelpCenterCollections = async (helpCenterId: string): Promise<HelpCenterCollection[]> => {
@@ -1104,8 +1115,19 @@ export const getHelpCenterArticles = async (helpCenterId: string): Promise<HelpC
 }
 
 export const addHelpCenterArticle = async (articleData: Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle> => {
-    const docRef = await addDoc(collection(db, 'help_center_articles'), articleData);
-    return { id: docRef.id, ...articleData };
+    const collRef = collection(db, 'help_center_articles');
+    try {
+        const docRef = await addDoc(collRef, articleData);
+        return { id: docRef.id, ...articleData };
+    } catch (serverError) {
+        const permissionError = new FirestorePermissionError({
+            path: collRef.path,
+            operation: 'create',
+            requestResourceData: articleData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw serverError;
+    }
 }
 
 export const updateHelpCenterArticle = async (articleId: string, data: Partial<HelpCenterArticle>): Promise<void> => {

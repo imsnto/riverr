@@ -13,9 +13,10 @@ interface HelpCenterLayoutProps {
     articles: HelpCenterArticle[];
     allUsers: User[];
     onSaveArticle: (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => Promise<HelpCenterArticle | void>;
+    onCreateHelpCenter: () => void;
 }
 
-export default function HelpCenterLayout({ helpCenters, collections, articles, allUsers, onSaveArticle }: HelpCenterLayoutProps) {
+export default function HelpCenterLayout({ helpCenters, collections, articles, allUsers, onSaveArticle, onCreateHelpCenter }: HelpCenterLayoutProps) {
     const [view, setView] = useState('all_articles');
     const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
     const { appUser } = useAuth();
@@ -64,6 +65,7 @@ export default function HelpCenterLayout({ helpCenters, collections, articles, a
                 collections={collections}
                 activeView={view}
                 onViewChange={setView}
+                onCreateHelpCenter={onCreateHelpCenter}
             />
             <main className="overflow-y-auto p-8">
                 {articleToEdit ? (
