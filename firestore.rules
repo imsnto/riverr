@@ -21,6 +21,14 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/spaces/$(spaceId)) &&
       get(/databases/$(database)/documents/spaces/$(spaceId)).data.members[request.auth.uid] != null ;
     }
+
+    function hasAccessToConversation(conversationId) {
+      // A user has access to a conversation if they have access to the space the conversation's hub is in.
+      let conversationDoc = get(/databases/$(database)/documents/conversations/$(conversationId));
+      let hubDoc = get(/databases/$(database)/documents/hubs/$(conversationDoc.data.hubId));
+      let spaceId = hubDoc.data.spaceId;
+      return isExistInSpace(spaceId);
+    }
   
     
     match /users/{userId} {
@@ -115,11 +123,13 @@ service cloud.firestore {
     }
     
     match /conversations/{conversationId} {
-      allow read, write: if isAuthenticated();
+      allow read, update, delete: if isAuthenticated() && isExistInSpace(get(/databases/$(database)/documents/hubs/$(resource.data.hubId)).data.spaceId);
+      allow create: if isAuthenticated() && isExistInSpace(get(/databases/$(database)/documents/hubs/$(request.resource.data.hubId)).data.spaceId);
     }
     
     match /chat_messages/{messageId} {
-      allow read, write: if isAuthenticated();
+      allow read, update, delete: if isAuthenticated() && hasAccessToConversation(resource.data.conversationId);
+      allow create: if isAuthenticated() && hasAccessToConversation(request.resource.data.conversationId);
     }
   }
 }
