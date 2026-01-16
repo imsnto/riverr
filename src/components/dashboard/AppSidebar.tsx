@@ -1,8 +1,9 @@
+
 // src/components/dashboard/AppSidebar.tsx
 "use client";
 
 import React from "react";
-import { Sidebar, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { Sidebar, useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import {
   BarChart,
@@ -21,8 +22,8 @@ import {
   User as UserIcon,
   ChevronsUpDown,
   Check,
-  PanelLeft,
   MessageCircle,
+  Building2,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
@@ -34,20 +35,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-
-export type AppView =
-  | "overview"
-  | "tasks"
-  | "mytasks"
-  | "mentions"
-  | "messages"
-  | "documents"
-  | "flows"
-  | "settings"
-  | "team-timesheets"
-  | "user-settings"
-  | "space-settings"
-  | "inbox";
 
 interface SpaceSwitcherProps {
   spaces: Space[];
@@ -225,8 +212,14 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   onHubChange,
 }) => {
   const { appUser, signOut } = useAuth();
-  const { isMobile, state, toggleSidebar, open } = useSidebar();
+  const { isMobile, state, setOpen } = useSidebar();
   const router = useRouter();
+
+  React.useEffect(() => {
+    if (!isMobile) {
+      setOpen(false);
+    }
+  }, [isMobile, setOpen]);
 
   const handleLogout = async () => {
     await signOut();
@@ -258,7 +251,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     const handleClick = () => {
       onChangeView(item.key);
       if (isMobile) {
-        toggleSidebar();
+        setOpen(false); // Close mobile sheet on navigation
       }
     };
     return (
@@ -279,13 +272,33 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   return (
     <Sidebar collapsible="icon">
       <div className="flex flex-col h-full p-2">
-         {showLabels && activeSpace && activeHub && (
-           <div className="p-2 space-y-2">
-             <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />
-             <HubSwitcher hubs={allHubs} activeHub={activeHub} onHubChange={onHubChange} />
-             <Separator />
+         {activeSpace && activeHub && (
+           <div className="p-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-center h-12">
+                    <Building2 className="h-6 w-6 text-primary" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 ml-2" side="right" align="start">
+                <div className="grid gap-4">
+                  <div className="space-y-1">
+                    <h4 className="font-medium leading-none">Workspace</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Switch between your spaces and hubs.
+                    </p>
+                  </div>
+                  <Separator />
+                  <div className="space-y-2">
+                    <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />
+                    <HubSwitcher hubs={allHubs} activeHub={activeHub} onHubChange={onHubChange} />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
            </div>
          )}
+         <Separator className={cn("my-2", !showLabels && "mx-auto w-12")} />
         <div className="flex flex-col flex-1 space-y-1 overflow-y-auto">
           {topItems.map(renderButton)}
           <div className={cn("px-3 py-2", !showLabels && "px-0")}>
@@ -371,19 +384,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                
-                {!isMobile && (
-                  <div className="flex justify-center">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-14 w-14"
-                      onClick={toggleSidebar}
-                    >
-                      <PanelLeft className={cn("transition-transform", !open && "rotate-180")} />
-                    </Button>
-                  </div>
-                )}
             </>
         )}
       </div>
