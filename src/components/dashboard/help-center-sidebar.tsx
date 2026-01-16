@@ -3,7 +3,7 @@
 import React from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
 import { Button } from '../ui/button';
-import { Book, Cog, Folder, Layers, Search, File, CircleDot } from 'lucide-react';
+import { Book, Cog, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '../ui/input';
 import {
@@ -12,66 +12,97 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Separator } from '../ui/separator';
 
 interface HelpCenterSidebarProps {
+    helpCenters: HelpCenter[];
     activeHelpCenter: HelpCenter | null;
+    onSelectHelpCenter: (hc: HelpCenter) => void;
     collections: HelpCenterCollection[];
     activeView: string;
     onViewChange: (view: string) => void;
     onCreateHelpCenter: () => void;
+    onEditHelpCenter: (hc: HelpCenter) => void;
 }
 
-export default function HelpCenterSidebar({ activeHelpCenter, collections, activeView, onViewChange, onCreateHelpCenter }: HelpCenterSidebarProps) {
+export default function HelpCenterSidebar({ 
+    helpCenters,
+    activeHelpCenter,
+    onSelectHelpCenter,
+    collections, 
+    activeView, 
+    onViewChange, 
+    onCreateHelpCenter,
+    onEditHelpCenter
+}: HelpCenterSidebarProps) {
 
     return (
         <aside className="w-80 border-r bg-card p-4 flex flex-col">
             <div className="relative mb-4">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search..." className="pl-9" />
+                <Input placeholder="Search..." className="pl-9 h-9" />
             </div>
 
-            <div className="mb-6">
+            <div className="mb-4">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-2">Articles</h3>
                 <nav className="space-y-1">
-                    <Button variant={activeView === 'all_articles' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => onViewChange('all_articles')}>
+                    <Button variant={activeView === 'all_articles' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('all_articles')}>
                         <File className="mr-2 h-4 w-4"/> All articles
                     </Button>
-                    <Button variant={activeView === 'published' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => onViewChange('published')}>
+                    <Button variant={activeView === 'published' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('published')}>
                         <Layers className="mr-2 h-4 w-4"/> Published
                     </Button>
-                     <Button variant={activeView === 'draft' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => onViewChange('draft')}>
+                     <Button variant={activeView === 'draft' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('draft')}>
                         <CircleDot className="mr-2 h-4 w-4"/> Draft
                     </Button>
                 </nav>
             </div>
             
-            {activeHelpCenter ? (
-                 <div className="mb-auto">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="w-full justify-start font-semibold text-base px-2 mb-2">
-                                {activeHelpCenter.name}
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem>Switch Help Center</DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+            <Separator />
 
+            <div className="py-4 flex-1 overflow-y-auto">
+                 <div className="flex justify-between items-center mb-2 px-2">
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Help Centers</h3>
+                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onCreateHelpCenter}>
+                        <Plus className="h-4 w-4"/>
+                    </Button>
+                 </div>
+                 {helpCenters.length > 0 ? (
                     <nav className="space-y-1">
-                        <Button variant={activeView === 'collections' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => onViewChange('collections')}>
-                            <Folder className="mr-2 h-4 w-4"/> Collections
-                        </Button>
-                        <Button variant={activeView === 'settings' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => onViewChange('settings')}>
-                            <Cog className="mr-2 h-4 w-4"/> Settings
-                        </Button>
+                        {helpCenters.map(hc => (
+                            <div key={hc.id} className={cn("group flex items-center justify-between rounded-md", activeHelpCenter?.id === hc.id && 'bg-accent')}>
+                                <Button 
+                                    variant="ghost" 
+                                    className="w-full justify-start text-sm h-9 flex-1" 
+                                    onClick={() => onSelectHelpCenter(hc)}
+                                >
+                                    <Book className="mr-2 h-4 w-4"/>
+                                    <span className="truncate">{hc.name}</span>
+                                </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100">
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        <DropdownMenuItem onClick={() => onEditHelpCenter(hc)}>
+                                            <Edit className="h-4 w-4 mr-2" />
+                                            Rename
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        ))}
                     </nav>
-                </div>
-            ) : (
-                <div className="flex-1" />
-            )}
+                 ) : (
+                    <div className="text-center text-xs text-muted-foreground px-2 py-4">
+                        <p>No help centers created yet.</p>
+                         <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1" onClick={onCreateHelpCenter}>Create one</Button>
+                    </div>
+                 )}
+            </div>
 
-            <Button variant="outline" onClick={onCreateHelpCenter}>New Help Center</Button>
         </aside>
     );
 }

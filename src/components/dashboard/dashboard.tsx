@@ -583,17 +583,6 @@ export default function Dashboard({ view }: { view: string }) {
       setBots(prev => [...prev, newBot]);
   }
   
-  const handleCreateHelpCenter = async () => {
-    if (!activeHub) return;
-    try {
-        await db.addHelpCenter({ name: `${activeHub.name} Help Center`, hubId: activeHub.id });
-        toast({ title: 'Help Center Created' });
-        fetchData(); // refetch all data
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Failed to create Help Center' });
-    }
-  }
-
   const handleSaveArticle = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle> => {
     if ('id' in article && article.id) {
         await db.updateHelpCenterArticle(article.id, article);
@@ -688,7 +677,7 @@ export default function Dashboard({ view }: { view: string }) {
         articles={helpCenterArticles}
         onSaveArticle={handleSaveArticle}
         allUsers={allUsers}
-        onCreateHelpCenter={handleCreateHelpCenter}
+        onDataRefresh={fetchData}
         />;
       case 'settings': return <SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview} chatMessages={chatMessages} chatContacts={chatContacts} chatConversations={chatConversations} bots={bots} onBotUpdate={handleBotUpdate} onBotAdd={handleBotAdd} />;
       case 'team-timesheets': return <TeamTimesheets {...props} />;
