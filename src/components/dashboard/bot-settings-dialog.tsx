@@ -130,6 +130,20 @@ export default function BotSettingsDialog({
             <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} id="bot-settings-form" className="py-4 space-y-6 flex-1 overflow-y-auto pr-2">
                 
+                <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Bot Name</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Support Bot" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
                 <div className="space-y-2">
                     <Label>Layout</Label>
                     <Controller
@@ -137,18 +151,18 @@ export default function BotSettingsDialog({
                         name="layout"
                         render={({ field }) => (
                             <RadioGroup onValueChange={field.onChange} value={field.value} className="grid grid-cols-2 gap-4">
-                                <Card className={cn("p-4 flex flex-col items-center justify-center cursor-pointer", field.value === 'default' && 'ring-2 ring-primary')}>
+                                <Label htmlFor="default" className={cn("p-4 flex flex-col items-center justify-center cursor-pointer border rounded-lg", field.value === 'default' && 'ring-2 ring-primary')}>
                                     <RadioGroupItem value="default" id="default" className="sr-only"/>
                                     <Tv2 className="h-8 w-8 mb-2" />
-                                    <Label htmlFor="default">Default</Label>
+                                    <span className="font-semibold">Default</span>
                                     <p className="text-xs text-muted-foreground">Larger view for a rich experience</p>
-                                </Card>
-                                <Card className={cn("p-4 flex flex-col items-center justify-center cursor-pointer", field.value === 'compact' && 'ring-2 ring-primary')}>
+                                </Label>
+                                <Label htmlFor="compact" className={cn("p-4 flex flex-col items-center justify-center cursor-pointer border rounded-lg", field.value === 'compact' && 'ring-2 ring-primary')}>
                                     <RadioGroupItem value="compact" id="compact" className="sr-only"/>
                                     <Layout className="h-8 w-8 mb-2" />
-                                    <Label htmlFor="compact">Compact</Label>
+                                    <span className="font-semibold">Compact</span>
                                     <p className="text-xs text-muted-foreground">Minimal view for a focused experience</p>
-                                </Card>
+                                </Label>
                             </RadioGroup>
                         )}
                     />
@@ -205,7 +219,7 @@ export default function BotSettingsDialog({
                     </Card>
                 </div>
                 
-                 <Accordion type="single" collapsible defaultValue="welcome-message">
+                 <Accordion type="single" collapsible defaultValue="welcome-message" className="w-full">
                     <AccordionItem value="welcome-message">
                         <AccordionTrigger>Set your welcome message</AccordionTrigger>
                         <AccordionContent>
@@ -217,6 +231,27 @@ export default function BotSettingsDialog({
                                     <FormLabel>Welcome Message</FormLabel>
                                     <FormControl>
                                         <Input placeholder="Hi there" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="branding">
+                        <AccordionTrigger>Branding</AccordionTrigger>
+                        <AccordionContent>
+                            <FormField
+                                control={form.control}
+                                name="primaryColor"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Primary Color</FormLabel>
+                                    <FormControl>
+                                        <div className="flex items-center gap-2">
+                                            <Input placeholder="#0057ff" {...field} />
+                                            <div className="w-8 h-8 rounded-md border" style={{ backgroundColor: field.value }}></div>
+                                        </div>
                                     </FormControl>
                                     <FormMessage />
                                     </FormItem>
@@ -268,19 +303,19 @@ export default function BotSettingsDialog({
                  {/* Footer */}
                 <div className="p-2 border-t flex justify-around items-center">
                     {watchedValues.showHome && (
-                        <Button variant="ghost" className="flex-col h-auto p-2 font-normal text-xs gap-1">
+                        <Button variant="ghost" className="flex flex-col h-auto p-2 font-normal text-xs gap-1">
                             <Home className="h-5 w-5" />
                             Home
                         </Button>
                     )}
                     {watchedValues.showMessages && (
-                        <Button variant="ghost" className="flex-col h-auto p-2 font-normal text-xs gap-1">
+                        <Button variant="ghost" className="flex flex-col h-auto p-2 font-normal text-xs gap-1">
                             <MessageSquare className="h-5 w-5" />
                             Messages
                         </Button>
                     )}
                     {watchedValues.showTickets && (
-                        <Button variant="ghost" className="flex-col h-auto p-2 font-normal text-xs gap-1">
+                        <Button variant="ghost" className="flex flex-col h-auto p-2 font-normal text-xs gap-1">
                             <Ticket className="h-5 w-5" />
                             Tickets
                         </Button>
