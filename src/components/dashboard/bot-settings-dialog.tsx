@@ -267,9 +267,24 @@ export default function BotSettingsDialog({
                 </div>
                  {/* Footer */}
                 <div className="p-2 border-t flex justify-around items-center">
-                    {watchedValues.showHome && <Button variant="ghost" size="sm"><Home className="mr-1" /> Home</Button>}
-                    {watchedValues.showMessages && <Button variant="ghost" size="sm"><MessageSquare className="mr-1" /> Messages</Button>}
-                    {watchedValues.showTickets && <Button variant="ghost" size="sm"><Ticket className="mr-1" /> Tickets</Button>}
+                    {watchedValues.showHome && (
+                        <Button variant="ghost" className="flex-col h-auto p-2 font-normal text-xs gap-1">
+                            <Home className="h-5 w-5" />
+                            Home
+                        </Button>
+                    )}
+                    {watchedValues.showMessages && (
+                        <Button variant="ghost" className="flex-col h-auto p-2 font-normal text-xs gap-1">
+                            <MessageSquare className="h-5 w-5" />
+                            Messages
+                        </Button>
+                    )}
+                    {watchedValues.showTickets && (
+                        <Button variant="ghost" className="flex-col h-auto p-2 font-normal text-xs gap-1">
+                            <Ticket className="h-5 w-5" />
+                            Tickets
+                        </Button>
+                    )}
                 </div>
              </div>
              <div className="absolute bottom-5 right-5 h-14 w-14 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: watchedValues.primaryColor }}>
