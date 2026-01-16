@@ -184,17 +184,18 @@ export default function BotSettingsDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl grid-cols-1 md:grid-cols-2 p-0">
+      <DialogContent className="max-w-5xl h-[90vh] grid-cols-1 md:grid-cols-2 p-0">
         {/* Form Section */}
-        <div className="p-6 flex flex-col">
-            <DialogHeader>
+        <div className="flex flex-col h-full overflow-hidden">
+          <DialogHeader className="p-6 pb-4 border-b shrink-0">
             <DialogTitle>Bot Settings: {bot.name}</DialogTitle>
             <DialogDescription>
                 Customize the appearance and behavior of your chat bot.
             </DialogDescription>
-            </DialogHeader>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto">
             <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} id="bot-settings-form" className="py-4 space-y-6 flex-1 overflow-y-auto pr-2">
+            <form onSubmit={form.handleSubmit(onSubmit)} id="bot-settings-form" className="p-6 space-y-6">
                 
                 <FormField
                     control={form.control}
@@ -311,14 +312,15 @@ export default function BotSettingsDialog({
                 </Accordion>
             </form>
             </Form>
-            <DialogFooter>
+          </div>
+          <DialogFooter className="p-6 pt-4 border-t bg-background shrink-0">
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
                     Cancel
                 </Button>
                 <Button type="submit" form="bot-settings-form">
                     Save Changes
                 </Button>
-            </DialogFooter>
+          </DialogFooter>
         </div>
 
         {/* Preview Section */}
@@ -417,7 +419,7 @@ export default function BotSettingsDialog({
                     </div>
                 </div>
              </div>
-             <div className="absolute bottom-6 right-6 h-14 w-14 rounded-full flex items-center justify-center shadow-lg cursor-pointer bg-white" onClick={() => {}}>
+             <div className="absolute bottom-6 right-6 h-14 w-14 rounded-full flex items-center justify-center shadow-lg cursor-pointer bg-white" onClick={() => onOpenChange(false)}>
                 <ChevronDown className="h-7 w-7 text-zinc-900" />
             </div>
         </div>
