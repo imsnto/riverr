@@ -155,10 +155,6 @@ const getInitials = (name: string) => {
 interface AppSidebarProps {
   view: AppView;
   onChangeView: (view: AppView) => void;
-  projects: Project[];
-  selectedProjectId: string | null;
-  onSelectProject: (projectId: string) => void;
-  onNewProject: () => void;
   className?: string;
   activeSpace: Space | null, 
   onSpaceChange: (spaceId: string) => void; 
@@ -180,7 +176,7 @@ const allMiddleItems: {
   label: string;
   fixed?: boolean;
 }[] = [
-  // Tasks are now handled separately
+  { key: "tasks", icon: <FolderKanban className="w-5 h-5" />, label: 'Tasks' },
   { key: "inbox", icon: <MessageCircle className="w-5 h-5" />, label: 'Inbox' },
   { key: "messages", icon: <MessageSquare className="w-5 h-5" />, label: 'Messages' },
   { key: "documents", icon: <BookOpen className="w-5 h-5" />, label: 'Documents' },
@@ -200,10 +196,6 @@ const allBottomItems: {
 export const AppSidebar: React.FC<AppSidebarProps> = ({
   view,
   onChangeView,
-  projects,
-  selectedProjectId,
-  onSelectProject,
-  onNewProject,
   activeSpace,
   allSpaces,
   onSpaceChange,
@@ -267,8 +259,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     );
   };
   
-  const showTasks = hubComponents.includes('tasks');
-
   return (
     <Sidebar collapsible="icon">
       <div className="flex flex-col h-full p-2">
@@ -310,48 +300,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           <div className={cn("px-3 py-2", !showLabels && "px-0")}>
             <Separator />
           </div>
-          {showTasks && (
-            <Collapsible defaultOpen={true}>
-              <CollapsibleTrigger asChild>
-                 <Button
-                    variant={view === 'tasks' ? 'secondary' : 'ghost'}
-                    className={cn("h-12 w-full justify-between rounded-md px-4 group", !showLabels && "px-0 justify-center w-12 mx-auto")}
-                  >
-                    <div className="flex items-center">
-                      <FolderKanban className="w-5 h-5" />
-                      {showLabels && <span className="ml-3">Tasks</span>}
-                    </div>
-                    {showLabels && <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />}
-                  </Button>
-              </CollapsibleTrigger>
-               <CollapsibleContent className="space-y-1 py-1">
-                {showLabels && (
-                  <div className="pl-8 pr-2 space-y-1">
-                    {projects.map(project => (
-                        <Button
-                          key={project.id}
-                          variant={selectedProjectId === project.id ? 'secondary' : 'ghost'}
-                          onClick={() => {
-                            onSelectProject(project.id);
-                            onChangeView('tasks');
-                          }}
-                          className="w-full justify-start h-8 text-sm"
-                        >
-                          {project.name}
-                        </Button>
-                    ))}
-                     <Button
-                        variant="ghost"
-                        onClick={onNewProject}
-                        className="w-full justify-start h-8 text-sm text-muted-foreground"
-                      >
-                        <Plus className="mr-2 h-4 w-4" /> New Project
-                      </Button>
-                  </div>
-                )}
-               </CollapsibleContent>
-            </Collapsible>
-          )}
           {middleItems.map(renderButton)}
         </div>
         <div className="flex flex-col mt-auto space-y-1">{bottomItems.map(renderButton)}</div>

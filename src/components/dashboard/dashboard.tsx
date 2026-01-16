@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AppSidebar, AppView } from './AppSidebar';
+import { AppSidebar } from './AppSidebar';
 import { useAuth } from '@/hooks/use-auth';
 import {
   Space,
@@ -50,13 +50,14 @@ import AllThreadsView from './all-threads-view';
 import CreateTaskFromThreadDialog from './create-task-from-thread-dialog';
 import TaskDetailsDialog from './task-details-dialog';
 import { useToast } from '@/hooks/use-toast';
-import TeamTimesheets from './team-timesheets';
 import { SidebarProvider } from '../ui/sidebar';
 import ProjectFormDialog from './project-form-dialog';
 import ChannelList from './channel-list';
 import { ContentSkeleton } from './content-skeleton';
 import InboxLayout from './inbox-layout';
 import { cn } from '@/lib/utils';
+import { AppView } from '@/lib/routes';
+import ProjectSidebar from './project-sidebar';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -271,10 +272,6 @@ export default function Dashboard({ view }: { view: string }) {
           <AppSidebar
             view={currentView}
             onChangeView={handleViewChange}
-            projects={[]}
-            selectedProjectId={null}
-            onSelectProject={() => {}}
-            onNewProject={() => {}}
             activeSpace={activeSpace}
             allSpaces={userSpaces}
             onSpaceChange={() => {}}
@@ -669,10 +666,6 @@ export default function Dashboard({ view }: { view: string }) {
         <AppSidebar
           view={currentView}
           onChangeView={handleViewChange}
-          projects={projects}
-          selectedProjectId={selectedProjectId}
-          onSelectProject={handleSelectProject}
-          onNewProject={handleNewProject}
           activeSpace={activeSpace}
           allSpaces={userSpaces}
           onSpaceChange={(spaceId) => {
@@ -687,10 +680,18 @@ export default function Dashboard({ view }: { view: string }) {
           activeHub={activeHub}
           onHubChange={handleHubChange}
         />
-        <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden">
+          {currentView === 'tasks' && (
+             <ProjectSidebar
+              projects={projects}
+              selectedProjectId={selectedProjectId}
+              onSelectProject={handleSelectProject}
+              onNewProject={handleNewProject}
+            />
+          )}
           <main className={cn(
             "flex-1",
-            currentView === 'inbox' || currentView === 'messages'
+            currentView === 'inbox' || currentView === 'messages' || currentView === 'tasks'
               ? 'overflow-hidden'
               : 'overflow-y-auto'
           )}>
