@@ -19,7 +19,7 @@ const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
-const DetailRow = ({ icon, label, value }: { icon: React.ElementType, label: string, value: React.ReactNode }) => (
+const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: React.ReactNode }) => (
     <div className="flex items-center text-sm">
         <Icon className="h-4 w-4 w-8 text-muted-foreground" />
         <span className="text-muted-foreground mr-2">{label}:</span>
