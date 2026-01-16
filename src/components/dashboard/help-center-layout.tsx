@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import HelpCenterSidebar from './help-center-sidebar';
@@ -9,6 +8,7 @@ import { Button } from '../ui/button';
 import HelpCenterFormDialog from './help-center-form-dialog';
 import { addHelpCenter, updateHelpCenter } from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
+import HelpCenterSettings from './help-center-settings';
 
 interface HelpCenterLayoutProps {
     helpCenters: HelpCenter[];
@@ -127,6 +127,34 @@ export default function HelpCenterLayout({
         setSelectedArticleId(newArticle.id);
       }
     };
+    
+    const renderContent = () => {
+        if (view.startsWith('settings_')) {
+            return <HelpCenterSettings helpCenter={activeHelpCenter} />;
+        }
+        
+        if (articleToEdit) {
+            return (
+                <HelpCenterArticleEditor 
+                   key={articleToEdit.id}
+                   article={articleToEdit} 
+                   onSave={(article) => onSaveArticle(article)}
+                   allUsers={allUsers}
+                   appUser={appUser!}
+                />
+            );
+        }
+
+        return (
+            <div className="flex h-full items-center justify-center text-center">
+                <div>
+                    <h2 className="text-2xl font-semibold">No Articles Yet</h2>
+                    <p className="text-muted-foreground">Create your first article to get started.</p>
+                    <Button onClick={handleCreateArticle} className="mt-4">New Article</Button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="grid h-full grid-cols-[320px_1fr]">
@@ -141,23 +169,7 @@ export default function HelpCenterLayout({
                 onEditHelpCenter={handleEditHelpCenter}
             />
             <main className="overflow-y-auto p-8">
-                {articleToEdit ? (
-                     <HelpCenterArticleEditor 
-                        key={articleToEdit.id}
-                        article={articleToEdit} 
-                        onSave={(article) => onSaveArticle(article)}
-                        allUsers={allUsers}
-                        appUser={appUser!}
-                     />
-                ) : (
-                    <div className="flex h-full items-center justify-center text-center">
-                        <div>
-                            <h2 className="text-2xl font-semibold">No Articles Yet</h2>
-                            <p className="text-muted-foreground">Create your first article to get started.</p>
-                            <Button onClick={handleCreateArticle} className="mt-4">New Article</Button>
-                        </div>
-                    </div>
-                )}
+                {renderContent()}
             </main>
             <HelpCenterFormDialog
                 isOpen={isHcDialogOpen}

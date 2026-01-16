@@ -1,4 +1,3 @@
-
 'use client';
 import React from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
@@ -17,7 +16,7 @@ import { Separator } from '../ui/separator';
 interface HelpCenterSidebarProps {
     helpCenters: HelpCenter[];
     activeHelpCenter: HelpCenter | null;
-    onSelectHelpCenter: (hc: HelpCenter) => void;
+    onSelectHelpCenter: (hc: HelpCenter | null) => void;
     collections: HelpCenterCollection[];
     activeView: string;
     onViewChange: (view: string) => void;
@@ -35,6 +34,10 @@ export default function HelpCenterSidebar({
     onCreateHelpCenter,
     onEditHelpCenter
 }: HelpCenterSidebarProps) {
+
+    const collectionsForActiveHC = activeHelpCenter 
+        ? collections.filter(c => c.helpCenterId === activeHelpCenter.id)
+        : [];
 
     return (
         <aside className="w-80 border-r bg-card p-4 flex flex-col">
@@ -70,28 +73,58 @@ export default function HelpCenterSidebar({
                  {helpCenters.length > 0 ? (
                     <nav className="space-y-1">
                         {helpCenters.map(hc => (
-                            <div key={hc.id} className={cn("group flex items-center justify-between rounded-md", activeHelpCenter?.id === hc.id && 'bg-accent')}>
-                                <Button 
-                                    variant="ghost" 
-                                    className="w-full justify-start text-sm h-9 flex-1" 
-                                    onClick={() => onSelectHelpCenter(hc)}
-                                >
-                                    <Book className="mr-2 h-4 w-4"/>
-                                    <span className="truncate">{hc.name}</span>
-                                </Button>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100">
-                                            <MoreHorizontal className="h-4 w-4" />
+                            <div key={hc.id}>
+                                <div className={cn("group flex items-center justify-between rounded-md", activeHelpCenter?.id === hc.id && 'bg-accent')}>
+                                    <Button 
+                                        variant="ghost" 
+                                        className="w-full justify-start text-sm h-9 flex-1" 
+                                        onClick={() => onSelectHelpCenter(hc)}
+                                    >
+                                        <Book className="mr-2 h-4 w-4"/>
+                                        <span className="truncate">{hc.name}</span>
+                                    </Button>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100">
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem onClick={() => onEditHelpCenter(hc)}>
+                                                <Edit className="h-4 w-4 mr-2" />
+                                                Rename
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+
+                                {activeHelpCenter?.id === hc.id && (
+                                    <div className="pl-4 mt-1 space-y-1">
+                                        <h4 className="px-2 py-1 text-xs font-semibold text-muted-foreground">Collections</h4>
+                                        {collectionsForActiveHC.map(collection => (
+                                            <Button 
+                                                key={collection.id} 
+                                                variant={activeView === `collection_${collection.id}` ? 'secondary' : 'ghost'} 
+                                                className="w-full justify-start text-sm h-9" 
+                                                onClick={() => onViewChange(`collection_${collection.id}`)}
+                                            >
+                                                <Folder className="mr-2 h-4 w-4"/> 
+                                                <span className="truncate">{collection.name}</span>
+                                            </Button>
+                                        ))}
+                                        {collectionsForActiveHC.length === 0 && <p className="px-2 text-xs text-muted-foreground">No collections yet.</p>}
+                                        <Button variant="ghost" className="w-full justify-start text-sm h-9 text-muted-foreground">
+                                            <Plus className="mr-2 h-4 w-4" /> New Collection
                                         </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                        <DropdownMenuItem onClick={() => onEditHelpCenter(hc)}>
-                                            <Edit className="h-4 w-4 mr-2" />
-                                            Rename
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+
+                                        <Separator className="my-2" />
+
+                                        <Button variant={activeView === `settings_${hc.id}` ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange(`settings_${hc.id}`)}>
+                                            <Cog className="mr-2 h-4 w-4" />
+                                            Settings
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </nav>
