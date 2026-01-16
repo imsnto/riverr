@@ -225,7 +225,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   onHubChange,
 }) => {
   const { appUser, signOut } = useAuth();
-  const { isMobile, state, toggleSidebar } = useSidebar();
+  const { isMobile, state, toggleSidebar, open } = useSidebar();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -286,7 +286,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
              <Separator />
            </div>
          )}
-        <div className="space-y-1 flex-1 overflow-y-auto">
+        <div className="flex flex-col flex-1 space-y-1 overflow-y-auto">
           {topItems.map(renderButton)}
           <div className={cn("px-3 py-2", !showLabels && "px-0")}>
             <Separator />
@@ -335,14 +335,14 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           )}
           {middleItems.map(renderButton)}
         </div>
-        <div className="mt-auto space-y-1">{bottomItems.map(renderButton)}</div>
+        <div className="flex flex-col mt-auto space-y-1">{bottomItems.map(renderButton)}</div>
         {appUser && (
             <>
               <Separator className={cn("my-2", !showLabels && "mx-auto w-12")} />
-              <div className="flex items-center">
+              
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className={cn("h-14 justify-start rounded-md px-4 flex-1", !showLabels && "px-0 justify-center w-14 mx-auto")}>
+                    <Button variant="ghost" className={cn("h-14 justify-start rounded-md px-4 w-full", !showLabels && "px-0 justify-center w-14 mx-auto")}>
                         <Avatar className="h-9 w-9">
                           <AvatarImage src={appUser.avatarUrl} alt={appUser.name} />
                           <AvatarFallback>{getInitials(appUser.name)}</AvatarFallback>
@@ -373,19 +373,17 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 </DropdownMenu>
                 
                 {!isMobile && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "h-14 w-14 transition-all duration-300",
-                      !showLabels && "rotate-180"
-                    )}
-                    onClick={toggleSidebar}
-                  >
-                    <PanelLeft />
-                  </Button>
+                  <div className="flex justify-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-14 w-14"
+                      onClick={toggleSidebar}
+                    >
+                      <PanelLeft className={cn("transition-transform", !open && "rotate-180")} />
+                    </Button>
+                  </div>
                 )}
-              </div>
             </>
         )}
       </div>
