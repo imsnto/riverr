@@ -6,7 +6,7 @@ import { getDocument, getAllUsers, updateDocument, deleteDocument } from '@/lib/
 import { Document, User } from '@/lib/data';
 import React, { useState, useEffect } from 'react';
 import DocumentEditor from '@/components/dashboard/document-editor';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 
 const LoadingState = () => (
     <div className="flex h-screen items-center justify-center">
@@ -14,13 +14,8 @@ const LoadingState = () => (
     </div>
 );
 
-interface DocumentPageProps {
-  params: {
-    docId: string;
-  };
-}
-
-export default function DocumentPage({ params }: DocumentPageProps) {
+export default function DocumentPage() {
+    const params = useParams() as { docId: string };
     const { docId } = params;
     const { appUser, userSpaces } = useAuth();
     const router = useRouter();
