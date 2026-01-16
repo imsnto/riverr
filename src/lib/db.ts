@@ -443,8 +443,19 @@ export const getChannelsInHub = async (
 export const addChannel = async (
   channel: Omit<Channel, "id">
 ): Promise<Channel> => {
-  const docRef = await addDoc(collection(db, "channels"), channel);
-  return { ...channel, id: docRef.id };
+  const collRef = collection(db, "channels");
+  try {
+    const docRef = await addDoc(collRef, channel);
+    return { ...channel, id: docRef.id };
+  } catch (serverError) {
+      const permissionError = new FirestorePermissionError({
+          path: collRef.path,
+          operation: 'create',
+          requestResourceData: channel,
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      throw serverError;
+  }
 };
 
 export const updateChannel = async (
@@ -452,7 +463,17 @@ export const updateChannel = async (
   data: Partial<Channel>
 ): Promise<void> => {
   const channelRef = doc(db, "channels", channelId);
-  await updateDoc(channelRef, data);
+  try {
+    await updateDoc(channelRef, data);
+  } catch (serverError) {
+      const permissionError = new FirestorePermissionError({
+          path: channelRef.path,
+          operation: 'update',
+          requestResourceData: data,
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      throw serverError;
+  }
 };
 
 export const deleteChannel = async (channelId: string): Promise<void> => {
