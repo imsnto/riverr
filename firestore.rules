@@ -118,8 +118,16 @@ service cloud.firestore {
       // Read access is public so the widget can fetch its config.
       // In a production app with sensitive bot data, this should be a server-side read.
       allow read: if true;
-      allow create: if isAuthenticated() && isExistInSpace(get(/databases/$(database)/documents/hubs/$(request.resource.data.hubId)).data.spaceId);
-      allow update, delete: if isAuthenticated() && isExistInSpace(get(/databases/$(database)/documents/hubs/$(resource.data.hubId)).data.spaceId);
+      allow create: if isAuthenticated() && (
+          let hubId = request.resource.data.hubId;
+          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
+          isExistInSpace(spaceId)
+      );
+      allow update, delete: if isAuthenticated() && (
+          let hubId = resource.data.hubId;
+          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
+          isExistInSpace(spaceId)
+      );
     }
     
     match /chat_contacts/{contactId} {
