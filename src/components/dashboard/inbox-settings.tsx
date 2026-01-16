@@ -26,7 +26,13 @@ const initialMockBots: BotData[] = [
     id: 'bot-1',
     hubId: 'hub-1',
     name: 'Support Bot',
-    welcomeMessage: 'Hi there! How can I help you today?',
+    welcomeMessage: 'Hi there',
+    layout: 'default',
+    spaces: {
+        home: true,
+        messages: true,
+        tickets: true,
+    },
     styleSettings: {
       primaryColor: '#3b82f6',
       avatarUrl: '',
@@ -36,7 +42,13 @@ const initialMockBots: BotData[] = [
     id: 'bot-2',
     hubId: 'hub-1',
     name: 'Sales Inquiries',
-    welcomeMessage: 'Hello! Interested in our products? Let me know.',
+    welcomeMessage: 'Hello!',
+    layout: 'default',
+    spaces: {
+        home: true,
+        messages: false,
+        tickets: false,
+    },
     styleSettings: {
       primaryColor: '#10b981',
       avatarUrl: '',

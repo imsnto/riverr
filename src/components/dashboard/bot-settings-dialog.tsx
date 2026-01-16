@@ -4,7 +4,7 @@
 import React, { useEffect } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -25,12 +25,20 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Bot as BotData } from '@/lib/data';
-import { Bot, MessageSquare } from 'lucide-react';
+import { Bot, MessageSquare, Home, Ticket, ChevronRight, Layout, MessagesSquare, Tv2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Card } from '../ui/card';
+import { Switch } from '../ui/switch';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 
 const botSettingsSchema = z.object({
   name: z.string().min(1, 'Bot name is required.'),
+  layout: z.enum(['default', 'compact']),
+  showHome: z.boolean(),
+  showMessages: z.boolean(),
+  showTickets: z.boolean(),
   welcomeMessage: z.string().optional(),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.'),
 });
@@ -44,9 +52,10 @@ interface BotSettingsDialogProps {
   onSave: (botData: BotData) => void;
 }
 
-const COLOR_SWATCHES = [
-  '#3b82f6', '#ef4444', '#10b981', '#f97316', '#8b5cf6', '#ec4899'
-];
+const getInitials = (name?: string) => {
+    if (!name) return '';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+};
 
 export default function BotSettingsDialog({
   isOpen,
@@ -59,20 +68,27 @@ export default function BotSettingsDialog({
     resolver: zodResolver(botSettingsSchema),
     defaultValues: {
       name: '',
-      welcomeMessage: '',
-      primaryColor: '#3b82f6',
+      welcomeMessage: 'Hi there',
+      primaryColor: '#0057ff',
+      layout: 'default',
+      showHome: true,
+      showMessages: true,
+      showTickets: false,
     },
   });
   
-  const primaryColor = form.watch('primaryColor');
-  const welcomeMessage = form.watch('welcomeMessage');
+  const watchedValues = form.watch();
 
   useEffect(() => {
     if (bot) {
       form.reset({
         name: bot.name,
-        welcomeMessage: bot.welcomeMessage || '',
-        primaryColor: bot.styleSettings?.primaryColor || '#3b82f6',
+        welcomeMessage: bot.welcomeMessage || 'Hi there',
+        primaryColor: bot.styleSettings?.primaryColor || '#0057ff',
+        layout: bot.layout || 'default',
+        showHome: bot.spaces?.home ?? true,
+        showMessages: bot.spaces?.messages ?? true,
+        showTickets: bot.spaces?.tickets ?? false,
       });
     }
   }, [bot, form]);
@@ -84,6 +100,12 @@ export default function BotSettingsDialog({
         ...bot,
         name: values.name,
         welcomeMessage: values.welcomeMessage,
+        layout: values.layout,
+        spaces: {
+            home: values.showHome,
+            messages: values.showMessages,
+            tickets: values.showTickets,
+        },
         styleSettings: {
             ...bot.styleSettings,
             primaryColor: values.primaryColor,
@@ -96,7 +118,7 @@ export default function BotSettingsDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl grid-cols-1 md:grid-cols-2 p-0">
+      <DialogContent className="max-w-4xl grid-cols-1 md:grid-cols-2 p-0">
         {/* Form Section */}
         <div className="p-6 flex flex-col">
             <DialogHeader>
@@ -106,59 +128,103 @@ export default function BotSettingsDialog({
             </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} id="bot-settings-form" className="py-4 space-y-4 flex-1">
-                <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Bot Name</FormLabel>
-                    <FormControl>
-                        <Input placeholder="e.g., Support Bot" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                control={form.control}
-                name="welcomeMessage"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Welcome Message</FormLabel>
-                    <FormControl>
-                        <Textarea placeholder="Hi there! How can I help?" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                 <FormField
-                control={form.control}
-                name="primaryColor"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Primary Color</FormLabel>
-                    <FormControl>
-                        <div className="flex items-center gap-2">
-                             <Input {...field} className="w-28"/>
-                             <div className="flex gap-1">
-                                {COLOR_SWATCHES.map(color => (
-                                    <button 
-                                        key={color}
-                                        type="button"
-                                        onClick={() => form.setValue('primaryColor', color)}
-                                        className={cn("h-6 w-6 rounded-full border-2", field.value === color ? 'border-ring' : 'border-transparent')}
-                                        style={{ backgroundColor: color }}
-                                    />
-                                ))}
-                             </div>
-                        </div>
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
+            <form onSubmit={form.handleSubmit(onSubmit)} id="bot-settings-form" className="py-4 space-y-6 flex-1 overflow-y-auto pr-2">
+                
+                <div className="space-y-2">
+                    <Label>Layout</Label>
+                    <Controller
+                        control={form.control}
+                        name="layout"
+                        render={({ field }) => (
+                            <RadioGroup onValueChange={field.onChange} value={field.value} className="grid grid-cols-2 gap-4">
+                                <Card className={cn("p-4 flex flex-col items-center justify-center cursor-pointer", field.value === 'default' && 'ring-2 ring-primary')}>
+                                    <RadioGroupItem value="default" id="default" className="sr-only"/>
+                                    <Tv2 className="h-8 w-8 mb-2" />
+                                    <Label htmlFor="default">Default</Label>
+                                    <p className="text-xs text-muted-foreground">Larger view for a rich experience</p>
+                                </Card>
+                                <Card className={cn("p-4 flex flex-col items-center justify-center cursor-pointer", field.value === 'compact' && 'ring-2 ring-primary')}>
+                                    <RadioGroupItem value="compact" id="compact" className="sr-only"/>
+                                    <Layout className="h-8 w-8 mb-2" />
+                                    <Label htmlFor="compact">Compact</Label>
+                                    <p className="text-xs text-muted-foreground">Minimal view for a focused experience</p>
+                                </Card>
+                            </RadioGroup>
+                        )}
+                    />
+                </div>
+
+                 <div className="space-y-2">
+                    <Label>Spaces</Label>
+                    <Card className="p-2 space-y-1">
+                        <FormField
+                            control={form.control}
+                            name="showHome"
+                            render={({ field }) => (
+                                <FormItem className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
+                                    <div className="flex items-center gap-3">
+                                        <Home className="h-4 w-4" />
+                                        <FormLabel className="font-normal">Home</FormLabel>
+                                    </div>
+                                    <FormControl>
+                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="showMessages"
+                            render={({ field }) => (
+                                <FormItem className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
+                                    <div className="flex items-center gap-3">
+                                        <MessagesSquare className="h-4 w-4" />
+                                        <FormLabel className="font-normal">Messages</FormLabel>
+                                    </div>
+                                    <FormControl>
+                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="showTickets"
+                            render={({ field }) => (
+                                <FormItem className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
+                                    <div className="flex items-center gap-3">
+                                        <Ticket className="h-4 w-4" />
+                                        <FormLabel className="font-normal">Tickets</FormLabel>
+                                    </div>
+                                    <FormControl>
+                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                    </Card>
+                </div>
+                
+                 <Accordion type="single" collapsible defaultValue="welcome-message">
+                    <AccordionItem value="welcome-message">
+                        <AccordionTrigger>Set your welcome message</AccordionTrigger>
+                        <AccordionContent>
+                             <FormField
+                                control={form.control}
+                                name="welcomeMessage"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Welcome Message</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Hi there" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
             </form>
             </Form>
             <DialogFooter>
@@ -172,44 +238,42 @@ export default function BotSettingsDialog({
         </div>
 
         {/* Preview Section */}
-        <div className="bg-muted/50 p-6 flex flex-col items-center justify-center rounded-r-lg">
-             <div className="w-64 h-96 rounded-lg shadow-2xl bg-background flex flex-col overflow-hidden">
+        <div className="bg-muted/50 p-6 flex flex-col items-center justify-center rounded-r-lg relative overflow-hidden">
+             <div className="w-72 h-[500px] rounded-2xl shadow-2xl bg-background flex flex-col overflow-hidden">
                 {/* Header */}
                 <div 
-                    className="p-4 text-white flex items-center gap-3"
-                    style={{ backgroundColor: primaryColor }}
+                    className="p-4 text-white flex flex-col justify-between flex-[2_2_0%]"
+                    style={{ backgroundColor: watchedValues.primaryColor }}
                 >
-                    <Bot className="h-6 w-6" />
-                    <h3 className="font-bold">{form.getValues('name')}</h3>
+                    <div className="flex justify-between items-center">
+                        <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center text-sm font-bold">
+                            {getInitials(watchedValues.name)}
+                        </div>
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-bold">{watchedValues.welcomeMessage} 👋</h2>
+                        <h3 className="text-2xl font-bold">How can we help?</h3>
+                    </div>
                 </div>
                 {/* Body */}
-                <div className="p-4 flex-1 space-y-3">
-                    <div className="flex items-end gap-2">
-                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${primaryColor}33`}}>
-                            <Bot className="h-5 w-5" style={{ color: primaryColor }}/>
+                <div className="p-3 flex-1 bg-white dark:bg-background">
+                    <button className="w-full flex justify-between items-center p-3 bg-white dark:bg-card rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                        <div>
+                            <p className="font-semibold text-sm">Send us a message</p>
+                            <p className="text-xs text-muted-foreground">We'll reply as soon as we can</p>
                         </div>
-                        <div className="p-3 rounded-lg bg-muted max-w-[80%]">
-                            <p className="text-sm">{welcomeMessage || "Hi! How can I help?"}</p>
-                        </div>
-                    </div>
-                     <div className="flex justify-end">
-                        <div className="p-3 rounded-lg text-white max-w-[80%]" style={{ backgroundColor: primaryColor }}>
-                            <p className="text-sm">I have a question about my bill.</p>
-                        </div>
-                    </div>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </button>
                 </div>
                  {/* Footer */}
-                <div className="p-2 border-t">
-                    <div className="relative">
-                        <Input placeholder="Type a message..." readOnly/>
-                        <div 
-                            className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-md flex items-center justify-center text-white"
-                            style={{ backgroundColor: primaryColor }}
-                        >
-                            <MessageSquare className="h-4 w-4" />
-                        </div>
-                    </div>
+                <div className="p-2 border-t flex justify-around items-center">
+                    {watchedValues.showHome && <Button variant="ghost" size="sm"><Home className="mr-1" /> Home</Button>}
+                    {watchedValues.showMessages && <Button variant="ghost" size="sm"><MessageSquare className="mr-1" /> Messages</Button>}
+                    {watchedValues.showTickets && <Button variant="ghost" size="sm"><Ticket className="mr-1" /> Tickets</Button>}
                 </div>
+             </div>
+             <div className="absolute bottom-5 right-5 h-14 w-14 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: watchedValues.primaryColor }}>
+                 <MessageSquare className="h-7 w-7 text-white" />
              </div>
         </div>
       </DialogContent>

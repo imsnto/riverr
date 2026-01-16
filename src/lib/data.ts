@@ -301,6 +301,12 @@ export interface Bot {
   hubId: string;
   name: string;
   welcomeMessage?: string;
+  layout: 'default' | 'compact';
+  spaces: {
+    home: boolean;
+    messages: boolean;
+    tickets: boolean;
+  };
   styleSettings?: {
     primaryColor: string;
     avatarUrl: string;
@@ -437,3 +443,4 @@ export const phaseTemplates: PhaseTemplate[] = [];
 export const jobFlowTemplates: JobFlowTemplate[] = [];
 export const jobs: Job[] = [];
 export const jobFlowTasks: JobFlowTask[] = [];
+
