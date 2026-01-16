@@ -1,4 +1,3 @@
-
 // src/components/dashboard/AppSidebar.tsx
 "use client";
 
@@ -35,6 +34,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Label } from "../ui/label";
 
 interface SpaceSwitcherProps {
   spaces: Space[];
@@ -289,9 +289,15 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                     </p>
                   </div>
                   <Separator />
-                  <div className="space-y-2">
-                    <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />
-                    <HubSwitcher hubs={allHubs} activeHub={activeHub} onHubChange={onHubChange} />
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-[auto_1fr] items-center gap-x-4">
+                        <Label>Space</Label>
+                        <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />
+                    </div>
+                     <div className="grid grid-cols-[auto_1fr] items-center gap-x-4">
+                        <Label>Hub</Label>
+                        <HubSwitcher hubs={allHubs} activeHub={activeHub} onHubChange={onHubChange} />
+                    </div>
                   </div>
                 </div>
               </PopoverContent>
