@@ -69,7 +69,10 @@ export default function DocumentPage({ params }: DocumentPageProps) {
     }, [docId, appUser, userSpaces]);
 
     const handleSave = async (doc: Document) => {
+        // This function is passed to the editor to persist changes.
         await updateDocument(doc.id, doc);
+        // We update the state here to ensure the parent component is aware of the latest version,
+        // although the editor primarily manages its own state during an editing session.
         setDocument(doc);
     };
     

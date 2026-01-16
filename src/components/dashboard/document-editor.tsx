@@ -5,7 +5,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Document, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Bot, Trash2, MessageSquare, CheckCircle2, Loader2, Share2, Globe, Lock } from 'lucide-react';
+import { ArrowLeft, Bot, Trash2, MessageSquare, Loader2, Share2, Globe, Lock } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import TiptapEditor, { useEditor } from '@/components/document/TiptapEditor';
@@ -16,24 +16,6 @@ import { useRouter } from 'next/navigation';
 import { Editor } from '@tiptap/react';
 import NewDocumentDialog from './new-document-dialog';
 import { updateDocument } from '@/lib/db';
-
-// Debounce hook
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
 
 interface DocumentEditorProps {
   initialDocument: Document;
@@ -57,9 +39,9 @@ export default function DocumentEditor({
   const router = useRouter();
   const [editor, setEditor] = useState<Editor | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date>(new Date(initialDocument.updatedAt));
-
-  const debouncedDocument = useDebounce(document, 2000); // 2-second delay
+  const [lastSaved, setLastSaved] = useState<Date | null>(initialDocument.updatedAt ? new Date(initialDocument.updatedAt) : null);
+  
+  const hasUnsavedChanges = JSON.stringify(document) !== JSON.stringify(lastSavedDocument);
 
   const onEditorInstance = useCallback((editor: Editor) => {
     setEditor(editor);
@@ -68,25 +50,27 @@ export default function DocumentEditor({
   const handleSave = useCallback(async (docToSave: Document) => {
     if (!docToSave.name.trim()) {
       toast({ variant: 'destructive', title: 'Title is required' });
-      return;
+      return null;
     }
+    if (isSaving) return null;
+
     setIsSaving(true);
     const updatedDoc = { ...docToSave, updatedAt: new Date().toISOString() };
     await onSave(updatedDoc);
     setDocument(updatedDoc);
-    setLastSavedDocument(updatedDoc); // Update the last saved state
-    setIsSaving(false);
+    setLastSavedDocument(updatedDoc);
     setLastSaved(new Date(updatedDoc.updatedAt));
-  }, [onSave, toast]);
+    setIsSaving(false);
+    return updatedDoc;
+  }, [onSave, toast, isSaving]);
   
-  // Effect for autosaving content and title changes
-  useEffect(() => {
-    if (debouncedDocument && JSON.stringify(debouncedDocument) !== JSON.stringify(lastSavedDocument)) {
-      handleSave(debouncedDocument);
+  const handleManualSave = useCallback(async () => {
+    const savedDoc = await handleSave(document);
+    if(savedDoc) {
+      toast({ title: 'Document Saved' });
     }
-  }, [debouncedDocument, handleSave, lastSavedDocument]);
-
-
+  }, [document, handleSave, toast]);
+  
   const handleContentChange = (newContent: string) => {
     setDocument(prev => ({ ...prev, content: newContent }));
   }
@@ -111,19 +95,27 @@ export default function DocumentEditor({
       createdAt: new Date().toISOString()
     };
 
-    const updatedDoc = {
+    const updatedDocWithComment = {
         ...document,
         comments: [...(document.comments || []), newComment]
     };
     
-    await handleSave(updatedDoc);
+    // Optimistically update UI
+    setDocument(updatedDocWithComment);
+    
+    const savedDoc = await handleSave(updatedDocWithComment);
+    if (savedDoc) {
+        toast({ title: 'Comment posted and document saved' });
+    }
   };
 
   const handleSharingSave = async (sharingData: Partial<Document>) => {
       const updatedDoc = { ...document, ...sharingData };
-      await handleSave(updatedDoc);
-      setIsShareOpen(false);
-      toast({ title: 'Sharing settings updated' });
+      const savedDoc = await handleSave(updatedDoc);
+      if (savedDoc) {
+        setIsShareOpen(false);
+        toast({ title: 'Sharing settings updated' });
+      }
   };
   
   if (!appUser) return null;
@@ -145,24 +137,30 @@ export default function DocumentEditor({
         </div>
 
         <div className="flex items-center gap-4 mb-4 border-b pb-2">
-           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                {isSaving ? (
+            <Button size="sm" onClick={handleManualSave} disabled={!hasUnsavedChanges || isSaving}>
+                 {isSaving ? (
                     <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Saving...</span>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
                     </>
-                ) : (
-                    <>
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        <span>Saved at {lastSaved.toLocaleTimeString()}</span>
-                    </>
-                )}
-            </div>
+                 ) : hasUnsavedChanges ? (
+                    'Save Changes'
+                 ) : (
+                    'Saved'
+                 )}
+            </Button>
+            {!hasUnsavedChanges && lastSaved && (
+                <span className="text-xs text-muted-foreground">
+                    Last saved at {lastSaved.toLocaleTimeString()}
+                </span>
+            )}
+            
+            <Separator orientation="vertical" className="h-6 mx-2" />
             <Button size="sm" variant="outline" onClick={() => setIsShareOpen(true)}>
                 {document.isPublic ? <Globe className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
                 Share
             </Button>
-          <Button size="sm" variant="destructive" onClick={handleDelete}>
+            <Button size="sm" variant="destructive" onClick={handleDelete}>
             <Trash2 className="mr-2 h-4 w-4" /> Delete
           </Button>
           <Separator orientation="vertical" className="h-6 mx-2" />
