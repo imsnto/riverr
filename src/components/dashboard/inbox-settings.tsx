@@ -29,7 +29,7 @@ const initialMockBots: BotData[] = [
     welcomeMessage: 'Hi there',
     layout: 'default',
     spaces: {
-        home: true,
+        home: false,
         messages: true,
         tickets: true,
     },
@@ -45,8 +45,8 @@ const initialMockBots: BotData[] = [
     welcomeMessage: 'Hello!',
     layout: 'default',
     spaces: {
-        home: true,
-        messages: false,
+        home: false,
+        messages: true,
         tickets: false,
     },
     styleSettings: {
