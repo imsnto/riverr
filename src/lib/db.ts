@@ -872,16 +872,17 @@ export const updateDocument = async (
   data: Partial<Document>
 ): Promise<void> => {
   const docRef = doc(db, "documents", docId);
-  updateDoc(docRef, data)
-    .catch(async (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'update',
-        requestResourceData: data,
-      });
-
-      errorEmitter.emit('permission-error', permissionError);
-  });
+  try {
+    await updateDoc(docRef, data);
+  } catch (serverError) {
+    const permissionError = new FirestorePermissionError({
+      path: docRef.path,
+      operation: 'update',
+      requestResourceData: data,
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw serverError;
+  }
 };
 
 export const deleteDocument = async (docId: string): Promise<void> => {
@@ -911,16 +912,48 @@ export const getMessagesForConversations = async (conversationIds: string[]): Pr
 }
 
 export const addChatMessage = async (message: Omit<ChatMessage, 'id'>): Promise<ChatMessage> => {
-    const docRef = await addDoc(collection(db, 'chat_messages'), message);
-    return { ...message, id: docRef.id };
+    const collRef = collection(db, 'chat_messages');
+    try {
+        const docRef = await addDoc(collRef, message);
+        return { ...message, id: docRef.id };
+    } catch (serverError) {
+        const permissionError = new FirestorePermissionError({
+            path: collRef.path,
+            operation: 'create',
+            requestResourceData: message,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw serverError;
+    }
 }
 
 export const updateConversation = async (conversationId: string, data: Partial<Conversation>): Promise<void> => {
     const convRef = doc(db, 'conversations', conversationId);
-    await updateDoc(convRef, data);
+    try {
+        await updateDoc(convRef, data);
+    } catch (serverError) {
+        const permissionError = new FirestorePermissionError({
+            path: convRef.path,
+            operation: 'update',
+            requestResourceData: data,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw serverError;
+    }
 }
 
 export const addConversation = async (conversation: Omit<Conversation, 'id'>): Promise<Conversation> => {
-    const docRef = await addDoc(collection(db, 'conversations'), conversation);
-    return { ...conversation, id: docRef.id };
+    const collRef = collection(db, 'conversations');
+    try {
+        const docRef = await addDoc(collRef, conversation);
+        return { ...conversation, id: docRef.id };
+    } catch (serverError) {
+        const permissionError = new FirestorePermissionError({
+            path: collRef.path,
+            operation: 'create',
+            requestResourceData: conversation,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw serverError;
+    }
 }
