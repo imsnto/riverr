@@ -77,6 +77,7 @@ export default function BotSettingsDialog({
 }: BotSettingsDialogProps) {
   const [chatStarted, setChatStarted] = useState(false);
   const [previewMessage, setPreviewMessage] = useState('');
+  const [isPreviewMinimized, setIsPreviewMinimized] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<BotSettingsFormValues>({
@@ -126,6 +127,7 @@ export default function BotSettingsDialog({
       if (!isOpen) {
           setChatStarted(false);
           setPreviewMessage('');
+          setIsPreviewMinimized(false);
       }
   }, [isOpen]);
 
@@ -325,103 +327,118 @@ export default function BotSettingsDialog({
 
         {/* Preview Section */}
         <div className="bg-muted/50 p-6 flex flex-col items-center justify-center rounded-r-lg relative overflow-hidden">
-             <div className="w-80 h-[600px] text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: watchedValues.backgroundColor }}>
-                {/* Header */}
-                <div className="p-3 border-b flex items-center gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" disabled>
-                        <ChevronLeft className="h-5 w-5" />
-                    </Button>
-                     {watchedValues.logoUrl ? (
-                        <img src={watchedValues.logoUrl} alt="Bot Logo" className="h-6 w-6" />
-                    ) : (
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 text-white">
-                            <path d="M12 2L13.84 7.64L19.5 9.5L13.84 11.36L12 17L10.16 11.36L4.5 9.5L10.16 7.64L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-                            <path d="M12 2L13.84 7.64L19.5 9.5L13.84 11.36L12 17L10.16 11.36L4.5 9.5L10.16 7.64L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" transform="rotate(90 12 12)"/>
-                        </svg>
-                    )}
-                    <div>
-                        <h3 className="font-bold text-white">{watchedValues.name}</h3>
-                        <p className="text-xs text-zinc-400">We'll reply as soon as we can</p>
-                    </div>
-                    <div className="ml-auto flex items-center">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700">
-                            <MoreHorizontal className="h-5 w-5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => onOpenChange(false)}>
-                            <X className="h-5 w-5" />
-                        </Button>
-                    </div>
+            {isPreviewMinimized ? (
+                <div 
+                    className="absolute bottom-6 right-6 h-14 w-14 rounded-full flex items-center justify-center shadow-lg cursor-pointer"
+                    style={{ backgroundColor: watchedValues.primaryColor }}
+                    onClick={() => setIsPreviewMinimized(false)}
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 text-white">
+                        <path d="M12 2L13.84 7.64L19.5 9.5L13.84 11.36L12 17L10.16 11.36L4.5 9.5L10.16 7.64L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                        <path d="M12 2L13.84 7.64L19.5 9.5L13.84 11.36L12 17L10.16 11.36L4.5 9.5L10.16 7.64L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" transform="rotate(90 12 12)"/>
+                    </svg>
                 </div>
-                
-                {/* Body */}
-                <ScrollArea className="flex-1" ref={scrollAreaRef}>
-                    <div className="p-4 space-y-4">
-                         <div className="flex items-end gap-2">
-                             <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
-                                 <p className="text-sm whitespace-pre-wrap">{watchedValues.welcomeMessage}</p>
-                             </div>
-                         </div>
-                         <p className="text-xs text-zinc-500">Fin • AI Agent • Just now</p>
-
-                        {(messages.length === 0 && !chatStarted) ? (
-                            <div className="pt-2 space-y-2">
-                                {promptButtons.map((prompt, index) => (
-                                     <Button key={index} onClick={() => handlePromptClick(prompt)} variant="outline" className="w-full justify-center bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white rounded-md">
-                                        {prompt}
-                                    </Button>
-                                ))}
-                            </div>
+            ) : (
+             <>
+                <div className="w-80 h-[600px] text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: watchedValues.backgroundColor }}>
+                    {/* Header */}
+                    <div className="p-3 border-b flex items-center gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" disabled>
+                            <ChevronLeft className="h-5 w-5" />
+                        </Button>
+                        {watchedValues.logoUrl ? (
+                            <img src={watchedValues.logoUrl} alt="Bot Logo" className="h-6 w-6" />
                         ) : (
-                             messages.map(renderMessageBubble)
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 text-white">
+                                <path d="M12 2L13.84 7.64L19.5 9.5L13.84 11.36L12 17L10.16 11.36L4.5 9.5L10.16 7.64L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                                <path d="M12 2L13.84 7.64L19.5 9.5L13.84 11.36L12 17L10.16 11.36L4.5 9.5L10.16 7.64L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" transform="rotate(90 12 12)"/>
+                            </svg>
                         )}
+                        <div>
+                            <h3 className="font-bold text-white">{watchedValues.name}</h3>
+                            <p className="text-xs text-zinc-400">We'll reply as soon as we can</p>
+                        </div>
+                        <div className="ml-auto flex items-center">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700">
+                                <MoreHorizontal className="h-5 w-5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => onOpenChange(false)}>
+                                <X className="h-5 w-5" />
+                            </Button>
+                        </div>
                     </div>
-                </ScrollArea>
-                
-                {/* Footer */}
-                <div className="p-4 border-t shrink-0 space-y-3" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-                    {(chatStarted || messages.length > 0) ? (
-                        <div className="relative">
-                        <Textarea 
-                            placeholder="Message..."
-                            value={previewMessage}
-                            onChange={(e) => setPreviewMessage(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePreviewSend(); }}}
-                            minRows={1}
-                            className="bg-zinc-800 border-zinc-700 text-white pr-10"
-                        />
-                         <Button size="icon" variant="ghost" onClick={handlePreviewSend} disabled={!previewMessage.trim()} className="absolute right-1 bottom-1 h-8 w-8 hover:bg-zinc-700">
-                            <Send className="h-4 w-4" />
-                         </Button>
-                        </div>
-                    ) : (
-                         <div className="text-center">
-                            <Button className="w-full bg-zinc-800 hover:bg-zinc-700 text-white" onClick={() => setChatStarted(true)}>
-                                <MessageSquare className="h-4 w-4 mr-2" />
-                                Send us a message
-                            </Button>
-                        </div>
-                    )}
-                    <div className="flex justify-between items-center text-xs text-zinc-500">
-                        <div className="flex items-center gap-3">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => { if (!chatStarted) setChatStarted(true); }}>
-                                <Home className="h-5 w-5" />
-                            </Button>
-                             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => { if (!chatStarted) setChatStarted(true); }}>
-                                <MessageSquare className="h-5 w-5" />
-                            </Button>
-                            {watchedValues.showTickets && (
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => { if (!chatStarted) setChatStarted(true); }}>
-                                    <Ticket className="h-5 w-5" />
-                                </Button>
+                    
+                    {/* Body */}
+                    <ScrollArea className="flex-1" ref={scrollAreaRef}>
+                        <div className="p-4 space-y-4">
+                            <div className="flex items-end gap-2">
+                                <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
+                                    <p className="text-sm whitespace-pre-wrap">{watchedValues.welcomeMessage}</p>
+                                </div>
+                            </div>
+                            <p className="text-xs text-zinc-500">Fin • AI Agent • Just now</p>
+
+                            {(messages.length === 0 && !chatStarted) ? (
+                                <div className="pt-2 space-y-2">
+                                    {promptButtons.map((prompt, index) => (
+                                        <Button key={index} onClick={() => handlePromptClick(prompt)} variant="outline" className="w-full justify-center bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white rounded-md">
+                                            {prompt}
+                                        </Button>
+                                    ))}
+                                </div>
+                            ) : (
+                                messages.map(renderMessageBubble)
                             )}
                         </div>
-                        <a href="#" className="underline">We run on Intercom</a>
+                    </ScrollArea>
+                    
+                    {/* Footer */}
+                    <div className="p-4 border-t shrink-0 space-y-3" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                        {(chatStarted || messages.length > 0) ? (
+                            <div className="relative">
+                            <Textarea 
+                                placeholder="Message..."
+                                value={previewMessage}
+                                onChange={(e) => setPreviewMessage(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePreviewSend(); }}}
+                                minRows={1}
+                                className="bg-zinc-800 border-zinc-700 text-white pr-10"
+                            />
+                            <Button size="icon" variant="ghost" onClick={handlePreviewSend} disabled={!previewMessage.trim()} className="absolute right-1 bottom-1 h-8 w-8 hover:bg-zinc-700">
+                                <Send className="h-4 w-4" />
+                            </Button>
+                            </div>
+                        ) : (
+                            <div className="text-center">
+                                <Button className="w-full bg-zinc-800 hover:bg-zinc-700 text-white" onClick={() => setChatStarted(true)}>
+                                    <MessageSquare className="h-4 w-4 mr-2" />
+                                    Send us a message
+                                </Button>
+                            </div>
+                        )}
+                        <div className="flex justify-between items-center text-xs text-zinc-500">
+                            <div className="flex items-center gap-3">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => { if (!chatStarted) setChatStarted(true); }}>
+                                    <Home className="h-5 w-5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => { if (!chatStarted) setChatStarted(true); }}>
+                                    <MessageSquare className="h-5 w-5" />
+                                </Button>
+                                {watchedValues.showTickets && (
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => { if (!chatStarted) setChatStarted(true); }}>
+                                        <Ticket className="h-5 w-5" />
+                                    </Button>
+                                )}
+                            </div>
+                            <a href="#" className="underline">We run on Intercom</a>
+                        </div>
                     </div>
                 </div>
-             </div>
-             <div className="absolute bottom-6 right-6 h-14 w-14 rounded-full flex items-center justify-center shadow-lg cursor-pointer bg-white" onClick={() => onOpenChange(false)}>
-                <ChevronDown className="h-7 w-7 text-zinc-900" />
-            </div>
+                <div className="absolute bottom-6 right-6 h-14 w-14 rounded-full flex items-center justify-center shadow-lg cursor-pointer bg-white" onClick={() => setIsPreviewMinimized(true)}>
+                    <ChevronDown className="h-7 w-7 text-zinc-900" />
+                </div>
+             </>
+            )}
         </div>
       </DialogContent>
     </Dialog>
