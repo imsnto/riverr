@@ -65,13 +65,6 @@ const isUnread = (mention: any, lastRead: string | null) => {
 };
 
 
-// --- Inbox Data ---
-// We keep the preview user contact to allow the bot preview to work.
-const initialContacts: ChatContact[] = [
-    { id: 'preview-contact-1', name: 'Preview User', email: 'preview@example.com', avatarUrl: 'https://i.pravatar.cc/150?u=preview', companyName: 'Your Website', location: 'Cyberspace', lastSeen: 'now', sessions: 1, companyId: 'preview-co', companyUsers: 1, companyPlan: 'N/A', companySpend: '$0.00' },
-];
-
-
 export default function Dashboard({ view }: { view: string }) {
   const { appUser, signOut, activeSpace, userSpaces, setUserSpaces, setActiveSpace, activeHub, setActiveHub } = useAuth();
   const router = useRouter();
@@ -96,7 +89,7 @@ export default function Dashboard({ view }: { view: string }) {
   const [spaceHubs, setSpaceHubs] = useState<Hub[]>([]);
   
   // Inbox state
-  const [chatContacts, setChatContacts] = useState(initialContacts);
+  const [chatContacts, setChatContacts] = useState<ChatContact[]>([]);
   const [chatConversations, setChatConversations] = useState<Conversation[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
@@ -128,6 +121,15 @@ export default function Dashboard({ view }: { view: string }) {
         // Always fetch all users
         const fetchedUsers = await db.getAllUsers();
         setAllUsers(fetchedUsers);
+
+        // Add preview user if it doesn't exist
+        const previewContactId = 'preview-contact-1';
+        if (!chatContacts.some(c => c.id === previewContactId)) {
+          setChatContacts(prev => [
+            ...prev,
+            { id: previewContactId, name: 'Preview User', email: 'preview@example.com', avatarUrl: 'https://i.pravatar.cc/150?u=preview', companyName: 'Your Website', location: 'Cyberspace', lastSeen: 'now', sessions: 1, companyId: 'preview-co', companyUsers: 1, companyPlan: 'N/A', companySpend: '$0.00' },
+          ])
+        }
       
         // Fetch all spaces for the user to get all project IDs for time entries
         const allUserSpaces = await db.getSpacesForUser(appUser.id);
@@ -461,54 +463,71 @@ export default function Dashboard({ view }: { view: string }) {
   const handleSendMessageFromBotPreview = (content: string) => {
     const previewContactId = 'preview-contact-1';
     const timestamp = new Date().toISOString();
-
-    let conversationId: string;
-    let isNewConversation = false;
-
-    // Find if a conversation already exists
-    const existingConversation = chatConversations.find(c => c.contactId === previewContactId);
-
-    if (existingConversation) {
-      conversationId = existingConversation.id;
-    } else {
-      conversationId = `conv-${timestamp}`;
-      isNewConversation = true;
-    }
-
-    // Create the new message
-    const newMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      conversationId: conversationId,
-      authorId: previewContactId,
-      type: 'message',
-      content: content,
-      timestamp: timestamp,
-    };
-
-    // Update messages state
-    setChatMessages(prevMsgs => [...prevMsgs, newMessage]);
-
-    // Update conversations state
-    if (isNewConversation) {
-      const newConversation: Conversation = {
-        id: conversationId,
-        contactId: previewContactId,
-        assigneeId: null,
-        status: 'unassigned',
-        lastMessage: content,
-        lastMessageAt: timestamp,
-        lastMessageAuthor: 'Preview User',
+  
+    setChatConversations(prevConvos => {
+      const existingConversationIndex = prevConvos.findIndex(c => c.contactId === previewContactId);
+      
+      let conversationId: string;
+      let updatedConversations: Conversation[];
+  
+      if (existingConversationIndex !== -1) {
+        // Conversation exists, update it
+        const existingConversation = prevConvos[existingConversationIndex];
+        conversationId = existingConversation.id;
+        const updatedConversation: Conversation = {
+          ...existingConversation,
+          lastMessage: content,
+          lastMessageAt: timestamp,
+          lastMessageAuthor: 'Preview User',
+          status: 'unassigned', // New message makes it unassigned
+        };
+        updatedConversations = [...prevConvos];
+        updatedConversations[existingConversationIndex] = updatedConversation;
+      } else {
+        // New conversation, create it
+        conversationId = `conv-${timestamp}`;
+        const newConversation: Conversation = {
+          id: conversationId,
+          contactId: previewContactId,
+          assigneeId: null,
+          status: 'unassigned',
+          lastMessage: content,
+          lastMessageAt: timestamp,
+          lastMessageAuthor: 'Preview User',
+        };
+        updatedConversations = [newConversation, ...prevConvos];
+      }
+  
+      // Create the new message
+      const newMessage: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        conversationId: conversationId,
+        authorId: previewContactId,
+        type: 'message',
+        content: content,
+        timestamp: timestamp,
       };
-      setChatConversations(prevConvos => [newConversation, ...prevConvos]);
-    } else {
-      setChatConversations(prevConvos =>
-        prevConvos.map(c =>
-          c.id === conversationId
-            ? { ...c, lastMessage: content, lastMessageAt: timestamp, lastMessageAuthor: 'Preview User' }
-            : c
-        )
-      );
-    }
+      
+      // Update messages state
+      setChatMessages(prevMsgs => [...prevMsgs, newMessage]);
+  
+      return updatedConversations;
+    });
+  };
+
+  const handleAssignConversation = (conversationId: string, assigneeId: string | null) => {
+    setChatConversations(prev =>
+      prev.map(convo => {
+        if (convo.id === conversationId) {
+          return {
+            ...convo,
+            assigneeId: assigneeId,
+            status: assigneeId ? 'open' : 'unassigned',
+          };
+        }
+        return convo;
+      })
+    );
   };
 
 
@@ -595,6 +614,7 @@ export default function Dashboard({ view }: { view: string }) {
                             conversations={chatConversations}
                             messages={chatMessages}
                             onSendMessage={handleSendMessageFromAgent}
+                            onAssignConversation={handleAssignConversation}
                          />;
       case 'mentions': return <div className="p-8"><MentionsThreadList {...props} mentions={unreadMentions} onClose={() => {}} onOpenThread={() => {}} /></div>;
       case 'all-threads': return <div className="p-8"><AllThreadsView {...props} isThreadUnread={() => false} /></div>;

@@ -15,6 +15,7 @@ interface InboxLayoutProps {
   conversations: Conversation[];
   messages: ChatMessage[];
   onSendMessage: (conversationId: string, content: string, type: 'reply' | 'note') => void;
+  onAssignConversation: (conversationId: string, assigneeId: string | null) => void;
 }
 
 export default function InboxLayout({
@@ -24,6 +25,7 @@ export default function InboxLayout({
   conversations,
   messages,
   onSendMessage,
+  onAssignConversation,
 }: InboxLayoutProps) {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(conversations.length > 0 ? conversations[0].id : null);
   const [isContactPanelOpen, setIsContactPanelOpen] = useState(true);
@@ -45,6 +47,7 @@ export default function InboxLayout({
         contacts={contacts}
         selectedConversationId={selectedConversationId}
         onSelectConversation={setSelectedConversationId}
+        appUser={appUser}
       />
       <InboxConversationView
         conversation={selectedConversation}
@@ -55,6 +58,7 @@ export default function InboxLayout({
         isContactPanelOpen={isContactPanelOpen}
         onToggleContactPanel={() => setIsContactPanelOpen(prev => !prev)}
         onSendMessage={handleAgentSendMessage}
+        onAssignConversation={onAssignConversation}
       />
       {isContactPanelOpen && (
         <InboxContactPanel 

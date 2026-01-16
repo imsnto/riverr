@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
 import { PanelLeftClose } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 interface InboxConversationViewProps {
   conversation: Conversation | null;
@@ -22,6 +23,7 @@ interface InboxConversationViewProps {
   isContactPanelOpen: boolean;
   onToggleContactPanel: () => void;
   onSendMessage: (conversationId: string, message: Omit<ChatMessage, 'id' | 'conversationId'>) => void;
+  onAssignConversation: (conversationId: string, assigneeId: string | null) => void;
 }
 
 const getInitials = (name: string) => {
@@ -30,7 +32,7 @@ const getInitials = (name: string) => {
 }
 
 
-export default function InboxConversationView({ conversation, messages, contact, users, appUser, isContactPanelOpen, onToggleContactPanel, onSendMessage }: InboxConversationViewProps) {
+export default function InboxConversationView({ conversation, messages, contact, users, appUser, isContactPanelOpen, onToggleContactPanel, onSendMessage, onAssignConversation }: InboxConversationViewProps) {
   const [activeTab, setActiveTab] = useState<'reply' | 'note'>('reply');
   const [messageText, setMessageText] = useState('');
   
@@ -55,6 +57,10 @@ export default function InboxConversationView({ conversation, messages, contact,
     onSendMessage(conversation.id, newMessage);
     setMessageText('');
   }
+
+  const handleAssign = (userId: string | null) => {
+    onAssignConversation(conversation.id, userId);
+  };
 
   const assignee = users.find(u => u.id === conversation.assigneeId);
   const conversationMessages = messages.filter(m => m.conversationId === conversation.id);
@@ -166,7 +172,20 @@ export default function InboxConversationView({ conversation, messages, contact,
         </Tabs>
         <div className="flex justify-between items-center mt-2">
             <div>
-                 <Button variant="outline" size="sm">Assign</Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                         <Button variant="outline" size="sm">Assign</Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onSelect={() => handleAssign(null)}>Unassigned</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {users.map(user => (
+                            <DropdownMenuItem key={user.id} onSelect={() => handleAssign(user.id)}>
+                                {user.name}
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
             <div className="flex gap-2">
                 <Button variant="ghost" size="sm">Close</Button>

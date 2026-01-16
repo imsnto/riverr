@@ -1,8 +1,8 @@
 
 'use client';
 
-import React from 'react';
-import { Conversation, ChatContact } from '@/lib/data';
+import React, { useMemo, useState } from 'react';
+import { Conversation, ChatContact, User } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ interface InboxSidebarProps {
   contacts: ChatContact[];
   selectedConversationId: string | null;
   onSelectConversation: (id: string) => void;
+  appUser: User;
 }
 
 const getInitials = (name: string) => {
@@ -32,15 +33,42 @@ export default function InboxConversationList({
   contacts,
   selectedConversationId,
   onSelectConversation,
+  appUser,
 }: InboxSidebarProps) {
+    const [filter, setFilter] = useState<'me' | 'unassigned' | 'all'>('unassigned');
+
+    const filteredConversations = useMemo(() => {
+        switch (filter) {
+            case 'me':
+                return conversations.filter(c => c.assigneeId === appUser.id);
+            case 'unassigned':
+                return conversations.filter(c => c.assigneeId === null);
+            case 'all':
+            default:
+                return conversations;
+        }
+    }, [conversations, filter, appUser.id]);
+
+    const counts = useMemo(() => ({
+        me: conversations.filter(c => c.assigneeId === appUser.id).length,
+        unassigned: conversations.filter(c => c.assigneeId === null).length,
+        all: conversations.length,
+    }), [conversations, appUser.id]);
+
   return (
     <div className="flex flex-col h-full border-r bg-card">
       <div className="p-4 border-b shrink-0">
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-                <Button variant="ghost" className="font-bold">Me (9)</Button>
-                <Button variant="ghost" className="text-muted-foreground">Unassigned (72)</Button>
-                <Button variant="ghost" className="text-muted-foreground">All (315)</Button>
+                <Button variant={filter === 'me' ? 'secondary' : 'ghost'} onClick={() => setFilter('me')}>
+                    Me ({counts.me})
+                </Button>
+                <Button variant={filter === 'unassigned' ? 'secondary' : 'ghost'} onClick={() => setFilter('unassigned')}>
+                    Unassigned ({counts.unassigned})
+                </Button>
+                <Button variant={filter === 'all' ? 'secondary' : 'ghost'} onClick={() => setFilter('all')}>
+                    All ({counts.all})
+                </Button>
             </div>
             <div className="relative">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -69,7 +97,7 @@ export default function InboxConversationList({
         </DropdownMenu>
       </div>
       <ScrollArea className="flex-1">
-        {conversations.map(convo => {
+        {filteredConversations.map(convo => {
           const contact = contacts.find(c => c.id === convo.contactId);
           if (!contact) return null;
           const isSelected = selectedConversationId === convo.id;
