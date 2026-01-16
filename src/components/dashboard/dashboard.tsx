@@ -635,7 +635,7 @@ export default function Dashboard({ view }: { view: string }) {
       );
       case 'mytasks': return <div className="p-8"><MyTasksView {...props} /></div>;
       case 'documents': return <DocumentsView {...props} />;
-      case 'settings': return <div className="p-8"><SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview} chatMessages={chatMessages} chatContacts={chatContacts} chatConversations={chatConversations} bots={bots} onBotUpdate={handleBotUpdate} onBotAdd={handleBotAdd} /></div>;
+      case 'settings': return <SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview} chatMessages={chatMessages} chatContacts={chatContacts} chatConversations={chatConversations} bots={bots} onBotUpdate={handleBotUpdate} onBotAdd={handleBotAdd} />;
       case 'team-timesheets': return <TeamTimesheets {...props} />;
       case 'messages': return <MessagesLayout {...messagesProps} />;
       case 'inbox': return <InboxLayout 
@@ -691,7 +691,7 @@ export default function Dashboard({ view }: { view: string }) {
           )}
           <main className={cn(
             "flex-1",
-            currentView === 'inbox' || currentView === 'messages' || currentView === 'tasks'
+            currentView === 'inbox' || currentView === 'messages' || currentView === 'tasks' || currentView === 'settings'
               ? 'overflow-hidden'
               : 'overflow-y-auto'
           )}>

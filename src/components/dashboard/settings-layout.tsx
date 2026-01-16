@@ -119,26 +119,26 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
   };
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-8">Settings</h1>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-        <aside className="md:col-span-1">
-          <nav className="flex flex-col space-y-2">
-            {navItems.map((item) => (
-              <Button
-                key={item.key}
-                variant={activeView === item.key ? 'secondary' : 'ghost'}
-                onClick={() => setActiveView(item.key as SettingsView)}
-                className="justify-start"
-                disabled={item.disabled}
-              >
-                {item.label}
-              </Button>
-            ))}
-          </nav>
-        </aside>
-        <main className="md:col-span-3">{renderContent()}</main>
-      </div>
+    <div className="flex flex-row h-full">
+      <aside className="w-64 border-r bg-card p-4">
+        <h2 className="text-xl font-bold mb-4">Settings</h2>
+        <nav className="flex flex-col space-y-2">
+          {navItems.map((item) => (
+            <Button
+              key={item.key}
+              variant={activeView === item.key ? 'secondary' : 'ghost'}
+              onClick={() => setActiveView(item.key as SettingsView)}
+              className="justify-start"
+              disabled={item.disabled}
+            >
+              {item.label}
+            </Button>
+          ))}
+        </nav>
+      </aside>
+      <main className="flex-1 p-8 overflow-y-auto">
+        {renderContent()}
+      </main>
     </div>
   );
 }
