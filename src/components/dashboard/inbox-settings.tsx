@@ -18,7 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Bot as BotData } from '@/lib/data';
+import { Bot as BotData, ChatContact, ChatMessage, Conversation, User } from '@/lib/data';
 import BotSettingsDialog from './bot-settings-dialog';
 
 const initialMockBots: BotData[] = [
@@ -58,9 +58,21 @@ const initialMockBots: BotData[] = [
 
 interface InboxSettingsProps {
   onSendMessageFromBotPreview: (content: string) => void;
+  chatMessages: ChatMessage[];
+  chatContacts: ChatContact[];
+  chatConversations: Conversation[];
+  allUsers: User[];
+  appUser: User | null;
 }
 
-export default function InboxSettings({ onSendMessageFromBotPreview }: InboxSettingsProps) {
+export default function InboxSettings({ 
+    onSendMessageFromBotPreview,
+    chatMessages,
+    chatContacts,
+    chatConversations,
+    allUsers,
+    appUser 
+}: InboxSettingsProps) {
   const [bots, setBots] = useState<BotData[]>(initialMockBots);
   const [selectedBot, setSelectedBot] = useState<BotData | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -73,6 +85,10 @@ export default function InboxSettings({ onSendMessageFromBotPreview }: InboxSett
   const handleSaveBot = (updatedBot: BotData) => {
     setBots(bots.map(b => b.id === updatedBot.id ? updatedBot : b));
   };
+
+  const previewContact = chatContacts.find(c => c.id === 'preview-contact-1');
+  const previewConversation = chatConversations.find(c => c.contactId === previewContact?.id);
+  const previewMessages = previewConversation ? chatMessages.filter(m => m.conversationId === previewConversation.id) : [];
 
 
   return (
@@ -164,6 +180,10 @@ export default function InboxSettings({ onSendMessageFromBotPreview }: InboxSett
             bot={selectedBot}
             onSave={handleSaveBot}
             onSendMessage={onSendMessageFromBotPreview}
+            messages={previewMessages}
+            contact={previewContact || null}
+            appUser={appUser}
+            allUsers={allUsers}
         />
       )}
     </>

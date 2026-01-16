@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
@@ -24,15 +24,17 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Bot as BotData } from '@/lib/data';
+import { Bot as BotData, ChatContact, ChatMessage, User } from '@/lib/data';
 import { Bot, MessageSquare, Home, Ticket, ChevronRight, Layout, MessagesSquare, Tv2, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Card } from '../ui/card';
 import { Switch } from '../ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Textarea } from '../ui/textarea';
+import { ScrollArea } from '../ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+
 
 const botSettingsSchema = z.object({
   name: z.string().min(1, 'Bot name is required.'),
@@ -49,6 +51,10 @@ interface BotSettingsDialogProps {
   bot: BotData | null;
   onSave: (botData: BotData) => void;
   onSendMessage: (content: string) => void;
+  messages: ChatMessage[];
+  contact: ChatContact | null;
+  appUser: User | null;
+  allUsers: User[];
 }
 
 const getInitials = (name?: string) => {
@@ -62,10 +68,14 @@ export default function BotSettingsDialog({
   bot,
   onSave,
   onSendMessage,
+  messages,
+  contact,
+  appUser,
+  allUsers,
 }: BotSettingsDialogProps) {
-  const { toast } = useToast();
   const [isPreviewChatOpen, setIsPreviewChatOpen] = useState(false);
   const [previewMessage, setPreviewMessage] = useState('');
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<BotSettingsFormValues>({
     resolver: zodResolver(botSettingsSchema),
@@ -78,6 +88,16 @@ export default function BotSettingsDialog({
   });
   
   const watchedValues = form.watch();
+
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
+    }
+  }, [messages]);
+
 
   useEffect(() => {
     if (bot) {
@@ -117,7 +137,6 @@ export default function BotSettingsDialog({
         }
     };
     onSave(updatedBot);
-    toast({ title: 'Bot settings saved!' });
     onOpenChange(false);
   };
   
@@ -125,11 +144,27 @@ export default function BotSettingsDialog({
     if (!previewMessage.trim()) return;
     onSendMessage(previewMessage);
     setPreviewMessage('');
-    toast({
-        title: "Message Sent!",
-        description: "Your message was sent to the inbox."
-    });
   }
+
+  const renderMessageBubble = (msg: ChatMessage) => {
+    if (msg.type !== 'message' || !contact) {
+        return null;
+    }
+    
+    // In preview, all messages are from the contact
+    return (
+      <div key={msg.id} className="flex items-start gap-3">
+        <Avatar className="h-8 w-8">
+            <AvatarImage src={contact.avatarUrl} />
+            <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
+        </Avatar>
+        <div className={cn("rounded-lg p-3 max-w-xs", "bg-card border")}>
+          <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+        </div>
+      </div>
+    );
+  };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -257,9 +292,12 @@ export default function BotSettingsDialog({
                         </div>
                     </div>
                     {/* Chat Body */}
-                    <div className="flex-1 p-3 bg-white dark:bg-background overflow-y-auto">
-                        <p className="text-xs text-center text-muted-foreground p-2">This is a preview. Your messages will be sent to your inbox.</p>
-                    </div>
+                    <ScrollArea className="flex-1 bg-white dark:bg-background" ref={scrollAreaRef}>
+                        <div className="p-3 space-y-4">
+                            <p className="text-xs text-center text-muted-foreground p-2">This is a preview. Your messages will be sent to your inbox.</p>
+                            {messages.map(renderMessageBubble)}
+                        </div>
+                    </ScrollArea>
                     {/* Chat Composer */}
                     <div className="p-2 border-t bg-background flex-shrink-0">
                         <Textarea 

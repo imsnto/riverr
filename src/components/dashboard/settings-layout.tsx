@@ -17,6 +17,9 @@ import {
   Task,
   TimeEntry,
   Hub,
+  ChatContact,
+  Conversation,
+  ChatMessage,
 } from '@/lib/data';
 import InboxSettings from './inbox-settings';
 
@@ -36,6 +39,9 @@ interface SettingsLayoutProps {
   activeHub: Hub | null;
   onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
   onSendMessageFromBotPreview: (content: string) => void;
+  chatMessages: ChatMessage[];
+  chatContacts: ChatContact[];
+  chatConversations: Conversation[];
 }
 
 export default function SettingsLayout(props: SettingsLayoutProps) {
@@ -81,7 +87,14 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
           />
         );
        case 'inbox':
-        return <InboxSettings onSendMessageFromBotPreview={props.onSendMessageFromBotPreview} />;
+        return <InboxSettings 
+            onSendMessageFromBotPreview={props.onSendMessageFromBotPreview}
+            chatMessages={props.chatMessages}
+            chatContacts={props.chatContacts}
+            chatConversations={props.chatConversations}
+            allUsers={props.allUsers}
+            appUser={props.appUser}
+         />;
       case 'timesheets':
         return (
           <TeamTimesheets

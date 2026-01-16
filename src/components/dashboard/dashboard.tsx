@@ -586,7 +586,7 @@ export default function Dashboard({ view }: { view: string }) {
       );
       case 'mytasks': return <div className="p-8"><MyTasksView {...props} /></div>;
       case 'documents': return <DocumentsView {...props} />;
-      case 'settings': return <div className="p-8"><SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview}/></div>;
+      case 'settings': return <div className="p-8"><SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview} chatMessages={chatMessages} chatContacts={chatContacts} chatConversations={chatConversations} /></div>;
       case 'team-timesheets': return <TeamTimesheets {...props} />;
       case 'messages': return <MessagesLayout {...messagesProps} />;
       case 'inbox': return <InboxLayout 
