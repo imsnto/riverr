@@ -634,7 +634,7 @@ export default function Dashboard({ view }: { view: string }) {
         />
       );
       case 'mytasks': return <div className="p-8"><MyTasksView {...props} /></div>;
-      case 'documents': return <DocumentsView {...props} />;
+      case 'documents': return <DocumentsView activeSpace={activeSpace} appUser={appUser} allUsers={allUsers} activeHub={activeHub} />;
       case 'settings': return <SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview} chatMessages={chatMessages} chatContacts={chatContacts} chatConversations={chatConversations} bots={bots} onBotUpdate={handleBotUpdate} onBotAdd={handleBotAdd} />;
       case 'team-timesheets': return <TeamTimesheets {...props} />;
       case 'messages': return <MessagesLayout {...messagesProps} />;

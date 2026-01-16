@@ -1,13 +1,13 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { Document, User, Space } from '@/lib/data';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Document, User, Space, Hub } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, FileText, Search, Users, Globe } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { addDocument } from '@/lib/db';
+import { addDocument, getDocumentsInHub } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import NewDocumentDialog from './new-document-dialog';
@@ -16,10 +16,10 @@ import { Tooltip, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { TooltipContent } from '@radix-ui/react-tooltip';
 
 interface DocumentsViewProps {
-  documents: Document[];
   activeSpace: Space;
   appUser: User;
   allUsers: User[];
+  activeHub: Hub;
 }
 
 const getInitials = (name: string) => {
@@ -27,11 +27,21 @@ const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
 };
 
-export default function DocumentsView({ documents, activeSpace, appUser, allUsers }: DocumentsViewProps) {
+export default function DocumentsView({ activeSpace, appUser, allUsers, activeHub }: DocumentsViewProps) {
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isNewDocDialogOpen, setIsNewDocDialogOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  
+  useEffect(() => {
+    if (activeHub) {
+      getDocumentsInHub(activeHub.id).then(fetchedDocs => {
+        setDocuments(fetchedDocs);
+      });
+    }
+  }, [activeHub]);
+
 
   const filteredDocuments = useMemo(() => {
     return documents.filter(doc => 
