@@ -1,4 +1,5 @@
 
+
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -581,13 +582,16 @@ export default function Dashboard({ view }: { view: string }) {
       setBots(prev => [...prev, newBot]);
   }
   
-  const handleSaveArticle = async (article: HelpCenterArticle) => {
-    if (article.id) {
+  const handleSaveArticle = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle> => {
+    if ('id' in article && article.id) {
         await db.updateHelpCenterArticle(article.id, article);
-        setHelpCenterArticles(prev => prev.map(a => a.id === article.id ? article : a));
+        const updatedArticle = article as HelpCenterArticle;
+        setHelpCenterArticles(prev => prev.map(a => a.id === updatedArticle.id ? updatedArticle : a));
+        return updatedArticle;
     } else {
         const newArticle = await db.addHelpCenterArticle(article as Omit<HelpCenterArticle, 'id'>);
         setHelpCenterArticles(prev => [...prev, newArticle]);
+        return newArticle;
     }
   }
 

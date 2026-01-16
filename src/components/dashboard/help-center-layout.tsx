@@ -12,7 +12,7 @@ interface HelpCenterLayoutProps {
     collections: HelpCenterCollection[];
     articles: HelpCenterArticle[];
     allUsers: User[];
-    onSaveArticle: (article: HelpCenterArticle) => void;
+    onSaveArticle: (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => Promise<HelpCenterArticle | void>;
 }
 
 export default function HelpCenterLayout({ helpCenters, collections, articles, allUsers, onSaveArticle }: HelpCenterLayoutProps) {
@@ -40,8 +40,8 @@ export default function HelpCenterLayout({ helpCenters, collections, articles, a
 
     const handleCreateArticle = async () => {
       if (!appUser || !activeHelpCenter) return;
-      const newArticle: Omit<HelpCenterArticle, 'id'> = {
-        title: 'New Article',
+      const newArticleData: Omit<HelpCenterArticle, 'id'> = {
+        title: 'New Untitled Article',
         content: '<h1>Start writing...</h1>',
         status: 'draft',
         collectionIds: [],
@@ -50,9 +50,11 @@ export default function HelpCenterLayout({ helpCenters, collections, articles, a
         updatedAt: new Date().toISOString(),
         helpCenterId: activeHelpCenter.id,
       };
-      // In a real app, you'd save this and get an ID, then set it.
-      // For now, we'll just log it.
-      console.log("Creating new article", newArticle);
+      
+      const newArticle = await onSaveArticle(newArticleData);
+      if (newArticle) {
+        setSelectedArticleId(newArticle.id);
+      }
     };
 
     return (
@@ -73,10 +75,12 @@ export default function HelpCenterLayout({ helpCenters, collections, articles, a
                         appUser={appUser!}
                      />
                 ) : (
-                    <div className="text-center">
-                        <h2 className="text-2xl font-semibold">No Articles Yet</h2>
-                        <p className="text-muted-foreground">Create your first article to get started.</p>
-                        <Button onClick={handleCreateArticle} className="mt-4">New Article</Button>
+                    <div className="flex h-full items-center justify-center text-center">
+                        <div>
+                            <h2 className="text-2xl font-semibold">No Articles Yet</h2>
+                            <p className="text-muted-foreground">Create your first article to get started.</p>
+                            <Button onClick={handleCreateArticle} className="mt-4">New Article</Button>
+                        </div>
                     </div>
                 )}
             </main>
