@@ -1,4 +1,3 @@
-
 // src/components/dashboard/settings-layout.tsx
 'use client';
 
@@ -18,8 +17,9 @@ import {
   TimeEntry,
   Hub,
 } from '@/lib/data';
+import InboxSettings from './inbox-settings';
 
-type SettingsView = 'users' | 'spaces' | 'hub' | 'timesheets';
+type SettingsView = 'users' | 'spaces' | 'hub' | 'inbox' | 'timesheets';
 
 interface SettingsLayoutProps {
   allUsers: User[];
@@ -39,10 +39,13 @@ interface SettingsLayoutProps {
 export default function SettingsLayout(props: SettingsLayoutProps) {
   const [activeView, setActiveView] = useState<SettingsView>('users');
 
+  const hubHasInbox = props.activeHub?.settings?.components?.includes('inbox');
+
   const navItems = [
     { key: 'users', label: 'Users & Permissions' },
     { key: 'spaces', label: 'Spaces' },
     { key: 'hub', label: 'Hub Settings', disabled: !props.activeHub },
+    { key: 'inbox', label: 'Inbox', disabled: !hubHasInbox },
     { key: 'timesheets', label: 'Timesheets' },
   ];
 
@@ -75,6 +78,8 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             allUsers={props.allUsers}
           />
         );
+       case 'inbox':
+        return <InboxSettings />;
       case 'timesheets':
         return (
           <TeamTimesheets
