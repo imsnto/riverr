@@ -56,6 +56,9 @@ import {
   Hub,
   hubs,
   Status,
+  Conversation,
+  ChatMessage,
+  ChatContact,
 } from "./data";
 import { randomBytes } from "crypto";
 import { FirestorePermissionError } from "./errors";
@@ -884,3 +887,40 @@ export const updateDocument = async (
 export const deleteDocument = async (docId: string): Promise<void> => {
   await deleteDoc(doc(db, "documents", docId));
 };
+
+// --- Inbox / Chat Management ---
+export const getConversationsForHub = async (hubId: string): Promise<Conversation[]> => {
+    const q = query(collection(db, 'conversations'), where('hubId', '==', hubId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
+};
+
+export const getMessagesForConversations = async (conversationIds: string[]): Promise<ChatMessage[]> => {
+    if (conversationIds.length === 0) return [];
+    const messages: ChatMessage[] = [];
+    // Firestore 'in' query is limited to 30 items
+    for (let i = 0; i < conversationIds.length; i+=30) {
+        const chunk = conversationIds.slice(i, i + 30);
+        const q = query(collection(db, 'chat_messages'), where('conversationId', 'in', chunk));
+        const snapshot = await getDocs(q);
+        snapshot.forEach(doc => {
+            messages.push({ id: doc.id, ...doc.data() } as ChatMessage);
+        });
+    }
+    return messages;
+}
+
+export const addChatMessage = async (message: Omit<ChatMessage, 'id'>): Promise<ChatMessage> => {
+    const docRef = await addDoc(collection(db, 'chat_messages'), message);
+    return { ...message, id: docRef.id };
+}
+
+export const updateConversation = async (conversationId: string, data: Partial<Conversation>): Promise<void> => {
+    const convRef = doc(db, 'conversations', conversationId);
+    await updateDoc(convRef, data);
+}
+
+export const addConversation = async (conversation: Omit<Conversation, 'id'>): Promise<Conversation> => {
+    const docRef = await addDoc(collection(db, 'conversations'), conversation);
+    return { ...conversation, id: docRef.id };
+}

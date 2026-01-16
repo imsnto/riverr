@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -115,10 +116,10 @@ service cloud.firestore {
     
     match /conversations/{conversationId} {
       allow read, write: if isAuthenticated();
-      
-      match /messages/{messageId} {
-        allow read, write: if isAuthenticated();
-      }
+    }
+    
+    match /chat_messages/{messageId} {
+      allow read, write: if isAuthenticated();
     }
   }
 }

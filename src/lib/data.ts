@@ -332,6 +332,7 @@ export interface ChatContact {
 
 export interface Conversation {
   id: string;
+  hubId: string;
   contactId: string;
   assigneeId: string | null;
   status: 'open' | 'unassigned' | 'closed';
@@ -445,3 +446,4 @@ export const phaseTemplates: PhaseTemplate[] = [];
 export const jobFlowTemplates: JobFlowTemplate[] = [];
 export const jobs: Job[] = [];
 export const jobFlowTasks: JobFlowTask[] = [];
+

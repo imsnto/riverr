@@ -158,6 +158,7 @@ export default function Dashboard({ view }: { view: string }) {
             fetchedJobFlowTasks,
             fetchedChannels,
             fetchedHubs,
+            fetchedConversations,
           ] = await Promise.all([
             db.getProjectsInHub(activeHub.id),
             db.getAllTasks(activeHub.id),
@@ -170,6 +171,7 @@ export default function Dashboard({ view }: { view: string }) {
             db.getAllJobFlowTasks(activeHub.id),
             db.getChannelsInHub(activeHub.id),
             db.getHubsForSpace(activeSpace.id),
+            db.getConversationsForHub(activeHub.id),
           ]);
           
           setProjects(fetchedProjects);
@@ -190,6 +192,7 @@ export default function Dashboard({ view }: { view: string }) {
           setJobFlowTasks(fetchedJobFlowTasks);
           setChannels(fetchedChannels);
           setSpaceHubs(fetchedHubs);
+          setChatConversations(fetchedConversations);
       
           if (fetchedChannels.length > 0 && !activeChannelId) {
             setActiveChannelId(fetchedChannels[0].id);
@@ -200,6 +203,14 @@ export default function Dashboard({ view }: { view: string }) {
             fetchedChannels.map(channel => db.getMessagesInChannel(channel.id))
           ).then(results => results.flat());
           setMessages(allMessages);
+
+           if (fetchedConversations.length > 0) {
+              const convoIds = fetchedConversations.map(c => c.id);
+              const fetchedMessages = await db.getMessagesForConversations(convoIds);
+              setChatMessages(fetchedMessages);
+          } else {
+              setChatMessages([]);
+          }
         }
   };
 
@@ -435,15 +446,24 @@ export default function Dashboard({ view }: { view: string }) {
     }
   };
   
-  const handleSendMessageFromAgent = (conversationId: string, messageContent: string, type: 'reply' | 'note') => {
-    const newMessage: ChatMessage = {
-      id: `msg-${Date.now()}-${Math.random()}`,
+  const handleSendMessageFromAgent = async (conversationId: string, messageContent: string, type: 'reply' | 'note') => {
+    if (!appUser) return;
+    const newMessageData: Omit<ChatMessage, 'id'> = {
       conversationId: conversationId,
       authorId: appUser.id,
       type: type,
       content: messageContent,
       timestamp: new Date().toISOString(),
     };
+    
+    const [newMessage, _] = await Promise.all([
+        db.addChatMessage(newMessageData),
+        db.updateConversation(conversationId, {
+            lastMessage: messageContent,
+            lastMessageAt: newMessageData.timestamp,
+            lastMessageAuthor: appUser.name,
+        })
+    ]);
     
     setChatMessages(prev => [...prev, newMessage]);
     
@@ -457,33 +477,33 @@ export default function Dashboard({ view }: { view: string }) {
         }
       }
       return convo;
-    }));
+    }).sort((a,b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
   };
 
-  const handleSendMessageFromBotPreview = (content: string) => {
+  const handleSendMessageFromBotPreview = async (content: string) => {
+    if (!activeHub) return;
+
     const previewContactId = 'preview-contact-1';
     const timestamp = new Date().toISOString();
 
-    // Find the existing conversation or prepare a new one
-    const existingConvo = chatConversations.find(c => c.contactId === previewContactId);
+    let conversation: Conversation;
+    const existingConvo = chatConversations.find(c => c.contactId === previewContactId && c.hubId === activeHub.id);
     
-    let conversationId: string;
-    let updatedConversations: Conversation[];
-
     if (existingConvo) {
-        conversationId = existingConvo.id;
-        const updatedConvo = {
+        conversation = {
             ...existingConvo,
             lastMessage: content,
             lastMessageAt: timestamp,
             lastMessageAuthor: 'Preview User',
-            status: 'unassigned' as const,
         };
-        updatedConversations = chatConversations.map(c => c.id === conversationId ? updatedConvo : c);
+        await db.updateConversation(conversation.id, {
+            lastMessage: content,
+            lastMessageAt: timestamp,
+            lastMessageAuthor: 'Preview User',
+        });
     } else {
-        conversationId = `conv-${Date.now()}-${Math.random()}`;
-        const newConversation: Conversation = {
-            id: conversationId,
+        const newConversationData: Omit<Conversation, 'id'> = {
+            hubId: activeHub.id,
             contactId: previewContactId,
             assigneeId: null,
             status: 'unassigned',
@@ -491,33 +511,38 @@ export default function Dashboard({ view }: { view: string }) {
             lastMessageAt: timestamp,
             lastMessageAuthor: 'Preview User',
         };
-        updatedConversations = [newConversation, ...chatConversations];
+        conversation = await db.addConversation(newConversationData);
     }
-
-    // Create the new message
-    const newMessage: ChatMessage = {
-        id: `msg-${Date.now()}-${Math.random()}`,
-        conversationId: conversationId,
+    
+    const newMessageData: Omit<ChatMessage, 'id'> = {
+        conversationId: conversation.id,
         authorId: previewContactId,
         type: 'message',
         content: content,
         timestamp: timestamp,
     };
+    const newMessage = await db.addChatMessage(newMessageData);
 
-    // Update both states separately
-    setChatConversations(updatedConversations.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
-    setChatMessages(prev => [...prev, newMessage]);
+    // Optimistic update of local state
+    setChatConversations(prevConvos => {
+      const otherConvos = prevConvos.filter(c => c.id !== conversation.id);
+      return [conversation, ...otherConvos].sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+    });
+    
+    setChatMessages(prevMessages => [...prevMessages, newMessage]);
   };
 
 
-  const handleAssignConversation = (conversationId: string, assigneeId: string | null) => {
+  const handleAssignConversation = async (conversationId: string, assigneeId: string | null) => {
+    const status = assigneeId ? 'open' : 'unassigned';
+    await db.updateConversation(conversationId, { assigneeId, status });
     setChatConversations(prev =>
       prev.map(convo => {
         if (convo.id === conversationId) {
           return {
             ...convo,
             assigneeId: assigneeId,
-            status: assigneeId ? 'open' : 'unassigned',
+            status: status,
           };
         }
         return convo;
