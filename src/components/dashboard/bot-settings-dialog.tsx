@@ -23,7 +23,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Bot as BotData } from '@/lib/data';
 import { Bot, MessageSquare, Home, Ticket, ChevronRight, Layout, MessagesSquare, Tv2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -280,3 +280,5 @@ export default function BotSettingsDialog({
     </Dialog>
   );
 }
+
+    
