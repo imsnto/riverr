@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Card } from '../ui/card';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+import { ScrollArea } from '../ui/scroll-area';
+import { PanelLeftClose } from 'lucide-react';
 
 interface InboxConversationViewProps {
   conversation: Conversation | null;
@@ -17,6 +19,8 @@ interface InboxConversationViewProps {
   contact: ChatContact | null;
   users: User[];
   appUser: User;
+  isContactPanelOpen: boolean;
+  onToggleContactPanel: () => void;
 }
 
 const getInitials = (name: string) => {
@@ -25,7 +29,7 @@ const getInitials = (name: string) => {
 }
 
 
-export default function InboxConversationView({ conversation, messages, contact, users, appUser }: InboxConversationViewProps) {
+export default function InboxConversationView({ conversation, messages, contact, users, appUser, isContactPanelOpen, onToggleContactPanel }: InboxConversationViewProps) {
   if (!conversation || !contact) {
     return (
       <div className="flex h-full items-center justify-center p-4">
@@ -82,20 +86,27 @@ export default function InboxConversationView({ conversation, messages, contact,
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b">
+      <div className="p-4 border-b flex justify-between items-center shrink-0">
         <p className="text-sm">
             Conversation with <span className="font-semibold">{contact.name}</span>
             {assignee && <> assigned to <span className="font-semibold">{assignee.name}</span></>}
         </p>
+        {!isContactPanelOpen && (
+            <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
+                <PanelLeftClose className="h-4 w-4" />
+            </Button>
+        )}
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {conversationMessages.map(renderMessageBubble)}
-      </div>
+      <ScrollArea className="flex-1">
+        <div className="p-4 space-y-6">
+            {conversationMessages.map(renderMessageBubble)}
+        </div>
+      </ScrollArea>
 
       {/* Composer */}
-      <div className="p-4 border-t bg-card">
+      <div className="p-4 border-t bg-card shrink-0">
         <Tabs defaultValue="reply">
             <TabsList>
                 <TabsTrigger value="reply">Reply</TabsTrigger>

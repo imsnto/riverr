@@ -12,6 +12,7 @@ import { Checkbox } from '../ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { ChevronDown, Calendar, Search } from 'lucide-react';
 import { Input } from '../ui/input';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface InboxSidebarProps {
   conversations: Conversation[];
@@ -34,7 +35,7 @@ export default function InboxConversationList({
 }: InboxSidebarProps) {
   return (
     <div className="flex flex-col h-full border-r bg-card">
-      <div className="p-4 border-b">
+      <div className="p-4 border-b shrink-0">
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
                 <Button variant="ghost" className="font-bold">Me (9)</Button>
@@ -47,7 +48,7 @@ export default function InboxConversationList({
             </div>
         </div>
       </div>
-      <div className="p-4 border-b flex justify-between items-center">
+      <div className="p-4 border-b flex justify-between items-center shrink-0">
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm">Open ({conversations.filter(c=>c.status === 'open' || c.status === 'unassigned').length}) <ChevronDown className="h-4 w-4 ml-1" /></Button>
@@ -67,7 +68,7 @@ export default function InboxConversationList({
             </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <ScrollArea className="flex-1">
         {conversations.map(convo => {
           const contact = contacts.find(c => c.id === convo.contactId);
           if (!contact) return null;
@@ -101,7 +102,7 @@ export default function InboxConversationList({
             </div>
           );
         })}
-      </div>
+      </ScrollArea>
     </div>
   );
 }

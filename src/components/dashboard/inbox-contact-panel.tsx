@@ -7,11 +7,13 @@ import { ChatContact, User } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
-import { AtSign, Calendar, Briefcase, Clock, Compass, DollarSign, HardDrive, MapPin, Milestone, Users } from 'lucide-react';
+import { AtSign, Calendar, Briefcase, Clock, Compass, DollarSign, HardDrive, MapPin, Milestone, Users, PanelRightClose } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface InboxContactPanelProps {
   contact: ChatContact | null;
+  onToggle: () => void;
 }
 
 const getInitials = (name: string) => {
@@ -28,7 +30,7 @@ const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, labe
 );
 
 
-export default function InboxContactPanel({ contact }: InboxContactPanelProps) {
+export default function InboxContactPanel({ contact, onToggle }: InboxContactPanelProps) {
   if (!contact) {
     return (
       <div className="flex h-full items-center justify-center bg-muted/50 p-4">
@@ -41,10 +43,11 @@ export default function InboxContactPanel({ contact }: InboxContactPanelProps) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-card">
+    <div className="flex flex-col h-full bg-card border-l">
         {/* Header */}
-        <div className="p-4 border-b">
-            <div className="flex flex-col items-center text-center">
+        <div className="p-4 border-b shrink-0 flex items-start justify-between">
+            <div className="flex-1" />
+            <div className="flex flex-col items-center text-center flex-1">
                 <Avatar className="h-16 w-16 mb-2">
                     <AvatarImage src={contact.avatarUrl} alt={contact.name} />
                     <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
@@ -62,10 +65,15 @@ export default function InboxContactPanel({ contact }: InboxContactPanelProps) {
                     <Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge>
                 </div>
             </div>
+            <div className="flex-1 flex justify-end">
+                <Button variant="ghost" size="icon" onClick={onToggle} className="-mr-2 -mt-2">
+                    <PanelRightClose className="h-4 w-4" />
+                </Button>
+            </div>
         </div>
         
         {/* Body */}
-        <div className="flex-1 overflow-y-auto">
+        <ScrollArea className="flex-1">
             <div className="p-4 space-y-4">
                 {/* Account Details */}
                 <div>
@@ -94,7 +102,7 @@ export default function InboxContactPanel({ contact }: InboxContactPanelProps) {
                     </div>
                 </div>
             </div>
-        </div>
+        </ScrollArea>
     </div>
   );
 }
