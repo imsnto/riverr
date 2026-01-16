@@ -116,7 +116,7 @@ interface BotSettingsDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   bot: BotData | null;
-  onSave: (botData: BotData) => void;
+  onSave: (botData: BotData | Omit<BotData, 'id' | 'hubId'>) => void;
   onSendMessage: (content: string) => void;
   messages: ChatMessage[];
   contact: ChatContact | null;
@@ -194,6 +194,19 @@ export default function BotSettingsDialog({
         promptButton3: bot.promptButtons?.[2] || '',
         agentIds: bot.agentIds || [],
       });
+    } else {
+        form.reset({
+            name: 'New Support Bot',
+            welcomeMessage: 'Hi there! How can we help you today?',
+            primaryColor: '#3b82f6',
+            backgroundColor: '#111827',
+            logoUrl: '',
+            showTickets: true,
+            promptButton1: 'Just browsing',
+            promptButton2: 'Talk to sales',
+            promptButton3: 'Get support',
+            agentIds: [],
+        });
     }
   }, [bot, form]);
   
@@ -205,29 +218,30 @@ export default function BotSettingsDialog({
       }
   }, [isOpen]);
 
-  if (!bot) return null;
-
   const onSubmit = (values: BotSettingsFormValues) => {
-    const updatedBot: BotData = {
-        ...bot,
+    const commonData = {
         name: values.name,
         welcomeMessage: values.welcomeMessage,
-        layout: 'default',
+        layout: 'default' as const,
         spaces: {
-            ...bot.spaces,
             messages: true,
             tickets: values.showTickets,
+            home: bot?.spaces?.home || false,
         },
         styleSettings: {
-            ...bot.styleSettings,
             primaryColor: values.primaryColor,
             backgroundColor: values.backgroundColor,
             logoUrl: values.logoUrl || '',
         },
         promptButtons: [values.promptButton1, values.promptButton2, values.promptButton3].filter(Boolean) as string[],
-        agentIds: values.agentIds,
+        agentIds: values.agentIds || [],
     };
-    onSave(updatedBot);
+
+    if (bot) {
+        onSave({ ...bot, ...commonData });
+    } else {
+        onSave(commonData);
+    }
     onOpenChange(false);
   };
   
@@ -243,11 +257,11 @@ export default function BotSettingsDialog({
   };
 
   const renderMessageBubble = (msg: ChatMessage) => {
+    const uniqueKey = `${msg.id}-${msg.timestamp}`;
+    
     if (msg.type !== 'message' || !contact) {
         return null;
     }
-    
-    const uniqueKey = `${msg.id}-${msg.timestamp}`;
     
     return (
       <div key={uniqueKey} className="flex items-end gap-2 justify-end">
@@ -259,7 +273,8 @@ export default function BotSettingsDialog({
   };
 
   const promptButtons = [watchedValues.promptButton1, watchedValues.promptButton2, watchedValues.promptButton3].filter(Boolean);
-  const embedScript = `
+  
+  const embedScript = bot ? `
 <script>
     window.riverrChatConfig = { botId: "${bot.id}", hubId: "${bot.hubId}" };
     var d=document,s=d.createElement('script');
@@ -267,7 +282,7 @@ export default function BotSettingsDialog({
     s.async=true;
     d.body.appendChild(s);
 </script>
-  `.trim();
+  `.trim() : '';
 
 
   return (
@@ -276,9 +291,9 @@ export default function BotSettingsDialog({
         {/* Form Section */}
         <div className="flex flex-col h-full overflow-hidden">
           <DialogHeader className="p-6 pb-4 border-b shrink-0">
-            <DialogTitle>Bot Settings: {bot.name}</DialogTitle>
+            <DialogTitle>{bot ? `Bot Settings: ${bot.name}` : 'Create New Bot'}</DialogTitle>
             <DialogDescription>
-                Customize the appearance and behavior of your chat bot.
+                {bot ? 'Customize the appearance and behavior of your chat bot.' : 'Create a new chatbot to embed on your website.'}
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto">
@@ -418,23 +433,31 @@ export default function BotSettingsDialog({
                      <AccordionItem value="installation">
                         <AccordionTrigger>Installation</AccordionTrigger>
                         <AccordionContent className="space-y-6">
-                            <div>
-                                <Label className="font-semibold">Embeddable Script</Label>
-                                <p className="text-sm text-muted-foreground mt-1 mb-2">To add this chatbot to your website, paste this code snippet before the closing <code>&lt;/body&gt;</code> tag of your HTML file.</p>
-                                <pre className="bg-muted p-4 rounded-md text-xs overflow-x-auto font-mono text-foreground">
-                                    <code>{embedScript}</code>
-                                </pre>
-                            </div>
-                            <div>
-                                <Label className="font-semibold">Webflow Installation</Label>
-                                <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1.5 mt-2">
-                                    <li>In your Webflow project, go to <strong>Project Settings</strong>.</li>
-                                    <li>Click on the <strong>Custom Code</strong> tab.</li>
-                                    <li>Find the <strong>Footer Code</strong> section.</li>
-                                    <li>Paste the code snippet from above into this box.</li>
-                                    <li>Click <strong>Save Changes</strong> and then <strong>Publish</strong> your site.</li>
-                                </ol>
-                            </div>
+                            {bot ? (
+                                <>
+                                    <div>
+                                        <Label className="font-semibold">Embeddable Script</Label>
+                                        <p className="text-sm text-muted-foreground mt-1 mb-2">To add this chatbot to your website, paste this code snippet before the closing <code>&lt;/body&gt;</code> tag of your HTML file.</p>
+                                        <pre className="bg-muted p-4 rounded-md text-xs overflow-x-auto font-mono text-foreground">
+                                            <code>{embedScript}</code>
+                                        </pre>
+                                    </div>
+                                    <div>
+                                        <Label className="font-semibold">Webflow Installation</Label>
+                                        <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1.5 mt-2">
+                                            <li>In your Webflow project, go to <strong>Project Settings</strong>.</li>
+                                            <li>Click on the <strong>Custom Code</strong> tab.</li>
+                                            <li>Find the <strong>Footer Code</strong> section.</li>
+                                            <li>Paste the code snippet from above into this box.</li>
+                                            <li>Click <strong>Save Changes</strong> and then <strong>Publish</strong> your site.</li>
+                                        </ol>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="text-center text-sm text-muted-foreground p-4">
+                                    Save the bot to get the installation script.
+                                </div>
+                            )}
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
@@ -506,7 +529,7 @@ export default function BotSettingsDialog({
                             {(messages.length === 0 && !chatStarted) ? (
                                 <div className="pt-2 space-y-2">
                                     {promptButtons.map((prompt, index) => (
-                                        <Button key={index} onClick={() => handlePromptClick(prompt)} variant="outline" className="w-full justify-center bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white rounded-md">
+                                        <Button key={index} onClick={() => handlePromptClick(prompt!)} variant="outline" className="w-full justify-center bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white rounded-md">
                                             {prompt}
                                         </Button>
                                     ))}

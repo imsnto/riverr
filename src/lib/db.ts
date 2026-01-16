@@ -1,5 +1,4 @@
 
-
 'use client'
 // src/lib/db.ts
 
@@ -986,8 +985,19 @@ export const getBot = async (botId: string): Promise<Bot | null> => {
 };
 
 export const addBot = async (bot: Omit<Bot, "id">): Promise<Bot> => {
-  const docRef = await addDoc(collection(db, "bots"), bot);
-  return { ...bot, id: docRef.id };
+  const collRef = collection(db, "bots");
+  try {
+    const docRef = await addDoc(collRef, bot);
+    return { ...bot, id: docRef.id };
+  } catch (serverError) {
+    const permissionError = new FirestorePermissionError({
+        path: collRef.path,
+        operation: 'create',
+        requestResourceData: bot,
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw serverError;
+  }
 };
 
 export const updateBot = async (botId: string, data: Partial<Bot>): Promise<void> => {

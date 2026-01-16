@@ -54,14 +54,25 @@ export default function InboxSettings({
 }: InboxSettingsProps) {
   const [selectedBot, setSelectedBot] = useState<BotData | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { activeHub } = useAuth();
 
   const handleEditBot = (bot: BotData) => {
     setSelectedBot(bot);
     setIsDialogOpen(true);
   };
   
-  const handleSaveBot = (updatedBot: BotData) => {
-    onBotUpdate(updatedBot.id, updatedBot);
+  const handleNewBot = () => {
+    setSelectedBot(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleSaveBot = (botData: BotData | Omit<BotData, 'id' | 'hubId'>) => {
+    if ('id' in botData && botData.id) {
+        onBotUpdate(botData.id, botData);
+    } else if (activeHub) {
+        const botWithHubId = { ...botData, hubId: activeHub.id };
+        onBotAdd(botWithHubId as Omit<BotData, 'id'>);
+    }
   };
 
   const previewContact = chatContacts.find(c => c.id === 'preview-contact-1');
@@ -81,7 +92,7 @@ export default function InboxSettings({
                   Manage your customer-facing chat bots for this hub.
                 </CardDescription>
               </div>
-              <Button disabled>
+              <Button onClick={handleNewBot}>
                 <Plus className="mr-2 h-4 w-4" />
                 New Bot
               </Button>
@@ -143,7 +154,7 @@ export default function InboxSettings({
                   <p className="mt-1 text-sm text-muted-foreground">
                     Get started by creating a new chat bot.
                   </p>
-                  <Button className="mt-4" disabled>
+                  <Button className="mt-4" onClick={handleNewBot}>
                     <Plus className="mr-2 h-4 w-4" />
                     Create Bot
                   </Button>
@@ -153,19 +164,17 @@ export default function InboxSettings({
           </CardContent>
         </Card>
       </div>
-      {selectedBot && (
-        <BotSettingsDialog
-            isOpen={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
-            bot={selectedBot}
-            onSave={handleSaveBot}
-            onSendMessage={onSendMessageFromBotPreview}
-            messages={previewMessages}
-            contact={previewContact || null}
-            appUser={appUser}
-            allUsers={allUsers}
-        />
-      )}
+      <BotSettingsDialog
+          isOpen={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          bot={selectedBot}
+          onSave={handleSaveBot}
+          onSendMessage={onSendMessageFromBotPreview}
+          messages={previewMessages}
+          contact={previewContact || null}
+          appUser={appUser}
+          allUsers={allUsers}
+      />
     </>
   );
 }
