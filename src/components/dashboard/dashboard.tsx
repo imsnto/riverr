@@ -54,6 +54,7 @@ import ProjectFormDialog from './project-form-dialog';
 import ChannelList from './channel-list';
 import { ContentSkeleton } from './content-skeleton';
 import InboxLayout from './inbox-layout';
+import { cn } from '@/lib/utils';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -555,7 +556,12 @@ export default function Dashboard({ view }: { view: string }) {
           onHubChange={handleHubChange}
         />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <main className="flex-1 overflow-y-auto">
+          <main className={cn(
+            "flex-1",
+            currentView === 'inbox' || currentView === 'messages'
+              ? 'overflow-hidden'
+              : 'overflow-y-auto'
+          )}>
             {renderView()}
           </main>
         </div>
