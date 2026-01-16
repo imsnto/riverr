@@ -1,4 +1,5 @@
 
+
 'use client'
 // src/lib/db.ts
 
@@ -968,8 +969,20 @@ export const getBots = async (hubId: string): Promise<Bot[]> => {
 };
 
 export const getBot = async (botId: string): Promise<Bot | null> => {
-  const botDoc = await getDoc(doc(db, "bots", botId));
-  return botDoc.exists() ? ({ id: botDoc.id, ...botDoc.data() } as Bot) : null;
+  const botDocRef = doc(db, "bots", botId);
+  try {
+    const botDoc = await getDoc(botDocRef);
+    return botDoc.exists() ? ({ id: botDoc.id, ...botDoc.data() } as Bot) : null;
+  } catch(serverError: any) {
+    if (serverError.code === 'permission-denied') {
+        const permissionError = new FirestorePermissionError({
+            path: botDocRef.path,
+            operation: 'get'
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    }
+    throw serverError;
+  }
 };
 
 export const addBot = async (bot: Omit<Bot, "id">): Promise<Bot> => {
@@ -983,25 +996,46 @@ export const updateBot = async (botId: string, data: Partial<Bot>): Promise<void
 };
 
 export const getOrCreateContact = async (contactId: string, details?: Partial<ChatContact>): Promise<ChatContact> => {
-  const contactRef = doc(db, 'chat_contacts', contactId);
-  const contactSnap = await getDoc(contactRef);
-  if (contactSnap.exists()) {
-    return { id: contactSnap.id, ...contactSnap.data() } as ChatContact;
-  } else {
-    const newContact: Omit<ChatContact, 'id'> = {
-      name: details?.name || 'Anonymous User',
-      email: details?.email || 'N/A',
-      avatarUrl: details?.avatarUrl || `https://placehold.co/100x100.png?text=${(details?.name?.[0] || 'U')}`,
-      location: details?.location || 'Unknown',
-      lastSeen: new Date().toISOString(),
-      companyName: 'N/A',
-      sessions: 1,
-      companyId: 'N/A',
-      companyUsers: 1,
-      companyPlan: 'N/A',
-      companySpend: '$0.00',
-    };
-    await setDoc(contactRef, newContact);
-    return { id: contactId, ...newContact };
-  }
+    const contactRef = doc(db, 'chat_contacts', contactId);
+    try {
+        const contactSnap = await getDoc(contactRef);
+        if (contactSnap.exists()) {
+            return { id: contactSnap.id, ...contactSnap.data() } as ChatContact;
+        } else {
+            const newContact: Omit<ChatContact, 'id'> = {
+                name: details?.name || 'Anonymous User',
+                email: details?.email || 'N/A',
+                avatarUrl: details?.avatarUrl || `https://placehold.co/100x100.png?text=${(details?.name?.[0] || 'U')}`,
+                location: details?.location || 'Unknown',
+                lastSeen: new Date().toISOString(),
+                companyName: 'N/A',
+                sessions: 1,
+                companyId: 'N/A',
+                companyUsers: 1,
+                companyPlan: 'N/A',
+                companySpend: '$0.00',
+            };
+            
+            setDoc(contactRef, newContact)
+                .catch(async (serverError) => {
+                    const permissionError = new FirestorePermissionError({
+                        path: contactRef.path,
+                        operation: 'create',
+                        requestResourceData: newContact,
+                    });
+                    errorEmitter.emit('permission-error', permissionError);
+                });
+
+            return { id: contactId, ...newContact };
+        }
+    } catch (serverError: any) {
+        if (serverError.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: contactRef.path,
+                operation: 'get'
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        }
+        throw serverError;
+    }
 }
