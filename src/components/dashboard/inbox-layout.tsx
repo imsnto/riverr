@@ -40,7 +40,7 @@ export default function InboxLayout({
   return (
     <div className={cn(
         "grid h-full",
-        isContactPanelOpen ? "grid-cols-[256px_1fr_320px]" : "grid-cols-[256px_1fr]"
+        isContactPanelOpen ? "grid-cols-[320px_1fr_320px]" : "grid-cols-[320px_1fr]"
     )}>
       <InboxConversationList
         conversations={conversations}

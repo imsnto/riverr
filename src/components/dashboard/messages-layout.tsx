@@ -14,7 +14,7 @@ export default function MessagesLayout({ left, center, right, threadOpen }: Mess
     <div
       className={cn(
         "grid h-full min-h-0 transition-all duration-200 ease-in-out",
-        threadOpen ? 'grid-cols-[256px_1fr_400px]' : 'grid-cols-[256px_1fr]'
+        threadOpen ? 'grid-cols-[320px_1fr_400px]' : 'grid-cols-[320px_1fr]'
       )}
     >
       <div className="flex-col border-r bg-card hidden md:flex min-h-0">{left}</div>

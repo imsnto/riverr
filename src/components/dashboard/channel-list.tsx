@@ -44,7 +44,7 @@ export default function ChannelList({ channels, activeChannelId, onChannelSelect
     <>
       <div className="flex flex-col h-full p-2">
         <div className="flex justify-between items-center p-2 mb-2">
-          <h2 className="text-lg font-semibold">Channels</h2>
+          <h2 className="text-base font-semibold">Channels</h2>
           <Button variant="ghost" size="icon" onClick={handleNewChannel} className="h-7 w-7">
             <Plus className="h-4 w-4" />
           </Button>

@@ -17,7 +17,7 @@ interface ProjectSidebarProps {
 
 export default function ProjectSidebar({ projects, selectedProjectId, onSelectProject, onNewProject }: ProjectSidebarProps) {
   return (
-    <div className="flex flex-col h-full p-2 border-r bg-card w-64">
+    <div className="flex flex-col h-full p-2 border-r bg-card w-80">
       <div className="flex justify-between items-center p-2 mb-2">
         <h2 className="text-lg font-semibold">Projects</h2>
         <Button variant="ghost" size="icon" onClick={onNewProject} className="h-7 w-7">

@@ -120,7 +120,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
 
   return (
     <div className="flex flex-row h-full">
-      <aside className="w-64 border-r bg-card p-4">
+      <aside className="w-80 border-r bg-card p-4">
         <h2 className="text-xl font-bold mb-4">Settings</h2>
         <nav className="flex flex-col space-y-2">
           {navItems.map((item) => (
