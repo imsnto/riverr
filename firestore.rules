@@ -123,14 +123,16 @@ service cloud.firestore {
     }
     
     match /chat_contacts/{contactId} {
-      // Anyone can create their own contact record
+      // Anyone can create their own contact record.
       allow create: if true;
-      // Only authenticated users can read/update contact info
-      allow read, update: if isAuthenticated();
+      // Anyone can get their own contact record if they know the ID. This is needed for the widget to resume sessions.
+      allow get: if true;
+      // Only authenticated users can update contact info or list all contacts.
+      allow update, list: if isAuthenticated();
     }
     
     match /conversations/{conversationId} {
-      allow read, update, delete: if isAuthenticated() && isExistInSpace(get(/databases/$(database)/documents/hubs/$(resource.data.hubId)).data.spaceId);
+      allow read, update, delete: if isAuthenticated() && hasAccessToConversation(conversationId);
       allow create: if true; // Allow anonymous creation via widget
     }
     
