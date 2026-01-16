@@ -1,3 +1,4 @@
+
 // src/components/dashboard/AppSidebar.tsx
 "use client";
 
@@ -180,6 +181,7 @@ const allMiddleItems: {
   { key: "inbox", icon: <MessageCircle className="w-5 h-5" />, label: 'Inbox' },
   { key: "messages", icon: <MessageSquare className="w-5 h-5" />, label: 'Messages' },
   { key: "documents", icon: <BookOpen className="w-5 h-5" />, label: 'Documents' },
+  { key: 'help-center', icon: <LifeBuoy className="w-5 h-5" />, label: 'Help Center' },
   { key: "flows", icon: <Workflow className="w-5 h-5" />, label: 'Flows' },
 ];
 

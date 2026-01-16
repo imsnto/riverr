@@ -29,6 +29,9 @@ import {
   Conversation,
   ChatMessage,
   Bot,
+  HelpCenter,
+  HelpCenterCollection,
+  HelpCenterArticle,
 } from '@/lib/data';
 import * as db from '@/lib/db';
 import { useRouter, useParams } from 'next/navigation';
@@ -58,6 +61,7 @@ import InboxLayout from './inbox-layout';
 import { cn } from '@/lib/utils';
 import { AppView } from '@/lib/routes';
 import ProjectSidebar from './project-sidebar';
+import HelpCenterLayout from './help-center-layout';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -95,6 +99,11 @@ export default function Dashboard({ view }: { view: string }) {
   const [chatContacts, setChatContacts] = useState<ChatContact[]>([]);
   const [chatConversations, setChatConversations] = useState<Conversation[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+
+  // Help Center states
+  const [helpCenters, setHelpCenters] = useState<HelpCenter[]>([]);
+  const [helpCenterCollections, setHelpCenterCollections] = useState<HelpCenterCollection[]>([]);
+  const [helpCenterArticles, setHelpCenterArticles] = useState<HelpCenterArticle[]>([]);
 
 
   // Mentions
@@ -154,6 +163,7 @@ export default function Dashboard({ view }: { view: string }) {
             fetchedHubs,
             fetchedConversations,
             fetchedBots,
+            fetchedHelpCenters,
           ] = await Promise.all([
             db.getProjectsInHub(activeHub.id),
             db.getAllTasks(activeHub.id),
@@ -168,6 +178,7 @@ export default function Dashboard({ view }: { view: string }) {
             db.getHubsForSpace(activeSpace.id),
             db.getConversationsForHub(activeHub.id),
             db.getBots(activeHub.id),
+            db.getHelpCenters(activeHub.id),
           ]);
           
           setProjects(fetchedProjects);
@@ -190,6 +201,16 @@ export default function Dashboard({ view }: { view: string }) {
           setSpaceHubs(fetchedHubs);
           setChatConversations(fetchedConversations);
           setBots(fetchedBots);
+          setHelpCenters(fetchedHelpCenters);
+
+          if (fetchedHelpCenters.length > 0) {
+            const [collections, articles] = await Promise.all([
+                db.getHelpCenterCollections(fetchedHelpCenters[0].id),
+                db.getHelpCenterArticles(fetchedHelpCenters[0].id)
+            ]);
+            setHelpCenterCollections(collections);
+            setHelpCenterArticles(articles);
+          }
       
           if (fetchedChannels.length > 0 && !activeChannelId) {
             setActiveChannelId(fetchedChannels[0].id);
@@ -559,6 +580,16 @@ export default function Dashboard({ view }: { view: string }) {
       const newBot = await db.addBot(bot);
       setBots(prev => [...prev, newBot]);
   }
+  
+  const handleSaveArticle = async (article: HelpCenterArticle) => {
+    if (article.id) {
+        await db.updateHelpCenterArticle(article.id, article);
+        setHelpCenterArticles(prev => prev.map(a => a.id === article.id ? article : a));
+    } else {
+        const newArticle = await db.addHelpCenterArticle(article as Omit<HelpCenterArticle, 'id'>);
+        setHelpCenterArticles(prev => [...prev, newArticle]);
+    }
+  }
 
 
   const renderView = () => {
@@ -635,6 +666,13 @@ export default function Dashboard({ view }: { view: string }) {
       );
       case 'mytasks': return <div className="p-8"><MyTasksView {...props} /></div>;
       case 'documents': return <DocumentsView activeSpace={activeSpace} appUser={appUser} allUsers={allUsers} activeHub={activeHub} />;
+      case 'help-center': return <HelpCenterLayout
+        helpCenters={helpCenters}
+        collections={helpCenterCollections}
+        articles={helpCenterArticles}
+        onSaveArticle={handleSaveArticle}
+        allUsers={allUsers}
+        />;
       case 'settings': return <SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview} chatMessages={chatMessages} chatContacts={chatContacts} chatConversations={chatConversations} bots={bots} onBotUpdate={handleBotUpdate} onBotAdd={handleBotAdd} />;
       case 'team-timesheets': return <TeamTimesheets {...props} />;
       case 'messages': return <MessagesLayout {...messagesProps} />;
@@ -691,7 +729,7 @@ export default function Dashboard({ view }: { view: string }) {
           )}
           <main className={cn(
             "flex-1",
-            currentView === 'inbox' || currentView === 'messages' || currentView === 'tasks' || currentView === 'settings'
+            currentView === 'inbox' || currentView === 'messages' || currentView === 'tasks' || currentView === 'settings' || currentView === 'help-center'
               ? 'overflow-hidden'
               : 'overflow-y-auto'
           )}>

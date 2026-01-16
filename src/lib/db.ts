@@ -60,6 +60,9 @@ import {
   ChatMessage,
   ChatContact,
   Bot,
+  HelpCenter,
+  HelpCenterCollection,
+  HelpCenterArticle,
 } from "./data";
 import { randomBytes } from "crypto";
 import { FirestorePermissionError } from "./errors";
@@ -1070,3 +1073,42 @@ export const getOrCreateContact = async (contactId: string, details?: Partial<Ch
         throw serverError;
     }
 }
+
+// --- Help Center Management ---
+export const getHelpCenters = async (hubId: string): Promise<HelpCenter[]> => {
+    const q = query(collection(db, 'help_centers'), where('hubId', '==', hubId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenter));
+}
+
+export const addHelpCenter = async (helpCenter: Omit<HelpCenter, 'id'>): Promise<HelpCenter> => {
+    const docRef = await addDoc(collection(db, 'help_centers'), helpCenter);
+    return { id: docRef.id, ...helpCenter };
+}
+
+export const getHelpCenterCollections = async (helpCenterId: string): Promise<HelpCenterCollection[]> => {
+    const q = query(collection(db, 'help_center_collections'), where('helpCenterId', '==', helpCenterId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenterCollection));
+}
+
+export const addHelpCenterCollection = async (collectionData: Omit<HelpCenterCollection, 'id'>): Promise<HelpCenterCollection> => {
+    const docRef = await addDoc(collection(db, 'help_center_collections'), collectionData);
+    return { id: docRef.id, ...collectionData };
+}
+
+export const getHelpCenterArticles = async (helpCenterId: string): Promise<HelpCenterArticle[]> => {
+    const q = query(collection(db, 'help_center_articles'), where('helpCenterId', '==', helpCenterId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenterArticle));
+}
+
+export const addHelpCenterArticle = async (articleData: Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle> => {
+    const docRef = await addDoc(collection(db, 'help_center_articles'), articleData);
+    return { id: docRef.id, ...articleData };
+}
+
+export const updateHelpCenterArticle = async (articleId: string, data: Partial<HelpCenterArticle>): Promise<void> => {
+  const articleRef = doc(db, "help_center_articles", articleId);
+  await updateDoc(articleRef, data);
+};

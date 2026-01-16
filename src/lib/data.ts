@@ -351,6 +351,31 @@ export interface ChatMessage {
   timestamp: string; // ISO String
 }
 
+// --- Help Center Interfaces ---
+export interface HelpCenter {
+  id: string;
+  name: string;
+  hubId: string;
+}
+
+export interface HelpCenterCollection {
+  id: string;
+  name: string;
+  description: string;
+  helpCenterId: string;
+}
+
+export interface HelpCenterArticle {
+  id: string;
+  title: string;
+  content: string;
+  status: 'draft' | 'published';
+  collectionIds: string[];
+  authorId: string;
+  createdAt: string; // ISO String
+  updatedAt: string; // ISO String
+  helpCenterId: string;
+}
 
 
 // --- Mock Data (for initial setup) ---

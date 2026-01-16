@@ -8,6 +8,7 @@ export const HUB_VIEWS = {
   inbox: "/inbox",
   messages: "/messages",
   documents: "/documents",
+  "help-center": "/help-center",
   flows: "/flows",
   'team-timesheets': "/team-timesheets",
   settings: "/settings",

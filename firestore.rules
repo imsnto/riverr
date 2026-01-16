@@ -148,5 +148,15 @@ service cloud.firestore {
       allow read, update, delete: if isAuthenticated() && hasAccessToConversation(resource.data.conversationId);
       allow create: if true; // Allow anonymous creation via widget
     }
+
+    match /help_centers/{hcId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /help_center_collections/{hccId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /help_center_articles/{hcaId} {
+      allow read, write: if isAuthenticated();
+    }
   }
 }
