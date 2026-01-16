@@ -88,7 +88,7 @@ export default function Dashboard({ view }: { view: string }) {
   const [activeThread, setActiveThread] = useState<Message | null>(null);
   const [spaceHubs, setSpaceHubs] = useState<Hub[]>([]);
   
-  // Inbox state
+  // Inbox state - Initialize as empty arrays
   const [chatContacts, setChatContacts] = useState<ChatContact[]>([]);
   const [chatConversations, setChatConversations] = useState<Conversation[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -463,53 +463,52 @@ export default function Dashboard({ view }: { view: string }) {
   const handleSendMessageFromBotPreview = (content: string) => {
     const previewContactId = 'preview-contact-1';
     const timestamp = new Date().toISOString();
-  
-    setChatConversations(prevConvos => {
-      const existingConversationIndex = prevConvos.findIndex(c => c.contactId === previewContactId);
-      
-      let conversationId: string;
-      let updatedConversations: Conversation[];
-  
-      if (existingConversationIndex !== -1) {
-        const existingConversation = prevConvos[existingConversationIndex];
-        conversationId = existingConversation.id;
-        const updatedConversation: Conversation = {
-          ...existingConversation,
-          lastMessage: content,
-          lastMessageAt: timestamp,
-          lastMessageAuthor: 'Preview User',
-          status: 'unassigned',
+
+    // Find the existing conversation or prepare a new one
+    const existingConvo = chatConversations.find(c => c.contactId === previewContactId);
+    
+    let conversationId: string;
+    let updatedConversations: Conversation[];
+
+    if (existingConvo) {
+        conversationId = existingConvo.id;
+        const updatedConvo = {
+            ...existingConvo,
+            lastMessage: content,
+            lastMessageAt: timestamp,
+            lastMessageAuthor: 'Preview User',
+            status: 'unassigned' as const,
         };
-        updatedConversations = [...prevConvos];
-        updatedConversations[existingConversationIndex] = updatedConversation;
-      } else {
-        conversationId = `conv-${timestamp}`;
+        updatedConversations = chatConversations.map(c => c.id === conversationId ? updatedConvo : c);
+    } else {
+        conversationId = `conv-${Date.now()}-${Math.random()}`;
         const newConversation: Conversation = {
-          id: conversationId,
-          contactId: previewContactId,
-          assigneeId: null,
-          status: 'unassigned',
-          lastMessage: content,
-          lastMessageAt: timestamp,
-          lastMessageAuthor: 'Preview User',
+            id: conversationId,
+            contactId: previewContactId,
+            assigneeId: null,
+            status: 'unassigned',
+            lastMessage: content,
+            lastMessageAt: timestamp,
+            lastMessageAuthor: 'Preview User',
         };
-        updatedConversations = [newConversation, ...prevConvos];
-      }
-  
-      const newMessage: ChatMessage = {
+        updatedConversations = [newConversation, ...chatConversations];
+    }
+
+    // Create the new message
+    const newMessage: ChatMessage = {
         id: `msg-${Date.now()}-${Math.random()}`,
         conversationId: conversationId,
         authorId: previewContactId,
         type: 'message',
         content: content,
         timestamp: timestamp,
-      };
-      
-      setChatMessages(prevMsgs => [...prevMsgs, newMessage]);
-  
-      return updatedConversations.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
-    });
+    };
+
+    // Update both states separately
+    setChatConversations(updatedConversations.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
+    setChatMessages(prev => [...prev, newMessage]);
   };
+
 
   const handleAssignConversation = (conversationId: string, assigneeId: string | null) => {
     setChatConversations(prev =>
