@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Bot as BotData, ChatContact, ChatMessage, User } from '@/lib/data';
-import { Bot, MessageSquare, ChevronLeft, MoreHorizontal, X, ChevronDown, Home, Ticket, Send } from 'lucide-react';
+import { Bot, MessageSquare, ChevronLeft, MoreHorizontal, X, ChevronDown, Home, Ticket, Send, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Textarea } from '../ui/textarea';
@@ -33,7 +33,69 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Switch } from '../ui/switch';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Badge } from '../ui/badge';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 
+
+function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
+    const [open, setOpen] = React.useState(false);
+  
+    const handleSelect = (userId: string) => {
+        const newSelected = selectedUsers.includes(userId)
+            ? selectedUsers.filter(id => id !== userId)
+            : [...selectedUsers, userId];
+        onChange(newSelected);
+    };
+
+    return (
+      <div>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="w-full justify-between h-auto min-h-10"
+            >
+             <div className="flex flex-wrap gap-1">
+                 {selectedUsers.length > 0 ? selectedUsers.map(id => {
+                     const user = allUsers.find(u => u.id === id);
+                     return <Badge variant="secondary" key={id}>{user?.name || 'Unknown'}</Badge>;
+                 }) : "Select agents..."}
+             </div>
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+            <Command>
+              <CommandInput placeholder="Search users..." />
+              <CommandList>
+                <CommandEmpty>No users found.</CommandEmpty>
+                <CommandGroup>
+                  {allUsers.map((user) => (
+                    <CommandItem
+                      key={user.id}
+                      value={user.name}
+                      onSelect={() => handleSelect(user.id)}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          selectedUsers.includes(user.id) ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {user.name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
+    );
+}
 
 const botSettingsSchema = z.object({
   name: z.string().min(1, 'Bot name is required.'),
@@ -45,6 +107,7 @@ const botSettingsSchema = z.object({
   promptButton1: z.string().optional(),
   promptButton2: z.string().optional(),
   promptButton3: z.string().optional(),
+  agentIds: z.array(z.string()).optional(),
 });
 
 type BotSettingsFormValues = z.infer<typeof botSettingsSchema>;
@@ -74,6 +137,7 @@ export default function BotSettingsDialog({
   onSendMessage,
   messages,
   contact,
+  allUsers
 }: BotSettingsDialogProps) {
   const [chatStarted, setChatStarted] = useState(false);
   const [previewMessage, setPreviewMessage] = useState('');
@@ -92,6 +156,7 @@ export default function BotSettingsDialog({
       promptButton1: '',
       promptButton2: '',
       promptButton3: '',
+      agentIds: [],
     },
   });
   
@@ -119,6 +184,7 @@ export default function BotSettingsDialog({
         promptButton1: bot.promptButtons?.[0] || '',
         promptButton2: bot.promptButtons?.[1] || '',
         promptButton3: bot.promptButtons?.[2] || '',
+        agentIds: bot.agentIds || [],
       });
     }
   }, [bot, form]);
@@ -151,6 +217,7 @@ export default function BotSettingsDialog({
             logoUrl: values.logoUrl || '',
         },
         promptButtons: [values.promptButton1, values.promptButton2, values.promptButton3].filter(Boolean) as string[],
+        agentIds: values.agentIds,
     };
     onSave(updatedBot);
     onOpenChange(false);
@@ -172,8 +239,10 @@ export default function BotSettingsDialog({
         return null;
     }
     
+    const uniqueKey = `${msg.id}-${msg.timestamp}`;
+    
     return (
-      <div key={msg.id} className="flex items-end gap-2 justify-end">
+      <div key={uniqueKey} className="flex items-end gap-2 justify-end">
         <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm" style={{ backgroundColor: watchedValues.primaryColor }}>
           <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
         </div>
@@ -207,6 +276,24 @@ export default function BotSettingsDialog({
                         <FormLabel>Bot Name</FormLabel>
                         <FormControl>
                             <Input placeholder="Support Bot" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                 <FormField
+                    control={form.control}
+                    name="agentIds"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                        <FormLabel>Live Agents</FormLabel>
+                        <FormControl>
+                            <MemberSelect 
+                                allUsers={allUsers} 
+                                selectedUsers={field.value || []} 
+                                onChange={field.onChange}
+                            />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -443,6 +530,3 @@ export default function BotSettingsDialog({
     </Dialog>
   );
 }
-
-
-    

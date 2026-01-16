@@ -313,6 +313,7 @@ export interface Bot {
     logoUrl: string;
   };
   promptButtons?: string[];
+  agentIds?: string[];
 }
 
 export interface ChatContact {

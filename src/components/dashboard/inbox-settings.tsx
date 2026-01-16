@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -48,7 +49,8 @@ const initialMockBots: BotData[] = [
         'Choosing a pricing plan',
         'Learn more about Intercom',
         'Start a free 14-day trial',
-    ]
+    ],
+    agentIds: [],
   },
   {
     id: 'bot-2',
@@ -69,69 +71,10 @@ const initialMockBots: BotData[] = [
     promptButtons: [
         'Get a demo',
         'Talk to sales',
-    ]
+    ],
+    agentIds: [],
   },
 ];
-
-// MemberSelect component copied and adapted
-function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
-    const [open, setOpen] = React.useState(false);
-  
-    const handleSelect = (userId: string) => {
-        const newSelected = selectedUsers.includes(userId)
-            ? selectedUsers.filter(id => id !== userId)
-            : [...selectedUsers, userId];
-        onChange(newSelected);
-    };
-
-    return (
-      <div>
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
-              className="w-full justify-between h-auto min-h-10"
-            >
-             <div className="flex flex-wrap gap-1">
-                 {selectedUsers.length > 0 ? selectedUsers.map(id => {
-                     const user = allUsers.find(u => u.id === id);
-                     return <Badge variant="secondary" key={id}>{user?.name || 'Unknown'}</Badge>;
-                 }) : "Select agents..."}
-             </div>
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-            <Command>
-              <CommandInput placeholder="Search users..." />
-              <CommandList>
-                <CommandEmpty>No users found.</CommandEmpty>
-                <CommandGroup>
-                  {allUsers.map((user) => (
-                    <CommandItem
-                      key={user.id}
-                      value={user.name}
-                      onSelect={() => handleSelect(user.id)}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          selectedUsers.includes(user.id) ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      {user.name}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-      </div>
-    );
-}
 
 interface InboxSettingsProps {
   onSendMessageFromBotPreview: (content: string) => void;
@@ -140,8 +83,6 @@ interface InboxSettingsProps {
   chatConversations: Conversation[];
   allUsers: User[];
   appUser: User | null;
-  activeHub: Hub | null;
-  onUpdateHub: (updatedData: Partial<Hub>) => void;
 }
 
 export default function InboxSettings({ 
@@ -151,39 +92,10 @@ export default function InboxSettings({
     chatConversations,
     allUsers,
     appUser,
-    activeHub,
-    onUpdateHub,
 }: InboxSettingsProps) {
   const [bots, setBots] = useState<BotData[]>(initialMockBots);
   const [selectedBot, setSelectedBot] = useState<BotData | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  const { activeSpace } = useAuth();
-
-  const spaceUsers = useMemo(() => {
-      if (!activeSpace) return [];
-      return allUsers.filter(u => activeSpace.members[u.id]);
-  }, [activeSpace, allUsers]);
-
-  const [liveAgentIds, setLiveAgentIds] = useState<string[]>(activeHub?.settings?.liveAgentIds || []);
-
-  useEffect(() => {
-      if (activeHub) {
-          setLiveAgentIds(activeHub.settings?.liveAgentIds || []);
-      }
-  }, [activeHub]);
-
-  const handleSaveAgents = () => {
-      if (!activeHub) return;
-      onUpdateHub({
-          settings: {
-              ...activeHub.settings,
-              liveAgentIds: liveAgentIds
-          }
-      });
-  };
-
-  const hasAgentChanges = activeHub ? JSON.stringify(liveAgentIds.sort()) !== JSON.stringify((activeHub.settings?.liveAgentIds || []).sort()) : false;
 
   const handleEditBot = (bot: BotData) => {
     setSelectedBot(bot);
@@ -202,25 +114,6 @@ export default function InboxSettings({
   return (
     <>
       <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Live Agent Assignment</CardTitle>
-            <CardDescription>
-              Choose which users will be assigned to new conversations that come into the inbox.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Label>Agents</Label>
-            <MemberSelect 
-                allUsers={spaceUsers}
-                selectedUsers={liveAgentIds}
-                onChange={setLiveAgentIds}
-            />
-          </CardContent>
-          <CardFooter>
-            <Button onClick={handleSaveAgents} disabled={!hasAgentChanges}>Save Agents</Button>
-          </CardFooter>
-        </Card>
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">

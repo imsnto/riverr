@@ -1,3 +1,4 @@
+
 // src/components/dashboard/settings-layout.tsx
 'use client';
 
@@ -93,8 +94,6 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             chatConversations={props.chatConversations}
             allUsers={props.allUsers}
             appUser={props.appUser}
-            activeHub={props.activeHub}
-            onUpdateHub={props.onUpdateActiveHub}
          />;
       case 'timesheets':
         return (
