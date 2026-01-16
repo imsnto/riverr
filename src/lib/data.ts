@@ -309,8 +309,9 @@ export interface Bot {
   };
   styleSettings?: {
     primaryColor: string;
-    avatarUrl: string;
+    logoUrl: string;
   };
+  promptButtons?: string[];
 }
 
 export interface ChatContact {

@@ -25,8 +25,8 @@ const initialMockBots: BotData[] = [
   {
     id: 'bot-1',
     hubId: 'hub-1',
-    name: 'Support Bot',
-    welcomeMessage: 'Hi there',
+    name: 'Fin',
+    welcomeMessage: 'Hi there, welcome to Intercom 👋\nWhat would you like help with?',
     layout: 'default',
     spaces: {
         home: false,
@@ -35,14 +35,19 @@ const initialMockBots: BotData[] = [
     },
     styleSettings: {
       primaryColor: '#3b82f6',
-      avatarUrl: '',
+      logoUrl: '',
     },
+    promptButtons: [
+        'Choosing a pricing plan',
+        'Learn more about Intercom',
+        'Start a free 14-day trial',
+    ]
   },
   {
     id: 'bot-2',
     hubId: 'hub-1',
     name: 'Sales Inquiries',
-    welcomeMessage: 'Hello!',
+    welcomeMessage: 'Hello! How can I help you with sales today?',
     layout: 'default',
     spaces: {
         home: false,
@@ -51,8 +56,12 @@ const initialMockBots: BotData[] = [
     },
     styleSettings: {
       primaryColor: '#10b981',
-      avatarUrl: '',
+      logoUrl: '',
     },
+    promptButtons: [
+        'Get a demo',
+        'Talk to sales',
+    ]
   },
 ];
 

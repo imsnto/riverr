@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -23,7 +24,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Bot as BotData, ChatContact, ChatMessage, User } from '@/lib/data';
-import { Bot, MessageSquare, ChevronLeft, MoreHorizontal, X, ChevronDown } from 'lucide-react';
+import { Bot, MessageSquare, ChevronLeft, MoreHorizontal, X, ChevronDown, Home, Ticket, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Textarea } from '../ui/textarea';
@@ -36,9 +37,13 @@ import { Label } from '@/components/ui/label';
 
 const botSettingsSchema = z.object({
   name: z.string().min(1, 'Bot name is required.'),
-  showTickets: z.boolean(),
   welcomeMessage: z.string().optional(),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.'),
+  logoUrl: z.string().url().optional().or(z.literal('')),
+  showTickets: z.boolean(),
+  promptButton1: z.string().optional(),
+  promptButton2: z.string().optional(),
+  promptButton3: z.string().optional(),
 });
 
 type BotSettingsFormValues = z.infer<typeof botSettingsSchema>;
@@ -78,8 +83,12 @@ export default function BotSettingsDialog({
     defaultValues: {
       name: '',
       welcomeMessage: 'Hi there',
-      primaryColor: '#0057ff',
+      primaryColor: '#3b82f6',
+      logoUrl: '',
       showTickets: false,
+      promptButton1: '',
+      promptButton2: '',
+      promptButton3: '',
     },
   });
   
@@ -92,7 +101,7 @@ export default function BotSettingsDialog({
         viewport.scrollTop = viewport.scrollHeight;
       }
     }
-  }, [messages]);
+  }, [messages, chatStarted]);
 
 
   useEffect(() => {
@@ -100,8 +109,12 @@ export default function BotSettingsDialog({
       form.reset({
         name: bot.name,
         welcomeMessage: bot.welcomeMessage || 'Hi there',
-        primaryColor: bot.styleSettings?.primaryColor || '#0057ff',
+        primaryColor: bot.styleSettings?.primaryColor || '#3b82f6',
+        logoUrl: bot.styleSettings?.logoUrl || '',
         showTickets: bot.spaces?.tickets ?? false,
+        promptButton1: bot.promptButtons?.[0] || '',
+        promptButton2: bot.promptButtons?.[1] || '',
+        promptButton3: bot.promptButtons?.[2] || '',
       });
     }
   }, [bot, form]);
@@ -130,7 +143,9 @@ export default function BotSettingsDialog({
         styleSettings: {
             ...bot.styleSettings,
             primaryColor: values.primaryColor,
-        }
+            logoUrl: values.logoUrl || '',
+        },
+        promptButtons: [values.promptButton1, values.promptButton2, values.promptButton3].filter(Boolean) as string[],
     };
     onSave(updatedBot);
     onOpenChange(false);
@@ -152,15 +167,16 @@ export default function BotSettingsDialog({
         return null;
     }
     
-    // In preview, all messages are from the contact (the "customer")
     return (
       <div key={msg.id} className="flex items-end gap-2 justify-end">
-        <div className={cn("rounded-xl p-3 max-w-xs", "bg-blue-600 text-white rounded-br-sm")}>
+        <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm" style={{ backgroundColor: watchedValues.primaryColor }}>
           <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
         </div>
       </div>
     );
   };
+
+  const promptButtons = [watchedValues.promptButton1, watchedValues.promptButton2, watchedValues.promptButton3].filter(Boolean);
 
 
   return (
@@ -213,8 +229,8 @@ export default function BotSettingsDialog({
                 
                  <Accordion type="single" collapsible defaultValue="welcome-message" className="w-full">
                     <AccordionItem value="welcome-message">
-                        <AccordionTrigger>Set your welcome message</AccordionTrigger>
-                        <AccordionContent>
+                        <AccordionTrigger>Content</AccordionTrigger>
+                        <AccordionContent className="space-y-4">
                              <FormField
                                 control={form.control}
                                 name="welcomeMessage"
@@ -222,17 +238,36 @@ export default function BotSettingsDialog({
                                     <FormItem>
                                     <FormLabel>Welcome Message</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Hi there" {...field} />
+                                        <Textarea placeholder="Hi there" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                     </FormItem>
                                 )}
                             />
+                            <div className="space-y-2">
+                                <FormLabel>Prompt Buttons</FormLabel>
+                                <FormField control={form.control} name="promptButton1" render={({ field }) => (<FormItem><FormControl><Input placeholder="Prompt 1..." {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="promptButton2" render={({ field }) => (<FormItem><FormControl><Input placeholder="Prompt 2..." {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="promptButton3" render={({ field }) => (<FormItem><FormControl><Input placeholder="Prompt 3..." {...field} /></FormControl></FormItem>)} />
+                            </div>
                         </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="branding">
                         <AccordionTrigger>Branding</AccordionTrigger>
-                        <AccordionContent>
+                        <AccordionContent className="space-y-4">
+                             <FormField
+                                control={form.control}
+                                name="logoUrl"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Logo URL</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="https://your-domain.com/logo.png" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                             <FormField
                                 control={form.control}
                                 name="primaryColor"
@@ -245,7 +280,7 @@ export default function BotSettingsDialog({
                                             <div className="w-8 h-8 rounded-md border" style={{ backgroundColor: field.value }}></div>
                                         </div>
                                     </FormControl>
-                                    <FormMessage />
+                                     <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -272,10 +307,14 @@ export default function BotSettingsDialog({
                     <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" disabled>
                         <ChevronLeft className="h-5 w-5" />
                     </Button>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 text-white">
-                        <path d="M12 2L13.84 7.64L19.5 9.5L13.84 11.36L12 17L10.16 11.36L4.5 9.5L10.16 7.64L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-                        <path d="M12 2L13.84 7.64L19.5 9.5L13.84 11.36L12 17L10.16 11.36L4.5 9.5L10.16 7.64L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" transform="rotate(90 12 12)"/>
-                    </svg>
+                     {watchedValues.logoUrl ? (
+                        <img src={watchedValues.logoUrl} alt="Bot Logo" className="h-6 w-6" />
+                    ) : (
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 text-white">
+                            <path d="M12 2L13.84 7.64L19.5 9.5L13.84 11.36L12 17L10.16 11.36L4.5 9.5L10.16 7.64L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                            <path d="M12 2L13.84 7.64L19.5 9.5L13.84 11.36L12 17L10.16 11.36L4.5 9.5L10.16 7.64L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" transform="rotate(90 12 12)"/>
+                        </svg>
+                    )}
                     <div>
                         <h3 className="font-bold text-white">{watchedValues.name}</h3>
                         <p className="text-xs text-zinc-400">The team can also help</p>
@@ -292,48 +331,43 @@ export default function BotSettingsDialog({
                 
                 {/* Body */}
                 <ScrollArea className="flex-1" ref={scrollAreaRef}>
-                    <div className="p-4">
-                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
-                            <p className="text-sm whitespace-pre-wrap">{watchedValues.welcomeMessage} 👋</p>
-                            <p className="text-sm whitespace-pre-wrap mt-2">What would you like help with?</p>
-                        </div>
-                        <p className="text-xs text-zinc-500 mt-2">Intercom live chat・Just now</p>
-                    </div>
+                    <div className="p-4 space-y-4">
+                         <div className="flex items-end gap-2">
+                             <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
+                                 <p className="text-sm whitespace-pre-wrap">{watchedValues.welcomeMessage}</p>
+                             </div>
+                         </div>
+                         <p className="text-xs text-zinc-500">Fin • AI Agent • Just now</p>
 
-                    {(messages.length === 0 && !chatStarted) ? (
-                        <div className="px-4 space-y-2">
-                            <Button onClick={() => handlePromptClick('Choosing a pricing plan')} variant="outline" className="w-full justify-center bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white rounded-full">
-                                Choosing a pricing plan
-                            </Button>
-                            <Button onClick={() => handlePromptClick('Learn more about Intercom')} variant="outline" className="w-full justify-center bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white rounded-full">
-                                Learn more about Intercom
-                            </Button>
-                            <Button onClick={() => handlePromptClick('Start a free 14-day trial')} variant="outline" className="w-full justify-center bg-white border-white hover:bg-zinc-200 text-zinc-900 font-semibold rounded-full">
-                                Start a free 14-day trial
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="px-4 space-y-4">
-                            {messages.map(renderMessageBubble)}
-                        </div>
-                    )}
+                        {(messages.length === 0 && !chatStarted) ? (
+                            <div className="pt-2 space-y-2">
+                                {promptButtons.map((prompt, index) => (
+                                     <Button key={index} onClick={() => handlePromptClick(prompt)} variant="outline" className="w-full justify-center bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white rounded-full">
+                                        {prompt}
+                                    </Button>
+                                ))}
+                            </div>
+                        ) : (
+                             messages.map(renderMessageBubble)
+                        )}
+                    </div>
                 </ScrollArea>
                 
                 {/* Footer */}
-                <div className="p-4 border-t border-zinc-700 shrink-0">
+                <div className="p-4 border-t border-zinc-700 shrink-0 space-y-3">
                     {(chatStarted || messages.length > 0) && (
-                        <div className="mb-3">
+                        <div className="relative">
                         <Textarea 
                             placeholder="Message..."
                             value={previewMessage}
                             onChange={(e) => setPreviewMessage(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePreviewSend(); }}}
                             minRows={1}
-                            className="bg-zinc-800 border-zinc-700 text-white"
+                            className="bg-zinc-800 border-zinc-700 text-white pr-10"
                         />
-                        <div className="flex justify-end mt-2">
-                            <Button size="sm" onClick={handlePreviewSend} disabled={!previewMessage.trim()}>Send</Button>
-                        </div>
+                         <Button size="icon" variant="ghost" onClick={handlePreviewSend} disabled={!previewMessage.trim()} className="absolute right-1 bottom-1 h-8 w-8 hover:bg-zinc-700">
+                            <Send className="h-4 w-4" />
+                         </Button>
                         </div>
                     )}
                     <div className="text-center text-xs text-zinc-500">
