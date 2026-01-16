@@ -103,7 +103,6 @@ export default function Dashboard({ view }: { view: string }) {
 
   // Help Center states
   const [helpCenters, setHelpCenters] = useState<HelpCenter[]>([]);
-  const [helpCenterCollections, setHelpCenterCollections] = useState<HelpCenterCollection[]>([]);
   const [helpCenterArticles, setHelpCenterArticles] = useState<HelpCenterArticle[]>([]);
 
 
@@ -206,13 +205,6 @@ export default function Dashboard({ view }: { view: string }) {
           setBots(fetchedBots);
           setHelpCenters(fetchedHelpCenters);
           setHelpCenterArticles(hubArticles);
-
-          if (fetchedHelpCenters.length > 0) {
-            const collections = await db.getHelpCenterCollections(fetchedHelpCenters[0].id);
-            setHelpCenterCollections(collections);
-          } else {
-            setHelpCenterCollections([]);
-          }
       
           if (fetchedChannels.length > 0 && !activeChannelId) {
             setActiveChannelId(fetchedChannels[0].id);
@@ -673,7 +665,6 @@ export default function Dashboard({ view }: { view: string }) {
       case 'documents': return <DocumentsView activeSpace={activeSpace} appUser={appUser} allUsers={allUsers} activeHub={activeHub} />;
       case 'help-center': return <HelpCenterLayout
         helpCenters={helpCenters}
-        collections={helpCenterCollections}
         articles={helpCenterArticles}
         onSaveArticle={handleSaveArticle}
         allUsers={allUsers}

@@ -6,15 +6,16 @@ import HelpCenterArticleEditor from './help-center-article-editor';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
 import HelpCenterFormDialog from './help-center-form-dialog';
-import { addHelpCenter, updateHelpCenter } from '@/lib/db';
+import { addHelpCenter, updateHelpCenter, getHelpCenterCollections, addHelpCenterCollection, updateHelpCenterCollection, deleteHelpCenterCollection } from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterSettings from './help-center-settings';
 import HelpCenterArticleList from './help-center-article-list';
 import { Plus } from 'lucide-react';
+import HelpCenterCollectionsView from './help-center-collections-view';
+import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 
 interface HelpCenterLayoutProps {
     helpCenters: HelpCenter[];
-    collections: HelpCenterCollection[];
     articles: HelpCenterArticle[];
     allUsers: User[];
     onSaveArticle: (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => Promise<HelpCenterArticle | void>;
@@ -23,7 +24,6 @@ interface HelpCenterLayoutProps {
 
 export default function HelpCenterLayout({ 
     helpCenters, 
-    collections, 
     articles, 
     allUsers, 
     onSaveArticle, 
@@ -33,9 +33,13 @@ export default function HelpCenterLayout({
     const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
     const { appUser, activeHub } = useAuth();
     const [activeHelpCenter, setActiveHelpCenter] = useState<HelpCenter | null>(helpCenters.length > 0 ? helpCenters[0] : null);
+    const [collections, setCollections] = useState<HelpCenterCollection[]>([]);
 
     const [isHcDialogOpen, setIsHcDialogOpen] = useState(false);
     const [editingHelpCenter, setEditingHelpCenter] = useState<HelpCenter | null>(null);
+    const [isCollectionDialogOpen, setIsCollectionDialogOpen] = useState(false);
+    const [editingCollection, setEditingCollection] = useState<HelpCenterCollection | null>(null);
+
     const { toast } = useToast();
 
     useEffect(() => {
@@ -46,6 +50,14 @@ export default function HelpCenterLayout({
             setActiveHelpCenter(null);
         }
     }, [helpCenters, activeHelpCenter]);
+
+    useEffect(() => {
+        if (activeHelpCenter) {
+            getHelpCenterCollections(activeHelpCenter.id).then(setCollections);
+        } else {
+            setCollections([]);
+        }
+    }, [activeHelpCenter]);
 
     const handleCreateHelpCenter = () => {
         setEditingHelpCenter(null);
@@ -64,11 +76,9 @@ export default function HelpCenterLayout({
         }
 
         if (editingHelpCenter) {
-            // Update
             await updateHelpCenter(editingHelpCenter.id, { name });
             toast({ title: "Help Center updated."});
         } else {
-            // Create
             await addHelpCenter({ name, hubId: activeHub.id });
             toast({ title: "Help Center created."});
         }
@@ -76,6 +86,44 @@ export default function HelpCenterLayout({
         setIsHcDialogOpen(false);
         setEditingHelpCenter(null);
     };
+    
+    const handleCreateCollection = () => {
+        setEditingCollection(null);
+        setIsCollectionDialogOpen(true);
+    };
+
+    const handleEditCollection = (collection: HelpCenterCollection) => {
+        setEditingCollection(collection);
+        setIsCollectionDialogOpen(true);
+    }
+
+    const handleDeleteCollection = async (collectionId: string) => {
+        await deleteHelpCenterCollection(collectionId);
+        toast({ title: 'Collection deleted' });
+        if (activeHelpCenter) {
+            getHelpCenterCollections(activeHelpCenter.id).then(setCollections);
+        }
+    }
+
+    const handleSaveCollection = async (values: { name: string; description?: string }, collectionId?: string) => {
+        if (!activeHelpCenter) {
+            toast({ variant: 'destructive', title: 'No active help center selected.' });
+            return;
+        }
+
+        if (collectionId) {
+            await updateHelpCenterCollection(collectionId, values);
+            toast({ title: 'Collection updated.' });
+        } else {
+            await addHelpCenterCollection({ ...values, helpCenterId: activeHelpCenter.id });
+            toast({ title: 'Collection created.' });
+        }
+        if (activeHelpCenter) {
+            getHelpCenterCollections(activeHelpCenter.id).then(setCollections);
+        }
+        setIsCollectionDialogOpen(false);
+    }
+
 
     const handleViewChange = (newView: string) => {
         setView(newView);
@@ -83,17 +131,16 @@ export default function HelpCenterLayout({
     };
 
     const filteredArticles = articles.filter(article => {
-        // filter by help center first if one is active
         const inActiveHc = activeHelpCenter ? article.helpCenterId === activeHelpCenter.id : true;
         if (!inActiveHc) return false;
 
         if (view === 'published') return article.status === 'published';
         if (view === 'draft') return article.status === 'draft';
-        if (view.startsWith('collection_')) {
+        if (view.startsWith('collection_') && !view.startsWith('collections_')) {
             const collectionId = view.split('_')[1];
             return article.collectionIds.includes(collectionId);
         }
-        return true; // all_articles
+        return true; 
     });
     
     const handleCreateArticle = async () => {
@@ -131,7 +178,6 @@ export default function HelpCenterLayout({
                     />
                 );
             }
-            // If article not found, reset
             setSelectedArticleId(null);
         }
 
@@ -139,10 +185,25 @@ export default function HelpCenterLayout({
             return <HelpCenterSettings helpCenter={activeHelpCenter} />;
         }
         
+        if (view.startsWith('collections_')) {
+            const hcId = view.split('_')[1];
+            if (activeHelpCenter?.id === hcId) {
+                return (
+                    <HelpCenterCollectionsView 
+                        collections={collections}
+                        articles={articles}
+                        onAdd={handleCreateCollection}
+                        onEdit={handleEditCollection}
+                        onDelete={handleDeleteCollection}
+                    />
+                );
+            }
+        }
+        
         let listTitle = "All Articles";
         if (view === 'published') listTitle = "Published Articles";
         if (view === 'draft') listTitle = "Draft Articles";
-        if (view.startsWith('collection_')) {
+        if (view.startsWith('collection_') && !view.startsWith('collections_')) {
             const collectionId = view.split('_')[1];
             const collection = collections.find(c => c.id === collectionId);
             listTitle = collection ? `Collection: ${collection.name}` : "Collection";
@@ -184,6 +245,12 @@ export default function HelpCenterLayout({
                 onOpenChange={setIsHcDialogOpen}
                 onSave={handleSaveHelpCenter}
                 helpCenter={editingHelpCenter}
+            />
+             <HelpCenterCollectionFormDialog
+                isOpen={isCollectionDialogOpen}
+                onOpenChange={setIsCollectionDialogOpen}
+                onSave={handleSaveCollection}
+                collection={editingCollection}
             />
         </div>
     );

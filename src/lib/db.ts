@@ -1113,6 +1113,16 @@ export const addHelpCenterCollection = async (collectionData: Omit<HelpCenterCol
     return { id: docRef.id, ...collectionData };
 }
 
+export const updateHelpCenterCollection = async (collectionId: string, data: Partial<HelpCenterCollection>): Promise<void> => {
+    const collectionRef = doc(db, "help_center_collections", collectionId);
+    await updateDoc(collectionRef, data);
+}
+
+export const deleteHelpCenterCollection = async (collectionId: string): Promise<void> => {
+    const collectionRef = doc(db, "help_center_collections", collectionId);
+    await deleteDoc(collectionRef);
+}
+
 export const getHelpCenterArticles = async (hubId: string): Promise<HelpCenterArticle[]> => {
     const q = query(collection(db, 'help_center_articles'), where('hubId', '==', hubId));
     const snapshot = await getDocs(q);

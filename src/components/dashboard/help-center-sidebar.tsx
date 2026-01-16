@@ -35,10 +35,6 @@ export default function HelpCenterSidebar({
     onEditHelpCenter
 }: HelpCenterSidebarProps) {
 
-    const collectionsForActiveHC = activeHelpCenter 
-        ? collections.filter(c => c.helpCenterId === activeHelpCenter.id)
-        : [];
-
     return (
         <aside className="w-80 border-r bg-card p-4 flex flex-col">
             <div className="relative mb-4">
@@ -47,7 +43,6 @@ export default function HelpCenterSidebar({
             </div>
 
             <div className="mb-4">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-2">Articles</h3>
                 <nav className="space-y-1">
                     <Button variant={activeView === 'all_articles' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('all_articles')}>
                         <File className="mr-2 h-4 w-4"/> All articles
@@ -100,21 +95,13 @@ export default function HelpCenterSidebar({
 
                                 {activeHelpCenter?.id === hc.id && (
                                     <div className="pl-4 mt-1 space-y-1">
-                                        <h4 className="px-2 py-1 text-xs font-semibold text-muted-foreground">Collections</h4>
-                                        {collectionsForActiveHC.map(collection => (
-                                            <Button 
-                                                key={collection.id} 
-                                                variant={activeView === `collection_${collection.id}` ? 'secondary' : 'ghost'} 
-                                                className="w-full justify-start text-sm h-9" 
-                                                onClick={() => onViewChange(`collection_${collection.id}`)}
-                                            >
-                                                <Folder className="mr-2 h-4 w-4"/> 
-                                                <span className="truncate">{collection.name}</span>
-                                            </Button>
-                                        ))}
-                                        {collectionsForActiveHC.length === 0 && <p className="px-2 text-xs text-muted-foreground">No collections yet.</p>}
-                                        <Button variant="ghost" className="w-full justify-start text-sm h-9 text-muted-foreground">
-                                            <Plus className="mr-2 h-4 w-4" /> New Collection
+                                        <Button 
+                                            variant={activeView === `collections_${hc.id}` ? 'secondary' : 'ghost'} 
+                                            className="w-full justify-start text-sm h-9" 
+                                            onClick={() => onViewChange(`collections_${hc.id}`)}
+                                        >
+                                            <Folder className="mr-2 h-4 w-4"/> 
+                                            <span className="truncate">Collections</span>
                                         </Button>
 
                                         <Separator className="my-2" />
