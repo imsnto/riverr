@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Conversation, ChatMessage, ChatContact, User } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -21,6 +21,7 @@ interface InboxConversationViewProps {
   appUser: User;
   isContactPanelOpen: boolean;
   onToggleContactPanel: () => void;
+  onSendMessage: (conversationId: string, message: Omit<ChatMessage, 'id' | 'conversationId'>) => void;
 }
 
 const getInitials = (name: string) => {
@@ -29,13 +30,30 @@ const getInitials = (name: string) => {
 }
 
 
-export default function InboxConversationView({ conversation, messages, contact, users, appUser, isContactPanelOpen, onToggleContactPanel }: InboxConversationViewProps) {
+export default function InboxConversationView({ conversation, messages, contact, users, appUser, isContactPanelOpen, onToggleContactPanel, onSendMessage }: InboxConversationViewProps) {
+  const [activeTab, setActiveTab] = useState<'reply' | 'note'>('reply');
+  const [messageText, setMessageText] = useState('');
+  
   if (!conversation || !contact) {
     return (
-      <div className="flex h-full items-center justify-center p-4">
+      <div className="grid grid-rows-[auto_1fr_auto] h-full items-center justify-center p-4">
         <p className="text-muted-foreground">Select a conversation to start</p>
       </div>
     );
+  }
+  
+  const handleSend = () => {
+    if (!messageText.trim()) return;
+
+    const newMessage: Omit<ChatMessage, 'id' | 'conversationId'> = {
+      authorId: appUser.id,
+      type: activeTab,
+      content: messageText,
+      timestamp: new Date().toISOString(),
+    };
+
+    onSendMessage(conversation.id, newMessage);
+    setMessageText('');
   }
 
   const assignee = users.find(u => u.id === conversation.assigneeId);
@@ -54,11 +72,14 @@ export default function InboxConversationView({ conversation, messages, contact,
     }
 
     if (msg.type === 'note') {
+        const noteAuthor = users.find(u => u.id === msg.authorId);
         return (
              <div key={msg.id} className="flex justify-center">
                  <Card className="w-full max-w-2xl bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800 my-2">
                      <div className="p-3">
-                         <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Internal note added {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}</p>
+                         <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                           {noteAuthor?.name || 'A user'} added an internal note {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}
+                         </p>
                          <p className="text-sm mt-1">{msg.content}</p>
                      </div>
                  </Card>
@@ -107,16 +128,40 @@ export default function InboxConversationView({ conversation, messages, contact,
 
       {/* Composer */}
       <div className="p-4 border-t bg-card">
-        <Tabs defaultValue="reply">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'reply' | 'note')}>
             <TabsList>
                 <TabsTrigger value="reply">Reply</TabsTrigger>
                 <TabsTrigger value="note">Note</TabsTrigger>
             </TabsList>
             <TabsContent value="reply" className="mt-2">
-                 <Textarea placeholder="Type your reply..." className="mb-2" minRows={3} />
+                 <Textarea 
+                    placeholder="Type your reply..." 
+                    className="mb-2" 
+                    minRows={3} 
+                    value={messageText} 
+                    onChange={e => setMessageText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    }}
+                 />
             </TabsContent>
              <TabsContent value="note" className="mt-2">
-                 <Textarea placeholder="Add an internal note..." className="mb-2 bg-amber-50 dark:bg-amber-950/50" minRows={3} />
+                 <Textarea 
+                    placeholder="Add an internal note..." 
+                    className="mb-2 bg-amber-50 dark:bg-amber-950/50" 
+                    minRows={3} 
+                    value={messageText} 
+                    onChange={e => setMessageText(e.target.value)}
+                     onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    }}
+                  />
             </TabsContent>
         </Tabs>
         <div className="flex justify-between items-center mt-2">
@@ -125,7 +170,7 @@ export default function InboxConversationView({ conversation, messages, contact,
             </div>
             <div className="flex gap-2">
                 <Button variant="ghost" size="sm">Close</Button>
-                <Button>Reply</Button>
+                <Button onClick={handleSend} disabled={!messageText.trim()}>Send {activeTab === 'note' && ' Note'}</Button>
             </div>
         </div>
       </div>
