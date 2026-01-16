@@ -84,9 +84,9 @@ export default function InboxConversationView({ conversation, messages, contact,
 
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="grid grid-rows-[auto_1fr_auto] h-full">
       {/* Header */}
-      <div className="p-4 border-b flex justify-between items-center shrink-0">
+      <div className="p-4 border-b flex justify-between items-center">
         <p className="text-sm">
             Conversation with <span className="font-semibold">{contact.name}</span>
             {assignee && <> assigned to <span className="font-semibold">{assignee.name}</span></>}
@@ -99,14 +99,14 @@ export default function InboxConversationView({ conversation, messages, contact,
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0">
         <div className="p-4 space-y-6">
             {conversationMessages.map(renderMessageBubble)}
         </div>
       </ScrollArea>
 
       {/* Composer */}
-      <div className="p-4 border-t bg-card shrink-0">
+      <div className="p-4 border-t bg-card">
         <Tabs defaultValue="reply">
             <TabsList>
                 <TabsTrigger value="reply">Reply</TabsTrigger>
