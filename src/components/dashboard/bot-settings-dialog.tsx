@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
@@ -25,13 +25,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Bot as BotData } from '@/lib/data';
-import { Bot, MessageSquare, Home, Ticket, ChevronRight, Layout, MessagesSquare, Tv2 } from 'lucide-react';
+import { Bot, MessageSquare, Home, Ticket, ChevronRight, Layout, MessagesSquare, Tv2, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Card } from '../ui/card';
 import { Switch } from '../ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { Textarea } from '../ui/textarea';
 
 const botSettingsSchema = z.object({
   name: z.string().min(1, 'Bot name is required.'),
@@ -47,6 +48,7 @@ interface BotSettingsDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   bot: BotData | null;
   onSave: (botData: BotData) => void;
+  onSendMessage: (content: string) => void;
 }
 
 const getInitials = (name?: string) => {
@@ -59,8 +61,12 @@ export default function BotSettingsDialog({
   onOpenChange,
   bot,
   onSave,
+  onSendMessage,
 }: BotSettingsDialogProps) {
   const { toast } = useToast();
+  const [isPreviewChatOpen, setIsPreviewChatOpen] = useState(false);
+  const [previewMessage, setPreviewMessage] = useState('');
+
   const form = useForm<BotSettingsFormValues>({
     resolver: zodResolver(botSettingsSchema),
     defaultValues: {
@@ -83,6 +89,13 @@ export default function BotSettingsDialog({
       });
     }
   }, [bot, form]);
+  
+  useEffect(() => {
+      if (!isOpen) {
+          setIsPreviewChatOpen(false);
+          setPreviewMessage('');
+      }
+  }, [isOpen]);
 
   if (!bot) return null;
 
@@ -107,6 +120,16 @@ export default function BotSettingsDialog({
     toast({ title: 'Bot settings saved!' });
     onOpenChange(false);
   };
+  
+  const handlePreviewSend = () => {
+    if (!previewMessage.trim()) return;
+    onSendMessage(previewMessage);
+    setPreviewMessage('');
+    toast({
+        title: "Message Sent!",
+        description: "Your message was sent to the inbox."
+    });
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -213,46 +236,88 @@ export default function BotSettingsDialog({
         {/* Preview Section */}
         <div className="bg-muted/50 p-6 flex flex-col items-center justify-center rounded-r-lg relative overflow-hidden">
              <div className="w-72 h-[500px] rounded-2xl shadow-2xl bg-background flex flex-col overflow-hidden">
-                {/* Header */}
-                <div 
-                    className="p-4 text-white flex flex-col justify-between flex-[2_2_0%]"
-                    style={{ backgroundColor: watchedValues.primaryColor }}
-                >
-                    <div className="flex justify-between items-center">
-                        <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center text-sm font-bold">
-                            {getInitials(watchedValues.name)}
-                        </div>
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-bold">{watchedValues.welcomeMessage} 👋</h2>
-                        <h3 className="text-2xl font-bold">How can we help?</h3>
-                    </div>
-                </div>
-                {/* Body */}
-                <div className="p-3 flex-1 bg-white dark:bg-background">
-                    <button className="w-full flex justify-between items-center p-3 bg-white dark:bg-card rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                        <div>
-                            <p className="font-semibold text-sm">Send us a message</p>
-                            <p className="text-xs text-muted-foreground">We'll reply as soon as we can</p>
-                        </div>
-                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </button>
-                </div>
-                 {/* Footer */}
-                <div className="p-2 border-t flex justify-around items-center">
-                    <Button variant="ghost" className="flex flex-col h-auto p-2 font-normal text-xs gap-1">
-                        <MessageSquare className="h-5 w-5" />
-                        Messages
-                    </Button>
-                    {watchedValues.showTickets && (
-                        <Button variant="ghost" className="flex flex-col h-auto p-2 font-normal text-xs gap-1">
-                            <Ticket className="h-5 w-5" />
-                            Tickets
+                {isPreviewChatOpen ? (
+                    <>
+                    {/* Chat Header */}
+                    <div style={{ backgroundColor: watchedValues.primaryColor }} className="p-3 text-white flex items-center gap-2 flex-shrink-0">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/20" onClick={() => setIsPreviewChatOpen(false)}>
+                            <ArrowLeft />
                         </Button>
-                    )}
-                </div>
+                        <div className="flex items-center gap-3">
+                            <div className="relative">
+                                <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center text-sm font-bold">
+                                    {getInitials(watchedValues.name)}
+                                </div>
+                                 <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-white" style={{ borderColor: watchedValues.primaryColor }}/>
+                            </div>
+                            <div>
+                                <h3 className="font-bold">{watchedValues.name}</h3>
+                                <p className="text-xs opacity-80">We'll reply as soon as we can</p>
+                            </div>
+                        </div>
+                    </div>
+                    {/* Chat Body */}
+                    <div className="flex-1 p-3 bg-white dark:bg-background overflow-y-auto">
+                        <p className="text-xs text-center text-muted-foreground p-2">This is a preview. Your messages will be sent to your inbox.</p>
+                    </div>
+                    {/* Chat Composer */}
+                    <div className="p-2 border-t bg-background flex-shrink-0">
+                        <Textarea 
+                            placeholder="Message..."
+                            value={previewMessage}
+                            onChange={(e) => setPreviewMessage(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePreviewSend(); }}}
+                            minRows={1}
+                        />
+                        <div className="flex justify-end mt-2">
+                            <Button size="sm" onClick={handlePreviewSend} disabled={!previewMessage.trim()}>Send</Button>
+                        </div>
+                    </div>
+                    </>
+                ) : (
+                    <>
+                    {/* Header */}
+                    <div 
+                        className="p-4 text-white flex flex-col justify-between flex-[2_2_0%]"
+                        style={{ backgroundColor: watchedValues.primaryColor }}
+                    >
+                        <div className="flex justify-between items-center">
+                            <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center text-sm font-bold">
+                                {getInitials(watchedValues.name)}
+                            </div>
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-bold">{watchedValues.welcomeMessage} 👋</h2>
+                            <h3 className="text-2xl font-bold">How can we help?</h3>
+                        </div>
+                    </div>
+                    {/* Body */}
+                    <div className="p-3 flex-1 bg-white dark:bg-background">
+                        <button onClick={() => setIsPreviewChatOpen(true)} className="w-full flex justify-between items-center p-3 bg-white dark:bg-card rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                            <div>
+                                <p className="font-semibold text-sm">Send us a message</p>
+                                <p className="text-xs text-muted-foreground">We'll reply as soon as we can</p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                        </button>
+                    </div>
+                    {/* Footer */}
+                    <div className="p-2 border-t flex justify-around items-center">
+                        <Button variant="ghost" className="flex flex-col h-auto p-2 font-normal text-xs gap-1">
+                            <MessageSquare className="h-5 w-5" />
+                            Messages
+                        </Button>
+                        {watchedValues.showTickets && (
+                            <Button variant="ghost" className="flex flex-col h-auto p-2 font-normal text-xs gap-1">
+                                <Ticket className="h-5 w-5" />
+                                Tickets
+                            </Button>
+                        )}
+                    </div>
+                    </>
+                )}
              </div>
-             <div className="absolute bottom-5 right-5 h-14 w-14 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: watchedValues.primaryColor }}>
+             <div className="absolute bottom-5 right-5 h-14 w-14 rounded-full flex items-center justify-center shadow-lg cursor-pointer" style={{ backgroundColor: watchedValues.primaryColor }} onClick={() => setIsPreviewChatOpen(true)}>
                  <MessageSquare className="h-7 w-7 text-white" />
              </div>
         </div>

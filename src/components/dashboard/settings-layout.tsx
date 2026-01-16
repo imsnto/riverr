@@ -1,3 +1,4 @@
+
 // src/components/dashboard/settings-layout.tsx
 'use client';
 
@@ -34,6 +35,7 @@ interface SettingsLayoutProps {
   timeEntries: TimeEntry[];
   activeHub: Hub | null;
   onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
+  onSendMessageFromBotPreview: (content: string) => void;
 }
 
 export default function SettingsLayout(props: SettingsLayoutProps) {
@@ -79,7 +81,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
           />
         );
        case 'inbox':
-        return <InboxSettings />;
+        return <InboxSettings onSendMessageFromBotPreview={props.onSendMessageFromBotPreview} />;
       case 'timesheets':
         return (
           <TeamTimesheets

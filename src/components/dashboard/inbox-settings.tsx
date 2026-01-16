@@ -56,7 +56,11 @@ const initialMockBots: BotData[] = [
   },
 ];
 
-export default function InboxSettings() {
+interface InboxSettingsProps {
+  onSendMessageFromBotPreview: (content: string) => void;
+}
+
+export default function InboxSettings({ onSendMessageFromBotPreview }: InboxSettingsProps) {
   const [bots, setBots] = useState<BotData[]>(initialMockBots);
   const [selectedBot, setSelectedBot] = useState<BotData | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -159,6 +163,7 @@ export default function InboxSettings() {
             onOpenChange={setIsDialogOpen}
             bot={selectedBot}
             onSave={handleSaveBot}
+            onSendMessage={onSendMessageFromBotPreview}
         />
       )}
     </>
