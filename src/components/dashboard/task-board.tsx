@@ -5,13 +5,12 @@
 import React, { useState } from 'react';
 import { Project, Space, Task, User, Status, Hub } from '@/lib/data';
 import { Button } from '@/components/ui/button';
-import { Plus, Folder, LayoutGrid, Filter, Search as SearchIcon, User as UserIcon } from 'lucide-react';
+import { Plus, Folder, LayoutGrid, Filter, Search as SearchIcon, User as UserIcon, ChevronsUpDown } from 'lucide-react';
 import ProjectBoard from './project-board';
 import NewTaskDialog from './new-task-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
-import { ChevronsUpDown } from 'lucide-react';
 
 
 interface TaskBoardProps {
@@ -68,7 +67,7 @@ export default function TaskBoard({
 
   return (
     <>
-      <div className="flex h-full flex-col p-4 md:p-8 pb-20 md:pb-8">
+      <div className="flex h-full flex-col p-4 md:p-8 pb-4">
           {selectedProject ? (
               <ProjectBoard 
                   project={selectedProject}
@@ -106,20 +105,6 @@ export default function TaskBoard({
           />
         )}
       </div>
-
-       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t p-2 flex justify-around items-center">
-            <Button variant="ghost" className="flex-col h-auto text-muted-foreground">
-                <LayoutGrid className="h-5 w-5" />
-                <span className="text-xs mt-1">Board</span>
-            </Button>
-            <Button variant="ghost" className="flex-col h-auto text-muted-foreground">
-                <Filter className="h-5 w-5" />
-                <span className="text-xs mt-1">Filter</span>
-            </Button>
-            <Button onClick={() => onNewTaskRequest()} className="flex-1 max-w-xs">
-                <Plus className="mr-2 h-4 w-4" /> New Task
-            </Button>
-        </div>
     </>
   );
 }

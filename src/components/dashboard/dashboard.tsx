@@ -63,6 +63,8 @@ import { cn } from '@/lib/utils';
 import { AppView } from '@/lib/routes';
 import ProjectSidebar from './project-sidebar';
 import HelpCenterLayout from './help-center-layout';
+import { useIsMobile } from '@/hooks/use-mobile';
+import MobileBottomNav from './mobile-bottom-nav';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -77,6 +79,7 @@ export default function Dashboard({ view }: { view: string }) {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const [currentView, setCurrentView] = useState<AppView>(view as AppView || 'overview');
   
@@ -729,7 +732,8 @@ export default function Dashboard({ view }: { view: string }) {
             "flex-1",
             currentView === 'inbox' || currentView === 'messages' || currentView === 'tasks' || currentView === 'settings' || currentView === 'help-center'
               ? 'overflow-hidden'
-              : 'overflow-y-auto'
+              : 'overflow-y-auto',
+            isMobile && 'pb-20'
           )}>
             {renderView()}
           </main>
@@ -777,6 +781,13 @@ export default function Dashboard({ view }: { view: string }) {
           />
         )}
       </div>
+      {isMobile && activeHub && (
+        <MobileBottomNav
+          currentView={currentView}
+          onChangeView={handleViewChange}
+          activeHub={activeHub}
+        />
+      )}
     </SidebarProvider>
   );
 }
