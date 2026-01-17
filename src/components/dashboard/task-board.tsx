@@ -65,7 +65,7 @@ export default function TaskBoard({
 
   return (
     <>
-      <div className="flex h-full flex-col p-4 md:p-6 md:pb-4">
+      <div className="flex h-full flex-col p-4 md:p-6 md:pb-4 overflow-hidden">
           {selectedProject ? (
               <ProjectBoard 
                   project={selectedProject}
