@@ -658,6 +658,7 @@ export default function Dashboard({ view }: { view: string }) {
         <TaskBoard 
           {...props}
           selectedProjectId={selectedProjectId}
+          onSelectProject={handleSelectProject}
           onNewProject={handleNewProject}
         />
       );

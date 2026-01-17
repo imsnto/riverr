@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, DragEvent, useRef } from 'react';
@@ -6,7 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { User, Task, Project, Hub, Status, Activity } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { MoreHorizontal, Plus, Edit, Trash2, Palette, Calendar, MessageSquare, Archive, CheckCircle } from 'lucide-react';
+import { MoreHorizontal, Plus, Edit, Trash2, Palette, Calendar, MessageSquare, Archive, CheckCircle, Folder, ChevronsUpDown } from 'lucide-react';
 import { Button, buttonVariants } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '../ui/dropdown-menu';
@@ -24,6 +25,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useAuth } from '@/hooks/use-auth';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 
 const getInitials = (name: string) => {
     if (!name) return '';
@@ -112,6 +114,7 @@ interface ProjectBoardProps {
   onNewTaskRequest: (status?: string) => void;
   onTaskClick: (task: Task) => void;
   onUpdateTask: (task: Task) => void;
+  onSelectProject: (id: string) => void;
 }
 
 const defaultStatuses: Status[] = [
@@ -121,12 +124,13 @@ const defaultStatuses: Status[] = [
     { name: 'Done', color: '#22c55e' },
 ]
 
-export default function ProjectBoard({ project, projects, allTasks, onUpdateTasks, activeHub, allUsers, onUpdateActiveHub, onNewTaskRequest, onTaskClick, onUpdateTask }: ProjectBoardProps) {
+export default function ProjectBoard({ project, projects, allTasks, onUpdateTasks, activeHub, allUsers, onUpdateActiveHub, onNewTaskRequest, onTaskClick, onUpdateTask, onSelectProject }: ProjectBoardProps) {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
   const { toast } = useToast();
   const { appUser } = useAuth();
+  const [isProjectSheetOpen, setIsProjectSheetOpen] = useState(false);
   
   const tasks = allTasks.filter(t => t.project_id === project.id && !t.parentId);
   const statuses = activeHub.statuses || defaultStatuses;
@@ -326,7 +330,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
       return (
       <div
         key={status.name}
-        className="flex-shrink-0 w-72"
+        className="flex-shrink-0 w-[280px]"
         onDrop={(e) => handleDrop(e, status.name)}
         onDragOver={(e) => handleDragOver(e, status.name)}
         onDragLeave={handleColumnDragLeave}
@@ -483,28 +487,15 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
       </div>
 
        {/* Mobile Header */}
-      <div className="md:hidden mb-4">
-        <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold">{project.name}</h1>
-            <div className="flex items-center -space-x-2">
-                {project.members.slice(0, 3).map(memberId => {
-                    const member = allUsers.find(u => u.id === memberId);
-                    if (!member) return null;
-                    return (
-                        <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
-                            <AvatarImage src={member.avatarUrl} alt={member.name} />
-                            <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                        </Avatar>
-                    )
-                })}
-                {project.members.length > 3 && (
-                    <Avatar className="h-8 w-8 border-2 border-background">
-                        <AvatarFallback>+{project.members.length - 3}</AvatarFallback>
-                    </Avatar>
-                )}
-            </div>
+        <div className="md:hidden mb-4">
+            <Button variant="outline" className="w-full justify-between" onClick={() => setIsProjectSheetOpen(true)}>
+                <div className="flex items-center gap-2">
+                    <Folder className="h-4 w-4" />
+                    <span className="font-semibold">{project.name}</span>
+                </div>
+                <ChevronsUpDown className="h-4 w-4" />
+            </Button>
         </div>
-      </div>
 
       <div className="flex gap-4 overflow-x-auto pb-4">
         {activeStatuses.map(renderStatusColumn)}
@@ -515,14 +506,29 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
             </Button>
         </div>
       </div>
-
-      {/* Mobile FAB */}
-       <Button
-        onClick={() => onNewTaskRequest()}
-        className="md:hidden fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
-      >
-        <Plus className="h-6 w-6" />
-      </Button>
+      
+      <Sheet open={isProjectSheetOpen} onOpenChange={setIsProjectSheetOpen}>
+          <SheetContent side="left" className="p-0">
+              <SheetHeader className="p-4 border-b text-left">
+                  <SheetTitle>Switch Project</SheetTitle>
+              </SheetHeader>
+              <div className="p-2">
+                  {projects.map(p => (
+                      <Button
+                          key={p.id}
+                          variant={project.id === p.id ? 'secondary' : 'ghost'}
+                          className="w-full justify-start"
+                          onClick={() => {
+                              onSelectProject(p.id);
+                              setIsProjectSheetOpen(false);
+                          }}
+                      >
+                          {p.name}
+                      </Button>
+                  ))}
+              </div>
+          </SheetContent>
+      </Sheet>
     </>
   );
 }
