@@ -7,7 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { User, Task, Project, Hub, Status, Activity } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { MoreHorizontal, Plus, Edit, Trash2, Palette, Calendar, MessageSquare, Archive, CheckCircle, Folder, ChevronsUpDown } from 'lucide-react';
+import { MoreHorizontal, Plus, Edit, Trash2, Palette, Archive, CheckCircle, Folder, ChevronsUpDown, ArrowLeft } from 'lucide-react';
 import { Button, buttonVariants } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '../ui/dropdown-menu';
@@ -142,6 +142,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   const [dropIndicator, setDropIndicator] = useState<{ status: string; index: number } | null>(null);
   const taskCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  const projectMembers = allUsers.filter(u => project.members.includes(u.id));
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, taskId: string) => {
     e.dataTransfer.setData('taskId', taskId);
@@ -330,7 +331,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
       return (
       <div
         key={status.name}
-        className="flex-shrink-0 w-[280px]"
+        className="flex-shrink-0 w-64 md:w-72"
         onDrop={(e) => handleDrop(e, status.name)}
         onDragOver={(e) => handleDragOver(e, status.name)}
         onDragLeave={handleColumnDragLeave}
@@ -480,22 +481,53 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
       {/* Desktop Header */}
       <div className="hidden md:flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">{project.name}</h1>
-        <Button onClick={() => onNewTaskRequest()}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Task
-        </Button>
-      </div>
-
-       {/* Mobile Header */}
-        <div className="md:hidden mb-4">
-            <Button variant="outline" className="w-full justify-between" onClick={() => setIsProjectSheetOpen(true)}>
-                <div className="flex items-center gap-2">
-                    <Folder className="h-4 w-4" />
-                    <span className="font-semibold">{project.name}</span>
-                </div>
-                <ChevronsUpDown className="h-4 w-4" />
+         <div className="flex items-center gap-4">
+            <div className="flex -space-x-2">
+                {projectMembers.slice(0, 5).map(member => (
+                    <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
+                        <AvatarImage src={member.avatarUrl} alt={member.name} />
+                        <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                    </Avatar>
+                ))}
+                {projectMembers.length > 5 && (
+                    <Avatar className="h-8 w-8 border-2 border-background">
+                        <AvatarFallback>+{projectMembers.length - 5}</AvatarFallback>
+                    </Avatar>
+                )}
+            </div>
+            <Button onClick={() => onNewTaskRequest()}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Task
             </Button>
         </div>
+      </div>
+
+      {/* Mobile Header */}
+      <div className="md:hidden mb-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="icon" onClick={() => setIsProjectSheetOpen(true)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-lg font-semibold">Projects</h1>
+          <div className="w-8" /> {/* Spacer */}
+        </div>
+        <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold">{project.name}</h2>
+            <div className="flex -space-x-2">
+                {projectMembers.slice(0, 3).map(member => (
+                    <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
+                        <AvatarImage src={member.avatarUrl} alt={member.name} />
+                        <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                    </Avatar>
+                ))}
+                {projectMembers.length > 3 && (
+                    <Avatar className="h-8 w-8 border-2 border-background">
+                        <AvatarFallback>+{projectMembers.length - 3}</AvatarFallback>
+                    </Avatar>
+                )}
+            </div>
+        </div>
+      </div>
 
       <div className="flex gap-4 overflow-x-auto pb-4">
         {activeStatuses.map(renderStatusColumn)}

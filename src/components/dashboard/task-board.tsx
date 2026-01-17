@@ -5,13 +5,11 @@
 import React, { useState } from 'react';
 import { Project, Space, Task, User, Status, Hub } from '@/lib/data';
 import { Button } from '@/components/ui/button';
-import { Plus, Folder, LayoutGrid, Filter, Search as SearchIcon, User as UserIcon, ChevronsUpDown } from 'lucide-react';
+import { Plus, Folder } from 'lucide-react';
 import ProjectBoard from './project-board';
 import NewTaskDialog from './new-task-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
-
 
 interface TaskBoardProps {
   tasks: Task[];
@@ -67,7 +65,7 @@ export default function TaskBoard({
 
   return (
     <>
-      <div className="flex h-full flex-col p-4 md:p-8 pb-4">
+      <div className="flex h-full flex-col p-4 md:p-6 md:pb-4">
           {selectedProject ? (
               <ProjectBoard 
                   project={selectedProject}
