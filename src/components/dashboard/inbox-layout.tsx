@@ -7,6 +7,9 @@ import InboxConversationList from './inbox-conversation-list';
 import InboxConversationView from './inbox-conversation-view';
 import InboxContactPanel from './inbox-contact-panel';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from '../ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 interface InboxLayoutProps {
   users: User[];
@@ -29,6 +32,7 @@ export default function InboxLayout({
 }: InboxLayoutProps) {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(conversations.length > 0 ? conversations[0].id : null);
   const [isContactPanelOpen, setIsContactPanelOpen] = useState(true);
+  const isMobile = useIsMobile();
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId) || null;
   const selectedContact = selectedConversation ? contacts.find(c => c.id === selectedConversation.contactId) : null;
@@ -36,6 +40,41 @@ export default function InboxLayout({
   const handleAgentSendMessage = (conversationId: string, message: Omit<ChatMessage, 'id' | 'conversationId'>) => {
     onSendMessage(conversationId, message.content, message.type as 'reply' | 'note');
   };
+
+  if (isMobile) {
+    if (selectedConversationId && selectedConversation && selectedContact) {
+        return (
+            <div className="flex flex-col h-full">
+                <div className="p-2 border-b">
+                    <Button variant="ghost" onClick={() => setSelectedConversationId(null)}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Inbox
+                    </Button>
+                </div>
+                <InboxConversationView
+                    conversation={selectedConversation}
+                    messages={messages}
+                    contact={selectedContact}
+                    users={users}
+                    appUser={appUser}
+                    isContactPanelOpen={false}
+                    onToggleContactPanel={() => {}}
+                    onSendMessage={handleAgentSendMessage}
+                    onAssignConversation={onAssignConversation}
+                />
+            </div>
+        )
+    }
+    return (
+        <InboxConversationList
+            conversations={conversations}
+            contacts={contacts}
+            selectedConversationId={selectedConversationId}
+            onSelectConversation={setSelectedConversationId}
+            appUser={appUser}
+        />
+    )
+  }
 
   return (
     <div className={cn(

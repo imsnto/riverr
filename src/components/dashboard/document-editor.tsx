@@ -122,8 +122,8 @@ export default function DocumentEditor({
 
   return (
     <>
-    <div className="flex flex-row gap-0 h-screen">
-      <div className="flex-1 flex flex-col p-4 md:p-8">
+    <div className="flex flex-col md:flex-row gap-0 h-screen">
+      <div className="flex-1 flex flex-col p-4 md:p-8 overflow-y-auto">
         <div className="flex items-center gap-2 mb-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="h-5 w-5" />
@@ -136,7 +136,7 @@ export default function DocumentEditor({
           />
         </div>
 
-        <div className="flex items-center gap-4 mb-4 border-b pb-2">
+        <div className="flex flex-wrap items-center gap-2 mb-4 border-b pb-2">
             <Button size="sm" onClick={handleManualSave} disabled={!hasUnsavedChanges || isSaving}>
                  {isSaving ? (
                     <>
@@ -172,7 +172,7 @@ export default function DocumentEditor({
           </Button>
         </div>
 
-        <div className="flex-1 py-4 flex flex-col">
+        <div className="flex-1 py-4 flex flex-col min-h-[400px]">
           <TiptapEditor 
             content={document.content} 
             onChange={handleContentChange} 
@@ -182,7 +182,7 @@ export default function DocumentEditor({
       </div>
 
       {sidebarView && (
-        <div className="w-full md:w-80 lg:w-96 border-l bg-card flex-shrink-0 flex flex-col h-full sticky top-0">
+        <div className="w-full md:w-80 lg:w-96 border-t md:border-t-0 md:border-l bg-card flex-shrink-0 flex flex-col h-auto md:h-full md:sticky top-0">
           {sidebarView === 'ai' && (
             <AssistantPanel
               fullDocument={document.content}

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -16,6 +17,7 @@ import {
   MessageSquare,
   MoreHorizontal,
   CheckCircle2,
+  ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -73,6 +75,7 @@ interface ChannelsViewProps {
   onViewThread: (message: Message) => void;
   statuses: Status[];
   onAddMessage: (message: Omit<Message, "id">) => Promise<void>;
+  onBack?: () => void;
 }
 
 export default function ChannelsView({
@@ -86,6 +89,7 @@ export default function ChannelsView({
   onViewThread,
   statuses,
   onAddMessage,
+  onBack,
 }: ChannelsViewProps) {
   const { appUser } = useAuth();
   const [newMessage, setNewMessage] = useState("");
@@ -438,10 +442,19 @@ export default function ChannelsView({
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="p-4 border-b flex-shrink-0">
-        <h3 className="text-lg font-semibold">#{activeChannel.name}</h3>
-        <p className="text-sm text-muted-foreground">
-          {activeChannel.description}
-        </p>
+        <div className="flex items-center gap-2">
+            {onBack && (
+                <Button variant="ghost" size="icon" className="md:hidden" onClick={onBack}>
+                    <ArrowLeft className="h-4 w-4" />
+                </Button>
+            )}
+            <div>
+                <h3 className="text-lg font-semibold">#{activeChannel.name}</h3>
+                <p className="text-sm text-muted-foreground">
+                {activeChannel.description}
+                </p>
+            </div>
+        </div>
       </div>
       <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0">
         <div className="p-4 space-y-1">

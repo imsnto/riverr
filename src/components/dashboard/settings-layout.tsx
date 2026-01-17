@@ -23,6 +23,8 @@ import {
   Bot,
 } from '@/lib/data';
 import InboxSettings from './inbox-settings';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 type SettingsView = 'users' | 'spaces' | 'hub' | 'inbox' | 'timesheets';
 
@@ -50,6 +52,7 @@ interface SettingsLayoutProps {
 
 export default function SettingsLayout(props: SettingsLayoutProps) {
   const [activeView, setActiveView] = useState<SettingsView>('users');
+  const isMobile = useIsMobile();
 
   const hubHasInbox = props.activeHub?.settings?.components?.includes('inbox');
 
@@ -117,6 +120,30 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
         return null;
     }
   };
+
+  if (isMobile) {
+    return (
+        <div className="flex flex-col h-full">
+            <div className="p-4 border-b">
+                <Select value={activeView} onValueChange={(v) => setActiveView(v as SettingsView)}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select a setting" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {navItems.map((item) => (
+                            <SelectItem key={item.key} value={item.key} disabled={item.disabled}>
+                                {item.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            <main className="flex-1 p-4 overflow-y-auto">
+                {renderContent()}
+            </main>
+        </div>
+    )
+  }
 
   return (
     <div className="flex flex-row h-full">

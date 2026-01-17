@@ -71,7 +71,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex justify-between items-center mb-2">
+            <div className="flex flex-wrap justify-between items-center mb-2 gap-2">
                  <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" onClick={onBack}>
                         <ArrowLeft className="h-5 w-5" />
