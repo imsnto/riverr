@@ -89,7 +89,7 @@ const TaskCard = ({ task, project, onClick, isDragging, allUsers }: { task: Task
          <div className="flex items-center gap-2 text-muted-foreground">
             {task.comments?.length > 0 && 
                 <div className="flex items-center gap-1 text-xs">
-                    <MessageSquare className="h-3 w-3" />
+                    {/*<MessageSquare className="h-3 w-3" />*/}
                     {task.comments.length}
                 </div>
             }
@@ -477,7 +477,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   )};
 
   return (
-    <>
+    <div className="flex h-full flex-col">
       {/* Desktop Header */}
       <div className="hidden md:flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">{project.name}</h1>
@@ -509,33 +509,34 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-semibold">Projects</h1>
-          <div className="w-8" /> {/* Spacer */}
+          <div className="flex items-center gap-2">
+            {projectMembers.slice(0, 3).map(member => (
+                <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
+                    <AvatarImage src={member.avatarUrl} alt={member.name} />
+                    <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                </Avatar>
+            ))}
+            {projectMembers.length > 3 && (
+                <Avatar className="h-8 w-8 border-2 border-background">
+                    <AvatarFallback>+{projectMembers.length - 3}</AvatarFallback>
+                </Avatar>
+            )}
+          </div>
         </div>
         <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold">{project.name}</h2>
-            <div className="flex -space-x-2">
-                {projectMembers.slice(0, 3).map(member => (
-                    <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
-                        <AvatarImage src={member.avatarUrl} alt={member.name} />
-                        <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                    </Avatar>
-                ))}
-                {projectMembers.length > 3 && (
-                    <Avatar className="h-8 w-8 border-2 border-background">
-                        <AvatarFallback>+{projectMembers.length - 3}</AvatarFallback>
-                    </Avatar>
-                )}
-            </div>
         </div>
       </div>
-
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {activeStatuses.map(renderStatusColumn)}
-        {closingStatus && renderStatusColumn(closingStatus)}
-        <div className="flex-shrink-0 w-72">
-            <Button variant="outline" className="w-full" onClick={handleAddNewColumn}>
-                <Plus className="mr-2 h-4 w-4" /> Add Status
-            </Button>
+      
+      <div className="flex-1 overflow-x-auto">
+        <div className="flex gap-4 pb-4">
+          {activeStatuses.map(renderStatusColumn)}
+          {closingStatus && renderStatusColumn(closingStatus)}
+          <div className="flex-shrink-0 w-72">
+              <Button variant="outline" className="w-full" onClick={handleAddNewColumn}>
+                  <Plus className="mr-2 h-4 w-4" /> Add Status
+              </Button>
+          </div>
         </div>
       </div>
       
@@ -561,6 +562,6 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
               </div>
           </SheetContent>
       </Sheet>
-    </>
+    </div>
   );
 }
