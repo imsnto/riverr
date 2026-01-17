@@ -495,10 +495,6 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                     </Avatar>
                 )}
             </div>
-            <Button onClick={() => onNewTaskRequest()}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Task
-            </Button>
         </div>
       </div>
 
@@ -528,7 +524,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         </div>
       </div>
       
-      <div className="flex-1 overflow-x-auto">
+      <div className="flex-1 overflow-x-auto min-h-0">
         <div className="flex gap-4 pb-4">
           {activeStatuses.map(renderStatusColumn)}
           {closingStatus && renderStatusColumn(closingStatus)}
@@ -565,3 +561,4 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     </div>
   );
 }
+
