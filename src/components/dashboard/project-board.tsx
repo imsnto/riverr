@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, DragEvent, useRef } from 'react';
@@ -327,7 +326,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
       return (
       <div
         key={status.name}
-        className="flex-shrink-0 w-80"
+        className="flex-shrink-0 w-72"
         onDrop={(e) => handleDrop(e, status.name)}
         onDragOver={(e) => handleDragOver(e, status.name)}
         onDragLeave={handleColumnDragLeave}
@@ -474,22 +473,56 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
 
   return (
     <>
-      <div className="flex justify-between items-center mb-4">
+      {/* Desktop Header */}
+      <div className="hidden md:flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">{project.name}</h1>
         <Button onClick={() => onNewTaskRequest()}>
           <Plus className="mr-2 h-4 w-4" />
           New Task
         </Button>
       </div>
-      <div className="flex gap-6 overflow-x-auto pb-4">
+
+       {/* Mobile Header */}
+      <div className="md:hidden mb-4">
+        <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold">{project.name}</h1>
+            <div className="flex items-center -space-x-2">
+                {project.members.slice(0, 3).map(memberId => {
+                    const member = allUsers.find(u => u.id === memberId);
+                    if (!member) return null;
+                    return (
+                        <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
+                            <AvatarImage src={member.avatarUrl} alt={member.name} />
+                            <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                        </Avatar>
+                    )
+                })}
+                {project.members.length > 3 && (
+                    <Avatar className="h-8 w-8 border-2 border-background">
+                        <AvatarFallback>+{project.members.length - 3}</AvatarFallback>
+                    </Avatar>
+                )}
+            </div>
+        </div>
+      </div>
+
+      <div className="flex gap-4 overflow-x-auto pb-4">
         {activeStatuses.map(renderStatusColumn)}
         {closingStatus && renderStatusColumn(closingStatus)}
-        <div className="flex-shrink-0 w-80">
+        <div className="flex-shrink-0 w-72">
             <Button variant="outline" className="w-full" onClick={handleAddNewColumn}>
                 <Plus className="mr-2 h-4 w-4" /> Add Status
             </Button>
         </div>
       </div>
+
+      {/* Mobile FAB */}
+       <Button
+        onClick={() => onNewTaskRequest()}
+        className="md:hidden fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
     </>
   );
 }

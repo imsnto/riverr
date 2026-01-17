@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState } from 'react';
@@ -63,7 +62,7 @@ export default function TaskBoard({
 
   return (
     <>
-      <div className="flex h-full flex-col p-8">
+      <div className="flex h-full flex-col p-4 md:p-8">
           {selectedProject ? (
               <ProjectBoard 
                   project={selectedProject}
