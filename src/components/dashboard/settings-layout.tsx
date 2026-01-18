@@ -121,6 +121,10 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
     }
   };
 
+  if (isMobile === undefined) {
+    return null;
+  }
+
   if (isMobile) {
     return (
         <div className="flex flex-col h-full">
