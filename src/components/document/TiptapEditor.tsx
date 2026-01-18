@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Editor, EditorContent, useEditor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Bold from '@tiptap/extension-bold';
@@ -19,9 +20,12 @@ import { FontFamily } from '@tiptap/extension-font-family';
 import { FontSize } from '@/lib/tiptap-fontsize';
 
 import { Toolbar } from './TiptapToolbar';
+import { useIsMobile } from '@/hooks/use-mobile';
 export { useEditor };
 
 export default function TiptapEditor({ content, onChange, onBlur, onEditorInstance }: { content: string; onChange: (html: string) => void, onBlur?: () => void, onEditorInstance?: (editor: Editor) => void }) {
+  const isMobile = useIsMobile();
+  
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -63,9 +67,13 @@ export default function TiptapEditor({ content, onChange, onBlur, onEditorInstan
     }
   });
 
+  if (isMobile === undefined) {
+    return null; // Avoid rendering mismatch between server and client
+  }
+
   return (
     <>
-      {editor && (
+      {editor && !isMobile && (
         <BubbleMenu 
             editor={editor} 
             tippyOptions={{ duration: 100 }}
@@ -75,6 +83,11 @@ export default function TiptapEditor({ content, onChange, onBlur, onEditorInstan
         </BubbleMenu>
       )}
       <EditorContent editor={editor} />
+      {editor && isMobile && (
+        <div className="fixed bottom-0 left-0 right-0 z-10 bg-card border-t p-1 overflow-x-auto">
+            <Toolbar editor={editor} />
+        </div>
+      )}
     </>
   );
 }
