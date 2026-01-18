@@ -102,6 +102,7 @@ export default function Dashboard({ view }: { view: string }) {
   const [chatContacts, setChatContacts] = useState<ChatContact[]>([]);
   const [chatConversations, setChatConversations] = useState<Conversation[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [bots, setBots] = useState<Bot[]>([]);
 
   // Help Center states
   const [helpCenters, setHelpCenters] = useState<HelpCenter[]>([]);
@@ -127,7 +128,6 @@ export default function Dashboard({ view }: { view: string }) {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isProjectFormOpen, setIsProjectFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [bots, setBots] = useState<Bot[]>([]);
 
 
   const fetchData = async () => {
