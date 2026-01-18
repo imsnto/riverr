@@ -30,9 +30,19 @@ export default function InboxLayout({
   onSendMessage,
   onAssignConversation,
 }: InboxLayoutProps) {
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(conversations.length > 0 ? conversations[0].id : null);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isContactPanelOpen, setIsContactPanelOpen] = useState(true);
   const isMobile = useIsMobile();
+  
+  React.useEffect(() => {
+    if (!isMobile && !selectedConversationId && conversations.length > 0) {
+        setSelectedConversationId(conversations[0].id);
+    }
+    if (isMobile) {
+        setSelectedConversationId(null);
+    }
+  }, [isMobile, conversations]);
+
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId) || null;
   const selectedContact = selectedConversation ? contacts.find(c => c.id === selectedConversation.contactId) : null;
@@ -45,7 +55,7 @@ export default function InboxLayout({
     if (selectedConversationId && selectedConversation && selectedContact) {
         return (
             <div className="flex flex-col h-full">
-                <div className="p-2 border-b">
+                <div className="p-2 border-b shrink-0">
                     <Button variant="ghost" onClick={() => setSelectedConversationId(null)}>
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Inbox

@@ -4,15 +4,15 @@
 import React, { useMemo, useState } from 'react';
 import { Conversation, ChatContact, User } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
-import { formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import { Button } from '../ui/button';
-import { Checkbox } from '../ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { ChevronDown, Calendar, Search } from 'lucide-react';
+import { Search, Menu } from 'lucide-react';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useSidebar, SidebarTrigger } from '../ui/sidebar';
 
 interface InboxSidebarProps {
   conversations: Conversation[];
@@ -35,7 +35,9 @@ export default function InboxConversationList({
   onSelectConversation,
   appUser,
 }: InboxSidebarProps) {
-    const [filter, setFilter] = useState<'me' | 'unassigned' | 'all'>('unassigned');
+    const [filter, setFilter] = useState<'me' | 'unassigned' | 'all'>('all');
+    const isMobile = useIsMobile();
+    const { toggleSidebar } = useSidebar();
 
     const filteredConversations = useMemo(() => {
         switch (filter) {
@@ -55,47 +57,7 @@ export default function InboxConversationList({
         all: conversations.length,
     }), [conversations, appUser.id]);
 
-  return (
-    <div className="flex flex-col h-full border-r bg-card">
-      <div className="p-4 border-b shrink-0">
-        <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-                <Button variant={filter === 'me' ? 'secondary' : 'ghost'} onClick={() => setFilter('me')}>
-                    Me ({counts.me})
-                </Button>
-                <Button variant={filter === 'unassigned' ? 'secondary' : 'ghost'} onClick={() => setFilter('unassigned')}>
-                    Unassigned ({counts.unassigned})
-                </Button>
-                <Button variant={filter === 'all' ? 'secondary' : 'ghost'} onClick={() => setFilter('all')}>
-                    All ({counts.all})
-                </Button>
-            </div>
-            <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search..." className="pl-8 h-9 w-32" />
-            </div>
-        </div>
-      </div>
-      <div className="p-4 border-b flex justify-between items-center shrink-0">
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">Open ({conversations.filter(c=>c.status === 'open' || c.status === 'unassigned').length}) <ChevronDown className="h-4 w-4 ml-1" /></Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-                <DropdownMenuItem>Snoozed</DropdownMenuItem>
-                <DropdownMenuItem>Closed</DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
-         <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm"><Calendar className="h-4 w-4 mr-1" /> Date <ChevronDown className="h-4 w-4 ml-1" /></Button>
-            </DropdownMenuTrigger>
-             <DropdownMenuContent>
-                <DropdownMenuItem>Newest</DropdownMenuItem>
-                <DropdownMenuItem>Oldest</DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+  const conversationListContent = (
       <ScrollArea className="flex-1">
         {filteredConversations.map(convo => {
           const contact = contacts.find(c => c.id === convo.contactId);
@@ -106,31 +68,79 @@ export default function InboxConversationList({
               key={convo.id}
               onClick={() => onSelectConversation(convo.id)}
               className={cn(
-                "flex items-start gap-3 p-3 cursor-pointer border-b",
+                "flex items-center gap-4 p-4 cursor-pointer border-b",
                 isSelected ? 'bg-primary/10' : 'hover:bg-accent/50'
               )}
             >
-              <Checkbox className="mt-1" />
-              <Avatar className="h-8 w-8">
+              <Avatar className="h-12 w-12">
                 <AvatarImage src={contact.avatarUrl} alt={contact.name} />
                 <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
               </Avatar>
               <div className="flex-1 overflow-hidden">
-                <div className="flex justify-between items-baseline">
-                    <p className="font-semibold truncate text-sm">{contact.name}</p>
+                <div className="flex justify-between items-center">
+                    <p className="font-semibold truncate">{contact.name}</p>
                     <p className="text-xs text-muted-foreground whitespace-nowrap">
-                        {formatDistanceToNow(new Date(convo.lastMessageAt), { addSuffix: false })}
+                        {format(new Date(convo.lastMessageAt), "d MMM yyyy")}
                     </p>
                 </div>
-                <p className="text-sm text-muted-foreground truncate">{contact.companyName}</p>
-                <p className="text-sm text-muted-foreground truncate mt-1">
-                  <span className="font-medium text-foreground">{convo.lastMessageAuthor}:</span> {convo.lastMessage}
-                </p>
+                <p className="text-sm text-muted-foreground truncate">{convo.lastMessage}</p>
+                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                    <span>{contact.location}</span>
+                </div>
               </div>
             </div>
           );
         })}
       </ScrollArea>
+  );
+
+  return (
+    <div className="flex flex-col h-full border-r bg-card">
+        {/* Mobile Header */}
+        <div className="md:hidden p-4 border-b shrink-0 flex items-center justify-between">
+            <Button variant="ghost" size="icon" onClick={toggleSidebar}>
+                <Menu className="h-5 w-5" />
+            </Button>
+            <h2 className="text-lg font-semibold">All incoming</h2>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
+                            <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                            <path d="M6.5 12H17.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                            <path d="M10 18H14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setFilter('all')}>All ({counts.all})</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setFilter('me')}>Me ({counts.me})</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setFilter('unassigned')}>Unassigned ({counts.unassigned})</DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+
+        {/* Desktop Header */}
+        <div className="hidden md:block p-4 border-b shrink-0">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <Button variant={filter === 'all' ? 'secondary' : 'ghost'} onClick={() => setFilter('all')}>
+                        All ({counts.all})
+                    </Button>
+                    <Button variant={filter === 'me' ? 'secondary' : 'ghost'} onClick={() => setFilter('me')}>
+                        Me ({counts.me})
+                    </Button>
+                    <Button variant={filter === 'unassigned' ? 'secondary' : 'ghost'} onClick={() => setFilter('unassigned')}>
+                        Unassigned ({counts.unassigned})
+                    </Button>
+                </div>
+                <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Search..." className="pl-8 h-9 w-32" />
+                </div>
+            </div>
+      </div>
+      {conversationListContent}
     </div>
   );
 }
