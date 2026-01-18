@@ -3,11 +3,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Document, User, Space, Hub } from '@/lib/data';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, FileText, Search, Users, Globe, MoreHorizontal, ChevronRight } from 'lucide-react';
+import { Plus, FileText, Search, Users, Globe, MoreHorizontal, Share2, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { addDocument, getDocumentsInHub } from '@/lib/db';
+import { addDocument, getDocumentsInHub, deleteDocument, updateDocument } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -16,6 +16,24 @@ import { TooltipContent } from '@radix-ui/react-tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Carousel, CarouselContent, CarouselItem } from '../ui/carousel';
 import { ScrollArea } from '../ui/scroll-area';
+import NewDocumentDialog from './new-document-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { cn } from '@/lib/utils';
 
 interface DocumentsViewProps {
   activeSpace: Space;
@@ -35,6 +53,8 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
   const router = useRouter();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const [sharingDoc, setSharingDoc] = useState<Document | null>(null);
+  const [docToDelete, setDocToDelete] = useState<Document | null>(null);
   
   useEffect(() => {
     if (activeHub) {
@@ -83,6 +103,30 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
         toast({ variant: 'destructive', title: 'Failed to create document' });
     }
   };
+  
+  const handleDelete = async (docId: string) => {
+    try {
+        await deleteDocument(docId);
+        setDocuments(prev => prev.filter(d => d.id !== docId));
+        toast({ title: "Document deleted" });
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Failed to delete document' });
+    }
+  }
+
+  const handleSharingSave = async (sharingData: Partial<Document>) => {
+      if (!sharingDoc) return;
+      const updatedDoc = { ...sharingDoc, ...sharingData };
+      try {
+          await updateDocument(sharingDoc.id, updatedDoc);
+          setDocuments(prev => prev.map(d => d.id === sharingDoc.id ? updatedDoc : d));
+          setSharingDoc(null);
+          toast({ title: 'Sharing settings updated' });
+      } catch (error) {
+          toast({ variant: 'destructive', title: 'Failed to update sharing settings' });
+      }
+  };
+
 
   if (isMobile === undefined) return null;
 
@@ -126,21 +170,28 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
                                  <h2 className="text-lg font-semibold">All Documents</h2>
                              </div>
                             {filteredDocuments.map(doc => (
-                                <div key={doc.id} className="flex items-center group -ml-2">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                        <ChevronRight className="h-5 w-5" />
-                                    </Button>
-                                    <Button variant="ghost" className="flex-1 justify-start h-8" onClick={() => router.push(`/documents/${doc.id}`)}>
-                                        <FileText className="h-5 w-5 mr-2" />
+                                <div key={doc.id} className="flex items-center group -ml-2 pr-2">
+                                    <Button variant="ghost" className="flex-1 justify-start h-10" onClick={() => router.push(`/documents/${doc.id}`)}>
+                                        <FileText className="h-5 w-5 mr-3" />
                                         <span className="truncate">{doc.name}</span>
                                     </Button>
-                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <MoreHorizontal className="h-4 w-4" />
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSharingDoc(doc)}>
+                                            <Share2 className="h-4 w-4" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <Plus className="h-4 w-4" />
-                                        </Button>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent>
+                                                <DropdownMenuItem onSelect={() => setDocToDelete(doc)} className="text-destructive">
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </div>
                                 </div>
                             ))}
@@ -267,6 +318,43 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
           )}
         </div>
       </div>
+      <NewDocumentDialog
+        isOpen={!!sharingDoc}
+        onOpenChange={() => setSharingDoc(null)}
+        spaceId={sharingDoc?.spaceId || ''}
+        spaceMembers={allUsers.filter(u => activeSpace.members[u.id])}
+        onCreate={() => {}}
+        isEditing={true}
+        initialData={{
+            name: sharingDoc?.name || '',
+            access: sharingDoc?.isPublic ? 'public' : 'private',
+            allowedUserIds: sharingDoc?.allowedUserIds || []
+        }}
+        onEditSave={handleSharingSave}
+    />
+    <AlertDialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the document "{docToDelete?.name}".
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                    onClick={async () => {
+                        if (docToDelete) {
+                            await handleDelete(docToDelete.id);
+                        }
+                    }}
+                    className={cn(buttonVariants({ variant: "destructive" }))}
+                >
+                    Delete
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
