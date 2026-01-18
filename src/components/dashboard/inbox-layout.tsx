@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Conversation, ChatContact, ChatMessage, User } from '@/lib/data';
 import InboxConversationList from './inbox-conversation-list';
 import InboxConversationView from './inbox-conversation-view';
@@ -34,14 +34,11 @@ export default function InboxLayout({
   const [isContactPanelOpen, setIsContactPanelOpen] = useState(true);
   const isMobile = useIsMobile();
   
-  React.useEffect(() => {
-    if (!isMobile && !selectedConversationId && conversations.length > 0) {
+  useEffect(() => {
+    if (isMobile === false && !selectedConversationId && conversations.length > 0) {
         setSelectedConversationId(conversations[0].id);
     }
-    if (isMobile) {
-        setSelectedConversationId(null);
-    }
-  }, [isMobile, conversations]);
+  }, [isMobile, conversations, selectedConversationId]);
 
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId) || null;
@@ -50,6 +47,12 @@ export default function InboxLayout({
   const handleAgentSendMessage = (conversationId: string, message: Omit<ChatMessage, 'id' | 'conversationId'>) => {
     onSendMessage(conversationId, message.content, message.type as 'reply' | 'note');
   };
+  
+  // Guard against rendering on server or before hydration to prevent layout shifts
+  if (isMobile === undefined) {
+    return null; // Or a loading skeleton
+  }
+
 
   if (isMobile) {
     if (selectedConversationId && selectedConversation && selectedContact) {
