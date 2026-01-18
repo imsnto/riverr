@@ -1,11 +1,10 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Document, User, Space, Hub } from '@/lib/data';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, FileText, Search, Users, Globe, MoreHorizontal, Share2, Trash2 } from 'lucide-react';
+import { Plus, FileText, Search, Users, Globe, MoreHorizontal, Share2, Trash2, Clock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { addDocument, getDocumentsInHub, deleteDocument, updateDocument } from '@/lib/db';
 import { useRouter } from 'next/navigation';
@@ -34,6 +33,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
+import DocumentsSidebar from './documents-sidebar';
+import { formatDistanceToNow } from 'date-fns';
 
 interface DocumentsViewProps {
   activeSpace: Space;
@@ -74,9 +75,10 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
   
   const recentDocuments = useMemo(() => {
     return [...documents]
+      .filter(doc => doc.isPublic || (doc.allowedUserIds && doc.allowedUserIds.includes(appUser.id)))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .slice(0, 10);
-  }, [documents]);
+  }, [documents, appUser.id]);
   
   const handleCreateNew = async () => {
     const now = new Date().toISOString();
@@ -170,9 +172,9 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
                                  <h2 className="text-lg font-semibold">All Documents</h2>
                              </div>
                             {filteredDocuments.map(doc => (
-                                <div key={doc.id} className="flex items-center group -ml-2 pr-2">
-                                    <Button variant="ghost" className="flex-1 justify-start h-10" onClick={() => router.push(`/documents/${doc.id}`)}>
-                                        <FileText className="h-5 w-5 mr-3" />
+                                <div key={doc.id} className="flex items-center group -ml-2">
+                                    <Button variant="ghost" className="flex-1 justify-start h-12" onClick={() => router.push(`/documents/${doc.id}`)}>
+                                        <FileText className="h-5 w-5 mr-3 flex-shrink-0" />
                                         <span className="truncate">{doc.name}</span>
                                     </Button>
                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
@@ -212,111 +214,50 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
     );
   }
 
+  // DESKTOP VIEW
   return (
     <>
-      <div className="flex flex-col h-full">
-        <div className="flex justify-between items-center mb-6 px-4 md:px-8 pt-8">
-          <div>
-            <h1 className="text-3xl font-bold">Documents</h1>
-            <p className="text-muted-foreground">
-              All documents for the current space.
-            </p>
-          </div>
-          <Button onClick={handleCreateNew}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Document
-          </Button>
-        </div>
-        
-        <div className="relative mb-4 px-4 md:px-8">
-          <Search className="absolute left-3 md:left-11 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-              placeholder="Search documents..." 
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+      <div className="grid h-full grid-cols-[280px_1fr]">
+        <DocumentsSidebar
+          documents={documents.filter(doc => doc.isPublic || (doc.allowedUserIds && doc.allowedUserIds.includes(appUser.id)))}
+          onSelectDocument={(id) => router.push(`/documents/${id}`)}
+          onNewDocument={handleCreateNew}
+        />
+        <main className="overflow-y-auto p-8">
+          <h1 className="text-3xl font-bold mb-8">Good afternoon, {appUser.name.split(' ')[0]}</h1>
 
-        <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8">
-           <TooltipProvider>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                {filteredDocuments.map(doc => {
-                    const sharedWithUsers = doc.isPublic ? [] : allUsers.filter(u => doc.allowedUserIds?.includes(u.id));
-                    return (
-                        <Card key={doc.id} className="hover:shadow-md transition-shadow flex flex-col">
-                            <div className="cursor-pointer flex-grow" onClick={() => router.push(`/documents/${doc.id}`)}>
-                                <CardHeader>
-                                    <CardTitle className="flex items-start gap-2 text-base">
-                                        <FileText className="h-5 w-5 mt-1 text-muted-foreground flex-shrink-0" />
-                                        <span className="flex-1">{doc.name}</span>
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-xs text-muted-foreground">
-                                        Updated {new Date(doc.updatedAt).toLocaleDateString()}
-                                    </p>
-                                </CardContent>
-                            </div>
-                            <CardFooter className="p-3 pt-0 mt-auto">
-                                <div className="flex items-center gap-2">
-                                    {doc.isPublic ? (
-                                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                            <Globe className="h-3 w-3" />
-                                            <span>Public</span>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center -space-x-2">
-                                            {sharedWithUsers.slice(0, 3).map(user => (
-                                                <Tooltip key={user.id}>
-                                                    <TooltipTrigger asChild>
-                                                        <Avatar className="h-6 w-6 border-2 border-background">
-                                                            <AvatarImage src={user.avatarUrl} />
-                                                            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-                                                        </Avatar>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent><p>{user.name}</p></TooltipContent>
-                                                </Tooltip>
-                                            ))}
-                                            {sharedWithUsers.length > 3 && (
-                                                 <Tooltip>
-                                                     <TooltipTrigger asChild>
-                                                        <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium border-2 border-background">
-                                                            +{sharedWithUsers.length - 3}
-                                                        </div>
-                                                     </TooltipTrigger>
-                                                      <TooltipContent>
-                                                        <p>
-                                                            {sharedWithUsers.slice(3).map(u => u.name).join(', ')}
-                                                        </p>
-                                                      </TooltipContent>
-                                                 </Tooltip>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </CardFooter>
-                        </Card>
-                    )
-                })}
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-muted-foreground">
+             <Clock className="h-5 w-5" />
+            Recently visited
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {recentDocuments.slice(0, 3).map(doc => (
+                 <Card key={doc.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push(`/documents/${doc.id}`)}>
+                    <CardHeader className="p-4">
+                        <CardTitle className="text-base font-medium flex items-center gap-2">
+                           <FileText className="h-4 w-4 text-muted-foreground"/>
+                           <span className="truncate">{doc.name}</span>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                         <p className="text-xs text-muted-foreground">
+                            Edited {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
+                        </p>
+                    </CardContent>
+                </Card>
+            ))}
+             <Card
+              className="hover:shadow-md transition-shadow cursor-pointer flex items-center justify-center bg-card border-dashed hover:border-primary"
+              onClick={handleCreateNew}
+            >
+              <div className="p-4 text-center text-muted-foreground">
+                <Plus className="mx-auto h-6 w-6 mb-2" />
+                <p className="text-sm font-medium">New page</p>
               </div>
-          </TooltipProvider>
-          {filteredDocuments.length === 0 && (
-            <div className="text-center py-16 border-2 border-dashed rounded-lg">
-              <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-2 text-sm font-semibold text-foreground">No documents found</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {searchTerm ? `No documents match "${searchTerm}".` : "Get started by creating a new document."}
-              </p>
-              {!searchTerm && (
-                  <Button className="mt-4" onClick={handleCreateNew}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Document
-                  </Button>
-              )}
-            </div>
-          )}
-        </div>
+            </Card>
+          </div>
+        </main>
       </div>
       <NewDocumentDialog
         isOpen={!!sharingDoc}
