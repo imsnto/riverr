@@ -518,7 +518,7 @@ export default function BotSettingsDialog({
                     
                     {/* Body */}
                     <ScrollArea className="flex-1" ref={scrollAreaRef}>
-                        <div className="p-4 space-y-4">
+                        <div className="p-4 space-y-4 max-w-full break-all text-wrap">
                             <div className="flex items-end gap-2">
                                 <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
                                     <p className="text-sm whitespace-pre-wrap">{watchedValues.welcomeMessage}</p>
