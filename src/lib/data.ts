@@ -490,6 +490,34 @@ export const chatContacts: (Omit<ChatContact, 'id'> & { id: string })[] = [
         companyUsers: 1,
         companyPlan: 'Startup',
         companySpend: '$250'
+    },
+    {
+        id: 'contact-3',
+        name: 'Sarah Lee',
+        email: 'sarah.lee@example.com',
+        avatarUrl: 'https://i.pravatar.cc/150?u=sarah-lee',
+        location: 'Singapore',
+        lastSeen: '1 day ago',
+        companyName: 'Tech Solutions',
+        sessions: 25,
+        companyId: 'comp-3',
+        companyUsers: 20,
+        companyPlan: 'Business',
+        companySpend: '$1,200'
+    },
+    {
+        id: 'contact-4',
+        name: 'Mike Chen',
+        email: 'mike.chen@example.com',
+        avatarUrl: 'https://i.pravatar.cc/150?u=mike-chen',
+        location: 'San Francisco, USA',
+        lastSeen: '3 hours ago',
+        companyName: 'Creative Co.',
+        sessions: 8,
+        companyId: 'comp-4',
+        companyUsers: 10,
+        companyPlan: 'Pro',
+        companySpend: '$800'
     }
 ];
 
@@ -500,9 +528,9 @@ export const conversations: (Omit<Conversation, 'id'> & { id: string })[] = [
         contactId: 'contact-1',
         assigneeId: 'user-1',
         status: 'open',
-        lastMessage: 'Hey, I have a question about my recent order. It seems to be delayed.',
-        lastMessageAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-        lastMessageAuthor: 'John Doe',
+        lastMessage: 'Hi John, I can certainly help with that. Can you provide me with your order number?',
+        lastMessageAt: new Date(Date.now() - 4 * 60 * 1000).toISOString(),
+        lastMessageAuthor: 'Brad',
     },
     {
         id: 'convo-2',
@@ -513,7 +541,27 @@ export const conversations: (Omit<Conversation, 'id'> & { id: string })[] = [
         lastMessage: 'Can you help me with setting up my account? I am having trouble.',
         lastMessageAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
         lastMessageAuthor: 'Jane Smith',
-    }
+    },
+    {
+        id: 'convo-3',
+        hubId: 'hub-1',
+        contactId: 'contact-3',
+        assigneeId: 'user-2',
+        status: 'open',
+        lastMessage: 'Thanks, Alice! That worked perfectly.',
+        lastMessageAt: new Date(Date.now() - 22 * 60 * 60 * 1000).toISOString(),
+        lastMessageAuthor: 'Sarah Lee',
+    },
+    {
+        id: 'convo-4',
+        hubId: 'hub-1',
+        contactId: 'contact-4',
+        assigneeId: 'user-1',
+        status: 'closed',
+        lastMessage: 'You\'re welcome! Let us know if you need anything else.',
+        lastMessageAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        lastMessageAuthor: 'Brad',
+    },
 ];
 
 export const chatMessages: (Omit<ChatMessage, 'id'> & { id: string })[] = [
@@ -525,6 +573,14 @@ export const chatMessages: (Omit<ChatMessage, 'id'> & { id: string })[] = [
         content: 'Hey, I have a question about my recent order. It seems to be delayed.',
         timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
     },
+     {
+        id: 'msg-3',
+        conversationId: 'convo-1',
+        authorId: 'user-1',
+        type: 'message',
+        content: 'Hi John, I can certainly help with that. Can you provide me with your order number?',
+        timestamp: new Date(Date.now() - 4 * 60 * 1000).toISOString(),
+    },
     {
         id: 'msg-2',
         conversationId: 'convo-2',
@@ -534,13 +590,53 @@ export const chatMessages: (Omit<ChatMessage, 'id'> & { id: string })[] = [
         timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     },
     {
-        id: 'msg-3',
-        conversationId: 'convo-1',
+        id: 'msg-4',
+        conversationId: 'convo-3',
+        authorId: 'contact-3',
+        type: 'message',
+        content: 'I\'m having trouble exporting my data. It keeps giving me an error.',
+        timestamp: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+        id: 'msg-5',
+        conversationId: 'convo-3',
+        authorId: 'user-2',
+        type: 'message',
+        content: 'Hi Sarah, sorry to hear that. Could you try clearing your browser cache and trying again? That often resolves the issue.',
+        timestamp: new Date(Date.now() - 22 * 60 * 60 * 1000 - 30000).toISOString(),
+    },
+    {
+        id: 'msg-6',
+        conversationId: 'convo-3',
+        authorId: 'contact-3',
+        type: 'message',
+        content: 'Thanks, Alice! That worked perfectly.',
+        timestamp: new Date(Date.now() - 22 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+        id: 'msg-7',
+        conversationId: 'convo-4',
+        authorId: 'contact-4',
+        type: 'message',
+        content: 'Just wanted to say this new feature is amazing! Great job.',
+        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 - 60000).toISOString(),
+    },
+    {
+        id: 'msg-8',
+        conversationId: 'convo-4',
         authorId: 'user-1',
         type: 'message',
-        content: 'Hi John, I can certainly help with that. Can you provide me with your order number?',
-        timestamp: new Date(Date.now() - 4 * 60 * 1000).toISOString(),
-    }
+        content: 'Thanks so much, Mike! We really appreciate the feedback.',
+        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 - 30000).toISOString(),
+    },
+    {
+        id: 'msg-9',
+        conversationId: 'convo-4',
+        authorId: 'user-1',
+        type: 'message',
+        content: 'You\'re welcome! Let us know if you need anything else.',
+        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    },
 ];
 
 
