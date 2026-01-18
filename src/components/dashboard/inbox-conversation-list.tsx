@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -11,8 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Search, Menu, MapPin } from 'lucide-react';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { SidebarTrigger, useSidebar } from '../ui/sidebar';
+import { SidebarTrigger } from '../ui/sidebar';
 
 interface InboxSidebarProps {
   conversations: Conversation[];
@@ -36,7 +36,6 @@ export default function InboxConversationList({
   appUser,
 }: InboxSidebarProps) {
     const [filter, setFilter] = useState<'me' | 'unassigned' | 'all'>('all');
-    const { toggleSidebar } = useSidebar();
 
     const filteredConversations = useMemo(() => {
         switch (filter) {
@@ -102,13 +101,13 @@ export default function InboxConversationList({
 
   return (
     <div className="flex flex-col h-full border-r bg-card">
-        {/* Mobile Header */}
-        <div className="md:hidden p-4 border-b shrink-0 flex items-center justify-between">
-            <SidebarTrigger>
+        {/* Header */}
+        <div className="p-4 border-b shrink-0 flex items-center justify-between">
+            <SidebarTrigger className="md:hidden">
                 <Menu className="h-5 w-5" />
             </SidebarTrigger>
             <h2 className="text-lg font-semibold">All incoming</h2>
-            <DropdownMenu>
+             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
@@ -125,27 +124,6 @@ export default function InboxConversationList({
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
-
-        {/* Desktop Header */}
-        <div className="hidden md:block p-4 border-b shrink-0">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Button variant={filter === 'all' ? 'secondary' : 'ghost'} onClick={() => setFilter('all')}>
-                        All ({counts.all})
-                    </Button>
-                    <Button variant={filter === 'me' ? 'secondary' : 'ghost'} onClick={() => setFilter('me')}>
-                        Me ({counts.me})
-                    </Button>
-                    <Button variant={filter === 'unassigned' ? 'secondary' : 'ghost'} onClick={() => setFilter('unassigned')}>
-                        Unassigned ({counts.unassigned})
-                    </Button>
-                </div>
-                <div className="relative">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search..." className="pl-8 h-9 w-32" />
-                </div>
-            </div>
-      </div>
       {conversationListContent}
     </div>
   );

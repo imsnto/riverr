@@ -8,9 +8,7 @@ import InboxConversationList from './inbox-conversation-list';
 import InboxConversationView from './inbox-conversation-view';
 import InboxContactPanel from './inbox-contact-panel';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { Button } from '../ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 
 interface InboxLayoutProps {
   users: User[];
@@ -33,25 +31,14 @@ export default function InboxLayout({
 }: InboxLayoutProps) {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isContactPanelOpen, setIsContactPanelOpen] = useState(true);
-  const isMobile = useIsMobile();
-  const [mobileView, setMobileView] = useState<'list' | 'conversation'>('list');
 
   useEffect(() => {
-    if (isMobile) {
-      setMobileView(selectedConversationId ? 'conversation' : 'list');
-    }
-  }, [isMobile, selectedConversationId]);
-
-  useEffect(() => {
-    if (!isMobile && !selectedConversationId && conversations.length > 0) {
+    // On desktop, select the first conversation by default
+    if (window.innerWidth >= 768 && !selectedConversationId && conversations.length > 0) {
       setSelectedConversationId(conversations[0].id);
     }
-  }, [isMobile, selectedConversationId, conversations]);
+  }, [selectedConversationId, conversations]);
 
-  if (isMobile === undefined) {
-    return null; // Prevent hydration mismatch
-  }
-  
   const handleSelectConversation = (id: string) => {
     setSelectedConversationId(id);
   };
@@ -63,67 +50,54 @@ export default function InboxLayout({
   const selectedConversation = conversations.find(c => c.id === selectedConversationId) || null;
   const selectedContact = selectedConversation ? contacts.find(c => c.id === selectedConversation.contactId) : null;
 
-  if (isMobile) {
-    if (mobileView === 'list') {
-      return (
-        <InboxConversationList
-            conversations={conversations}
-            contacts={contacts}
-            selectedConversationId={selectedConversationId}
-            onSelectConversation={handleSelectConversation}
-            appUser={appUser}
-        />
-      )
-    }
-    if (mobileView === 'conversation') {
-      return (
-          <InboxConversationView
-            conversation={selectedConversation}
-            messages={messages}
-            contact={selectedContact}
-            users={users}
-            appUser={appUser}
-            isContactPanelOpen={false}
-            onToggleContactPanel={() => {}}
-            onSendMessage={handleAgentSendMessage}
-            onAssignConversation={onAssignConversation}
-            onBack={() => setSelectedConversationId(null)}
-          />
-      );
-    }
-    return null;
-  }
-
-  // Desktop View
   return (
-    <div className={cn(
-        "grid h-full",
-        isContactPanelOpen ? "grid-cols-[320px_1fr_320px]" : "grid-cols-[320px_1fr]"
-    )}>
-      <InboxConversationList
-        conversations={conversations}
-        contacts={contacts}
-        selectedConversationId={selectedConversationId}
-        onSelectConversation={handleSelectConversation}
-        appUser={appUser}
-      />
-      <InboxConversationView
-        conversation={selectedConversation}
-        messages={messages}
-        contact={selectedContact}
-        users={users}
-        appUser={appUser}
-        isContactPanelOpen={isContactPanelOpen}
-        onToggleContactPanel={() => setIsContactPanelOpen(prev => !prev)}
-        onSendMessage={handleAgentSendMessage}
-        onAssignConversation={onAssignConversation}
-      />
-      {isContactPanelOpen && (
-        <InboxContactPanel 
-          contact={selectedContact} 
-          onToggle={() => setIsContactPanelOpen(false)}
+    <div className="grid h-full grid-cols-1 md:grid-cols-[320px_1fr]">
+      {/* Conversation List - Always rendered, hidden on mobile when a convo is selected */}
+      <div
+        className={cn(
+          "h-full flex-col border-r bg-card",
+          selectedConversationId ? 'hidden md:flex' : 'flex'
+        )}
+      >
+        <InboxConversationList
+          conversations={conversations}
+          contacts={contacts}
+          selectedConversationId={selectedConversationId}
+          onSelectConversation={handleSelectConversation}
+          appUser={appUser}
         />
-      )}
+      </div>
+
+      {/* Conversation View & Contact Panel Wrapper */}
+      <div
+        className={cn(
+          "h-full flex-col",
+          !selectedConversationId ? 'hidden md:flex' : 'flex'
+        )}
+      >
+        <div className={cn("grid h-full", isContactPanelOpen ? "grid-cols-[1fr_320px]" : "grid-cols-[1fr]")}>
+            <InboxConversationView
+                conversation={selectedConversation}
+                messages={messages}
+                contact={selectedContact}
+                users={users}
+                appUser={appUser}
+                isContactPanelOpen={isContactPanelOpen}
+                onToggleContactPanel={() => setIsContactPanelOpen(prev => !prev)}
+                onSendMessage={handleAgentSendMessage}
+                onAssignConversation={onAssignConversation}
+                onBack={() => setSelectedConversationId(null)}
+            />
+            {isContactPanelOpen && (
+                <div className="hidden lg:block h-full">
+                    <InboxContactPanel 
+                        contact={selectedContact} 
+                        onToggle={() => setIsContactPanelOpen(false)}
+                    />
+                </div>
+            )}
+        </div>
+      </div>
     </div>
   );
 }

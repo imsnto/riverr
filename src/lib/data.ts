@@ -518,6 +518,34 @@ export const chatContacts: (Omit<ChatContact, 'id'> & { id: string })[] = [
         companyUsers: 10,
         companyPlan: 'Pro',
         companySpend: '$800'
+    },
+    {
+        id: 'contact-5',
+        name: 'Emily Carter',
+        email: 'emily.carter@example.com',
+        avatarUrl: 'https://i.pravatar.cc/150?u=emily-carter',
+        location: 'Austin, USA',
+        lastSeen: '15 minutes ago',
+        companyName: 'Data Systems',
+        sessions: 5,
+        companyId: 'comp-5',
+        companyUsers: 2,
+        companyPlan: 'Pro',
+        companySpend: '$500'
+    },
+    {
+        id: 'contact-6',
+        name: 'David Rodriguez',
+        email: 'david.r@example.com',
+        avatarUrl: 'https://i.pravatar.cc/150?u=david-rodriguez',
+        location: 'Miami, USA',
+        lastSeen: 'Now',
+        companyName: 'Global Exports',
+        sessions: 1,
+        companyId: 'comp-6',
+        companyUsers: 50,
+        companyPlan: 'Enterprise',
+        companySpend: '$10,000'
     }
 ];
 
@@ -562,6 +590,26 @@ export const conversations: (Omit<Conversation, 'id'> & { id: string })[] = [
         lastMessageAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
         lastMessageAuthor: 'Brad',
     },
+    {
+        id: 'convo-5',
+        hubId: 'hub-1',
+        contactId: 'contact-5',
+        assigneeId: 'user-2',
+        status: 'open',
+        lastMessage: 'I\'m looking for pricing information for your team plan.',
+        lastMessageAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+        lastMessageAuthor: 'Emily Carter',
+    },
+    {
+        id: 'convo-6',
+        hubId: 'hub-1',
+        contactId: 'contact-6',
+        assigneeId: null,
+        status: 'unassigned',
+        lastMessage: 'Hello? Is anyone there?',
+        lastMessageAt: new Date(Date.now() - 1 * 60 * 1000).toISOString(),
+        lastMessageAuthor: 'David Rodriguez',
+    }
 ];
 
 export const chatMessages: (Omit<ChatMessage, 'id'> & { id: string })[] = [
@@ -637,6 +685,22 @@ export const chatMessages: (Omit<ChatMessage, 'id'> & { id: string })[] = [
         content: 'You\'re welcome! Let us know if you need anything else.',
         timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     },
+    {
+        id: 'msg-10',
+        conversationId: 'convo-5',
+        authorId: 'contact-5',
+        type: 'message',
+        content: 'I\'m looking for pricing information for your team plan.',
+        timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+    },
+    {
+        id: 'msg-11',
+        conversationId: 'convo-6',
+        authorId: 'contact-6',
+        type: 'message',
+        content: 'Hello? Is anyone there?',
+        timestamp: new Date(Date.now() - 1 * 60 * 1000).toISOString(),
+    }
 ];
 
 
