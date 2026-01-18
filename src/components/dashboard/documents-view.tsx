@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -10,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { addDocument, getDocumentsInHub } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import NewDocumentDialog from './new-document-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { TooltipContent } from '@radix-ui/react-tooltip';
@@ -33,7 +31,6 @@ const getInitials = (name: string) => {
 export default function DocumentsView({ activeSpace, appUser, allUsers, activeHub }: DocumentsViewProps) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isNewDocDialogOpen, setIsNewDocDialogOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -60,18 +57,22 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
       .slice(0, 10);
   }, [documents]);
   
-  const handleCreateNew = async (docData: Omit<Document, 'id' | 'createdAt' | 'updatedAt' | 'content' | 'comments' | 'tags' | 'type' | 'isLocked'>) => {
+  const handleCreateNew = async () => {
     const now = new Date().toISOString();
     const newDocData: Omit<Document, 'id'> = {
-        ...docData,
-        content: '',
+        name: 'Untitled',
+        content: '<h1>Start writing...</h1>',
+        spaceId: activeSpace.id,
+        hubId: activeHub.id,
         createdBy: appUser.id,
         createdAt: now,
         updatedAt: now,
         type: 'notes' as const,
         isLocked: false,
         tags: [],
-        comments: []
+        comments: [],
+        isPublic: false, // Private by default
+        allowedUserIds: [appUser.id] // Private to creator by default
     };
     try {
         const newDoc = await addDocument(newDocData);
@@ -82,8 +83,6 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
     }
   };
 
-  const spaceMembers = allUsers.filter(u => activeSpace.members[u.id]);
-  
   if (isMobile === undefined) return null;
 
   if (isMobile) {
@@ -124,7 +123,7 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
                         <div className="mt-8">
                              <div className="flex items-center justify-between mb-2">
                                  <h2 className="text-lg font-semibold">Private</h2>
-                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsNewDocDialogOpen(true)}>
+                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCreateNew}>
                                      <Plus className="h-4 w-4" />
                                  </Button>
                              </div>
@@ -153,19 +152,12 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
                         </div>
                     </div>
                 </ScrollArea>
-                <Button className="absolute bottom-24 right-6 h-14 w-14 rounded-full shadow-lg" onClick={() => setIsNewDocDialogOpen(true)}>
+                <Button className="absolute bottom-24 right-6 h-14 w-14 rounded-full shadow-lg" onClick={handleCreateNew}>
                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 5V19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                 </Button>
-                <NewDocumentDialog
-                    isOpen={isNewDocDialogOpen}
-                    onOpenChange={setIsNewDocDialogOpen}
-                    spaceId={activeSpace.id}
-                    spaceMembers={spaceMembers}
-                    onCreate={handleCreateNew}
-                />
             </div>
         </>
     );
@@ -181,7 +173,7 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
               All documents for the current space.
             </p>
           </div>
-          <Button onClick={() => setIsNewDocDialogOpen(true)}>
+          <Button onClick={handleCreateNew}>
             <Plus className="mr-2 h-4 w-4" />
             New Document
           </Button>
@@ -268,7 +260,7 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
                 {searchTerm ? `No documents match "${searchTerm}".` : "Get started by creating a new document."}
               </p>
               {!searchTerm && (
-                  <Button className="mt-4" onClick={() => setIsNewDocDialogOpen(true)}>
+                  <Button className="mt-4" onClick={handleCreateNew}>
                       <Plus className="mr-2 h-4 w-4" />
                       Create Document
                   </Button>
@@ -277,13 +269,6 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
           )}
         </div>
       </div>
-      <NewDocumentDialog
-        isOpen={isNewDocDialogOpen}
-        onOpenChange={setIsNewDocDialogOpen}
-        spaceId={activeSpace.id}
-        spaceMembers={spaceMembers}
-        onCreate={handleCreateNew}
-      />
     </>
   );
 }
