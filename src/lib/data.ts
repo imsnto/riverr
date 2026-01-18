@@ -388,7 +388,7 @@ export const users: Omit<User, 'id'>[] = [
   { name: 'Diana', email: 'diana@test.com', avatarUrl: 'https://placehold.co/100x100/EFEFEF/323333/png?text=D', role: 'Member' },
 ];
 
-export const spaces: Omit<Space, 'id'>[] = [
+export const spaces: (Omit<Space, 'id'> & { id: string })[] = [
   { id: 'space-1', name: "Brad's Personal Space", members: { 'user-1': { role: 'Admin' } } },
   { id: 'space-2', name: 'Client Work', members: { 'user-1': { role: 'Admin' }, 'user-2': { role: 'Member' }, 'user-3': { role: 'Member' } } },
 ];
@@ -546,6 +546,34 @@ export const chatContacts: (Omit<ChatContact, 'id'> & { id: string })[] = [
         companyUsers: 50,
         companyPlan: 'Enterprise',
         companySpend: '$10,000'
+    },
+    {
+        id: 'contact-7',
+        name: 'Olivia Martinez',
+        email: 'olivia.m@example.com',
+        avatarUrl: 'https://i.pravatar.cc/150?u=olivia-martinez',
+        location: 'Toronto, Canada',
+        lastSeen: '20 minutes ago',
+        companyName: 'Bright Ideas Co.',
+        sessions: 7,
+        companyId: 'comp-7',
+        companyUsers: 3,
+        companyPlan: 'Pro',
+        companySpend: '$600'
+    },
+    {
+        id: 'contact-8',
+        name: 'Daniel Kim',
+        email: 'daniel.k@example.com',
+        avatarUrl: 'https://i.pravatar.cc/150?u=daniel-kim',
+        location: 'Seoul, South Korea',
+        lastSeen: '8 hours ago',
+        companyName: 'Future Tech',
+        sessions: 15,
+        companyId: 'comp-8',
+        companyUsers: 30,
+        companyPlan: 'Business',
+        companySpend: '$2,500'
     }
 ];
 
@@ -609,6 +637,26 @@ export const conversations: (Omit<Conversation, 'id'> & { id: string })[] = [
         lastMessage: 'Hello? Is anyone there?',
         lastMessageAt: new Date(Date.now() - 1 * 60 * 1000).toISOString(),
         lastMessageAuthor: 'David Rodriguez',
+    },
+    {
+        id: 'convo-7',
+        hubId: 'hub-1',
+        contactId: 'contact-7',
+        assigneeId: 'user-2',
+        status: 'open',
+        lastMessage: 'Perfect, I\'ll take a look at that now. Thanks, Alice!',
+        lastMessageAt: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+        lastMessageAuthor: 'Olivia Martinez',
+    },
+    {
+        id: 'convo-8',
+        hubId: 'hub-1',
+        contactId: 'contact-8',
+        assigneeId: null,
+        status: 'unassigned',
+        lastMessage: 'My dashboard isn\'t loading any data.',
+        lastMessageAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+        lastMessageAuthor: 'Daniel Kim',
     }
 ];
 
@@ -700,7 +748,39 @@ export const chatMessages: (Omit<ChatMessage, 'id'> & { id: string })[] = [
         type: 'message',
         content: 'Hello? Is anyone there?',
         timestamp: new Date(Date.now() - 1 * 60 * 1000).toISOString(),
-    }
+    },
+    {
+        id: 'msg-12',
+        conversationId: 'convo-7',
+        authorId: 'contact-7',
+        type: 'message',
+        content: 'I\'m having trouble finding my recent invoices.',
+        timestamp: new Date(Date.now() - 27 * 60 * 1000).toISOString(),
+    },
+    {
+        id: 'msg-13',
+        conversationId: 'convo-7',
+        authorId: 'user-2',
+        type: 'message',
+        content: 'Hi Olivia! You can find all your invoices under the "Billing" section in your account settings.',
+        timestamp: new Date(Date.now() - 26 * 60 * 1000).toISOString(),
+    },
+    {
+        id: 'msg-14',
+        conversationId: 'convo-7',
+        authorId: 'contact-7',
+        type: 'message',
+        content: 'Perfect, I\'ll take a look at that now. Thanks, Alice!',
+        timestamp: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+    },
+    {
+        id: 'msg-15',
+        conversationId: 'convo-8',
+        authorId: 'contact-8',
+        type: 'message',
+        content: 'My dashboard isn\'t loading any data.',
+        timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+    },
 ];
 
 
