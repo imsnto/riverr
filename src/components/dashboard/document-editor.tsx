@@ -53,7 +53,8 @@ export default function DocumentEditor({
 
   const handleSave = useCallback(async (docToSave: Document) => {
     if (!docToSave.name.trim()) {
-      toast({ variant: 'destructive', title: 'Title is required' });
+      // Don't toast here as it can be annoying on auto-save
+      // but do prevent saving a doc without a title.
       return null;
     }
     if (isSaving) return null;
@@ -61,19 +62,28 @@ export default function DocumentEditor({
     setIsSaving(true);
     const updatedDoc = { ...docToSave, updatedAt: new Date().toISOString() };
     await onSave(updatedDoc);
-    setDocument(updatedDoc);
-    setLastSavedDocument(updatedDoc);
-    setLastSaved(new Date(updatedDoc.updatedAt));
-    setIsSaving(false);
+    
+    // Using setTimeout to ensure the "Saving..." state is visible for a moment
+    setTimeout(() => {
+        setDocument(updatedDoc);
+        setLastSavedDocument(updatedDoc);
+        setLastSaved(new Date(updatedDoc.updatedAt));
+        setIsSaving(false);
+    }, 500);
+
     return updatedDoc;
-  }, [onSave, toast, isSaving]);
+  }, [onSave, isSaving]);
   
-  const handleManualSave = useCallback(async () => {
-    const savedDoc = await handleSave(document);
-    if(savedDoc) {
-      toast({ title: 'Document Saved' });
+  // Auto-save logic
+  useEffect(() => {
+    if (hasUnsavedChanges) {
+      const timer = setTimeout(() => {
+        handleSave(document);
+      }, 1500); // Save 1.5 seconds after last change
+
+      return () => clearTimeout(timer);
     }
-  }, [document, handleSave, toast]);
+  }, [document, hasUnsavedChanges, handleSave]);
   
   const handleContentChange = (newContent: string) => {
     setDocument(prev => ({ ...prev, content: newContent }));
@@ -104,13 +114,8 @@ export default function DocumentEditor({
         comments: [...(document.comments || []), newComment]
     };
     
-    // Optimistically update UI
+    // Optimistically update UI and let auto-save handle persistence
     setDocument(updatedDocWithComment);
-    
-    const savedDoc = await handleSave(updatedDocWithComment);
-    if (savedDoc) {
-        toast({ title: 'Comment posted and document saved' });
-    }
   };
 
   const handleSharingSave = async (sharingData: Partial<Document>) => {
@@ -124,6 +129,22 @@ export default function DocumentEditor({
   
   if (!appUser || isMobile === undefined) return null;
 
+  const SaveStatusIndicator = () => {
+    if (isSaving) {
+        return (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Saving...</span>
+            </div>
+        );
+    }
+    if (!hasUnsavedChanges && lastSaved) {
+        return <span className="text-xs text-muted-foreground">Saved</span>;
+    }
+    return null;
+  }
+
+
   // Mobile View
   if (isMobile) {
     return (
@@ -133,6 +154,9 @@ export default function DocumentEditor({
                     <Button variant="ghost" size="icon" onClick={() => router.back()}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
+                    <div className="text-xs text-muted-foreground">
+                        <SaveStatusIndicator />
+                    </div>
                     <div className="flex items-center">
                         <Button variant="ghost" size="icon" onClick={() => setIsShareOpen(true)}>
                             <Share2 className="h-5 w-5" />
@@ -144,9 +168,6 @@ export default function DocumentEditor({
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={handleManualSave} disabled={!hasUnsavedChanges || isSaving}>
-                                    {isSaving ? 'Saving...' : 'Save'}
-                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => setSidebarView(p => p === 'comments' ? null : 'comments')}>Comments</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => setSidebarView(p => p === 'ai' ? null : 'ai')}>AI Assistant</DropdownMenuItem>
                                 <DropdownMenuSeparator />
@@ -224,8 +245,8 @@ export default function DocumentEditor({
                 </Button>
             </div>
 
-            <div className="flex items-center gap-1">
-                 {lastSaved && <span className="text-xs text-muted-foreground">Edited {formatDistanceToNow(lastSaved, { addSuffix: true })}</span>}
+            <div className="flex items-center gap-2">
+                 <SaveStatusIndicator />
                 
                 <Button variant="ghost" size="sm" onClick={() => setIsShareOpen(true)}>
                     Share
@@ -242,12 +263,6 @@ export default function DocumentEditor({
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        {hasUnsavedChanges && (
-                            <DropdownMenuItem onClick={handleManualSave} disabled={isSaving}>
-                                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {isSaving ? 'Saving...' : 'Save changes'}
-                            </DropdownMenuItem>
-                        )}
                         <DropdownMenuItem onClick={() => setSidebarView(sidebarView === 'comments' ? null : 'comments')}>
                             <MessageSquare className="mr-2 h-4 w-4" />
                             <span>Comments ({document.comments?.length || 0})</span>
