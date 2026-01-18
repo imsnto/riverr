@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User as AppUser, Space, SpaceMember, Invite, Hub } from '@/lib/data';
 import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut, signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { getUser, addUser, addSpace, getSpacesForUser, getInvitesForEmail, acceptInvite, declineInvite } from '@/lib/db';
+import { getUser, addUser, addSpace, getSpacesForUser, getInvitesForEmail, acceptInvite, declineInvite, seedDatabase } from '@/lib/db';
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -69,6 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 
   useEffect(() => {
+    seedDatabase();
     try {
         const cachedUser = localStorage.getItem(LOCAL_STORAGE_KEY_USER);
         const cachedSpace = localStorage.getItem(LOCAL_STORAGE_KEY_ACTIVE_SPACE);
