@@ -3,7 +3,7 @@
 import React from 'react';
 import { Document } from '@/lib/data';
 import { Button } from '../ui/button';
-import { Plus, FileText, Search } from 'lucide-react';
+import { FileText, Search } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Input } from '../ui/input';
@@ -11,10 +11,9 @@ import { Input } from '../ui/input';
 interface DocumentsSidebarProps {
   documents: Document[];
   onSelectDocument: (id: string) => void;
-  onNewDocument: () => void;
 }
 
-export default function DocumentsSidebar({ documents, onSelectDocument, onNewDocument }: DocumentsSidebarProps) {
+export default function DocumentsSidebar({ documents, onSelectDocument }: DocumentsSidebarProps) {
   const [searchTerm, setSearchTerm] = React.useState('');
 
   const filteredDocuments = documents.filter(doc =>
@@ -33,10 +32,7 @@ export default function DocumentsSidebar({ documents, onSelectDocument, onNewDoc
         />
       </div>
       <div className="flex justify-between items-center p-2 mt-2">
-        <h2 className="text-sm font-semibold text-muted-foreground">Private</h2>
-        <Button variant="ghost" size="icon" onClick={onNewDocument} className="h-7 w-7">
-          <Plus className="h-4 w-4" />
-        </Button>
+        <h2 className="text-sm font-semibold text-muted-foreground">All Documents</h2>
       </div>
       <ScrollArea className="flex-1">
         <div className="space-y-1 px-2">

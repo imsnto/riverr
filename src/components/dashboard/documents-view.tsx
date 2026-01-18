@@ -221,7 +221,6 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
         <DocumentsSidebar
           documents={documents.filter(doc => doc.isPublic || (doc.allowedUserIds && doc.allowedUserIds.includes(appUser.id)))}
           onSelectDocument={(id) => router.push(`/documents/${id}`)}
-          onNewDocument={handleCreateNew}
         />
         <main className="overflow-y-auto p-8">
           <h1 className="text-3xl font-bold mb-8">Good afternoon, {appUser.name.split(' ')[0]}</h1>
