@@ -5,7 +5,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Document, User, Space, Hub } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, FileText, Search, Users, Globe } from 'lucide-react';
+import { Plus, FileText, Search, Users, Globe, MoreHorizontal, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { addDocument, getDocumentsInHub } from '@/lib/db';
 import { useRouter } from 'next/navigation';
@@ -14,6 +14,9 @@ import NewDocumentDialog from './new-document-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { TooltipContent } from '@radix-ui/react-tooltip';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Carousel, CarouselContent, CarouselItem } from '../ui/carousel';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface DocumentsViewProps {
   activeSpace: Space;
@@ -33,6 +36,7 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
   const [isNewDocDialogOpen, setIsNewDocDialogOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     if (activeHub) {
@@ -49,6 +53,12 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
       (doc.isPublic || (doc.allowedUserIds && doc.allowedUserIds.includes(appUser.id)))
     );
   }, [documents, searchTerm, appUser.id]);
+  
+  const recentDocuments = useMemo(() => {
+    return [...documents]
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .slice(0, 10);
+  }, [documents]);
   
   const handleCreateNew = async (docData: Omit<Document, 'id' | 'createdAt' | 'updatedAt' | 'content' | 'comments' | 'tags' | 'type' | 'isLocked'>) => {
     const now = new Date().toISOString();
@@ -73,6 +83,93 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
   };
 
   const spaceMembers = allUsers.filter(u => activeSpace.members[u.id]);
+  
+  if (isMobile === undefined) return null;
+
+  if (isMobile) {
+    return (
+        <>
+            <div className="flex flex-col h-full">
+                <div className="p-4 shrink-0">
+                    <h1 className="text-3xl font-bold">Documents</h1>
+                    <div className="relative mt-4">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search documents..."
+                            className="pl-10"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                <ScrollArea className="flex-1">
+                    <div className="px-4 pb-4">
+                        <h2 className="text-lg font-semibold my-4">Recents</h2>
+                        <Carousel opts={{ align: "start", dragFree: true }} className="w-full -ml-4">
+                            <CarouselContent>
+                                {recentDocuments.map((doc) => (
+                                    <CarouselItem key={doc.id} className="basis-2/5 sm:basis-1/3 pl-4">
+                                        <Card className="h-32 bg-secondary" onClick={() => router.push(`/documents/${doc.id}`)}>
+                                            <CardContent className="p-3 flex flex-col justify-between h-full">
+                                                <FileText className="h-5 w-5 text-muted-foreground" />
+                                                <span className="text-sm font-medium line-clamp-3">{doc.name}</span>
+                                            </CardContent>
+                                        </Card>
+                                    </CarouselItem>
+                                ))}
+                            </CarouselContent>
+                        </Carousel>
+
+                        <div className="mt-8">
+                             <div className="flex items-center justify-between mb-2">
+                                 <h2 className="text-lg font-semibold">Private</h2>
+                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsNewDocDialogOpen(true)}>
+                                     <Plus className="h-4 w-4" />
+                                 </Button>
+                             </div>
+                            {filteredDocuments.map(doc => (
+                                <div key={doc.id} className="flex items-center group -ml-2">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <ChevronRight className="h-5 w-5" />
+                                    </Button>
+                                    <Button variant="ghost" className="flex-1 justify-start h-8" onClick={() => router.push(`/documents/${doc.id}`)}>
+                                        <FileText className="h-5 w-5 mr-2" />
+                                        <span className="truncate">{doc.name}</span>
+                                    </Button>
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                             {filteredDocuments.length === 0 && (
+                                <p className="text-sm text-center text-muted-foreground py-4">No documents found.</p>
+                            )}
+                        </div>
+                    </div>
+                </ScrollArea>
+                <Button className="absolute bottom-24 right-6 h-14 w-14 rounded-full shadow-lg" onClick={() => setIsNewDocDialogOpen(true)}>
+                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 5V19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                </Button>
+                <NewDocumentDialog
+                    isOpen={isNewDocDialogOpen}
+                    onOpenChange={setIsNewDocDialogOpen}
+                    spaceId={activeSpace.id}
+                    spaceMembers={spaceMembers}
+                    onCreate={handleCreateNew}
+                />
+            </div>
+        </>
+    );
+  }
 
   return (
     <>
