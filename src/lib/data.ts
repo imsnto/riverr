@@ -393,14 +393,15 @@ export const spaces: Omit<Space, 'id'>[] = [
   { id: 'space-2', name: 'Client Work', members: { 'user-1': { role: 'Admin' }, 'user-2': { role: 'Member' }, 'user-3': { role: 'Member' } } },
 ];
 
-export const hubs: Omit<Hub, "id">[] = [
+export const hubs: (Omit<Hub, 'id'> & { id: string })[] = [
     {
+        id: 'hub-1',
         name: 'Client Onboarding',
         spaceId: 'space-2',
         type: 'tasks',
         createdAt: new Date().toISOString(),
         createdBy: 'user-1',
-        settings: { defaultView: 'tasks' },
+        settings: { defaultView: 'tasks', components: ['tasks', 'documents', 'messages', 'inbox', 'help-center'] },
         isDefault: true,
         statuses: [
               { name: 'Backlog', color: '#6b7280' },
@@ -410,12 +411,13 @@ export const hubs: Omit<Hub, "id">[] = [
         ],
     },
     {
+        id: 'hub-2',
         name: 'Support Tickets',
         spaceId: 'space-2',
         type: 'inbox',
         createdAt: new Date().toISOString(),
         createdBy: 'user-1',
-        settings: { defaultView: 'inbox' },
+        settings: { defaultView: 'inbox', components: ['inbox', 'help-center'] },
         isDefault: false,
         statuses: [
               { name: 'New', color: '#6b7280' },
@@ -424,12 +426,13 @@ export const hubs: Omit<Hub, "id">[] = [
         ],
     },
     {
+        id: 'hub-3',
         name: 'Client Docs',
         spaceId: 'space-2',
         type: 'custom',
         createdAt: new Date().toISOString(),
         createdBy: 'user-1',
-        settings: { defaultView: 'documents' },
+        settings: { defaultView: 'documents', components: ['documents'] },
         isDefault: false,
         statuses: [],
     }
@@ -457,6 +460,87 @@ export const channels: Channel[] = [
 
 export const messages: Message[] = [
     // Populated by DB seed
+];
+
+export const chatContacts: (Omit<ChatContact, 'id'> & { id: string })[] = [
+    {
+        id: 'contact-1',
+        name: 'John Doe',
+        email: 'john.doe@example.com',
+        avatarUrl: 'https://i.pravatar.cc/150?u=john-doe',
+        location: 'New York, USA',
+        lastSeen: '2 hours ago',
+        companyName: 'Acme Inc.',
+        sessions: 12,
+        companyId: 'comp-1',
+        companyUsers: 5,
+        companyPlan: 'Enterprise',
+        companySpend: '$5,000'
+    },
+    {
+        id: 'contact-2',
+        name: 'Jane Smith',
+        email: 'jane.smith@example.com',
+        avatarUrl: 'https://i.pravatar.cc/150?u=jane-smith',
+        location: 'London, UK',
+        lastSeen: '5 minutes ago',
+        companyName: 'Innovate LLC',
+        sessions: 3,
+        companyId: 'comp-2',
+        companyUsers: 1,
+        companyPlan: 'Startup',
+        companySpend: '$250'
+    }
+];
+
+export const conversations: (Omit<Conversation, 'id'> & { id: string })[] = [
+    {
+        id: 'convo-1',
+        hubId: 'hub-1',
+        contactId: 'contact-1',
+        assigneeId: 'user-1',
+        status: 'open',
+        lastMessage: 'Hey, I have a question about my recent order. It seems to be delayed.',
+        lastMessageAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+        lastMessageAuthor: 'John Doe',
+    },
+    {
+        id: 'convo-2',
+        hubId: 'hub-1',
+        contactId: 'contact-2',
+        assigneeId: null,
+        status: 'unassigned',
+        lastMessage: 'Can you help me with setting up my account? I am having trouble.',
+        lastMessageAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        lastMessageAuthor: 'Jane Smith',
+    }
+];
+
+export const chatMessages: (Omit<ChatMessage, 'id'> & { id: string })[] = [
+    {
+        id: 'msg-1',
+        conversationId: 'convo-1',
+        authorId: 'contact-1',
+        type: 'message',
+        content: 'Hey, I have a question about my recent order. It seems to be delayed.',
+        timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    },
+    {
+        id: 'msg-2',
+        conversationId: 'convo-2',
+        authorId: 'contact-2',
+        type: 'message',
+        content: 'Can you help me with setting up my account? I am having trouble.',
+        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+        id: 'msg-3',
+        conversationId: 'convo-1',
+        authorId: 'user-1',
+        type: 'message',
+        content: 'Hi John, I can certainly help with that. Can you provide me with your order number?',
+        timestamp: new Date(Date.now() - 4 * 60 * 1000).toISOString(),
+    }
 ];
 
 

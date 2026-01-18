@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -36,18 +37,20 @@ export default function InboxLayout({
 
   useEffect(() => {
     if (isMobile) {
-      // On mobile, if a convo is selected, show it. Otherwise show the list.
       setMobileView(selectedConversationId ? 'conversation' : 'list');
     }
   }, [isMobile, selectedConversationId]);
 
   useEffect(() => {
-    // If not on mobile, and no conversation is selected, select the first one if available.
     if (!isMobile && !selectedConversationId && conversations.length > 0) {
       setSelectedConversationId(conversations[0].id);
     }
   }, [isMobile, selectedConversationId, conversations]);
 
+  if (isMobile === undefined) {
+    return null; // Prevent hydration mismatch
+  }
+  
   const handleSelectConversation = (id: string) => {
     setSelectedConversationId(id);
   };
@@ -81,7 +84,7 @@ export default function InboxLayout({
             onToggleContactPanel={() => {}}
             onSendMessage={handleAgentSendMessage}
             onAssignConversation={onAssignConversation}
-            onBack={() => setMobileView('list')}
+            onBack={() => setSelectedConversationId(null)}
           />
         )}
       </div>

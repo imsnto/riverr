@@ -99,7 +99,6 @@ export default function Dashboard({ view }: { view: string }) {
   const [spaceHubs, setSpaceHubs] = useState<Hub[]>([]);
   
   // Inbox state
-  const [bots, setBots] = useState<Bot[]>([]);
   const [chatContacts, setChatContacts] = useState<ChatContact[]>([]);
   const [chatConversations, setChatConversations] = useState<Conversation[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -204,7 +203,7 @@ export default function Dashboard({ view }: { view: string }) {
           setJobFlowTasks(fetchedJobFlowTasks);
           setChannels(fetchedChannels);
           setSpaceHubs(fetchedHubs);
-          setChatConversations(fetchedConversations);
+          setChatConversations(fetchedConversations.sort((a,b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
           setBots(fetchedBots);
           setHelpCenters(fetchedHelpCenters);
           setHelpCenterArticles(hubArticles);
@@ -221,10 +220,15 @@ export default function Dashboard({ view }: { view: string }) {
 
            if (fetchedConversations.length > 0) {
               const convoIds = fetchedConversations.map(c => c.id);
-              const fetchedMessages = await db.getMessagesForConversations(convoIds);
+              const [fetchedMessages, fetchedContacts] = await Promise.all([
+                  db.getMessagesForConversations(convoIds),
+                  Promise.all([...new Set(fetchedConversations.map(c => c.contactId))].map(id => db.getOrCreateContact(id)))
+              ]);
               setChatMessages(fetchedMessages);
+              setChatContacts(fetchedContacts);
           } else {
               setChatMessages([]);
+              setChatContacts([]);
           }
         }
   };

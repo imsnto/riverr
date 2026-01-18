@@ -63,6 +63,9 @@ import {
   HelpCenter,
   HelpCenterCollection,
   HelpCenterArticle,
+  chatContacts,
+  conversations,
+  chatMessages,
 } from "./data";
 import { randomBytes } from "crypto";
 import { FirestorePermissionError } from "./errors";
@@ -82,11 +85,28 @@ export const seedDatabase = async () => {
     users.forEach((user, i) => batch.set(doc(db, "users", userIds[i]), user));
 
     spaces.forEach((space) => batch.set(doc(db, "spaces", space.id), space));
+    
+    // Seed hubs with specific IDs
     hubs.forEach((hub) => {
-        const hubRef = doc(collection(db, "hubs"));
-        batch.set(hubRef, hub);
+        const { id, ...hubData } = hub;
+        batch.set(doc(db, "hubs", id), hubData);
     });
-    // Note: projects, tasks etc. are not seeded anymore as they should be created within hubs
+
+    // Seed chat contacts, conversations, messages
+    chatContacts.forEach((contact) => {
+      const { id, ...contactData } = contact;
+      batch.set(doc(db, "chat_contacts", id), contactData);
+    });
+    
+    conversations.forEach((convo) => {
+      const { id, ...convoData } = convo;
+      batch.set(doc(db, "conversations", id), convoData);
+    });
+
+    chatMessages.forEach((msg) => {
+      const { id, ...msgData } = msg;
+      batch.set(doc(db, "chat_messages", id), msgData);
+    });
     
     await batch.commit();
     console.log("Database seeded successfully!");
