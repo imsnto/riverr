@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -63,17 +64,19 @@ export default function InboxLayout({
   const selectedContact = selectedConversation ? contacts.find(c => c.id === selectedConversation.contactId) : null;
 
   if (isMobile) {
-    return (
-      <div className="h-full flex flex-col">
-        {mobileView === 'list' ? (
-          <InboxConversationList
+    if (mobileView === 'list') {
+      return (
+        <InboxConversationList
             conversations={conversations}
             contacts={contacts}
             selectedConversationId={selectedConversationId}
             onSelectConversation={handleSelectConversation}
             appUser={appUser}
-          />
-        ) : (
+        />
+      )
+    }
+    if (mobileView === 'conversation') {
+      return (
           <InboxConversationView
             conversation={selectedConversation}
             messages={messages}
@@ -86,9 +89,9 @@ export default function InboxLayout({
             onAssignConversation={onAssignConversation}
             onBack={() => setSelectedConversationId(null)}
           />
-        )}
-      </div>
-    );
+      );
+    }
+    return null;
   }
 
   // Desktop View

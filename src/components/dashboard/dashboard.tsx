@@ -127,6 +127,7 @@ export default function Dashboard({ view }: { view: string }) {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isProjectFormOpen, setIsProjectFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [bots, setBots] = useState<Bot[]>([]);
 
 
   const fetchData = async () => {
@@ -286,7 +287,7 @@ export default function Dashboard({ view }: { view: string }) {
     }
   }, [view, currentView]);
 
-  if (!appUser || !activeSpace || !activeHub) {
+  if (!appUser || !activeSpace || !activeHub || isMobile === undefined) {
     // Show a skeleton while the main auth/space context is loading
     return (
       <SidebarProvider>

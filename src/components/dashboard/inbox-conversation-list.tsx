@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -11,7 +12,7 @@ import { Search, Menu, MapPin } from 'lucide-react';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useSidebar, SidebarTrigger } from '../ui/sidebar';
+import { SidebarTrigger, useSidebar } from '../ui/sidebar';
 
 interface InboxSidebarProps {
   conversations: Conversation[];
@@ -85,7 +86,7 @@ export default function InboxConversationList({
                         </p>
                     </div>
                     <p className="text-xs text-muted-foreground whitespace-nowrap pl-2">
-                        {format(new Date(convo.lastMessageAt), "d MMM yyyy")}
+                        {format(new Date(convo.lastMessageAt), "d MMM")}
                     </p>
                 </div>
                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
@@ -100,7 +101,7 @@ export default function InboxConversationList({
   );
 
   return (
-    <div className="flex flex-col h-full md:border-r bg-card">
+    <div className="flex flex-col h-full border-r bg-card">
         {/* Mobile Header */}
         <div className="md:hidden p-4 border-b shrink-0 flex items-center justify-between">
             <SidebarTrigger>
