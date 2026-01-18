@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -122,10 +123,7 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
 
                         <div className="mt-8">
                              <div className="flex items-center justify-between mb-2">
-                                 <h2 className="text-lg font-semibold">Private</h2>
-                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCreateNew}>
-                                     <Plus className="h-4 w-4" />
-                                 </Button>
+                                 <h2 className="text-lg font-semibold">All Documents</h2>
                              </div>
                             {filteredDocuments.map(doc => (
                                 <div key={doc.id} className="flex items-center group -ml-2">
