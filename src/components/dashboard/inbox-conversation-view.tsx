@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -11,7 +10,7 @@ import { Card } from '../ui/card';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
-import { PanelLeftClose } from 'lucide-react';
+import { PanelLeftClose, ArrowLeft } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 interface InboxConversationViewProps {
@@ -24,6 +23,7 @@ interface InboxConversationViewProps {
   onToggleContactPanel: () => void;
   onSendMessage: (conversationId: string, message: Omit<ChatMessage, 'id' | 'conversationId'>) => void;
   onAssignConversation: (conversationId: string, assigneeId: string | null) => void;
+  onBack?: () => void;
 }
 
 const getInitials = (name: string) => {
@@ -32,7 +32,7 @@ const getInitials = (name: string) => {
 }
 
 
-export default function InboxConversationView({ conversation, messages, contact, users, appUser, isContactPanelOpen, onToggleContactPanel, onSendMessage, onAssignConversation }: InboxConversationViewProps) {
+export default function InboxConversationView({ conversation, messages, contact, users, appUser, isContactPanelOpen, onToggleContactPanel, onSendMessage, onAssignConversation, onBack }: InboxConversationViewProps) {
   const [activeTab, setActiveTab] = useState<'reply' | 'note'>('reply');
   const [messageText, setMessageText] = useState('');
   
@@ -114,12 +114,19 @@ export default function InboxConversationView({ conversation, messages, contact,
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b flex justify-between items-center flex-shrink-0">
-        <p className="text-sm">
-            Conversation with <span className="font-semibold">{contact.name}</span>
-            {assignee && <> assigned to <span className="font-semibold">{assignee.name}</span></>}
-        </p>
+        <div className="flex items-center gap-2">
+            {onBack && (
+                <Button variant="ghost" size="icon" className="md:hidden -ml-2" onClick={onBack}>
+                    <ArrowLeft className="h-5 w-5" />
+                </Button>
+            )}
+            <p className="text-sm">
+                Conversation with <span className="font-semibold">{contact.name}</span>
+                {assignee && <> assigned to <span className="font-semibold">{assignee.name}</span></>}
+            </p>
+        </div>
         {!isContactPanelOpen && (
-            <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
+            <Button variant="ghost" size="icon" className="hidden md:inline-flex" onClick={onToggleContactPanel}>
                 <PanelLeftClose className="h-4 w-4" />
             </Button>
         )}

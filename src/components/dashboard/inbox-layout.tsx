@@ -35,67 +35,60 @@ export default function InboxLayout({
   const [mobileView, setMobileView] = useState<'list' | 'conversation'>('list');
 
   useEffect(() => {
-    if (isMobile === false && !selectedConversationId && conversations.length > 0) {
+    if (isMobile) {
+      // On mobile, if a convo is selected, show it. Otherwise show the list.
+      setMobileView(selectedConversationId ? 'conversation' : 'list');
+    }
+  }, [isMobile, selectedConversationId]);
+
+  useEffect(() => {
+    // If not on mobile, and no conversation is selected, select the first one if available.
+    if (!isMobile && !selectedConversationId && conversations.length > 0) {
       setSelectedConversationId(conversations[0].id);
     }
-  }, [isMobile, conversations, selectedConversationId]);
+  }, [isMobile, selectedConversationId, conversations]);
 
   const handleSelectConversation = (id: string) => {
     setSelectedConversationId(id);
-    if (isMobile) {
-      setMobileView('conversation');
-    }
   };
-
-  const selectedConversation = conversations.find(c => c.id === selectedConversationId) || null;
-  const selectedContact = selectedConversation ? contacts.find(c => c.id === selectedConversation.contactId) : null;
   
   const handleAgentSendMessage = (conversationId: string, message: Omit<ChatMessage, 'id' | 'conversationId'>) => {
     onSendMessage(conversationId, message.content, message.type as 'reply' | 'note');
   };
   
-  if (isMobile === undefined) {
-    return null; // Or a loading skeleton
-  }
+  const selectedConversation = conversations.find(c => c.id === selectedConversationId) || null;
+  const selectedContact = selectedConversation ? contacts.find(c => c.id === selectedConversation.contactId) : null;
 
   if (isMobile) {
     return (
-        <div className="flex flex-col h-full">
-            {mobileView === 'list' ? (
-                <InboxConversationList
-                    conversations={conversations}
-                    contacts={contacts}
-                    selectedConversationId={selectedConversationId}
-                    onSelectConversation={handleSelectConversation}
-                    appUser={appUser}
-                />
-            ) : (
-                 <>
-                    <div className="p-2 border-b shrink-0">
-                        <Button variant="ghost" onClick={() => setMobileView('list')}>
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Inbox
-                        </Button>
-                    </div>
-                    {selectedConversation && selectedContact && (
-                         <InboxConversationView
-                            conversation={selectedConversation}
-                            messages={messages}
-                            contact={selectedContact}
-                            users={users}
-                            appUser={appUser}
-                            isContactPanelOpen={false}
-                            onToggleContactPanel={() => {}}
-                            onSendMessage={handleAgentSendMessage}
-                            onAssignConversation={onAssignConversation}
-                        />
-                    )}
-                </>
-            )}
-        </div>
-    )
+      <div className="h-full flex flex-col">
+        {mobileView === 'list' ? (
+          <InboxConversationList
+            conversations={conversations}
+            contacts={contacts}
+            selectedConversationId={selectedConversationId}
+            onSelectConversation={handleSelectConversation}
+            appUser={appUser}
+          />
+        ) : (
+          <InboxConversationView
+            conversation={selectedConversation}
+            messages={messages}
+            contact={selectedContact}
+            users={users}
+            appUser={appUser}
+            isContactPanelOpen={false}
+            onToggleContactPanel={() => {}}
+            onSendMessage={handleAgentSendMessage}
+            onAssignConversation={onAssignConversation}
+            onBack={() => setMobileView('list')}
+          />
+        )}
+      </div>
+    );
   }
 
+  // Desktop View
   return (
     <div className={cn(
         "grid h-full",

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { Search, Menu } from 'lucide-react';
+import { Search, Menu, MapPin } from 'lucide-react';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -35,7 +35,6 @@ export default function InboxConversationList({
   appUser,
 }: InboxSidebarProps) {
     const [filter, setFilter] = useState<'me' | 'unassigned' | 'all'>('all');
-    const isMobile = useIsMobile();
     const { toggleSidebar } = useSidebar();
 
     const filteredConversations = useMemo(() => {
@@ -62,28 +61,35 @@ export default function InboxConversationList({
           const contact = contacts.find(c => c.id === convo.contactId);
           if (!contact) return null;
           const isSelected = selectedConversationId === convo.id;
+          const youReplied = convo.lastMessageAuthor === appUser.name;
           return (
             <div
               key={convo.id}
               onClick={() => onSelectConversation(convo.id)}
               className={cn(
-                "flex items-center gap-4 p-4 cursor-pointer border-b",
+                "flex items-start gap-4 p-4 cursor-pointer border-b",
                 isSelected ? 'bg-primary/10' : 'hover:bg-accent/50'
               )}
             >
-              <Avatar className="h-12 w-12">
+              <Avatar className="h-10 w-10">
                 <AvatarImage src={contact.avatarUrl} alt={contact.name} />
                 <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
               </Avatar>
               <div className="flex-1 overflow-hidden">
-                <div className="flex justify-between items-center">
-                    <p className="font-semibold truncate">{contact.name}</p>
-                    <p className="text-xs text-muted-foreground whitespace-nowrap">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="font-semibold truncate">{contact.name}</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                           {youReplied && <span className="font-semibold">You: </span>}
+                           {convo.lastMessage}
+                        </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground whitespace-nowrap pl-2">
                         {format(new Date(convo.lastMessageAt), "d MMM yyyy")}
                     </p>
                 </div>
-                <p className="text-sm text-muted-foreground truncate">{convo.lastMessage}</p>
-                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                    <MapPin className="h-3 w-3" />
                     <span>{contact.location}</span>
                 </div>
               </div>
@@ -97,9 +103,9 @@ export default function InboxConversationList({
     <div className="flex flex-col h-full md:border-r bg-card">
         {/* Mobile Header */}
         <div className="md:hidden p-4 border-b shrink-0 flex items-center justify-between">
-            <Button variant="ghost" size="icon" onClick={toggleSidebar}>
+            <SidebarTrigger>
                 <Menu className="h-5 w-5" />
-            </Button>
+            </SidebarTrigger>
             <h2 className="text-lg font-semibold">All incoming</h2>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
