@@ -5,7 +5,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Document, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Bot, Trash2, MessageSquare, Loader2, Share2, Globe, Lock, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Bot, Trash2, MessageSquare, Loader2, Share2, Globe, Lock, MoreHorizontal, Star } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import TiptapEditor, { useEditor } from '@/components/document/TiptapEditor';
@@ -18,6 +18,7 @@ import NewDocumentDialog from './new-document-dialog';
 import { updateDocument } from '@/lib/db';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { formatDistanceToNow } from 'date-fns';
 
 interface DocumentEditorProps {
   initialDocument: Document;
@@ -213,60 +214,72 @@ export default function DocumentEditor({
     <>
     <div className="flex flex-col md:flex-row gap-0 h-screen">
       <div className="flex-1 flex flex-col p-4 md:p-8 overflow-y-auto">
-        <div className="flex items-center gap-2 mb-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <Input
-            value={document.name}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            placeholder="Untitled Document"
-            className="text-2xl font-bold border-none focus-visible:ring-0 p-0 h-auto"
-          />
+        
+        {/* New Header */}
+        <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-muted-foreground hover:text-foreground">
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Documents
+                </Button>
+            </div>
+
+            <div className="flex items-center gap-1">
+                 {lastSaved && <span className="text-xs text-muted-foreground">Edited {formatDistanceToNow(lastSaved, { addSuffix: true })}</span>}
+                
+                <Button variant="ghost" size="sm" onClick={() => setIsShareOpen(true)}>
+                    Share
+                </Button>
+
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Star className="h-4 w-4" />
+                </Button>
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        {hasUnsavedChanges && (
+                            <DropdownMenuItem onClick={handleManualSave} disabled={isSaving}>
+                                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {isSaving ? 'Saving...' : 'Save changes'}
+                            </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => setSidebarView(sidebarView === 'comments' ? null : 'comments')}>
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            <span>Comments ({document.comments?.length || 0})</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSidebarView(sidebarView === 'ai' ? null : 'ai')}>
+                            <Bot className="mr-2 h-4 w-4" />
+                            <span>AI Assistant</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Delete Document</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 mb-4 border-b pb-2">
-            <Button size="sm" onClick={handleManualSave} disabled={!hasUnsavedChanges || isSaving}>
-                 {isSaving ? (
-                    <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                    </>
-                 ) : hasUnsavedChanges ? (
-                    'Save Changes'
-                 ) : (
-                    'Saved'
-                 )}
-            </Button>
-            {!hasUnsavedChanges && lastSaved && (
-                <span className="text-xs text-muted-foreground">
-                    Last saved at {lastSaved.toLocaleTimeString()}
-                </span>
-            )}
-            
-            <Separator orientation="vertical" className="h-6 mx-2" />
-            <Button size="sm" variant="outline" onClick={() => setIsShareOpen(true)}>
-                {document.isPublic ? <Globe className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
-                Share
-            </Button>
-          <Button size="sm" variant="destructive" onClick={handleDelete}>
-            <Trash2 className="mr-2 h-4 w-4" /> Delete
-          </Button>
-          <Separator orientation="vertical" className="h-6 mx-2" />
-          <Button size="sm" variant="outline" onClick={() => setSidebarView(sidebarView === 'comments' ? null : 'comments')}>
-            <MessageSquare className="mr-2 h-4 w-4" /> Comments ({document.comments?.length || 0})
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setSidebarView(sidebarView === 'ai' ? null : 'ai')}>
-            <Bot className="mr-2 h-4 w-4" /> AI Assistant
-          </Button>
-        </div>
-
-        <div className="flex-1 py-4 flex flex-col min-h-[400px]">
-          <TiptapEditor 
-            content={document.content} 
-            onChange={handleContentChange} 
-            onEditorInstance={onEditorInstance}
-          />
+        <div className="flex-1 flex flex-col items-center">
+            <div className="w-full max-w-4xl py-4 flex-1 flex flex-col">
+                <Input
+                    value={document.name}
+                    onChange={(e) => handleTitleChange(e.target.value)}
+                    placeholder="Untitled Document"
+                    className="text-4xl font-bold border-none focus-visible:ring-0 p-0 h-auto mb-8 tracking-tight"
+                />
+                <TiptapEditor 
+                    content={document.content} 
+                    onChange={handleContentChange} 
+                    onEditorInstance={onEditorInstance}
+                />
+            </div>
         </div>
       </div>
 
