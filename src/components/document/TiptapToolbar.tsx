@@ -70,7 +70,7 @@ export function Toolbar({ editor }: Props) {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-1 p-2 border-b">
+    <div className="flex flex-wrap items-center gap-1 p-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="w-24 justify-start">
