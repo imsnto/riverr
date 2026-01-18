@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState } from 'react';
@@ -10,13 +8,15 @@ import ProjectBoard from './project-board';
 import NewTaskDialog from './new-task-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface TaskBoardProps {
   tasks: Task[];
   onUpdateTasks: (tasks: Task[]) => void;
   projects: Project[];
   selectedProjectId: string | null;
-  onSelectProject: (id: string) => void;
+  onSelectProject: (id: string | null) => void;
   activeHub: Hub;
   allUsers: User[];
   onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
@@ -44,6 +44,7 @@ export default function TaskBoard({
   const [defaultStatusForNewTask, setDefaultStatusForNewTask] = useState<string | undefined>(undefined);
   const { toast } = useToast();
   const { activeSpace } = useAuth();
+  const isMobile = useIsMobile();
   
   const handleAddTaskDialog = (newTask: Omit<Task, 'id'>) => {
     onAddTask(newTask);
@@ -63,6 +64,39 @@ export default function TaskBoard({
   const spaceMembers = allUsers.filter(u => activeSpace?.members[u.id]);
   const statuses = activeHub.statuses || [];
 
+  if (isMobile && !selectedProject) {
+    return (
+        <div className="flex h-full flex-col">
+            <div className="p-4 border-b">
+                <h1 className="text-xl font-semibold">Projects</h1>
+            </div>
+            <ScrollArea className="flex-1">
+                <div className="p-2 space-y-1">
+                    {projects.map(project => (
+                        <Button
+                            key={project.id}
+                            variant="ghost"
+                            className="w-full justify-start p-2 h-auto"
+                            onClick={() => onSelectProject(project.id)}
+                        >
+                            <div className="flex items-center gap-2 truncate">
+                                <Folder className="h-4 w-4" />
+                                <span className="truncate font-normal">{project.name}</span>
+                            </div>
+                        </Button>
+                    ))}
+                </div>
+            </ScrollArea>
+             <div className="p-2 border-t">
+                <Button variant="outline" className="w-full" onClick={onNewProject}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Project
+                </Button>
+            </div>
+        </div>
+    );
+  }
+
   return (
     <>
       <div className="flex h-full flex-col p-4 md:p-6 md:pb-4 overflow-hidden">
@@ -70,7 +104,7 @@ export default function TaskBoard({
               <ProjectBoard 
                   project={selectedProject}
                   projects={projects}
-                  onSelectProject={onSelectProject}
+                  onSelectProject={(id) => onSelectProject(id)}
                   allTasks={tasks}
                   onUpdateTasks={onUpdateTasks}
                   activeHub={activeHub}
@@ -79,6 +113,7 @@ export default function TaskBoard({
                   onNewTaskRequest={handleNewTaskRequest}
                   onTaskClick={(task) => onTaskSelect(task)}
                   onUpdateTask={onUpdateTask}
+                  onBack={() => onSelectProject(null)}
               />
           ) : (
               <div className="flex flex-col items-center justify-center h-full text-center bg-card rounded-lg">

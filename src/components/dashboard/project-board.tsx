@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, DragEvent, useRef } from 'react';
@@ -25,7 +23,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useAuth } from '@/hooks/use-auth';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 
 const getInitials = (name: string) => {
     if (!name) return '';
@@ -115,6 +112,7 @@ interface ProjectBoardProps {
   onTaskClick: (task: Task) => void;
   onUpdateTask: (task: Task) => void;
   onSelectProject: (id: string) => void;
+  onBack: () => void;
 }
 
 const defaultStatuses: Status[] = [
@@ -124,13 +122,12 @@ const defaultStatuses: Status[] = [
     { name: 'Done', color: '#22c55e' },
 ]
 
-export default function ProjectBoard({ project, projects, allTasks, onUpdateTasks, activeHub, allUsers, onUpdateActiveHub, onNewTaskRequest, onTaskClick, onUpdateTask, onSelectProject }: ProjectBoardProps) {
+export default function ProjectBoard({ project, projects, allTasks, onUpdateTasks, activeHub, allUsers, onUpdateActiveHub, onNewTaskRequest, onTaskClick, onUpdateTask, onSelectProject, onBack }: ProjectBoardProps) {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
   const { toast } = useToast();
   const { appUser } = useAuth();
-  const [isProjectSheetOpen, setIsProjectSheetOpen] = useState(false);
   
   const tasks = allTasks.filter(t => t.project_id === project.id && !t.parentId);
   const statuses = activeHub.statuses || defaultStatuses;
@@ -501,7 +498,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
       {/* Mobile Header */}
       <div className="md:hidden mb-4 space-y-4">
         <div className="flex items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={() => setIsProjectSheetOpen(true)}>
+          <Button variant="ghost" size="icon" onClick={onBack}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-semibold">Projects</h1>
@@ -535,30 +532,6 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
           </div>
         </div>
       </div>
-      
-      <Sheet open={isProjectSheetOpen} onOpenChange={setIsProjectSheetOpen}>
-          <SheetContent side="left" className="p-0">
-              <SheetHeader className="p-4 border-b text-left">
-                  <SheetTitle>Switch Project</SheetTitle>
-              </SheetHeader>
-              <div className="p-2">
-                  {projects.map(p => (
-                      <Button
-                          key={p.id}
-                          variant={project.id === p.id ? 'secondary' : 'ghost'}
-                          className="w-full justify-start"
-                          onClick={() => {
-                              onSelectProject(p.id);
-                              setIsProjectSheetOpen(false);
-                          }}
-                      >
-                          {p.name}
-                      </Button>
-                  ))}
-              </div>
-          </SheetContent>
-      </Sheet>
     </div>
   );
 }
-

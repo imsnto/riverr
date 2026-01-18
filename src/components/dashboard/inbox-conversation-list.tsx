@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -95,7 +94,7 @@ export default function InboxConversationList({
   );
 
   return (
-    <div className="flex flex-col h-full border-r bg-card">
+    <div className="flex flex-col h-full md:border-r bg-card">
         {/* Mobile Header */}
         <div className="md:hidden p-4 border-b shrink-0 flex items-center justify-between">
             <Button variant="ghost" size="icon" onClick={toggleSidebar}>

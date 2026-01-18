@@ -10,10 +10,11 @@ import { addHelpCenter, updateHelpCenter, getHelpCenterCollections, addHelpCente
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterSettings from './help-center-settings';
 import HelpCenterArticleList from './help-center-article-list';
-import { FolderPlus, Plus } from 'lucide-react';
+import { ArrowLeft, FolderPlus, Plus } from 'lucide-react';
 import HelpCenterCollectionsView from './help-center-collections-view';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import AddArticlesToCollectionDialog from './add-articles-to-collection-dialog';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface HelpCenterLayoutProps {
     helpCenters: HelpCenter[];
@@ -41,6 +42,9 @@ export default function HelpCenterLayout({
     const [isCollectionDialogOpen, setIsCollectionDialogOpen] = useState(false);
     const [editingCollection, setEditingCollection] = useState<HelpCenterCollection | null>(null);
     const [isAddArticlesDialogOpen, setIsAddArticlesDialogOpen] = useState(false);
+    
+    const isMobile = useIsMobile();
+    const [mobileView, setMobileView] = useState<'sidebar' | 'content'>('sidebar');
 
     const { toast } = useToast();
 
@@ -128,6 +132,7 @@ export default function HelpCenterLayout({
 
     const handleSelectCollection = (collection: HelpCenterCollection) => {
         setView(`collection_${collection.id}`);
+        if(isMobile) setMobileView('content');
     };
     
     const handleSaveArticlesToCollection = async (finalArticleIdsInCollection: string[]) => {
@@ -165,7 +170,17 @@ export default function HelpCenterLayout({
     const handleViewChange = (newView: string) => {
         setView(newView);
         setSelectedArticleId(null);
+        if (isMobile) {
+            setMobileView('content');
+        }
     };
+    
+    const handleSelectArticle = (articleId: string) => {
+        setSelectedArticleId(articleId);
+        if (isMobile) {
+            setMobileView('content');
+        }
+    }
 
     const filteredArticles = articles.filter(article => {
         const inActiveHc = activeHelpCenter ? article.helpCenterId === activeHelpCenter.id : true;
@@ -196,7 +211,7 @@ export default function HelpCenterLayout({
       
       const newArticle = await onSaveArticle(newArticleData);
       if (newArticle) {
-        setSelectedArticleId(newArticle.id);
+        handleSelectArticle(newArticle.id);
       }
     };
     
@@ -264,10 +279,43 @@ export default function HelpCenterLayout({
                 </div>
                 <HelpCenterArticleList
                     articles={filteredArticles}
-                    onSelectArticle={setSelectedArticleId}
+                    onSelectArticle={handleSelectArticle}
                 />
             </div>
         );
+    }
+    
+    if (isMobile === undefined) return null;
+
+    if (isMobile) {
+        return (
+            <div className="h-full flex flex-col">
+                {mobileView === 'sidebar' ? (
+                    <HelpCenterSidebar
+                        helpCenters={helpCenters}
+                        activeHelpCenter={activeHelpCenter}
+                        onSelectHelpCenter={setActiveHelpCenter}
+                        collections={collections}
+                        activeView={view}
+                        onViewChange={handleViewChange}
+                        onCreateHelpCenter={handleCreateHelpCenter}
+                        onEditHelpCenter={handleEditHelpCenter}
+                    />
+                ) : (
+                    <>
+                        <div className="p-2 border-b shrink-0">
+                             <Button variant="ghost" onClick={() => setMobileView('sidebar')}>
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Back
+                            </Button>
+                        </div>
+                        <main className="overflow-y-auto p-4 flex-1">
+                            {renderContent()}
+                        </main>
+                    </>
+                )}
+            </div>
+        )
     }
 
     return (

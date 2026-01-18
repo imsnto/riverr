@@ -36,7 +36,7 @@ export default function HelpCenterSidebar({
 }: HelpCenterSidebarProps) {
 
     return (
-        <aside className="w-80 border-r bg-card p-4 flex flex-col">
+        <aside className="w-full md:w-80 border-r bg-card p-4 flex flex-col">
             <div className="relative mb-4">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search..." className="pl-9 h-9" />
