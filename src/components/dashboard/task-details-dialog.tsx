@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -370,52 +369,148 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
       <div className="p-4 md:p-6 space-y-6">
         <h1 className={cn("text-2xl font-bold", !isMobile && "sr-only")}>{task.name}</h1>
         
-        {/* Mobile Assignee & Due Date */}
-        <div className={cn("grid grid-cols-2 gap-4", !isMobile && "hidden")}>
-          <div>
-            <p className="text-sm text-muted-foreground mb-1">Assigned to</p>
-            <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={assignee?.avatarUrl} alt={assignee?.name} />
-                <AvatarFallback>{assignee ? getInitials(assignee.name) : '?'}</AvatarFallback>
-              </Avatar>
-              <span className="text-sm font-medium">{assignee?.name}</span>
+        {/* Mobile-only section from previous version, kept as is */}
+        {isMobile && (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Assigned to</p>
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={assignee?.avatarUrl} alt={assignee?.name} />
+                    <AvatarFallback>{assignee ? getInitials(assignee.name) : '?'}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium">{assignee?.name}</span>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Due date</p>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-8 w-8 text-muted-foreground" />
+                  <span className="text-sm font-medium">{format(parseISO(task.due_date), "MMM d, yyyy")}</span>
+                </div>
+              </div>
             </div>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground mb-1">Due date</p>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-8 w-8 text-muted-foreground" />
-              <span className="text-sm font-medium">{format(parseISO(task.due_date), "MMM d, yyyy")}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Project */}
-        {project && (
-            <div className={cn("space-y-2", !isMobile && "hidden")}>
+            {project && (
+              <div className="space-y-2">
                 <h3 className="font-semibold text-sm text-muted-foreground">Project</h3>
                 <Button variant="outline" size="sm" className="w-full justify-start">
                     <span className="w-2 h-2 rounded-full bg-green-500 mr-2"/>
                     {project.name}
                 </Button>
-            </div>
+              </div>
+            )}
+          </>
         )}
 
-        {/* Desktop Details Grid */}
+        {/* This is the restored desktop details grid */}
         <div className={cn("space-y-4", isMobile && "hidden")}>
-            <DetailRow icon={CircleDot} label="Status">
-                <Select value={task.status} onValueChange={(value) => handleFieldChange('status', value)}>
-                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                    <SelectContent>{statuses.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
-                </Select>
+          <DetailRow icon={CircleDot} label="Status">
+              <Select value={task.status} onValueChange={(value) => handleFieldChange('status', value)}>
+                  <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                  <SelectContent>{statuses.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
+              </Select>
+          </DetailRow>
+          <DetailRow icon={Users} label="Assignees">
+              <Select value={task.assigned_to} onValueChange={(value) => handleFieldChange('assigned_to', value)}>
+                  <SelectTrigger className="h-8">
+                      <SelectValue>
+                          {assignee ? (
+                              <div className="flex items-center gap-2">
+                                  <Avatar className="h-6 w-6"><AvatarImage src={assignee.avatarUrl} /><AvatarFallback>{getInitials(assignee.name)}</AvatarFallback></Avatar>
+                                  {assignee.name}
+                              </div>
+                          ) : 'Select user'}
+                      </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                      {allUsers.map(user => (
+                          <SelectItem key={user.id} value={user.id}>
+                              <div className="flex items-center gap-2">
+                                  <Avatar className="h-6 w-6"><AvatarImage src={user.avatarUrl} /><AvatarFallback>{getInitials(user.name)}</AvatarFallback></Avatar>
+                                  {user.name}
+                              </div>
+                          </SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
+          </DetailRow>
+          <DetailRow icon={Calendar} label="Due Date">
+              <Popover>
+                  <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("h-8 w-full justify-start text-left font-normal", !task.due_date && "text-muted-foreground")}>
+                          {task.due_date ? format(parseISO(task.due_date), "PPP") : <span>Pick a date</span>}
+                      </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                      <CalendarPicker
+                          mode="single"
+                          selected={parseISO(task.due_date)}
+                          onSelect={(date) => handleFieldChange('due_date', date?.toISOString())}
+                          initialFocus
+                      />
+                  </PopoverContent>
+              </Popover>
+          </DetailRow>
+          <DetailRow icon={Flag} label="Priority">
+              <Select value={task.priority || ''} onValueChange={(value) => handleFieldChange('priority', value)}>
+                  <SelectTrigger className="h-8"><SelectValue placeholder="Set priority" /></SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="Low">Low</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="High">High</SelectItem>
+                      <SelectItem value="Urgent">Urgent</SelectItem>
+                  </SelectContent>
+              </Select>
+          </DetailRow>
+           <DetailRow icon={Clock} label="Time Est.">
+                <Input
+                    className="h-8"
+                    value={estTime}
+                    onChange={(e) => {
+                        setEstTime(e.target.value);
+                        setShowEstTimeSuggestion(true);
+                    }}
+                    onBlur={() => {
+                        const parsed = parseDuration(estTime);
+                        setEstTime(formatDuration(parsed));
+                        handleFieldChange('time_estimate', parsed);
+                        setShowEstTimeSuggestion(false);
+                    }}
+                />
             </DetailRow>
-            <DetailRow icon={Users} label="Assignees">{/* ... desktop assignee select ... */}</DetailRow>
-            <DetailRow icon={Calendar} label="Due Date">{/* ... desktop date picker ... */}</DetailRow>
-            <DetailRow icon={Flag} label="Priority">{/* ... desktop priority select ... */}</DetailRow>
-            <DetailRow icon={Clock} label="Time Est.">{/* ... desktop time estimate ... */}</DetailRow>
-            <DetailRow icon={Clock} label="Time Logged">{/* ... desktop time logged ... */}</DetailRow>
-            <DetailRow icon={Tag} label="Tags">{/* ... desktop tags ... */}</DetailRow>
+
+             <DetailRow icon={Clock} label="Time Logged">
+                <div className="flex items-center justify-between h-8">
+                    <span className="text-sm">{formatDuration(totalTimeTracked)}</span>
+                    <Button variant="outline" size="sm" onClick={() => setIsLogTimeOpen(true)}>Log Time</Button>
+                </div>
+            </DetailRow>
+
+            <DetailRow icon={Tag} label="Tags">
+                <div className="space-y-2">
+                    <div className="flex flex-wrap gap-1">
+                        {(task.tags || []).map(tag => (
+                            <Badge key={tag} variant="secondary">
+                                {tag}
+                                <button onClick={() => handleRemoveTag(tag)} className="ml-1 rounded-full hover:bg-destructive/20 p-0.5">
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </Badge>
+                        ))}
+                    </div>
+                    <div className="flex gap-2">
+                        <Input
+                            className="h-8"
+                            placeholder="Add a tag..."
+                            value={newTag}
+                            onChange={e => setNewTag(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }}
+                        />
+                        <Button variant="outline" size="sm" onClick={handleAddTag}>Add</Button>
+                    </div>
+                </div>
+            </DetailRow>
         </div>
 
         {/* Description */}
@@ -433,14 +528,77 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
         <Separator />
         
         {/* Subtasks */}
-        <div>{/* ... subtasks rendering logic ... */}</div>
+        <div className="space-y-2">
+            <h3 className="font-semibold text-sm text-muted-foreground">Subtasks ({subtasks.length})</h3>
+            <div className="space-y-2">
+                {subtasks.map(st => (
+                    <div key={st.id} className="flex items-center gap-2 group">
+                        <Checkbox 
+                            id={`subtask-${st.id}`} 
+                            checked={st.status === 'Done'}
+                            onCheckedChange={(checked) => handleUpdateSubtaskStatus(st, !!checked)}
+                        />
+                        <label htmlFor={`subtask-${st.id}`} className={cn("flex-1 text-sm", st.status === 'Done' && 'line-through text-muted-foreground')}>{st.name}</label>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleRemoveSubtask(st.id)}>
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                    </div>
+                ))}
+            </div>
+             <form onSubmit={(e) => { e.preventDefault(); handleAddSubtask(); }} className="flex gap-2 mt-2">
+                <Input value={newSubtaskName} onChange={(e) => setNewSubtaskName(e.target.value)} placeholder="Add a subtask..." className="h-8" />
+                <Button variant="outline" size="sm" type="submit">Add</Button>
+            </form>
+        </div>
+
 
         <Separator className={cn(isMobile && "hidden")} />
 
         {/* Desktop Comment Form */}
         {!isMobile && (
             <form onSubmit={handleAddComment} className="relative">
-                {/* ... desktop comment form elements ... */}
+                 <div className="border rounded-lg">
+                    <Textarea 
+                        name="comment" 
+                        placeholder="Ask a question or post an update..."
+                        minRows={3}
+                        className="border-0 focus-visible:ring-0"
+                    />
+                    <div className="p-2 border-t flex justify-between items-center">
+                         <div className="flex items-center gap-1">
+                            <input
+                                type="file"
+                                multiple
+                                ref={fileInputRef}
+                                className="hidden"
+                                onChange={handleFileSelect}
+                            />
+                            <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
+                                <Paperclip className="h-4 w-4" />
+                            </Button>
+                         </div>
+                         <Button type="submit">Comment</Button>
+                    </div>
+                 </div>
+                 {attachments.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                        {attachments.map((file, i) => (
+                        <div key={i} className="flex items-center justify-between gap-2 text-sm bg-muted p-2 rounded-md">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                                {file.type.startsWith('image/') ? <ImageIcon className="h-4 w-4 flex-shrink-0" /> : <File className="h-4 w-4 flex-shrink-0" />}
+                                <span className="truncate">{file.name}</span>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}
+                            >
+                            &times;
+                            </Button>
+                        </div>
+                        ))}
+                    </div>
+                )}
             </form>
         )}
         
@@ -457,7 +615,38 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
 
                 return (
                     <div key={activity.id} className="flex items-start gap-3">
-                        {/* ... activity comment rendering ... */}
+                       <Avatar className="h-6 w-6 mt-1">
+                          <AvatarImage src={user?.avatarUrl} alt={user?.name} />
+                          <AvatarFallback>{user ? getInitials(user.name) : 'U'}</AvatarFallback>
+                      </Avatar>
+                       <div className="text-sm flex-1">
+                            <div className="flex justify-between">
+                                <div>
+                                    <span className="font-semibold">{user?.name}</span>
+                                    <span className="text-xs text-muted-foreground ml-2">{new Date(activity.timestamp).toLocaleString()}</span>
+                                </div>
+                                {!isTimeLog && <Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal className="h-4 w-4" /></Button>}
+                            </div>
+                           
+                            <p className={cn("mt-1", isTimeLog && 'italic text-muted-foreground')}>{isTimeLog ? activity.comment : comment?.comment}</p>
+                            
+                            {!isTimeLog && comment?.attachments && comment.attachments.length > 0 && (
+                                <div className="mt-2 space-y-2">
+                                {comment.attachments.map(att => (
+                                    <div key={att.id}>
+                                        {att.type === 'image' ? (
+                                            <img src={att.url} alt={att.name} className="rounded-lg max-w-xs max-h-64 object-cover" />
+                                        ) : (
+                                            <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline bg-primary/10 p-2 rounded-md max-w-xs">
+                                                <File className="h-4 w-4" />
+                                                <span className="truncate">{att.name}</span>
+                                            </a>
+                                        )}
+                                    </div>
+                                ))}
+                                </div>
+                            )}
+                       </div>
                     </div>
                 )
               }
@@ -531,4 +720,3 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
         </Dialog>
     );
 }
-
