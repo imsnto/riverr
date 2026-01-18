@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -33,13 +32,20 @@ export default function InboxLayout({
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isContactPanelOpen, setIsContactPanelOpen] = useState(true);
   const isMobile = useIsMobile();
-  
+  const [mobileView, setMobileView] = useState<'list' | 'conversation'>('list');
+
   useEffect(() => {
     if (isMobile === false && !selectedConversationId && conversations.length > 0) {
-        setSelectedConversationId(conversations[0].id);
+      setSelectedConversationId(conversations[0].id);
     }
   }, [isMobile, conversations, selectedConversationId]);
 
+  const handleSelectConversation = (id: string) => {
+    setSelectedConversationId(id);
+    if (isMobile) {
+      setMobileView('conversation');
+    }
+  };
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId) || null;
   const selectedContact = selectedConversation ? contacts.find(c => c.id === selectedConversation.contactId) : null;
@@ -48,44 +54,45 @@ export default function InboxLayout({
     onSendMessage(conversationId, message.content, message.type as 'reply' | 'note');
   };
   
-  // Guard against rendering on server or before hydration to prevent layout shifts
   if (isMobile === undefined) {
     return null; // Or a loading skeleton
   }
 
-
   if (isMobile) {
-    if (selectedConversationId && selectedConversation && selectedContact) {
-        return (
-            <div className="flex flex-col h-full">
-                <div className="p-2 border-b shrink-0">
-                    <Button variant="ghost" onClick={() => setSelectedConversationId(null)}>
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Inbox
-                    </Button>
-                </div>
-                <InboxConversationView
-                    conversation={selectedConversation}
-                    messages={messages}
-                    contact={selectedContact}
-                    users={users}
-                    appUser={appUser}
-                    isContactPanelOpen={false}
-                    onToggleContactPanel={() => {}}
-                    onSendMessage={handleAgentSendMessage}
-                    onAssignConversation={onAssignConversation}
-                />
-            </div>
-        )
-    }
     return (
-        <InboxConversationList
-            conversations={conversations}
-            contacts={contacts}
-            selectedConversationId={selectedConversationId}
-            onSelectConversation={setSelectedConversationId}
-            appUser={appUser}
-        />
+        <div className="flex flex-col h-full">
+            {mobileView === 'list' ? (
+                <InboxConversationList
+                    conversations={conversations}
+                    contacts={contacts}
+                    selectedConversationId={selectedConversationId}
+                    onSelectConversation={handleSelectConversation}
+                    appUser={appUser}
+                />
+            ) : (
+                 <>
+                    <div className="p-2 border-b shrink-0">
+                        <Button variant="ghost" onClick={() => setMobileView('list')}>
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Inbox
+                        </Button>
+                    </div>
+                    {selectedConversation && selectedContact && (
+                         <InboxConversationView
+                            conversation={selectedConversation}
+                            messages={messages}
+                            contact={selectedContact}
+                            users={users}
+                            appUser={appUser}
+                            isContactPanelOpen={false}
+                            onToggleContactPanel={() => {}}
+                            onSendMessage={handleAgentSendMessage}
+                            onAssignConversation={onAssignConversation}
+                        />
+                    )}
+                </>
+            )}
+        </div>
     )
   }
 
@@ -98,7 +105,7 @@ export default function InboxLayout({
         conversations={conversations}
         contacts={contacts}
         selectedConversationId={selectedConversationId}
-        onSelectConversation={setSelectedConversationId}
+        onSelectConversation={handleSelectConversation}
         appUser={appUser}
       />
       <InboxConversationView

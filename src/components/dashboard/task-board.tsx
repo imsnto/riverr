@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Project, Space, Task, User, Status, Hub } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Plus, Folder } from 'lucide-react';
@@ -46,6 +46,10 @@ export default function TaskBoard({
   const { activeSpace } = useAuth();
   const isMobile = useIsMobile();
   
+  const handleSelectProject = (id: string | null) => {
+      onSelectProject(id);
+  }
+
   const handleAddTaskDialog = (newTask: Omit<Task, 'id'>) => {
     onAddTask(newTask);
     const statuses = activeHub.statuses || [];
@@ -64,39 +68,78 @@ export default function TaskBoard({
   const spaceMembers = allUsers.filter(u => activeSpace?.members[u.id]);
   const statuses = activeHub.statuses || [];
 
-  if (isMobile && !selectedProject) {
-    return (
-        <div className="flex h-full flex-col">
-            <div className="p-4 border-b">
-                <h1 className="text-xl font-semibold">Projects</h1>
-            </div>
-            <ScrollArea className="flex-1">
-                <div className="p-2 space-y-1">
-                    {projects.map(project => (
-                        <Button
-                            key={project.id}
-                            variant="ghost"
-                            className="w-full justify-start p-2 h-auto"
-                            onClick={() => onSelectProject(project.id)}
-                        >
-                            <div className="flex items-center gap-2 truncate">
-                                <Folder className="h-4 w-4" />
-                                <span className="truncate font-normal">{project.name}</span>
-                            </div>
-                        </Button>
-                    ))}
-                </div>
-            </ScrollArea>
-             <div className="p-2 border-t">
-                <Button variant="outline" className="w-full" onClick={onNewProject}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Project
-                </Button>
-            </div>
-        </div>
-    );
+  if (isMobile === undefined) {
+    return null;
   }
 
+  if (isMobile) {
+    if (!selectedProject) {
+        return (
+            <div className="flex h-full flex-col">
+                <div className="p-4 border-b">
+                    <h1 className="text-xl font-semibold">Projects</h1>
+                </div>
+                <ScrollArea className="flex-1">
+                    <div className="p-2 space-y-1">
+                        {projects.map(project => (
+                            <Button
+                                key={project.id}
+                                variant="ghost"
+                                className="w-full justify-start p-2 h-auto"
+                                onClick={() => handleSelectProject(project.id)}
+                            >
+                                <div className="flex items-center gap-2 truncate">
+                                    <Folder className="h-4 w-4" />
+                                    <span className="truncate font-normal">{project.name}</span>
+                                </div>
+                            </Button>
+                        ))}
+                    </div>
+                </ScrollArea>
+                <div className="p-2 border-t">
+                    <Button variant="outline" className="w-full" onClick={onNewProject}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        New Project
+                    </Button>
+                </div>
+            </div>
+        );
+    } else {
+        return (
+             <>
+                <div className="flex h-full flex-col p-4 md:p-6 md:pb-4 overflow-hidden">
+                    <ProjectBoard 
+                        project={selectedProject}
+                        projects={projects}
+                        onSelectProject={handleSelectProject}
+                        allTasks={tasks}
+                        onUpdateTasks={onUpdateTasks}
+                        activeHub={activeHub}
+                        allUsers={allUsers}
+                        onUpdateActiveHub={onUpdateActiveHub}
+                        onNewTaskRequest={handleNewTaskRequest}
+                        onTaskClick={(task) => onTaskSelect(task)}
+                        onUpdateTask={onUpdateTask}
+                        onBack={() => handleSelectProject(null)}
+                    />
+                </div>
+                {isNewTaskDialogOpen && (
+                <NewTaskDialog
+                    isOpen={isNewTaskDialogOpen}
+                    onOpenChange={setIsNewTaskDialogOpen}
+                    onTaskAdd={handleAddTaskDialog}
+                    projects={selectedProject ? [selectedProject] : []}
+                    statuses={statuses}
+                    allUsers={spaceMembers}
+                    defaultStatus={defaultStatusForNewTask}
+                />
+                )}
+            </>
+        )
+    }
+  }
+
+  // Desktop view
   return (
     <>
       <div className="flex h-full flex-col p-4 md:p-6 md:pb-4 overflow-hidden">
@@ -104,7 +147,7 @@ export default function TaskBoard({
               <ProjectBoard 
                   project={selectedProject}
                   projects={projects}
-                  onSelectProject={(id) => onSelectProject(id)}
+                  onSelectProject={handleSelectProject}
                   allTasks={tasks}
                   onUpdateTasks={onUpdateTasks}
                   activeHub={activeHub}
@@ -113,7 +156,7 @@ export default function TaskBoard({
                   onNewTaskRequest={handleNewTaskRequest}
                   onTaskClick={(task) => onTaskSelect(task)}
                   onUpdateTask={onUpdateTask}
-                  onBack={() => onSelectProject(null)}
+                  onBack={() => handleSelectProject(null)} // onBack is for mobile only but fine to have here
               />
           ) : (
               <div className="flex flex-col items-center justify-center h-full text-center bg-card rounded-lg">
