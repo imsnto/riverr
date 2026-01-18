@@ -107,28 +107,30 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                 <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : ''}>{article.status === 'draft' ? 'Draft' : 'Published'}</Badge>
             </div>
             
-            <Input 
-                value={article.title}
-                onChange={(e) => setArticle(prev => ({...prev, title: e.target.value}))}
-                className="text-2xl font-bold border-none focus-visible:ring-0 p-0 h-auto mb-4"
-                placeholder="Article Title"
-            />
-            
-            {author && (
-                <div className="flex items-center gap-2 mb-4">
-                    <Avatar className="h-6 w-6">
-                        <AvatarImage src={author.avatarUrl} />
-                        <AvatarFallback>{getInitials(author.name)}</AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs">Written by {author.name}</span>
-                </div>
-            )}
-            
-            <TiptapEditor 
-                content={article.content}
-                onChange={handleContentChange}
-                onEditorInstance={onEditorInstance}
-            />
+            <div className="flex-1 overflow-y-auto">
+                <Input 
+                    value={article.title}
+                    onChange={(e) => setArticle(prev => ({...prev, title: e.target.value}))}
+                    className="text-2xl font-bold border-none focus-visible:ring-0 p-0 h-auto mb-4"
+                    placeholder="Article Title"
+                />
+                
+                {author && (
+                    <div className="flex items-center gap-2 mb-4">
+                        <Avatar className="h-6 w-6">
+                            <AvatarImage src={author.avatarUrl} />
+                            <AvatarFallback>{getInitials(author.name)}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-xs">Written by {author.name}</span>
+                    </div>
+                )}
+                
+                <TiptapEditor 
+                    content={article.content}
+                    onChange={handleContentChange}
+                    onEditorInstance={onEditorInstance}
+                />
+            </div>
         </div>
     );
 }

@@ -44,8 +44,6 @@ export default function HelpCenterLayout({
     const [isAddArticlesDialogOpen, setIsAddArticlesDialogOpen] = useState(false);
     
     const isMobile = useIsMobile();
-    const [mobileView, setMobileView] = useState<'sidebar' | 'content'>('sidebar');
-
     const { toast } = useToast();
 
     useEffect(() => {
@@ -132,7 +130,7 @@ export default function HelpCenterLayout({
 
     const handleSelectCollection = (collection: HelpCenterCollection) => {
         setView(`collection_${collection.id}`);
-        if(isMobile) setMobileView('content');
+        if(isMobile) setSelectedArticleId(null);
     };
     
     const handleSaveArticlesToCollection = async (finalArticleIdsInCollection: string[]) => {
@@ -171,30 +169,14 @@ export default function HelpCenterLayout({
         setView(newView);
         setSelectedArticleId(null);
         if (isMobile) {
-            setMobileView('content');
+            setSelectedArticleId(null);
         }
     };
     
     const handleSelectArticle = (articleId: string) => {
         setSelectedArticleId(articleId);
-        if (isMobile) {
-            setMobileView('content');
-        }
     }
 
-    const filteredArticles = articles.filter(article => {
-        const inActiveHc = activeHelpCenter ? article.helpCenterId === activeHelpCenter.id : true;
-        if (!inActiveHc) return false;
-
-        if (view === 'published') return article.status === 'published';
-        if (view === 'draft') return article.status === 'draft';
-        if (view.startsWith('collection_') && !view.startsWith('collections_')) {
-            const collectionId = view.split('_')[1];
-            return article.collectionIds.includes(collectionId);
-        }
-        return true; 
-    });
-    
     const handleCreateArticle = async () => {
       if (!appUser || !activeHub) return;
       const newArticleData: Omit<HelpCenterArticle, 'id'> = {
@@ -216,23 +198,6 @@ export default function HelpCenterLayout({
     };
     
     const renderContent = () => {
-        if (selectedArticleId) {
-            const articleToEdit = articles.find(a => a.id === selectedArticleId);
-            if (articleToEdit) {
-                 return (
-                    <HelpCenterArticleEditor 
-                       key={articleToEdit.id}
-                       article={articleToEdit} 
-                       onSave={(article) => onSaveArticle(article)}
-                       allUsers={allUsers}
-                       appUser={appUser!}
-                       onBack={() => setSelectedArticleId(null)}
-                    />
-                );
-            }
-            setSelectedArticleId(null);
-        }
-
         if (view.startsWith('settings_')) {
             return <HelpCenterSettings helpCenter={activeHelpCenter} />;
         }
@@ -261,6 +226,19 @@ export default function HelpCenterLayout({
             const collection = collections.find(c => c.id === collectionId);
             listTitle = collection ? `Collection: ${collection.name}` : "Collection";
         }
+        
+        const filteredArticles = articles.filter(article => {
+            const inActiveHc = activeHelpCenter ? article.helpCenterId === activeHelpCenter.id : true;
+            if (!inActiveHc) return false;
+
+            if (view === 'published') return article.status === 'published';
+            if (view === 'draft') return article.status === 'draft';
+            if (view.startsWith('collection_') && !view.startsWith('collections_')) {
+                const collectionId = view.split('_')[1];
+                return article.collectionIds.includes(collectionId);
+            }
+            return true; 
+        });
 
         return (
             <div>
@@ -285,41 +263,28 @@ export default function HelpCenterLayout({
         );
     }
     
-    if (isMobile === undefined) return null;
-
-    if (isMobile) {
-        return (
-            <div className="h-full flex flex-col">
-                {mobileView === 'sidebar' ? (
-                    <HelpCenterSidebar
-                        helpCenters={helpCenters}
-                        activeHelpCenter={activeHelpCenter}
-                        onSelectHelpCenter={setActiveHelpCenter}
-                        collections={collections}
-                        activeView={view}
-                        onViewChange={handleViewChange}
-                        onCreateHelpCenter={handleCreateHelpCenter}
-                        onEditHelpCenter={handleEditHelpCenter}
+    if (selectedArticleId) {
+        const articleToEdit = articles.find(a => a.id === selectedArticleId);
+        if (articleToEdit) {
+             return (
+                <div className="overflow-y-auto p-4 md:p-8 h-full">
+                    <HelpCenterArticleEditor 
+                       key={articleToEdit.id}
+                       article={articleToEdit} 
+                       onSave={(article) => onSaveArticle(article)}
+                       allUsers={allUsers}
+                       appUser={appUser!}
+                       onBack={() => setSelectedArticleId(null)}
                     />
-                ) : (
-                    <>
-                        <div className="p-2 border-b shrink-0">
-                             <Button variant="ghost" onClick={() => setMobileView('sidebar')}>
-                                <ArrowLeft className="mr-2 h-4 w-4" />
-                                Back
-                            </Button>
-                        </div>
-                        <main className="overflow-y-auto p-4 flex-1">
-                            {renderContent()}
-                        </main>
-                    </>
-                )}
-            </div>
-        )
+                </div>
+            );
+        }
+        // If article not found (e.g., after deletion), reset the view
+        setSelectedArticleId(null);
     }
 
     return (
-        <div className="grid h-full grid-cols-[320px_1fr]">
+        <div className="grid h-full grid-cols-1 md:grid-cols-[320px_1fr]">
             <HelpCenterSidebar
                 helpCenters={helpCenters}
                 activeHelpCenter={activeHelpCenter}
