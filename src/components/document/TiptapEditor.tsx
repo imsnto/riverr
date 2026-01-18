@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Editor, EditorContent, useEditor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Bold from '@tiptap/extension-bold';
@@ -25,6 +25,7 @@ export { useEditor };
 
 export default function TiptapEditor({ content, onChange, onBlur, onEditorInstance }: { content: string; onChange: (html: string) => void, onBlur?: () => void, onEditorInstance?: (editor: Editor) => void }) {
   const isMobile = useIsMobile();
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   
   const editor = useEditor({
     extensions: [
@@ -67,6 +68,24 @@ export default function TiptapEditor({ content, onChange, onBlur, onEditorInstan
     }
   });
 
+  useEffect(() => {
+    const visualViewport = window.visualViewport;
+    if (!isMobile || !visualViewport) return;
+
+    const handleResize = () => {
+      // The space taken up by virtual keyboard and other UI
+      const offset = window.innerHeight - visualViewport.height;
+      setKeyboardHeight(offset > 0 ? offset : 0);
+    };
+
+    visualViewport.addEventListener('resize', handleResize);
+    handleResize(); // Initial call
+
+    return () => {
+      visualViewport.removeEventListener('resize', handleResize);
+    };
+  }, [isMobile]);
+
   if (isMobile === undefined) {
     return null; // Avoid rendering mismatch between server and client
   }
@@ -84,7 +103,10 @@ export default function TiptapEditor({ content, onChange, onBlur, onEditorInstan
       )}
       <EditorContent editor={editor} />
       {editor && isMobile && (
-        <div className="fixed bottom-0 left-0 right-0 z-10 bg-card border-t p-1 overflow-x-auto">
+        <div 
+          className="fixed left-0 right-0 z-10 bg-card border-t p-1 overflow-x-auto transition-all duration-150 ease-in-out"
+          style={{ bottom: `${keyboardHeight}px` }}
+        >
             <Toolbar editor={editor} />
         </div>
       )}

@@ -156,7 +156,7 @@ export default function DocumentEditor({
                         </DropdownMenu>
                     </div>
                 </header>
-                <div className="flex-1 overflow-y-auto px-4 pt-4 pb-20">
+                <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4">
                     <Input
                         value={document.name}
                         onChange={(e) => handleTitleChange(e.target.value)}
