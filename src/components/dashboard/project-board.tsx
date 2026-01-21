@@ -246,7 +246,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         timestamp: new Date().toISOString(),
         type: 'status_change',
         from: taskToMove.status,
-        to: value,
+        to: newStatus,
         };
         const taskWithActivity = { ...newUpdatedTask, activities: [...(newUpdatedTask.activities || []), newActivity] };
         onUpdateTask(taskWithActivity); // Update task with new activity
@@ -482,11 +482,11 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         <div className="flex h-full flex-col">
         {/* Desktop Header */}
         <div className="hidden md:flex justify-between items-center px-6 pt-6 pb-4 border-b">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="text-2xl font-bold p-2 -ml-2">
-                            {project.name}
+                            <span className="truncate">{project.name}</span>
                             <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
                         </Button>
                     </DropdownMenuTrigger>
