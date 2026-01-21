@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, DragEvent, useRef } from 'react';
@@ -127,7 +128,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
   const { toast } = useToast();
-  const { appUser } = useAuth();
+  const { appUser, activeSpace } = useAuth();
   
   const tasks = allTasks.filter(t => t.project_id === project.id && !t.parentId);
   const statuses = activeHub.statuses || defaultStatuses;

@@ -647,6 +647,8 @@ const createSubtasks = (
   jobName: string,
   parentDueDate: Date,
   hubId: string,
+  spaceId: string,
+  createdBy: string
 ) => {
   for (const subtaskTemplate of subtaskTemplates) {
     const subtaskAssigneeId =
@@ -668,6 +670,7 @@ const createSubtasks = (
       name: subtaskTitle,
       description: "",
       status: "Pending",
+      createdBy: createdBy,
       assigned_to: subtaskAssigneeId,
       due_date: parentDueDate.toISOString(), // Subtasks get same due date as parent
       priority: null,
@@ -679,7 +682,7 @@ const createSubtasks = (
       comments: [],
       attachments: [],
       parentId: parentTaskId,
-      spaceId: '',
+      spaceId: spaceId,
     };
     const subtaskRef = doc(collection(db, "tasks"));
     batch.set(subtaskRef, subtaskData);
@@ -694,6 +697,7 @@ const createTasksForPhase = async (
   roleUserMapping: Record<string, string>,
   hubId: string,
   spaceId: string,
+  createdBy: string
 ) => {
   let lastDueDate = new Date();
   for (const taskTemplate of phase.tasks) {
@@ -723,6 +727,7 @@ const createTasksForPhase = async (
       name: taskTitle,
       description: taskDescription,
       status: "Pending",
+      createdBy: createdBy,
       assigned_to: assigneeId,
       due_date: dueDate.toISOString(),
       priority: "Medium",
@@ -750,7 +755,9 @@ const createTasksForPhase = async (
         roleUserMapping,
         jobName,
         dueDate,
-        hubId
+        hubId,
+        spaceId,
+        createdBy
       );
     }
 
@@ -802,6 +809,7 @@ export const launchJob = async (
     roleUserMapping,
     hubId,
     spaceId,
+    createdBy
   );
 
   await batch.commit();
@@ -848,7 +856,8 @@ export const updateJobPhase = async (
       job.name,
       job.roleUserMapping,
       job.hubId,
-      job.space_id
+      job.space_id,
+      job.createdBy
     );
 
     const jobRef = doc(db, "jobs", job.id);

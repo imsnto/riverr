@@ -63,6 +63,7 @@ export interface Task {
   project_id: string | null; // Can be null if it's a job flow task
   hubId: string; // Hub scope
   status: string;
+  createdBy: string; // user ID
   assigned_to: string; // user ID
   due_date: string; // ISO string
   priority: 'Low' | 'Medium' | 'High' | 'Urgent' | null;

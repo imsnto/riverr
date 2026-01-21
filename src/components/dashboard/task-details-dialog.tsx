@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -192,6 +193,9 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
                 if (!initialTask.assigned_to) {
                     setTask(t => t ? { ...t, assigned_to: appUser.id } : t);
                 }
+                if (!initialTask.createdBy) {
+                    setTask(t => t ? { ...t, createdBy: appUser.id } : t);
+                }
             }
         }
     }, [initialTask, appUser, isCreating]);
@@ -327,9 +331,12 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
         const tempId = `temp-${Date.now()}`;
         const newSubtaskData: Omit<Task, 'id'> = {
             project_id: task.project_id,
+            hubId: task.hubId,
+            spaceId: task.spaceId,
             name: newSubtaskName.trim(),
             description: '',
             status: 'Backlog',
+            createdBy: appUser.id,
             assigned_to: newSubtaskAssignee || appUser.id,
             due_date: newSubtaskDueDate ? newSubtaskDueDate.toISOString() : new Date().toISOString(),
             priority: null,
@@ -398,7 +405,7 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
     const renderContent = () => (
       <div className="p-4 md:p-6 space-y-6">
         <Input
-            value={(task.name === 'New Task' && isCreating) ? '' : task.name}
+            value={task.name}
             onChange={e => setTask(t => t ? { ...t, name: e.target.value } : null)}
             onBlur={() => { if (!isCreating) onUpdateTask(task); }}
             placeholder="What needs to be done?"
