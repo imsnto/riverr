@@ -777,7 +777,7 @@ export default function Dashboard({ view }: { view: string }) {
             />
           )}
           <main className={cn(
-            "flex-1",
+            "flex flex-col flex-1",
             currentView === 'inbox' || currentView === 'messages' || currentView === 'tasks' || currentView === 'settings' || currentView === 'help-center'
               ? 'overflow-hidden'
               : 'overflow-y-auto',
