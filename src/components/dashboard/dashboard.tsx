@@ -282,6 +282,16 @@ export default function Dashboard({ view }: { view: string }) {
     setEditingProject(project);
     setIsProjectFormOpen(true);
   };
+  
+  const handleDeleteProject = async (projectId: string) => {
+      await db.deleteProject(projectId);
+      const newProjects = projects.filter(p => p.id !== projectId);
+      setProjects(newProjects);
+      if (selectedProjectId === projectId) {
+        setSelectedProjectId(newProjects.length > 0 ? newProjects[0].id : null);
+      }
+      toast({ title: 'Project Deleted' });
+  }
 
   // Switch to the correct view when URL changes
   useEffect(() => {
@@ -421,29 +431,6 @@ export default function Dashboard({ view }: { view: string }) {
       await db.updateProject(projectId, data);
       setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...data } : p));
   }
-  
-  const handleDeleteProject = async (projectId: string) => {
-      await db.deleteProject(projectId);
-      const newProjects = projects.filter(p => p.id !== projectId);
-      setProjects(newProjects);
-      if (selectedProjectId === projectId) {
-        setSelectedProjectId(newProjects.length > 0 ? newProjects[0].id : null);
-      }
-  }
-  
-  const handleAddMessage = async (message: Omit<Message, 'id'>) => {
-    const newMessage = await db.addMessage(message);
-    setMessages(prev => [...prev, newMessage]);
-  }
-  
-  const handleCreateTaskFromThread = (thread: Message) => {
-    setTaskFromThread(thread);
-  };
-  
-  const handleLogTime = async (timeData: Omit<TimeEntry, 'id'>) => {
-    const newTimeEntry = await db.addTimeEntry({...timeData, spaceId: activeSpace.id});
-    setTimeEntries(prev => [...prev, newTimeEntry]);
-  };
   
   const handleSaveProject = async (values: Omit<Project, 'id' | 'hubId'>, projectId?: string) => {
     if (!activeHub) {
@@ -634,7 +621,20 @@ export default function Dashboard({ view }: { view: string }) {
         return newArticle;
     }
   }
-
+  
+  const handleAddMessage = async (message: Omit<Message, 'id'>) => {
+    const newMessage = await db.addMessage(message);
+    setMessages(prev => [...prev, newMessage]);
+  }
+  
+  const handleCreateTaskFromThread = (thread: Message) => {
+    setTaskFromThread(thread);
+  };
+  
+  const handleLogTime = async (timeData: Omit<TimeEntry, 'id'>) => {
+    const newTimeEntry = await db.addTimeEntry({...timeData, spaceId: activeSpace.id});
+    setTimeEntries(prev => [...prev, newTimeEntry]);
+  };
 
   const renderView = () => {
     const props = {
@@ -707,7 +707,9 @@ export default function Dashboard({ view }: { view: string }) {
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           onNewProject={handleNewProject}
-          onNewTaskRequest={handleNewTaskRequest}
+          onNewTaskRequest={onNewTaskRequest}
+          onEditProject={handleEditProject}
+          onDeleteProject={handleDeleteProject}
         />
       );
       case 'mytasks': return <div className="p-8"><MyTasksView {...props} /></div>;
@@ -771,7 +773,6 @@ export default function Dashboard({ view }: { view: string }) {
               selectedProjectId={selectedProjectId}
               onSelectProject={handleSelectProject}
               onNewProject={handleNewProject}
-              onEditProject={handleEditProject}
             />
           )}
           <main className={cn(

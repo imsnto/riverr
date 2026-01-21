@@ -21,7 +21,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useAuth } from '@/hooks/use-auth';
 
@@ -114,6 +113,8 @@ interface ProjectBoardProps {
   onUpdateTask: (task: Task) => void;
   onSelectProject: (id: string) => void;
   onBack: () => void;
+  onEditProject: (project: Project) => void;
+  onDeleteProject: (projectId: string) => void;
 }
 
 const defaultStatuses: Status[] = [
@@ -123,12 +124,13 @@ const defaultStatuses: Status[] = [
     { name: 'Done', color: '#22c55e' },
 ]
 
-export default function ProjectBoard({ project, projects, allTasks, onUpdateTasks, activeHub, allUsers, onUpdateActiveHub, onNewTaskRequest, onTaskClick, onUpdateTask, onSelectProject, onBack }: ProjectBoardProps) {
+export default function ProjectBoard({ project, projects, allTasks, onUpdateTasks, activeHub, allUsers, onUpdateActiveHub, onNewTaskRequest, onTaskClick, onUpdateTask, onSelectProject, onBack, onEditProject, onDeleteProject }: ProjectBoardProps) {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
   const { toast } = useToast();
   const { appUser, activeSpace } = useAuth();
+  const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   
   const tasks = allTasks.filter(t => t.project_id === project.id && !t.parentId);
   const statuses = activeHub.statuses || defaultStatuses;
@@ -243,7 +245,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         timestamp: new Date().toISOString(),
         type: 'status_change',
         from: taskToMove.status,
-        to: newStatus,
+        to: value,
         };
         const taskWithActivity = { ...newUpdatedTask, activities: [...(newUpdatedTask.activities || []), newActivity] };
         onUpdateTask(taskWithActivity); // Update task with new activity
@@ -475,64 +477,105 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   )};
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Desktop Header */}
-      <div className="hidden md:flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">{project.name}</h1>
-         <div className="flex items-center gap-4">
-            <div className="flex -space-x-2">
-                {projectMembers.slice(0, 5).map(member => (
+    <>
+        <div className="flex h-full flex-col">
+        {/* Desktop Header */}
+        <div className="hidden md:flex justify-between items-center px-6 pt-6 pb-4 border-b">
+            <div className="flex items-center gap-2">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="text-2xl font-bold p-2 -ml-2">
+                            {project.name}
+                            <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => onEditProject(project)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            <span>Edit Project</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setDeleteAlertOpen(true)} className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Delete Project</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+            <div className="flex items-center gap-4">
+                <div className="flex -space-x-2">
+                    {projectMembers.slice(0, 5).map(member => (
+                        <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
+                            <AvatarImage src={member.avatarUrl} alt={member.name} />
+                            <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                        </Avatar>
+                    ))}
+                    {projectMembers.length > 5 && (
+                        <Avatar className="h-8 w-8 border-2 border-background">
+                            <AvatarFallback>+{projectMembers.length - 5}</AvatarFallback>
+                        </Avatar>
+                    )}
+                </div>
+            </div>
+        </div>
+
+        {/* Mobile Header */}
+        <div className="md:hidden mb-4 space-y-4 p-4">
+            <div className="flex items-center justify-between">
+            <Button variant="ghost" size="icon" onClick={onBack}>
+                <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-lg font-semibold">Projects</h1>
+            <div className="flex items-center gap-2">
+                {projectMembers.slice(0, 3).map(member => (
                     <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
                         <AvatarImage src={member.avatarUrl} alt={member.name} />
                         <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
                     </Avatar>
                 ))}
-                {projectMembers.length > 5 && (
+                {projectMembers.length > 3 && (
                     <Avatar className="h-8 w-8 border-2 border-background">
-                        <AvatarFallback>+{projectMembers.length - 5}</AvatarFallback>
+                        <AvatarFallback>+{projectMembers.length - 3}</AvatarFallback>
                     </Avatar>
                 )}
             </div>
+            </div>
+            <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">{project.name}</h2>
+            </div>
         </div>
-      </div>
+        
+        <div className="flex-1 overflow-x-auto min-h-0">
+            <div className="flex gap-4 p-4 md:p-6 md:pt-2">
+            {activeStatuses.map(renderStatusColumn)}
+            {closingStatus && renderStatusColumn(closingStatus)}
+            <div className="flex-shrink-0 w-72">
+                <Button variant="outline" className="w-full" onClick={handleAddNewColumn}>
+                    <Plus className="mr-2 h-4 w-4" /> Add Status
+                </Button>
+            </div>
+            </div>
+        </div>
+        </div>
 
-      {/* Mobile Header */}
-      <div className="md:hidden mb-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-lg font-semibold">Projects</h1>
-          <div className="flex items-center gap-2">
-            {projectMembers.slice(0, 3).map(member => (
-                <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
-                    <AvatarImage src={member.avatarUrl} alt={member.name} />
-                    <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                </Avatar>
-            ))}
-            {projectMembers.length > 3 && (
-                <Avatar className="h-8 w-8 border-2 border-background">
-                    <AvatarFallback>+{projectMembers.length - 3}</AvatarFallback>
-                </Avatar>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">{project.name}</h2>
-        </div>
-      </div>
-      
-      <div className="flex-1 overflow-x-auto min-h-0">
-        <div className="flex gap-4 pb-4">
-          {activeStatuses.map(renderStatusColumn)}
-          {closingStatus && renderStatusColumn(closingStatus)}
-          <div className="flex-shrink-0 w-72">
-              <Button variant="outline" className="w-full" onClick={handleAddNewColumn}>
-                  <Plus className="mr-2 h-4 w-4" /> Add Status
-              </Button>
-          </div>
-        </div>
-      </div>
-    </div>
+        <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
+            <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                This will permanently delete the "{project.name}" project and all of its tasks. This action cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                onClick={() => onDeleteProject(project.id)}
+                className={cn(buttonVariants({ variant: "destructive" }))}
+                >
+                Delete
+                </AlertDialogAction>
+            </AlertDialogFooter>
+            </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

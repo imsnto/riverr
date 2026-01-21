@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -23,6 +24,8 @@ interface TaskBoardProps {
   onAddTask: (task: Omit<Task, 'id'>) => void;
   onNewProject: () => void;
   onNewTaskRequest: (status?: string) => void;
+  onEditProject: (project: Project) => void;
+  onDeleteProject: (projectId: string) => void;
 }
 
 export default function TaskBoard({ 
@@ -38,7 +41,9 @@ export default function TaskBoard({
     onUpdateTask,
     onAddTask,
     onNewProject,
-    onNewTaskRequest
+    onNewTaskRequest,
+    onEditProject,
+    onDeleteProject,
 }: TaskBoardProps) {
   const { activeSpace } = useAuth();
   const isMobile = useIsMobile();
@@ -88,7 +93,7 @@ export default function TaskBoard({
     } else {
         return (
              <>
-                <div className="flex h-full flex-col p-4 md:p-6 md:pb-4 overflow-hidden">
+                <div className="flex h-full flex-col overflow-hidden">
                     <ProjectBoard 
                         project={selectedProject}
                         projects={projects}
@@ -102,6 +107,8 @@ export default function TaskBoard({
                         onTaskClick={(task) => onTaskSelect(task)}
                         onUpdateTask={onUpdateTask}
                         onBack={() => handleSelectProject(null)}
+                        onEditProject={onEditProject}
+                        onDeleteProject={onDeleteProject}
                     />
                 </div>
             </>
@@ -112,7 +119,7 @@ export default function TaskBoard({
   // Desktop view
   return (
     <>
-      <div className="flex h-full flex-col p-4 md:p-6 md:pb-4 overflow-hidden">
+      <div className="flex h-full flex-col overflow-hidden">
           {selectedProject ? (
               <ProjectBoard 
                   project={selectedProject}
@@ -126,7 +133,9 @@ export default function TaskBoard({
                   onNewTaskRequest={onNewTaskRequest}
                   onTaskClick={(task) => onTaskSelect(task)}
                   onUpdateTask={onUpdateTask}
-                  onBack={() => handleSelectProject(null)} // onBack is for mobile only but fine to have here
+                  onBack={() => handleSelectProject(null)}
+                  onEditProject={onEditProject}
+                  onDeleteProject={onDeleteProject}
               />
           ) : (
               <div className="flex flex-col items-center justify-center h-full text-center bg-card rounded-lg">
