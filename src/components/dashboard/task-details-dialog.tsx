@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Task, Comment, Activity, User, Project, Attachment, TimeEntry } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
@@ -171,6 +171,7 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [newTag, setNewTag] = useState('');
     const [task, setTask] = useState(initialTask);
+    const isCreating = initialTask?.id.startsWith('new-task-');
     
     // State for creating a new subtask
     const [newSubtaskName, setNewSubtaskName] = useState('');
@@ -187,11 +188,13 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
         setTask(initialTask);
         if (initialTask) {
             setEstTime(formatDuration(initialTask.time_estimate));
-            if (appUser) {
-              setNewSubtaskAssignee(appUser.id);
+            if (appUser && isCreating) {
+                if (!initialTask.assigned_to) {
+                    setTask(t => t ? { ...t, assigned_to: appUser.id } : t);
+                }
             }
         }
-    }, [initialTask, appUser]);
+    }, [initialTask, appUser, isCreating]);
 
 
     if (!appUser || !task) {
@@ -203,6 +206,27 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
     const subtasks = allTasks.filter(t => t.parentId === task.id);
     
     const totalTimeTracked = timeEntries.reduce((acc, entry) => acc + entry.duration, 0);
+    
+    const handleCreateTask = async () => {
+        if (!task) return;
+        
+        if (!task.name.trim()) {
+            toast({ variant: 'destructive', title: "Task name is required" });
+            return;
+        }
+
+        // @ts-ignore - isNew is a temp property
+        const { id, isNew, ...newTaskData } = task; 
+        
+        const createdTask = await onAddTask(newTaskData, id);
+        if (createdTask) {
+            toast({ title: "Task Created" });
+            onOpenChange(false);
+        } else {
+            toast({ variant: 'destructive', title: "Failed to create task" });
+        }
+    };
+
 
     const handleAddComment = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -247,6 +271,12 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
 
     const handleFieldChange = (field: keyof Task, value: any) => {
         if (!task) return;
+
+        if (isCreating) {
+            setTask(prev => prev ? { ...prev, [field]: value } : null);
+            return;
+        }
+
         let newActivity: Activity | undefined = undefined;
         if (field === 'status' && task.status !== value) {
             newActivity = {
@@ -367,10 +397,15 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
 
     const renderContent = () => (
       <div className="p-4 md:p-6 space-y-6">
-        <h1 className={cn("text-2xl font-bold", !isMobile && "sr-only")}>{task.name}</h1>
+        <Input
+            value={(task.name === 'New Task' && isCreating) ? '' : task.name}
+            onChange={e => setTask(t => t ? { ...t, name: e.target.value } : null)}
+            onBlur={() => { if (!isCreating) onUpdateTask(task); }}
+            placeholder="What needs to be done?"
+            className="text-2xl font-bold border-none focus-visible:ring-0 p-0 h-auto"
+        />
         
-        {/* Mobile-only section from previous version, kept as is */}
-        {isMobile && (
+        {isMobile && !isCreating && (
           <>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -403,7 +438,6 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
           </>
         )}
 
-        {/* This is the restored desktop details grid */}
         <div className={cn("space-y-4", isMobile && "hidden")}>
           <DetailRow icon={CircleDot} label="Status">
               <Select value={task.status} onValueChange={(value) => handleFieldChange('status', value)}>
@@ -513,146 +547,145 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
             </DetailRow>
         </div>
 
-        {/* Description */}
         <div className="space-y-2">
-            <div className="flex justify-between items-center">
-                <h3 className="font-semibold text-sm text-muted-foreground">Description</h3>
-                <Button variant="ghost" size="icon" className="h-7 w-7"><Edit className="h-4 w-4" /></Button>
-            </div>
-            <div
-                className="prose prose-sm dark:prose-invert max-w-none text-card-foreground"
-                dangerouslySetInnerHTML={{ __html: marked(task.description || 'No description provided.') }}
+            <h3 className="font-semibold text-sm text-muted-foreground">Description</h3>
+            <Textarea
+                value={task.description || ''}
+                onChange={(e) => handleFieldChange('description', e.target.value)}
+                placeholder="Add a more detailed description..."
+                className="prose prose-sm dark:prose-invert max-w-none w-full min-h-[80px] p-2 border rounded-md"
             />
         </div>
 
-        <Separator />
-        
-        {/* Subtasks */}
-        <div className="space-y-2">
-            <h3 className="font-semibold text-sm text-muted-foreground">Subtasks ({subtasks.length})</h3>
+        {!isCreating && (
+          <>
+            <Separator />
+            
             <div className="space-y-2">
-                {subtasks.map(st => (
-                    <div key={st.id} className="flex items-center gap-2 group">
-                        <Checkbox 
-                            id={`subtask-${st.id}`} 
-                            checked={st.status === 'Done'}
-                            onCheckedChange={(checked) => handleUpdateSubtaskStatus(st, !!checked)}
-                        />
-                        <label htmlFor={`subtask-${st.id}`} className={cn("flex-1 text-sm", st.status === 'Done' && 'line-through text-muted-foreground')}>{st.name}</label>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleRemoveSubtask(st.id)}>
-                            <Trash2 className="h-3 w-3 text-destructive" />
-                        </Button>
-                    </div>
-                ))}
-            </div>
-             <form onSubmit={(e) => { e.preventDefault(); handleAddSubtask(); }} className="flex gap-2 mt-2">
-                <Input value={newSubtaskName} onChange={(e) => setNewSubtaskName(e.target.value)} placeholder="Add a subtask..." className="h-8" />
-                <Button variant="outline" size="sm" type="submit">Add</Button>
-            </form>
-        </div>
-
-
-        <Separator className={cn(isMobile && "hidden")} />
-
-        {/* Desktop Comment Form */}
-        {!isMobile && (
-            <form onSubmit={handleAddComment} className="relative">
-                 <div className="border rounded-lg">
-                    <Textarea 
-                        name="comment" 
-                        placeholder="Ask a question or post an update..."
-                        minRows={3}
-                        className="border-0 focus-visible:ring-0"
-                    />
-                    <div className="p-2 border-t flex justify-between items-center">
-                         <div className="flex items-center gap-1">
-                            <input
-                                type="file"
-                                multiple
-                                ref={fileInputRef}
-                                className="hidden"
-                                onChange={handleFileSelect}
+                <h3 className="font-semibold text-sm text-muted-foreground">Subtasks ({subtasks.length})</h3>
+                <div className="space-y-2">
+                    {subtasks.map(st => (
+                        <div key={st.id} className="flex items-center gap-2 group">
+                            <Checkbox 
+                                id={`subtask-${st.id}`} 
+                                checked={st.status === 'Done'}
+                                onCheckedChange={(checked) => handleUpdateSubtaskStatus(st, !!checked)}
                             />
-                            <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
-                                <Paperclip className="h-4 w-4" />
-                            </Button>
-                         </div>
-                         <Button type="submit">Comment</Button>
-                    </div>
-                 </div>
-                 {attachments.length > 0 && (
-                    <div className="mt-2 space-y-2">
-                        {attachments.map((file, i) => (
-                        <div key={i} className="flex items-center justify-between gap-2 text-sm bg-muted p-2 rounded-md">
-                            <div className="flex items-center gap-2 overflow-hidden">
-                                {file.type.startsWith('image/') ? <ImageIcon className="h-4 w-4 flex-shrink-0" /> : <File className="h-4 w-4 flex-shrink-0" />}
-                                <span className="truncate">{file.name}</span>
-                            </div>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}
-                            >
-                            &times;
+                            <label htmlFor={`subtask-${st.id}`} className={cn("flex-1 text-sm", st.status === 'Done' && 'line-through text-muted-foreground')}>{st.name}</label>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleRemoveSubtask(st.id)}>
+                                <Trash2 className="h-3 w-3 text-destructive" />
                             </Button>
                         </div>
-                        ))}
-                    </div>
-                )}
-            </form>
-        )}
-        
-        {/* Activity Feed */}
-        <div className="space-y-4">
-            <h3 className="font-semibold">Activity</h3>
-            {sortedActivities.map((activity) => {
-              if (activity.type === 'comment' && activity.comment_id) {
-                const user = allUsers.find(u => u.id === activity.user_id);
-                const isTimeLog = activity.comment_id.startsWith('time-');
-                const comment = isTimeLog ? null : (task.comments || []).find(c => c.id === activity.comment_id);
-                
-                if (!user || (!isTimeLog && !comment)) return null;
+                    ))}
+                </div>
+                <form onSubmit={(e) => { e.preventDefault(); handleAddSubtask(); }} className="flex gap-2 mt-2">
+                    <Input value={newSubtaskName} onChange={(e) => setNewSubtaskName(e.target.value)} placeholder="Add a subtask..." className="h-8" />
+                    <Button variant="outline" size="sm" type="submit">Add</Button>
+                </form>
+            </div>
 
-                return (
-                    <div key={activity.id} className="flex items-start gap-3">
-                       <Avatar className="h-6 w-6 mt-1">
-                          <AvatarImage src={user?.avatarUrl} alt={user?.name} />
-                          <AvatarFallback>{user ? getInitials(user.name) : 'U'}</AvatarFallback>
-                      </Avatar>
-                       <div className="text-sm flex-1">
-                            <div className="flex justify-between">
-                                <div>
-                                    <span className="font-semibold">{user?.name}</span>
-                                    <span className="text-xs text-muted-foreground ml-2">{new Date(activity.timestamp).toLocaleString()}</span>
-                                </div>
-                                {!isTimeLog && <Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal className="h-4 w-4" /></Button>}
+
+            <Separator className={cn(isMobile && "hidden")} />
+
+            {!isMobile && (
+                <form onSubmit={handleAddComment} className="relative">
+                    <div className="border rounded-lg">
+                        <Textarea 
+                            name="comment" 
+                            placeholder="Ask a question or post an update..."
+                            minRows={3}
+                            className="border-0 focus-visible:ring-0"
+                        />
+                        <div className="p-2 border-t flex justify-between items-center">
+                            <div className="flex items-center gap-1">
+                                <input
+                                    type="file"
+                                    multiple
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    onChange={handleFileSelect}
+                                />
+                                <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
+                                    <Paperclip className="h-4 w-4" />
+                                </Button>
                             </div>
-                           
-                            <p className={cn("mt-1", isTimeLog && 'italic text-muted-foreground')}>{isTimeLog ? activity.comment : comment?.comment}</p>
-                            
-                            {!isTimeLog && comment?.attachments && comment.attachments.length > 0 && (
-                                <div className="mt-2 space-y-2">
-                                {comment.attachments.map(att => (
-                                    <div key={att.id}>
-                                        {att.type === 'image' ? (
-                                            <img src={att.url} alt={att.name} className="rounded-lg max-w-xs max-h-64 object-cover" />
-                                        ) : (
-                                            <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline bg-primary/10 p-2 rounded-md max-w-xs">
-                                                <File className="h-4 w-4" />
-                                                <span className="truncate">{att.name}</span>
-                                            </a>
-                                        )}
-                                    </div>
-                                ))}
-                                </div>
-                            )}
-                       </div>
+                            <Button type="submit">Comment</Button>
+                        </div>
                     </div>
-                )
-              }
-              return <ActivityItem key={activity.id} activity={activity} allUsers={allUsers} />;
-            })}
-        </div>
+                    {attachments.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                            {attachments.map((file, i) => (
+                            <div key={i} className="flex items-center justify-between gap-2 text-sm bg-muted p-2 rounded-md">
+                                <div className="flex items-center gap-2 overflow-hidden">
+                                    {file.type.startsWith('image/') ? <ImageIcon className="h-4 w-4 flex-shrink-0" /> : <File className="h-4 w-4 flex-shrink-0" />}
+                                    <span className="truncate">{file.name}</span>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}
+                                >
+                                &times;
+                                </Button>
+                            </div>
+                            ))}
+                        </div>
+                    )}
+                </form>
+            )}
+            
+            <div className="space-y-4">
+                <h3 className="font-semibold">Activity</h3>
+                {sortedActivities.map((activity) => {
+                if (activity.type === 'comment' && activity.comment_id) {
+                    const user = allUsers.find(u => u.id === activity.user_id);
+                    const isTimeLog = activity.comment_id.startsWith('time-');
+                    const comment = isTimeLog ? null : (task.comments || []).find(c => c.id === activity.comment_id);
+                    
+                    if (!user || (!isTimeLog && !comment)) return null;
+
+                    return (
+                        <div key={activity.id} className="flex items-start gap-3">
+                        <Avatar className="h-6 w-6 mt-1">
+                            <AvatarImage src={user?.avatarUrl} alt={user?.name} />
+                            <AvatarFallback>{user ? getInitials(user.name) : 'U'}</AvatarFallback>
+                        </Avatar>
+                        <div className="text-sm flex-1">
+                                <div className="flex justify-between">
+                                    <div>
+                                        <span className="font-semibold">{user?.name}</span>
+                                        <span className="text-xs text-muted-foreground ml-2">{new Date(activity.timestamp).toLocaleString()}</span>
+                                    </div>
+                                    {!isTimeLog && <Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal className="h-4 w-4" /></Button>}
+                                </div>
+                            
+                                <p className={cn("mt-1", isTimeLog && 'italic text-muted-foreground')}>{isTimeLog ? activity.comment : comment?.comment}</p>
+                                
+                                {!isTimeLog && comment?.attachments && comment.attachments.length > 0 && (
+                                    <div className="mt-2 space-y-2">
+                                    {comment.attachments.map(att => (
+                                        <div key={att.id}>
+                                            {att.type === 'image' ? (
+                                                <img src={att.url} alt={att.name} className="rounded-lg max-w-xs max-h-64 object-cover" />
+                                            ) : (
+                                                <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline bg-primary/10 p-2 rounded-md max-w-xs">
+                                                    <File className="h-4 w-4" />
+                                                    <span className="truncate">{att.name}</span>
+                                                </a>
+                                            )}
+                                        </div>
+                                    ))}
+                                    </div>
+                                )}
+                        </div>
+                        </div>
+                    )
+                }
+                return <ActivityItem key={activity.id} activity={activity} allUsers={allUsers} />;
+                })}
+            </div>
+          </>
+        )}
       </div>
     );
 
@@ -663,37 +696,21 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
                 "max-w-4xl h-[90vh] flex flex-col p-0 gap-0",
                 isMobile && "h-screen w-screen max-w-full"
             )}>
-                {isMobile ? (
-                    <div className="flex items-center justify-between p-2 border-b shrink-0">
-                        <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                        <Button 
-                            variant="outline"
-                            size="sm"
-                            disabled={task.status === 'Done'}
-                            onClick={() => handleFieldChange('status', 'Done')}
-                        >
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                            Mark complete
-                        </Button>
-                        <div className="flex items-center">
-                            <Button variant="ghost" size="icon"><ThumbsUp className="h-5 w-5" /></Button>
-                            <Button variant="ghost" size="icon"><LinkIcon className="h-5 w-5" /></Button>
-                            <Button variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5" /></Button>
-                        </div>
-                    </div>
-                ) : (
-                    <DialogHeader className="p-6 pb-4 border-b">
-                        <DialogTitle>Task Details: {task.name}</DialogTitle>
-                    </DialogHeader>
-                )}
+                <DialogHeader className="p-6 pb-4 border-b">
+                    <DialogTitle>{isCreating ? 'Create New Task' : 'Task Details'}</DialogTitle>
+                     {!isCreating && <DialogDescription>Created by {allUsers.find(u => u.id === task.createdBy)?.name || 'Unknown'}</DialogDescription>}
+                </DialogHeader>
 
                 <ScrollArea className="flex-1">
                     {renderContent()}
                 </ScrollArea>
 
-                {isMobile && (
+                 {isCreating ? (
+                    <DialogFooter className="p-6 pt-4 border-t">
+                        <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                        <Button onClick={handleCreateTask}>Create Task</Button>
+                    </DialogFooter>
+                ) : isMobile && (
                     <div className="p-2 border-t bg-card shrink-0">
                         <form onSubmit={handleAddComment} className="relative">
                             <Input name="comment" placeholder="Ask a question or post an update..." className="pr-32" />
@@ -701,7 +718,6 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
                                 <Button type="button" variant="ghost" size="icon"><Paperclip className="h-5 w-5" /></Button>
                                 <Button type="button" variant="ghost" size="icon"><Star className="h-5 w-5" /></Button>
                                 <Button type="button" variant="ghost" size="icon"><AtSign className="h-5 w-5" /></Button>
-                                {/* Avatars can be added here later */}
                             </div>
                         </form>
                     </div>

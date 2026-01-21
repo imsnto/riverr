@@ -5,8 +5,6 @@ import { Project, Space, Task, User, Status, Hub } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Plus, Folder } from 'lucide-react';
 import ProjectBoard from './project-board';
-import NewTaskDialog from './new-task-dialog';
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ScrollArea } from '../ui/scroll-area';
@@ -24,6 +22,7 @@ interface TaskBoardProps {
   onUpdateTask: (task: Task, tempId?: string) => void;
   onAddTask: (task: Omit<Task, 'id'>) => void;
   onNewProject: () => void;
+  onNewTaskRequest: (status?: string) => void;
 }
 
 export default function TaskBoard({ 
@@ -39,10 +38,8 @@ export default function TaskBoard({
     onUpdateTask,
     onAddTask,
     onNewProject,
+    onNewTaskRequest
 }: TaskBoardProps) {
-  const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
-  const [defaultStatusForNewTask, setDefaultStatusForNewTask] = useState<string | undefined>(undefined);
-  const { toast } = useToast();
   const { activeSpace } = useAuth();
   const isMobile = useIsMobile();
   
@@ -50,24 +47,8 @@ export default function TaskBoard({
       onSelectProject(id);
   }
 
-  const handleAddTaskDialog = (newTask: Omit<Task, 'id'>) => {
-    onAddTask(newTask);
-    const statuses = activeHub.statuses || [];
-    if (!statuses.find(s => s.name === newTask.status)) {
-        const randomColor = { name: 'Gray', color: '#6b7280' };
-        onUpdateActiveHub({ statuses: [...statuses, { name: newTask.status, color: randomColor.color }] });
-    }
-  };
-
-  const handleNewTaskRequest = (status?: string) => {
-    setDefaultStatusForNewTask(status);
-    setIsNewTaskDialogOpen(true);
-  }
-
   const selectedProject = projects.find(p => p.id === selectedProjectId);
-  const spaceMembers = allUsers.filter(u => activeSpace?.members[u.id]);
-  const statuses = activeHub.statuses || [];
-
+  
   if (isMobile === undefined) {
     return null;
   }
@@ -117,23 +98,12 @@ export default function TaskBoard({
                         activeHub={activeHub}
                         allUsers={allUsers}
                         onUpdateActiveHub={onUpdateActiveHub}
-                        onNewTaskRequest={handleNewTaskRequest}
+                        onNewTaskRequest={onNewTaskRequest}
                         onTaskClick={(task) => onTaskSelect(task)}
                         onUpdateTask={onUpdateTask}
                         onBack={() => handleSelectProject(null)}
                     />
                 </div>
-                {isNewTaskDialogOpen && (
-                <NewTaskDialog
-                    isOpen={isNewTaskDialogOpen}
-                    onOpenChange={setIsNewTaskDialogOpen}
-                    onTaskAdd={handleAddTaskDialog}
-                    projects={selectedProject ? [selectedProject] : []}
-                    statuses={statuses}
-                    allUsers={spaceMembers}
-                    defaultStatus={defaultStatusForNewTask}
-                />
-                )}
             </>
         )
     }
@@ -153,7 +123,7 @@ export default function TaskBoard({
                   activeHub={activeHub}
                   allUsers={allUsers}
                   onUpdateActiveHub={onUpdateActiveHub}
-                  onNewTaskRequest={handleNewTaskRequest}
+                  onNewTaskRequest={onNewTaskRequest}
                   onTaskClick={(task) => onTaskSelect(task)}
                   onUpdateTask={onUpdateTask}
                   onBack={() => handleSelectProject(null)} // onBack is for mobile only but fine to have here
@@ -169,17 +139,6 @@ export default function TaskBoard({
                   </Button>
               </div>
           )}
-        {isNewTaskDialogOpen && (
-          <NewTaskDialog
-            isOpen={isNewTaskDialogOpen}
-            onOpenChange={setIsNewTaskDialogOpen}
-            onTaskAdd={handleAddTaskDialog}
-            projects={selectedProject ? [selectedProject] : []}
-            statuses={statuses}
-            allUsers={spaceMembers}
-            defaultStatus={defaultStatusForNewTask}
-          />
-        )}
       </div>
     </>
   );

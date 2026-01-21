@@ -355,6 +355,41 @@ export default function Dashboard({ view }: { view: string }) {
       }
   }
 
+  const handleNewTaskRequest = (status?: string) => {
+    if (!appUser || !activeHub || !selectedProjectId) {
+      toast({
+        title: "Cannot Create Task",
+        description: "Please select a project before creating a new task.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newTaskTemplate: Task & { isNew?: boolean } = {
+      id: `new-task-${Date.now()}`, // Temporary ID
+      name: "", // Empty name for creation
+      description: "",
+      project_id: selectedProjectId,
+      hubId: activeHub.id,
+      spaceId: activeSpace.id,
+      status: status || (activeHub.statuses && activeHub.statuses[0].name) || "Backlog",
+      assigned_to: appUser.id,
+      due_date: new Date().toISOString(),
+      priority: "Medium",
+      sprint_points: null,
+      tags: [],
+      time_estimate: null,
+      parentId: null,
+      relationships: [],
+      comments: [],
+      activities: [],
+      attachments: [],
+      isNew: true, // Flag for creation mode
+    };
+    setSelectedTask(newTaskTemplate as Task);
+  };
+
+
   const handleUpdateActiveHub = async (updatedData: Partial<Hub>) => {
     if (!activeHub) return;
     try {
@@ -668,6 +703,7 @@ export default function Dashboard({ view }: { view: string }) {
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           onNewProject={handleNewProject}
+          onNewTaskRequest={handleNewTaskRequest}
         />
       );
       case 'mytasks': return <div className="p-8"><MyTasksView {...props} /></div>;
@@ -762,7 +798,7 @@ export default function Dashboard({ view }: { view: string }) {
               if (!isOpen) setSelectedTask(null);
             }}
             onUpdateTask={handleUpdateTask}
-            onAddTask={async (taskData, tempId) => {
+            onAddTask={async (taskData) => {
               const newTask = await handleAddTask(taskData);
               return newTask;
             }}
