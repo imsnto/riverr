@@ -1,5 +1,3 @@
-
-
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -280,6 +278,11 @@ export default function Dashboard({ view }: { view: string }) {
     setIsProjectFormOpen(true);
   }
 
+  const handleEditProject = (project: Project) => {
+    setEditingProject(project);
+    setIsProjectFormOpen(true);
+  };
+
   // Switch to the correct view when URL changes
   useEffect(() => {
     if (view && view !== currentView) {
@@ -374,6 +377,7 @@ export default function Dashboard({ view }: { view: string }) {
       spaceId: activeSpace.id,
       status: status || (activeHub.statuses && activeHub.statuses[0].name) || "Backlog",
       assigned_to: appUser.id,
+      createdBy: appUser.id,
       due_date: new Date().toISOString(),
       priority: "Medium",
       sprint_points: null,
@@ -711,8 +715,8 @@ export default function Dashboard({ view }: { view: string }) {
       case 'help-center': return <HelpCenterLayout
         helpCenters={helpCenters}
         articles={helpCenterArticles}
-        onSaveArticle={handleSaveArticle}
         allUsers={allUsers}
+        onSaveArticle={handleSaveArticle}
         onDataRefresh={fetchData}
         />;
       case 'settings': return <SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview} chatMessages={chatMessages} chatContacts={chatContacts} chatConversations={chatConversations} bots={bots} onBotUpdate={handleBotUpdate} onBotAdd={handleBotAdd} />;
@@ -767,6 +771,7 @@ export default function Dashboard({ view }: { view: string }) {
               selectedProjectId={selectedProjectId}
               onSelectProject={handleSelectProject}
               onNewProject={handleNewProject}
+              onEditProject={handleEditProject}
             />
           )}
           <main className={cn(
@@ -798,7 +803,7 @@ export default function Dashboard({ view }: { view: string }) {
               if (!isOpen) setSelectedTask(null);
             }}
             onUpdateTask={handleUpdateTask}
-            onAddTask={async (taskData) => {
+            onAddTask={async (taskData, tempId) => {
               const newTask = await handleAddTask(taskData);
               return newTask;
             }}
