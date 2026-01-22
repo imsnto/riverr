@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, DragEvent, useRef } from 'react';
@@ -20,6 +21,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useAuth } from '@/hooks/use-auth';
 
@@ -477,7 +479,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
 
   return (
     <>
-        <div className="flex h-full w-full min-w-0 flex-col overflow-hidden">
+      <div className="flex h-full w-full min-w-0 flex-col overflow-hidden">
         {/* Desktop Header */}
         <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-4 border-b">
             <div className="flex items-center gap-2 min-w-0">
@@ -544,19 +546,19 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         </div>
         
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
-            <div className="h-full w-full min-w-0 overflow-x-auto overflow-y-hidden">
-                <div className="flex w-max gap-4 p-4 md:p-6 md:pt-2">
-                    {activeStatuses.map(renderStatusColumn)}
-                    {closingStatus && renderStatusColumn(closingStatus)}
-                    <div className="flex-shrink-0 w-72">
-                        <Button variant="outline" className="w-full" onClick={handleAddNewColumn}>
-                            <Plus className="mr-2 h-4 w-4" /> Add Status
-                        </Button>
-                    </div>
-                </div>
+          <div className="h-full w-full min-w-0 overflow-x-auto overflow-y-hidden">
+            <div className="flex w-max gap-4 p-4 md:p-6 md:pt-2">
+              {activeStatuses.map(renderStatusColumn)}
+              {closingStatus && renderStatusColumn(closingStatus)}
+              <div className="flex-shrink-0 w-72">
+                <Button variant="outline" className="w-full" onClick={handleAddNewColumn}>
+                  <Plus className="mr-2 h-4 w-4" /> Add Status
+                </Button>
+              </div>
             </div>
+          </div>
         </div>
-        </div>
+      </div>
 
         <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
             <AlertDialogContent>
