@@ -9,6 +9,7 @@ import ProjectBoard from './project-board';
 import { useAuth } from '@/hooks/use-auth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ScrollArea } from '../ui/scroll-area';
+import { ContentSkeleton } from './content-skeleton';
 
 interface TaskBoardProps {
   tasks: Task[];
@@ -54,10 +55,6 @@ export default function TaskBoard({
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   
-  if (isMobile === undefined) {
-    return null;
-  }
-
   if (isMobile) {
     if (!selectedProject) {
         return (

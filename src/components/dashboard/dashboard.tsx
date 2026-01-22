@@ -65,6 +65,7 @@ import HelpCenterLayout from './help-center-layout';
 import { useIsMobile } from '@/hooks/use-mobile';
 import MobileBottomNav from './mobile-bottom-nav';
 import TeamTimesheets from './team-timesheets';
+import { DashboardSkeleton } from './dashboard-skeleton';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -302,27 +303,8 @@ export default function Dashboard({ view }: { view: string }) {
     }
   }, [view, currentView]);
 
-  if (!appUser || !activeSpace || !activeHub || isMobile === undefined) {
-    // Show a skeleton while the main auth/space context is loading
-    return (
-      <SidebarProvider>
-        <div className="flex h-screen bg-background text-foreground">
-          <AppSidebar
-            view={currentView}
-            onChangeView={handleViewChange}
-            activeSpace={activeSpace}
-            allSpaces={userSpaces}
-            onSpaceChange={() => {}}
-            allHubs={[]}
-            activeHub={activeHub}
-            onHubChange={() => {}}
-          />
-          <main className="flex-1 overflow-y-auto">
-            <ContentSkeleton />
-          </main>
-        </div>
-      </SidebarProvider>
-    );
+  if (!appUser || !activeSpace || !activeHub) {
+    return <DashboardSkeleton />;
   }
   
   const handleUpdateTasks = (updatedTasks: Task[]) => {
@@ -356,7 +338,14 @@ export default function Dashboard({ view }: { view: string }) {
   };
   
   const handleAddTask = async (task: Omit<Task, 'id'>) => {
-    const taskWithHub = { ...task, hubId: activeHub.id, spaceId: activeSpace.id, createdBy: appUser!.id, createdAt: new Date().toISOString() };
+    const now = new Date().toISOString();
+    const creationActivity: Activity = {
+        id: `act-creation-${Date.now()}`,
+        user_id: appUser!.id,
+        timestamp: now,
+        type: 'task_creation',
+    };
+    const taskWithHub = { ...task, hubId: activeHub.id, spaceId: activeSpace.id, createdBy: appUser!.id, createdAt: now, activities: [creationActivity, ...(task.activities || [])] };
     const newTask = await db.addTask(taskWithHub);
     setTasks(prev => [...prev, newTask]);
     return newTask;
