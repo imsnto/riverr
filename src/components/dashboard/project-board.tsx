@@ -479,7 +479,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
 
   return (
     <>
-        <div className="flex h-full flex-col">
+        <div className="flex h-full min-w-0 flex-col overflow-hidden">
         {/* Desktop Header */}
         <div className="hidden md:flex justify-between items-center px-6 pt-6 pb-4 border-b">
             <div className="flex items-center gap-2 min-w-0">
@@ -545,8 +545,8 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
             </div>
         </div>
         
-        <div className="flex-1 overflow-x-auto min-h-0">
-            <div className="flex gap-4 p-4 md:p-6 md:pt-2">
+        <div className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden">
+            <div className="flex w-max gap-4 p-4 md:p-6 md:pt-2">
             {activeStatuses.map(renderStatusColumn)}
             {closingStatus && renderStatusColumn(closingStatus)}
             <div className="flex-shrink-0 w-72">
