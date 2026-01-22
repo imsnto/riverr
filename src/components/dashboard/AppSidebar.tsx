@@ -207,7 +207,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   onHubChange,
 }) => {
   const { appUser, signOut } = useAuth();
-  const { isMobile, state, setOpen } = useSidebar();
+  const { isMobile, state, setOpen, setOpenMobile } = useSidebar();
   const router = useRouter();
 
   React.useEffect(() => {
@@ -246,7 +246,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     const handleClick = () => {
       onChangeView(item.key);
       if (isMobile) {
-        setOpen(false); // Close mobile sheet on navigation
+        setOpenMobile(false); // Close mobile sheet on navigation
       }
     };
     return (

@@ -6,7 +6,9 @@ import * as React from "react"
 const MOBILE_BREAKPOINT = 768
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+  // Initialize with a default value to prevent undefined state on first render.
+  // This avoids components returning null and causing layout shifts that can close modals.
+  const [isMobile, setIsMobile] = React.useState<boolean>(false)
 
   React.useEffect(() => {
     // This effect runs only on the client, so window is guaranteed to be available.
@@ -14,7 +16,7 @@ export function useIsMobile() {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     };
 
-    // Run on mount
+    // Run on mount to get the correct initial value on the client.
     checkDevice();
     
     // Add resize listener
