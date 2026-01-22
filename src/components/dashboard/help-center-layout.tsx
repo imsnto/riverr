@@ -10,7 +10,7 @@ import { addHelpCenter, updateHelpCenter, getHelpCenterCollections, addHelpCente
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterSettings from './help-center-settings';
 import HelpCenterArticleList from './help-center-article-list';
-import { ArrowLeft, FolderPlus, Plus } from 'lucide-react';
+import { ArrowLeft, Book, FolderPlus, Plus } from 'lucide-react';
 import HelpCenterCollectionsView from './help-center-collections-view';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import AddArticlesToCollectionDialog from './add-articles-to-collection-dialog';
@@ -34,7 +34,7 @@ export default function HelpCenterLayout({
     const [view, setView] = useState('all_articles');
     const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
     const { appUser, activeHub } = useAuth();
-    const [activeHelpCenter, setActiveHelpCenter] = useState<HelpCenter | null>(helpCenters.length > 0 ? helpCenters[0] : null);
+    const [activeHelpCenter, setActiveHelpCenter] = useState<HelpCenter | null>(null);
     const [collections, setCollections] = useState<HelpCenterCollection[]>([]);
 
     const [isHcDialogOpen, setIsHcDialogOpen] = useState(false);
@@ -45,15 +45,6 @@ export default function HelpCenterLayout({
     
     const isMobile = useIsMobile();
     const { toast } = useToast();
-
-    useEffect(() => {
-        if (helpCenters.length > 0 && !activeHelpCenter) {
-            setActiveHelpCenter(helpCenters[0]);
-        }
-        if (helpCenters.length === 0) {
-            setActiveHelpCenter(null);
-        }
-    }, [helpCenters, activeHelpCenter]);
 
     useEffect(() => {
         if (activeHelpCenter) {
@@ -166,6 +157,10 @@ export default function HelpCenterLayout({
 
 
     const handleViewChange = (newView: string) => {
+        const isGlobalView = ['all_articles', 'published', 'draft'].includes(newView);
+        if (isGlobalView) {
+            setActiveHelpCenter(null);
+        }
         setView(newView);
         setSelectedArticleId(null);
         if (isMobile) {
@@ -176,6 +171,16 @@ export default function HelpCenterLayout({
     const handleSelectArticle = (articleId: string) => {
         setSelectedArticleId(articleId);
     }
+
+    const handleSelectHelpCenter = (hc: HelpCenter | null) => {
+        setActiveHelpCenter(hc);
+        if (hc) {
+            setView(`collections_${hc.id}`);
+        } else {
+            setView('all_articles');
+        }
+        setSelectedArticleId(null);
+    };
 
     const handleCreateArticle = async () => {
       if (!appUser || !activeHub) return;
@@ -198,11 +203,11 @@ export default function HelpCenterLayout({
     };
     
     const renderContent = () => {
-        if (view.startsWith('settings_')) {
+        if (activeHelpCenter && view.startsWith('settings_')) {
             return <HelpCenterSettings helpCenter={activeHelpCenter} />;
         }
         
-        if (view.startsWith('collections_')) {
+        if (activeHelpCenter && view.startsWith('collections_')) {
             const hcId = view.split('_')[1];
             if (activeHelpCenter?.id === hcId) {
                 return (
@@ -218,27 +223,53 @@ export default function HelpCenterLayout({
             }
         }
         
-        let listTitle = "All Articles";
-        if (view === 'published') listTitle = "Published Articles";
-        if (view === 'draft') listTitle = "Draft Articles";
-        if (view.startsWith('collection_') && !view.startsWith('collections_')) {
+        let listTitle: string;
+        let filteredArticles: HelpCenterArticle[];
+
+        const isGlobalView = ['all_articles', 'published', 'draft'].includes(view);
+        
+        if (isGlobalView) {
+            switch(view) {
+                case 'all_articles':
+                    listTitle = "All Articles";
+                    filteredArticles = articles;
+                    break;
+                case 'published':
+                    listTitle = "Published Articles";
+                    filteredArticles = articles.filter(a => a.status === 'published');
+                    break;
+                case 'draft':
+                    listTitle = "Draft Articles";
+                    filteredArticles = articles.filter(a => a.status === 'draft');
+                    break;
+                default:
+                    listTitle = "Articles";
+                    filteredArticles = [];
+            }
+        } else if (activeHelpCenter && view.startsWith('collection_')) {
             const collectionId = view.split('_')[1];
             const collection = collections.find(c => c.id === collectionId);
-            listTitle = collection ? `Collection: ${collection.name}` : "Collection";
+            listTitle = collection ? `${collection.name}` : "Collection";
+            filteredArticles = articles.filter(a => a.helpCenterId === activeHelpCenter.id && a.collectionIds.includes(collectionId));
+        } else {
+             // Fallback: This might happen if a help center is selected but view is not collections
+             if (activeHelpCenter) {
+                 // Render collections view as default for a help center
+                 return (
+                    <HelpCenterCollectionsView 
+                        collections={collections}
+                        articles={articles}
+                        onAdd={handleCreateCollection}
+                        onEdit={handleEditCollection}
+                        onDelete={handleDeleteCollection}
+                        onSelectCollection={handleSelectCollection}
+                    />
+                );
+             }
+             // Default global view
+             listTitle = "All Articles";
+             filteredArticles = articles;
         }
-        
-        const filteredArticles = articles.filter(article => {
-            const inActiveHc = activeHelpCenter ? article.helpCenterId === activeHelpCenter.id : true;
-            if (!inActiveHc) return false;
-
-            if (view === 'published') return article.status === 'published';
-            if (view === 'draft') return article.status === 'draft';
-            if (view.startsWith('collection_') && !view.startsWith('collections_')) {
-                const collectionId = view.split('_')[1];
-                return article.collectionIds.includes(collectionId);
-            }
-            return true; 
-        });
 
         return (
             <div>
@@ -288,7 +319,7 @@ export default function HelpCenterLayout({
             <HelpCenterSidebar
                 helpCenters={helpCenters}
                 activeHelpCenter={activeHelpCenter}
-                onSelectHelpCenter={setActiveHelpCenter}
+                onSelectHelpCenter={handleSelectHelpCenter}
                 collections={collections}
                 activeView={view}
                 onViewChange={handleViewChange}
@@ -296,7 +327,17 @@ export default function HelpCenterLayout({
                 onEditHelpCenter={handleEditHelpCenter}
             />
             <main className="overflow-y-auto p-8">
-                {renderContent()}
+                {helpCenters.length === 0 && !activeHelpCenter ? (
+                     <div className="text-center py-16 border-2 border-dashed rounded-lg">
+                        <Book className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <h3 className="mt-2 text-sm font-semibold text-foreground">No help centers found</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">Create a help center to get started.</p>
+                         <Button className="mt-4" onClick={handleCreateHelpCenter}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create Help Center
+                        </Button>
+                    </div>
+                ) : renderContent()}
             </main>
             <HelpCenterFormDialog
                 isOpen={isHcDialogOpen}
