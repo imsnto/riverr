@@ -79,7 +79,7 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
       hubs: [
         {
           name: 'Default Hub',
-          components: ['tasks', 'documents', 'messages'],
+          components: ['tasks', 'documents'],
           isPrivate: false,
           memberIds: [currentUser.id],
           statuses: defaultStatuses
@@ -108,7 +108,7 @@ export default function SpaceFormDialog({ isOpen, onOpenChange, onSave, space, a
           hubs: [
             {
               name: 'Default Hub',
-              components: ['tasks', 'documents', 'messages'],
+              components: ['tasks', 'documents'],
               isPrivate: false,
               memberIds: [currentUser.id],
               statuses: defaultStatuses,

@@ -36,6 +36,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Label } from "../ui/label";
+import { AppView } from "@/lib/routes";
 
 interface SpaceSwitcherProps {
   spaces: Space[];
@@ -168,7 +169,7 @@ interface AppSidebarProps {
 const allTopItems: { key: AppView; icon: React.ReactNode; label: string; fixed?: boolean }[] = [
   { key: "overview", icon: <BarChart className="w-5 h-5" />, label: 'Overview', fixed: true },
   { key: "mytasks", icon: <ClipboardCheck className="w-5 h-5" />, label: 'My Tasks', fixed: true },
-  { key: "mentions", icon: <AtSign className="w-5 h-5" />, label: 'Mentions', fixed: true },
+  // { key: "mentions", icon: <AtSign className="w-5 h-5" />, label: 'Mentions', fixed: true },
 ];
 
 const allMiddleItems: {
@@ -179,7 +180,7 @@ const allMiddleItems: {
 }[] = [
   { key: "tasks", icon: <FolderKanban className="w-5 h-5" />, label: 'Tasks' },
   { key: "inbox", icon: <MessageCircle className="w-5 h-5" />, label: 'Inbox' },
-  { key: "messages", icon: <MessageSquare className="w-5 h-5" />, label: 'Messages' },
+  // { key: "messages", icon: <MessageSquare className="w-5 h-5" />, label: 'Messages' },
   { key: "documents", icon: <BookOpen className="w-5 h-5" />, label: 'Documents' },
   { key: 'help-center', icon: <LifeBuoy className="w-5 h-5" />, label: 'Help Center' },
   { key: "flows", icon: <Workflow className="w-5 h-5" />, label: 'Flows' },
