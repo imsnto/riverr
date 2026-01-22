@@ -479,10 +479,10 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
 
   return (
     <>
-      <div className="flex h-full w-full min-w-0 min-h-0 flex-col overflow-hidden">
+      <div className="flex h-full min-w-0 flex-col overflow-hidden">
         <div className="w-full min-w-0 shrink-0 overflow-hidden">
             {/* Desktop Header */}
-            <div className="hidden md:flex w-full min-w-0 justify-between items-center px-6 pt-6 pb-4 border-b">
+            <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-4 border-b">
                 <div className="flex items-center gap-2 min-w-0">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -584,4 +584,3 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     </>
   );
 }
-

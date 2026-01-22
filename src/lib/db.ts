@@ -671,6 +671,7 @@ const createSubtasks = (
       description: "",
       status: "Pending",
       createdBy: createdBy,
+      createdAt: new Date().toISOString(),
       assigned_to: subtaskAssigneeId,
       due_date: parentDueDate.toISOString(), // Subtasks get same due date as parent
       priority: null,
@@ -728,6 +729,7 @@ const createTasksForPhase = async (
       description: taskDescription,
       status: "Pending",
       createdBy: createdBy,
+      createdAt: new Date().toISOString(),
       assigned_to: assigneeId,
       due_date: dueDate.toISOString(),
       priority: "Medium",

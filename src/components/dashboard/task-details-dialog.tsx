@@ -108,6 +108,10 @@ const ActivityItem = ({ activity, allUsers }: { activity: Activity; allUsers: Us
     const user = allUsers.find(u => u.id === activity.user_id);
     const renderContent = () => {
         switch (activity.type) {
+            case 'task_creation':
+                return (
+                    <div><span className="font-semibold">{user?.name || 'Unknown'}</span> created this task.</div>
+                );
             case 'status_change':
                 return (
                     <div><span className="font-semibold">{user?.name}</span> changed status from <Badge variant="outline">{activity.from}</Badge> to <Badge variant="outline">{activity.to}</Badge></div>
@@ -337,6 +341,7 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
             description: '',
             status: 'Backlog',
             createdBy: appUser.id,
+            createdAt: new Date().toISOString(),
             assigned_to: newSubtaskAssignee || appUser.id,
             due_date: newSubtaskDueDate ? newSubtaskDueDate.toISOString() : new Date().toISOString(),
             priority: null,
@@ -383,14 +388,25 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
         onRemoveTask(subtaskId);
     }
     
-    const sortedActivities = [...(task.activities || []), ...(timeEntries || []).map(t => ({
-        id: t.id,
-        user_id: t.user_id,
-        timestamp: t.end_time,
-        type: 'comment',
-        comment_id: `time-${t.id}`,
-        comment: `Logged ${formatDuration(t.duration)}. ${t.notes ? `Notes: ${t.notes}` : ''}`
-    } as Activity))].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const creationActivity: Activity | null = (task.createdAt && task.createdBy) ? {
+        id: `creation-${task.id}`,
+        user_id: task.createdBy,
+        timestamp: task.createdAt,
+        type: 'task_creation'
+    } : null;
+
+    const sortedActivities = [
+        ...(task.activities || []), 
+        ...(timeEntries || []).map(t => ({
+            id: t.id,
+            user_id: t.user_id,
+            timestamp: t.end_time,
+            type: 'comment',
+            comment_id: `time-${t.id}`,
+            comment: `Logged ${formatDuration(t.duration)}. ${t.notes ? `Notes: ${t.notes}` : ''}`
+        } as Activity)),
+        ...(creationActivity ? [creationActivity] : [])
+    ].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files) {

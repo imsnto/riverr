@@ -20,6 +20,7 @@ import { Message, Task } from '@/lib/data';
 import { createTaskFromThread } from '@/ai/flows/create-task-from-thread';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
+import { useAuth } from '@/hooks/use-auth';
 
 const taskSchema = z.object({
   name: z.string().min(1, 'Task name is required'),
@@ -51,6 +52,7 @@ export default function CreateTaskFromThreadDialog({
 }: CreateTaskFromThreadDialogProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const { appUser } = useAuth();
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
@@ -95,6 +97,7 @@ export default function CreateTaskFromThreadDialog({
   }, [isOpen, message, channelMembers, projects, form, toast]);
 
   const onSubmit = async (values: TaskFormValues) => {
+    if (!appUser) return;
     try {
       const newTaskData: Omit<Task, 'id'> = {
         ...values,
@@ -102,6 +105,8 @@ export default function CreateTaskFromThreadDialog({
         due_date: values.due_date ? values.due_date.toISOString() : new Date().toISOString(),
         priority: values.priority || null,
         status: 'Backlog' as const,
+        createdBy: appUser.id,
+        createdAt: new Date().toISOString(),
         sprint_points: null,
         tags: [],
         time_estimate: null,

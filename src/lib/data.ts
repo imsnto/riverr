@@ -63,6 +63,7 @@ export interface Task {
   project_id: string | null; // Can be null if it's a job flow task
   hubId: string; // Hub scope
   status: string;
+  createdAt: string; // ISO String
   createdBy: string; // user ID
   assigned_to: string; // user ID
   due_date: string; // ISO string
@@ -158,7 +159,7 @@ export interface Activity {
   id: string;
   user_id: string;
   timestamp: string;
-  type: 'status_change' | 'assignee_change' | 'comment' | 'priority_change' | 'due_date_change' | 'subtask_completion';
+  type: 'task_creation' | 'status_change' | 'assignee_change' | 'comment' | 'priority_change' | 'due_date_change' | 'subtask_completion';
   from?: string; // Previous value
   to?: string; // New value
   comment_id?: string; // Link to a comment
