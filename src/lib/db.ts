@@ -66,6 +66,7 @@ import {
   chatContacts,
   conversations,
   chatMessages,
+  Activity,
 } from "./data";
 import { randomBytes } from "crypto";
 import { FirestorePermissionError } from "./errors";
@@ -660,6 +661,15 @@ const createSubtasks = (
       continue;
     }
 
+    const now = new Date().toISOString();
+    const subtaskRef = doc(collection(db, "tasks"));
+    const subtaskCreationActivity: Activity = {
+        id: `act-creation-job-${subtaskRef.id}`,
+        user_id: createdBy,
+        timestamp: now,
+        type: 'task_creation',
+    };
+
     const subtaskTitle = subtaskTemplate.titleTemplate.replace(
       /\{\{job_name\}\}/g,
       jobName
@@ -671,7 +681,7 @@ const createSubtasks = (
       description: "",
       status: "Pending",
       createdBy: createdBy,
-      createdAt: new Date().toISOString(),
+      createdAt: now,
       assigned_to: subtaskAssigneeId,
       due_date: parentDueDate.toISOString(), // Subtasks get same due date as parent
       priority: null,
@@ -679,13 +689,12 @@ const createSubtasks = (
       tags: ["JobFlow", jobName],
       time_estimate: null,
       relationships: [],
-      activities: [],
+      activities: [subtaskCreationActivity],
       comments: [],
       attachments: [],
       parentId: parentTaskId,
       spaceId: spaceId,
     };
-    const subtaskRef = doc(collection(db, "tasks"));
     batch.set(subtaskRef, subtaskData);
   }
 };
@@ -721,7 +730,14 @@ const createTasksForPhase = async (
     const dueDate = new Date(lastDueDate);
     dueDate.setDate(dueDate.getDate() + taskTemplate.estimatedDurationDays);
 
+    const now = new Date().toISOString();
     const taskRef = doc(collection(db, "tasks"));
+    const taskCreationActivity: Activity = {
+        id: `act-creation-job-${taskRef.id}`,
+        user_id: createdBy,
+        timestamp: now,
+        type: 'task_creation',
+    };
     const taskData: Omit<Task, "id"> = {
       project_id: null,
       hubId: hubId,
@@ -729,7 +745,7 @@ const createTasksForPhase = async (
       description: taskDescription,
       status: "Pending",
       createdBy: createdBy,
-      createdAt: new Date().toISOString(),
+      createdAt: now,
       assigned_to: assigneeId,
       due_date: dueDate.toISOString(),
       priority: "Medium",
@@ -737,7 +753,7 @@ const createTasksForPhase = async (
       tags: ["JobFlow", jobName],
       time_estimate: taskTemplate.estimatedDurationDays * 8, // Assume 8 hours per day
       relationships: [],
-      activities: [],
+      activities: [taskCreationActivity],
       comments: [],
       attachments: [],
       parentId: null,
@@ -1180,3 +1196,5 @@ export const updateHelpCenterArticle = async (articleId: string, data: Partial<H
   const articleRef = doc(db, "help_center_articles", articleId);
   await updateDoc(articleRef, data);
 };
+
+    

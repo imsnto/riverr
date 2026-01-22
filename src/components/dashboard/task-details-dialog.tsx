@@ -216,15 +216,30 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
     const totalTimeTracked = timeEntries.reduce((acc, entry) => acc + entry.duration, 0);
     
     const handleCreateTask = async () => {
-        if (!task) return;
+        if (!task || !appUser) return;
         
         if (!task.name.trim()) {
             toast({ variant: 'destructive', title: "Task name is required" });
             return;
         }
 
+        const now = new Date().toISOString();
+        const creationActivity: Activity = {
+            id: `act-creation-${Date.now()}`,
+            user_id: appUser.id,
+            timestamp: now,
+            type: 'task_creation',
+        };
+
         // @ts-ignore - isNew is a temp property
-        const { id, isNew, ...newTaskData } = task; 
+        const { id, isNew, ...taskData } = task; 
+
+        const newTaskData = {
+            ...taskData,
+            createdAt: now,
+            createdBy: appUser.id,
+            activities: [creationActivity, ...(taskData.activities || [])],
+        };
         
         const createdTask = await onAddTask(newTaskData, id);
         if (createdTask) {
@@ -332,6 +347,14 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
     const handleAddSubtask = async () => {
         if (!newSubtaskName.trim() || !appUser) return;
     
+        const now = new Date().toISOString();
+        const creationActivity: Activity = {
+            id: `act-creation-${Date.now()}`,
+            user_id: appUser.id,
+            timestamp: now,
+            type: 'task_creation',
+        };
+
         const tempId = `temp-${Date.now()}`;
         const newSubtaskData: Omit<Task, 'id'> = {
             project_id: task.project_id,
@@ -341,7 +364,7 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
             description: '',
             status: 'Backlog',
             createdBy: appUser.id,
-            createdAt: new Date().toISOString(),
+            createdAt: now,
             assigned_to: newSubtaskAssignee || appUser.id,
             due_date: newSubtaskDueDate ? newSubtaskDueDate.toISOString() : new Date().toISOString(),
             priority: null,
@@ -349,7 +372,7 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
             tags: [],
             time_estimate: null,
             relationships: [],
-            activities: [],
+            activities: [creationActivity],
             comments: [],
             attachments: [],
             parentId: task.id,
@@ -388,13 +411,6 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
         onRemoveTask(subtaskId);
     }
     
-    const creationActivity: Activity | null = (task.createdAt && task.createdBy) ? {
-        id: `creation-${task.id}`,
-        user_id: task.createdBy,
-        timestamp: task.createdAt,
-        type: 'task_creation'
-    } : null;
-
     const sortedActivities = [
         ...(task.activities || []), 
         ...(timeEntries || []).map(t => ({
@@ -405,7 +421,6 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
             comment_id: `time-${t.id}`,
             comment: `Logged ${formatDuration(t.duration)}. ${t.notes ? `Notes: ${t.notes}` : ''}`
         } as Activity)),
-        ...(creationActivity ? [creationActivity] : [])
     ].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -759,3 +774,5 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
         </Dialog>
     );
 }
+
+    

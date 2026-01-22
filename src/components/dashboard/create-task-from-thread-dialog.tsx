@@ -16,7 +16,7 @@ import { Calendar as CalendarIcon, Loader2, Bot } from 'lucide-react';
 import { Calendar } from '../ui/calendar';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Message, Task } from '@/lib/data';
+import { Activity, Message, Task } from '@/lib/data';
 import { createTaskFromThread } from '@/ai/flows/create-task-from-thread';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
@@ -99,6 +99,13 @@ export default function CreateTaskFromThreadDialog({
   const onSubmit = async (values: TaskFormValues) => {
     if (!appUser) return;
     try {
+      const now = new Date().toISOString();
+      const creationActivity: Activity = {
+          id: `act-creation-${Date.now()}`,
+          user_id: appUser.id,
+          timestamp: now,
+          type: 'task_creation',
+      };
       const newTaskData: Omit<Task, 'id'> = {
         ...values,
         description: values.description || '',
@@ -106,12 +113,11 @@ export default function CreateTaskFromThreadDialog({
         priority: values.priority || null,
         status: 'Backlog' as const,
         createdBy: appUser.id,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
         sprint_points: null,
         tags: [],
-        time_estimate: null,
         relationships: [],
-        activities: [],
+        activities: [creationActivity],
         comments: [
             {
                 id: `comment-${Date.now()}`,
@@ -294,3 +300,5 @@ export default function CreateTaskFromThreadDialog({
     </Dialog>
   );
 }
+
+    
