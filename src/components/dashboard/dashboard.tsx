@@ -45,9 +45,9 @@ import JobFlowTemplateBuilder from './job-flow-template-builder';
 import PhaseTemplateBuilder from './phase-template-builder';
 import TaskTemplateBuilder from './task-template-builder';
 import JobFlowBoard from './job-flow-board';
+import MentionsThreadList from './mentions-thread-list';
 // import MessagesLayout from './messages-layout';
 // import ChannelsView from './channels-view';
-// import MentionsThreadList from './mentions-thread-list';
 // import ThreadView from './thread-view';
 // import AllThreadsView from './all-threads-view';
 // import CreateTaskFromThreadDialog from './create-task-from-thread-dialog';
@@ -111,8 +111,8 @@ export default function Dashboard({ view }: { view: string }) {
 
 
   // Mentions
-  // const [lastMentionsRead, setLastMentionsRead] = useState<string | null>(null);
-  // const [unreadMentions, setUnreadMentions] = useState<any[]>([]);
+  const [lastMentionsRead, setLastMentionsRead] = useState<string | null>(null);
+  const [unreadMentions, setUnreadMentions] = useState<any[]>([]);
 
   // Job Flow states
   const [jobFlowTemplates, setJobFlowTemplates] = useState<JobFlowTemplate[]>([]);
@@ -252,6 +252,49 @@ export default function Dashboard({ view }: { view: string }) {
         });
     }
   }, [activeHub, selectedProjectId])
+
+  useEffect(() => {
+    if (!appUser) return;
+
+    const calculateMentions = () => {
+        const allMentions: any[] = [];
+        const userMention = `@${appUser.name}`;
+
+        // Mentions from task activities/comments
+        tasks.forEach(task => {
+            const taskMentions = (task.activities || [])
+                .filter(activity => activity.type === 'comment' && activity.comment?.includes(userMention))
+                .map(activity => ({
+                    ...activity,
+                    parentType: 'task' as const,
+                    parentId: task.id,
+                    parentName: task.name,
+                }));
+            allMentions.push(...taskMentions);
+        });
+
+        // Mentions from document comments
+        documents.forEach(doc => {
+            const docMentions = (doc.comments || [])
+                .filter(comment => comment.content.includes(userMention))
+                .map(comment => ({
+                    ...comment,
+                    parentType: 'document' as const,
+                    parentId: doc.id,
+                    parentName: doc.name,
+                }));
+             allMentions.push(...docMentions);
+        });
+        
+        const unread = allMentions.filter(m => isUnread(m, lastMentionsRead));
+        // Sort by date descending
+        unread.sort((a, b) => new Date('timestamp' in b ? b.timestamp : b.createdAt).getTime() - new Date('timestamp' in a ? a.timestamp : a.createdAt).getTime());
+        setUnreadMentions(unread);
+    };
+
+    calculateMentions();
+
+  }, [appUser, tasks, documents, lastMentionsRead]);
 
 
   // Handle view change from sidebar
@@ -647,9 +690,9 @@ export default function Dashboard({ view }: { view: string }) {
       documents,
       timeEntries,
       allSpaces: userSpaces,
-      // messages,
-      // unreadMentions,
-      // onMentionsCleared: () => setLastMentionsRead(new Date().toISOString()),
+      messages: [], // Empty array as channels are disabled
+      unreadMentions,
+      onMentionsCleared: () => setLastMentionsRead(new Date().toISOString()),
       onSelectTask: setSelectedTask,
       statuses: activeHub.statuses || [],
       onSave: handleSpaceSave,
@@ -664,13 +707,7 @@ export default function Dashboard({ view }: { view: string }) {
       jobFlowTemplates,
       jobFlowTasks,
       onJobLaunched: fetchData,
-      // Messaging props
-      // channels,
-      // onViewThread: (thread: Message) => {
-      //   setActiveThread(thread);
-      // },
-      // onAddMessage: handleAddMessage,
-      //  // Thread view specific prop
+      // Thread view specific prop
       // activeThread: activeThread,
       // onCloseThread: () => setActiveThread(null),
     };
@@ -725,7 +762,7 @@ export default function Dashboard({ view }: { view: string }) {
                             onSendMessage={handleSendMessageFromAgent}
                             onAssignConversation={handleAssignConversation}
                          />;
-      // case 'mentions': return <div className="p-8"><MentionsThreadList {...props} mentions={unreadMentions} onClose={() => {}} onOpenThread={() => {}} /></div>;
+      case 'mentions': return <div className="p-8"><MentionsThreadList {...props} mentions={unreadMentions} onClose={() => { handleViewChange('overview')}} onOpenThread={() => {}} /></div>;
       // case 'all-threads': return <div className="p-8"><AllThreadsView {...props} isThreadUnread={() => false} /></div>;
       // case 'channels': return <div className="p-8"><ChannelsView {...props} activeChannelId={activeChannelId} setMessages={setMessages} onCreateTask={handleCreateTaskFromThread} /></div>;
       default:

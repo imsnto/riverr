@@ -1,12 +1,14 @@
+
 // src/components/dashboard/mentions-thread-list.tsx
 "use client";
 
 import React from "react";
-import { User, Message, Activity, DocumentComment } from "@/lib/data";
+import { User, Message, Activity, DocumentComment, Task } from "@/lib/data";
 import { Button } from "../ui/button";
 import { X, MessageSquare, CheckSquare, FileText } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { useRouter } from "next/navigation";
 
 // Mention union type (same shape as in mentions-view)
 type Mention = (Message | Activity | DocumentComment) & {
@@ -19,9 +21,11 @@ interface MentionsThreadListProps {
   mentions: Mention[];
   allUsers: User[];
   messages: Message[]; // full message list so we can locate parent thread
+  allTasks?: Task[];
   onOpenThread: (thread: Message) => void;
   onClose: () => void;
   isDialog?: boolean;
+  onTaskSelect?: (task: Task) => void;
 }
 
 const getInitials = (name: string) => {
@@ -63,10 +67,14 @@ export default function MentionsThreadList({
   mentions,
   allUsers,
   messages,
+  allTasks,
   onOpenThread,
   onClose,
   isDialog = true,
+  onTaskSelect,
 }: MentionsThreadListProps) {
+  const router = useRouter();
+
   if (mentions.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-4 text-center">
@@ -95,15 +103,22 @@ export default function MentionsThreadList({
   };
 
   const handleClick = (mention: Mention) => {
-    // Only open a thread for message mentions (those originating from messages or activities with message context)
     if ("channel_id" in mention) {
       const msg = mention as Message;
       const threadParent = findThreadForMessage(msg, messages);
       if (threadParent) {
         onOpenThread(threadParent);
       }
+    } else if (mention.parentType === 'task' && mention.parentId && onTaskSelect && allTasks) {
+        const task = allTasks.find(t => t.id === mention.parentId);
+        if (task) {
+            onTaskSelect(task);
+        }
+        onClose();
+    } else if (mention.parentType === 'document' && mention.parentId) {
+        router.push(`/documents/${mention.parentId}`);
+        onClose();
     }
-    // For task/document mentions we could navigate later (future enhancement)
   };
 
   return (

@@ -169,7 +169,7 @@ interface AppSidebarProps {
 const allTopItems: { key: AppView; icon: React.ReactNode; label: string; fixed?: boolean }[] = [
   { key: "overview", icon: <BarChart className="w-5 h-5" />, label: 'Overview', fixed: true },
   { key: "mytasks", icon: <ClipboardCheck className="w-5 h-5" />, label: 'My Tasks', fixed: true },
-  // { key: "mentions", icon: <AtSign className="w-5 h-5" />, label: 'Mentions', fixed: true },
+  { key: "mentions", icon: <AtSign className="w-5 h-5" />, label: 'Mentions', fixed: true },
 ];
 
 const allMiddleItems: {

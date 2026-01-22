@@ -3,7 +3,7 @@
 export const HUB_VIEWS = {
   overview: "/overview",
   mytasks: "/mytasks",
-  // mentions: "/mentions",
+  mentions: "/mentions",
   tasks: "/tasks",
   inbox: "/inbox",
   // messages: "/messages",
