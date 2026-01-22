@@ -12,8 +12,6 @@ import {
   Task,
   TimeEntry,
   SlackMeetingLog,
-  // Channel,
-  // Message,
   Document,
   Invite,
   JobFlowTemplate,
@@ -38,24 +36,16 @@ import { useRouter, useParams } from 'next/navigation';
 
 import Overview from './overview';
 import TaskBoard from './task-board';
-import MyTasksView from './my-tasks-view';
 import DocumentsView from './documents-view';
 import SettingsLayout from './settings-layout';
 import JobFlowTemplateBuilder from './job-flow-template-builder';
 import PhaseTemplateBuilder from './phase-template-builder';
 import TaskTemplateBuilder from './task-template-builder';
 import JobFlowBoard from './job-flow-board';
-import MentionsThreadList from './mentions-thread-list';
-// import MessagesLayout from './messages-layout';
-// import ChannelsView from './channels-view';
-// import ThreadView from './thread-view';
-// import AllThreadsView from './all-threads-view';
-// import CreateTaskFromThreadDialog from './create-task-from-thread-dialog';
 import TaskDetailsDialog from './task-details-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { SidebarProvider } from '../ui/sidebar';
 import ProjectFormDialog from './project-form-dialog';
-// import ChannelList from './channel-list';
 import { ContentSkeleton } from './content-skeleton';
 import InboxLayout from './inbox-layout';
 import { cn } from '@/lib/utils';
@@ -93,10 +83,6 @@ export default function Dashboard({ view }: { view: string }) {
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   // Messaging states
-  // const [channels, setChannels] = useState<Channel[]>([]);
-  // const [messages, setMessages] = useState<Message[]>([]);
-  // const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
-  // const [activeThread, setActiveThread] = useState<Message | null>(null);
   const [spaceHubs, setSpaceHubs] = useState<Hub[]>([]);
   
   // Inbox state
@@ -123,7 +109,6 @@ export default function Dashboard({ view }: { view: string }) {
 
   // Dialogs
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  // const [taskFromThread, setTaskFromThread] = useState<Message | null>(null);
   
   // Project Management
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -163,7 +148,6 @@ export default function Dashboard({ view }: { view: string }) {
             fetchedTaskTemplates,
             fetchedJobs,
             fetchedJobFlowTasks,
-            // fetchedChannels,
             fetchedHubs,
             fetchedConversations,
             fetchedBots,
@@ -179,7 +163,6 @@ export default function Dashboard({ view }: { view: string }) {
             db.getTaskTemplates(activeHub.id),
             db.getAllJobs(activeHub.id),
             db.getAllJobFlowTasks(activeHub.id),
-            // db.getChannelsInHub(activeHub.id),
             db.getHubsForSpace(activeSpace.id),
             db.getConversationsForHub(activeHub.id),
             db.getBots(activeHub.id),
@@ -203,23 +186,12 @@ export default function Dashboard({ view }: { view: string }) {
           setTaskTemplates(fetchedTaskTemplates);
           setJobs(fetchedJobs);
           setJobFlowTasks(fetchedJobFlowTasks);
-          // setChannels(fetchedChannels);
           setSpaceHubs(fetchedHubs);
           setChatConversations(fetchedConversations.sort((a,b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
           setBots(fetchedBots);
           setHelpCenters(fetchedHelpCenters);
           setHelpCenterArticles(hubArticles);
       
-          // if (fetchedChannels.length > 0 && !activeChannelId) {
-          //   setActiveChannelId(fetchedChannels[0].id);
-          // }
-        
-          // // Fetch messages for all channels in the active hub
-          // const allMessages = await Promise.all(
-          //   fetchedChannels.map(channel => db.getMessagesInChannel(channel.id))
-          // ).then(results => results.flat());
-          // setMessages(allMessages);
-
            if (fetchedConversations.length > 0) {
               const convoIds = fetchedConversations.map(c => c.id);
               const [fetchedMessages, fetchedContacts] = await Promise.all([
@@ -507,22 +479,6 @@ export default function Dashboard({ view }: { view: string }) {
     }
  };
  
-  // const handleSaveChannel = async (channelData: Omit<Channel, 'id'>, channelId?: string) => {
-  //   if (!activeHub) return;
-  //   const dataWithHub = { ...channelData, hubId: activeHub.id };
-
-  //   if (channelId) {
-  //     await db.updateChannel(channelId, dataWithHub);
-  //     setChannels(prev => prev.map(c => c.id === channelId ? { ...c, ...dataWithHub } : c));
-  //     toast({ title: 'Channel Updated' });
-  //   } else {
-  //     const newChannel = await db.addChannel(dataWithHub);
-  //     setChannels(prev => [...prev, newChannel]);
-  //     setActiveChannelId(newChannel.id);
-  //     toast({ title: 'Channel Created' });
-  //   }
-  // };
-  
   const handleSendMessageFromAgent = async (conversationId: string, messageContent: string, type: 'reply' | 'note') => {
     if (!appUser) return;
     const newMessageData: Omit<ChatMessage, 'id'> = {
@@ -657,15 +613,6 @@ export default function Dashboard({ view }: { view: string }) {
     }
   }
   
-  // const handleAddMessage = async (message: Omit<Message, 'id'>) => {
-  //   const newMessage = await db.addMessage(message);
-  //   setMessages(prev => [...prev, newMessage]);
-  // }
-  
-  // const handleCreateTaskFromThread = (thread: Message) => {
-  //   setTaskFromThread(thread);
-  // };
-  
   const handleLogTime = async (timeData: Omit<TimeEntry, 'id'>) => {
     const newTimeEntry = await db.addTimeEntry({...timeData, spaceId: activeSpace.id});
     setTimeEntries(prev => [...prev, newTimeEntry]);
@@ -707,26 +654,7 @@ export default function Dashboard({ view }: { view: string }) {
       jobFlowTemplates,
       jobFlowTasks,
       onJobLaunched: fetchData,
-      // Thread view specific prop
-      // activeThread: activeThread,
-      // onCloseThread: () => setActiveThread(null),
     };
-
-    // const messagesProps = {
-    //     left: (
-    //        <ChannelList 
-    //          channels={channels}
-    //          activeChannelId={activeChannelId}
-    //          onChannelSelect={setActiveChannelId}
-    //          onSaveChannel={handleSaveChannel}
-    //          activeSpace={activeSpace}
-    //          appUser={appUser}
-    //         />
-    //     ),
-    //     center: <ChannelsView {...props} activeChannelId={activeChannelId} setMessages={setMessages} onCreateTask={handleCreateTaskFromThread} />,
-    //     right: activeThread ? <ThreadView {...props} thread={activeThread} onClose={() => setActiveThread(null)} /> : undefined,
-    //     threadOpen: !!activeThread,
-    // };
 
     switch (currentView) {
       case 'overview': return <div className="p-8"><Overview {...props} /></div>;
@@ -741,7 +669,6 @@ export default function Dashboard({ view }: { view: string }) {
           onDeleteProject={handleDeleteProject}
         />
       );
-      case 'mytasks': return <div className="p-8"><MyTasksView {...props} /></div>;
       case 'documents': return <DocumentsView activeSpace={activeSpace} appUser={appUser} allUsers={allUsers} activeHub={activeHub} />;
       case 'help-center': return <HelpCenterLayout
         helpCenters={helpCenters}
@@ -752,7 +679,6 @@ export default function Dashboard({ view }: { view: string }) {
         />;
       case 'settings': return <SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview} chatMessages={chatMessages} chatContacts={chatContacts} chatConversations={chatConversations} bots={bots} onBotUpdate={handleBotUpdate} onBotAdd={handleBotAdd} />;
       case 'team-timesheets': return <TeamTimesheets {...props} />;
-      // case 'messages': return <MessagesLayout {...messagesProps} />;
       case 'inbox': return <InboxLayout 
                             users={allUsers}
                             appUser={appUser}
@@ -762,9 +688,6 @@ export default function Dashboard({ view }: { view: string }) {
                             onSendMessage={handleSendMessageFromAgent}
                             onAssignConversation={handleAssignConversation}
                          />;
-      case 'mentions': return <div className="p-8"><MentionsThreadList {...props} mentions={unreadMentions} onClose={() => { handleViewChange('overview')}} onOpenThread={() => {}} /></div>;
-      // case 'all-threads': return <div className="p-8"><AllThreadsView {...props} isThreadUnread={() => false} /></div>;
-      // case 'channels': return <div className="p-8"><ChannelsView {...props} activeChannelId={activeChannelId} setMessages={setMessages} onCreateTask={handleCreateTaskFromThread} /></div>;
       default:
         return (
           <div className="p-8">
@@ -808,7 +731,6 @@ export default function Dashboard({ view }: { view: string }) {
             className={cn(
               "flex flex-col flex-1 min-w-0 min-h-0",
               currentView === 'inbox' ||
-              // currentView === 'messages' ||
               currentView === 'tasks' ||
               currentView === 'settings' ||
               currentView === 'help-center'
@@ -852,16 +774,6 @@ export default function Dashboard({ view }: { view: string }) {
             projects={projects}
           />
         )}
-        {/* {taskFromThread && (
-          <CreateTaskFromThreadDialog
-            isOpen={!!taskFromThread}
-            onOpenChange={() => setTaskFromThread(null)}
-            message={taskFromThread}
-            channelMembers={allUsers} // Simplified for now
-            projects={projects}
-            onTaskCreated={(taskData) => handleAddTask(taskData)}
-          />
-        )} */}
       </div>
       {isMobile && activeHub && (
         <MobileBottomNav

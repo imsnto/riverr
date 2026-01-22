@@ -168,8 +168,6 @@ interface AppSidebarProps {
 
 const allTopItems: { key: AppView; icon: React.ReactNode; label: string; fixed?: boolean }[] = [
   { key: "overview", icon: <BarChart className="w-5 h-5" />, label: 'Overview', fixed: true },
-  { key: "mytasks", icon: <ClipboardCheck className="w-5 h-5" />, label: 'My Tasks', fixed: true },
-  { key: "mentions", icon: <AtSign className="w-5 h-5" />, label: 'Mentions', fixed: true },
 ];
 
 const allMiddleItems: {
@@ -180,7 +178,6 @@ const allMiddleItems: {
 }[] = [
   { key: "tasks", icon: <FolderKanban className="w-5 h-5" />, label: 'Tasks' },
   { key: "inbox", icon: <MessageCircle className="w-5 h-5" />, label: 'Inbox' },
-  // { key: "messages", icon: <MessageSquare className="w-5 h-5" />, label: 'Messages' },
   { key: "documents", icon: <BookOpen className="w-5 h-5" />, label: 'Documents' },
   { key: 'help-center', icon: <LifeBuoy className="w-5 h-5" />, label: 'Help Center' },
   { key: "flows", icon: <Workflow className="w-5 h-5" />, label: 'Flows' },
@@ -207,7 +204,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   onHubChange,
 }) => {
   const { appUser, signOut } = useAuth();
-  const { isMobile, state, setOpen, setOpenMobile } = useSidebar();
+  const { isMobile, state, setOpen, openMobile, setOpenMobile } = useSidebar();
   const router = useRouter();
 
   React.useEffect(() => {
@@ -235,6 +232,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   
   const showLabels = isMobile || state === 'expanded';
 
+  const handleNavigation = (newView: AppView) => {
+    onChangeView(newView);
+    if (openMobile) {
+      setOpenMobile(false);
+    }
+  };
+
   const renderButton = (item: {
     key: AppView;
     icon: React.ReactNode;
@@ -243,16 +247,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   }) => {
     const isActive = view === item.key;
     const variant = isActive ? "secondary" : "ghost";
-    const handleClick = () => {
-      onChangeView(item.key);
-      if (isMobile) {
-        setOpenMobile(false); // Close mobile sheet on navigation
-      }
-    };
+    
     return (
       <Button
         key={item.key}
-        onClick={handleClick}
+        onClick={() => handleNavigation(item.key)}
         variant={variant}
         className={cn("h-12 w-full justify-start rounded-md px-4", !showLabels && "px-0 justify-center w-12 mx-auto")}
       >

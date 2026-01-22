@@ -2,15 +2,27 @@
 
 'use client';
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Project, Task, TimeEntry, User, Job, JobFlowTemplate, JobFlowTask } from '@/lib/data';
-import { CheckCircle, Clock, FolderKanban, GitBranch, UserCheck } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Project, Task, TimeEntry, User, Job, JobFlowTemplate, JobFlowTask, Activity, DocumentComment } from '@/lib/data';
+import { CheckCircle, Clock, FolderKanban, GitBranch, UserCheck, MessageSquare, CheckSquare, FileText, AtSign } from 'lucide-react';
 import ProjectDetailsDialog from './project-details-dialog';
 import { Button } from '../ui/button';
 import JobDetailsDialog from './job-details-dialog';
 import { updateJobPhase, reviewJobPhase } from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Badge } from '../ui/badge';
+import { format, parseISO } from 'date-fns';
+import { ScrollArea } from '../ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { useRouter } from 'next/navigation';
+
+type Mention = (Message | Activity | DocumentComment) & {
+  parentType?: "task" | "document";
+  parentId?: string;
+  parentName?: string;
+};
 
 interface OverviewProps {
   projects: Project[];
@@ -24,7 +36,16 @@ interface OverviewProps {
   onUpdateTask: (task: Task) => void;
   onTaskSelect: (task: Task) => void;
   onDataRefresh: () => void;
+  unreadMentions: Mention[];
 }
+
+const getInitials = (name: string) => {
+  if (!name) return "";
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("");
+};
 
 export default function Overview({ 
   projects, 
@@ -37,13 +58,23 @@ export default function Overview({
   jobFlowTasks,
   onUpdateTask,
   onTaskSelect,
-  onDataRefresh
+  onDataRefresh,
+  unreadMentions
 }: OverviewProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const { toast } = useToast();
+  const router = useRouter();
 
   if (!appUser) return null;
+  
+  const myTasks = useMemo(() => {
+    return tasks
+      .filter((task) => task.assigned_to === appUser.id && task.status !== 'Done')
+      .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
+      .slice(0, 5); // Limit to 5 tasks for the overview
+  }, [tasks, appUser.id]);
+
 
   const handleAdvancePhase = async (job: Job) => {
     const template = jobFlowTemplates.find(t => t.id === job.workflowTemplateId);
@@ -61,7 +92,6 @@ export default function Overview({
   };
 
   const userProjects = projects.filter(p => p.members.includes(appUser.id));
-  const userTasks = tasks.filter(t => t.assigned_to === appUser.id);
   const userTimeEntries = timeEntries.filter(t => t.user_id === appUser.id);
 
   const totalHoursLogged = userTimeEntries.reduce((acc, entry) => acc + entry.duration, 0);
@@ -113,6 +143,44 @@ export default function Overview({
   });
 
   const selectedJobTemplate = selectedJob ? jobFlowTemplates.find(t => t.id === selectedJob.workflowTemplateId) : undefined;
+  
+  const handleMentionClick = (mention: Mention) => {
+    if (mention.parentType === 'task' && mention.parentId && onTaskSelect && tasks) {
+        const task = tasks.find(t => t.id === mention.parentId);
+        if (task) {
+            onTaskSelect(task);
+        }
+    } else if (mention.parentType === 'document' && mention.parentId) {
+        router.push(`/documents/${mention.parentId}`);
+    }
+  };
+  
+  const getParentIcon = (mention: Mention) => {
+    if ("channel_id" in mention) return <MessageSquare className="h-3 w-3" />;
+    if (mention.parentType === "task")
+      return <CheckSquare className="h-3 w-3" />;
+    if (mention.parentType === "document")
+      return <FileText className="h-3 w-3" />;
+    return null;
+  };
+  
+  const renderMentionContent = (content: string, allUsers: User[]) => {
+    const parts = content.split(/(@[\w\s]+)/g).filter(Boolean);
+    return parts.map((part, index) => {
+        if (part.startsWith("@")) {
+        const userName = part.substring(1).trim();
+        const user = allUsers.find((u) => u.name === userName);
+        if (user) {
+            return (
+            <strong key={index} className="text-primary font-semibold">
+                @{user.name}
+            </strong>
+            );
+        }
+        }
+        return <React.Fragment key={index}>{part}</React.Fragment>;
+    });
+  };
 
   return (
     <>
@@ -159,7 +227,7 @@ export default function Overview({
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{userTasks.length}</div>
+              <div className="text-2xl font-bold">{tasks.filter((t) => t.assigned_to === appUser.id).length}</div>
               <p className="text-xs text-muted-foreground">Total assigned tasks</p>
             </CardContent>
           </Card>
@@ -178,38 +246,87 @@ export default function Overview({
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Projects</CardTitle>
+              <CardTitle>My Tasks</CardTitle>
+              <CardDescription>Your top 5 upcoming tasks.</CardDescription>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-2">
-                {userProjects.slice(0, 5).map(p => (
-                  <li key={p.id} className="text-sm flex items-center justify-between">
-                    <button onClick={() => setSelectedProject(p)} className="hover:underline text-primary">
-                      {p.name}
-                    </button>
-                    <span className="text-xs text-muted-foreground">{p.status}</span>
-                  </li>
-                ))}
-              </ul>
+                {myTasks.length > 0 ? (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                            <TableHead>Task</TableHead>
+                            <TableHead>Project</TableHead>
+                            <TableHead>Due</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {myTasks.map((task) => {
+                                const project = projects.find(p => p.id === task.project_id);
+                                return (
+                                    <TableRow key={task.id} onClick={() => onTaskSelect(task)} className="cursor-pointer">
+                                        <TableCell className="font-medium">{task.name}</TableCell>
+                                        <TableCell>{project?.name || 'N/A'}</TableCell>
+                                        <TableCell>{format(parseISO(task.due_date), "MMM d")}</TableCell>
+                                    </TableRow>
+                                )
+                            })}
+                        </TableBody>
+                    </Table>
+                ) : (
+                    <p className="text-sm text-muted-foreground">You have no upcoming tasks.</p>
+                )}
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Recent Time Entries</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <AtSign className="h-5 w-5" />
+                Recent Mentions
+              </CardTitle>
+               <CardDescription>Your most recent unread mentions.</CardDescription>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-3">
-                {userTimeEntries.slice(0, 3).map(entry => {
-                   const project = projects.find(p => p.id === entry.project_id);
-                   const task = tasks.find(t => t.id === entry.task_id);
-                   return (
-                      <li key={entry.id} className="text-sm">
-                          <p className="font-medium">{formatDuration(entry.duration)} on {project?.name}</p>
-                          <p className="text-xs text-muted-foreground">{task ? task.name : entry.notes}</p>
-                      </li>
-                   );
-                })}
-              </ul>
+              <ScrollArea className="h-64">
+                <div className="space-y-4">
+                  {unreadMentions.slice(0, 5).map((mention, index) => {
+                     const userId = "user_id" in mention ? mention.user_id : mention.userId;
+                     const timestamp = "timestamp" in mention ? mention.timestamp : mention.createdAt;
+                     const content = "content" in mention ? mention.content : mention.comment || "";
+                     const user = allUsers.find((u) => String(u.id) === String(userId));
+                    return (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => handleMentionClick(mention)}
+                        className="flex w-full items-start gap-3 p-2 rounded-md hover:bg-muted/60 transition text-left"
+                      >
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src={user?.avatarUrl} />
+                            <AvatarFallback>
+                                {user ? getInitials(user.name) : "?"}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                                <span className="font-semibold text-sm">{user?.name}</span>
+                                <span className="text-xs text-muted-foreground">{format(new Date(timestamp), "MMM d")}</span>
+                            </div>
+                            <div className="text-sm text-muted-foreground my-1 break-words">
+                                {renderMentionContent(content, allUsers)}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                {getParentIcon(mention)}
+                                {mention.parentName || 'Unknown context'}
+                            </div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                  {unreadMentions.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center pt-8">No unread mentions.</p>
+                  )}
+                </div>
+              </ScrollArea>
             </CardContent>
           </Card>
         </div>
