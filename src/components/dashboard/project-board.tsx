@@ -332,12 +332,12 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
       return (
       <div
         key={status.name}
-        className="flex-shrink-0 w-64 md:w-72"
+        className="flex-shrink-0 w-64 md:w-72 h-full min-h-0 flex flex-col"
         onDrop={(e) => handleDrop(e, status.name)}
         onDragOver={(e) => handleDragOver(e, status.name)}
         onDragLeave={handleColumnDragLeave}
       >
-        <div className="flex justify-between items-center mb-4 px-1">
+        <div className="flex justify-between items-center mb-4 px-1 shrink-0">
              {editingColumn === status.name ? (
                 <Input 
                     defaultValue={status.name}
@@ -437,7 +437,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
             </div>
         </div>
         <div 
-          className="bg-primary/5 rounded-lg p-2 max-h-[calc(100vh-16rem)] overflow-y-auto min-h-[5rem]"
+          className="bg-primary/5 rounded-lg p-2 flex-1 min-h-0 overflow-y-auto"
         >
             <div className="space-y-0.5">
             {columnTasks.map((task, index) => {
@@ -479,75 +479,77 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
 
   return (
     <>
-      <div className="flex h-full w-full min-w-0 flex-col overflow-hidden">
-        {/* Desktop Header */}
-        <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-4 border-b">
-            <div className="flex items-center gap-2 min-w-0">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="text-2xl font-bold p-2 -ml-2 min-w-0">
-                            <span className="truncate">{project.name}</span>
-                            <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => onEditProject(project)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            <span>Edit Project</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setDeleteAlertOpen(true)} className="text-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            <span>Delete Project</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+      <div className="flex h-full w-full min-w-0 min-h-0 flex-col overflow-hidden">
+        <div className="w-full min-w-0 shrink-0 overflow-hidden">
+            {/* Desktop Header */}
+            <div className="hidden md:flex w-full min-w-0 justify-between items-center px-6 pt-6 pb-4 border-b">
+                <div className="flex items-center gap-2 min-w-0">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="text-2xl font-bold p-2 -ml-2 min-w-0">
+                                <span className="truncate">{project.name}</span>
+                                <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => onEditProject(project)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                <span>Edit Project</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setDeleteAlertOpen(true)} className="text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete Project</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="flex -space-x-2">
+                        {projectMembers.slice(0, 5).map(member => (
+                            <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
+                                <AvatarImage src={member.avatarUrl} alt={member.name} />
+                                <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                            </Avatar>
+                        ))}
+                        {projectMembers.length > 5 && (
+                            <Avatar className="h-8 w-8 border-2 border-background">
+                                <AvatarFallback>+{projectMembers.length - 5}</AvatarFallback>
+                            </Avatar>
+                        )}
+                    </div>
+                </div>
             </div>
-            <div className="flex items-center gap-4">
-                <div className="flex -space-x-2">
-                    {projectMembers.slice(0, 5).map(member => (
+
+            {/* Mobile Header */}
+            <div className="md:hidden w-full min-w-0 mb-4 space-y-4 p-4">
+                <div className="flex items-center justify-between">
+                <Button variant="ghost" size="icon" onClick={onBack}>
+                    <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <h1 className="text-lg font-semibold">Projects</h1>
+                <div className="flex items-center gap-2">
+                    {projectMembers.slice(0, 3).map(member => (
                         <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
                             <AvatarImage src={member.avatarUrl} alt={member.name} />
                             <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
                         </Avatar>
                     ))}
-                    {projectMembers.length > 5 && (
+                    {projectMembers.length > 3 && (
                         <Avatar className="h-8 w-8 border-2 border-background">
-                            <AvatarFallback>+{projectMembers.length - 5}</AvatarFallback>
+                            <AvatarFallback>+{projectMembers.length - 3}</AvatarFallback>
                         </Avatar>
                     )}
                 </div>
-            </div>
-        </div>
-
-        {/* Mobile Header */}
-        <div className="md:hidden mb-4 space-y-4 p-4">
-            <div className="flex items-center justify-between">
-            <Button variant="ghost" size="icon" onClick={onBack}>
-                <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-lg font-semibold">Projects</h1>
-            <div className="flex items-center gap-2">
-                {projectMembers.slice(0, 3).map(member => (
-                    <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
-                        <AvatarImage src={member.avatarUrl} alt={member.name} />
-                        <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                    </Avatar>
-                ))}
-                {projectMembers.length > 3 && (
-                    <Avatar className="h-8 w-8 border-2 border-background">
-                        <AvatarFallback>+{projectMembers.length - 3}</AvatarFallback>
-                    </Avatar>
-                )}
-            </div>
-            </div>
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">{project.name}</h2>
+                </div>
+                <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold">{project.name}</h2>
+                </div>
             </div>
         </div>
         
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
           <div className="h-full w-full min-w-0 overflow-x-auto overflow-y-hidden">
-            <div className="flex w-max gap-4 p-4 md:p-6 md:pt-2">
+            <div className="flex w-max gap-4 p-4 md:p-6 md:pt-2 h-full">
               {activeStatuses.map(renderStatusColumn)}
               {closingStatus && renderStatusColumn(closingStatus)}
               <div className="flex-shrink-0 w-72">
@@ -582,3 +584,4 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     </>
   );
 }
+
