@@ -11,7 +11,7 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
-import { Bot, Calendar, CircleDot, Clock, Flag, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight, Paperclip, File, Image as ImageIcon, Plus, Trash2, CheckCircle2, X, ArrowLeft, ThumbsUp, MoreHorizontal, Edit, AtSign, Star } from 'lucide-react';
+import { Bot, Calendar, CircleDot, Clock, Flag, Folder, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight, Paperclip, File, Image as ImageIcon, Plus, Trash2, CheckCircle2, X, ArrowLeft, ThumbsUp, MoreHorizontal, Edit, AtSign, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
@@ -94,12 +94,12 @@ interface DetailRowProps {
     className?: string;
 }
 const DetailRow: React.FC<DetailRowProps> = ({ icon: Icon, label, children, className }) => (
-    <div className={cn("grid grid-cols-[8rem_1fr] items-start gap-4", className)}>
-        <div className="col-span-1 flex items-center gap-2 text-muted-foreground pt-1.5">
+    <div className={cn("space-y-2 md:grid md:grid-cols-[8rem_1fr] md:items-start md:gap-4 md:space-y-0", className)}>
+        <div className="flex items-center gap-2 text-muted-foreground md:pt-1.5">
             <Icon className="h-4 w-4" />
             <span className="text-sm font-medium">{label}</span>
         </div>
-        <div className="col-span-1">{children}</div>
+        <div className="md:col-span-1">{children}</div>
     </div>
 );
 
@@ -443,40 +443,15 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
             className="text-2xl font-bold border-none focus-visible:ring-0 p-0 h-auto"
         />
         
-        {isMobile && !isCreating && (
-          <>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Assigned to</p>
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={assignee?.avatarUrl} alt={assignee?.name} />
-                    <AvatarFallback>{assignee ? getInitials(assignee.name) : '?'}</AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-medium">{assignee?.name}</span>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Due date</p>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-8 w-8 text-muted-foreground" />
-                  <span className="text-sm font-medium">{format(parseISO(task.due_date), "MMM d, yyyy")}</span>
-                </div>
-              </div>
-            </div>
-            {project && (
-              <div className="space-y-2">
-                <h3 className="font-semibold text-sm text-muted-foreground">Project</h3>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                    <span className="w-2 h-2 rounded-full bg-green-500 mr-2"/>
-                    {project.name}
-                </Button>
-              </div>
-            )}
-          </>
-        )}
-
-        <div className={cn("space-y-4", isMobile && "hidden")}>
+        <div className={cn("space-y-4")}>
+          {project && (
+            <DetailRow icon={Folder} label="Project">
+                <Select value={task.project_id || ''} onValueChange={(value) => handleFieldChange('project_id', value)}>
+                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                </Select>
+            </DetailRow>
+          )}
           <DetailRow icon={CircleDot} label="Status">
               <Select value={task.status} onValueChange={(value) => handleFieldChange('status', value)}>
                   <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
@@ -774,5 +749,3 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
         </Dialog>
     );
 }
-
-    
