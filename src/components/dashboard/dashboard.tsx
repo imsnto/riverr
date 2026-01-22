@@ -64,6 +64,7 @@ import ProjectSidebar from './project-sidebar';
 import HelpCenterLayout from './help-center-layout';
 import { useIsMobile } from '@/hooks/use-mobile';
 import MobileBottomNav from './mobile-bottom-nav';
+import TeamTimesheets from './team-timesheets';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -355,7 +356,7 @@ export default function Dashboard({ view }: { view: string }) {
   };
   
   const handleAddTask = async (task: Omit<Task, 'id'>) => {
-    const taskWithHub = { ...task, hubId: activeHub.id, spaceId: activeSpace.id };
+    const taskWithHub = { ...task, hubId: activeHub.id, spaceId: activeSpace.id, createdBy: appUser!.id, createdAt: new Date().toISOString() };
     const newTask = await db.addTask(taskWithHub);
     setTasks(prev => [...prev, newTask]);
     return newTask;
@@ -779,7 +780,7 @@ export default function Dashboard({ view }: { view: string }) {
           )}
           <main
             className={cn(
-              "flex w-0 flex-col flex-1 min-w-0 min-h-0",
+              "flex flex-col flex-1 min-w-0 min-h-0",
               currentView === 'inbox' ||
               // currentView === 'messages' ||
               currentView === 'tasks' ||

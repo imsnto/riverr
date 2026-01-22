@@ -34,16 +34,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import MentionsView from "@/components/dashboard/mentions-view";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { AtSign } from "lucide-react";
 import { format, parseISO } from "date-fns";
-
-export type MentionUnion = (Message | Activity | DocumentComment) & {
-  parentType?: "task" | "document";
-  parentId?: string;
-  parentName?: string;
-};
 
 interface MyTasksViewProps {
   appUser: User;
@@ -51,9 +44,6 @@ interface MyTasksViewProps {
   projects: Project[];
   allUsers: User[];
   documents: Document[];
-  messages: Message[];
-  unreadMentions: MentionUnion[];
-  onMentionsCleared: () => void;
   onSelectTask: (task: Task) => void;
   timeEntries: TimeEntry[];
   statuses: Status[];
@@ -65,9 +55,6 @@ const MyTasksView: React.FC<MyTasksViewProps> = ({
   projects,
   allUsers,
   documents,
-  messages,
-  unreadMentions,
-  onMentionsCleared,
   onSelectTask,
   statuses,
 }) => {
