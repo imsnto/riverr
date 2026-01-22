@@ -749,7 +749,7 @@ export default function Dashboard({ view }: { view: string }) {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen bg-background text-foreground">
+      <div className="flex h-screen min-h-0 bg-background text-foreground">
         <AppSidebar
           view={currentView}
           onChangeView={handleViewChange}
@@ -767,7 +767,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeHub={activeHub}
           onHubChange={handleHubChange}
         />
-        <div className="flex flex-1 min-w-0 overflow-hidden">
+        <div className="flex flex-1 min-w-0 min-h-0 overflow-hidden">
           {(currentView === 'tasks' && projects.length > 0) && (
              <ProjectSidebar
               projects={projects}
@@ -777,7 +777,7 @@ export default function Dashboard({ view }: { view: string }) {
             />
           )}
           <main className={cn(
-            "flex w-0 flex-col flex-1 min-w-0",
+            "flex flex-col flex-1 min-w-0 min-h-0",
             currentView === 'inbox' || currentView === 'messages' || currentView === 'tasks' || currentView === 'settings' || currentView === 'help-center'
               ? 'overflow-hidden'
               : 'overflow-y-auto',
