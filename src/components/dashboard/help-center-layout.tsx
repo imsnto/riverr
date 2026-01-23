@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -105,8 +104,8 @@ export default function HelpCenterLayout({
     const handleCreateArticle = async () => {
       if (!appUser || !activeHub) return;
       const newArticleData: Omit<HelpCenterArticle, 'id'> = {
-        title: 'New Untitled Article',
-        content: '<h1>Start writing...</h1>',
+        title: '',
+        content: '',
         status: 'draft',
         collectionIds: sidebarView === 'library' && selectedCollectionId ? [selectedCollectionId] : [],
         authorId: appUser.id,
@@ -132,14 +131,18 @@ export default function HelpCenterLayout({
         setSidebarView(view);
         setSelectedCollectionId(null);
         setActiveHelpCenterId(null);
+        setSelectedArticleId(null);
     }
     
     const handleSelectCollection = (id: string | null) => {
         setSelectedCollectionId(id);
+        setSelectedArticleId(null);
     }
 
     const handleSelectHelpCenter = (id: string | null) => {
         setActiveHelpCenterId(id);
+        setSelectedCollectionId(null);
+        setSelectedArticleId(null);
     }
 
     const handleToggleSelectItem = (id: string) => {
@@ -171,7 +174,7 @@ export default function HelpCenterLayout({
                 }
 
                 foldersToShow = collections.filter(c => c.parentId === selectedCollectionId);
-                articlesToShow = articles.filter(a => a.collectionIds?.includes(selectedCollectionId!));
+                articlesToShow = articles.filter(a => (a.collectionIds || []).includes(selectedCollectionId!));
 
             } else {
                 viewTitle = 'Content Library';
@@ -198,7 +201,7 @@ export default function HelpCenterLayout({
       
       const articlesToAdd = articleIds.filter(id => !articles.find(a => a.id === id)?.collectionIds?.includes(collectionId));
       const articlesToRemove = articles
-        .filter(a => a.collectionIds?.includes(collectionId) && !articleIds.includes(a.id))
+        .filter(a => (a.collectionIds || []).includes(collectionId) && !articleIds.includes(a.id))
         .map(a => a.id);
 
       const promises: Promise<void>[] = [];
@@ -214,7 +217,7 @@ export default function HelpCenterLayout({
       articlesToRemove.forEach(articleId => {
         const article = articles.find(a => a.id === articleId);
         if (article) {
-          const newCollectionIds = article.collectionIds.filter(id => id !== collectionId);
+          const newCollectionIds = (article.collectionIds || []).filter(id => id !== collectionId);
           promises.push(updateHelpCenterArticle(articleId, { collectionIds: newCollectionIds }));
         }
       });
@@ -228,7 +231,7 @@ export default function HelpCenterLayout({
         const articleToEdit = articles.find(a => a.id === selectedArticleId);
         if (articleToEdit && appUser) {
              return (
-                <div className="overflow-y-auto p-4 md:p-8 h-full">
+                <div className="overflow-y-auto h-full">
                     <HelpCenterArticleEditor 
                        key={articleToEdit.id}
                        article={articleToEdit} 

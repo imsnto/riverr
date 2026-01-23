@@ -83,8 +83,8 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
   const handleCreateNew = async () => {
     const now = new Date().toISOString();
     const newDocData: Omit<Document, 'id'> = {
-        name: 'Untitled',
-        content: '<h1>Start writing...</h1>',
+        name: '',
+        content: '',
         spaceId: activeSpace.id,
         hubId: activeHub.id,
         createdBy: appUser.id,
