@@ -718,7 +718,7 @@ export default function Dashboard({ view }: { view: string }) {
               currentView === 'inbox' ||
               currentView === 'tasks' ||
               currentView === 'settings' ||
-              currentView === 'help-center'
+              (currentView === 'help-center' && !isMobile)
                 ? "overflow-hidden"
                 : "overflow-y-auto",
               isMobile && "pb-20"
