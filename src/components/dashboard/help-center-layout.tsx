@@ -5,13 +5,14 @@ import { HelpCenter, HelpCenterCollection, HelpCenterArticle, User } from '@/lib
 import HelpCenterArticleEditor from './help-center-article-editor';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
-import { addHelpCenterCollection, updateHelpCenterCollection, getHelpCenterCollections, getHelpCenterArticles, addHelpCenterArticle, getHelpCenters } from '@/lib/db';
+import { addHelpCenterCollection, updateHelpCenterCollection, getHelpCenterCollections, getHelpCenterArticles, addHelpCenterArticle, getHelpCenters, updateHelpCenterArticle } from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
 import { FolderPlus, Plus, Search } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
+import AddArticlesToCollectionDialog from './add-articles-to-collection-dialog';
 
 interface HelpCenterLayoutProps {
     onSaveArticle: (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => Promise<HelpCenterArticle | void>;
@@ -38,14 +39,14 @@ export default function HelpCenterLayout({
     const [newCollectionParentId, setNewCollectionParentId] = useState<string | undefined>(undefined);
 
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
+
+    const [addArticlesToCollection, setAddArticlesToCollection] = useState<HelpCenterCollection | null>(null);
     
     const { toast } = useToast();
 
     useEffect(() => {
         if (activeHub) {
-            getHelpCenters(activeHub.id).then(setHelpCenters);
-            getHelpCenterCollections(activeHub.id).then(setCollections);
-            getHelpCenterArticles(activeHub.id).then(setArticles);
+            refreshData();
         }
     }, [activeHub]);
     
@@ -127,7 +128,6 @@ export default function HelpCenterLayout({
 
     const handleSidebarViewChange = (view: SidebarView) => {
         setSidebarView(view);
-        // Deselect folder/helpcenter when switching to all articles view
         if (view === 'articles') {
             setSelectedCollectionId(null);
             setActiveHelpCenterId(null);
@@ -168,7 +168,7 @@ export default function HelpCenterLayout({
             const collection = collections.find(c => c.id === selectedCollectionId);
             viewTitle = collection?.name || 'Folder';
             foldersToShow = collections.filter(c => c.parentId === selectedCollectionId);
-            articlesToShow = articles.filter(a => a.collectionIds.includes(selectedCollectionId));
+            articlesToShow = articles.filter(a => a.collectionIds?.includes(selectedCollectionId));
         } else {
              viewTitle = 'All Articles';
              articlesToShow = articles;
@@ -192,6 +192,42 @@ export default function HelpCenterLayout({
             setSelectedItems(combinedItems.map(i => i.id));
         }
     }
+
+    const handleAddArticlesToCollection = async (articleIds: string[]) => {
+      if (!addArticlesToCollection) return;
+      
+      const collectionId = addArticlesToCollection.id;
+      
+      // Find articles to add (newly selected)
+      const articlesToAdd = articleIds.filter(id => !articles.find(a => a.id === id)?.collectionIds.includes(collectionId));
+      
+      // Find articles to remove (deselected)
+      const articlesToRemove = articles
+        .filter(a => a.collectionIds.includes(collectionId) && !articleIds.includes(a.id))
+        .map(a => a.id);
+
+      const promises: Promise<void>[] = [];
+
+      articlesToAdd.forEach(articleId => {
+        const article = articles.find(a => a.id === articleId);
+        if (article) {
+            const newCollectionIds = [...(article.collectionIds || []), collectionId];
+            promises.push(updateHelpCenterArticle(articleId, { collectionIds: newCollectionIds }));
+        }
+      });
+      
+      articlesToRemove.forEach(articleId => {
+        const article = articles.find(a => a.id === articleId);
+        if (article) {
+          const newCollectionIds = article.collectionIds.filter(id => id !== collectionId);
+          promises.push(updateHelpCenterArticle(articleId, { collectionIds: newCollectionIds }));
+        }
+      });
+      
+      await Promise.all(promises);
+      toast({ title: `Updated articles in "${addArticlesToCollection.name}"` });
+      refreshData();
+    };
     
     if (selectedArticleId) {
         const articleToEdit = articles.find(a => a.id === selectedArticleId);
@@ -235,6 +271,11 @@ export default function HelpCenterLayout({
                         {title}
                     </h1>
                      <div className="flex items-center gap-2">
+                        {selectedCollectionId && (
+                            <Button variant="outline" onClick={() => setAddArticlesToCollection(collections.find(c => c.id === selectedCollectionId) || null)}>
+                                Add articles
+                            </Button>
+                        )}
                         <Button variant="outline" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
                             <FolderPlus className="mr-2 h-4 w-4" /> New Folder
                         </Button>
@@ -280,6 +321,15 @@ export default function HelpCenterLayout({
                 collection={editingCollection}
                 parentId={newCollectionParentId}
             />
+            {addArticlesToCollection && (
+                <AddArticlesToCollectionDialog
+                    isOpen={!!addArticlesToCollection}
+                    onOpenChange={() => setAddArticlesToCollection(null)}
+                    collection={addArticlesToCollection}
+                    allArticles={articles}
+                    onSave={handleAddArticlesToCollection}
+                />
+            )}
         </div>
     );
 }
