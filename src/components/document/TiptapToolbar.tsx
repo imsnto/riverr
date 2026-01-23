@@ -44,16 +44,13 @@ const FONT_SIZES = ['12px', '14px', '16px', '18px', '24px', '30px', '36px'];
 export function Toolbar({ editor }: Props) {
   const [imageUrl, setImageUrl] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
-  
-  const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
-  const [youtubePopoverOpen, setYoutubePopoverOpen] = useState(false);
 
   const addImage = () => {
     if (imageUrl) {
       editor.chain().focus().setImage({ src: imageUrl }).run();
     }
     setImageUrl('');
-    setImagePopoverOpen(false);
+    // Popover will close on its own
   };
   
   const addYoutubeVideo = () => {
@@ -65,7 +62,7 @@ export function Toolbar({ editor }: Props) {
       });
     }
     setYoutubeUrl('');
-    setYoutubePopoverOpen(false);
+    // Popover will close on its own
   };
 
   const currentFontSize = () => {
@@ -215,7 +212,7 @@ export function Toolbar({ editor }: Props) {
       </Toggle>
       <Separator orientation="vertical" className="h-8" />
        {/* Image Popover */}
-      <Popover open={imagePopoverOpen} onOpenChange={setImagePopoverOpen}>
+      <Popover>
         <PopoverTrigger asChild>
           <Button size="sm" variant="ghost">
             <ImageIcon className="h-4 w-4" />
@@ -249,7 +246,7 @@ export function Toolbar({ editor }: Props) {
       <EditLink editor={editor} />
       
       {/* YouTube Popover */}
-      <Popover open={youtubePopoverOpen} onOpenChange={setYoutubePopoverOpen}>
+      <Popover>
         <PopoverTrigger asChild>
           <Button size="sm" variant="ghost">
             <Youtube className="h-4 w-4" />

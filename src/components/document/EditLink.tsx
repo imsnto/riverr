@@ -14,14 +14,13 @@ import { Toggle } from '../ui/toggle';
 
 export function EditLink({ editor }: { editor: Editor }) {
   const [url, setUrl] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
       const existingUrl = editor.getAttributes('link').href || '';
       setUrl(existingUrl);
     }
-  }, [isOpen, editor]);
+  };
 
   const handleSave = () => {
     // If the URL is empty, unset the link
@@ -31,16 +30,15 @@ export function EditLink({ editor }: { editor: Editor }) {
       // Otherwise, set or update the link
       editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
     }
-    setIsOpen(false);
+    // The popover will close automatically due to focus shift.
   };
 
   const handleRemove = () => {
     editor.chain().focus().extendMarkRange('link').unsetLink().run();
-    setIsOpen(false);
   };
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Toggle size="sm" pressed={editor.isActive('link')}>
           <LinkIcon className="h-4 w-4" />
