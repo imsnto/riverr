@@ -134,6 +134,13 @@ export default function HelpCenterLayout({
         const article = articles.find(a => a.id === articleId);
         if (article) {
              setSelectedArticleId(article.id);
+             setArticles(prev => {
+                // This forces a re-render of the editor if the same article is selected
+                if (prev.find(a => a.id === articleId)) {
+                    return [...prev];
+                }
+                return prev;
+             })
         }
     }
 
@@ -349,17 +356,21 @@ export default function HelpCenterLayout({
                                 <Library className="mr-2 h-4 w-4" /> Manage Content
                             </Button>
                         )}
-                        {sidebarView === 'library' && selectedCollectionId && (
-                             <Button variant="outline" onClick={() => setIsManageArticlesOpen(true)}>
-                                Manage Articles
-                            </Button>
+                        {sidebarView !== 'help-centers' && (
+                            <>
+                                {sidebarView === 'library' && selectedCollectionId && (
+                                     <Button variant="outline" onClick={() => setIsManageArticlesOpen(true)}>
+                                        Manage Articles
+                                    </Button>
+                                )}
+                                <Button variant="outline" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
+                                    <FolderPlus className="mr-2 h-4 w-4" /> New Folder
+                                </Button>
+                                <Button onClick={handleCreateArticle}>
+                                    <Plus className="mr-2 h-4 w-4" /> New Article
+                                </Button>
+                            </>
                         )}
-                        <Button variant="outline" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
-                            <FolderPlus className="mr-2 h-4 w-4" /> New Folder
-                        </Button>
-                        <Button onClick={handleCreateArticle}>
-                            <Plus className="mr-2 h-4 w-4" /> New Article
-                        </Button>
                     </div>
                 </div>
                  <div className="flex justify-between items-center mb-4 gap-2">
