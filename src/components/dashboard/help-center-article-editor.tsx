@@ -93,8 +93,8 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                 const firstNode = editor.state.doc.content.firstChild;
                 if (firstNode && firstNode.type.name === 'heading' && firstNode.textContent) {
                     newTitle = firstNode.textContent;
-                } else if (firstNode && firstNode.textContent === '') {
-                    newTitle = '';
+                } else if (firstNode && firstNode.textContent === '' && prevArticle.title !== '') {
+                    newTitle = 'Untitled Article';
                 }
             }
             return { ...prevArticle, title: newTitle, content: newContent };
@@ -167,7 +167,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                 </div>
             </div>
             
-            <div className="flex-1 flex justify-center pt-12 md:pt-16 overflow-y-auto px-4">
+            <div className="flex-1 flex justify-center pt-12 md:pt-16 overflow-y-auto px-4 md:px-24">
                 <div className="w-full max-w-4xl">
                     <TiptapEditor 
                         content={article.content}
