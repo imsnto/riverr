@@ -1,3 +1,4 @@
+
 'use client';
 
 import { type Editor } from '@tiptap/react';
@@ -55,11 +56,11 @@ export function Toolbar({ editor }: Props) {
   
   const addYoutubeVideo = () => {
     if (youtubeUrl) {
-      editor.commands.setYoutubeVideo({
+      editor.chain().focus().setYoutubeVideo({
         src: youtubeUrl,
         width: 640,
         height: 360,
-      });
+      }).run();
     }
     setYoutubeUrl('');
     // Popover will close on its own
