@@ -36,7 +36,6 @@ import { useRouter, useParams } from 'next/navigation';
 
 import Overview from './overview';
 import TaskBoard from './task-board';
-import DocumentsView from './documents-view';
 import SettingsLayout from './settings-layout';
 import JobFlowTemplateBuilder from './job-flow-template-builder';
 import PhaseTemplateBuilder from './phase-template-builder';
@@ -79,7 +78,6 @@ export default function Dashboard({ view }: { view: string }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [slackLogs, setSlackLogs] = useState<SlackMeetingLog[]>([]);
-  const [documents, setDocuments] = useState<Document[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   // Messaging states
@@ -139,7 +137,6 @@ export default function Dashboard({ view }: { view: string }) {
             fetchedProjects,
             fetchedTasks,
             fetchedSlackLogs,
-            fetchedDocuments,
             fetchedJobFlowTemplates,
             fetchedPhaseTemplates,
             fetchedTaskTemplates,
@@ -152,7 +149,6 @@ export default function Dashboard({ view }: { view: string }) {
             db.getProjectsInHub(activeHub.id),
             db.getAllTasks(activeHub.id),
             db.getSlackMeetingLogsInSpace(activeSpace.id), // This is space-wide for now
-            db.getDocumentsInHub(activeHub.id),
             db.getJobFlowTemplates(activeHub.id),
             db.getPhaseTemplates(activeHub.id),
             db.getTaskTemplates(activeHub.id),
@@ -173,7 +169,6 @@ export default function Dashboard({ view }: { view: string }) {
 
           setTasks(fetchedTasks);
           setSlackLogs(fetchedSlackLogs);
-          setDocuments(fetchedDocuments);
           setJobFlowTemplates(fetchedJobFlowTemplates);
           setPhaseTemplates(fetchedPhaseTemplates);
           setTaskTemplates(fetchedTaskTemplates);
@@ -236,19 +231,6 @@ export default function Dashboard({ view }: { view: string }) {
             allMentions.push(...taskMentions);
         });
 
-        // Mentions from document comments
-        documents.forEach(doc => {
-            const docMentions = (doc.comments || [])
-                .filter(comment => comment.content.includes(userMention))
-                .map(comment => ({
-                    ...comment,
-                    parentType: 'document' as const,
-                    parentId: doc.id,
-                    parentName: doc.name,
-                }));
-             allMentions.push(...docMentions);
-        });
-        
         const unread = allMentions.filter(m => isUnread(m, lastMentionsRead));
         // Sort by date descending
         unread.sort((a, b) => new Date('timestamp' in b ? b.timestamp : b.createdAt).getTime() - new Date('timestamp' in a ? a.timestamp : a.createdAt).getTime());
@@ -257,7 +239,7 @@ export default function Dashboard({ view }: { view: string }) {
 
     calculateMentions();
 
-  }, [appUser, tasks, documents, lastMentionsRead]);
+  }, [appUser, tasks, lastMentionsRead]);
 
 
   // Handle view change from sidebar
@@ -634,7 +616,6 @@ export default function Dashboard({ view }: { view: string }) {
       onTaskSelect: setSelectedTask,
       onUpdateTask: handleUpdateTask,
       onAddTask: handleAddTask,
-      documents,
       timeEntries,
       allSpaces: userSpaces,
       unreadMentions,
@@ -668,7 +649,6 @@ export default function Dashboard({ view }: { view: string }) {
           onDeleteProject={handleDeleteProject}
         />
       );
-      case 'documents': return <DocumentsView activeSpace={activeSpace} appUser={appUser} allUsers={allUsers} activeHub={activeHub} />;
       case 'help-center': return <HelpCenterLayout
         onSaveArticle={handleSaveArticle}
         />;

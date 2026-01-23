@@ -150,8 +150,6 @@ export default function Overview({
         if (task) {
             onTaskSelect(task);
         }
-    } else if (mention.parentType === 'document' && mention.parentId) {
-        router.push(`/documents/${mention.parentId}`);
     }
   };
   
@@ -159,8 +157,6 @@ export default function Overview({
     if ("channel_id" in mention) return <MessageSquare className="h-3 w-3" />;
     if (mention.parentType === "task")
       return <CheckSquare className="h-3 w-3" />;
-    if (mention.parentType === "document")
-      return <FileText className="h-3 w-3" />;
     return null;
   };
   

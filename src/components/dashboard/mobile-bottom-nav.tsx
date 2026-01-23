@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AppView } from '@/lib/routes';
@@ -19,7 +20,6 @@ const navItems: { key: AppView; icon: React.ReactNode; label: string }[] = [
   { key: 'overview', icon: <BarChart />, label: 'Dashboard' },
   { key: 'tasks', icon: <FolderKanban />, label: 'Projects' },
   { key: 'inbox', icon: <MessageCircle />, label: 'Inbox' },
-  { key: 'documents', icon: <BookOpen />, label: 'Documents' },
   { key: 'help-center', icon: <LifeBuoy />, label: 'Help Center' },
   { key: 'settings', icon: <Settings />, label: 'Settings' },
 ];

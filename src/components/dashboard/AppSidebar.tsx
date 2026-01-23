@@ -178,7 +178,6 @@ const allMiddleItems: {
 }[] = [
   { key: "tasks", icon: <FolderKanban className="w-5 h-5" />, label: 'Tasks' },
   { key: "inbox", icon: <MessageCircle className="w-5 h-5" />, label: 'Inbox' },
-  { key: "documents", icon: <BookOpen className="w-5 h-5" />, label: 'Documents' },
   { key: 'help-center', icon: <LifeBuoy className="w-5 h-5" />, label: 'Help Center' },
   { key: "flows", icon: <Workflow className="w-5 h-5" />, label: 'Flows' },
 ];
