@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -125,7 +126,7 @@ export default function HelpCenterLayout({
       const newArticle = await addHelpCenterArticle(newArticleData);
       if (newArticle) {
         setArticles(prev => [...prev, newArticle]);
-        handleSelectArticle(newArticle.id);
+        setSelectedArticleId(newArticle.id);
       }
     };
     
@@ -442,3 +443,5 @@ export default function HelpCenterLayout({
         </div>
     );
 }
+
+    
