@@ -1,4 +1,3 @@
-
 // src/lib/data.ts
 
 // --- Core Entities ---
@@ -364,7 +363,9 @@ export interface HelpCenterCollection {
   id: string;
   name: string;
   description: string;
-  helpCenterId: string;
+  helpCenterId: string | null;
+  hubId: string;
+  parentId: string | null;
 }
 
 export interface HelpCenterArticle {
@@ -372,11 +373,12 @@ export interface HelpCenterArticle {
   title: string;
   content: string;
   status: 'draft' | 'published';
-  collectionIds: string[];
+  collectionId: string | null;
+  audience: string;
+  type: 'article' | 'snippet' | 'pdf';
   authorId: string;
   createdAt: string; // ISO String
   updatedAt: string; // ISO String
-  helpCenterId: string | null;
   hubId: string;
 }
 

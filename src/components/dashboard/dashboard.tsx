@@ -91,11 +91,8 @@ export default function Dashboard({ view }: { view: string }) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [bots, setBots] = useState<Bot[]>([]);
 
-  // Help Center states
-  const [helpCenters, setHelpCenters] = useState<HelpCenter[]>([]);
-  const [helpCenterArticles, setHelpCenterArticles] = useState<HelpCenterArticle[]>([]);
-
-
+  // Help Center states - now managed within HelpCenterLayout
+  
   // Mentions
   const [lastMentionsRead, setLastMentionsRead] = useState<string | null>(null);
   const [unreadMentions, setUnreadMentions] = useState<any[]>([]);
@@ -151,8 +148,6 @@ export default function Dashboard({ view }: { view: string }) {
             fetchedHubs,
             fetchedConversations,
             fetchedBots,
-            fetchedHelpCenters,
-            hubArticles,
           ] = await Promise.all([
             db.getProjectsInHub(activeHub.id),
             db.getAllTasks(activeHub.id),
@@ -166,8 +161,6 @@ export default function Dashboard({ view }: { view: string }) {
             db.getHubsForSpace(activeSpace.id),
             db.getConversationsForHub(activeHub.id),
             db.getBots(activeHub.id),
-            db.getHelpCenters(activeHub.id),
-            db.getHelpCenterArticles(activeHub.id),
           ]);
           
           setProjects(fetchedProjects);
@@ -189,8 +182,6 @@ export default function Dashboard({ view }: { view: string }) {
           setSpaceHubs(fetchedHubs);
           setChatConversations(fetchedConversations.sort((a,b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
           setBots(fetchedBots);
-          setHelpCenters(fetchedHelpCenters);
-          setHelpCenterArticles(hubArticles);
       
            if (fetchedConversations.length > 0) {
               const convoIds = fetchedConversations.map(c => c.id);
@@ -352,7 +343,7 @@ export default function Dashboard({ view }: { view: string }) {
     db.updateTask(task.id, task);
   };
   
-  const handleAddTask = async (task: Omit<Task, 'id'>) => {
+  const handleAddTask = async (task: Omit<Task, 'id'>): Promise<Task> => {
     const now = new Date().toISOString();
     const creationActivity: Activity = {
         id: `act-creation-${Date.now()}`,
@@ -603,12 +594,11 @@ export default function Dashboard({ view }: { view: string }) {
   const handleSaveArticle = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle> => {
     if ('id' in article && article.id) {
         await db.updateHelpCenterArticle(article.id, article);
-        const updatedArticle = article as HelpCenterArticle;
-        setHelpCenterArticles(prev => prev.map(a => a.id === updatedArticle.id ? updatedArticle : a));
-        return updatedArticle;
+        fetchData();
+        return article as HelpCenterArticle;
     } else {
         const newArticle = await db.addHelpCenterArticle(article as Omit<HelpCenterArticle, 'id'>);
-        setHelpCenterArticles(prev => [...prev, newArticle]);
+        fetchData();
         return newArticle;
     }
   }
@@ -637,7 +627,6 @@ export default function Dashboard({ view }: { view: string }) {
       documents,
       timeEntries,
       allSpaces: userSpaces,
-      messages: [], // Empty array as channels are disabled
       unreadMentions,
       onMentionsCleared: () => setLastMentionsRead(new Date().toISOString()),
       onSelectTask: setSelectedTask,
@@ -671,11 +660,7 @@ export default function Dashboard({ view }: { view: string }) {
       );
       case 'documents': return <DocumentsView activeSpace={activeSpace} appUser={appUser} allUsers={allUsers} activeHub={activeHub} />;
       case 'help-center': return <HelpCenterLayout
-        helpCenters={helpCenters}
-        articles={helpCenterArticles}
-        allUsers={allUsers}
         onSaveArticle={handleSaveArticle}
-        onDataRefresh={fetchData}
         />;
       case 'settings': return <SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview} chatMessages={chatMessages} chatContacts={chatContacts} chatConversations={chatConversations} bots={bots} onBotUpdate={handleBotUpdate} onBotAdd={handleBotAdd} />;
       case 'team-timesheets': return <TeamTimesheets {...props} />;
@@ -700,7 +685,7 @@ export default function Dashboard({ view }: { view: string }) {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen min-h-0 bg-background text-foreground">
+      <div className="flex h-screen min-h-0 w-full bg-background text-foreground">
         <AppSidebar
           view={currentView}
           onChangeView={handleViewChange}
@@ -718,7 +703,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeHub={activeHub}
           onHubChange={handleHubChange}
         />
-        <div className="flex flex-1 min-w-0 min-h-0 overflow-hidden">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
           {(currentView === 'tasks' && projects.length > 0) && (
              <ProjectSidebar
               projects={projects}
@@ -729,7 +714,7 @@ export default function Dashboard({ view }: { view: string }) {
           )}
           <main
             className={cn(
-              "flex flex-col flex-1 min-w-0 min-h-0",
+              "flex flex-col flex-1 min-h-0",
               currentView === 'inbox' ||
               currentView === 'tasks' ||
               currentView === 'settings' ||

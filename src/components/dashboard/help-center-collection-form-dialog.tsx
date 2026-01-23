@@ -36,6 +36,7 @@ interface HelpCenterCollectionFormDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   onSave: (values: CollectionFormValues, collectionId?: string) => void;
   collection: HelpCenterCollection | null;
+  parentId?: string;
 }
 
 export default function HelpCenterCollectionFormDialog({
@@ -43,6 +44,7 @@ export default function HelpCenterCollectionFormDialog({
   onOpenChange,
   onSave,
   collection,
+  parentId,
 }: HelpCenterCollectionFormDialogProps) {
   const form = useForm<CollectionFormValues>({
     resolver: zodResolver(collectionSchema),
@@ -61,17 +63,16 @@ export default function HelpCenterCollectionFormDialog({
   const onSubmit = (values: CollectionFormValues) => {
     onSave(values, collection?.id);
   };
+  
+  const title = collection ? 'Edit Folder' : (parentId ? 'New Subfolder' : 'New Folder');
+  const description = collection ? 'Update the folder details.' : 'Create a new folder to organize your articles.';
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {collection ? 'Edit Collection' : 'Create Collection'}
-          </DialogTitle>
-          <DialogDescription>
-            Collections organize your articles so people can find them easily.
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
@@ -93,7 +94,7 @@ export default function HelpCenterCollectionFormDialog({
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
                     <Textarea placeholder="What is this collection about?" {...field} />
                   </FormControl>

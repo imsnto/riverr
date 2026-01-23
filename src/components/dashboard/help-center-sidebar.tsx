@@ -1,128 +1,135 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
 import { Button } from '../ui/button';
-import { Book, Cog, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus } from 'lucide-react';
+import { Book, ChevronRight, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '../ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Separator } from '../ui/separator';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface HelpCenterSidebarProps {
-    helpCenters: HelpCenter[];
-    activeHelpCenter: HelpCenter | null;
-    onSelectHelpCenter: (hc: HelpCenter | null) => void;
-    collections: HelpCenterCollection[];
-    activeView: string;
-    onViewChange: (view: string) => void;
-    onCreateHelpCenter: () => void;
-    onEditHelpCenter: (hc: HelpCenter) => void;
+  collections: HelpCenterCollection[];
+  activeCollectionId: string | null;
+  onSelectCollection: (id: string | null) => void;
+  onNewCollection: (parentId?: string) => void;
+  onEditCollection: (collection: HelpCenterCollection) => void;
 }
 
+interface FolderTreeProps {
+  collections: HelpCenterCollection[];
+  parentId: string | null;
+  level: number;
+  activeCollectionId: string | null;
+  onSelectCollection: (id: string | null) => void;
+  onNewCollection: (parentId?: string) => void;
+  onEditCollection: (collection: HelpCenterCollection) => void;
+}
+
+const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, activeCollectionId, onSelectCollection, onNewCollection, onEditCollection }) => {
+  const children = collections.filter(c => c.parentId === parentId);
+  if (children.length === 0) return null;
+
+  return (
+    <div className={cn(level > 0 && 'pl-4')}>
+      {children.map(collection => {
+        const hasChildren = collections.some(c => c.parentId === collection.id);
+        return (
+          <Collapsible key={collection.id} defaultOpen={true}>
+            <div className={cn("group flex items-center justify-between rounded-md pr-1", activeCollectionId === collection.id && "bg-accent")}>
+              <CollapsibleTrigger asChild className={cn(!hasChildren && 'pointer-events-none')}>
+                <Button 
+                  variant="ghost" 
+                  className={cn(
+                    "w-full justify-start text-sm h-9 flex-1",
+                    activeCollectionId === collection.id && "font-semibold"
+                  )}
+                  onClick={() => onSelectCollection(collection.id)}
+                >
+                  {hasChildren ? <ChevronRight className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" /> : <div className="w-6 shrink-0"/>}
+                  <Folder className="mr-2 h-4 w-4"/>
+                  <span className="truncate">{collection.name}</span>
+                </Button>
+              </CollapsibleTrigger>
+              <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100">
+                          <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => onNewCollection(collection.id)}>
+                          <Plus className="mr-2 h-4 w-4" /> Add subfolder
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onEditCollection(collection)}>
+                          <Edit className="mr-2 h-4 w-4" /> Rename
+                      </DropdownMenuItem>
+                  </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            {hasChildren && (
+              <CollapsibleContent>
+                <FolderTree
+                  collections={collections}
+                  parentId={collection.id}
+                  level={level + 1}
+                  activeCollectionId={activeCollectionId}
+                  onSelectCollection={onSelectCollection}
+                  onNewCollection={onNewCollection}
+                  onEditCollection={onEditCollection}
+                />
+              </CollapsibleContent>
+            )}
+          </Collapsible>
+        );
+      })}
+    </div>
+  );
+};
+
 export default function HelpCenterSidebar({ 
-    helpCenters,
-    activeHelpCenter,
-    onSelectHelpCenter,
-    collections, 
-    activeView, 
-    onViewChange, 
-    onCreateHelpCenter,
-    onEditHelpCenter
+    collections,
+    activeCollectionId,
+    onSelectCollection,
+    onNewCollection,
+    onEditCollection,
 }: HelpCenterSidebarProps) {
 
     return (
         <aside className="w-full md:w-80 border-r bg-card p-4 flex flex-col">
+            <h2 className="text-xl font-bold px-2 mb-2">Knowledge</h2>
             <div className="relative mb-4">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search..." className="pl-9 h-9" />
             </div>
 
-            <div className="mb-4">
-                <nav className="space-y-1">
-                    <Button variant={activeView === 'all_articles' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('all_articles')}>
-                        <File className="mr-2 h-4 w-4"/> All articles
-                    </Button>
-                    <Button variant={activeView === 'published' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('published')}>
-                        <Layers className="mr-2 h-4 w-4"/> Published
-                    </Button>
-                     <Button variant={activeView === 'draft' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('draft')}>
-                        <CircleDot className="mr-2 h-4 w-4"/> Draft
-                    </Button>
-                </nav>
-            </div>
+            <nav className="space-y-1 mb-4">
+              <Button variant={'ghost'} className="w-full justify-start text-sm h-9">
+                  <Layers className="mr-2 h-4 w-4"/> Sources
+              </Button>
+              <Button variant={'secondary'} className="w-full justify-start text-sm h-9">
+                  <File className="mr-2 h-4 w-4"/> Content
+              </Button>
+            </nav>
             
-            <Separator />
-
-            <div className="py-4 flex-1 overflow-y-auto">
-                 <div className="flex justify-between items-center mb-2 px-2">
-                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Help Centers</h3>
-                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onCreateHelpCenter}>
-                        <Plus className="h-4 w-4"/>
-                    </Button>
-                 </div>
-                 {helpCenters.length > 0 ? (
-                    <nav className="space-y-1">
-                        {helpCenters.map(hc => (
-                            <div key={hc.id}>
-                                <div className={cn("group flex items-center justify-between rounded-md", activeHelpCenter?.id === hc.id && 'bg-accent')}>
-                                    <Button 
-                                        variant="ghost" 
-                                        className="w-full justify-start text-sm h-9 flex-1" 
-                                        onClick={() => onSelectHelpCenter(hc)}
-                                    >
-                                        <Book className="mr-2 h-4 w-4"/>
-                                        <span className="truncate">{hc.name}</span>
-                                    </Button>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                            <DropdownMenuItem onClick={() => onEditHelpCenter(hc)}>
-                                                <Edit className="h-4 w-4 mr-2" />
-                                                Rename
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-
-                                {activeHelpCenter?.id === hc.id && (
-                                    <div className="pl-4 mt-1 space-y-1">
-                                        <Button 
-                                            variant={activeView === `collections_${hc.id}` ? 'secondary' : 'ghost'} 
-                                            className="w-full justify-start text-sm h-9" 
-                                            onClick={() => onViewChange(`collections_${hc.id}`)}
-                                        >
-                                            <Folder className="mr-2 h-4 w-4"/> 
-                                            <span className="truncate">Collections</span>
-                                        </Button>
-
-                                        <Separator className="my-2" />
-
-                                        <Button variant={activeView === `settings_${hc.id}` ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange(`settings_${hc.id}`)}>
-                                            <Cog className="mr-2 h-4 w-4" />
-                                            Settings
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </nav>
-                 ) : (
-                    <div className="text-center text-xs text-muted-foreground px-2 py-4">
-                        <p>No help centers created yet.</p>
-                         <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1" onClick={onCreateHelpCenter}>Create one</Button>
-                    </div>
-                 )}
-            </div>
-
+            <ScrollArea className="flex-1 -mx-4">
+              <div className="px-4">
+                <FolderTree 
+                  collections={collections}
+                  parentId={null}
+                  level={0}
+                  activeCollectionId={activeCollectionId}
+                  onSelectCollection={onSelectCollection}
+                  onNewCollection={onNewCollection}
+                  onEditCollection={onEditCollection}
+                />
+                 <Button variant="ghost" className="w-full justify-start text-sm h-9 mt-1" onClick={() => onNewCollection()}>
+                    <Plus className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">New folder</span>
+                 </Button>
+              </div>
+            </ScrollArea>
         </aside>
     );
 }
