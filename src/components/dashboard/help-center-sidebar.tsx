@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
@@ -173,7 +174,7 @@ export default function HelpCenterSidebar({
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-1 py-1">
                        <FolderTree 
-                            collections={collections.filter(c => c.helpCenterIds === null || c.helpCenterIds === undefined || c.helpCenterIds.length === 0)}
+                            collections={collections}
                             parentId={null}
                             level={0}
                             activeCollectionId={sidebarView === 'library' ? activeCollectionId : null}
