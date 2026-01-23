@@ -1,20 +1,17 @@
+
 'use client';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { HelpCenterArticle, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Bot, Trash2, MessageSquare, Loader2, Share2, Globe, Lock, ArrowLeft } from 'lucide-react';
+import { Bot, Trash2, MessageSquare, Loader2, Share2, Globe, Lock, ArrowLeft, MoreHorizontal, Star } from 'lucide-react';
 import TiptapEditor, { useEditor } from '@/components/document/TiptapEditor';
 import { Editor } from '@tiptap/react';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { formatDistanceToNow } from 'date-fns';
 
 interface HelpCenterArticleEditorProps {
     article: HelpCenterArticle;
@@ -29,11 +26,28 @@ const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
 };
 
+const SaveStatusIndicator = ({ isSaving, lastSaved }: { isSaving: boolean, lastSaved: Date | null }) => {
+    if (isSaving) {
+        return (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Saving...</span>
+            </div>
+        );
+    }
+    if (lastSaved) {
+        return <span className="text-xs text-muted-foreground">Saved {formatDistanceToNow(lastSaved, { addSuffix: true })}</span>;
+    }
+    return null;
+}
+
+
 export default function HelpCenterArticleEditor({ article: initialArticle, onSave, allUsers, appUser, onBack }: HelpCenterArticleEditorProps) {
     const [article, setArticle] = useState(initialArticle);
     const [lastSavedArticle, setLastSavedArticle] = useState(initialArticle);
     const [editor, setEditor] = useState<Editor | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [lastSaved, setLastSaved] = useState<Date | null>(initialArticle.updatedAt ? new Date(initialArticle.updatedAt) : null);
     const { toast } = useToast();
     const author = allUsers.find(u => u.id === article.authorId);
 
@@ -43,75 +57,86 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
         setEditor(editor);
     }, []);
 
-    const handleSave = useCallback(async (docToSave: HelpCenterArticle) => {
-        if (!docToSave.title.trim()) {
-          toast({ variant: 'destructive', title: 'Title is required' });
+    const handleSave = useCallback(async (articleToSave: HelpCenterArticle) => {
+        if (!articleToSave.title.trim()) {
           return;
         }
         if (isSaving) return;
     
         setIsSaving(true);
-        const updatedArticle = { ...docToSave, updatedAt: new Date().toISOString() };
-        onSave(updatedArticle);
-        setArticle(updatedArticle);
-        setLastSavedArticle(updatedArticle);
-        setIsSaving(false);
-        toast({ title: 'Article Saved' });
-    }, [onSave, toast, isSaving]);
+        const updatedArticle = { ...articleToSave, updatedAt: new Date().toISOString() };
+        
+        setTimeout(() => {
+            onSave(updatedArticle);
+            setArticle(updatedArticle);
+            setLastSavedArticle(updatedArticle);
+            setLastSaved(new Date(updatedArticle.updatedAt));
+            setIsSaving(false);
+        }, 500);
+        
+    }, [onSave, isSaving]);
     
+    // Auto-save logic
+    useEffect(() => {
+        if (hasUnsavedChanges) {
+        const timer = setTimeout(() => {
+            handleSave(article);
+        }, 1500); // Save 1.5 seconds after last change
+
+        return () => clearTimeout(timer);
+        }
+    }, [article, hasUnsavedChanges, handleSave]);
+
+
     const handleContentChange = (newContent: string) => {
         setArticle(prev => ({ ...prev, content: newContent }));
     }
 
-    const handlePublish = () => {
+    const handlePublish = async () => {
         const newStatus = article.status === 'published' ? 'draft' : 'published';
-        const updatedArticle = { ...article, status: newStatus };
-        handleSave(updatedArticle);
+        const updatedArticle = { ...article, status: newStatus, updatedAt: new Date().toISOString() };
+        onSave(updatedArticle); // onSave is already debounced, but we want to publish now
+        setArticle(updatedArticle);
+        setLastSavedArticle(updatedArticle);
+        setLastSaved(new Date(updatedArticle.updatedAt));
+        toast({ title: newStatus === 'published' ? 'Article Published' : 'Article reverted to draft' });
     };
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="flex flex-wrap justify-between items-center mb-2 gap-2">
-                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={onBack}>
-                        <ArrowLeft className="h-5 w-5" />
+        <div className="flex flex-col h-full items-center p-4 md:p-8">
+            <div className="w-full max-w-4xl flex-1 flex flex-col">
+                 <div className="flex justify-between items-center mb-4">
+                    <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
+                        <ArrowLeft className="h-4 w-4 mr-2" /> Back
                     </Button>
-                    <div>
-                        <p className="text-sm text-muted-foreground">Edit Article</p>
+                    <div className="flex items-center gap-4">
+                        <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
+                        <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
+                            {article.status === 'draft' ? 'Draft' : 'Published'}
+                        </Badge>
+                        <Button variant="outline" size="sm" onClick={handlePublish}>
+                            {article.status === 'published' ? 'Unpublish' : 'Publish'}
+                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Delete Article</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">More</Button>
-                    <Button variant="outline" size="sm">Settings</Button>
-                    <Button variant="secondary" size="sm" onClick={() => handleSave(article)} disabled={isSaving || !hasUnsavedChanges}>
-                        {isSaving ? 'Saving...' : 'Save Draft'}
-                    </Button>
-                    <Button onClick={handlePublish} size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                        {article.status === 'published' ? 'Unpublish' : 'Publish'}
-                    </Button>
-                </div>
-            </div>
 
-            <div className="flex items-center gap-4 mb-4 text-xs text-muted-foreground">
-            </div>
-
-            <div className="flex items-center gap-2 mb-4">
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                            <span className="mr-2 h-2 w-2 rounded-full bg-yellow-500"/>
-                            English (EN)
-                        </Button>
-                    </DropdownMenuTrigger>
-                </DropdownMenu>
-                <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : ''}>{article.status === 'draft' ? 'Draft' : 'Published'}</Badge>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto">
                 <Input 
                     value={article.title}
                     onChange={(e) => setArticle(prev => ({...prev, title: e.target.value}))}
-                    className="text-2xl font-bold border-none focus-visible:ring-0 p-0 h-auto mb-4"
+                    className="text-4xl font-bold border-none focus-visible:ring-0 p-0 h-auto mb-4 tracking-tight"
                     placeholder="Article Title"
                 />
                 
@@ -121,7 +146,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                             <AvatarImage src={author.avatarUrl} />
                             <AvatarFallback>{getInitials(author.name)}</AvatarFallback>
                         </Avatar>
-                        <span className="text-xs">Written by {author.name}</span>
+                        <span className="text-xs text-muted-foreground">Written by {author.name}</span>
                     </div>
                 )}
                 

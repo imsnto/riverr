@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Editor, EditorContent, useEditor, BubbleMenu } from '@tiptap/react';
+import { Editor, EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Bold from '@tiptap/extension-bold';
 import Italic from '@tiptap/extension-italic';
@@ -50,7 +50,7 @@ export default function TiptapEditor({ content, onChange, onBlur, onEditorInstan
     content,
     editorProps: {
       attributes: {
-        class: 'prose dark:prose-invert max-w-full focus:outline-none min-h-[400px]',
+        class: 'prose dark:prose-invert max-w-none focus:outline-none min-h-[400px]',
       },
     },
     onUpdate: ({ editor }) => {
@@ -92,15 +92,6 @@ export default function TiptapEditor({ content, onChange, onBlur, onEditorInstan
 
   return (
     <>
-      {editor && !isMobile && (
-        <BubbleMenu 
-            editor={editor} 
-            tippyOptions={{ duration: 100 }}
-            className="bg-card border border-border rounded-lg shadow-xl"
-        >
-            <Toolbar editor={editor} />
-        </BubbleMenu>
-      )}
       <EditorContent editor={editor} />
       {editor && isMobile && (
         <div 

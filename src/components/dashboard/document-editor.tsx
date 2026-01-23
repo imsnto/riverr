@@ -5,8 +5,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Document, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Bot, Trash2, MessageSquare, Loader2, Share2, Globe, Lock, MoreHorizontal, Star } from 'lucide-react';
-import { Separator } from '../ui/separator';
+import { ArrowLeft, Bot, Trash2, MessageSquare, Loader2, Share2, Star, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import TiptapEditor, { useEditor } from '@/components/document/TiptapEditor';
 import { useAuth } from '@/hooks/use-auth';
@@ -15,7 +14,6 @@ import AssistantPanel from './AssistantPanel';
 import { useRouter } from 'next/navigation';
 import { Editor } from '@tiptap/react';
 import NewDocumentDialog from './new-document-dialog';
-import { updateDocument } from '@/lib/db';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
@@ -26,6 +24,22 @@ interface DocumentEditorProps {
   onSave: (doc: Document) => Promise<void>;
   onDelete: (docId: string) => Promise<void>;
 }
+
+const SaveStatusIndicator = ({ isSaving, lastSaved }: { isSaving: boolean, lastSaved: Date | null }) => {
+    if (isSaving) {
+        return (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Saving...</span>
+            </div>
+        );
+    }
+    if (lastSaved) {
+        return <span className="text-xs text-muted-foreground">Saved {formatDistanceToNow(lastSaved, { addSuffix: true })}</span>;
+    }
+    return null;
+}
+
 
 export default function DocumentEditor({
   initialDocument,
@@ -53,25 +67,22 @@ export default function DocumentEditor({
 
   const handleSave = useCallback(async (docToSave: Document) => {
     if (!docToSave.name.trim()) {
-      // Don't toast here as it can be annoying on auto-save
-      // but do prevent saving a doc without a title.
-      return null;
+      return;
     }
-    if (isSaving) return null;
+    if (isSaving) return;
 
     setIsSaving(true);
     const updatedDoc = { ...docToSave, updatedAt: new Date().toISOString() };
-    await onSave(updatedDoc);
     
     // Using setTimeout to ensure the "Saving..." state is visible for a moment
-    setTimeout(() => {
+    setTimeout(async () => {
+        await onSave(updatedDoc);
         setDocument(updatedDoc);
         setLastSavedDocument(updatedDoc);
         setLastSaved(new Date(updatedDoc.updatedAt));
         setIsSaving(false);
     }, 500);
 
-    return updatedDoc;
   }, [onSave, isSaving]);
   
   // Auto-save logic
@@ -114,36 +125,17 @@ export default function DocumentEditor({
         comments: [...(document.comments || []), newComment]
     };
     
-    // Optimistically update UI and let auto-save handle persistence
     setDocument(updatedDocWithComment);
   };
 
   const handleSharingSave = async (sharingData: Partial<Document>) => {
       const updatedDoc = { ...document, ...sharingData };
-      const savedDoc = await handleSave(updatedDoc);
-      if (savedDoc) {
-        setIsShareOpen(false);
-        toast({ title: 'Sharing settings updated' });
-      }
+      await handleSave(updatedDoc);
+      setIsShareOpen(false);
+      toast({ title: 'Sharing settings updated' });
   };
   
   if (!appUser || isMobile === undefined) return null;
-
-  const SaveStatusIndicator = () => {
-    if (isSaving) {
-        return (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Saving...</span>
-            </div>
-        );
-    }
-    if (!hasUnsavedChanges && lastSaved) {
-        return <span className="text-xs text-muted-foreground">Saved</span>;
-    }
-    return null;
-  }
-
 
   // Mobile View
   if (isMobile) {
@@ -155,7 +147,7 @@ export default function DocumentEditor({
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div className="text-xs text-muted-foreground">
-                        <SaveStatusIndicator />
+                        <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
                     </div>
                     <div className="flex items-center">
                         <Button variant="ghost" size="icon" onClick={() => setIsShareOpen(true)}>
@@ -236,17 +228,16 @@ export default function DocumentEditor({
     <div className="flex flex-col md:flex-row gap-0 h-screen">
       <div className="flex-1 flex flex-col p-4 md:p-8 overflow-y-auto">
         
-        {/* New Header */}
         <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-muted-foreground hover:text-foreground">
+                <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-muted-foreground hover:text-foreground -ml-2">
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Documents
                 </Button>
             </div>
 
             <div className="flex items-center gap-2">
-                 <SaveStatusIndicator />
+                 <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
                 
                 <Button variant="ghost" size="sm" onClick={() => setIsShareOpen(true)}>
                     Share
