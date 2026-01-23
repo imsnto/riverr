@@ -363,9 +363,9 @@ export interface HelpCenterCollection {
   id: string;
   name: string;
   description: string;
-  helpCenterId: string | null;
   hubId: string;
   parentId: string | null;
+  helpCenterIds?: string[];
 }
 
 export interface HelpCenterArticle {
@@ -373,7 +373,8 @@ export interface HelpCenterArticle {
   title: string;
   content: string;
   status: 'draft' | 'published';
-  collectionIds: string[];
+  folderId: string | null;
+  helpCenterIds?: string[];
   audience: string;
   type: 'article' | 'snippet' | 'pdf';
   authorId: string;

@@ -9,11 +9,12 @@ import { Button } from '../ui/button';
 import { addHelpCenterCollection, updateHelpCenterCollection, getHelpCenterCollections, getHelpCenterArticles, addHelpCenterArticle, getHelpCenters, updateHelpCenterArticle } from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
-import { FolderPlus, Plus, Search, ChevronRight } from 'lucide-react';
+import { FolderPlus, Plus, Search, ChevronRight, Move, Link as LinkIcon } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
-import AddArticlesToCollectionDialog from './add-articles-to-collection-dialog';
+import MoveToFolderDialog from './move-to-folder-dialog';
+import AddToHelpCenterDialog from './add-to-help-center-dialog';
 
 interface HelpCenterLayoutProps {
     onSaveArticle: (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => Promise<HelpCenterArticle | void>;
@@ -50,7 +51,9 @@ export default function HelpCenterLayout({
     const [editingCollection, setEditingCollection] = useState<HelpCenterCollection | null>(null);
     
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
-    const [addArticlesToCollection, setAddArticlesToCollection] = useState<HelpCenterCollection | null>(null);
+    const [isMoveToFolderOpen, setIsMoveToFolderOpen] = useState(false);
+    const [isAddToHCOpen, setIsAddToHCOpen] = useState(false);
+
     
     const { toast } = useToast();
 
@@ -88,7 +91,6 @@ export default function HelpCenterLayout({
             ...values,
             hubId: activeHub.id,
             parentId: editingCollection ? editingCollection.parentId : (sidebarView === 'library' ? selectedCollectionId : null),
-            helpCenterId: editingCollection ? editingCollection.helpCenterId : (sidebarView === 'help-centers' ? activeHelpCenterId : null),
         };
 
         if (collectionId) {
@@ -108,7 +110,7 @@ export default function HelpCenterLayout({
         title: '',
         content: '<h1></h1>',
         status: 'draft',
-        collectionIds: sidebarView === 'library' && selectedCollectionId ? [selectedCollectionId] : [],
+        folderId: sidebarView === 'library' ? selectedCollectionId : null,
         authorId: appUser.id,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -162,7 +164,7 @@ export default function HelpCenterLayout({
         } else if (sidebarView === 'help-centers' && activeHelpCenterId) {
             const hc = helpCenters.find(h => h.id === activeHelpCenterId);
             viewTitle = hc?.name || 'Help Center';
-            foldersToShow = collections.filter(c => c.helpCenterId === activeHelpCenterId && !c.parentId);
+            foldersToShow = collections.filter(c => c.helpCenterIds?.includes(activeHelpCenterId));
         } else if (sidebarView === 'library') {
             if (selectedCollectionId) {
                 const collection = collections.find(c => c.id === selectedCollectionId);
@@ -175,11 +177,11 @@ export default function HelpCenterLayout({
                 }
 
                 foldersToShow = collections.filter(c => c.parentId === selectedCollectionId);
-                articlesToShow = articles.filter(a => (a.collectionIds || []).includes(selectedCollectionId!));
+                articlesToShow = articles.filter(a => a.folderId === selectedCollectionId);
 
             } else {
                 viewTitle = 'Content Library';
-                foldersToShow = collections.filter(c => c.helpCenterId === null && c.parentId === null);
+                foldersToShow = collections.filter(c => !c.parentId);
             }
         }
         
@@ -195,37 +197,40 @@ export default function HelpCenterLayout({
         }
     }
 
-    const handleAddArticlesToCollection = async (articleIds: string[]) => {
-      if (!addArticlesToCollection) return;
-      
-      const collectionId = addArticlesToCollection.id;
-      
-      const articlesToAdd = articleIds.filter(id => !articles.find(a => a.id === id)?.collectionIds?.includes(collectionId));
-      const articlesToRemove = articles
-        .filter(a => (a.collectionIds || []).includes(collectionId) && !articleIds.includes(a.id))
-        .map(a => a.id);
+    const handleMoveSelected = async (folderId: string | null) => {
+        const promises = selectedItems.map(itemId => {
+            const article = articles.find(a => a.id === itemId);
+            if (article) {
+                return updateHelpCenterArticle(itemId, { folderId });
+            }
+            const collection = collections.find(c => c.id === itemId);
+            if (collection) {
+                return updateHelpCenterCollection(itemId, { parentId: folderId });
+            }
+            return Promise.resolve();
+        });
+        await Promise.all(promises);
+        toast({ title: `${selectedItems.length} item(s) moved.` });
+        refreshData();
+        setSelectedItems([]);
+    };
 
-      const promises: Promise<void>[] = [];
-
-      articlesToAdd.forEach(articleId => {
-        const article = articles.find(a => a.id === articleId);
-        if (article) {
-            const newCollectionIds = [...(article.collectionIds || []), collectionId];
-            promises.push(updateHelpCenterArticle(articleId, { collectionIds: newCollectionIds }));
-        }
-      });
-      
-      articlesToRemove.forEach(articleId => {
-        const article = articles.find(a => a.id === articleId);
-        if (article) {
-          const newCollectionIds = (article.collectionIds || []).filter(id => id !== collectionId);
-          promises.push(updateHelpCenterArticle(articleId, { collectionIds: newCollectionIds }));
-        }
-      });
-      
-      await Promise.all(promises);
-      toast({ title: `Updated articles in "${addArticlesToCollection.name}"` });
-      refreshData();
+    const handleAddToHelpCenters = async (helpCenterIds: string[]) => {
+        const promises = selectedItems.map(itemId => {
+            const article = articles.find(a => a.id === itemId);
+            if (article) {
+                return updateHelpCenterArticle(itemId, { helpCenterIds });
+            }
+            const collection = collections.find(c => c.id === itemId);
+            if (collection) {
+                return updateHelpCenterCollection(itemId, { helpCenterIds });
+            }
+            return Promise.resolve();
+        });
+        await Promise.all(promises);
+        toast({ title: `Updated Help Center associations.` });
+        refreshData();
+        setSelectedItems([]);
     };
     
     if (selectedArticleId) {
@@ -265,7 +270,7 @@ export default function HelpCenterLayout({
                 onViewChange={handleViewChange}
             />
             <main className="overflow-y-auto p-4 md:p-6 flex flex-col">
-                {breadcrumbs.length > 0 && (
+                {sidebarView === 'library' && breadcrumbs.length > 0 && (
                     <Breadcrumbs crumbs={breadcrumbs} onCrumbClick={(id) => {
                         handleSelectCollection(id);
                         setSidebarView('library');
@@ -295,8 +300,12 @@ export default function HelpCenterLayout({
                  {selectedItems.length > 0 && (
                      <div className="flex items-center gap-2 mb-4 p-2 border rounded-md bg-muted/50">
                         <span className="text-sm font-medium">{selectedItems.length} item(s) selected</span>
-                        <Button variant="secondary" size="sm">Change AI Agent state</Button>
-                        <Button variant="secondary" size="sm">Change AI Copilot state</Button>
+                        <Button variant="secondary" size="sm" onClick={() => setIsMoveToFolderOpen(true)}>
+                            <Move className="mr-2 h-4 w-4" /> Move...
+                        </Button>
+                        <Button variant="secondary" size="sm" onClick={() => setIsAddToHCOpen(true)}>
+                            <LinkIcon className="mr-2 h-4 w-4" /> Add to Help Center...
+                        </Button>
                      </div>
                  )}
                 <div className="flex-1 -mx-4 md:-mx-6 overflow-hidden">
@@ -321,15 +330,19 @@ export default function HelpCenterLayout({
                 collection={editingCollection}
                 parentId={selectedCollectionId || undefined}
             />
-            {addArticlesToCollection && (
-                <AddArticlesToCollectionDialog
-                    isOpen={!!addArticlesToCollection}
-                    onOpenChange={() => setAddArticlesToCollection(null)}
-                    collection={addArticlesToCollection}
-                    allArticles={articles}
-                    onSave={handleAddArticlesToCollection}
-                />
-            )}
+            <MoveToFolderDialog
+                isOpen={isMoveToFolderOpen}
+                onOpenChange={setIsMoveToFolderOpen}
+                collections={collections}
+                onMove={handleMoveSelected}
+            />
+            <AddToHelpCenterDialog
+                isOpen={isAddToHCOpen}
+                onOpenChange={setIsAddToHCOpen}
+                helpCenters={helpCenters}
+                selectedItems={combinedItems.filter(i => selectedItems.includes(i.id))}
+                onSave={handleAddToHelpCenters}
+            />
         </div>
     );
 }
