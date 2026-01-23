@@ -523,23 +523,25 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
             {/* Mobile Header */}
             <div className="md:hidden w-full min-w-0 mb-4 space-y-4 p-4">
                 <div className="flex items-center justify-between">
-                <Button variant="ghost" size="icon" onClick={onBack}>
-                    <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <h1 className="text-lg font-semibold">Projects</h1>
-                <div className="flex items-center gap-2">
-                    {projectMembers.slice(0, 3).map(member => (
-                        <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
-                            <AvatarImage src={member.avatarUrl} alt={member.name} />
-                            <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                        </Avatar>
-                    ))}
-                    {projectMembers.length > 3 && (
-                        <Avatar className="h-8 w-8 border-2 border-background">
-                            <AvatarFallback>+{projectMembers.length - 3}</AvatarFallback>
-                        </Avatar>
-                    )}
-                </div>
+                    <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" className="-ml-2" onClick={onBack}>
+                            <ArrowLeft className="h-5 w-5" />
+                        </Button>
+                        <h1 className="text-lg font-semibold">Projects</h1>
+                    </div>
+                    <div className="flex -space-x-2 overflow-hidden">
+                        {projectMembers.slice(0, 3).map(member => (
+                            <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
+                                <AvatarImage src={member.avatarUrl} alt={member.name} />
+                                <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                            </Avatar>
+                        ))}
+                        {projectMembers.length > 3 && (
+                            <Avatar className="h-8 w-8 border-2 border-background">
+                                <AvatarFallback>+{projectMembers.length - 3}</AvatarFallback>
+                            </Avatar>
+                        )}
+                    </div>
                 </div>
                 <div className="flex items-center justify-between">
                     <h2 className="text-2xl font-bold">{project.name}</h2>
