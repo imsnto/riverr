@@ -15,6 +15,7 @@ import {
   deleteDoc,
   writeBatch,
   arrayUnion,
+  arrayRemove,
   limit,
   Timestamp,
   serverTimestamp,
@@ -1197,4 +1198,41 @@ export const updateHelpCenterArticle = async (articleId: string, data: Partial<H
   await updateDoc(articleRef, data);
 };
 
+export const updateHelpCenterContent = async (
+    helpCenterId: string,
+    selectedIds: { articles: string[], collections: string[] },
+    allArticles: HelpCenterArticle[],
+    allCollections: HelpCenterCollection[]
+) => {
+    const batch = writeBatch(db);
+
+    // Process articles
+    allArticles.forEach(article => {
+        const articleRef = doc(db, 'help_center_articles', article.id);
+        const shouldBeInHC = selectedIds.articles.includes(article.id);
+        const isInHC = article.helpCenterIds?.includes(helpCenterId);
+
+        if (shouldBeInHC && !isInHC) {
+            batch.update(articleRef, { helpCenterIds: arrayUnion(helpCenterId) });
+        } else if (!shouldBeInHC && isInHC) {
+            batch.update(articleRef, { helpCenterIds: arrayRemove(helpCenterId) });
+        }
+    });
+
+    // Process collections
+    allCollections.forEach(collection => {
+        const collectionRef = doc(db, 'help_center_collections', collection.id);
+        const shouldBeInHC = selectedIds.collections.includes(collection.id);
+        const isInHC = collection.helpCenterIds?.includes(helpCenterId);
+
+        if (shouldBeInHC && !isInHC) {
+            batch.update(collectionRef, { helpCenterIds: arrayUnion(helpCenterId) });
+        } else if (!shouldBeInHC && isInHC) {
+            batch.update(collectionRef, { helpCenterIds: arrayRemove(helpCenterId) });
+        }
+    });
     
+    await batch.commit();
+}
+    
+

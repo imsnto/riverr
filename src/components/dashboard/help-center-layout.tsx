@@ -6,16 +6,17 @@ import { HelpCenter, HelpCenterCollection, HelpCenterArticle, User } from '@/lib
 import HelpCenterArticleEditor from './help-center-article-editor';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
-import { addHelpCenterCollection, updateHelpCenterCollection, getHelpCenterCollections, getHelpCenterArticles, addHelpCenterArticle, getHelpCenters, updateHelpCenterArticle } from '@/lib/db';
+import { addHelpCenterCollection, updateHelpCenterCollection, getHelpCenterCollections, getHelpCenterArticles, addHelpCenterArticle, getHelpCenters, updateHelpCenterArticle, updateHelpCenterContent } from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
-import { FolderPlus, Plus, Search, ChevronRight, Move, Link as LinkIcon } from 'lucide-react';
+import { FolderPlus, Plus, Search, ChevronRight, Move, Link as LinkIcon, Library } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import MoveToFolderDialog from './move-to-folder-dialog';
 import AddToHelpCenterDialog from './add-to-help-center-dialog';
 import AddArticlesToCollectionDialog from './add-articles-to-collection-dialog';
+import ManageHelpCenterContentDialog from './manage-help-center-content-dialog';
 
 interface HelpCenterLayoutProps {
     onSaveArticle: (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => Promise<HelpCenterArticle | void>;
@@ -55,6 +56,7 @@ export default function HelpCenterLayout({
     const [isMoveToFolderOpen, setIsMoveToFolderOpen] = useState(false);
     const [isAddToHCOpen, setIsAddToHCOpen] = useState(false);
     const [isManageArticlesOpen, setIsManageArticlesOpen] = useState(false);
+    const [isManageContentOpen, setIsManageContentOpen] = useState(false);
 
     
     const { toast } = useToast();
@@ -129,7 +131,10 @@ export default function HelpCenterLayout({
     };
     
     const handleSelectArticle = (articleId: string) => {
-        setSelectedArticleId(articleId);
+        const article = articles.find(a => a.id === articleId);
+        if (article) {
+             setSelectedArticleId(article.id);
+        }
     }
 
     const handleViewChange = (view: HelpCenterSidebarView) => {
@@ -190,6 +195,7 @@ export default function HelpCenterLayout({
             } else {
                 viewTitle = 'Content Library';
                 foldersToShow = collections.filter(c => !c.parentId);
+                articlesToShow = articles.filter(a => !a.folderId);
             }
         }
         
@@ -273,6 +279,19 @@ export default function HelpCenterLayout({
         
         setIsManageArticlesOpen(false);
     };
+
+    const handleManageContentSave = async (selectedIds: { articles: string[], collections: string[] }) => {
+        if (!activeHelpCenterId) return;
+
+        try {
+            await updateHelpCenterContent(activeHelpCenterId, selectedIds, articles, collections);
+            toast({ title: "Help Center content updated" });
+            refreshData();
+        } catch (e) {
+            console.error(e);
+            toast({ variant: "destructive", title: "Failed to update content" });
+        }
+    };
     
     if (selectedArticleId) {
         const articleToEdit = articles.find(a => a.id === selectedArticleId);
@@ -297,6 +316,7 @@ export default function HelpCenterLayout({
     }
     
     const selectedCollection = collections.find(c => c.id === selectedCollectionId);
+    const activeHelpCenter = helpCenters.find(hc => hc.id === activeHelpCenterId);
 
     return (
         <div className="grid h-full grid-cols-1 md:grid-cols-[320px_1fr]">
@@ -324,6 +344,11 @@ export default function HelpCenterLayout({
                         {title}
                     </h1>
                      <div className="flex items-center gap-2">
+                        {sidebarView === 'help-centers' && activeHelpCenterId && (
+                             <Button variant="outline" onClick={() => setIsManageContentOpen(true)}>
+                                <Library className="mr-2 h-4 w-4" /> Manage Content
+                            </Button>
+                        )}
                         {sidebarView === 'library' && selectedCollectionId && (
                              <Button variant="outline" onClick={() => setIsManageArticlesOpen(true)}>
                                 Manage Articles
@@ -398,6 +423,16 @@ export default function HelpCenterLayout({
                     collection={selectedCollection}
                     allArticles={articles}
                     onSave={handleSaveArticlesToCollection}
+                />
+            )}
+            {activeHelpCenter && (
+                <ManageHelpCenterContentDialog
+                    isOpen={isManageContentOpen}
+                    onOpenChange={setIsManageContentOpen}
+                    helpCenter={activeHelpCenter}
+                    allArticles={articles}
+                    allCollections={collections}
+                    onSave={handleManageContentSave}
                 />
             )}
         </div>
