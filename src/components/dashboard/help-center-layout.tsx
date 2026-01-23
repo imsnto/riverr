@@ -85,7 +85,7 @@ export default function HelpCenterLayout({
         }
     };
 
-    const onSaveArticle = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle> => {
+    const onSaveArticle = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>): Promise<void> => {
         let savedArticle: HelpCenterArticle;
 
         if ('id' in article && article.id) {
@@ -106,7 +106,6 @@ export default function HelpCenterLayout({
         }
         
         refreshData();
-        return savedArticle;
     };
     
     const handleNewCollection = (parentId?: string) => {
@@ -146,7 +145,7 @@ export default function HelpCenterLayout({
     const handleCreateArticle = async () => {
       if (!appUser || !activeHub) return;
       const newArticleData: Omit<HelpCenterArticle, 'id'> = {
-        title: 'New Untitled Article',
+        title: '',
         content: '<h1></h1>',
         status: 'draft',
         folderId: sidebarView === 'library' ? selectedCollectionId : null,
@@ -347,7 +346,7 @@ export default function HelpCenterLayout({
                    key={articleToEdit.id}
                    article={articleToEdit} 
                    onSave={async (article) => { 
-                       await onSaveArticle(article);
+                       await onSaveArticle(article as HelpCenterArticle);
                        refreshData();
                    }}
                    allUsers={[]}

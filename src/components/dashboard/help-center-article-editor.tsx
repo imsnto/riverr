@@ -16,7 +16,7 @@ import HelpCenterArticleShareDialog from './help-center-article-share-dialog';
 
 interface HelpCenterArticleEditorProps {
     article: HelpCenterArticle;
-    onSave: (article: HelpCenterArticle) => void;
+    onSave: (article: HelpCenterArticle) => Promise<void>;
     allUsers: User[];
     appUser: User;
     onBack: () => void;
@@ -67,8 +67,8 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
         setIsSaving(true);
         const updatedArticle = { ...articleToSave, updatedAt: new Date().toISOString() };
         
-        setTimeout(() => {
-            onSave(updatedArticle);
+        setTimeout(async () => {
+            await onSave(updatedArticle);
             setArticle(updatedArticle);
             setLastSavedArticle(updatedArticle);
             setLastSaved(new Date(updatedArticle.updatedAt));
@@ -97,7 +97,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                 if (firstNode && firstNode.type.name === 'heading' && firstNode.textContent) {
                     newTitle = firstNode.textContent;
                 } else if (firstNode && firstNode.textContent === '' && prevArticle.title !== '') {
-                    newTitle = 'Untitled Article';
+                    newTitle = '';
                 }
             }
             return { ...prevArticle, title: newTitle, content: newContent };
@@ -107,7 +107,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
     const handlePublish = async () => {
         const newStatus = article.status === 'published' ? 'draft' : 'published';
         const updatedArticle = { ...article, status: newStatus, updatedAt: new Date().toISOString() };
-        onSave(updatedArticle);
+        await onSave(updatedArticle);
         setArticle(updatedArticle);
         setLastSavedArticle(updatedArticle);
         setLastSaved(new Date(updatedArticle.updatedAt));
@@ -123,28 +123,28 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
 
     return (
         <div className="flex flex-col h-full">
-            <div className="w-full shrink-0 px-4 md:px-8 pt-8">
+            <div className="w-full shrink-0 px-4 md:px-8 pt-4 md:pt-8">
                 <div className="max-w-4xl mx-auto">
                     <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
                             <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
                                 <ArrowLeft className="h-4 w-4 mr-2" /> Back
                             </Button>
                             /
-                             <div className="flex items-center gap-2">
-                                {article.isPublic === false ? <Lock className="h-4 w-4 text-muted-foreground" /> : <Globe className="h-4 w-4 text-muted-foreground" />}
+                             <div className="flex items-center gap-2 min-w-0">
+                                {article.isPublic === false ? <Lock className="h-4 w-4 text-muted-foreground shrink-0" /> : <Globe className="h-4 w-4 text-muted-foreground shrink-0" />}
                                 <Input
                                     value={article.title}
                                     onChange={(e) => {
                                         setIsTitleDerived(false);
                                         setArticle(prev => ({...prev, title: e.target.value}))
                                     }}
-                                    className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground"
+                                    className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground truncate"
                                     placeholder="Article Title"
                                 />
                             </div>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 md:gap-4 shrink-0">
                             <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
                             <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
                                 {article.status === 'draft' ? 'Draft' : 'Published'}
@@ -183,8 +183,11 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                 </div>
             </div>
             
-            <div className="flex-1 flex justify-center pt-12 md:pt-4 overflow-y-auto px-4 md:px-8">
-                <div className="w-full max-w-4xl">
+            <div className="flex-1 flex justify-center overflow-y-auto px-4 md:px-8">
+                <div className="w-full max-w-4xl relative">
+                     <div className="sticky top-0 z-10 bg-background py-2">
+                        <Toolbar editor={editor!} />
+                    </div>
                     <TiptapEditor 
                         content={article.content}
                         onChange={handleContentChange}
