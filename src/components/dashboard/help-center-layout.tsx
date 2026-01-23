@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -105,7 +106,7 @@ export default function HelpCenterLayout({
       if (!appUser || !activeHub) return;
       const newArticleData: Omit<HelpCenterArticle, 'id'> = {
         title: '',
-        content: '',
+        content: '<h1></h1>',
         status: 'draft',
         collectionIds: sidebarView === 'library' && selectedCollectionId ? [selectedCollectionId] : [],
         authorId: appUser.id,

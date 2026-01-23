@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Document, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +58,7 @@ export default function DocumentEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(initialDocument.updatedAt ? new Date(initialDocument.updatedAt) : null);
   const isMobile = useIsMobile();
+  const [isTitleDerived, setIsTitleDerived] = useState(initialDocument.name === '');
   
   const hasUnsavedChanges = JSON.stringify(document) !== JSON.stringify(lastSavedDocument);
 
@@ -66,11 +67,6 @@ export default function DocumentEditor({
   }, []);
 
   const handleSave = useCallback(async (docToSave: Document) => {
-    if (!docToSave.name.trim()) {
-      // Temporarily allow saving untitled docs, but maybe prompt user in the future.
-      // toast({ variant: 'destructive', title: "Document title cannot be empty" });
-      // return;
-    }
     if (isSaving) return;
 
     setIsSaving(true);
@@ -98,10 +94,22 @@ export default function DocumentEditor({
   }, [document, hasUnsavedChanges, handleSave]);
   
   const handleContentChange = (newContent: string) => {
-    setDocument(prev => ({ ...prev, content: newContent }));
-  }
+    setDocument(prevDoc => {
+        let newTitle = prevDoc.name;
+        if (editor && isTitleDerived) {
+            const firstNode = editor.state.doc.content.firstChild;
+            if (firstNode && firstNode.type.name === 'heading' && firstNode.textContent) {
+                newTitle = firstNode.textContent;
+            } else if (firstNode && firstNode.textContent === '') {
+                newTitle = '';
+            }
+        }
+        return { ...prevDoc, name: newTitle, content: newContent };
+    });
+  };
   
   const handleTitleChange = (newTitle: string) => {
+    setIsTitleDerived(false);
     setDocument(prev => ({ ...prev, name: newTitle }));
   }
 
@@ -228,60 +236,64 @@ export default function DocumentEditor({
   return (
     <>
     <div className="flex flex-col md:flex-row gap-0 h-screen">
-      <div className="flex-1 flex flex-col px-4 md:px-8 pt-4 pb-4 overflow-y-auto">
+      <div className="flex-1 flex flex-col overflow-y-auto">
         
-        <div className="flex justify-between items-center mb-4">
-             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-muted-foreground hover:text-foreground">
-                    <ArrowLeft className="h-4 w-4" />
-                </Button>
-                /
-                <Input 
-                    value={document.name}
-                    onChange={(e) => handleTitleChange(e.target.value)}
-                    placeholder="Untitled"
-                    className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground"
-                />
-            </div>
-
-            <div className="flex items-center gap-2">
-                 <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
-                
-                <Button variant="ghost" size="sm" onClick={() => setIsShareOpen(true)}>
-                    Share
-                </Button>
-
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Star className="h-4 w-4" />
-                </Button>
-
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
+        <div className="px-4 md:px-8 pt-4 shrink-0">
+            <div className="max-w-4xl mx-auto">
+                <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-muted-foreground hover:text-foreground">
+                            <ArrowLeft className="h-4 w-4" />
                         </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setSidebarView(sidebarView === 'comments' ? null : 'comments')}>
-                            <MessageSquare className="mr-2 h-4 w-4" />
-                            <span>Comments ({document.comments?.length || 0})</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setSidebarView(sidebarView === 'ai' ? null : 'ai')}>
-                            <Bot className="mr-2 h-4 w-4" />
-                            <span>AI Assistant</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            <span>Delete Document</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                        /
+                        <Input 
+                            value={document.name}
+                            onChange={(e) => handleTitleChange(e.target.value)}
+                            placeholder="Untitled"
+                            className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground"
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
+                        
+                        <Button variant="ghost" size="sm" onClick={() => setIsShareOpen(true)}>
+                            Share
+                        </Button>
+
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Star className="h-4 w-4" />
+                        </Button>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setSidebarView(sidebarView === 'comments' ? null : 'comments')}>
+                                    <MessageSquare className="mr-2 h-4 w-4" />
+                                    <span>Comments ({document.comments?.length || 0})</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setSidebarView(sidebarView === 'ai' ? null : 'ai')}>
+                                    <Bot className="mr-2 h-4 w-4" />
+                                    <span>AI Assistant</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Delete Document</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div className="flex-1 flex flex-col items-center">
-            <div className="w-full max-w-4xl flex-1 flex flex-col">
+        <div className="flex-1 flex justify-center pt-12 md:pt-16 px-4">
+            <div className="w-full max-w-4xl">
                 <TiptapEditor 
                     content={document.content} 
                     onChange={handleContentChange} 

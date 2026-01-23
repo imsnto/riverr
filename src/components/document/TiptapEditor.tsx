@@ -48,6 +48,7 @@ export default function TiptapEditor({ content, onChange, onBlur, onEditorInstan
       FontSize,
     ],
     content,
+    autofocus: 'end',
     editorProps: {
       attributes: {
         class: 'prose dark:prose-invert max-w-none focus:outline-none min-h-[400px]',

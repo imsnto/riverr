@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -84,7 +85,7 @@ export default function DocumentsView({ activeSpace, appUser, allUsers, activeHu
     const now = new Date().toISOString();
     const newDocData: Omit<Document, 'id'> = {
         name: '',
-        content: '',
+        content: '<h1></h1>',
         spaceId: activeSpace.id,
         hubId: activeHub.id,
         createdBy: appUser.id,

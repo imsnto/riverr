@@ -49,6 +49,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(initialArticle.updatedAt ? new Date(initialArticle.updatedAt) : null);
     const { toast } = useToast();
+    const [isTitleDerived, setIsTitleDerived] = useState(initialArticle.title === '');
     const author = allUsers.find(u => u.id === article.authorId);
 
     const hasUnsavedChanges = JSON.stringify(article) !== JSON.stringify(lastSavedArticle);
@@ -58,9 +59,6 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
     }, []);
 
     const handleSave = useCallback(async (articleToSave: HelpCenterArticle) => {
-        if (!articleToSave.title.trim()) {
-          return;
-        }
         if (isSaving) return;
     
         setIsSaving(true);
@@ -89,8 +87,19 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
 
 
     const handleContentChange = (newContent: string) => {
-        setArticle(prev => ({ ...prev, content: newContent }));
-    }
+        setArticle(prevArticle => {
+            let newTitle = prevArticle.title;
+            if (editor && isTitleDerived) {
+                const firstNode = editor.state.doc.content.firstChild;
+                if (firstNode && firstNode.type.name === 'heading' && firstNode.textContent) {
+                    newTitle = firstNode.textContent;
+                } else if (firstNode && firstNode.textContent === '') {
+                    newTitle = '';
+                }
+            }
+            return { ...prevArticle, title: newTitle, content: newContent };
+        });
+    };
 
     const handlePublish = async () => {
         const newStatus = article.status === 'published' ? 'draft' : 'published';
@@ -103,60 +112,69 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
     };
 
     return (
-        <div className="flex flex-col h-full items-center px-4 md:px-8 pt-4 pb-4">
-            <div className="w-full max-w-4xl flex-1 flex flex-col">
-                 <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
-                            <ArrowLeft className="h-4 w-4 mr-2" /> Back
-                        </Button>
-                        /
-                        <Input
-                            value={article.title}
-                            onChange={(e) => setArticle(prev => ({...prev, title: e.target.value}))}
-                            className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground"
-                            placeholder="Article Title"
-                        />
+        <div className="flex flex-col h-full">
+            <div className="w-full shrink-0 px-4 md:px-8 pt-4">
+                <div className="max-w-4xl mx-auto">
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
+                                <ArrowLeft className="h-4 w-4 mr-2" /> Back
+                            </Button>
+                            /
+                            <Input
+                                value={article.title}
+                                onChange={(e) => {
+                                    setIsTitleDerived(false);
+                                    setArticle(prev => ({...prev, title: e.target.value}))
+                                }}
+                                className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground"
+                                placeholder="Article Title"
+                            />
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
+                            <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
+                                {article.status === 'draft' ? 'Draft' : 'Published'}
+                            </Badge>
+                            <Button variant="outline" size="sm" onClick={handlePublish}>
+                                {article.status === 'published' ? 'Unpublish' : 'Publish'}
+                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        <span>Delete Article</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
-                        <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
-                            {article.status === 'draft' ? 'Draft' : 'Published'}
-                        </Badge>
-                        <Button variant="outline" size="sm" onClick={handlePublish}>
-                            {article.status === 'published' ? 'Unpublish' : 'Publish'}
-                        </Button>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    <span>Delete Article</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
+                    
+                    {author && (
+                        <div className="flex items-center gap-2 mb-4">
+                            <Avatar className="h-6 w-6">
+                                <AvatarImage src={author.avatarUrl} />
+                                <AvatarFallback>{getInitials(author.name)}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs text-muted-foreground">Written by {author.name}</span>
+                        </div>
+                    )}
                 </div>
-                
-                {author && (
-                    <div className="flex items-center gap-2 mb-4">
-                        <Avatar className="h-6 w-6">
-                            <AvatarImage src={author.avatarUrl} />
-                            <AvatarFallback>{getInitials(author.name)}</AvatarFallback>
-                        </Avatar>
-                        <span className="text-xs text-muted-foreground">Written by {author.name}</span>
-                    </div>
-                )}
-                
-                <TiptapEditor 
-                    content={article.content}
-                    onChange={handleContentChange}
-                    onEditorInstance={onEditorInstance}
-                />
+            </div>
+            
+            <div className="flex-1 flex justify-center pt-12 md:pt-16 overflow-y-auto px-4">
+                <div className="w-full max-w-4xl">
+                    <TiptapEditor 
+                        content={article.content}
+                        onChange={handleContentChange}
+                        onEditorInstance={onEditorInstance}
+                    />
+                </div>
             </div>
         </div>
     );
