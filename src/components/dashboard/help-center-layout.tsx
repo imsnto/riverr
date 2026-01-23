@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -118,7 +119,7 @@ export default function HelpCenterLayout({
       
       const newArticle = await addHelpCenterArticle(newArticleData);
       if (newArticle) {
-        refreshData();
+        setArticles(prev => [...prev, newArticle]);
         handleSelectArticle(newArticle.id);
       }
     };
@@ -145,47 +146,48 @@ export default function HelpCenterLayout({
         setSelectedItems(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     }
     
-    const { currentItems, title, breadcrumbs } = React.useMemo(() => {
-        let items: (HelpCenterCollection | HelpCenterArticle)[] = [];
+    const { combinedItems, title, breadcrumbs } = React.useMemo(() => {
+        let foldersToShow: HelpCenterCollection[] = [];
+        let articlesToShow: HelpCenterArticle[] = [];
         let breadcrumbs: HelpCenterCollection[] = [];
         let viewTitle = 'Knowledge Base';
 
         if (sidebarView === 'all-articles') {
             viewTitle = 'All Articles';
-            items = articles;
+            articlesToShow = articles;
         } else if (sidebarView === 'help-centers' && activeHelpCenterId) {
             const hc = helpCenters.find(h => h.id === activeHelpCenterId);
             viewTitle = hc?.name || 'Help Center';
-            items = collections.filter(c => c.helpCenterId === activeHelpCenterId && !c.parentId);
+            foldersToShow = collections.filter(c => c.helpCenterId === activeHelpCenterId && !c.parentId);
         } else if (sidebarView === 'library') {
             if (selectedCollectionId) {
-                const folder = collections.find(c => c.id === selectedCollectionId);
-                viewTitle = folder?.name || 'Folder';
+                const collection = collections.find(c => c.id === selectedCollectionId);
+                viewTitle = collection?.name || 'Folder';
                 
-                let currentFolder = folder;
-                while (currentFolder) {
-                    breadcrumbs.unshift(currentFolder);
-                    currentFolder = collections.find(c => c.id === currentFolder!.parentId);
+                let currentCollection = collection;
+                while (currentCollection) {
+                    breadcrumbs.unshift(currentCollection);
+                    currentCollection = collections.find(c => c.id === currentCollection!.parentId);
                 }
 
-                const subFolders = collections.filter(c => c.parentId === selectedCollectionId);
-                const folderArticles = articles.filter(a => a.collectionIds && a.collectionIds.includes(selectedCollectionId));
-                items = [...subFolders, ...folderArticles];
+                foldersToShow = collections.filter(c => c.parentId === selectedCollectionId);
+                articlesToShow = articles.filter(a => a.collectionIds?.includes(selectedCollectionId!));
+
             } else {
                 viewTitle = 'Content Library';
-                items = collections.filter(c => c.helpCenterId === null && c.parentId === null);
+                foldersToShow = collections.filter(c => c.helpCenterId === null && c.parentId === null);
             }
         }
         
-        return { currentItems: items, title: viewTitle, breadcrumbs };
+        return { combinedItems: [...foldersToShow, ...articlesToShow], title: viewTitle, breadcrumbs };
 
     }, [sidebarView, selectedCollectionId, activeHelpCenterId, articles, collections, helpCenters]);
 
     const handleToggleAll = () => {
-        if (selectedItems.length === currentItems.length) {
+        if (selectedItems.length === combinedItems.length) {
             setSelectedItems([]);
         } else {
-            setSelectedItems(currentItems.map(i => i.id));
+            setSelectedItems(combinedItems.map(i => i.id));
         }
     }
 
@@ -297,12 +299,12 @@ export default function HelpCenterLayout({
                     <ScrollArea className="h-full">
                       <div className="px-4 md:px-6">
                         <HelpCenterArticleList
-                            items={currentItems}
+                            items={combinedItems}
                             onSelectItem={(id, type) => type === 'article' ? handleSelectArticle(id) : handleSelectCollection(id)}
                             selectedItems={selectedItems}
                             onToggleSelectItem={handleToggleSelectItem}
                             onToggleAll={handleToggleAll}
-                            isAllSelected={currentItems.length > 0 && selectedItems.length === currentItems.length}
+                            isAllSelected={combinedItems.length > 0 && selectedItems.length === combinedItems.length}
                         />
                       </div>
                     </ScrollArea>
