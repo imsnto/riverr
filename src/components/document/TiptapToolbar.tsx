@@ -25,13 +25,15 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Toggle } from '@/components/ui/toggle';
 import { EditLink } from './EditLink';
-import { useCallback } from 'react';
+import { useState } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Input } from '../ui/input';
 
 type Props = {
   editor: Editor;
@@ -40,24 +42,30 @@ type Props = {
 const FONT_SIZES = ['12px', '14px', '16px', '18px', '24px', '30px', '36px'];
 
 export function Toolbar({ editor }: Props) {
-  const addImage = useCallback(() => {
-    const url = window.prompt('URL');
+  const [imageUrl, setImageUrl] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  
+  const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
+  const [youtubePopoverOpen, setYoutubePopoverOpen] = useState(false);
 
-    if (url) {
-      editor.chain().focus().setImage({ src: url }).run();
+  const addImage = () => {
+    if (imageUrl) {
+      editor.chain().focus().setImage({ src: imageUrl }).run();
     }
-  }, [editor]);
-
+    setImageUrl('');
+    setImagePopoverOpen(false);
+  };
+  
   const addYoutubeVideo = () => {
-    const url = prompt('Enter YouTube URL');
-
-    if (url) {
+    if (youtubeUrl) {
       editor.commands.setYoutubeVideo({
-        src: url,
+        src: youtubeUrl,
         width: 640,
         height: 360,
       });
     }
+    setYoutubeUrl('');
+    setYoutubePopoverOpen(false);
   };
 
   const currentFontSize = () => {
@@ -206,13 +214,70 @@ export function Toolbar({ editor }: Props) {
         <Quote className="h-4 w-4" />
       </Toggle>
       <Separator orientation="vertical" className="h-8" />
-      <Button onClick={addImage} size="sm" variant="ghost">
-        <ImageIcon className="h-4 w-4" />
-      </Button>
+       {/* Image Popover */}
+      <Popover open={imagePopoverOpen} onOpenChange={setImagePopoverOpen}>
+        <PopoverTrigger asChild>
+          <Button size="sm" variant="ghost">
+            <ImageIcon className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80">
+          <div className="grid gap-4">
+            <div className="space-y-2">
+              <h4 className="font-medium leading-none">Add Image</h4>
+              <p className="text-sm text-muted-foreground">
+                Paste an image URL.
+              </p>
+            </div>
+            <Input
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://..."
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addImage();
+                }
+              }}
+            />
+            <Button onClick={addImage}>Add Image</Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+      
+      {/* Link Component */}
       <EditLink editor={editor} />
-      <Button onClick={addYoutubeVideo} size="sm" variant="ghost">
-        <Youtube className="h-4 w-4" />
-      </Button>
+      
+      {/* YouTube Popover */}
+      <Popover open={youtubePopoverOpen} onOpenChange={setYoutubePopoverOpen}>
+        <PopoverTrigger asChild>
+          <Button size="sm" variant="ghost">
+            <Youtube className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80">
+          <div className="grid gap-4">
+            <div className="space-y-2">
+              <h4 className="font-medium leading-none">Embed YouTube Video</h4>
+              <p className="text-sm text-muted-foreground">
+                Paste a YouTube video URL.
+              </p>
+            </div>
+            <Input
+              value={youtubeUrl}
+              onChange={(e) => setYoutubeUrl(e.target.value)}
+              placeholder="https://youtube.com/watch?v=..."
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addYoutubeVideo();
+                }
+              }}
+            />
+            <Button onClick={addYoutubeVideo}>Embed Video</Button>
+          </div>
+        </PopoverContent>
+      </Popover>
       <Separator orientation="vertical" className="h-8" />
       <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().undo().run()}>
         <Undo className="h-4 w-4" />

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Link as LinkIcon, Trash } from 'lucide-react';
@@ -10,69 +9,72 @@ import {
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Toggle } from '../ui/toggle';
 
 export function EditLink({ editor }: { editor: Editor }) {
-  const setLink = useCallback(() => {
-    const previousUrl = editor.getAttributes('link').href;
-    const url = window.prompt('URL', previousUrl);
+  const [url, setUrl] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
 
-    // cancelled
-    if (url === null) {
-      return;
+  useEffect(() => {
+    if (isOpen) {
+      const existingUrl = editor.getAttributes('link').href || '';
+      setUrl(existingUrl);
     }
+  }, [isOpen, editor]);
 
-    // empty
+  const handleSave = () => {
+    // If the URL is empty, unset the link
     if (url === '') {
       editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      return;
+    } else {
+      // Otherwise, set or update the link
+      editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
     }
+    setIsOpen(false);
+  };
 
-    // update link
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-  }, [editor]);
+  const handleRemove = () => {
+    editor.chain().focus().extendMarkRange('link').unsetLink().run();
+    setIsOpen(false);
+  };
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Toggle
-          size="sm"
-          pressed={editor.isActive('link')}
-          onPressedChange={() => {
-            // if link is active, popover will be open, so we don't want to open prompt
-            if (editor.isActive('link')) return;
-            setLink();
-          }}
-        >
+        <Toggle size="sm" pressed={editor.isActive('link')}>
           <LinkIcon className="h-4 w-4" />
         </Toggle>
       </PopoverTrigger>
-      {editor.isActive('link') && (
-        <PopoverContent className="w-80">
-          <div className="grid gap-4">
-            <div className="space-y-2">
-              <h4 className="font-medium leading-none">Edit Link</h4>
-            </div>
-            <div className="flex gap-2">
-              <Input
-                value={editor.getAttributes('link').href}
-                onChange={(e) =>
-                  editor.chain().focus().setLink({ href: e.target.value }).run()
+      <PopoverContent className="w-80">
+        <div className="grid gap-4">
+          <div className="space-y-2">
+            <h4 className="font-medium leading-none">Edit Link</h4>
+            <p className="text-sm text-muted-foreground">
+              Enter a URL. Leave blank to remove the link.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSave();
                 }
-              />
-              <Button
-                variant="destructive"
-                onClick={() =>
-                  editor.chain().focus().unsetLink().run()
-                }
-              >
+              }}
+            />
+            {editor.isActive('link') && (
+              <Button variant="destructive" size="icon" onClick={handleRemove}>
                 <Trash className="h-4 w-4" />
               </Button>
-            </div>
+            )}
           </div>
-        </PopoverContent>
-      )}
+          <Button onClick={handleSave}>Save Link</Button>
+        </div>
+      </PopoverContent>
     </Popover>
   );
 }
