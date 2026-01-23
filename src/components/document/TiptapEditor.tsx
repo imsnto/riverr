@@ -96,7 +96,7 @@ export default function TiptapEditor({ content, onChange, onBlur, onEditorInstan
       <EditorContent editor={editor} />
       {editor && isMobile && (
         <div 
-          className="fixed left-0 right-0 z-10 bg-card border-t p-1 overflow-x-auto transition-all duration-150 ease-in-out"
+          className="fixed left-0 right-0 z-20 bg-card border-t p-1 overflow-x-auto transition-all duration-150 ease-in-out"
           style={{ bottom: `${keyboardHeight}px` }}
         >
             <Toolbar editor={editor} />

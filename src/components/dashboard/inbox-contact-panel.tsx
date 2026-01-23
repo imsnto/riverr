@@ -25,7 +25,7 @@ const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, labe
     <div className="flex items-center text-sm">
         <Icon className="h-4 w-4 w-8 text-muted-foreground" />
         <span className="text-muted-foreground mr-2">{label}:</span>
-        <span className="font-semibold text-right flex-1">{value}</span>
+        <span className="font-semibold text-right flex-1 break-all">{value}</span>
     </div>
 );
 
@@ -42,6 +42,8 @@ export default function InboxContactPanel({ contact, onToggle }: InboxContactPan
     );
   }
 
+  console.log(contact)
+
   return (
     <div className="flex flex-col h-full bg-card border-l">
         {/* Header */}
@@ -53,14 +55,13 @@ export default function InboxContactPanel({ contact, onToggle }: InboxContactPan
                     <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
                 </Avatar>
                 <h3 className="font-semibold">{contact.name}</h3>
-                <p className="text-sm text-muted-foreground">{contact.companyName}</p>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                {/* <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                     <MapPin className="h-3 w-3" />
                     <span>{contact.location}</span>
                     <span className="text-xs">·</span>
                     <span>10:11 PM GMT</span>
-                </div>
-                <div className="flex gap-2 mt-3">
+                </div> */}
+                <div className="flex gap-2 mt-5">
                     <Button variant="outline" size="sm">Add tag...</Button>
                     <Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge>
                 </div>
@@ -79,11 +80,10 @@ export default function InboxContactPanel({ contact, onToggle }: InboxContactPan
                 <div>
                     <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Account</h4>
                     <div className="space-y-2">
-                        <DetailRow icon={AtSign} label="Email" value={contact.email} />
                         <DetailRow icon={Milestone} label="User ID" value={contact.id} />
-                        <DetailRow icon={Calendar} label="Signed up" value="5mth ago" />
-                        <DetailRow icon={Clock} label="Last Seen" value={contact.lastSeen} />
-                        <DetailRow icon={HardDrive} label="Sessions" value={contact.sessions} />
+                        <DetailRow icon={AtSign} label="Email" value={contact.email} />
+                        <DetailRow icon={MapPin} label="Location" value={contact.location} />
+                        <DetailRow icon={Calendar} label="Created" value="2y ago" />
                     </div>
                 </div>
 
@@ -91,14 +91,10 @@ export default function InboxContactPanel({ contact, onToggle }: InboxContactPan
 
                 {/* Company Details */}
                  <div>
-                    <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">{contact.companyName}</h4>
+                    <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Page details</h4>
                     <div className="space-y-2">
-                        <DetailRow icon={Milestone} label="Company ID" value={contact.companyId} />
-                        <DetailRow icon={Clock} label="Last Seen" value="1hr ago" />
-                        <DetailRow icon={Calendar} label="Created" value="2y ago" />
-                        <DetailRow icon={Users} label="Users" value={contact.companyUsers} />
-                        <DetailRow icon={Briefcase} label="Plan" value={contact.companyPlan} />
-                        <DetailRow icon={DollarSign} label="Spend" value={contact.companySpend} />
+                        <DetailRow icon={Milestone} label="Domain" value={contact.companyId} />
+                        <DetailRow icon={Users} label="Pathname" value={contact.companyUsers} />
                     </div>
                 </div>
             </div>

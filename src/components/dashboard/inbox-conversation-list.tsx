@@ -55,6 +55,80 @@ export default function InboxConversationList({
     all: conversations.length,
   }), [conversations, appUser.id]);
 
+  const conversationListContent = (
+    <ScrollArea className="flex-1">
+      {filteredConversations.map(convo => {
+        const contact = contacts.find(c => c.id === convo.contactId);
+        if (!contact) return null;
+        const isSelected = selectedConversationId === convo.id;
+        const youReplied = convo.lastMessageAuthor === appUser.name;
+        console.log({ convo, contact, appUser })
+        return (
+          <div
+            key={convo.id}
+            onClick={() => onSelectConversation(convo.id)}
+            className={cn(
+              "p-4 cursor-pointer border-b !border-b-[#7c808375]",
+              isSelected ? 'bg-primary/10 border-l-4 border-primary' : 'hover:bg-gray/50'
+            )}
+          >
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center space-x-2'>
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={contact.avatarUrl} alt={contact.name} />
+                  <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
+                </Avatar>
+                <p
+                className={cn(
+                  "font-semibold truncate pl-1 text-sm",
+                  isSelected ? 'text-primary' : ''
+                )}
+                >{contact.name}</p>
+              </div>
+              <p
+              className={cn(
+                "text-xs text-muted-foreground whitespace-nowrap pl-2",
+                isSelected ? 'text-white' : ''
+              )}
+              >
+                {format(new Date(convo.lastMessageAt), "d MMM")}
+              </p>
+            </div>
+            <div className="mt-4 overflow-hidden">
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="text-[13px] flex items-center space-x-2 text-muted-foreground truncate">
+                    {youReplied &&
+                      (
+                        <>
+                          {
+                            appUser.avatarUrl ? (
+                              <Avatar className="h-[1.1rem] w-[1.1rem]">
+                                <AvatarImage src={appUser.avatarUrl} alt={appUser.name} />
+                                <AvatarFallback>{getInitials(appUser.name)}</AvatarFallback>
+                              </Avatar>
+                            ) : (
+                              <span className="font-semibold">You: </span>
+                            )
+                          }
+                        </>
+                      )
+                    }
+                    <p className='font-medium truncate w-[260px]'>{convo.lastMessage}</p>
+                  </div>
+                </div>
+              </div>
+              {/* <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                    <MapPin className="h-3 w-3" />
+                    <span>{contact.location}</span>
+                </div> */}
+            </div>
+          </div>
+        );
+      })}
+    </ScrollArea>
+  );
+
   return (
     <div className="flex flex-col h-full border-r bg-card">
       {/* Header */}
@@ -80,68 +154,7 @@ export default function InboxConversationList({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <ScrollArea className="flex-1">
-        {filteredConversations.map(convo => {
-          const contact = contacts.find(c => c.id === convo.contactId);
-          if (!contact) return null;
-          const isSelected = selectedConversationId === convo.id;
-          const youReplied = convo.lastMessageAuthor === appUser.name;
-          
-          return (
-            <div
-              key={convo.id}
-              onClick={() => onSelectConversation(convo.id)}
-              className={cn(
-                "p-4 cursor-pointer border-b border-border",
-                isSelected ? 'bg-primary/10 border-l-4 border-primary' : 'hover:bg-accent/50'
-              )}
-            >
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center space-x-2'>
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={contact.avatarUrl} alt={contact.name} />
-                    <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
-                  </Avatar>
-                  <p
-                  className={cn(
-                    "font-semibold truncate pl-1 text-sm",
-                    isSelected ? 'text-primary' : ''
-                  )}
-                  >{contact.name}</p>
-                </div>
-                <p className="text-xs text-muted-foreground whitespace-nowrap pl-2">
-                  {format(new Date(convo.lastMessageAt), "d MMM")}
-                </p>
-              </div>
-              <div className="mt-4 overflow-hidden">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="text-[13px] flex items-center space-x-2 text-muted-foreground truncate">
-                      {youReplied &&
-                        (
-                          <>
-                            {
-                              appUser.avatarUrl ? (
-                                <Avatar className="h-[1.1rem] w-[1.1rem]">
-                                  <AvatarImage src={appUser.avatarUrl} alt={appUser.name} />
-                                  <AvatarFallback>{getInitials(appUser.name)}</AvatarFallback>
-                                </Avatar>
-                              ) : (
-                                <span className="font-semibold">You: </span>
-                              )
-                            }
-                          </>
-                        )
-                      }
-                      <p className='font-medium'>{convo.lastMessage}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </ScrollArea>
+      {conversationListContent}
     </div>
   );
 }

@@ -19,6 +19,7 @@ import {
   limit,
   Timestamp,
   serverTimestamp,
+  orderBy,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import {
@@ -975,7 +976,7 @@ export const getMessagesForConversations = async (conversationIds: string[]): Pr
     // Firestore 'in' query is limited to 30 items
     for (let i = 0; i < conversationIds.length; i+=30) {
         const chunk = conversationIds.slice(i, i + 30);
-        const q = query(collection(db, 'chat_messages'), where('conversationId', 'in', chunk));
+        const q = query(collection(db, 'chat_messages'), where('conversationId', 'in', chunk), orderBy('timestamp', 'asc'));
         const snapshot = await getDocs(q);
         snapshot.forEach(doc => {
             messages.push({ id: doc.id, ...doc.data() } as ChatMessage);
