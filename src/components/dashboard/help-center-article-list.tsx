@@ -1,6 +1,6 @@
 'use client';
 
-import { HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
+import { HelpCenter, HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Checkbox } from '../ui/checkbox';
 import { Folder, FileText, Lock } from 'lucide-react';
@@ -10,6 +10,7 @@ import { Button } from '../ui/button';
 
 interface HelpCenterArticleListProps {
   items: (HelpCenterArticle | HelpCenterCollection)[];
+  helpCenters: HelpCenter[];
   onSelectItem: (id: string, type: 'article' | 'collection') => void;
   selectedItems: string[];
   onToggleSelectItem: (id: string) => void;
@@ -19,6 +20,7 @@ interface HelpCenterArticleListProps {
 
 export default function HelpCenterArticleList({ 
   items, 
+  helpCenters,
   onSelectItem, 
   selectedItems,
   onToggleSelectItem,
@@ -81,10 +83,22 @@ export default function HelpCenterArticleList({
                 <Badge variant="outline">Everyone</Badge>
               </TableCell>
               <TableCell>
-                {type === 'article' ? formatDistanceToNow(new Date((item as HelpCenterArticle).updatedAt), { addSuffix: true }) : '-'}
+                {type === 'article' && (item as HelpCenterArticle).updatedAt ? 
+                  formatDistanceToNow(new Date((item as HelpCenterArticle).updatedAt), { addSuffix: true }) : 
+                  '-'
+                }
               </TableCell>
               <TableCell>
-                {item.helpCenterId || '—'}
+                {item.helpCenterIds && item.helpCenterIds.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                        {item.helpCenterIds.map(hcId => {
+                            const hc = helpCenters.find(h => h.id === hcId);
+                            return hc ? <Badge key={hc.id} variant="secondary">{hc.name}</Badge> : null;
+                        })}
+                    </div>
+                ) : (
+                    '—'
+                )}
               </TableCell>
             </TableRow>
           )

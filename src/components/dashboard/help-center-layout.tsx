@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -134,13 +133,7 @@ export default function HelpCenterLayout({
         const article = articles.find(a => a.id === articleId);
         if (article) {
              setSelectedArticleId(article.id);
-             setArticles(prev => {
-                // This forces a re-render of the editor if the same article is selected
-                if (prev.find(a => a.id === articleId)) {
-                    return [...prev];
-                }
-                return prev;
-             })
+             refreshData();
         }
     }
 
@@ -351,12 +344,11 @@ export default function HelpCenterLayout({
                         {title}
                     </h1>
                      <div className="flex items-center gap-2">
-                        {sidebarView === 'help-centers' && activeHelpCenterId && (
+                        {sidebarView === 'help-centers' && activeHelpCenterId ? (
                              <Button variant="outline" onClick={() => setIsManageContentOpen(true)}>
                                 <Library className="mr-2 h-4 w-4" /> Manage Content
                             </Button>
-                        )}
-                        {sidebarView !== 'help-centers' && (
+                        ) : (
                             <>
                                 {sidebarView === 'library' && selectedCollectionId && (
                                      <Button variant="outline" onClick={() => setIsManageArticlesOpen(true)}>
@@ -397,6 +389,7 @@ export default function HelpCenterLayout({
                       <div className="px-4 md:px-6">
                         <HelpCenterArticleList
                             items={combinedItems}
+                            helpCenters={helpCenters}
                             onSelectItem={(id, type) => type === 'article' ? handleSelectArticle(id) : handleSelectCollection(id)}
                             selectedItems={selectedItems}
                             onToggleSelectItem={handleToggleSelectItem}
