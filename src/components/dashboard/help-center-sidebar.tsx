@@ -10,7 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { ScrollArea } from '../ui/scroll-area';
 
 interface HelpCenterSidebarProps {
-  // Collections
+  // Collections (Folders)
   collections: HelpCenterCollection[];
   activeCollectionId: string | null;
   onSelectCollection: (id: string | null) => void;
@@ -21,10 +21,10 @@ interface HelpCenterSidebarProps {
   helpCenters: HelpCenter[];
   activeHelpCenterId: string | null;
   onSelectHelpCenter: (id: string | null) => void;
-
-  // Articles
-  articles: HelpCenterArticle[];
-  onSelectArticle: (id: string) => void;
+  
+  // View Control
+  activeView: 'folders' | 'help-centers' | 'articles';
+  onViewChange: (view: 'folders' | 'help-centers' | 'articles') => void;
 }
 
 interface FolderTreeProps {
@@ -121,23 +121,6 @@ const HelpCenterList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: 
     </div>
 );
 
-// New component for Article List
-const ArticleList: React.FC<{ articles: HelpCenterArticle[], onSelect: (id: string) => void }> = ({ articles, onSelect }) => (
-    <div className="space-y-1">
-        {articles.map(article => (
-            <Button
-                key={article.id}
-                variant="ghost"
-                className="w-full justify-start text-sm h-9"
-                onClick={() => onSelect(article.id)}
-            >
-                <FileText className="mr-2 h-4 w-4" />
-                <span className="truncate">{article.title}</span>
-            </Button>
-        ))}
-    </div>
-);
-
 
 export default function HelpCenterSidebar({ 
     collections,
@@ -148,10 +131,9 @@ export default function HelpCenterSidebar({
     helpCenters,
     activeHelpCenterId,
     onSelectHelpCenter,
-    articles,
-    onSelectArticle,
+    activeView,
+    onViewChange,
 }: HelpCenterSidebarProps) {
-    const [activeView, setActiveView] = useState<'folders' | 'help-centers' | 'articles'>('folders');
 
     return (
         <aside className="w-full md:w-80 border-r bg-card p-4 flex flex-col">
@@ -162,13 +144,13 @@ export default function HelpCenterSidebar({
             </div>
 
             <nav className="space-y-1 mb-4">
-              <Button variant={activeView === 'help-centers' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => setActiveView('help-centers')}>
+              <Button variant={activeView === 'help-centers' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('help-centers')}>
                   <Book className="mr-2 h-4 w-4"/> Help Centers
               </Button>
-              <Button variant={activeView === 'folders' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => setActiveView('folders')}>
+              <Button variant={activeView === 'folders' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('folders')}>
                   <Folder className="mr-2 h-4 w-4"/> Folders
               </Button>
-               <Button variant={activeView === 'articles' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => setActiveView('articles')}>
+               <Button variant={activeView === 'articles' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('articles')}>
                   <FileText className="mr-2 h-4 w-4"/> Articles
               </Button>
             </nav>
@@ -199,12 +181,7 @@ export default function HelpCenterSidebar({
                         onSelect={onSelectHelpCenter}
                     />
                 )}
-                {activeView === 'articles' && (
-                    <ArticleList 
-                        articles={articles}
-                        onSelect={onSelectArticle}
-                    />
-                )}
+                {/* Articles list removed from sidebar as per user request */}
               </div>
             </ScrollArea>
         </aside>

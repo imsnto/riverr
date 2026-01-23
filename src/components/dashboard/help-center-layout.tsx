@@ -17,9 +17,13 @@ interface HelpCenterLayoutProps {
     onSaveArticle: (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => Promise<HelpCenterArticle | void>;
 }
 
+type SidebarView = 'folders' | 'help-centers' | 'articles';
+
 export default function HelpCenterLayout({ 
     onSaveArticle, 
 }: HelpCenterLayoutProps) {
+    const [sidebarView, setSidebarView] = useState<SidebarView>('folders');
+
     const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
     const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
     const [activeHelpCenterId, setActiveHelpCenterId] = useState<string | null>(null);
@@ -113,18 +117,33 @@ export default function HelpCenterLayout({
         if (type === 'article') {
             setSelectedArticleId(id);
         } else {
-            setSelectedCollectionId(id);
-            setActiveHelpCenterId(null);
+            handleSelectCollection(id);
         }
     }
     
     const handleSelectArticle = (articleId: string) => {
         setSelectedArticleId(articleId);
     }
+
+    const handleSidebarViewChange = (view: SidebarView) => {
+        setSidebarView(view);
+        // Deselect folder/helpcenter when switching to all articles view
+        if (view === 'articles') {
+            setSelectedCollectionId(null);
+            setActiveHelpCenterId(null);
+        }
+    }
     
+    const handleSelectCollection = (id: string | null) => {
+        setSelectedCollectionId(id);
+        setActiveHelpCenterId(null);
+        setSidebarView('folders');
+    }
+
     const handleSelectHelpCenter = (id: string | null) => {
         setActiveHelpCenterId(id);
         setSelectedCollectionId(null);
+        setSidebarView('help-centers');
     }
 
     const handleToggleSelectItem = (id: string) => {
@@ -134,9 +153,13 @@ export default function HelpCenterLayout({
     const { currentItems, currentFolders, title } = React.useMemo(() => {
         let foldersToShow: HelpCenterCollection[] = [];
         let articlesToShow: HelpCenterArticle[] = [];
-        let viewTitle = 'Content';
+        let viewTitle = 'Knowledge Base';
 
-        if (activeHelpCenterId) {
+        if (sidebarView === 'articles') {
+            viewTitle = 'All Articles';
+            articlesToShow = articles;
+            foldersToShow = [];
+        } else if (activeHelpCenterId) {
             const hc = helpCenters.find(h => h.id === activeHelpCenterId);
             viewTitle = hc?.name || 'Help Center';
             foldersToShow = collections.filter(c => c.helpCenterId === activeHelpCenterId && !c.parentId);
@@ -147,9 +170,8 @@ export default function HelpCenterLayout({
             foldersToShow = collections.filter(c => c.parentId === selectedCollectionId);
             articlesToShow = articles.filter(a => a.collectionIds.includes(selectedCollectionId));
         } else {
-            viewTitle = 'All Folders';
-            foldersToShow = collections.filter(c => !c.parentId);
-            articlesToShow = articles.filter(a => !a.collectionIds || a.collectionIds.length === 0);
+             viewTitle = 'All Articles';
+             articlesToShow = articles;
         }
         
         return {
@@ -158,7 +180,7 @@ export default function HelpCenterLayout({
             title: viewTitle
         };
 
-    }, [selectedCollectionId, activeHelpCenterId, articles, collections, helpCenters]);
+    }, [sidebarView, selectedCollectionId, activeHelpCenterId, articles, collections, helpCenters]);
 
     const combinedItems = [...currentFolders, ...currentItems];
 
@@ -198,17 +220,14 @@ export default function HelpCenterLayout({
             <HelpCenterSidebar
                 collections={collections}
                 activeCollectionId={selectedCollectionId}
-                onSelectCollection={(id) => {
-                    setSelectedCollectionId(id);
-                    setActiveHelpCenterId(null);
-                }}
+                onSelectCollection={handleSelectCollection}
                 onNewCollection={handleNewCollection}
                 onEditCollection={handleEditCollection}
                 helpCenters={helpCenters}
                 activeHelpCenterId={activeHelpCenterId}
                 onSelectHelpCenter={handleSelectHelpCenter}
-                articles={articles}
-                onSelectArticle={handleSelectArticle}
+                activeView={sidebarView}
+                onViewChange={handleSidebarViewChange}
             />
             <main className="overflow-y-auto p-4 md:p-6 flex flex-col">
                 <div className="flex justify-between items-center mb-4">
