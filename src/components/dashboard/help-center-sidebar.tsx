@@ -71,7 +71,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
 
               <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100">
+                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 md:opacity-0 md:group-hover:opacity-100">
                           <MoreHorizontal className="h-4 w-4" />
                       </Button>
                   </DropdownMenuTrigger>
@@ -137,7 +137,7 @@ export default function HelpCenterSidebar({
 }: HelpCenterSidebarProps) {
 
     return (
-        <aside className="w-full md:w-72 border-r bg-card p-4 flex flex-col">
+        <aside className="w-full md:w-64 border-r bg-card p-4 flex flex-col">
             <h2 className="text-xl font-bold px-2 mb-2">Knowledge</h2>
             <div className="relative mb-4">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
