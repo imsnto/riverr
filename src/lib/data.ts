@@ -373,7 +373,7 @@ export interface HelpCenterArticle {
   title: string;
   content: string;
   status: 'draft' | 'published';
-  collectionId: string | null;
+  collectionIds: string[];
   audience: string;
   type: 'article' | 'snippet' | 'pdf';
   authorId: string;

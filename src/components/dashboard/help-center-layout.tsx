@@ -5,13 +5,12 @@ import { HelpCenter, HelpCenterCollection, HelpCenterArticle, User } from '@/lib
 import HelpCenterArticleEditor from './help-center-article-editor';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
-import { addHelpCenterCollection, updateHelpCenterCollection, deleteHelpCenterCollection, getHelpCenterCollections, getHelpCenterArticles, addHelpCenterArticle } from '@/lib/db';
+import { addHelpCenterCollection, updateHelpCenterCollection, getHelpCenterCollections, getHelpCenterArticles, addHelpCenterArticle, getHelpCenters } from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
-import { ArrowLeft, Book, FolderPlus, Plus, Search } from 'lucide-react';
+import { FolderPlus, Plus, Search } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import { Input } from '../ui/input';
-import { Checkbox } from '../ui/checkbox';
 import { ScrollArea } from '../ui/scroll-area';
 
 interface HelpCenterLayoutProps {
@@ -23,8 +22,10 @@ export default function HelpCenterLayout({
 }: HelpCenterLayoutProps) {
     const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
     const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
+    const [activeHelpCenterId, setActiveHelpCenterId] = useState<string | null>(null);
     const { appUser, activeHub } = useAuth();
     
+    const [helpCenters, setHelpCenters] = useState<HelpCenter[]>([]);
     const [collections, setCollections] = useState<HelpCenterCollection[]>([]);
     const [articles, setArticles] = useState<HelpCenterArticle[]>([]);
     
@@ -38,6 +39,7 @@ export default function HelpCenterLayout({
 
     useEffect(() => {
         if (activeHub) {
+            getHelpCenters(activeHub.id).then(setHelpCenters);
             getHelpCenterCollections(activeHub.id).then(setCollections);
             getHelpCenterArticles(activeHub.id).then(setArticles);
         }
@@ -45,6 +47,7 @@ export default function HelpCenterLayout({
     
     const refreshData = () => {
         if (activeHub) {
+            getHelpCenters(activeHub.id).then(setHelpCenters);
             getHelpCenterCollections(activeHub.id).then(setCollections);
             getHelpCenterArticles(activeHub.id).then(setArticles);
         }
@@ -75,7 +78,7 @@ export default function HelpCenterLayout({
             await addHelpCenterCollection({ 
               ...values, 
               hubId: activeHub.id,
-              helpCenterId: null, // No longer tied to a specific help center
+              helpCenterId: activeHelpCenterId,
               parentId: newCollectionParentId || null,
             });
             toast({ title: 'Folder created.' });
@@ -90,7 +93,7 @@ export default function HelpCenterLayout({
         title: 'New Untitled Article',
         content: '<h1>Start writing...</h1>',
         status: 'draft',
-        collectionId: selectedCollectionId,
+        collectionIds: selectedCollectionId ? [selectedCollectionId] : [],
         authorId: appUser.id,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -111,20 +114,54 @@ export default function HelpCenterLayout({
             setSelectedArticleId(id);
         } else {
             setSelectedCollectionId(id);
+            setActiveHelpCenterId(null);
         }
     }
     
     const handleSelectArticle = (articleId: string) => {
         setSelectedArticleId(articleId);
     }
+    
+    const handleSelectHelpCenter = (id: string | null) => {
+        setActiveHelpCenterId(id);
+        setSelectedCollectionId(null);
+    }
 
     const handleToggleSelectItem = (id: string) => {
         setSelectedItems(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     }
     
-    const currentItems = articles.filter(a => a.collectionId === selectedCollectionId);
-    const currentFolders = collections.filter(c => c.parentId === selectedCollectionId);
+    const { currentItems, currentFolders, title } = React.useMemo(() => {
+        let foldersToShow: HelpCenterCollection[] = [];
+        let articlesToShow: HelpCenterArticle[] = [];
+        let viewTitle = 'Content';
+
+        if (activeHelpCenterId) {
+            const hc = helpCenters.find(h => h.id === activeHelpCenterId);
+            viewTitle = hc?.name || 'Help Center';
+            foldersToShow = collections.filter(c => c.helpCenterId === activeHelpCenterId && !c.parentId);
+            articlesToShow = []; 
+        } else if (selectedCollectionId) {
+            const collection = collections.find(c => c.id === selectedCollectionId);
+            viewTitle = collection?.name || 'Folder';
+            foldersToShow = collections.filter(c => c.parentId === selectedCollectionId);
+            articlesToShow = articles.filter(a => a.collectionIds.includes(selectedCollectionId));
+        } else {
+            viewTitle = 'All Folders';
+            foldersToShow = collections.filter(c => !c.parentId);
+            articlesToShow = articles.filter(a => !a.collectionIds || a.collectionIds.length === 0);
+        }
+        
+        return {
+            currentItems: articlesToShow,
+            currentFolders: foldersToShow,
+            title: viewTitle
+        };
+
+    }, [selectedCollectionId, activeHelpCenterId, articles, collections, helpCenters]);
+
     const combinedItems = [...currentFolders, ...currentItems];
+
 
     const handleToggleAll = () => {
         if (selectedItems.length === combinedItems.length) {
@@ -161,21 +198,29 @@ export default function HelpCenterLayout({
             <HelpCenterSidebar
                 collections={collections}
                 activeCollectionId={selectedCollectionId}
-                onSelectCollection={setSelectedCollectionId}
+                onSelectCollection={(id) => {
+                    setSelectedCollectionId(id);
+                    setActiveHelpCenterId(null);
+                }}
                 onNewCollection={handleNewCollection}
                 onEditCollection={handleEditCollection}
+                helpCenters={helpCenters}
+                activeHelpCenterId={activeHelpCenterId}
+                onSelectHelpCenter={handleSelectHelpCenter}
+                articles={articles}
+                onSelectArticle={handleSelectArticle}
             />
             <main className="overflow-y-auto p-4 md:p-6 flex flex-col">
                 <div className="flex justify-between items-center mb-4">
                     <h1 className="text-2xl font-bold">
-                        {selectedCollectionId ? collections.find(c => c.id === selectedCollectionId)?.name : 'Content'}
+                        {title}
                     </h1>
                      <div className="flex items-center gap-2">
                         <Button variant="outline" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
-                            <Plus className="mr-2 h-4 w-4" /> New subfolder
+                            <FolderPlus className="mr-2 h-4 w-4" /> New Folder
                         </Button>
                         <Button onClick={handleCreateArticle}>
-                            <Plus className="mr-2 h-4 w-4" /> New content
+                            <Plus className="mr-2 h-4 w-4" /> New Article
                         </Button>
                     </div>
                 </div>
