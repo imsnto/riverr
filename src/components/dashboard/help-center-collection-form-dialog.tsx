@@ -81,7 +81,7 @@ export default function HelpCenterCollectionFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
+                  <FormLabel>Folder Name</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Getting Started" {...field} />
                   </FormControl>

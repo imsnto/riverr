@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import HelpCenterSidebar from './help-center-sidebar';
+import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
 import { HelpCenter, HelpCenterCollection, HelpCenterArticle, User } from '@/lib/data';
 import HelpCenterArticleEditor from './help-center-article-editor';
 import { useAuth } from '@/hooks/use-auth';
@@ -8,7 +8,7 @@ import { Button } from '../ui/button';
 import { addHelpCenterCollection, updateHelpCenterCollection, getHelpCenterCollections, getHelpCenterArticles, addHelpCenterArticle, getHelpCenters, updateHelpCenterArticle } from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
-import { FolderPlus, Plus, Search } from 'lucide-react';
+import { FolderPlus, Plus, Search, ChevronRight } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
@@ -18,13 +18,24 @@ interface HelpCenterLayoutProps {
     onSaveArticle: (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => Promise<HelpCenterArticle | void>;
 }
 
-type SidebarView = 'folders' | 'help-centers' | 'articles';
+const Breadcrumbs = ({ crumbs, onCrumbClick }: { crumbs: HelpCenterCollection[], onCrumbClick: (id: string | null) => void }) => {
+    return (
+        <nav className="flex items-center text-sm text-muted-foreground mb-4">
+            <Button variant="link" className="p-0 h-auto text-muted-foreground" onClick={() => onCrumbClick(null)}>Content Library</Button>
+            {crumbs.map(crumb => (
+                <React.Fragment key={crumb.id}>
+                    <ChevronRight className="h-4 w-4 mx-1" />
+                    <Button variant="link" className="p-0 h-auto text-muted-foreground" onClick={() => onCrumbClick(crumb.id)}>{crumb.name}</Button>
+                </React.Fragment>
+            ))}
+        </nav>
+    );
+}
 
 export default function HelpCenterLayout({ 
     onSaveArticle, 
 }: HelpCenterLayoutProps) {
-    const [sidebarView, setSidebarView] = useState<SidebarView>('folders');
-
+    const [sidebarView, setSidebarView] = useState<HelpCenterSidebarView>('library');
     const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
     const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
     const [activeHelpCenterId, setActiveHelpCenterId] = useState<string | null>(null);
@@ -36,10 +47,8 @@ export default function HelpCenterLayout({
     
     const [isCollectionDialogOpen, setIsCollectionDialogOpen] = useState(false);
     const [editingCollection, setEditingCollection] = useState<HelpCenterCollection | null>(null);
-    const [newCollectionParentId, setNewCollectionParentId] = useState<string | undefined>(undefined);
-
+    
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
-
     const [addArticlesToCollection, setAddArticlesToCollection] = useState<HelpCenterCollection | null>(null);
     
     const { toast } = useToast();
@@ -60,13 +69,11 @@ export default function HelpCenterLayout({
     
     const handleNewCollection = (parentId?: string) => {
         setEditingCollection(null);
-        setNewCollectionParentId(parentId);
         setIsCollectionDialogOpen(true);
     };
 
     const handleEditCollection = (collection: HelpCenterCollection) => {
         setEditingCollection(collection);
-        setNewCollectionParentId(undefined);
         setIsCollectionDialogOpen(true);
     }
 
@@ -76,16 +83,18 @@ export default function HelpCenterLayout({
             return;
         }
 
+        const data = {
+            ...values,
+            hubId: activeHub.id,
+            parentId: editingCollection ? editingCollection.parentId : (sidebarView === 'library' ? selectedCollectionId : null),
+            helpCenterId: editingCollection ? editingCollection.helpCenterId : (sidebarView === 'help-centers' ? activeHelpCenterId : null),
+        };
+
         if (collectionId) {
-            await updateHelpCenterCollection(collectionId, values);
+            await updateHelpCenterCollection(collectionId, data);
             toast({ title: 'Folder updated.' });
         } else {
-            await addHelpCenterCollection({ 
-              ...values, 
-              hubId: activeHub.id,
-              helpCenterId: activeHelpCenterId,
-              parentId: newCollectionParentId || null,
-            });
+            await addHelpCenterCollection(data);
             toast({ title: 'Folder created.' });
         }
         refreshData();
@@ -98,7 +107,7 @@ export default function HelpCenterLayout({
         title: 'New Untitled Article',
         content: '<h1>Start writing...</h1>',
         status: 'draft',
-        collectionIds: selectedCollectionId ? [selectedCollectionId] : [],
+        collectionIds: sidebarView === 'library' && selectedCollectionId ? [selectedCollectionId] : [],
         authorId: appUser.id,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -113,83 +122,70 @@ export default function HelpCenterLayout({
         handleSelectArticle(newArticle.id);
       }
     };
-
-    const handleSelectItem = (id: string, type: 'article' | 'collection') => {
-        if (type === 'article') {
-            setSelectedArticleId(id);
-        } else {
-            handleSelectCollection(id);
-        }
-    }
     
     const handleSelectArticle = (articleId: string) => {
         setSelectedArticleId(articleId);
     }
 
-    const handleSidebarViewChange = (view: SidebarView) => {
+    const handleViewChange = (view: HelpCenterSidebarView) => {
         setSidebarView(view);
-        if (view === 'articles') {
-            setSelectedCollectionId(null);
-            setActiveHelpCenterId(null);
-        }
+        setSelectedCollectionId(null);
+        setActiveHelpCenterId(null);
     }
     
     const handleSelectCollection = (id: string | null) => {
         setSelectedCollectionId(id);
-        setActiveHelpCenterId(null);
-        setSidebarView('folders');
     }
 
     const handleSelectHelpCenter = (id: string | null) => {
         setActiveHelpCenterId(id);
-        setSelectedCollectionId(null);
-        setSidebarView('help-centers');
     }
 
     const handleToggleSelectItem = (id: string) => {
         setSelectedItems(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     }
     
-    const { currentItems, currentFolders, title } = React.useMemo(() => {
-        let foldersToShow: HelpCenterCollection[] = [];
-        let articlesToShow: HelpCenterArticle[] = [];
+    const { currentItems, title, breadcrumbs } = React.useMemo(() => {
+        let items: (HelpCenterCollection | HelpCenterArticle)[] = [];
+        let breadcrumbs: HelpCenterCollection[] = [];
         let viewTitle = 'Knowledge Base';
 
-        if (sidebarView === 'articles') {
+        if (sidebarView === 'all-articles') {
             viewTitle = 'All Articles';
-            articlesToShow = articles;
-            foldersToShow = [];
-        } else if (activeHelpCenterId) {
+            items = articles;
+        } else if (sidebarView === 'help-centers' && activeHelpCenterId) {
             const hc = helpCenters.find(h => h.id === activeHelpCenterId);
             viewTitle = hc?.name || 'Help Center';
-            foldersToShow = collections.filter(c => c.helpCenterId === activeHelpCenterId && !c.parentId);
-            articlesToShow = []; 
-        } else if (selectedCollectionId) {
-            const collection = collections.find(c => c.id === selectedCollectionId);
-            viewTitle = collection?.name || 'Folder';
-            foldersToShow = collections.filter(c => c.parentId === selectedCollectionId);
-            articlesToShow = articles.filter(a => a.collectionIds?.includes(selectedCollectionId));
-        } else {
-             viewTitle = 'All Articles';
-             articlesToShow = articles;
+            items = collections.filter(c => c.helpCenterId === activeHelpCenterId && !c.parentId);
+        } else if (sidebarView === 'library') {
+            if (selectedCollectionId) {
+                const folder = collections.find(c => c.id === selectedCollectionId);
+                viewTitle = folder?.name || 'Folder';
+                
+                let currentFolder = folder;
+                while (currentFolder) {
+                    breadcrumbs.unshift(currentFolder);
+                    currentFolder = collections.find(c => c.id === currentFolder!.parentId);
+                }
+
+                const subFolders = collections.filter(c => c.parentId === selectedCollectionId);
+                const folderArticles = articles.filter(a => a.collectionIds && a.collectionIds.includes(selectedCollectionId));
+                items = [...subFolders, ...folderArticles];
+            } else {
+                viewTitle = 'Content Library';
+                items = collections.filter(c => c.helpCenterId === null && c.parentId === null);
+            }
         }
         
-        return {
-            currentItems: articlesToShow,
-            currentFolders: foldersToShow,
-            title: viewTitle
-        };
+        return { currentItems: items, title: viewTitle, breadcrumbs };
 
     }, [sidebarView, selectedCollectionId, activeHelpCenterId, articles, collections, helpCenters]);
 
-    const combinedItems = [...currentFolders, ...currentItems];
-
-
     const handleToggleAll = () => {
-        if (selectedItems.length === combinedItems.length) {
+        if (selectedItems.length === currentItems.length) {
             setSelectedItems([]);
         } else {
-            setSelectedItems(combinedItems.map(i => i.id));
+            setSelectedItems(currentItems.map(i => i.id));
         }
     }
 
@@ -198,12 +194,9 @@ export default function HelpCenterLayout({
       
       const collectionId = addArticlesToCollection.id;
       
-      // Find articles to add (newly selected)
-      const articlesToAdd = articleIds.filter(id => !articles.find(a => a.id === id)?.collectionIds.includes(collectionId));
-      
-      // Find articles to remove (deselected)
+      const articlesToAdd = articleIds.filter(id => !articles.find(a => a.id === id)?.collectionIds?.includes(collectionId));
       const articlesToRemove = articles
-        .filter(a => a.collectionIds.includes(collectionId) && !articleIds.includes(a.id))
+        .filter(a => a.collectionIds?.includes(collectionId) && !articleIds.includes(a.id))
         .map(a => a.id);
 
       const promises: Promise<void>[] = [];
@@ -262,20 +255,21 @@ export default function HelpCenterLayout({
                 helpCenters={helpCenters}
                 activeHelpCenterId={activeHelpCenterId}
                 onSelectHelpCenter={handleSelectHelpCenter}
-                activeView={sidebarView}
-                onViewChange={handleSidebarViewChange}
+                sidebarView={sidebarView}
+                onViewChange={handleViewChange}
             />
             <main className="overflow-y-auto p-4 md:p-6 flex flex-col">
+                {breadcrumbs.length > 0 && (
+                    <Breadcrumbs crumbs={breadcrumbs} onCrumbClick={(id) => {
+                        handleSelectCollection(id);
+                        setSidebarView('library');
+                    }} />
+                )}
                 <div className="flex justify-between items-center mb-4">
                     <h1 className="text-2xl font-bold">
                         {title}
                     </h1>
                      <div className="flex items-center gap-2">
-                        {selectedCollectionId && (
-                            <Button variant="outline" onClick={() => setAddArticlesToCollection(collections.find(c => c.id === selectedCollectionId) || null)}>
-                                Add articles
-                            </Button>
-                        )}
                         <Button variant="outline" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
                             <FolderPlus className="mr-2 h-4 w-4" /> New Folder
                         </Button>
@@ -303,12 +297,12 @@ export default function HelpCenterLayout({
                     <ScrollArea className="h-full">
                       <div className="px-4 md:px-6">
                         <HelpCenterArticleList
-                            items={combinedItems}
-                            onSelectItem={handleSelectItem}
+                            items={currentItems}
+                            onSelectItem={(id, type) => type === 'article' ? handleSelectArticle(id) : handleSelectCollection(id)}
                             selectedItems={selectedItems}
                             onToggleSelectItem={handleToggleSelectItem}
                             onToggleAll={handleToggleAll}
-                            isAllSelected={combinedItems.length > 0 && selectedItems.length === combinedItems.length}
+                            isAllSelected={currentItems.length > 0 && selectedItems.length === currentItems.length}
                         />
                       </div>
                     </ScrollArea>
@@ -319,7 +313,7 @@ export default function HelpCenterLayout({
                 onOpenChange={setIsCollectionDialogOpen}
                 onSave={handleSaveCollection}
                 collection={editingCollection}
-                parentId={newCollectionParentId}
+                parentId={selectedCollectionId || undefined}
             />
             {addArticlesToCollection && (
                 <AddArticlesToCollectionDialog

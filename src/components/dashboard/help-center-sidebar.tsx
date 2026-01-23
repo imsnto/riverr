@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { HelpCenter, HelpCenterCollection, HelpCenterArticle } from '@/lib/data';
+import { HelpCenter, HelpCenterCollection } from '@/lib/data';
 import { Button } from '../ui/button';
 import { Book, ChevronRight, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus, GripVertical, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -8,6 +8,9 @@ import { Input } from '../ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { ScrollArea } from '../ui/scroll-area';
+import { Separator } from '../ui/separator';
+
+export type HelpCenterSidebarView = 'help-centers' | 'library' | 'all-articles';
 
 interface HelpCenterSidebarProps {
   // Collections (Folders)
@@ -23,8 +26,8 @@ interface HelpCenterSidebarProps {
   onSelectHelpCenter: (id: string | null) => void;
   
   // View Control
-  activeView: 'folders' | 'help-centers' | 'articles';
-  onViewChange: (view: 'folders' | 'help-centers' | 'articles') => void;
+  sidebarView: HelpCenterSidebarView;
+  onViewChange: (view: HelpCenterSidebarView) => void;
 }
 
 interface FolderTreeProps {
@@ -49,23 +52,20 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
           <Collapsible key={collection.id} defaultOpen={true}>
             <div className={cn("group flex items-center justify-between rounded-md pr-1", activeCollectionId === collection.id && "bg-accent")}>
               
-              <div className="flex items-center flex-1 min-w-0" onClick={() => onSelectCollection(collection.id)}>
-                <CollapsibleTrigger asChild>
-                   <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" disabled={!hasChildren}>
-                      <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                   </Button>
-                </CollapsibleTrigger>
-                <Button 
-                  variant="ghost" 
-                  className={cn(
-                    "w-full justify-start text-sm h-9 flex-1 px-2",
-                    activeCollectionId === collection.id && "font-semibold"
-                  )}
-                >
-                  <Folder className="mr-2 h-4 w-4 shrink-0"/>
-                  <span className="truncate">{collection.name}</span>
-                </Button>
-              </div>
+              <Button 
+                variant="ghost" 
+                className={cn(
+                  "w-full justify-start text-sm h-9 flex-1 px-2",
+                  activeCollectionId === collection.id && "font-semibold"
+                )}
+                onClick={() => onSelectCollection(collection.id)}
+              >
+                 <CollapsibleTrigger asChild>
+                    <ChevronRight className={cn("h-4 w-4 transition-transform duration-200 mr-2 shrink-0", hasChildren ? 'group-data-[state=open]:rotate-90' : 'invisible')} />
+                 </CollapsibleTrigger>
+                <Folder className="mr-2 h-4 w-4 shrink-0"/>
+                <span className="truncate">{collection.name}</span>
+              </Button>
 
               <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -104,7 +104,6 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
 };
 
 
-// New component for Help Center List
 const HelpCenterList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: string | null, onSelect: (id: string | null) => void }> = ({ helpCenters, activeHelpCenterId, onSelect }) => (
     <div className="space-y-1">
         {helpCenters.map(hc => (
@@ -131,7 +130,7 @@ export default function HelpCenterSidebar({
     helpCenters,
     activeHelpCenterId,
     onSelectHelpCenter,
-    activeView,
+    sidebarView,
     onViewChange,
 }: HelpCenterSidebarProps) {
 
@@ -143,28 +142,44 @@ export default function HelpCenterSidebar({
                 <Input placeholder="Search..." className="pl-9 h-9" />
             </div>
 
-            <nav className="space-y-1 mb-4">
-              <Button variant={activeView === 'help-centers' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('help-centers')}>
-                  <Book className="mr-2 h-4 w-4"/> Help Centers
-              </Button>
-              <Button variant={activeView === 'folders' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('folders')}>
-                  <Folder className="mr-2 h-4 w-4"/> Folders
-              </Button>
-               <Button variant={activeView === 'articles' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('articles')}>
-                  <FileText className="mr-2 h-4 w-4"/> Articles
-              </Button>
-            </nav>
-            
             <ScrollArea className="flex-1 -mx-4">
               <div className="px-4">
-                {activeView === 'folders' && (
-                    <>
-                        <FolderTree 
-                            collections={collections}
+                 <Collapsible defaultOpen>
+                    <CollapsibleTrigger className="w-full">
+                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider p-2 text-left w-full flex justify-between items-center">
+                            Help Centers
+                            <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                        </h3>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-1 py-1">
+                        <HelpCenterList 
+                            helpCenters={helpCenters} 
+                            activeHelpCenterId={sidebarView === 'help-centers' ? activeHelpCenterId : null}
+                            onSelect={(id) => {
+                                onSelectHelpCenter(id);
+                                onViewChange('help-centers');
+                            }}
+                        />
+                    </CollapsibleContent>
+                 </Collapsible>
+
+                <Collapsible defaultOpen>
+                    <CollapsibleTrigger className="w-full">
+                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider p-2 text-left w-full flex justify-between items-center">
+                            Content Library
+                            <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                        </h3>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-1 py-1">
+                       <FolderTree 
+                            collections={collections.filter(c => c.helpCenterId === null)}
                             parentId={null}
                             level={0}
-                            activeCollectionId={activeCollectionId}
-                            onSelectCollection={onSelectCollection}
+                            activeCollectionId={sidebarView === 'library' ? activeCollectionId : null}
+                            onSelectCollection={(id) => {
+                                onSelectCollection(id);
+                                onViewChange('library');
+                            }}
                             onNewCollection={onNewCollection}
                             onEditCollection={onEditCollection}
                         />
@@ -172,16 +187,14 @@ export default function HelpCenterSidebar({
                             <Plus className="mr-2 h-4 w-4 text-muted-foreground" />
                             <span className="text-muted-foreground">New folder</span>
                         </Button>
-                    </>
-                )}
-                {activeView === 'help-centers' && (
-                    <HelpCenterList 
-                        helpCenters={helpCenters} 
-                        activeHelpCenterId={activeHelpCenterId}
-                        onSelect={onSelectHelpCenter}
-                    />
-                )}
-                {/* Articles list removed from sidebar as per user request */}
+                    </CollapsibleContent>
+                </Collapsible>
+                
+                <Separator className="my-2" />
+
+                <Button variant={sidebarView === 'all-articles' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('all-articles')}>
+                  <FileText className="mr-2 h-4 w-4"/> All Articles
+              </Button>
               </div>
             </ScrollArea>
         </aside>
