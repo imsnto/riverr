@@ -13,6 +13,7 @@ import { Badge } from '../ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
 import HelpCenterArticleShareDialog from './help-center-article-share-dialog';
+import { Toolbar } from '@/components/document/TiptapToolbar';
 
 interface HelpCenterArticleEditorProps {
     article: HelpCenterArticle;
@@ -67,24 +68,35 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
         setIsSaving(true);
         const updatedArticle = { ...articleToSave, updatedAt: new Date().toISOString() };
         
-        setTimeout(async () => {
+        // Use a timeout to simulate a network request and prevent rapid-fire saves
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        try {
             await onSave(updatedArticle);
             setArticle(updatedArticle);
             setLastSavedArticle(updatedArticle);
             setLastSaved(new Date(updatedArticle.updatedAt));
+        } catch (error) {
+            console.error("Failed to save article:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Save Failed',
+                description: 'Could not save your changes.',
+            });
+        } finally {
             setIsSaving(false);
-        }, 500);
+        }
         
-    }, [onSave, isSaving]);
+    }, [onSave, isSaving, toast]);
     
     // Auto-save logic
     useEffect(() => {
         if (hasUnsavedChanges) {
-        const timer = setTimeout(() => {
-            handleSave(article);
-        }, 1500); // Save 1.5 seconds after last change
+            const timer = setTimeout(() => {
+                handleSave(article);
+            }, 1500); // Save 1.5 seconds after last change
 
-        return () => clearTimeout(timer);
+            return () => clearTimeout(timer);
         }
     }, [article, hasUnsavedChanges, handleSave]);
 
@@ -186,7 +198,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
             <div className="flex-1 flex justify-center overflow-y-auto px-4 md:px-8">
                 <div className="w-full max-w-4xl relative">
                      <div className="sticky top-0 z-10 bg-background py-2">
-                        <Toolbar editor={editor!} />
+                        {editor && <Toolbar editor={editor} />}
                     </div>
                     <TiptapEditor 
                         content={article.content}
