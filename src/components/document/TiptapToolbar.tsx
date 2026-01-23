@@ -48,7 +48,7 @@ export function Toolbar({ editor }: Props) {
 
   const addImage = () => {
     if (imageUrl) {
-      editor.chain().focus().setImage({ src: imageUrl }).run();
+      editor.commands.setImage({ src: imageUrl });
     }
     setImageUrl('');
     // Popover will close on its own
@@ -56,11 +56,11 @@ export function Toolbar({ editor }: Props) {
   
   const addYoutubeVideo = () => {
     if (youtubeUrl) {
-      editor.chain().focus().setYoutubeVideo({
+      editor.commands.setYoutubeVideo({
         src: youtubeUrl,
         width: 640,
         height: 360,
-      }).run();
+      });
     }
     setYoutubeUrl('');
     // Popover will close on its own
