@@ -197,9 +197,6 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
             
             <div className="flex-1 flex justify-center overflow-y-auto px-4 md:px-8">
                 <div className="w-full max-w-4xl relative">
-                     <div className="sticky top-0 z-10 bg-background py-2">
-                        {editor && <Toolbar editor={editor} />}
-                    </div>
                     <TiptapEditor 
                         content={article.content}
                         onChange={handleContentChange}
