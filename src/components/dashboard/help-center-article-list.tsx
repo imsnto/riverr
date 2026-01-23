@@ -7,6 +7,7 @@ import { Folder, FileText, Lock, Globe } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '../ui/button';
+import { Separator } from '../ui/separator';
 
 interface HelpCenterArticleListProps {
   items: (HelpCenterArticle | HelpCenterCollection)[];
@@ -16,6 +17,7 @@ interface HelpCenterArticleListProps {
   onToggleSelectItem: (id: string) => void;
   onToggleAll: () => void;
   isAllSelected: boolean;
+  isMobile: boolean;
 }
 
 export default function HelpCenterArticleList({ 
@@ -25,7 +27,8 @@ export default function HelpCenterArticleList({
   selectedItems,
   onToggleSelectItem,
   onToggleAll,
-  isAllSelected
+  isAllSelected,
+  isMobile
 }: HelpCenterArticleListProps) {
 
   const getItemType = (item: HelpCenterArticle | HelpCenterCollection): 'article' | 'collection' => {
@@ -46,6 +49,44 @@ export default function HelpCenterArticleList({
         default:
             return <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /> Article</div>
     }
+  }
+
+  if (isMobile) {
+    return (
+      <div>
+        <div className="flex items-center justify-between px-2 py-2 text-sm font-medium text-muted-foreground">
+          <div className="flex items-center gap-3">
+            <Checkbox checked={isAllSelected} onCheckedChange={onToggleAll} />
+            <span>Title</span>
+          </div>
+          <span>Type</span>
+        </div>
+        <Separator />
+        <div className="divide-y divide-border">
+          {items.map(item => {
+            const type = getItemType(item);
+            const name = type === 'collection' ? item.name : (item as HelpCenterArticle).title;
+            return (
+              <div key={item.id} className="flex items-center justify-between p-2 rounded-md hover:bg-accent/50" onClick={() => onSelectItem(item.id, type)}>
+                 <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Checkbox
+                        checked={selectedItems.includes(item.id)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleSelectItem(item.id);
+                        }}
+                    />
+                    <span className="font-medium truncate">{name || "Untitled Article"}</span>
+                </div>
+                <div className="flex-shrink-0 w-24 text-right flex justify-end">
+                    {renderType(item)}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
   }
 
   return (

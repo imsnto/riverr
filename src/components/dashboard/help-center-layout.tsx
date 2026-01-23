@@ -146,7 +146,7 @@ export default function HelpCenterLayout({
     const handleCreateArticle = async () => {
       if (!appUser || !activeHub) return;
       const newArticleData: Omit<HelpCenterArticle, 'id'> = {
-        title: '',
+        title: 'New Untitled Article',
         content: '<h1></h1>',
         status: 'draft',
         folderId: sidebarView === 'library' ? selectedCollectionId : null,
@@ -386,17 +386,17 @@ export default function HelpCenterLayout({
                     </Button>
                 </div>
             )}
-            {sidebarView === 'library' && breadcrumbs.length > 0 && (
+            {sidebarView === 'library' && breadcrumbs.length > 0 && !isMobile && (
                 <Breadcrumbs crumbs={breadcrumbs} onCrumbClick={(id) => {
                     handleSelectCollection(id);
                     setSidebarView('library');
                 }} />
             )}
-            <div className="flex justify-between items-center mb-4">
-                <h1 className="text-2xl font-bold">
+            <div className="flex flex-wrap justify-between items-start mb-4 gap-x-4 gap-y-2">
+                <h1 className="text-3xl font-bold leading-tight">
                     {title}
                 </h1>
-                 <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-2 flex-shrink-0">
                     {sidebarView === 'help-centers' && activeHelpCenterId ? (
                          <Button variant="outline" onClick={() => setIsManageContentOpen(true)}>
                             <Library className="mr-2 h-4 w-4" /> Manage Content
@@ -448,6 +448,7 @@ export default function HelpCenterLayout({
                         onToggleSelectItem={handleToggleSelectItem}
                         onToggleAll={handleToggleAll}
                         isAllSelected={combinedItems.length > 0 && selectedItems.length === combinedItems.length}
+                        isMobile={isMobile}
                     />
                   </div>
                 </ScrollArea>
