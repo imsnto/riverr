@@ -23,7 +23,7 @@ interface HelpCenterArticleEditorProps {
 
 const getInitials = (name: string) => {
     if (!name) return '';
-    return name.split(' ').map(n => n[0]).join('');
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
 };
 
 const SaveStatusIndicator = ({ isSaving, lastSaved }: { isSaving: boolean, lastSaved: Date | null }) => {
@@ -95,7 +95,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
     const handlePublish = async () => {
         const newStatus = article.status === 'published' ? 'draft' : 'published';
         const updatedArticle = { ...article, status: newStatus, updatedAt: new Date().toISOString() };
-        onSave(updatedArticle); // onSave is already debounced, but we want to publish now
+        onSave(updatedArticle);
         setArticle(updatedArticle);
         setLastSavedArticle(updatedArticle);
         setLastSaved(new Date(updatedArticle.updatedAt));
@@ -103,12 +103,21 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
     };
 
     return (
-        <div className="flex flex-col h-full items-center p-4 md:p-8">
+        <div className="flex flex-col h-full items-center px-4 md:px-8 pt-4 pb-4">
             <div className="w-full max-w-4xl flex-1 flex flex-col">
                  <div className="flex justify-between items-center mb-4">
-                    <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
-                        <ArrowLeft className="h-4 w-4 mr-2" /> Back
-                    </Button>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
+                            <ArrowLeft className="h-4 w-4 mr-2" /> Back
+                        </Button>
+                        /
+                        <Input
+                            value={article.title}
+                            onChange={(e) => setArticle(prev => ({...prev, title: e.target.value}))}
+                            className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground"
+                            placeholder="Article Title"
+                        />
+                    </div>
                     <div className="flex items-center gap-4">
                         <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
                         <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
@@ -132,13 +141,6 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                         </DropdownMenu>
                     </div>
                 </div>
-
-                <Input 
-                    value={article.title}
-                    onChange={(e) => setArticle(prev => ({...prev, title: e.target.value}))}
-                    className="text-4xl font-bold border-none focus-visible:ring-0 p-0 h-auto mb-4 tracking-tight"
-                    placeholder="Article Title"
-                />
                 
                 {author && (
                     <div className="flex items-center gap-2 mb-4">

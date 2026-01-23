@@ -67,14 +67,15 @@ export default function DocumentEditor({
 
   const handleSave = useCallback(async (docToSave: Document) => {
     if (!docToSave.name.trim()) {
-      return;
+      // Temporarily allow saving untitled docs, but maybe prompt user in the future.
+      // toast({ variant: 'destructive', title: "Document title cannot be empty" });
+      // return;
     }
     if (isSaving) return;
 
     setIsSaving(true);
     const updatedDoc = { ...docToSave, updatedAt: new Date().toISOString() };
     
-    // Using setTimeout to ensure the "Saving..." state is visible for a moment
     setTimeout(async () => {
         await onSave(updatedDoc);
         setDocument(updatedDoc);
@@ -83,7 +84,7 @@ export default function DocumentEditor({
         setIsSaving(false);
     }, 500);
 
-  }, [onSave, isSaving]);
+  }, [onSave, isSaving, toast]);
   
   // Auto-save logic
   useEffect(() => {
@@ -143,13 +144,20 @@ export default function DocumentEditor({
         <>
             <div className="flex flex-col h-screen">
                 <header className="flex justify-between items-center p-2 border-b">
-                    <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                    <div className="text-xs text-muted-foreground">
-                        <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
+                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-muted-foreground hover:text-foreground">
+                            <ArrowLeft className="h-4 w-4" />
+                        </Button>
+                        /
+                        <Input 
+                            value={document.name}
+                            onChange={(e) => handleTitleChange(e.target.value)}
+                            placeholder="Untitled"
+                            className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground"
+                        />
                     </div>
                     <div className="flex items-center">
+                        <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
                         <Button variant="ghost" size="icon" onClick={() => setIsShareOpen(true)}>
                             <Share2 className="h-5 w-5" />
                         </Button>
@@ -171,12 +179,6 @@ export default function DocumentEditor({
                     </div>
                 </header>
                 <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4">
-                    <Input
-                        value={document.name}
-                        onChange={(e) => handleTitleChange(e.target.value)}
-                        placeholder="Untitled Document"
-                        className="text-3xl font-bold border-none focus-visible:ring-0 p-0 h-auto mb-4"
-                    />
                     <TiptapEditor 
                         content={document.content} 
                         onChange={handleContentChange} 
@@ -226,14 +228,20 @@ export default function DocumentEditor({
   return (
     <>
     <div className="flex flex-col md:flex-row gap-0 h-screen">
-      <div className="flex-1 flex flex-col p-4 md:p-8 overflow-y-auto">
+      <div className="flex-1 flex flex-col px-4 md:px-8 pt-4 pb-4 overflow-y-auto">
         
         <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-muted-foreground hover:text-foreground -ml-2">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Documents
+             <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-muted-foreground hover:text-foreground">
+                    <ArrowLeft className="h-4 w-4" />
                 </Button>
+                /
+                <Input 
+                    value={document.name}
+                    onChange={(e) => handleTitleChange(e.target.value)}
+                    placeholder="Untitled"
+                    className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground"
+                />
             </div>
 
             <div className="flex items-center gap-2">
@@ -273,13 +281,7 @@ export default function DocumentEditor({
         </div>
 
         <div className="flex-1 flex flex-col items-center">
-            <div className="w-full max-w-4xl py-4 flex-1 flex flex-col">
-                <Input
-                    value={document.name}
-                    onChange={(e) => handleTitleChange(e.target.value)}
-                    placeholder="Untitled Document"
-                    className="text-4xl font-bold border-none focus-visible:ring-0 p-0 h-auto mb-8 tracking-tight"
-                />
+            <div className="w-full max-w-4xl flex-1 flex flex-col">
                 <TiptapEditor 
                     content={document.content} 
                     onChange={handleContentChange} 
@@ -314,8 +316,8 @@ export default function DocumentEditor({
         isOpen={isShareOpen}
         onOpenChange={setIsShareOpen}
         spaceId={document.spaceId}
-        spaceMembers={allUsers.filter(u => u.role !== 'Admin')} // Simplified logic for space members
-        onCreate={() => {}} // Not used for editing
+        spaceMembers={allUsers.filter(u => u.role !== 'Admin')}
+        onCreate={() => {}}
         isEditing={true}
         initialData={{
             name: document.name,
