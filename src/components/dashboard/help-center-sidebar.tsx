@@ -137,7 +137,7 @@ export default function HelpCenterSidebar({
 }: HelpCenterSidebarProps) {
 
     return (
-        <aside className="w-full md:w-80 border-r bg-card p-4 flex flex-col">
+        <aside className="w-full md:w-72 border-r bg-card p-4 flex flex-col">
             <h2 className="text-xl font-bold px-2 mb-2">Knowledge</h2>
             <div className="relative mb-4">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -146,24 +146,11 @@ export default function HelpCenterSidebar({
 
             <ScrollArea className="flex-1 -mx-4">
               <div className="px-4">
-                 <Collapsible defaultOpen>
-                    <CollapsibleTrigger className="w-full">
-                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider p-2 text-left w-full flex justify-between items-center">
-                            Help Centers
-                            <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                        </h3>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-1 py-1">
-                        <HelpCenterList 
-                            helpCenters={helpCenters} 
-                            activeHelpCenterId={sidebarView === 'help-centers' ? activeHelpCenterId : null}
-                            onSelect={(id) => {
-                                onSelectHelpCenter(id);
-                                onViewChange('help-centers');
-                            }}
-                        />
-                    </CollapsibleContent>
-                 </Collapsible>
+                <Button variant={sidebarView === 'all-articles' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('all-articles')}>
+                  <FileText className="mr-2 h-4 w-4"/> All Articles
+                </Button>
+                
+                <Separator className="my-2" />
 
                 <Collapsible defaultOpen>
                     <CollapsibleTrigger className="w-full">
@@ -192,11 +179,24 @@ export default function HelpCenterSidebar({
                     </CollapsibleContent>
                 </Collapsible>
                 
-                <Separator className="my-2" />
-
-                <Button variant={sidebarView === 'all-articles' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('all-articles')}>
-                  <FileText className="mr-2 h-4 w-4"/> All Articles
-              </Button>
+                 <Collapsible defaultOpen>
+                    <CollapsibleTrigger className="w-full">
+                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider p-2 text-left w-full flex justify-between items-center">
+                            Help Centers
+                            <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                        </h3>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-1 py-1">
+                        <HelpCenterList 
+                            helpCenters={helpCenters} 
+                            activeHelpCenterId={sidebarView === 'help-centers' ? activeHelpCenterId : null}
+                            onSelect={(id) => {
+                                onSelectHelpCenter(id);
+                                onViewChange('help-centers');
+                            }}
+                        />
+                    </CollapsibleContent>
+                 </Collapsible>
               </div>
             </ScrollArea>
         </aside>

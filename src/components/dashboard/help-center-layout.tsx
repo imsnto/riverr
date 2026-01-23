@@ -350,7 +350,7 @@ export default function HelpCenterLayout({
     const activeHelpCenter = helpCenters.find(hc => hc.id === activeHelpCenterId);
 
     return (
-        <div className="grid h-full grid-cols-1 md:grid-cols-[320px_1fr]">
+        <div className="grid h-full grid-cols-1 md:grid-cols-[288px_1fr]">
             <HelpCenterSidebar
                 collections={collections}
                 activeCollectionId={selectedCollectionId}
