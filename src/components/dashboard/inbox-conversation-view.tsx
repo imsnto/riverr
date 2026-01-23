@@ -137,11 +137,13 @@ export default function InboxConversationView({ conversation, messages, contact,
           </p>
         </div>
         {!isContactPanelOpen && (
-          <Button variant="ghost" size="icon" className="hidden md:inline-flex" onClick={onToggleContactPanel}>
+          <Button variant="ghost" size="icon" className="hidden lg:inline-flex" onClick={onToggleContactPanel}>
             <PanelLeftClose className="h-4 w-4" />
           </Button>
         )}
-        
+         <Button variant="ghost" size="icon" className="lg:hidden" onClick={onToggleContactPanel}>
+            <PanelLeftClose className="h-4 w-4" />
+          </Button>
       </div>
 
       {/* Messages */}

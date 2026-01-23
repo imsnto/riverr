@@ -123,7 +123,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
 
     return (
         <div className="flex flex-col h-full">
-            <div className="w-full shrink-0 px-4 md:px-24 pt-8">
+            <div className="w-full shrink-0 px-4 md:px-8 pt-8">
                 <div className="max-w-4xl mx-auto">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -183,7 +183,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                 </div>
             </div>
             
-            <div className="flex-1 flex justify-center pt-12 md:pt-16 overflow-y-auto px-4 md:px-24">
+            <div className="flex-1 flex justify-center pt-12 md:pt-4 overflow-y-auto px-4 md:px-8">
                 <div className="w-full max-w-4xl">
                     <TiptapEditor 
                         content={article.content}

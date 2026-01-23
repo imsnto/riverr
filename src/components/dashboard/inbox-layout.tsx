@@ -75,7 +75,7 @@ export default function InboxLayout({
           !selectedConversationId ? 'hidden md:flex' : 'flex'
         )}
       >
-        <div className={cn("grid h-full", isContactPanelOpen ? "!grid-cols-[1fr] lg:grid-cols-[1fr_380px]" : "grid-cols-[1fr]")}>
+        <div className={cn("grid h-full grid-cols-[1fr]", isContactPanelOpen ? "lg:grid-cols-[1fr_380px]" : "grid-cols-[1fr]")}>
             <InboxConversationView
                 conversation={selectedConversation}
                 messages={messages}

@@ -74,27 +74,35 @@ export default function TiptapEditor({ content, onChange, onBlur, onEditorInstan
     if (!isMobile || !visualViewport) return;
 
     const handleResize = () => {
-      // The space taken up by virtual keyboard and other UI
       const offset = window.innerHeight - visualViewport.height;
       setKeyboardHeight(offset > 0 ? offset : 0);
     };
 
     visualViewport.addEventListener('resize', handleResize);
-    handleResize(); // Initial call
+    handleResize();
 
     return () => {
       visualViewport.removeEventListener('resize', handleResize);
     };
   }, [isMobile]);
 
+  if (!editor) {
+    return null;
+  }
+  
   if (isMobile === undefined) {
-    return null; // Avoid rendering mismatch between server and client
+    return null; // Avoid rendering mismatch
   }
 
   return (
-    <>
+    <div className="flex flex-col gap-4">
+      {!isMobile && (
+        <div className="sticky top-0 z-10 border bg-card rounded-lg p-1">
+            <Toolbar editor={editor} />
+        </div>
+      )}
       <EditorContent editor={editor} />
-      {editor && isMobile && (
+      {isMobile && (
         <div 
           className="fixed left-0 right-0 z-20 bg-card border-t p-1 overflow-x-auto transition-all duration-150 ease-in-out"
           style={{ bottom: `${keyboardHeight}px` }}
@@ -102,6 +110,6 @@ export default function TiptapEditor({ content, onChange, onBlur, onEditorInstan
             <Toolbar editor={editor} />
         </div>
       )}
-    </>
+    </div>
   );
 }
