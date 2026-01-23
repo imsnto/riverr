@@ -277,10 +277,12 @@ export default function Dashboard({ view }: { view: string }) {
     }
   };
   
-  const handleSelectProject = (projectId: string) => {
+  const handleSelectProject = (projectId: string | null) => {
     setSelectedProjectId(projectId);
-    setCurrentView('tasks');
-  }
+    if (projectId) {
+      setCurrentView('tasks');
+    }
+  };
 
   const handleNewProject = () => {
     setEditingProject(null);
@@ -592,16 +594,24 @@ export default function Dashboard({ view }: { view: string }) {
   }
   
   const handleSaveArticle = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle> => {
+    let savedArticle: HelpCenterArticle;
     if ('id' in article && article.id) {
         await db.updateHelpCenterArticle(article.id, article);
-        fetchData();
-        return article as HelpCenterArticle;
+        savedArticle = article;
     } else {
-        const newArticle = await db.addHelpCenterArticle(article as Omit<HelpCenterArticle, 'id'>);
-        fetchData();
-        return newArticle;
+        savedArticle = await db.addHelpCenterArticle(article as Omit<HelpCenterArticle, 'id'>);
     }
-  }
+    // After saving, update the parent folder's timestamp
+    if (savedArticle.folderId) {
+        try {
+            await db.updateHelpCenterCollection(savedArticle.folderId, { updatedAt: new Date().toISOString() });
+        } catch (e) {
+            console.error("Could not update parent folder timestamp", e);
+        }
+    }
+    fetchData(); // Refresh all data to ensure consistency
+    return savedArticle;
+  };
   
   const handleLogTime = async (timeData: Omit<TimeEntry, 'id'>) => {
     const newTimeEntry = await db.addTimeEntry({...timeData, spaceId: activeSpace.id});
