@@ -134,8 +134,13 @@ export default function HelpCenterLayout({
 
     const handleViewChange = (view: HelpCenterSidebarView) => {
         setSidebarView(view);
-        setSelectedCollectionId(null);
-        setActiveHelpCenterId(null);
+        // Only reset selections if the view type is changing
+        if (view !== 'library') {
+            setSelectedCollectionId(null);
+        }
+        if (view !== 'help-centers') {
+            setActiveHelpCenterId(null);
+        }
         setSelectedArticleId(null);
     }
     
@@ -167,6 +172,7 @@ export default function HelpCenterLayout({
             const hc = helpCenters.find(h => h.id === activeHelpCenterId);
             viewTitle = hc?.name || 'Help Center';
             foldersToShow = collections.filter(c => c.helpCenterIds?.includes(activeHelpCenterId));
+            articlesToShow = articles.filter(a => a.helpCenterIds?.includes(activeHelpCenterId));
         } else if (sidebarView === 'library') {
             if (selectedCollectionId) {
                 const collection = collections.find(c => c.id === selectedCollectionId);
