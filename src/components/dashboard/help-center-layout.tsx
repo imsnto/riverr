@@ -9,7 +9,7 @@ import { Button } from '../ui/button';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
-import { FolderPlus, Plus, Search, ChevronRight, Move, Link as LinkIcon, Library } from 'lucide-react';
+import { FolderPlus, Plus, Search, ChevronRight, Move, Link as LinkIcon, Library, ArrowLeft } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
@@ -17,6 +17,7 @@ import MoveToFolderDialog from './move-to-folder-dialog';
 import AddToHelpCenterDialog from './add-to-help-center-dialog';
 import AddArticlesToCollectionDialog from './add-articles-to-collection-dialog';
 import ManageHelpCenterContentDialog from './manage-help-center-content-dialog';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface HelpCenterLayoutProps {
     onSaveArticle: (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => Promise<HelpCenterArticle | void>;
@@ -58,6 +59,9 @@ export default function HelpCenterLayout({
     const [isManageArticlesOpen, setIsManageArticlesOpen] = useState(false);
     const [isManageContentOpen, setIsManageContentOpen] = useState(false);
 
+    const isMobile = useIsMobile();
+    const [mobileContentVisible, setMobileContentVisible] = useState(false);
+
     
     const { toast } = useToast();
 
@@ -74,6 +78,12 @@ export default function HelpCenterLayout({
             db.getHelpCenterArticles(activeHub.id).then(setArticles);
         }
     }
+
+    const showContentOnMobile = () => {
+        if (isMobile) {
+            setMobileContentVisible(true);
+        }
+    };
 
     const onSaveArticle = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle> => {
         let savedArticle: HelpCenterArticle;
@@ -157,6 +167,7 @@ export default function HelpCenterLayout({
         setArticles(prev => [...prev, newArticle]);
         setSelectedArticleId(newArticle.id);
         refreshData();
+        showContentOnMobile();
       }
     };
     
@@ -165,6 +176,7 @@ export default function HelpCenterLayout({
         if (article) {
              setSelectedArticleId(article.id);
              refreshData();
+             showContentOnMobile();
         }
     }
 
@@ -178,17 +190,20 @@ export default function HelpCenterLayout({
             setActiveHelpCenterId(null);
         }
         setSelectedArticleId(null);
+        showContentOnMobile();
     }
     
     const handleSelectCollection = (id: string | null) => {
         setSelectedCollectionId(id);
         setSelectedArticleId(null);
+        showContentOnMobile();
     }
 
     const handleSelectHelpCenter = (id: string | null) => {
         setActiveHelpCenterId(id);
         setSelectedCollectionId(null);
         setSelectedArticleId(null);
+        showContentOnMobile();
     }
 
     const handleToggleSelectItem = (id: string) => {
@@ -324,152 +339,180 @@ export default function HelpCenterLayout({
         }
     };
     
-    if (selectedArticleId) {
-        const articleToEdit = articles.find(a => a.id === selectedArticleId);
-        if (articleToEdit && appUser) {
-             return (
-                <div className="overflow-y-auto h-full">
-                    <HelpCenterArticleEditor 
-                       key={articleToEdit.id}
-                       article={articleToEdit} 
-                       onSave={async (article) => { 
-                           await onSaveArticle(article);
-                           refreshData();
-                       }}
-                       allUsers={[]}
-                       appUser={appUser}
-                       onBack={() => setSelectedArticleId(null)}
-                    />
-                </div>
-            );
-        }
-        setSelectedArticleId(null);
+    const articleToEdit = articles.find(a => a.id === selectedArticleId);
+    if (articleToEdit && appUser) {
+         return (
+            <div className="overflow-y-auto h-full">
+                <HelpCenterArticleEditor 
+                   key={articleToEdit.id}
+                   article={articleToEdit} 
+                   onSave={async (article) => { 
+                       await onSaveArticle(article);
+                       refreshData();
+                   }}
+                   allUsers={[]}
+                   appUser={appUser}
+                   onBack={() => setSelectedArticleId(null)}
+                />
+            </div>
+        );
     }
     
     const selectedCollection = collections.find(c => c.id === selectedCollectionId);
     const activeHelpCenter = helpCenters.find(hc => hc.id === activeHelpCenterId);
 
+    const sidebarComponent = (
+        <HelpCenterSidebar
+            collections={collections}
+            activeCollectionId={selectedCollectionId}
+            onSelectCollection={handleSelectCollection}
+            onNewCollection={handleNewCollection}
+            onEditCollection={handleEditCollection}
+            helpCenters={helpCenters}
+            activeHelpCenterId={activeHelpCenterId}
+            onSelectHelpCenter={handleSelectHelpCenter}
+            sidebarView={sidebarView}
+            onViewChange={handleViewChange}
+        />
+    );
+
+    const mainContentComponent = (
+        <main className="p-4 md:p-6 flex flex-col h-full overflow-hidden">
+            {isMobile && (
+                 <div className="flex-shrink-0">
+                     <Button variant="ghost" onClick={() => setMobileContentVisible(false)} className="-ml-2 mb-2">
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Back to Menu
+                    </Button>
+                </div>
+            )}
+            {sidebarView === 'library' && breadcrumbs.length > 0 && (
+                <Breadcrumbs crumbs={breadcrumbs} onCrumbClick={(id) => {
+                    handleSelectCollection(id);
+                    setSidebarView('library');
+                }} />
+            )}
+            <div className="flex justify-between items-center mb-4">
+                <h1 className="text-2xl font-bold">
+                    {title}
+                </h1>
+                 <div className="flex items-center gap-2">
+                    {sidebarView === 'help-centers' && activeHelpCenterId ? (
+                         <Button variant="outline" onClick={() => setIsManageContentOpen(true)}>
+                            <Library className="mr-2 h-4 w-4" /> Manage Content
+                        </Button>
+                    ) : (
+                        <>
+                            {sidebarView === 'library' && selectedCollectionId && (
+                                 <Button variant="outline" onClick={() => setIsManageArticlesOpen(true)}>
+                                    Manage Articles
+                                </Button>
+                            )}
+                            <Button variant="outline" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
+                                <FolderPlus className="mr-2 h-4 w-4" /> New Folder
+                            </Button>
+                            <Button onClick={handleCreateArticle}>
+                                <Plus className="mr-2 h-4 w-4" /> New Article
+                            </Button>
+                        </>
+                    )}
+                </div>
+            </div>
+             <div className="flex justify-between items-center mb-4 gap-2">
+                <div className="relative flex-1">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Search..." className="pl-9 h-9" />
+                </div>
+                <Button variant="outline">All types</Button>
+                <Button variant="outline">Filter</Button>
+             </div>
+             {selectedItems.length > 0 && (
+                 <div className="flex items-center gap-2 mb-4 p-2 border rounded-md bg-muted/50">
+                    <span className="text-sm font-medium">{selectedItems.length} item(s) selected</span>
+                    <Button variant="secondary" size="sm" onClick={() => setIsMoveToFolderOpen(true)}>
+                        <Move className="mr-2 h-4 w-4" /> Move...
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => setIsAddToHCOpen(true)}>
+                        <LinkIcon className="mr-2 h-4 w-4" /> Add to Help Center...
+                    </Button>
+                 </div>
+             )}
+            <div className="flex-1 -mx-4 md:-mx-6 overflow-hidden">
+                <ScrollArea className="h-full">
+                  <div className="px-4 md:px-6">
+                    <HelpCenterArticleList
+                        items={combinedItems}
+                        helpCenters={helpCenters}
+                        onSelectItem={(id, type) => type === 'article' ? handleSelectArticle(id) : handleSelectCollection(id)}
+                        selectedItems={selectedItems}
+                        onToggleSelectItem={handleToggleSelectItem}
+                        onToggleAll={handleToggleAll}
+                        isAllSelected={combinedItems.length > 0 && selectedItems.length === combinedItems.length}
+                    />
+                  </div>
+                </ScrollArea>
+            </div>
+        </main>
+    );
+
+    const dialogs = (
+      <>
+        <HelpCenterCollectionFormDialog
+            isOpen={isCollectionDialogOpen}
+            onOpenChange={setIsCollectionDialogOpen}
+            onSave={handleSaveCollection}
+            collection={editingCollection}
+            parentId={selectedCollectionId || undefined}
+        />
+        <MoveToFolderDialog
+            isOpen={isMoveToFolderOpen}
+            onOpenChange={setIsMoveToFolderOpen}
+            collections={collections}
+            onMove={handleMoveSelected}
+        />
+        <AddToHelpCenterDialog
+            isOpen={isAddToHCOpen}
+            onOpenChange={setIsAddToHCOpen}
+            helpCenters={helpCenters}
+            selectedItems={combinedItems.filter(i => selectedItems.includes(i.id))}
+            onSave={handleAddToHelpCenters}
+        />
+         {selectedCollection && (
+            <AddArticlesToCollectionDialog
+                isOpen={isManageArticlesOpen}
+                onOpenChange={setIsManageArticlesOpen}
+                collection={selectedCollection}
+                allArticles={articles}
+                onSave={handleSaveArticlesToCollection}
+            />
+        )}
+        {activeHelpCenter && (
+            <ManageHelpCenterContentDialog
+                isOpen={isManageContentOpen}
+                onOpenChange={setIsManageContentOpen}
+                helpCenter={activeHelpCenter}
+                allArticles={articles}
+                allCollections={collections}
+                onSave={handleManageContentSave}
+            />
+        )}
+      </>
+    );
+
+    if (isMobile) {
+        return (
+            <div className="h-full overflow-hidden">
+                {mobileContentVisible ? mainContentComponent : sidebarComponent}
+                {dialogs}
+            </div>
+        );
+    }
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-[288px_1fr] md:h-full">
-            <HelpCenterSidebar
-                collections={collections}
-                activeCollectionId={selectedCollectionId}
-                onSelectCollection={handleSelectCollection}
-                onNewCollection={handleNewCollection}
-                onEditCollection={handleEditCollection}
-                helpCenters={helpCenters}
-                activeHelpCenterId={activeHelpCenterId}
-                onSelectHelpCenter={handleSelectHelpCenter}
-                sidebarView={sidebarView}
-                onViewChange={handleViewChange}
-            />
-            <main className="overflow-y-auto p-4 md:p-6 flex flex-col">
-                {sidebarView === 'library' && breadcrumbs.length > 0 && (
-                    <Breadcrumbs crumbs={breadcrumbs} onCrumbClick={(id) => {
-                        handleSelectCollection(id);
-                        setSidebarView('library');
-                    }} />
-                )}
-                <div className="flex justify-between items-center mb-4">
-                    <h1 className="text-2xl font-bold">
-                        {title}
-                    </h1>
-                     <div className="flex items-center gap-2">
-                        {sidebarView === 'help-centers' && activeHelpCenterId ? (
-                             <Button variant="outline" onClick={() => setIsManageContentOpen(true)}>
-                                <Library className="mr-2 h-4 w-4" /> Manage Content
-                            </Button>
-                        ) : (
-                            <>
-                                {sidebarView === 'library' && selectedCollectionId && (
-                                     <Button variant="outline" onClick={() => setIsManageArticlesOpen(true)}>
-                                        Manage Articles
-                                    </Button>
-                                )}
-                                <Button variant="outline" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
-                                    <FolderPlus className="mr-2 h-4 w-4" /> New Folder
-                                </Button>
-                                <Button onClick={handleCreateArticle}>
-                                    <Plus className="mr-2 h-4 w-4" /> New Article
-                                </Button>
-                            </>
-                        )}
-                    </div>
-                </div>
-                 <div className="flex justify-between items-center mb-4 gap-2">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Search..." className="pl-9 h-9" />
-                    </div>
-                    <Button variant="outline">All types</Button>
-                    <Button variant="outline">Filter</Button>
-                 </div>
-                 {selectedItems.length > 0 && (
-                     <div className="flex items-center gap-2 mb-4 p-2 border rounded-md bg-muted/50">
-                        <span className="text-sm font-medium">{selectedItems.length} item(s) selected</span>
-                        <Button variant="secondary" size="sm" onClick={() => setIsMoveToFolderOpen(true)}>
-                            <Move className="mr-2 h-4 w-4" /> Move...
-                        </Button>
-                        <Button variant="secondary" size="sm" onClick={() => setIsAddToHCOpen(true)}>
-                            <LinkIcon className="mr-2 h-4 w-4" /> Add to Help Center...
-                        </Button>
-                     </div>
-                 )}
-                <div className="flex-1 -mx-4 md:-mx-6 overflow-hidden">
-                    <ScrollArea className="h-full">
-                      <div className="px-4 md:px-6">
-                        <HelpCenterArticleList
-                            items={combinedItems}
-                            helpCenters={helpCenters}
-                            onSelectItem={(id, type) => type === 'article' ? handleSelectArticle(id) : handleSelectCollection(id)}
-                            selectedItems={selectedItems}
-                            onToggleSelectItem={handleToggleSelectItem}
-                            onToggleAll={handleToggleAll}
-                            isAllSelected={combinedItems.length > 0 && selectedItems.length === combinedItems.length}
-                        />
-                      </div>
-                    </ScrollArea>
-                </div>
-            </main>
-            <HelpCenterCollectionFormDialog
-                isOpen={isCollectionDialogOpen}
-                onOpenChange={setIsCollectionDialogOpen}
-                onSave={handleSaveCollection}
-                collection={editingCollection}
-                parentId={selectedCollectionId || undefined}
-            />
-            <MoveToFolderDialog
-                isOpen={isMoveToFolderOpen}
-                onOpenChange={setIsMoveToFolderOpen}
-                collections={collections}
-                onMove={handleMoveSelected}
-            />
-            <AddToHelpCenterDialog
-                isOpen={isAddToHCOpen}
-                onOpenChange={setIsAddToHCOpen}
-                helpCenters={helpCenters}
-                selectedItems={combinedItems.filter(i => selectedItems.includes(i.id))}
-                onSave={handleAddToHelpCenters}
-            />
-             {selectedCollection && (
-                <AddArticlesToCollectionDialog
-                    isOpen={isManageArticlesOpen}
-                    onOpenChange={setIsManageArticlesOpen}
-                    collection={selectedCollection}
-                    allArticles={articles}
-                    onSave={handleSaveArticlesToCollection}
-                />
-            )}
-            {activeHelpCenter && (
-                <ManageHelpCenterContentDialog
-                    isOpen={isManageContentOpen}
-                    onOpenChange={setIsManageContentOpen}
-                    helpCenter={activeHelpCenter}
-                    allArticles={articles}
-                    allCollections={collections}
-                    onSave={handleManageContentSave}
-                />
-            )}
+            {sidebarComponent}
+            {mainContentComponent}
+            {dialogs}
         </div>
     );
 }
