@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,11 +33,16 @@ export default function AddArticlesToCollectionDialog({
   const [selectedArticleIds, setSelectedArticleIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const articlesForThisDialog = useMemo(() => {
+    // Show articles in this folder OR articles with no folder
+    return allArticles.filter(article => article.folderId === collection.id || !article.folderId);
+  }, [allArticles, collection.id]);
+
   useEffect(() => {
     if (isOpen) {
       // Pre-select articles already in the collection
       const articlesInCollection = allArticles
-        .filter(article => article.collectionIds.includes(collection.id))
+        .filter(article => article.folderId === collection.id)
         .map(article => article.id);
       setSelectedArticleIds(articlesInCollection);
     }
@@ -56,7 +61,7 @@ export default function AddArticlesToCollectionDialog({
     onOpenChange(false);
   };
 
-  const filteredArticles = allArticles.filter(article => 
+  const filteredArticles = articlesForThisDialog.filter(article => 
     article.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -66,7 +71,7 @@ export default function AddArticlesToCollectionDialog({
         <DialogHeader>
           <DialogTitle>Add articles to "{collection.name}"</DialogTitle>
           <DialogDescription>
-            Select articles to include in this collection.
+            Select articles to include in this folder. Unchecking an article will remove it.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
@@ -89,7 +94,7 @@ export default function AddArticlesToCollectionDialog({
                   </Label>
                 </div>
               )) : (
-                <p className="text-sm text-muted-foreground text-center">No articles found.</p>
+                <p className="text-sm text-muted-foreground text-center">No available articles found.</p>
               )}
             </div>
           </ScrollArea>

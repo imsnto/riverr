@@ -15,6 +15,7 @@ import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import MoveToFolderDialog from './move-to-folder-dialog';
 import AddToHelpCenterDialog from './add-to-help-center-dialog';
+import AddArticlesToCollectionDialog from './add-articles-to-collection-dialog';
 
 interface HelpCenterLayoutProps {
     onSaveArticle: (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => Promise<HelpCenterArticle | void>;
@@ -53,6 +54,7 @@ export default function HelpCenterLayout({
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [isMoveToFolderOpen, setIsMoveToFolderOpen] = useState(false);
     const [isAddToHCOpen, setIsAddToHCOpen] = useState(false);
+    const [isManageArticlesOpen, setIsManageArticlesOpen] = useState(false);
 
     
     const { toast } = useToast();
@@ -232,6 +234,39 @@ export default function HelpCenterLayout({
         refreshData();
         setSelectedItems([]);
     };
+
+    const handleSaveArticlesToCollection = async (articleIds: string[]) => {
+        if (!selectedCollectionId) return;
+
+        // Get the list of articles that were originally in the folder
+        const originalArticleIds = articles
+            .filter(a => a.folderId === selectedCollectionId)
+            .map(a => a.id);
+
+        // Find which articles were added and which were removed
+        const articlesToAdd = articleIds.filter(id => !originalArticleIds.includes(id));
+        const articlesToRemove = originalArticleIds.filter(id => !articleIds.includes(id));
+
+        const promises: Promise<void>[] = [];
+
+        // Update folderId for added articles
+        articlesToAdd.forEach(id => {
+            promises.push(updateHelpCenterArticle(id, { folderId: selectedCollectionId }));
+        });
+
+        // Clear folderId for removed articles
+        articlesToRemove.forEach(id => {
+            promises.push(updateHelpCenterArticle(id, { folderId: null }));
+        });
+
+        if (promises.length > 0) {
+            await Promise.all(promises);
+            toast({ title: "Folder updated", description: `${articlesToAdd.length} article(s) added, ${articlesToRemove.length} removed.` });
+            refreshData();
+        }
+        
+        setIsManageArticlesOpen(false);
+    };
     
     if (selectedArticleId) {
         const articleToEdit = articles.find(a => a.id === selectedArticleId);
@@ -254,6 +289,8 @@ export default function HelpCenterLayout({
         }
         setSelectedArticleId(null);
     }
+    
+    const selectedCollection = collections.find(c => c.id === selectedCollectionId);
 
     return (
         <div className="grid h-full grid-cols-1 md:grid-cols-[320px_1fr]">
@@ -281,6 +318,11 @@ export default function HelpCenterLayout({
                         {title}
                     </h1>
                      <div className="flex items-center gap-2">
+                        {sidebarView === 'library' && selectedCollectionId && (
+                             <Button variant="outline" onClick={() => setIsManageArticlesOpen(true)}>
+                                Manage Articles
+                            </Button>
+                        )}
                         <Button variant="outline" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
                             <FolderPlus className="mr-2 h-4 w-4" /> New Folder
                         </Button>
@@ -343,6 +385,15 @@ export default function HelpCenterLayout({
                 selectedItems={combinedItems.filter(i => selectedItems.includes(i.id))}
                 onSave={handleAddToHelpCenters}
             />
+             {selectedCollection && (
+                <AddArticlesToCollectionDialog
+                    isOpen={isManageArticlesOpen}
+                    onOpenChange={setIsManageArticlesOpen}
+                    collection={selectedCollection}
+                    allArticles={articles}
+                    onSave={handleSaveArticlesToCollection}
+                />
+            )}
         </div>
     );
 }

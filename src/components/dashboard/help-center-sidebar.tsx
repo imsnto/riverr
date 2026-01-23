@@ -52,20 +52,21 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
           <Collapsible key={collection.id} defaultOpen={true}>
             <div className={cn("group flex items-center justify-between rounded-md pr-1", activeCollectionId === collection.id && "bg-accent")}>
               
-              <Button 
-                variant="ghost" 
-                className={cn(
-                  "w-full justify-start text-sm h-9 flex-1 px-2",
-                  activeCollectionId === collection.id && "font-semibold"
-                )}
-                onClick={() => onSelectCollection(collection.id)}
-              >
-                 <CollapsibleTrigger asChild>
-                    <ChevronRight className={cn("h-4 w-4 transition-transform duration-200 mr-2 shrink-0", hasChildren ? 'group-data-[state=open]:rotate-90' : 'invisible')} />
-                 </CollapsibleTrigger>
-                <Folder className="mr-2 h-4 w-4 shrink-0"/>
-                <span className="truncate">{collection.name}</span>
-              </Button>
+              <div className="flex items-center flex-1 min-w-0">
+                  <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="icon" className={cn("h-8 w-8 shrink-0", !hasChildren && "invisible")}>
+                          <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                      </Button>
+                  </CollapsibleTrigger>
+                  <Button
+                      variant="ghost"
+                      className="w-full justify-start text-sm h-9 px-1 truncate"
+                      onClick={() => onSelectCollection(collection.id)}
+                  >
+                      <Folder className="mr-2 h-4 w-4 shrink-0" />
+                      <span className="truncate">{collection.name}</span>
+                  </Button>
+              </div>
 
               <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -83,8 +84,8 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
                   </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            {hasChildren && (
-              <CollapsibleContent>
+            <CollapsibleContent>
+              {hasChildren && (
                 <FolderTree
                   collections={collections}
                   parentId={collection.id}
@@ -94,8 +95,8 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
                   onNewCollection={onNewCollection}
                   onEditCollection={onEditCollection}
                 />
-              </CollapsibleContent>
-            )}
+              )}
+            </CollapsibleContent>
           </Collapsible>
         );
       })}
@@ -172,7 +173,7 @@ export default function HelpCenterSidebar({
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-1 py-1">
                        <FolderTree 
-                            collections={collections.filter(c => c.helpCenterId === null)}
+                            collections={collections.filter(c => c.helpCenterIds === null || c.helpCenterIds === undefined || c.helpCenterIds.length === 0)}
                             parentId={null}
                             level={0}
                             activeCollectionId={sidebarView === 'library' ? activeCollectionId : null}
