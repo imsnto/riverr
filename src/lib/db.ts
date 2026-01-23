@@ -1149,8 +1149,8 @@ export const updateHelpCenter = async (helpCenterId: string, data: Partial<HelpC
     await updateDoc(hcRef, data);
 }
 
-export const getHelpCenterCollections = async (helpCenterId: string): Promise<HelpCenterCollection[]> => {
-    const q = query(collection(db, 'help_center_collections'), where('helpCenterId', '==', helpCenterId));
+export const getHelpCenterCollections = async (hubId: string): Promise<HelpCenterCollection[]> => {
+    const q = query(collection(db, 'help_center_collections'), where('hubId', '==', hubId));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenterCollection));
 }
