@@ -3,7 +3,7 @@
 import { HelpCenter, HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Checkbox } from '../ui/checkbox';
-import { Folder, FileText, Lock } from 'lucide-react';
+import { Folder, FileText, Lock, Globe } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '../ui/button';
@@ -44,10 +44,7 @@ export default function HelpCenterArticleList({
         case 'snippet': return <Badge variant="outline">Snippet</Badge>;
         case 'article': 
         default:
-            return <div className="flex items-center gap-2">
-                <Lock className="h-4 w-4 text-amber-500" />
-                Internal article
-            </div>
+            return <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /> Article</div>
     }
   }
 
@@ -80,12 +77,20 @@ export default function HelpCenterArticleList({
               </TableCell>
               <TableCell>{renderType(item)}</TableCell>
               <TableCell>
-                <Badge variant="outline">Everyone</Badge>
+                {type === 'article' ? (
+                    (item as HelpCenterArticle).isPublic === false ? (
+                        <Badge variant="secondary" className="flex items-center gap-1.5"><Lock className="h-3 w-3" />Private</Badge>
+                    ) : (
+                        <Badge variant="outline" className="flex items-center gap-1.5"><Globe className="h-3 w-3" />Public</Badge>
+                    )
+                ) : (
+                    '—'
+                )}
               </TableCell>
               <TableCell>
-                {type === 'article' && (item as HelpCenterArticle).updatedAt ? 
-                  formatDistanceToNow(new Date((item as HelpCenterArticle).updatedAt), { addSuffix: true }) : 
-                  '-'
+                {('updatedAt' in item && item.updatedAt) ? 
+                  formatDistanceToNow(new Date(item.updatedAt), { addSuffix: true }) : 
+                  '—'
                 }
               </TableCell>
               <TableCell>

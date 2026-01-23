@@ -366,6 +366,7 @@ export interface HelpCenterCollection {
   hubId: string;
   parentId: string | null;
   helpCenterIds?: string[];
+  updatedAt?: string;
 }
 
 export interface HelpCenterArticle {
@@ -375,12 +376,13 @@ export interface HelpCenterArticle {
   status: 'draft' | 'published';
   folderId: string | null;
   helpCenterIds?: string[];
-  audience: string;
   type: 'article' | 'snippet' | 'pdf';
   authorId: string;
   createdAt: string; // ISO String
   updatedAt: string; // ISO String
   hubId: string;
+  isPublic?: boolean;
+  allowedUserIds?: string[];
 }
 
 

@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
+import HelpCenterArticleShareDialog from './help-center-article-share-dialog';
 
 interface HelpCenterArticleEditorProps {
     article: HelpCenterArticle;
@@ -50,12 +51,14 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
     const [lastSaved, setLastSaved] = useState<Date | null>(initialArticle.updatedAt ? new Date(initialArticle.updatedAt) : null);
     const { toast } = useToast();
     const [isTitleDerived, setIsTitleDerived] = useState(initialArticle.title === '');
+    const [isShareOpen, setIsShareOpen] = useState(false);
     const author = allUsers.find(u => u.id === article.authorId);
 
     const hasUnsavedChanges = JSON.stringify(article) !== JSON.stringify(lastSavedArticle);
 
     const onEditorInstance = useCallback((editor: Editor) => {
         setEditor(editor);
+        editor.chain().focus('end').run();
     }, []);
 
     const handleSave = useCallback(async (articleToSave: HelpCenterArticle) => {
@@ -111,9 +114,16 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
         toast({ title: newStatus === 'published' ? 'Article Published' : 'Article reverted to draft' });
     };
 
+    const handleSharingSave = (sharingData: { isPublic: boolean, allowedUserIds: string[] }) => {
+        const updatedArticle = { ...article, ...sharingData };
+        onSave(updatedArticle);
+        setIsShareOpen(false);
+        toast({ title: 'Sharing settings updated' });
+    };
+
     return (
         <div className="flex flex-col h-full">
-            <div className="w-full shrink-0 px-4 md:px-8 pt-4">
+            <div className="w-full shrink-0 px-4 md:px-24 pt-8">
                 <div className="max-w-4xl mx-auto">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -121,21 +131,27 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                                 <ArrowLeft className="h-4 w-4 mr-2" /> Back
                             </Button>
                             /
-                            <Input
-                                value={article.title}
-                                onChange={(e) => {
-                                    setIsTitleDerived(false);
-                                    setArticle(prev => ({...prev, title: e.target.value}))
-                                }}
-                                className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground"
-                                placeholder="Article Title"
-                            />
+                             <div className="flex items-center gap-2">
+                                {article.isPublic === false ? <Lock className="h-4 w-4 text-muted-foreground" /> : <Globe className="h-4 w-4 text-muted-foreground" />}
+                                <Input
+                                    value={article.title}
+                                    onChange={(e) => {
+                                        setIsTitleDerived(false);
+                                        setArticle(prev => ({...prev, title: e.target.value}))
+                                    }}
+                                    className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground"
+                                    placeholder="Article Title"
+                                />
+                            </div>
                         </div>
                         <div className="flex items-center gap-4">
                             <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
                             <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
                                 {article.status === 'draft' ? 'Draft' : 'Published'}
                             </Badge>
+                             <Button variant="outline" size="sm" onClick={() => setIsShareOpen(true)}>
+                                <Share2 className="h-4 w-4 mr-2" /> Share
+                            </Button>
                             <Button variant="outline" size="sm" onClick={handlePublish}>
                                 {article.status === 'published' ? 'Unpublish' : 'Publish'}
                             </Button>
@@ -176,6 +192,14 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                     />
                 </div>
             </div>
+
+            <HelpCenterArticleShareDialog
+                isOpen={isShareOpen}
+                onOpenChange={setIsShareOpen}
+                article={article}
+                onSave={handleSharingSave}
+                allUsers={allUsers}
+            />
         </div>
     );
 }

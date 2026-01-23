@@ -6,7 +6,7 @@ import { HelpCenter, HelpCenterCollection, HelpCenterArticle, User } from '@/lib
 import HelpCenterArticleEditor from './help-center-article-editor';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
-import { addHelpCenterCollection, updateHelpCenterCollection, getHelpCenterCollections, getHelpCenterArticles, addHelpCenterArticle, getHelpCenters, updateHelpCenterArticle, updateHelpCenterContent } from '@/lib/db';
+import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
 import { FolderPlus, Plus, Search, ChevronRight, Move, Link as LinkIcon, Library } from 'lucide-react';
@@ -37,7 +37,7 @@ const Breadcrumbs = ({ crumbs, onCrumbClick }: { crumbs: HelpCenterCollection[],
 }
 
 export default function HelpCenterLayout({ 
-    onSaveArticle, 
+    onSaveArticle: onSaveArticleProp, 
 }: HelpCenterLayoutProps) {
     const [sidebarView, setSidebarView] = useState<HelpCenterSidebarView>('library');
     const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
@@ -69,11 +69,35 @@ export default function HelpCenterLayout({
     
     const refreshData = () => {
         if (activeHub) {
-            getHelpCenters(activeHub.id).then(setHelpCenters);
-            getHelpCenterCollections(activeHub.id).then(setCollections);
-            getHelpCenterArticles(activeHub.id).then(setArticles);
+            db.getHelpCenters(activeHub.id).then(setHelpCenters);
+            db.getHelpCenterCollections(activeHub.id).then(setCollections);
+            db.getHelpCenterArticles(activeHub.id).then(setArticles);
         }
     }
+
+    const onSaveArticle = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle> => {
+        let savedArticle: HelpCenterArticle;
+
+        if ('id' in article && article.id) {
+            await db.updateHelpCenterArticle(article.id, article);
+            savedArticle = article as HelpCenterArticle;
+        } else {
+            savedArticle = await db.addHelpCenterArticle(article as Omit<HelpCenterArticle, 'id'>);
+        }
+
+        if (savedArticle.folderId) {
+            try {
+                await db.updateHelpCenterCollection(savedArticle.folderId, {
+                    updatedAt: new Date().toISOString()
+                });
+            } catch (e) {
+                console.error("Could not update parent folder timestamp", e);
+            }
+        }
+        
+        refreshData();
+        return savedArticle;
+    };
     
     const handleNewCollection = (parentId?: string) => {
         setEditingCollection(null);
@@ -95,13 +119,14 @@ export default function HelpCenterLayout({
             ...values,
             hubId: activeHub.id,
             parentId: editingCollection ? editingCollection.parentId : (sidebarView === 'library' ? selectedCollectionId : null),
+            updatedAt: new Date().toISOString(),
         };
 
         if (collectionId) {
-            await updateHelpCenterCollection(collectionId, data);
+            await db.updateHelpCenterCollection(collectionId, data);
             toast({ title: 'Folder updated.' });
         } else {
-            await addHelpCenterCollection(data);
+            await db.addHelpCenterCollection(data);
             toast({ title: 'Folder created.' });
         }
         refreshData();
@@ -120,13 +145,18 @@ export default function HelpCenterLayout({
         updatedAt: new Date().toISOString(),
         hubId: activeHub.id,
         type: 'article',
-        audience: 'Everyone'
+        isPublic: true,
+        allowedUserIds: [],
       };
       
-      const newArticle = await addHelpCenterArticle(newArticleData);
+      const newArticle = await db.addHelpCenterArticle(newArticleData);
       if (newArticle) {
+        if (newArticle.folderId) {
+            await db.updateHelpCenterCollection(newArticle.folderId, { updatedAt: new Date().toISOString() });
+        }
         setArticles(prev => [...prev, newArticle]);
         setSelectedArticleId(newArticle.id);
+        refreshData();
       }
     };
     
@@ -216,11 +246,11 @@ export default function HelpCenterLayout({
         const promises = selectedItems.map(itemId => {
             const article = articles.find(a => a.id === itemId);
             if (article) {
-                return updateHelpCenterArticle(itemId, { folderId });
+                return db.updateHelpCenterArticle(itemId, { folderId });
             }
             const collection = collections.find(c => c.id === itemId);
             if (collection) {
-                return updateHelpCenterCollection(itemId, { parentId: folderId });
+                return db.updateHelpCenterCollection(itemId, { parentId: folderId });
             }
             return Promise.resolve();
         });
@@ -234,11 +264,11 @@ export default function HelpCenterLayout({
         const promises = selectedItems.map(itemId => {
             const article = articles.find(a => a.id === itemId);
             if (article) {
-                return updateHelpCenterArticle(itemId, { helpCenterIds });
+                return db.updateHelpCenterArticle(itemId, { helpCenterIds });
             }
             const collection = collections.find(c => c.id === itemId);
             if (collection) {
-                return updateHelpCenterCollection(itemId, { helpCenterIds });
+                return db.updateHelpCenterCollection(itemId, { helpCenterIds });
             }
             return Promise.resolve();
         });
@@ -264,12 +294,12 @@ export default function HelpCenterLayout({
 
         // Update folderId for added articles
         articlesToAdd.forEach(id => {
-            promises.push(updateHelpCenterArticle(id, { folderId: selectedCollectionId }));
+            promises.push(db.updateHelpCenterArticle(id, { folderId: selectedCollectionId }));
         });
 
         // Clear folderId for removed articles
         articlesToRemove.forEach(id => {
-            promises.push(updateHelpCenterArticle(id, { folderId: null }));
+            promises.push(db.updateHelpCenterArticle(id, { folderId: null }));
         });
 
         if (promises.length > 0) {
@@ -285,7 +315,7 @@ export default function HelpCenterLayout({
         if (!activeHelpCenterId) return;
 
         try {
-            await updateHelpCenterContent(activeHelpCenterId, selectedIds, articles, collections);
+            await db.updateHelpCenterContent(activeHelpCenterId, selectedIds, articles, collections);
             toast({ title: "Help Center content updated" });
             refreshData();
         } catch (e) {
@@ -443,5 +473,3 @@ export default function HelpCenterLayout({
         </div>
     );
 }
-
-    
