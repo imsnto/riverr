@@ -38,20 +38,30 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
         return (
           <Collapsible key={collection.id} defaultOpen={true}>
             <div className={cn("group flex items-center justify-between rounded-md pr-1", activeCollectionId === collection.id && "bg-accent")}>
-              <CollapsibleTrigger asChild className={cn(!hasChildren && 'pointer-events-none')}>
+              
+              <div className="flex items-center flex-1 min-w-0">
+                {hasChildren ? (
+                  <CollapsibleTrigger asChild>
+                     <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
+                        <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                     </Button>
+                  </CollapsibleTrigger>
+                ) : (
+                  <div className="w-9 shrink-0" /> // spacer
+                )}
                 <Button 
                   variant="ghost" 
                   className={cn(
-                    "w-full justify-start text-sm h-9 flex-1",
+                    "w-full justify-start text-sm h-9 flex-1 px-2",
                     activeCollectionId === collection.id && "font-semibold"
                   )}
                   onClick={() => onSelectCollection(collection.id)}
                 >
-                  {hasChildren ? <ChevronRight className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" /> : <div className="w-6 shrink-0"/>}
-                  <Folder className="mr-2 h-4 w-4"/>
+                  <Folder className="mr-2 h-4 w-4 shrink-0"/>
                   <span className="truncate">{collection.name}</span>
                 </Button>
-              </CollapsibleTrigger>
+              </div>
+
               <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100">
