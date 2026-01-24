@@ -408,7 +408,7 @@ export const hubs: (Omit<Hub, 'id'> & { id: string })[] = [
         type: 'tasks',
         createdAt: new Date().toISOString(),
         createdBy: 'user-1',
-        settings: { defaultView: 'tasks', components: ['tasks', 'documents', 'messages', 'inbox', 'help-center'] },
+        settings: { defaultView: 'tasks', components: ['tasks', 'inbox', 'help-center'] },
         isDefault: true,
         statuses: [
               { name: 'Backlog', color: '#6b7280' },
@@ -439,7 +439,7 @@ export const hubs: (Omit<Hub, 'id'> & { id: string })[] = [
         type: 'custom',
         createdAt: new Date().toISOString(),
         createdBy: 'user-1',
-        settings: { defaultView: 'documents', components: ['documents'] },
+        settings: { defaultView: 'documents', components: [] },
         isDefault: false,
         statuses: [],
     }
@@ -581,10 +581,34 @@ export const chatContacts: (Omit<ChatContact, 'id'> & { id: string })[] = [
         companyUsers: 30,
         companyPlan: 'Business',
         companySpend: '$2,500'
+    },
+    {
+        id: 'contact-9',
+        name: 'Test User',
+        email: 'test.user@example.com',
+        avatarUrl: 'https://i.pravatar.cc/150?u=test-user',
+        location: 'Testville, USA',
+        lastSeen: new Date().toISOString(),
+        companyName: 'Test Corp',
+        sessions: 1,
+        companyId: 'comp-9',
+        companyUsers: 1,
+        companyPlan: 'Test Plan',
+        companySpend: '$0'
     }
 ];
 
 export const conversations: (Omit<Conversation, 'id'> & { id: string })[] = [
+    {
+        id: 'convo-9',
+        hubId: 'hub-1',
+        contactId: 'contact-9',
+        assigneeId: 'user-1', // Assigned to Brad
+        status: 'open',
+        lastMessage: 'Yes, I can see your test message!',
+        lastMessageAt: new Date(Date.now() - 30 * 1000).toISOString(),
+        lastMessageAuthor: 'Brad',
+    },
     {
         id: 'convo-1',
         hubId: 'hub-1',
@@ -788,6 +812,22 @@ export const chatMessages: (Omit<ChatMessage, 'id'> & { id: string })[] = [
         content: 'My dashboard isn\'t loading any data.',
         timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
     },
+    {
+        id: 'msg-16',
+        conversationId: 'convo-9',
+        authorId: 'contact-9',
+        type: 'message',
+        content: 'I am a test message, can you see me?',
+        timestamp: new Date(Date.now() - 1 * 60 * 1000).toISOString(),
+    },
+    {
+        id: 'msg-17',
+        conversationId: 'convo-9',
+        authorId: 'user-1',
+        type: 'message',
+        content: 'Yes, I can see your test message!',
+        timestamp: new Date(Date.now() - 30 * 1000).toISOString(),
+    }
 ];
 
 
