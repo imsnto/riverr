@@ -1,11 +1,11 @@
 
 (function() {
-  if (!window.riverrChatConfig) {
-    console.error("Riverr Chat: Config object not found.");
-    return;
-  }
   
-  const { botId, hubId } = window.riverrChatConfig;
+  var script = document.currentScript;
+
+  // Read data attributes
+  var botId = script.getAttribute('data-bot-id');
+  var hubId = script.getAttribute('data-hub-id');
   if (!botId || !hubId) {
     console.error("Riverr Chat: botId and hubId are required in the config.");
     return;
