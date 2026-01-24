@@ -157,13 +157,13 @@ export default function ContactDetail({ contact, onBack }: ContactDetailProps) {
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="p-4 md:p-6 space-y-8">
             {/* Timeline */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6">
                 <TimelineFeed contactId={contact.id} events={events} />
             </div>
 
-            {/* Details Sidebar */}
+            {/* Details Section */}
             <div className="space-y-6">
                  <div>
                     <h4 className="font-semibold mb-2">Contact Info</h4>
