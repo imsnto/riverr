@@ -12,7 +12,6 @@ import {
   MessageCircle,
   Settings,
   BookOpen,
-  LifeBuoy,
 } from 'lucide-react';
 import React from 'react';
 
@@ -20,7 +19,7 @@ const navItems: { key: AppView; icon: React.ReactNode; label: string }[] = [
   { key: 'overview', icon: <BarChart />, label: 'Dashboard' },
   { key: 'tasks', icon: <FolderKanban />, label: 'Projects' },
   { key: 'inbox', icon: <MessageCircle />, label: 'Inbox' },
-  { key: 'help-center', icon: <LifeBuoy />, label: 'Help Center' },
+  { key: 'help-center', icon: <BookOpen />, label: 'Help Center' },
   { key: 'settings', icon: <Settings />, label: 'Settings' },
 ];
 
