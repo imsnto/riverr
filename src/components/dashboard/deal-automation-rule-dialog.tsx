@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { DealAutomationRule, Hub, User } from '@/lib/data';
+import { DealAutomationRule, Hub, User, Project } from '@/lib/data';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
 import { Separator } from '../ui/separator';
@@ -55,9 +55,11 @@ interface DealAutomationRuleDialogProps {
   rule: DealAutomationRule | null;
   activeHub: Hub;
   allUsers: User[];
+  allHubs: Hub[];
+  projects: Project[];
 }
 
-export default function DealAutomationRuleDialog({ isOpen, onOpenChange, onSave, rule, activeHub, allUsers }: DealAutomationRuleDialogProps) {
+export default function DealAutomationRuleDialog({ isOpen, onOpenChange, onSave, rule, activeHub, allUsers, allHubs, projects }: DealAutomationRuleDialogProps) {
   const form = useForm<RuleFormValues>({
     resolver: zodResolver(ruleSchema),
     defaultValues: { name: '', isEnabled: true, triggerType: 'stage_changed' },
@@ -259,3 +261,5 @@ export default function DealAutomationRuleDialog({ isOpen, onOpenChange, onSave,
     </Dialog>
   );
 }
+
+    

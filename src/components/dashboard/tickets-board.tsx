@@ -1,44 +1,25 @@
+// src/components/dashboard/tickets-board.tsx
 'use client';
 
 import React, { useState, DragEvent, useRef, useMemo } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Ticket, Hub, Status, Visitor, Conversation, Space } from '@/lib/data';
+import { User, Ticket, Hub, Status, Visitor, Conversation, Space, EscalationIntakeRule } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { MoreHorizontal, Plus, Edit, Trash2, Palette, Archive, CheckCircle, Folder, ChevronsUpDown, ArrowLeft, Ticket as TicketIcon } from 'lucide-react';
-import { Button, buttonVariants } from '../ui/button';
+import { MoreHorizontal, Plus, Edit } from 'lucide-react';
+import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '../ui/dropdown-menu';
-import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { useAuth } from '@/hooks/use-auth';
 import TicketDetailsDialog from './ticket-details-dialog';
 import BoardSettingsDialog from './board-settings-dialog';
+import CreateTicketDialog from './create-ticket-dialog';
+import { addTicket, updateTask } from '@/lib/db';
 
 const getInitials = (name: string) => {
     if (!name) return '';
     return name.split(' ').map(n => n[0]).join('');
 }
-
-const STATUS_COLORS = [
-    { name: 'Gray', color: '#6b7280' }, { name: 'Stone', color: '#78716c' }, { name: 'Zinc', color: '#71717a' },
-    { name: 'Red', color: '#ef4444' }, { name: 'Rose', color: '#f43f5e' }, { name: 'Orange', color: '#f97316' },
-    { name: 'Amber', color: '#f59e0b' }, { name: 'Yellow', color: '#eab308' }, { name: 'Lime', color: '#84cc16' },
-    { name: 'Green', color: '#22c55e' }, { name: 'Emerald', color: '#10b981' }, { name: 'Teal', color: '#14b8a6' },
-    { name: 'Cyan', color: '#06b6d4' }, { name: 'Sky', color: '#0ea5e9' }, { name: 'Blue', color: '#3b82f6' },
-    { name: 'Indigo', color: '#6366f1' }, { name: 'Violet', color: '#8b5cf6' }, { name: 'Purple', color: '#a855f7' },
-    { name: 'Fuchsia', color: '#d946ef' }, { name: 'Pink', color: '#ec4899' },
-];
 
 const TicketCard = ({ ticket, onClick, isDragging, allUsers, visitors }: { ticket: Ticket, onClick: () => void, isDragging: boolean, allUsers: User[], visitors: Visitor[] }) => {
   const assignee = allUsers.find(u => u.id === ticket.assignedTo);
@@ -86,6 +67,9 @@ interface TicketsBoardProps {
   conversations: Conversation[];
   onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
   onNavigateToSettings: () => void;
+  allHubs: Hub[];
+  escalationRules: EscalationIntakeRule[];
+  projects: Project[];
 }
 
 const defaultStatuses: Status[] = [
@@ -94,19 +78,15 @@ const defaultStatuses: Status[] = [
     { name: 'Closed', color: '#22c55e' },
 ];
 
-export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, activeSpace, allUsers, visitors, conversations, onUpdateActiveHub, onNavigateToSettings }: TicketsBoardProps) {
+export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, activeSpace, allUsers, visitors, conversations, onUpdateActiveHub, onNavigateToSettings, allHubs, escalationRules, projects }: TicketsBoardProps) {
   const [draggedTicket, setDraggedTicket] = useState<string | null>(null);
-  const [editingColumn, setEditingColumn] = useState<string | null>(null);
-  const [newColumnName, setNewColumnName] = useState("");
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCreateTicketOpen, setIsCreateTicketOpen] = useState(false);
   const { toast } = useToast();
   const { appUser } = useAuth();
   
   const statuses = activeHub.ticketStatuses || defaultStatuses;
-  const closingStatusName = activeHub.ticketClosingStatusName || 'Closed';
-  const activeStatuses = statuses.filter(s => s.name !== closingStatusName);
-  const closingStatus = statuses.find(s => s.name === closingStatusName);
   
   const [dropIndicator, setDropIndicator] = useState<{ status: string; index: number } | null>(null);
   const ticketCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -157,7 +137,7 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
   
     const handleColumnDragLeave = (e: DragEvent<HTMLDivElement>) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-        setDropIndicator(null);
+          setDropIndicator(null);
         }
     };
 
@@ -177,7 +157,7 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
 
         const newTickets = tickets.filter(t => t.id !== ticketId);
         const targetColumnTickets = newTickets.filter(t => t.status === newStatus);
-        targetColumnTickets.splice(insertIndex, 0, { ...ticketToMove, status: newStatus });
+        targetColumnTickets.splice(insertIndex, 0, { ...ticketToMove, status: newStatus, updatedAt: new Date().toISOString() });
         const otherColumnTickets = newTickets.filter(t => t.status !== newStatus);
         
         onUpdateTickets([...otherColumnTickets, ...targetColumnTickets]);
@@ -189,7 +169,7 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
         setDraggedTicket(null);
         setDropIndicator(null);
     };
-
+    
     const handleUpdateTicket = (updatedTicket: Ticket) => {
         onUpdateTickets(tickets.map(t => t.id === updatedTicket.id ? updatedTicket : t));
     };
@@ -204,6 +184,25 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
         setIsSettingsOpen(false);
         toast({ title: "Ticket members updated." });
     }
+    
+    const handleCreateTicket = async (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => {
+        // In a real app, this would call a cloud function `createTicketAndMaybeEscalate`
+        const finalTicketData = { ...ticketData };
+        if (escalateNow) {
+            finalTicketData.status = 'Escalated';
+            finalTicketData.escalation = {
+                status: 'queued', // Backend would change this to 'sent' or 'failed'
+                requestedAt: new Date().toISOString(),
+                requestedBy: appUser?.id,
+                intakeRuleId: intakeRuleId
+            };
+        }
+        await addTicket(finalTicketData);
+        // Refresh data
+        // For optimistic UI, we would add the ticket to the local state here.
+        toast({ title: "Ticket created" });
+    }
+
 
     const renderStatusColumn = (status: Status) => {
       const columnTickets = tickets.filter(ticket => ticket.status === status.name);
@@ -217,7 +216,6 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
                 <div className="flex items-center gap-2">
                     <span className="w-3 h-3 rounded-full" style={{ backgroundColor: status.color }}/>
                     <h2 className="text-lg font-semibold">{status.name}</h2>
-                    {closingStatusName === status.name && <CheckCircle className="h-4 w-4 text-primary" />}
                 </div>
             </div>
             <div className="bg-primary/5 rounded-lg p-2 flex-1 min-h-0 overflow-y-auto">
@@ -252,6 +250,10 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
                 </Button>
             </div>
              <div className="flex items-center gap-4">
+                <Button onClick={() => setIsCreateTicketOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Ticket
+                </Button>
                 <div className="flex -space-x-2">
                     {hubMembers.slice(0, 5).map(member => (
                         <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
@@ -271,8 +273,7 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
           <div className="h-full w-full min-w-0 overflow-x-auto overflow-y-hidden">
             <div className="flex w-max gap-4 p-4 md:p-6 md:pt-2 h-full">
-              {activeStatuses.map(renderStatusColumn)}
-              {closingStatus && renderStatusColumn(closingStatus)}
+              {statuses.map(renderStatusColumn)}
             </div>
           </div>
         </div>
@@ -298,6 +299,20 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
         onSave={handleSaveSettings}
         appUser={appUser}
       />
+      <CreateTicketDialog
+        isOpen={isCreateTicketOpen}
+        onOpenChange={setIsCreateTicketOpen}
+        activeHub={activeHub}
+        activeSpace={activeSpace}
+        allUsers={allUsers}
+        visitors={visitors}
+        onCreateTicket={handleCreateTicket}
+        allHubs={allHubs}
+        escalationRules={escalationRules}
+        projects={projects}
+      />
     </>
   );
 }
+
+    

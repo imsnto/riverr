@@ -65,6 +65,7 @@ export interface Task {
   description: string;
   project_id: string | null; // Can be null if it's a job flow task
   hubId: string; // Hub scope
+  spaceId: string;
   status: string;
   createdAt: string; // ISO String
   createdBy: string; // user ID
@@ -79,7 +80,11 @@ export interface Task {
   comments: Comment[];
   activities: Activity[];
   attachments: Attachment[];
-  spaceId: string;
+  // Escalation fields
+  linkedTicketId?: string;
+  sourceHubId?: string;
+  intakeRuleId?: string;
+  contactId?: string;
 }
 
 export interface Ticket {
@@ -89,6 +94,7 @@ export interface Ticket {
   status: string;
   title: string;
   description: string | null;
+  type: "bug" | "question" | "feature" | null;
   priority: 'Low' | 'Medium' | 'High' | 'Urgent' | null;
   assignedTo: string | null;
   contactId: string | null;
@@ -99,6 +105,18 @@ export interface Ticket {
   createdAt: string;
   createdBy: string;
   updatedAt: string;
+  escalation?: {
+    status: "none" | "queued" | "sent" | "failed";
+    requestedAt?: string | null;
+    requestedBy?: string | null;
+    devHubId?: string | null;
+    intakeRuleId?: string | null;
+    devBoardId?: string | null;
+    devItemId?: string | null;
+    lastKnownDevStatus?: string | null;
+    lastSyncedAt?: string | null;
+    errorMessage?: string | null;
+  };
 }
 
 export interface Deal {
@@ -122,6 +140,22 @@ export interface Deal {
   createdBy: string; // userId
   updatedAt: string; // ISO String
 }
+
+export interface EscalationIntakeRule {
+  id: string;
+  hubId: string; // The Dev Hub that owns this rule
+  enabled: boolean;
+  name: string;
+  allowedSourceHubIds: string[];
+  allowedTypes: ("bug" | "feature" | "investigation")[];
+  destinationBoardId: string; // Project ID in the Dev Hub
+  destinationStatus: string;
+  defaultAssigneeId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
 
 export interface DealAutomationRule {
     id: string;
@@ -925,3 +959,4 @@ export const jobFlowTasks: JobFlowTask[] = [];
 
 export type { Contact, ContactEvent, ContactEventType, ContactSource, VisitorType, CallRecord } from './contacts-types';
 
+    

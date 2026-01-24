@@ -1,8 +1,9 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../ui/card';
-import { Hub, User } from '@/lib/data';
+import { Hub, User, EscalationIntakeRule, Project } from '@/lib/data';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
@@ -10,14 +11,18 @@ import HubComponentEditor from './hub-component-editor';
 import { Users } from 'lucide-react';
 import HubPermissionDialog from './hub-permission-dialog';
 import { useAuth } from '@/hooks/use-auth';
+import EscalationIntakeSettings from './escalation-intake-settings';
 
 interface HubSettingsProps {
   activeHub: Hub | null;
   onUpdateHub: (updatedData: Partial<Hub>) => void;
   allUsers: User[];
+  allHubs: Hub[];
+  projects: Project[];
+  escalationRules: EscalationIntakeRule[];
 }
 
-export default function HubSettings({ activeHub, onUpdateHub, allUsers }: HubSettingsProps) {
+export default function HubSettings({ activeHub, onUpdateHub, allUsers, allHubs, projects, escalationRules }: HubSettingsProps) {
   const { activeSpace } = useAuth();
 
   const [hubName, setHubName] = useState(activeHub?.name || '');
@@ -77,7 +82,7 @@ export default function HubSettings({ activeHub, onUpdateHub, allUsers }: HubSet
 
 
   return (
-    <>
+    <div className="space-y-6">
     <Card>
       <CardHeader>
         <CardTitle>Hub Settings</CardTitle>
@@ -120,6 +125,14 @@ export default function HubSettings({ activeHub, onUpdateHub, allUsers }: HubSet
       </CardFooter>
     </Card>
 
+    <EscalationIntakeSettings
+      activeHub={activeHub}
+      allUsers={allUsers}
+      allHubs={allHubs}
+      projects={projects}
+      rules={escalationRules}
+    />
+
     <HubPermissionDialog
         isOpen={isPermissionDialogOpen}
         onOpenChange={setIsPermissionDialogOpen}
@@ -127,6 +140,8 @@ export default function HubSettings({ activeHub, onUpdateHub, allUsers }: HubSet
         onSave={handlePermissionsSave}
         defaultPermissions={{ userIds: memberIds, applyToAll: !isPrivate }}
     />
-    </>
+    </div>
   );
 }
+
+    

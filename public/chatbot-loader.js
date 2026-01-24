@@ -1,5 +1,9 @@
 
 (function() {
+
+  if (document.getElementById('riverr-chat-widget-container')) {
+    return;
+  }
   
   var script = document.currentScript;
 

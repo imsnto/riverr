@@ -71,6 +71,7 @@ import {
   Ticket,
   Deal,
   DealAutomationRule,
+  EscalationIntakeRule,
 } from "./data";
 import { FirestorePermissionError } from "./errors";
 import { errorEmitter } from "./error-emitter";
@@ -462,7 +463,31 @@ export const updateDeal = async (dealId: string, data: Partial<Deal>): Promise<v
     await updateDoc(dealRef, data);
 };
 
-// --- Deal Automation Management ---
+// --- Escalation & Automation Management ---
+export const getEscalationIntakeRules = async (hubId: string): Promise<EscalationIntakeRule[]> => {
+    const rulesRef = collection(db, 'hubs', hubId, 'escalation_intake');
+    const snapshot = await getDocs(rulesRef);
+    return snapshot.docs.map(doc => ({ id: doc.id, hubId, ...doc.data() } as EscalationIntakeRule));
+};
+
+export const saveEscalationIntakeRule = async (hubId: string, rule: Omit<EscalationIntakeRule, 'id' | 'hubId'>, ruleId?: string): Promise<EscalationIntakeRule> => {
+    if (ruleId) {
+        const ruleRef = doc(db, 'hubs', hubId, 'escalation_intake', ruleId);
+        await updateDoc(ruleRef, rule);
+        return { ...rule, id: ruleId, hubId };
+    } else {
+        const collRef = collection(db, 'hubs', hubId, 'escalation_intake');
+        const docRef = await addDoc(collRef, rule);
+        return { ...rule, id: docRef.id, hubId };
+    }
+};
+
+export const deleteEscalationIntakeRule = async (hubId: string, ruleId: string): Promise<void> => {
+    const ruleRef = doc(db, 'hubs', hubId, 'escalation_intake', ruleId);
+    await deleteDoc(ruleRef);
+};
+
+
 export const getDealAutomationRules = async (hubId: string): Promise<DealAutomationRule[]> => {
     const q = query(collection(db, "deal_automation_rules"), where("hubId", "==", hubId));
     const querySnapshot = await getDocs(q);
@@ -1243,6 +1268,14 @@ export const updateConversation = async (conversationId: string, data: Partial<C
     const convRef = doc(db, 'conversations', conversationId);
     try {
         await updateDoc(convRef, data);
+        if (data.contactId) {
+            const ticketsQuery = query(collection(db, "tickets"), where("conversationId", "==", conversationId), limit(1));
+            const ticketSnap = await getDocs(ticketsQuery);
+            if (!ticketSnap.empty) {
+                const ticketDoc = ticketSnap.docs[0];
+                await updateDoc(ticketDoc.ref, { contactId: data.contactId });
+            }
+        }
     } catch (serverError) {
         const permissionError = new FirestorePermissionError({
             path: convRef.path,
@@ -1278,6 +1311,7 @@ export const addConversation = async (conversation: Omit<Conversation, 'id'>): P
                     title: `Support: ${visitorName}`,
                     description: null,
                     priority: null,
+                    type: 'question',
                     assignedTo: null,
                     contactId: newConversation.contactId || null,
                     conversationId: newConversation.id,
@@ -1287,6 +1321,7 @@ export const addConversation = async (conversation: Omit<Conversation, 'id'>): P
                     createdAt: new Date().toISOString(),
                     createdBy: newConversation.visitorId!,
                     updatedAt: new Date().toISOString(),
+                    escalation: { status: 'none' }
                 };
                 await addTicket(newTicketData);
             }
@@ -1508,3 +1543,5 @@ export const updateHelpCenterContent = async (
     
     await batch.commit();
 }
+
+    

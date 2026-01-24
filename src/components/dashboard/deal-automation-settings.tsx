@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -13,9 +14,11 @@ import DealAutomationRuleDialog from './deal-automation-rule-dialog';
 interface DealAutomationSettingsProps {
   activeHub: Hub | null;
   allUsers: User[];
+  allHubs: Hub[];
+  projects: Project[];
 }
 
-export default function DealAutomationSettings({ activeHub, allUsers }: DealAutomationSettingsProps) {
+export default function DealAutomationSettings({ activeHub, allUsers, allHubs, projects }: DealAutomationSettingsProps) {
   const [rules, setRules] = useState<DealAutomationRule[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedRule, setSelectedRule] = useState<DealAutomationRule | null>(null);
@@ -38,8 +41,9 @@ export default function DealAutomationSettings({ activeHub, allUsers }: DealAuto
   };
 
   const handleSaveRule = async (ruleData: Omit<DealAutomationRule, 'id'>, ruleId?: string) => {
+    if (!activeHub) return;
     try {
-      await db.saveDealAutomationRule(ruleData, ruleId);
+      await db.saveDealAutomationRule({ ...ruleData, hubId: activeHub.id }, ruleId);
       toast({ title: ruleId ? 'Rule Updated' : 'Rule Created' });
       if (activeHub) {
         db.getDealAutomationRules(activeHub.id).then(setRules);
@@ -136,7 +140,11 @@ export default function DealAutomationSettings({ activeHub, allUsers }: DealAuto
         onSave={handleSaveRule}
         activeHub={activeHub}
         allUsers={allUsers}
+        allHubs={allHubs}
+        projects={projects}
       />
     </>
   );
 }
+
+    

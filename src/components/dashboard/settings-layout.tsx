@@ -22,17 +22,20 @@ import {
   ChatMessage,
   Bot,
   DealAutomationRule,
+  EscalationIntakeRule,
 } from '@/lib/data';
 import InboxSettings from './inbox-settings';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import DealAutomationSettings from './deal-automation-settings';
+import EscalationIntakeSettings from './escalation-intake-settings';
 
-type SettingsView = 'users' | 'spaces' | 'hub' | 'inbox' | 'timesheets' | 'deal-automation';
+type SettingsView = 'users' | 'spaces' | 'hub' | 'inbox' | 'timesheets' | 'deal-automation' | 'escalation-intake';
 
 interface SettingsLayoutProps {
   allUsers: User[];
   allSpaces: Space[];
+  allHubs: Hub[];
   onSave: (space: Omit<Space, 'id'>, spaceId?: string) => void;
   onDelete: (spaceId: string) => void;
   appUser: User | null;
@@ -50,6 +53,7 @@ interface SettingsLayoutProps {
   bots: Bot[];
   onBotUpdate: (botId: string, data: Partial<Bot>) => void;
   onBotAdd: (bot: Omit<Bot, 'id'>) => void;
+  escalationRules: EscalationIntakeRule[];
 }
 
 export default function SettingsLayout(props: SettingsLayoutProps) {
@@ -65,6 +69,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
     { key: 'hub', label: 'Hub Settings', disabled: !props.activeHub },
     { key: 'inbox', label: 'Inbox', disabled: !hubHasInbox },
     { key: 'deal-automation', label: 'Deal Automation', disabled: !hubHasDeals },
+    { key: 'escalation-intake', label: 'Escalation Intake', disabled: !props.activeHub },
     { key: 'timesheets', label: 'Timesheets' },
   ];
 
@@ -95,6 +100,9 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             activeHub={props.activeHub}
             onUpdateHub={props.onUpdateActiveHub}
             allUsers={props.allUsers}
+            allHubs={props.allHubs}
+            projects={props.projects}
+            escalationRules={props.escalationRules}
           />
         );
        case 'inbox':
@@ -110,7 +118,20 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             onBotAdd={props.onBotAdd}
          />;
       case 'deal-automation':
-        return <DealAutomationSettings activeHub={props.activeHub} allUsers={props.allUsers} />;
+        return <DealAutomationSettings 
+          activeHub={props.activeHub} 
+          allUsers={props.allUsers}
+          allHubs={props.allHubs}
+          projects={props.projects}
+        />;
+      case 'escalation-intake':
+        return <EscalationIntakeSettings
+          activeHub={props.activeHub}
+          allUsers={props.allUsers}
+          allHubs={props.allHubs}
+          projects={props.projects}
+          rules={props.escalationRules}
+        />;
       case 'timesheets':
         return (
           <TeamTimesheets
@@ -179,3 +200,5 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
     </div>
   );
 }
+
+    
