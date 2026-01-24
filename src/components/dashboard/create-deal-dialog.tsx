@@ -34,7 +34,10 @@ import { format } from 'date-fns';
 const dealSchema = z.object({
   title: z.string().min(1, 'Title is required.'),
   contactId: z.string().optional(),
-  value: z.coerce.number().optional(),
+  value: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.coerce.number().optional()
+  ),
   assignedTo: z.string().optional(),
   nextStep: z.string().optional(),
   nextStepAt: z.date().optional(),
@@ -66,6 +69,13 @@ export default function CreateDealDialog({
     resolver: zodResolver(dealSchema),
     defaultValues: {
       title: '',
+      contactId: '',
+      value: undefined,
+      assignedTo: '',
+      nextStep: '',
+      nextStepAt: undefined,
+      source: '',
+      description: '',
     },
   });
 
@@ -125,7 +135,7 @@ export default function CreateDealDialog({
                   <FormItem>
                     <FormLabel>Value ($)</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="5000" {...field} />
+                      <Input type="number" placeholder="5000" {...field} value={field.value ?? ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -137,7 +147,7 @@ export default function CreateDealDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Contact</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Select a contact" /></SelectTrigger></FormControl>
                         <SelectContent>
                             {visitors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
@@ -153,7 +163,7 @@ export default function CreateDealDialog({
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel>Owner</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value ?? ''}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Assign a user" /></SelectTrigger></FormControl>
                             <SelectContent>
                                 {allUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
@@ -169,7 +179,7 @@ export default function CreateDealDialog({
                   render={({ field }) => (
                       <FormItem>
                           <FormLabel>Next Step</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value ?? ''}>
                               <FormControl><SelectTrigger><SelectValue placeholder="Select next step" /></SelectTrigger></FormControl>
                               <SelectContent>
                                   <SelectItem value="Call">Call</SelectItem>
@@ -214,7 +224,7 @@ export default function CreateDealDialog({
               render={({ field }) => (
                   <FormItem>
                       <FormLabel>Source</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value ?? ''}>
                           <FormControl><SelectTrigger><SelectValue placeholder="Select a source" /></SelectTrigger></FormControl>
                           <SelectContent>
                               <SelectItem value="Inbound Chat">Inbound Chat</SelectItem>
@@ -234,7 +244,7 @@ export default function CreateDealDialog({
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Add internal notes about the deal..." {...field} />
+                    <Textarea placeholder="Add internal notes about the deal..." {...field} value={field.value ?? ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
