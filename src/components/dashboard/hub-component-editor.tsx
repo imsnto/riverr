@@ -16,6 +16,8 @@ import {
 
 const ALL_COMPONENTS = [
   { id: 'tasks', name: 'Task Board', description: 'Kanban board for tasks.' },
+  { id: 'tickets', name: 'Tickets', description: 'Customer support ticket pipeline.' },
+  { id: 'deals', name: 'Deals', description: 'Sales pipeline for deals and opportunities.' },
   { id: 'inbox', name: 'Inbox', description: 'Live chat with website visitors & customers.' },
   { id: 'contacts', name: 'Contacts', description: 'View and manage all your customer contacts.' },
   { id: 'help-center', name: 'Knowledge', description: 'Customer-facing knowledge base.' },
