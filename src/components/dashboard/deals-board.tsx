@@ -1,9 +1,9 @@
 
 'use client';
 
-import React, { useState, DragEvent, useRef } from 'react';
+import React, { useState, DragEvent, useRef, useMemo } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Deal, Hub, Status, Visitor } from '@/lib/data';
+import { User, Deal, Hub, Status, Visitor, Space } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { MoreHorizontal, Plus, Edit, Trash2, Palette, Archive, CheckCircle, Folder, ChevronsUpDown, ArrowLeft, DollarSign } from 'lucide-react';
@@ -80,6 +80,7 @@ interface DealsBoardProps {
   deals: Deal[];
   onUpdateDeals: (deals: Deal[]) => void;
   activeHub: Hub;
+  activeSpace: Space;
   allUsers: User[];
   visitors: Visitor[];
   onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
@@ -91,7 +92,7 @@ const defaultStatuses: Status[] = [
     { name: 'Won', color: '#22c55e' }, { name: 'Lost', color: '#ef4444' },
 ];
 
-export default function DealsBoard({ deals, onUpdateDeals, activeHub, allUsers, visitors, onUpdateActiveHub }: DealsBoardProps) {
+export default function DealsBoard({ deals, onUpdateDeals, activeHub, activeSpace, allUsers, visitors, onUpdateActiveHub }: DealsBoardProps) {
   const [draggedDeal, setDraggedDeal] = useState<string | null>(null);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const { appUser } = useAuth();
@@ -100,6 +101,14 @@ export default function DealsBoard({ deals, onUpdateDeals, activeHub, allUsers, 
   
   const [dropIndicator, setDropIndicator] = useState<{ status: string; index: number } | null>(null);
   const dealCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const hubMembers = useMemo(() => {
+    if (!activeHub || !activeSpace) return [];
+    if (activeHub.isPrivate && activeHub.memberIds) {
+        return allUsers.filter(u => activeHub.memberIds?.includes(u.id));
+    }
+    return allUsers.filter(u => activeSpace.members[u.id]);
+  }, [activeHub, activeSpace, allUsers]);
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, dealId: string) => {
     e.dataTransfer.setData('dealId', dealId);
@@ -208,6 +217,21 @@ export default function DealsBoard({ deals, onUpdateDeals, activeHub, allUsers, 
       <div className="flex h-full min-w-0 flex-col overflow-hidden">
         <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-4 border-b">
             <h1 className="text-2xl font-bold">Deals</h1>
+             <div className="flex items-center gap-4">
+                <div className="flex -space-x-2">
+                    {hubMembers.slice(0, 5).map(member => (
+                        <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
+                            <AvatarImage src={member.avatarUrl} alt={member.name} />
+                            <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                        </Avatar>
+                    ))}
+                    {hubMembers.length > 5 && (
+                        <Avatar className="h-8 w-8 border-2 border-background">
+                            <AvatarFallback>+{hubMembers.length - 5}</AvatarFallback>
+                        </Avatar>
+                    )}
+                </div>
+            </div>
         </div>
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
           <div className="h-full w-full min-w-0 overflow-x-auto overflow-y-hidden">

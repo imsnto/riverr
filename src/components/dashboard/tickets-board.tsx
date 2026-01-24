@@ -1,9 +1,9 @@
 
 'use client';
 
-import React, { useState, DragEvent, useRef } from 'react';
+import React, { useState, DragEvent, useRef, useMemo } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Ticket, Project, Hub, Status, Activity, Visitor, Conversation } from '@/lib/data';
+import { User, Ticket, Hub, Status, Visitor, Conversation, Space } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { MoreHorizontal, Plus, Edit, Trash2, Palette, Archive, CheckCircle, Folder, ChevronsUpDown, ArrowLeft, Ticket as TicketIcon } from 'lucide-react';
@@ -80,11 +80,11 @@ interface TicketsBoardProps {
   tickets: Ticket[];
   onUpdateTickets: (tickets: Ticket[]) => void;
   activeHub: Hub;
+  activeSpace: Space;
   allUsers: User[];
   visitors: Visitor[];
   conversations: Conversation[];
   onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
-  onUpdateTask: (task: Task) => void;
 }
 
 const defaultStatuses: Status[] = [
@@ -93,7 +93,7 @@ const defaultStatuses: Status[] = [
     { name: 'Closed', color: '#22c55e' },
 ];
 
-export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, allUsers, visitors, conversations, onUpdateActiveHub }: TicketsBoardProps) {
+export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, activeSpace, allUsers, visitors, conversations, onUpdateActiveHub }: TicketsBoardProps) {
   const [draggedTicket, setDraggedTicket] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
@@ -108,6 +108,14 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, allU
   
   const [dropIndicator, setDropIndicator] = useState<{ status: string; index: number } | null>(null);
   const ticketCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const hubMembers = useMemo(() => {
+    if (!activeHub || !activeSpace) return [];
+    if (activeHub.isPrivate && activeHub.memberIds) {
+        return allUsers.filter(u => activeHub.memberIds?.includes(u.id));
+    }
+    return allUsers.filter(u => activeSpace.members[u.id]);
+  }, [activeHub, activeSpace, allUsers]);
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, ticketId: string) => {
     e.dataTransfer.setData('ticketId', ticketId);
@@ -217,6 +225,21 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, allU
       <div className="flex h-full min-w-0 flex-col overflow-hidden">
         <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-4 border-b">
             <h1 className="text-2xl font-bold">Tickets</h1>
+            <div className="flex items-center gap-4">
+                <div className="flex -space-x-2">
+                    {hubMembers.slice(0, 5).map(member => (
+                        <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
+                            <AvatarImage src={member.avatarUrl} alt={member.name} />
+                            <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                        </Avatar>
+                    ))}
+                    {hubMembers.length > 5 && (
+                        <Avatar className="h-8 w-8 border-2 border-background">
+                            <AvatarFallback>+{hubMembers.length - 5}</AvatarFallback>
+                        </Avatar>
+                    )}
+                </div>
+            </div>
         </div>
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
           <div className="h-full w-full min-w-0 overflow-x-auto overflow-y-hidden">

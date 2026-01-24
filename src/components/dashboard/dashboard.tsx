@@ -630,63 +630,102 @@ export default function Dashboard({ view }: { view: string }) {
   };
 
   const renderView = () => {
-    const props = {
+    const overviewProps = {
       tasks,
       projects,
       activeSpace,
       activeHub,
       allUsers,
       appUser,
-      onUpdateTasks: handleUpdateTasks,
-      onUpdateActiveHub: handleUpdateActiveHub,
-      onAddProject: handleAddProject,
-      onUpdateProject: handleUpdateProject,
-      onDeleteProject: handleDeleteProject,
-      onTaskSelect: setSelectedTask,
-      onUpdateTask: handleUpdateTask,
-      onAddTask: handleAddTask,
       timeEntries,
-      allSpaces: userSpaces,
       unreadMentions,
-      onMentionsCleared: () => setLastMentionsRead(new Date().toISOString()),
-      onSelectTask: setSelectedTask,
-      statuses: activeHub.statuses || [],
+      onTaskSelect: setSelectedTask,
+      jobs,
+      jobFlowTemplates,
+      jobFlowTasks,
+      onUpdateTask: handleUpdateTask,
+      onDataRefresh: fetchData,
+    };
+    
+    const settingsProps = {
+      allUsers,
+      allSpaces: userSpaces,
       onSave: handleSpaceSave,
       onDelete: db.deleteSpace,
+      appUser,
       onInvite: fetchData,
       handleInvite: async (invite: any) => {
           const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
           await db.addInvite({ ...invite, token, invitedBy: appUser.id, status: 'pending' });
           fetchData();
       },
-      onDataRefresh: fetchData,
-      jobs,
-      jobFlowTemplates,
-      jobFlowTasks,
-      onJobLaunched: fetchData,
-    };
+      projects,
+      tasks,
+      timeEntries,
+      activeHub,
+      onUpdateActiveHub: handleUpdateActiveHub,
+      onSendMessageFromBotPreview: handleSendMessageFromBotPreview,
+      chatMessages,
+      visitors,
+      chatConversations,
+      bots,
+      onBotUpdate: handleBotUpdate,
+      onBotAdd: handleBotAdd
+    }
+
 
     switch (currentView) {
-      case 'overview': return <div className="p-8"><Overview {...props} /></div>;
+      case 'overview': return <div className="p-8"><Overview {...overviewProps} /></div>;
       case 'tasks': return (
         <TaskBoard 
-          {...props}
+          tasks={tasks}
+          onUpdateTasks={handleUpdateTasks}
+          projects={projects}
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
+          activeHub={activeHub}
+          allUsers={allUsers}
+          onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
           onNewTaskRequest={handleNewTaskRequest}
+          onTaskClick={setSelectedTask}
+          onUpdateTask={handleUpdateTask}
+          onAddTask={handleAddTask}
           onEditProject={handleEditProject}
           onDeleteProject={handleDeleteProject}
         />
       );
-      case 'tickets': return <TicketsBoard tickets={tickets} onUpdateTickets={handleUpdateTickets} visitors={visitors} conversations={chatConversations} {...props} />;
-      case 'deals': return <DealsBoard deals={deals} onUpdateDeals={handleUpdateDeals} visitors={visitors} {...props} />;
+      case 'tickets': return <TicketsBoard 
+          tickets={tickets} 
+          onUpdateTickets={handleUpdateTickets} 
+          visitors={visitors} 
+          conversations={chatConversations}
+          activeHub={activeHub}
+          activeSpace={activeSpace}
+          allUsers={allUsers}
+          onUpdateActiveHub={handleUpdateActiveHub}
+      />;
+      case 'deals': return <DealsBoard
+          deals={deals}
+          onUpdateDeals={handleUpdateDeals}
+          visitors={visitors}
+          activeHub={activeHub}
+          activeSpace={activeSpace}
+          allUsers={allUsers}
+          onUpdateActiveHub={handleUpdateActiveHub}
+      />;
       case 'help-center': return <HelpCenterLayout
         onSaveArticle={handleSaveArticle}
         />;
-      case 'contacts': return <ContactsLayout {...props} />;
-      case 'settings': return <SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview} chatMessages={chatMessages} visitors={visitors} chatConversations={chatConversations} bots={bots} onBotUpdate={handleBotUpdate} onBotAdd={handleBotAdd} />;
-      case 'team-timesheets': return <TeamTimesheets {...props} />;
+      case 'contacts': return <ContactsLayout activeSpace={activeSpace} />;
+      case 'settings': return <SettingsLayout {...settingsProps} />;
+      case 'team-timesheets': return <TeamTimesheets 
+                                        allSpaces={userSpaces}
+                                        allUsers={allUsers}
+                                        projects={projects}
+                                        tasks={tasks}
+                                        timeEntries={timeEntries}
+                                        appUser={appUser} />;
       case 'inbox': return <InboxLayout 
                             users={allUsers}
                             appUser={appUser}
