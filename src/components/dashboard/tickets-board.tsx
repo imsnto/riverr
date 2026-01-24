@@ -85,6 +85,7 @@ interface TicketsBoardProps {
   visitors: Visitor[];
   conversations: Conversation[];
   onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
+  onNavigateToSettings: () => void;
 }
 
 const defaultStatuses: Status[] = [
@@ -93,7 +94,7 @@ const defaultStatuses: Status[] = [
     { name: 'Closed', color: '#22c55e' },
 ];
 
-export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, activeSpace, allUsers, visitors, conversations, onUpdateActiveHub }: TicketsBoardProps) {
+export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, activeSpace, allUsers, visitors, conversations, onUpdateActiveHub, onNavigateToSettings }: TicketsBoardProps) {
   const [draggedTicket, setDraggedTicket] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
@@ -225,7 +226,7 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
       <div className="flex h-full min-w-0 flex-col overflow-hidden">
         <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-4 border-b">
             <h1 className="text-2xl font-bold">Tickets</h1>
-            <div className="flex items-center gap-4">
+             <div className="flex items-center gap-4">
                 <div className="flex -space-x-2">
                     {hubMembers.slice(0, 5).map(member => (
                         <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
@@ -239,6 +240,7 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
                         </Avatar>
                     )}
                 </div>
+                <Button variant="outline" onClick={onNavigateToSettings}>Invite</Button>
             </div>
         </div>
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">

@@ -704,6 +704,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeSpace={activeSpace}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
+          onNavigateToSettings={() => handleViewChange('settings')}
       />;
       case 'deals': return <DealsBoard
           deals={deals}
@@ -713,6 +714,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeSpace={activeSpace}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
+          onNavigateToSettings={() => handleViewChange('settings')}
       />;
       case 'help-center': return <HelpCenterLayout
         onSaveArticle={handleSaveArticle}

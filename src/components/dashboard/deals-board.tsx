@@ -84,6 +84,7 @@ interface DealsBoardProps {
   allUsers: User[];
   visitors: Visitor[];
   onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
+  onNavigateToSettings: () => void;
 }
 
 const defaultStatuses: Status[] = [
@@ -92,7 +93,7 @@ const defaultStatuses: Status[] = [
     { name: 'Won', color: '#22c55e' }, { name: 'Lost', color: '#ef4444' },
 ];
 
-export default function DealsBoard({ deals, onUpdateDeals, activeHub, activeSpace, allUsers, visitors, onUpdateActiveHub }: DealsBoardProps) {
+export default function DealsBoard({ deals, onUpdateDeals, activeHub, activeSpace, allUsers, visitors, onUpdateActiveHub, onNavigateToSettings }: DealsBoardProps) {
   const [draggedDeal, setDraggedDeal] = useState<string | null>(null);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const { appUser } = useAuth();
@@ -231,6 +232,7 @@ export default function DealsBoard({ deals, onUpdateDeals, activeHub, activeSpac
                         </Avatar>
                     )}
                 </div>
+                <Button variant="outline" onClick={onNavigateToSettings}>Invite</Button>
             </div>
         </div>
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
