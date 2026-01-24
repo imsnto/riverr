@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState } from 'react';
 import { ContactEvent, ContactEventType } from '@/lib/contacts-types';
@@ -19,6 +20,7 @@ import { cn } from '@/lib/utils';
 
 interface TimelineFeedProps {
   contactId: string;
+  events?: ContactEvent[];
 }
 
 type FilterType = 'all' | 'messages' | 'orders' | 'calls' | 'notes';
@@ -44,18 +46,46 @@ const eventIcons: Record<ContactEventType, React.ElementType> = {
   contact_merged: GitMerge,
 };
 
+const TimelineEventRow = ({ event }: { event: ContactEvent }) => {
+    const Icon = eventIcons[event.type] || StickyNote;
+    const canView = event.ref.conversationId || event.ref.callId;
 
-export default function TimelineFeed({ contactId }: TimelineFeedProps) {
-  // Mock events for now
-  const events: ContactEvent[] = [];
+    return (
+        <div className="flex items-start gap-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                <Icon className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="flex-1">
+                <div className="flex justify-between items-start">
+                    <p className="text-sm">{event.summary}</p>
+                    {canView && <Button variant="link" size="sm" className="h-auto p-0">View</Button>}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}
+                </p>
+            </div>
+        </div>
+    );
+};
+
+export default function TimelineFeed({ contactId, events = [] }: TimelineFeedProps) {
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  
+  const filteredEvents = events.filter(event => {
+      if (activeFilter === 'all') return true;
+      if (activeFilter === 'messages') return event.type.startsWith('chat_');
+      if (activeFilter === 'orders') return event.type === 'order_created';
+      if (activeFilter === 'calls') return event.type.startsWith('call_');
+      if (activeFilter === 'notes') return event.type === 'note';
+      return false;
+  });
 
   if (events.length === 0) {
     return (
       <div className="border-2 border-dashed rounded-lg p-12 text-center">
         <h3 className="text-lg font-semibold">No activity yet</h3>
         <p className="text-sm text-muted-foreground">
-          This contact's timeline is empty.
+          This contact's timeline is empty. Notes and events will appear here.
         </p>
       </div>
     );
@@ -76,22 +106,9 @@ export default function TimelineFeed({ contactId }: TimelineFeedProps) {
             ))}
         </div>
         <div className="space-y-8">
-            {events.map((event) => {
-                const Icon = eventIcons[event.type] || StickyNote;
-                return (
-                <div key={event.id} className="flex items-start gap-4">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1">
-                        <p className="text-sm">{event.summary}</p>
-                        <p className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}
-                        </p>
-                    </div>
-                </div>
-                );
-            })}
+            {filteredEvents.map((event) => (
+                <TimelineEventRow key={event.id} event={event} />
+            ))}
         </div>
     </div>
   );

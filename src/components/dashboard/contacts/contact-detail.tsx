@@ -1,6 +1,7 @@
+
 'use client';
-import React from 'react';
-import { Contact } from '@/lib/contacts-types';
+import React, { useState } from 'react';
+import { Contact, ContactEvent } from '@/lib/contacts-types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -9,6 +10,7 @@ import TimelineFeed from './timeline-feed';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Textarea } from '@/components/ui/textarea';
 
 const getInitials = (name: string | null) => {
     if (!name) return '?';
@@ -23,6 +25,9 @@ interface ContactDetailProps {
 export default function ContactDetail({ contact, onBack }: ContactDetailProps) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const [isAddingNote, setIsAddingNote] = useState(false);
+  const [noteContent, setNoteContent] = useState('');
+  const [events, setEvents] = useState<ContactEvent[]>([]);
 
   const handleCopy = (text: string | null) => {
     if (text) {
@@ -33,6 +38,41 @@ export default function ContactDetail({ contact, onBack }: ContactDetailProps) {
       });
     }
   };
+  
+  const handleMessage = () => {
+    toast({ title: "Feature not available", description: "Messaging integration is coming soon." });
+  };
+  
+  const handleCall = () => {
+      toast({ title: "Feature not available", description: "Calling integration is coming soon." });
+  };
+  
+  const handleEmail = () => {
+      if (contact?.primaryEmail) {
+          window.location.href = `mailto:${contact.primaryEmail}`;
+      } else {
+          toast({ variant: 'destructive', title: "No email address", description: "This contact doesn't have an email address." });
+      }
+  };
+
+  const handleSaveNote = () => {
+    if (!noteContent.trim() || !contact) return;
+
+    const newEvent: ContactEvent = {
+        id: `evt_${Date.now()}`,
+        type: 'note',
+        timestamp: new Date(),
+        summary: noteContent,
+        ref: { contactId: contact.id },
+    };
+
+    setEvents(prev => [newEvent, ...prev]);
+    setNoteContent('');
+    setIsAddingNote(false);
+
+    toast({ title: 'Note Added' });
+  };
+
 
   if (!contact) {
     return (
@@ -67,12 +107,28 @@ export default function ContactDetail({ contact, onBack }: ContactDetailProps) {
                     <Button variant="ghost" size="icon" className="h-7 w-7"><Edit className="h-4 w-4"/></Button>
                 </h2>
                 <p className="text-muted-foreground">{contact.company}</p>
-                 <div className="flex flex-wrap items-center gap-1 pt-1">
-                    <Button variant="outline" size="sm" className="h-7"><MessageSquare className="h-3 w-3 mr-1.5" /> Message</Button>
-                    <Button variant="outline" size="sm" className="h-7"><Phone className="h-3 w-3 mr-1.5" /> Call</Button>
-                    <Button variant="outline" size="sm" className="h-7"><Mail className="h-3 w-3 mr-1.5" /> Email</Button>
-                    <Button variant="outline" size="sm" className="h-7"><PlusCircle className="h-3 w-3 mr-1.5" /> Add Note</Button>
-                </div>
+                {isAddingNote ? (
+                    <div className="pt-1 space-y-2">
+                        <Textarea
+                            placeholder="Add a note about this contact..."
+                            value={noteContent}
+                            onChange={(e) => setNoteContent(e.target.value)}
+                            rows={3}
+                            autoFocus
+                        />
+                        <div className="flex gap-2">
+                            <Button size="sm" onClick={handleSaveNote}>Save Note</Button>
+                            <Button variant="ghost" size="sm" onClick={() => setIsAddingNote(false)}>Cancel</Button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex flex-wrap items-center gap-1 pt-1">
+                        <Button variant="outline" size="sm" className="h-7" onClick={handleMessage}><MessageSquare className="h-3 w-3 mr-1.5" /> Message</Button>
+                        <Button variant="outline" size="sm" className="h-7" onClick={handleCall}><Phone className="h-3 w-3 mr-1.5" /> Call</Button>
+                        <Button variant="outline" size="sm" className="h-7" onClick={handleEmail}><Mail className="h-3 w-3 mr-1.5" /> Email</Button>
+                        <Button variant="outline" size="sm" className="h-7" onClick={() => setIsAddingNote(true)}><PlusCircle className="h-3 w-3 mr-1.5" /> Add Note</Button>
+                    </div>
+                )}
             </div>
         </div>
         <div>
@@ -93,7 +149,7 @@ export default function ContactDetail({ contact, onBack }: ContactDetailProps) {
         <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Timeline */}
             <div className="lg:col-span-2 space-y-6">
-                <TimelineFeed contactId={contact.id} />
+                <TimelineFeed contactId={contact.id} events={events} />
             </div>
 
             {/* Details Sidebar */}
