@@ -59,19 +59,15 @@ import {
   Status,
   Conversation,
   ChatMessage,
-  ChatContact,
+  Visitor, // Changed from ChatContact
   Bot,
   HelpCenter,
   HelpCenterCollection,
   HelpCenterArticle,
-  chatContacts,
-  conversations,
-  chatMessages,
-  Activity,
+  visitors, // changed from chatContacts
   Contact,
   ContactEvent,
 } from "./data";
-import { randomBytes } from "crypto";
 import { FirestorePermissionError } from "./errors";
 import { errorEmitter } from "./error-emitter";
 
@@ -96,10 +92,10 @@ export const seedDatabase = async () => {
         batch.set(doc(db, "hubs", id), hubData);
     });
 
-    // Seed chat contacts, conversations, messages
-    chatContacts.forEach((contact) => {
-      const { id, ...contactData } = contact;
-      batch.set(doc(db, "chat_contacts", id), contactData);
+    // Seed visitors, conversations, messages
+    visitors.forEach((visitor) => { // Changed from chatContacts
+      const { id, ...visitorData } = visitor;
+      batch.set(doc(db, "visitors", id), visitorData); // Changed from "chat_contacts"
     });
     
     conversations.forEach((convo) => {
@@ -137,7 +133,7 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) return null;
   const userDoc = querySnapshot.docs[0];
-  return { id: userDoc.id, ...doc.data() } as User;
+  return { id: userDoc.id, ...userDoc.data() } as User; // FIXED: was ...doc.data()
 };
 
 export const addUser = async (
@@ -964,7 +960,104 @@ export const deleteDocument = async (docId: string): Promise<void> => {
   await deleteDoc(doc(db, "documents", docId));
 };
 
-// --- Contact Management ---
+// --- Contact, Visitor, and Conversation Management ---
+
+const normalizeEmail = (email?: string | null) =>
+  (email || "").trim().toLowerCase();
+
+const normalizePhone = (phone?: string | null) =>
+  (phone || "").replace(/[^\d+]/g, ""); // simple for now
+
+export const findOrCreateContactByIdentity = async (
+  tenantId: string,
+  identity: { email?: string; phone?: string; name?: string }
+): Promise<Contact> => {
+  const email = normalizeEmail(identity.email);
+  const phone = normalizePhone(identity.phone);
+
+  // Try email match
+  if (email) {
+    const q1 = query(collection(db, "contacts"),
+      where("tenantId", "==", tenantId),
+      where("primaryEmail", "==", email),
+      limit(1)
+    );
+    const snap1 = await getDocs(q1);
+    if (!snap1.empty) return { id: snap1.docs[0].id, ...snap1.docs[0].data() } as Contact;
+  }
+
+  // Try phone match (basic: primaryPhone)
+  if (phone) {
+    const q2 = query(collection(db, "contacts"),
+      where("tenantId", "==", tenantId),
+      where("primaryPhone", "==", phone),
+      limit(1)
+    );
+    const snap2 = await getDocs(q2);
+    if (!snap2.empty) return { id: snap2.docs[0].id, ...snap2.docs[0].data() } as Contact;
+  }
+
+  // Create new contact
+  const now = new Date().toISOString();
+  return await addContact({
+    tenantId,
+    name: identity.name || null,
+    company: null,
+    emails: email ? [email] : [],
+    phones: phone ? [phone] : [],
+    primaryEmail: email || null,
+    primaryPhone: phone || null,
+    source: "chat",
+    externalIds: {},
+    tags: [],
+    createdAt: now,
+    updatedAt: now,
+    lastSeenAt: now,
+    lastMessageAt: null,
+    lastOrderAt: null,
+    lastCallAt: null,
+    mergeParentId: null,
+    isMerged: false,
+  } as any);
+};
+
+export const attachContactToConversation = async (
+  tenantId: string,
+  conversationId: string,
+  contactId: string,
+  visitorId?: string | null
+) => {
+  await updateConversation(conversationId, {
+    contactId,
+    ...(visitorId ? { visitorId } : {}),
+  } as any);
+
+  await addContactEvent(contactId, {
+    type: "identity_added",
+    timestamp: serverTimestamp() as any,
+    summary: "Identity attached from chat",
+    ref: { conversationId, visitorId: visitorId || null },
+  });
+};
+
+export const logChatMessageEventIfLinked = async (
+  conversation: Conversation,
+  msg: Omit<ChatMessage, "id">,
+) => {
+  if (!conversation.contactId) return;
+
+  const preview =
+    (msg.content || "").slice(0, 140);
+
+  await addContactEvent(conversation.contactId, {
+    type: "chat_message",
+    timestamp: msg.timestamp || (serverTimestamp() as any),
+    summary: preview || "Message",
+    ref: { conversationId: conversation.id },
+    payload: { direction: msg.senderType || "unknown" },
+  });
+};
+
 export const getContacts = async (spaceId: string): Promise<Contact[]> => {
     const q = query(collection(db, 'contacts'), where('tenantId', '==', spaceId));
     const snapshot = await getDocs(q);
@@ -1028,21 +1121,33 @@ export const getMessagesForConversations = async (conversationIds: string[]): Pr
     return messages;
 }
 
-export const addChatMessage = async (message: Omit<ChatMessage, 'id'>): Promise<ChatMessage> => {
-    const collRef = collection(db, 'chat_messages');
-    try {
-        const docRef = await addDoc(collRef, message);
-        return { ...message, id: docRef.id };
-    } catch (serverError) {
-        const permissionError = new FirestorePermissionError({
-            path: collRef.path,
-            operation: 'create',
-            requestResourceData: message,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        throw serverError;
+export const addChatMessage = async (message: Omit<ChatMessage, "id">): Promise<ChatMessage> => {
+  const collRef = collection(db, "chat_messages");
+  const docRef = await addDoc(collRef, message);
+  const saved = { ...message, id: docRef.id };
+
+  // update conversation summary
+  if (message.conversationId) {
+    const conversationUpdateData = {
+        lastMessageAt: message.timestamp,
+        lastMessage: (message.content || "").slice(0, 140),
+        lastMessageAuthor: message.senderType === 'agent' 
+          ? (await getUser(message.authorId))?.name || 'Agent'
+          : (await getDoc(doc(db, "visitors", message.authorId))).data()?.name || 'Contact',
+        updatedAt: serverTimestamp(),
+    };
+    await updateConversation(message.conversationId, conversationUpdateData as any);
+
+    // load conversation to see if contactId is linked
+    const convoSnap = await getDoc(doc(db, "conversations", message.conversationId));
+    if (convoSnap.exists()) {
+      const convo = { id: convoSnap.id, ...convoSnap.data() } as Conversation;
+      await logChatMessageEventIfLinked(convo, saved);
     }
-}
+  }
+
+  return saved;
+};
 
 export const updateConversation = async (conversationId: string, data: Partial<Conversation>): Promise<void> => {
     const convRef = doc(db, 'conversations', conversationId);
@@ -1121,14 +1226,14 @@ export const updateBot = async (botId: string, data: Partial<Bot>): Promise<void
   await updateDoc(botRef, data);
 };
 
-export const getOrCreateContact = async (contactId: string, details?: Partial<ChatContact>): Promise<ChatContact> => {
-    const contactRef = doc(db, 'chat_contacts', contactId);
+export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Visitor>): Promise<Visitor> => {
+    const visitorRef = doc(db, 'visitors', visitorId);
     try {
-        const contactSnap = await getDoc(contactRef);
-        if (contactSnap.exists()) {
-            return { id: contactSnap.id, ...contactSnap.data() } as ChatContact;
+        const visitorSnap = await getDoc(visitorRef);
+        if (visitorSnap.exists()) {
+            return { id: visitorSnap.id, ...visitorSnap.data() } as Visitor;
         } else {
-            const newContact: Omit<ChatContact, 'id'> = {
+            const newVisitor: Omit<Visitor, 'id'> = {
                 name: details?.name || 'Anonymous User',
                 email: details?.email || 'N/A',
                 avatarUrl: details?.avatarUrl || `https://placehold.co/100x100.png?text=${(details?.name?.[0] || 'U')}`,
@@ -1142,22 +1247,22 @@ export const getOrCreateContact = async (contactId: string, details?: Partial<Ch
                 companySpend: '$0.00',
             };
             
-            setDoc(contactRef, newContact)
+            setDoc(visitorRef, newVisitor)
                 .catch(async (serverError) => {
                     const permissionError = new FirestorePermissionError({
-                        path: contactRef.path,
+                        path: visitorRef.path,
                         operation: 'create',
-                        requestResourceData: newContact,
+                        requestResourceData: newVisitor,
                     });
                     errorEmitter.emit('permission-error', permissionError);
                 });
 
-            return { id: contactId, ...newContact };
+            return { id: visitorId, ...newVisitor };
         }
     } catch (serverError: any) {
         if (serverError.code === 'permission-denied') {
             const permissionError = new FirestorePermissionError({
-                path: contactRef.path,
+                path: visitorRef.path,
                 operation: 'get'
             });
             errorEmitter.emit('permission-error', permissionError);
@@ -1278,6 +1383,3 @@ export const updateHelpCenterContent = async (
     
     await batch.commit();
 }
-    
-
-    

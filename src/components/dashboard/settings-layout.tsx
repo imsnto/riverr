@@ -17,7 +17,7 @@ import {
   Task,
   TimeEntry,
   Hub,
-  ChatContact,
+  Visitor,
   Conversation,
   ChatMessage,
   Bot,
@@ -43,7 +43,7 @@ interface SettingsLayoutProps {
   onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
   onSendMessageFromBotPreview: (content: string) => void;
   chatMessages: ChatMessage[];
-  chatContacts: ChatContact[];
+  visitors: Visitor[];
   chatConversations: Conversation[];
   bots: Bot[];
   onBotUpdate: (botId: string, data: Partial<Bot>) => void;
@@ -97,7 +97,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
         return <InboxSettings 
             onSendMessageFromBotPreview={props.onSendMessageFromBotPreview}
             chatMessages={props.chatMessages}
-            chatContacts={props.chatContacts}
+            visitors={props.visitors}
             chatConversations={props.chatConversations}
             allUsers={props.allUsers}
             appUser={props.appUser}

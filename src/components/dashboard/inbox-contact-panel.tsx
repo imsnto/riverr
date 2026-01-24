@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { ChatContact, User } from '@/lib/data';
+import { Visitor, User } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
@@ -12,7 +12,7 @@ import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 
 interface InboxContactPanelProps {
-  contact: ChatContact | null;
+  visitor: Visitor | null;
   onToggle: () => void;
 }
 
@@ -30,8 +30,8 @@ const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, labe
 );
 
 
-export default function InboxContactPanel({ contact, onToggle }: InboxContactPanelProps) {
-  if (!contact) {
+export default function InboxContactPanel({ visitor, onToggle }: InboxContactPanelProps) {
+  if (!visitor) {
     return (
       <div className="flex h-full items-center justify-center bg-muted/50 p-4">
       </div>
@@ -45,13 +45,13 @@ export default function InboxContactPanel({ contact, onToggle }: InboxContactPan
             <div className="flex-1" />
             <div className="flex flex-col items-center text-center flex-1">
                 <Avatar className="h-16 w-16 mb-2">
-                    <AvatarImage src={contact.avatarUrl} alt={contact.name} />
-                    <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
+                    <AvatarImage src={visitor.avatarUrl} alt={visitor.name} />
+                    <AvatarFallback>{getInitials(visitor.name)}</AvatarFallback>
                 </Avatar>
-                <h3 className="font-semibold text-nowrap">{contact.name}</h3>
+                <h3 className="font-semibold text-nowrap">{visitor.name}</h3>
                 {/* <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                     <MapPin className="h-3 w-3" />
-                    <span>{contact.location}</span>
+                    <span>{visitor.location}</span>
                     <span className="text-xs">·</span>
                     <span>10:11 PM GMT</span>
                 </div> */}
@@ -74,9 +74,9 @@ export default function InboxContactPanel({ contact, onToggle }: InboxContactPan
                 <div>
                     <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Account</h4>
                     <div className="space-y-2">
-                        <DetailRow icon={Milestone} label="User ID" value={contact.id} />
-                        <DetailRow icon={AtSign} label="Email" value={contact.email} />
-                        <DetailRow icon={MapPin} label="Location" value={contact.location} />
+                        <DetailRow icon={Milestone} label="User ID" value={visitor.id} />
+                        <DetailRow icon={AtSign} label="Email" value={visitor.email} />
+                        <DetailRow icon={MapPin} label="Location" value={visitor.location} />
                         <DetailRow icon={Calendar} label="Created" value="2y ago" />
                     </div>
                 </div>
@@ -87,8 +87,8 @@ export default function InboxContactPanel({ contact, onToggle }: InboxContactPan
                  <div>
                     <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Page details</h4>
                     <div className="space-y-2">
-                        <DetailRow icon={Milestone} label="Domain" value={contact.companyId} />
-                        <DetailRow icon={Users} label="Pathname" value={contact.companyUsers} />
+                        <DetailRow icon={Milestone} label="Domain" value={visitor.companyId} />
+                        <DetailRow icon={Users} label="Pathname" value={visitor.companyUsers} />
                     </div>
                 </div>
             </div>

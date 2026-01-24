@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -8,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"; // Adjust path based on your setup
-import { ChatContact } from '@/lib/data';
+import { Visitor } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
@@ -17,7 +18,7 @@ import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 
 interface ContactDetailDialogProps {
-  contact: ChatContact | null;
+  visitor: Visitor | null;
   children?: React.ReactNode; // For the trigger button
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -36,7 +37,7 @@ const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, labe
   </div>
 );
 
-export default function ContactDetailDialog({ contact, children, open, onOpenChange }: ContactDetailDialogProps) {
+export default function ContactDetailDialog({ visitor: contact, children, open, onOpenChange }: ContactDetailDialogProps) {
   if (!contact) return null;
 
   return (

@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Conversation, ChatContact, ChatMessage, User } from '@/lib/data';
+import { Conversation, Visitor, ChatMessage, User } from '@/lib/data';
 import InboxConversationList from './inbox-conversation-list';
 import InboxConversationView from './inbox-conversation-view';
 import InboxContactPanel from './inbox-contact-panel';
@@ -14,7 +14,7 @@ import ContactDetailDialog from './inbox-contact-dailog';
 interface InboxLayoutProps {
   users: User[];
   appUser: User;
-  contacts: ChatContact[];
+  visitors: Visitor[];
   conversations: Conversation[];
   messages: ChatMessage[];
   onSendMessage: (conversationId: string, content: string, type: 'reply' | 'note') => void;
@@ -24,7 +24,7 @@ interface InboxLayoutProps {
 export default function InboxLayout({
   users,
   appUser,
-  contacts,
+  visitors,
   conversations,
   messages,
   onSendMessage,
@@ -50,7 +50,7 @@ export default function InboxLayout({
   };
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId) || null;
-  const selectedContact = selectedConversation ? contacts.find(c => c.id === selectedConversation.contactId) : null;
+  const selectedVisitor = selectedConversation ? visitors.find(c => c.id === selectedConversation.visitorId) : null;
 
   return (
     <div className="grid h-full grid-cols-1 md:grid-cols-[320px_1fr]">
@@ -63,7 +63,7 @@ export default function InboxLayout({
       >
         <InboxConversationList
           conversations={conversations}
-          contacts={contacts}
+          visitors={visitors}
           selectedConversationId={selectedConversationId}
           onSelectConversation={handleSelectConversation}
           appUser={appUser}
@@ -83,7 +83,7 @@ export default function InboxLayout({
               <InboxConversationView
                 conversation={selectedConversation}
                 messages={messages}
-                contact={selectedContact}
+                contact={selectedVisitor}
                 users={users}
                 appUser={appUser}
                 isContactPanelOpen={isContactPanelOpen}
@@ -96,16 +96,15 @@ export default function InboxLayout({
               {isContactPanelOpen && (
                 <div className="hidden xl:block h-full">
                   <InboxContactPanel
-                    contact={selectedContact}
+                    visitor={selectedVisitor}
                     onToggle={() => setIsContactPanelOpen(false)}
                   />
                 </div>
               )}
               <ContactDetailDialog
-                contact={selectedContact}
+                visitor={selectedVisitor}
                 open={isContactDailog}
                 onOpenChange={setIsContactDailog}
-                onToggle={() => setIsContactDailog(false)}
               />
             </div> : <div className='flex justify-center items-center w-full h-screen'>Loading...</div>
         }

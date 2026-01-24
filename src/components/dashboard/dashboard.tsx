@@ -23,7 +23,7 @@ import {
   Activity,
   DocumentComment,
   Hub,
-  ChatContact,
+  Visitor,
   Conversation,
   ChatMessage,
   Bot,
@@ -85,7 +85,7 @@ export default function Dashboard({ view }: { view: string }) {
   const [spaceHubs, setSpaceHubs] = useState<Hub[]>([]);
   
   // Inbox state
-  const [chatContacts, setChatContacts] = useState<ChatContact[]>([]);
+  const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [chatConversations, setChatConversations] = useState<Conversation[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [bots, setBots] = useState<Bot[]>([]);
@@ -181,15 +181,15 @@ export default function Dashboard({ view }: { view: string }) {
       
            if (fetchedConversations.length > 0) {
               const convoIds = fetchedConversations.map(c => c.id);
-              const [fetchedMessages, fetchedContacts] = await Promise.all([
+              const [fetchedMessages, fetchedVisitors] = await Promise.all([
                   db.getMessagesForConversations(convoIds),
-                  Promise.all([...new Set(fetchedConversations.map(c => c.contactId))].map(id => db.getOrCreateContact(id)))
+                  Promise.all([...new Set(fetchedConversations.map(c => c.visitorId).filter(Boolean))].map(id => db.getOrCreateVisitor(id!)))
               ]);
               setChatMessages(fetchedMessages);
-              setChatContacts(fetchedContacts);
+              setVisitors(fetchedVisitors);
           } else {
               setChatMessages([]);
-              setChatContacts([]);
+              setVisitors([]);
           }
         }
   };
@@ -463,18 +463,12 @@ export default function Dashboard({ view }: { view: string }) {
       conversationId: conversationId,
       authorId: appUser.id,
       type: type,
+      senderType: 'agent',
       content: messageContent,
       timestamp: new Date().toISOString(),
     };
     
-    const [newMessage, _] = await Promise.all([
-        db.addChatMessage(newMessageData),
-        db.updateConversation(conversationId, {
-            lastMessage: messageContent,
-            lastMessageAt: newMessageData.timestamp,
-            lastMessageAuthor: appUser.name,
-        })
-    ]);
+    const newMessage = await db.addChatMessage(newMessageData);
     
     setChatMessages(prev => [...prev, newMessage]);
     
@@ -494,17 +488,17 @@ export default function Dashboard({ view }: { view: string }) {
   const handleSendMessageFromBotPreview = async (content: string) => {
     if (!activeHub) return;
     
-    const contactId = 'preview-contact-1'; // Hardcoded for preview user
+    const visitorId = 'preview-contact-1'; // Hardcoded for preview user
     const timestamp = new Date().toISOString();
 
-    // Ensure preview contact exists
-    const contact = await db.getOrCreateContact(contactId, { name: 'Preview User' });
-    if (!chatContacts.some(c => c.id === contactId)) {
-        setChatContacts(prev => [...prev, contact]);
+    // Ensure preview visitor exists
+    const visitor = await db.getOrCreateVisitor(visitorId, { name: 'Preview User' });
+    if (!visitors.some(c => c.id === visitorId)) {
+        setVisitors(prev => [...prev, visitor]);
     }
     
     let conversation: Conversation;
-    const existingConvo = chatConversations.find(c => c.contactId === contactId && c.hubId === activeHub.id);
+    const existingConvo = chatConversations.find(c => c.visitorId === visitorId && c.hubId === activeHub.id);
     
     if (existingConvo) {
         conversation = {
@@ -521,7 +515,8 @@ export default function Dashboard({ view }: { view: string }) {
     } else {
         const newConversationData: Omit<Conversation, 'id'> = {
             hubId: activeHub.id,
-            contactId: contactId,
+            contactId: null,
+            visitorId: visitorId,
             assigneeId: null,
             status: 'unassigned',
             lastMessage: content,
@@ -533,8 +528,9 @@ export default function Dashboard({ view }: { view: string }) {
     
     const newMessageData: Omit<ChatMessage, 'id'> = {
         conversationId: conversation.id,
-        authorId: contactId,
+        authorId: visitorId,
         type: 'message',
+        senderType: 'contact',
         content: content,
         timestamp: timestamp,
     };
@@ -656,12 +652,12 @@ export default function Dashboard({ view }: { view: string }) {
         onSaveArticle={handleSaveArticle}
         />;
       case 'contacts': return <ContactsLayout {...props} />;
-      case 'settings': return <SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview} chatMessages={chatMessages} chatContacts={chatContacts} chatConversations={chatConversations} bots={bots} onBotUpdate={handleBotUpdate} onBotAdd={handleBotAdd} />;
+      case 'settings': return <SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview} chatMessages={chatMessages} visitors={visitors} chatConversations={chatConversations} bots={bots} onBotUpdate={handleBotUpdate} onBotAdd={handleBotAdd} />;
       case 'team-timesheets': return <TeamTimesheets {...props} />;
       case 'inbox': return <InboxLayout 
                             users={allUsers}
                             appUser={appUser}
-                            contacts={chatContacts}
+                            visitors={visitors}
                             conversations={chatConversations}
                             messages={chatMessages}
                             onSendMessage={handleSendMessageFromAgent}
@@ -765,5 +761,3 @@ export default function Dashboard({ view }: { view: string }) {
     </SidebarProvider>
   );
 }
-
-    

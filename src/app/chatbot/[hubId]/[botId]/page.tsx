@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { Bot as BotData, ChatContact, Conversation, ChatMessage } from '@/lib/data';
+import { Bot as BotData, Visitor, Conversation, ChatMessage } from '@/lib/data';
 import * as db from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,7 +22,7 @@ export default function ChatbotWidgetPage() {
     const { hubId, botId } = params as { hubId: string, botId: string };
 
     const [bot, setBot] = useState<BotData | null>(null);
-    const [contact, setContact] = useState<ChatContact | null>(null);
+    const [visitor, setVisitor] = useState<Visitor | null>(null);
     const [conversation, setConversation] = useState<Conversation | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -37,16 +37,16 @@ export default function ChatbotWidgetPage() {
             const fetchedBot = await db.getBot(botId);
             setBot(fetchedBot);
 
-            let contactId = localStorage.getItem('riverr_chat_contact_id');
-            if (!contactId) {
-                contactId = `contact_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-                localStorage.setItem('riverr_chat_contact_id', contactId);
+            let visitorId = localStorage.getItem('riverr_chat_visitor_id');
+            if (!visitorId) {
+                visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+                localStorage.setItem('riverr_chat_visitor_id', visitorId);
             }
-            const fetchedContact = await db.getOrCreateContact(contactId);
-            setContact(fetchedContact);
+            const fetchedVisitor = await db.getOrCreateVisitor(visitorId);
+            setVisitor(fetchedVisitor);
 
             const convos = await db.getConversationsForHub(hubId);
-            const existingConvo = convos.find(c => c.contactId === contactId);
+            const existingConvo = convos.find(c => c.visitorId === visitorId);
 
             if (existingConvo) {
                 setConversation(existingConvo);
@@ -68,18 +68,19 @@ export default function ChatbotWidgetPage() {
     }, [messages]);
 
     const handleSendMessage = async () => {
-        if (!messageText.trim() || !contact) return;
+        if (!messageText.trim() || !visitor) return;
         
         let currentConversation = conversation;
         if (!currentConversation) {
             const newConvoData: Omit<Conversation, 'id'> = {
                 hubId,
-                contactId: contact.id,
+                contactId: null,
+                visitorId: visitor.id,
                 assigneeId: null,
                 status: 'unassigned',
                 lastMessage: messageText,
                 lastMessageAt: new Date().toISOString(),
-                lastMessageAuthor: contact.name,
+                lastMessageAuthor: visitor.name,
             };
             const newConvo = await db.addConversation(newConvoData);
             setConversation(newConvo);
@@ -88,8 +89,9 @@ export default function ChatbotWidgetPage() {
 
         const newMessageData: Omit<ChatMessage, 'id'> = {
             conversationId: currentConversation.id,
-            authorId: contact.id,
+            authorId: visitor.id,
             type: 'message',
+            senderType: 'contact',
             content: messageText,
             timestamp: new Date().toISOString(),
         };
@@ -216,5 +218,3 @@ export default function ChatbotWidgetPage() {
     </div>
   );
 }
-
-    

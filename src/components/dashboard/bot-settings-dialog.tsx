@@ -23,7 +23,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Bot as BotData, ChatContact, ChatMessage, User } from '@/lib/data';
+import { Bot as BotData, Visitor, ChatMessage, User } from '@/lib/data';
 import { Bot, MessageSquare, ChevronLeft, MoreHorizontal, X, ChevronDown, Home, Ticket, Send, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -119,7 +119,7 @@ interface BotSettingsDialogProps {
   onSave: (botData: BotData | Omit<BotData, 'id' | 'hubId'>) => void;
   onSendMessage: (content: string) => void;
   messages: ChatMessage[];
-  contact: ChatContact | null;
+  contact: Visitor | null;
   appUser: User | null;
   allUsers: User[];
 }

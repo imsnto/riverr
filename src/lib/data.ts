@@ -317,7 +317,7 @@ export interface Bot {
   agentIds?: string[];
 }
 
-export interface ChatContact {
+export interface Visitor { // Renamed from ChatContact
   id: string;
   name: string;
   email: string;
@@ -335,21 +335,25 @@ export interface ChatContact {
 export interface Conversation {
   id: string;
   hubId: string;
-  contactId: string;
+  contactId: string | null;
+  visitorId?: string | null;
   assigneeId: string | null;
   status: 'open' | 'unassigned' | 'closed';
   lastMessage: string;
   lastMessageAt: string; // ISO String
   lastMessageAuthor: string;
+  lastMessagePreview?: string;
+  updatedAt?: string;
 }
 
 export interface ChatMessage {
   id: string;
   conversationId: string;
-  authorId: string; // Can be a ChatContact ID or a User ID
+  authorId: string; // Can be a Visitor ID or a User ID
   type: 'message' | 'note' | 'event';
   content: string;
   timestamp: string; // ISO String
+  senderType?: 'contact' | 'agent';
 }
 
 // --- Help Center Interfaces ---
@@ -469,7 +473,7 @@ export const messages: Message[] = [
     // Populated by DB seed
 ];
 
-export const chatContacts: (Omit<ChatContact, 'id'> & { id: string })[] = [
+export const visitors: (Omit<Visitor, 'id'> & { id: string })[] = [ // Renamed from chatContacts
     {
         id: 'contact-1',
         name: 'John Doe',
@@ -845,4 +849,4 @@ export const jobFlowTemplates: JobFlowTemplate[] = [];
 export const jobs: Job[] = [];
 export const jobFlowTasks: JobFlowTask[] = [];
 
-export type { Contact, ContactEvent, ContactEventType, ContactSource, Visitor, VisitorType, CallRecord } from './contacts-types';
+export type { Contact, ContactEvent, ContactEventType, ContactSource, VisitorType, CallRecord } from './contacts-types';

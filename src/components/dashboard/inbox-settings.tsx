@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Bot as BotData, ChatContact, ChatMessage, Conversation, Hub, User } from '@/lib/data';
+import { Bot as BotData, Visitor, ChatMessage, Conversation, Hub, User } from '@/lib/data';
 import BotSettingsDialog from './bot-settings-dialog';
 import { Label } from '../ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -32,7 +32,7 @@ import * as db from '@/lib/db';
 interface InboxSettingsProps {
   onSendMessageFromBotPreview: (content: string) => void;
   chatMessages: ChatMessage[];
-  chatContacts: ChatContact[];
+  visitors: Visitor[];
   chatConversations: Conversation[];
   allUsers: User[];
   appUser: User | null;
@@ -44,7 +44,7 @@ interface InboxSettingsProps {
 export default function InboxSettings({ 
     onSendMessageFromBotPreview,
     chatMessages,
-    chatContacts,
+    visitors,
     chatConversations,
     allUsers,
     appUser,
@@ -75,8 +75,8 @@ export default function InboxSettings({
     }
   };
 
-  const previewContact = chatContacts.find(c => c.id === 'preview-contact-1');
-  const previewConversation = chatConversations.find(c => c.contactId === previewContact?.id);
+  const previewVisitor = visitors.find(c => c.id === 'preview-contact-1');
+  const previewConversation = chatConversations.find(c => c.visitorId === previewVisitor?.id);
   const previewMessages = previewConversation ? chatMessages.filter(m => m.conversationId === previewConversation.id) : [];
 
 
@@ -171,7 +171,7 @@ export default function InboxSettings({
           onSave={handleSaveBot}
           onSendMessage={onSendMessageFromBotPreview}
           messages={previewMessages}
-          contact={previewContact || null}
+          contact={previewVisitor || null}
           appUser={appUser}
           allUsers={allUsers}
       />

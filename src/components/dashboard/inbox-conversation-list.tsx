@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Conversation, ChatContact, User } from '@/lib/data';
+import { Conversation, Visitor, User } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -16,7 +16,7 @@ import { SidebarTrigger } from '../ui/sidebar';
 
 interface InboxSidebarProps {
   conversations: Conversation[];
-  contacts: ChatContact[];
+  visitors: Visitor[];
   selectedConversationId: string | null;
   onSelectConversation: (id: string) => void;
   appUser: User;
@@ -30,7 +30,7 @@ const getInitials = (name: string) => {
 
 export default function InboxConversationList({
   conversations,
-  contacts,
+  visitors,
   selectedConversationId,
   onSelectConversation,
   appUser,
@@ -58,11 +58,11 @@ export default function InboxConversationList({
   const conversationListContent = (
     <ScrollArea className="flex-1">
       {filteredConversations.map(convo => {
-        const contact = contacts.find(c => c.id === convo.contactId);
-        if (!contact) return null;
+        const visitor = visitors.find(c => c.id === convo.visitorId);
+        if (!visitor) return null;
         const isSelected = selectedConversationId === convo.id;
         const youReplied = convo.lastMessageAuthor === appUser.name;
-        console.log({ convo, contact, appUser })
+        
         return (
           <div
             key={convo.id}
@@ -75,15 +75,15 @@ export default function InboxConversationList({
             <div className='flex items-center justify-between'>
               <div className='flex items-center space-x-2'>
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={contact.avatarUrl} alt={contact.name} />
-                  <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
+                  <AvatarImage src={visitor.avatarUrl} alt={visitor.name} />
+                  <AvatarFallback>{getInitials(visitor.name)}</AvatarFallback>
                 </Avatar>
                 <p
                 className={cn(
                   "font-semibold truncate pl-1 text-sm",
                   isSelected ? 'text-primary' : ''
                 )}
-                >{contact.name}</p>
+                >{visitor.name}</p>
               </div>
               <p
               className={cn(
@@ -120,7 +120,7 @@ export default function InboxConversationList({
               </div>
               {/* <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
                     <MapPin className="h-3 w-3" />
-                    <span>{contact.location}</span>
+                    <span>{visitor.location}</span>
                 </div> */}
             </div>
           </div>

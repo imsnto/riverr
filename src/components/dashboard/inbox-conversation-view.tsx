@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Conversation, ChatMessage, ChatContact, User } from '@/lib/data';
+import { Conversation, ChatMessage, Visitor, User } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
@@ -16,7 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 interface InboxConversationViewProps {
   conversation: Conversation | null;
   messages: ChatMessage[];
-  contact: ChatContact | null;
+  contact: Visitor | null;
   users: User[];
   appUser: User;
   isContactPanelOpen: boolean;
@@ -56,6 +57,7 @@ export default function InboxConversationView({ conversation, messages, contact,
     const newMessage: Omit<ChatMessage, 'id' | 'conversationId'> = {
       authorId: appUser.id,
       type: activeTab,
+      senderType: 'agent',
       content: messageText,
       timestamp: new Date().toISOString(),
     };
