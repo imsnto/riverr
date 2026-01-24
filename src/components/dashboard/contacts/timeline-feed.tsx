@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState } from 'react';
 import { ContactEvent, ContactEventType } from '@/lib/contacts-types';
@@ -46,6 +45,19 @@ const eventIcons: Record<ContactEventType, React.ElementType> = {
   contact_merged: GitMerge,
 };
 
+const getDateFromTimestamp = (timestamp: any): Date => {
+  if (!timestamp) {
+    return new Date(); // Or handle as an invalid date
+  }
+  if (typeof timestamp.toDate === 'function') {
+    // Firestore Timestamp
+    return timestamp.toDate();
+  }
+  // JS Date object, ISO string, etc.
+  return new Date(timestamp);
+};
+
+
 const TimelineEventRow = ({ event }: { event: ContactEvent }) => {
     const Icon = eventIcons[event.type] || StickyNote;
     const canView = event.ref.conversationId || event.ref.callId;
@@ -61,7 +73,7 @@ const TimelineEventRow = ({ event }: { event: ContactEvent }) => {
                     {canView && <Button variant="link" size="sm" className="h-auto p-0">View</Button>}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}
+                    {formatDistanceToNow(getDateFromTimestamp(event.timestamp), { addSuffix: true })}
                 </p>
             </div>
         </div>
