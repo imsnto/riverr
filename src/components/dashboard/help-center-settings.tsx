@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -16,8 +17,8 @@ export default function HelpCenterSettings({ helpCenter }: HelpCenterSettingsPro
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>No Help Center Selected</CardTitle>
-                    <CardDescription>Select a help center from the sidebar to manage its settings.</CardDescription>
+                    <CardTitle>No Knowledge Base Selected</CardTitle>
+                    <CardDescription>Select a knowledge base from the sidebar to manage its settings.</CardDescription>
                 </CardHeader>
             </Card>
         );
@@ -27,11 +28,11 @@ export default function HelpCenterSettings({ helpCenter }: HelpCenterSettingsPro
         <Card>
             <CardHeader>
                 <CardTitle>Settings for {helpCenter.name}</CardTitle>
-                <CardDescription>Manage settings for this help center.</CardDescription>
+                <CardDescription>Manage settings for this knowledge base.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-2">
-                    <Label htmlFor="hc-name">Help Center Name</Label>
+                    <Label htmlFor="hc-name">Knowledge Base Name</Label>
                     <Input id="hc-name" defaultValue={helpCenter.name} disabled />
                 </div>
                  <div className="space-y-2">

@@ -11,7 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 
-export type HelpCenterSidebarView = 'help-centers' | 'library' | 'all-articles';
+export type HelpCenterSidebarView = 'knowledge-bases' | 'library' | 'all-articles';
 
 interface HelpCenterSidebarProps {
   // Collections (Folders)
@@ -182,17 +182,17 @@ export default function HelpCenterSidebar({
                  <Collapsible defaultOpen>
                     <CollapsibleTrigger className="w-full">
                         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider p-2 text-left w-full flex justify-between items-center">
-                            Help Centers
+                            Knowledge Bases
                             <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                         </h3>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-1 py-1">
                         <HelpCenterList 
                             helpCenters={helpCenters} 
-                            activeHelpCenterId={sidebarView === 'help-centers' ? activeHelpCenterId : null}
+                            activeHelpCenterId={sidebarView === 'knowledge-bases' ? activeHelpCenterId : null}
                             onSelect={(id) => {
                                 onSelectHelpCenter(id);
-                                onViewChange('help-centers');
+                                onViewChange('knowledge-bases');
                             }}
                         />
                     </CollapsibleContent>

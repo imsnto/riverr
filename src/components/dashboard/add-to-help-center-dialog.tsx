@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import { HelpCenter, HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
@@ -52,9 +53,9 @@ export default function AddToHelpCenterDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add to Help Center</DialogTitle>
+          <DialogTitle>Add to Knowledge Base</DialogTitle>
           <DialogDescription>
-            Select the Help Centers where these {selectedItems.length} item(s) should appear.
+            Select the Knowledge Bases where these {selectedItems.length} item(s) should appear.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-64 border rounded-md my-4">
@@ -71,13 +72,13 @@ export default function AddToHelpCenterDialog({
                 </Label>
               </div>
             )) : (
-              <p className="text-sm text-muted-foreground text-center">No Help Centers found.</p>
+              <p className="text-sm text-muted-foreground text-center">No Knowledge Bases found.</p>
             )}
           </div>
         </ScrollArea>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave}>Update Help Centers</Button>
+          <Button onClick={handleSave}>Update Knowledge Bases</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

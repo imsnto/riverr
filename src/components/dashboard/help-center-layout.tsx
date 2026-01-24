@@ -185,7 +185,7 @@ export default function HelpCenterLayout({
         if (view !== 'library') {
             setSelectedCollectionId(null);
         }
-        if (view !== 'help-centers') {
+        if (view !== 'knowledge-bases') {
             setActiveHelpCenterId(null);
         }
         setSelectedArticleId(null);
@@ -218,9 +218,9 @@ export default function HelpCenterLayout({
         if (sidebarView === 'all-articles') {
             viewTitle = 'All Articles';
             articlesToShow = articles;
-        } else if (sidebarView === 'help-centers' && activeHelpCenterId) {
+        } else if (sidebarView === 'knowledge-bases' && activeHelpCenterId) {
             const hc = helpCenters.find(h => h.id === activeHelpCenterId);
-            viewTitle = hc?.name || 'Help Center';
+            viewTitle = hc?.name || 'Knowledge Base';
             foldersToShow = collections.filter(c => c.helpCenterIds?.includes(activeHelpCenterId));
             articlesToShow = articles.filter(a => a.helpCenterIds?.includes(activeHelpCenterId));
         } else if (sidebarView === 'library') {
@@ -287,7 +287,7 @@ export default function HelpCenterLayout({
             return Promise.resolve();
         });
         await Promise.all(promises);
-        toast({ title: `Updated Help Center associations.` });
+        toast({ title: `Updated Knowledge Base associations.` });
         refreshData();
         setSelectedItems([]);
     };
@@ -330,7 +330,7 @@ export default function HelpCenterLayout({
 
         try {
             await db.updateHelpCenterContent(activeHelpCenterId, selectedIds, articles, collections);
-            toast({ title: "Help Center content updated" });
+            toast({ title: "Knowledge Base content updated" });
             refreshData();
         } catch (e) {
             console.error(e);
@@ -396,7 +396,7 @@ export default function HelpCenterLayout({
                     {title}
                 </h1>
                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {sidebarView === 'help-centers' && activeHelpCenterId ? (
+                    {sidebarView === 'knowledge-bases' && activeHelpCenterId ? (
                          <Button variant="outline" onClick={() => setIsManageContentOpen(true)}>
                             <Library className="mr-2 h-4 w-4" /> Manage Content
                         </Button>
@@ -432,7 +432,7 @@ export default function HelpCenterLayout({
                         <Move className="mr-2 h-4 w-4" /> Move...
                     </Button>
                     <Button variant="secondary" size="sm" onClick={() => setIsAddToHCOpen(true)}>
-                        <LinkIcon className="mr-2 h-4 w-4" /> Add to Help Center...
+                        <LinkIcon className="mr-2 h-4 w-4" /> Add to Knowledge Base...
                     </Button>
                  </div>
              )}

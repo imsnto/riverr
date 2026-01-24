@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { HelpCenter } from '@/lib/data';
 
 const helpCenterSchema = z.object({
-  name: z.string().min(2, 'Help Center name is required.'),
+  name: z.string().min(2, 'Knowledge Base name is required.'),
 });
 
 type HelpCenterFormValues = z.infer<typeof helpCenterSchema>;
@@ -68,12 +68,12 @@ export default function HelpCenterFormDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {helpCenter ? 'Edit Help Center' : 'Create Help Center'}
+            {helpCenter ? 'Edit Knowledge Base' : 'Create Knowledge Base'}
           </DialogTitle>
           <DialogDescription>
             {helpCenter
-              ? 'Update the name of your help center.'
-              : 'Give your new help center a name.'}
+              ? 'Update the name of your knowledge base.'
+              : 'Give your new knowledge base a name.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

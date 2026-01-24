@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import { HelpCenter, HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
@@ -158,7 +159,7 @@ export default function ManageHelpCenterContentDialog({
         <DialogHeader>
           <DialogTitle>Manage content for "{helpCenter.name}"</DialogTitle>
           <DialogDescription>
-            Select articles and folders to include in this Help Center.
+            Select articles and folders to include in this Knowledge Base.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
