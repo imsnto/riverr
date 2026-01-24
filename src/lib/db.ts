@@ -1,3 +1,4 @@
+
 'use client'
 // src/lib/db.ts
 
@@ -59,14 +60,16 @@ import {
   Status,
   Conversation,
   ChatMessage,
-  Visitor, // Changed from ChatContact
+  Visitor,
   Bot,
   HelpCenter,
   HelpCenterCollection,
   HelpCenterArticle,
-  visitors, // changed from chatContacts
+  visitors,
   Contact,
   ContactEvent,
+  Ticket,
+  Deal,
 } from "./data";
 import { FirestorePermissionError } from "./errors";
 import { errorEmitter } from "./error-emitter";
@@ -93,9 +96,9 @@ export const seedDatabase = async () => {
     });
 
     // Seed visitors, conversations, messages
-    visitors.forEach((visitor) => { // Changed from chatContacts
+    visitors.forEach((visitor) => {
       const { id, ...visitorData } = visitor;
-      batch.set(doc(db, "visitors", id), visitorData); // Changed from "chat_contacts"
+      batch.set(doc(db, "visitors", id), visitorData);
     });
     
     conversations.forEach((convo) => {
@@ -133,7 +136,7 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) return null;
   const userDoc = querySnapshot.docs[0];
-  return { id: userDoc.id, ...userDoc.data() } as User; // FIXED: was ...doc.data()
+  return { id: userDoc.id, ...userDoc.data() } as User;
 };
 
 export const addUser = async (
@@ -287,6 +290,14 @@ const defaultStatuses: Status[] = [
     { name: 'Done', color: '#22c55e' },
 ];
 
+const defaultTicketStatuses: Status[] = [
+    { name: 'New', color: '#6b7280' },
+    { name: 'Open', color: '#3b82f6' },
+    { name: 'Waiting on Customer', color: '#f59e0b' },
+    { name: 'Escalated', color: '#ef4444' },
+    { name: 'Closed', color: '#22c55e' },
+];
+
 export const createDefaultHubForSpace = async (spaceId: string, userId: string, hubData: Partial<Omit<Hub, 'id' | 'spaceId'>>) => {
     const finalHubData: Omit<Hub, 'id'> = {
         name: hubData.name || 'Default Hub',
@@ -299,6 +310,8 @@ export const createDefaultHubForSpace = async (spaceId: string, userId: string, 
         isPrivate: hubData.isPrivate || false,
         memberIds: hubData.memberIds || [],
         statuses: hubData.statuses || defaultStatuses,
+        ticketStatuses: hubData.ticketStatuses || defaultTicketStatuses,
+        ticketClosingStatusName: 'Closed',
         closingStatusName: hubData.closingStatusName,
     };
     const hubRef = await addDoc(collection(db, 'hubs'), finalHubData);
@@ -408,6 +421,29 @@ export const deleteTask = async (taskId: string): Promise<void> => {
   const taskRef = doc(db, "tasks", taskId);
   await deleteDoc(taskRef);
 };
+
+// --- Ticket Management ---
+export const getTicketsInHub = async (hubId: string): Promise<Ticket[]> => {
+  const q = query(collection(db, "tickets"), where("hubId", "==", hubId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(
+    (doc) => ({ id: doc.id, ...doc.data() } as Ticket)
+  );
+};
+
+export const addTicket = async (ticket: Omit<Ticket, "id">): Promise<Ticket> => {
+  const docRef = await addDoc(collection(db, "tickets"), ticket);
+  return { ...ticket, id: docRef.id };
+};
+
+export const updateTicket = async (
+  ticketId: string,
+  data: Partial<Ticket>
+): Promise<void> => {
+  const ticketRef = doc(db, "tickets", ticketId);
+  await updateDoc(ticketRef, data);
+};
+
 
 // --- Time & Log Management ---
 export const getTimeEntriesInHub = async (
@@ -1128,12 +1164,13 @@ export const addChatMessage = async (message: Omit<ChatMessage, "id">): Promise<
 
   // update conversation summary
   if (message.conversationId) {
+    const lastMessageAuthorDoc = await getDoc(doc(db, "visitors", message.authorId));
+    const lastMessageAuthorName = lastMessageAuthorDoc.exists() ? lastMessageAuthorDoc.data().name : 'Agent';
+    
     const conversationUpdateData = {
         lastMessageAt: message.timestamp,
         lastMessage: (message.content || "").slice(0, 140),
-        lastMessageAuthor: message.senderType === 'agent' 
-          ? (await getUser(message.authorId))?.name || 'Agent'
-          : (await getDoc(doc(db, "visitors", message.authorId))).data()?.name || 'Contact',
+        lastMessageAuthor: lastMessageAuthorName,
         updatedAt: serverTimestamp(),
     };
     await updateConversation(message.conversationId, conversationUpdateData as any);
@@ -1143,6 +1180,18 @@ export const addChatMessage = async (message: Omit<ChatMessage, "id">): Promise<
     if (convoSnap.exists()) {
       const convo = { id: convoSnap.id, ...convoSnap.data() } as Conversation;
       await logChatMessageEventIfLinked(convo, saved);
+
+      // Also update ticket if it exists
+      const ticketsQuery = query(collection(db, "tickets"), where("conversationId", "==", message.conversationId), limit(1));
+      const ticketSnap = await getDocs(ticketsQuery);
+      if (!ticketSnap.empty) {
+          const ticketDoc = ticketSnap.docs[0];
+          await updateTicket(ticketDoc.id, {
+              lastMessagePreview: (message.content || "").slice(0, 140),
+              lastMessageAt: message.timestamp,
+              updatedAt: new Date().toISOString(),
+          });
+      }
     }
   }
 
@@ -1168,7 +1217,42 @@ export const addConversation = async (conversation: Omit<Conversation, 'id'>): P
     const collRef = collection(db, 'conversations');
     try {
         const docRef = await addDoc(collRef, conversation);
-        return { ...conversation, id: docRef.id };
+        const newConversation = { ...conversation, id: docRef.id };
+        
+        // Auto-create a ticket if this is a new conversation
+        const ticketsQuery = query(collection(db, "tickets"), where("conversationId", "==", newConversation.id), limit(1));
+        const existingTicketSnap = await getDocs(ticketsQuery);
+        
+        if (existingTicketSnap.empty) {
+            const hub = await getDoc(doc(db, 'hubs', newConversation.hubId));
+            if (hub.exists()) {
+                const hubData = hub.data() as Hub;
+                const visitor = await getDoc(doc(db, 'visitors', newConversation.visitorId!));
+                const visitorName = visitor.exists() ? visitor.data().name : 'Anonymous';
+        
+                const newTicketData: Omit<Ticket, 'id'> = {
+                    hubId: newConversation.hubId,
+                    spaceId: hubData.spaceId,
+                    status: 'New', // Default starting status
+                    title: `Support: ${visitorName}`,
+                    description: null,
+                    priority: null,
+                    assignedTo: null,
+                    contactId: newConversation.contactId || null,
+                    conversationId: newConversation.id,
+                    channel: 'Widget',
+                    lastMessagePreview: newConversation.lastMessage,
+                    lastMessageAt: newConversation.lastMessageAt,
+                    createdAt: new Date().toISOString(),
+                    createdBy: newConversation.visitorId!,
+                    updatedAt: new Date().toISOString(),
+                };
+                await addTicket(newTicketData);
+            }
+        }
+        
+        return newConversation;
+
     } catch (serverError) {
         const permissionError = new FirestorePermissionError({
             path: collRef.path,

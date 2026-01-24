@@ -30,6 +30,8 @@ import {
   HelpCenter,
   HelpCenterCollection,
   HelpCenterArticle,
+  Ticket,
+  Deal,
 } from '@/lib/data';
 import * as db from '@/lib/db';
 import { useRouter, useParams } from 'next/navigation';
@@ -56,6 +58,7 @@ import MobileBottomNav from './mobile-bottom-nav';
 import TeamTimesheets from './team-timesheets';
 import { DashboardSkeleton } from './dashboard-skeleton';
 import ContactsLayout from './contacts/contacts-layout';
+import TicketsBoard from './tickets-board';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -77,6 +80,8 @@ export default function Dashboard({ view }: { view: string }) {
   // Data states
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [slackLogs, setSlackLogs] = useState<SlackMeetingLog[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -137,6 +142,7 @@ export default function Dashboard({ view }: { view: string }) {
           const [
             fetchedProjects,
             fetchedTasks,
+            fetchedTickets,
             fetchedSlackLogs,
             fetchedJobFlowTemplates,
             fetchedPhaseTemplates,
@@ -149,6 +155,7 @@ export default function Dashboard({ view }: { view: string }) {
           ] = await Promise.all([
             db.getProjectsInHub(activeHub.id),
             db.getAllTasks(activeHub.id),
+            db.getTicketsInHub(activeHub.id),
             db.getSlackMeetingLogsInSpace(activeSpace.id), // This is space-wide for now
             db.getJobFlowTemplates(activeHub.id),
             db.getPhaseTemplates(activeHub.id),
@@ -169,6 +176,7 @@ export default function Dashboard({ view }: { view: string }) {
 
 
           setTasks(fetchedTasks);
+          setTickets(fetchedTickets);
           setSlackLogs(fetchedSlackLogs);
           setJobFlowTemplates(fetchedJobFlowTemplates);
           setPhaseTemplates(fetchedPhaseTemplates);
@@ -186,7 +194,7 @@ export default function Dashboard({ view }: { view: string }) {
                   Promise.all([...new Set(fetchedConversations.map(c => c.visitorId).filter(Boolean))].map(id => db.getOrCreateVisitor(id!)))
               ]);
               setChatMessages(fetchedMessages);
-              setVisitors(fetchedVisitors);
+              setVisitors(fetchedVisitors as Visitor[]);
           } else {
               setChatMessages([]);
               setVisitors([]);
@@ -386,6 +394,15 @@ export default function Dashboard({ view }: { view: string }) {
       isNew: true, // Flag for creation mode
     };
     setSelectedTask(newTaskTemplate as Task);
+  };
+  
+  const handleUpdateTickets = (updatedTickets: Ticket[]) => {
+    setTickets(updatedTickets);
+    updatedTickets.forEach(ticket => {
+        if(ticket.id) {
+            db.updateTicket(ticket.id, ticket);
+        }
+    })
   };
 
 
@@ -625,7 +642,8 @@ export default function Dashboard({ view }: { view: string }) {
       onDelete: db.deleteSpace,
       onInvite: fetchData,
       handleInvite: async (invite: any) => {
-          await db.addInvite({ ...invite, invitedBy: appUser.id, status: 'pending' });
+          const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+          await db.addInvite({ ...invite, token, invitedBy: appUser.id, status: 'pending' });
           fetchData();
       },
       onDataRefresh: fetchData,
@@ -648,6 +666,7 @@ export default function Dashboard({ view }: { view: string }) {
           onDeleteProject={handleDeleteProject}
         />
       );
+      case 'tickets': return <TicketsBoard tickets={tickets} onUpdateTickets={handleUpdateTickets} {...props} />;
       case 'help-center': return <HelpCenterLayout
         onSaveArticle={handleSaveArticle}
         />;
@@ -707,6 +726,7 @@ export default function Dashboard({ view }: { view: string }) {
               "flex flex-col flex-1 min-h-0",
               currentView === 'inbox' ||
               currentView === 'tasks' ||
+              currentView === 'tickets' ||
               currentView === 'settings' ||
               currentView === 'contacts' ||
               (currentView === 'help-center' && !isMobile)
