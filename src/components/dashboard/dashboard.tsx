@@ -32,6 +32,7 @@ import {
   HelpCenterArticle,
   Ticket,
   Deal,
+  EscalationIntakeRule,
 } from '@/lib/data';
 import * as db from '@/lib/db';
 import { useRouter, useParams } from 'next/navigation';
@@ -95,6 +96,7 @@ export default function Dashboard({ view }: { view: string }) {
   const [chatConversations, setChatConversations] = useState<Conversation[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [bots, setBots] = useState<Bot[]>([]);
+  const [escalationRules, setEscalationRules] = useState<EscalationIntakeRule[]>([]);
 
   // Help Center states - now managed within HelpCenterLayout
   
@@ -154,6 +156,7 @@ export default function Dashboard({ view }: { view: string }) {
             fetchedHubs,
             fetchedConversations,
             fetchedBots,
+            fetchedEscalationRules,
           ] = await Promise.all([
             db.getProjectsInHub(activeHub.id),
             db.getAllTasks(activeHub.id),
@@ -168,6 +171,7 @@ export default function Dashboard({ view }: { view: string }) {
             db.getHubsForSpace(activeSpace.id),
             db.getConversationsForHub(activeHub.id),
             db.getBots(activeHub.id),
+            db.getEscalationIntakeRules(activeHub.id),
           ]);
           
           setProjects(fetchedProjects);
@@ -190,6 +194,7 @@ export default function Dashboard({ view }: { view: string }) {
           setSpaceHubs(fetchedHubs);
           setChatConversations(fetchedConversations.sort((a,b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
           setBots(fetchedBots);
+          setEscalationRules(fetchedEscalationRules);
       
            if (fetchedConversations.length > 0) {
               const convoIds = fetchedConversations.map(c => c.id);
@@ -650,6 +655,7 @@ export default function Dashboard({ view }: { view: string }) {
     const settingsProps = {
       allUsers,
       allSpaces: userSpaces,
+      allHubs: spaceHubs,
       onSave: handleSpaceSave,
       onDelete: db.deleteSpace,
       appUser,
@@ -670,7 +676,8 @@ export default function Dashboard({ view }: { view: string }) {
       chatConversations,
       bots,
       onBotUpdate: handleBotUpdate,
-      onBotAdd: handleBotAdd
+      onBotAdd: handleBotAdd,
+      escalationRules,
     }
 
 
@@ -679,7 +686,7 @@ export default function Dashboard({ view }: { view: string }) {
       case 'tasks': return (
         <TaskBoard 
           tasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
+          onUpdateTasks={onUpdateTasks}
           projects={projects}
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
@@ -689,7 +696,7 @@ export default function Dashboard({ view }: { view: string }) {
           onNewProject={handleNewProject}
           onNewTaskRequest={handleNewTaskRequest}
           onTaskClick={setSelectedTask}
-          onUpdateTask={handleUpdateTask}
+          onUpdateTask={onUpdateTask}
           onAddTask={handleAddTask}
           onEditProject={handleEditProject}
           onDeleteProject={handleDeleteProject}
@@ -705,6 +712,9 @@ export default function Dashboard({ view }: { view: string }) {
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
+          allHubs={spaceHubs}
+          escalationRules={escalationRules}
+          projects={projects}
       />;
       case 'deals': return <DealsBoard
           deals={deals}

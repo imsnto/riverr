@@ -1,6 +1,10 @@
 
 (function() {
 
+  if (window.self !== window.top) {
+    return;
+  }
+
   if (document.getElementById('riverr-chat-widget-container')) {
     return;
   }
@@ -42,6 +46,7 @@
 
   // Create the floating action button
   const fab = document.createElement('button');
+  let fabGet = document.getElementById('riverr-chat-fab');
   fab.id = 'riverr-chat-fab';
   fab.style.width = '60px';
   fab.style.height = '60px';
@@ -59,7 +64,9 @@
   fab.style.backgroundColor = '#3b82f6';
   fab.style.color = 'white';
   
-  container.appendChild(fab);
+  if(!fabGet){
+    container.appendChild(fab);
+  }
 
   let isOpen = false;
 
