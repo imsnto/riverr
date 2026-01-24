@@ -10,7 +10,7 @@ import { Card } from '../ui/card';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
-import { PanelLeftClose, ArrowLeft } from 'lucide-react';
+import { PanelLeftClose, ArrowLeft, Info } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 interface InboxConversationViewProps {
@@ -24,6 +24,7 @@ interface InboxConversationViewProps {
   onSendMessage: (conversationId: string, message: Omit<ChatMessage, 'id' | 'conversationId'>) => void;
   onAssignConversation: (conversationId: string, assigneeId: string | null) => void;
   onBack?: () => void;
+  onToggleContactDailog: () => void
 }
 
 
@@ -33,7 +34,7 @@ const getInitials = (name: string) => {
 }
 
 
-export default function InboxConversationView({ conversation, messages, contact, users, appUser, isContactPanelOpen, onToggleContactPanel, onSendMessage, onAssignConversation, onBack }: InboxConversationViewProps) {
+export default function InboxConversationView({ conversation, messages, contact, users, appUser, isContactPanelOpen, onToggleContactPanel, onSendMessage, onAssignConversation, onBack, onToggleContactDailog }: InboxConversationViewProps) {
   const [activeTab, setActiveTab] = useState<'reply' | 'note'>('reply');
   const [messageText, setMessageText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -45,7 +46,6 @@ export default function InboxConversationView({ conversation, messages, contact,
   if (!conversation || !contact) {
     return (
       <div className="grid grid-rows-[auto_1fr_auto] h-full items-center justify-center p-4">
-        <p className="text-muted-foreground">Select a conversation to start</p>
       </div>
     );
   }
@@ -137,12 +137,12 @@ export default function InboxConversationView({ conversation, messages, contact,
           </p>
         </div>
         {!isContactPanelOpen && (
-          <Button variant="ghost" size="icon" className="hidden lg:inline-flex" onClick={onToggleContactPanel}>
+          <Button variant="ghost" size="icon" className="hidden xl:inline-flex" onClick={onToggleContactPanel}>
             <PanelLeftClose className="h-4 w-4" />
           </Button>
         )}
-         <Button variant="ghost" size="icon" className="lg:hidden" onClick={onToggleContactPanel}>
-            <PanelLeftClose className="h-4 w-4" />
+         <Button variant="ghost" size="icon" className="xl:hidden" onClick={onToggleContactDailog}>
+            <Info className="h-4 w-4" />
           </Button>
       </div>
 

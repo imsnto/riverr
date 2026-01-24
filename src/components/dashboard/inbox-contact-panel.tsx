@@ -34,15 +34,9 @@ export default function InboxContactPanel({ contact, onToggle }: InboxContactPan
   if (!contact) {
     return (
       <div className="flex h-full items-center justify-center bg-muted/50 p-4">
-        <div className="text-center">
-            <Users className="mx-auto h-10 w-10 text-muted-foreground" />
-            <p className="mt-2 text-sm text-muted-foreground">Select a conversation to see details</p>
-        </div>
       </div>
     );
   }
-
-  console.log(contact)
 
   return (
     <div className="flex flex-col h-full bg-card border-l">
@@ -54,17 +48,17 @@ export default function InboxContactPanel({ contact, onToggle }: InboxContactPan
                     <AvatarImage src={contact.avatarUrl} alt={contact.name} />
                     <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
                 </Avatar>
-                <h3 className="font-semibold">{contact.name}</h3>
+                <h3 className="font-semibold text-nowrap">{contact.name}</h3>
                 {/* <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                     <MapPin className="h-3 w-3" />
                     <span>{contact.location}</span>
                     <span className="text-xs">·</span>
                     <span>10:11 PM GMT</span>
                 </div> */}
-                <div className="flex gap-2 mt-5">
+                {/* <div className="flex gap-2 mt-5">
                     <Button variant="outline" size="sm">Add tag...</Button>
                     <Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge>
-                </div>
+                </div> */}
             </div>
             <div className="flex-1 flex justify-end">
                 <Button variant="ghost" size="icon" onClick={onToggle} className="-mr-2 -mt-2">
