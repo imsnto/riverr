@@ -68,7 +68,7 @@ const DealCard = ({ deal, onClick, isDragging, allUsers, visitors }: { deal: Dea
         {assignee && (
             <Avatar className="h-6 w-6">
                 <AvatarImage src={assignee.avatarUrl} alt={assignee.name} />
-                <AvatarFallback>{assignee ? getInitials(assignee.name) : 'U'}</AvatarFallback>
+                <AvatarFallback>{getInitials(assignee.name)}</AvatarFallback>
             </Avatar>
         )}
       </CardFooter>
@@ -257,7 +257,6 @@ export default function DealsBoard({ deals, onUpdateDeals, activeHub, activeSpac
                         </Avatar>
                     )}
                 </div>
-                <Button variant="outline" onClick={onNavigateToSettings}>Invite</Button>
             </div>
         </div>
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
@@ -291,3 +290,4 @@ export default function DealsBoard({ deals, onUpdateDeals, activeHub, activeSpac
     </>
   );
 }
+    

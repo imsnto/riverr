@@ -427,7 +427,7 @@ export interface Visitor {
   name: string;
   email: string;
   avatarUrl: string;
-  location: string;
+  location: {pathname: string, domain: string};
   lastSeen: string;
   companyName: string;
   sessions: number;

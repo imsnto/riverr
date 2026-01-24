@@ -275,15 +275,13 @@ export default function BotSettingsDialog({
   const promptButtons = [watchedValues.promptButton1, watchedValues.promptButton2, watchedValues.promptButton3].filter(Boolean);
   
   const embedScript = bot ? `
-<script>
-    window.riverrChatConfig = { botId: "${bot.id}", hubId: "${bot.hubId}" };
-    var d=document,s=d.createElement('script');
-    s.src='${origin}/chatbot-loader.js';
-    s.async=true;
-    d.body.appendChild(s);
-</script>
+  <script
+  src="https://studio--timeflow-6i3eo.us-central1.hosted.app/chatbot-loader.js"
+  data-bot-id="${bot.id}"
+  data-hub-id="${bot.hubId}"
+  async
+></script>
   `.trim() : '';
-
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>

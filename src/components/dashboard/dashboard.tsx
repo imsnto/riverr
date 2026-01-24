@@ -686,7 +686,7 @@ export default function Dashboard({ view }: { view: string }) {
       case 'tasks': return (
         <TaskBoard 
           tasks={tasks}
-          onUpdateTasks={onUpdateTasks}
+          onUpdateTasks={handleUpdateTasks}
           projects={projects}
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
@@ -696,7 +696,7 @@ export default function Dashboard({ view }: { view: string }) {
           onNewProject={handleNewProject}
           onNewTaskRequest={handleNewTaskRequest}
           onTaskClick={setSelectedTask}
-          onUpdateTask={onUpdateTask}
+          onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
           onEditProject={handleEditProject}
           onDeleteProject={handleDeleteProject}

@@ -267,7 +267,6 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
                         </Avatar>
                     )}
                 </div>
-                <Button variant="outline" onClick={onNavigateToSettings}>Invite</Button>
             </div>
         </div>
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
@@ -314,5 +313,4 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
     </>
   );
 }
-
     

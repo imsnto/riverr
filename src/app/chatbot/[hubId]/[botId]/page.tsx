@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, MessageSquare, Home, Ticket, ChevronLeft, MoreHorizontal, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+import { useAuth } from '@/hooks/use-auth';
 
 const getInitials = (name?: string) => {
     if (!name) return '';
@@ -20,7 +21,7 @@ const getInitials = (name?: string) => {
 export default function ChatbotWidgetPage() {
     const params = useParams();
     const { hubId, botId } = params as { hubId: string, botId: string };
-
+    const { appUser } = useAuth();
     const [bot, setBot] = useState<BotData | null>(null);
     const [visitor, setVisitor] = useState<Visitor | null>(null);
     const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -32,6 +33,7 @@ export default function ChatbotWidgetPage() {
 
     useEffect(() => {
         const initialize = async () => {
+            if (status === 'loading') return;
             setIsLoading(true);
 
             const fetchedBot = await db.getBot(botId);
@@ -42,6 +44,22 @@ export default function ChatbotWidgetPage() {
                 visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substring(2)}`;
                 localStorage.setItem('riverr_chat_visitor_id', visitorId);
             }
+            const referrer = document.referrer;
+            const url = new URL(referrer);
+            let details = {
+                domain: url.hostname,
+                pathname: url.pathname
+            };
+            if (appUser) {
+                details = {
+                    name: appUser.name,
+                    email: appUser.email,
+                    image: appUser.avatarUrl,
+                    id: appUser.id,
+                    domain: url.hostname,
+                    pathname: url.pathname
+                }
+            }
             const fetchedVisitor = await db.getOrCreateVisitor(visitorId);
             setVisitor(fetchedVisitor);
 
@@ -49,6 +67,7 @@ export default function ChatbotWidgetPage() {
             const existingConvo = convos.find(c => c.visitorId === visitorId);
 
             if (existingConvo) {
+                console.log('existingConvo',existingConvo)
                 setConversation(existingConvo);
                 const existingMessages = await db.getMessagesForConversations([existingConvo.id]);
                 setMessages(existingMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
@@ -56,7 +75,7 @@ export default function ChatbotWidgetPage() {
             setIsLoading(false);
         };
         initialize();
-    }, [botId, hubId]);
+    }, [botId, hubId,appUser]);
 
     useEffect(() => {
         if (scrollAreaRef.current) {

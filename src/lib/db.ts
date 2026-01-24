@@ -1397,7 +1397,7 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
                 name: details?.name || 'Anonymous User',
                 email: details?.email || 'N/A',
                 avatarUrl: details?.avatarUrl || `https://placehold.co/100x100.png?text=${(details?.name?.[0] || 'U')}`,
-                location: details?.location || 'Unknown',
+                location: {pathname: details?.pathname || '', domain: details?.domain || ''},
                 lastSeen: new Date().toISOString(),
                 companyName: 'N/A',
                 sessions: 1,
