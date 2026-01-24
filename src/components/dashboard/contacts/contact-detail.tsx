@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Contact, ContactEvent } from '@/lib/contacts-types';
+import { User } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -21,16 +22,17 @@ const getInitials = (name: string | null) => {
 interface ContactDetailProps {
   contact: Contact | null;
   onBack?: () => void;
+  allUsers: User[];
+  appUser: User | null;
 }
 
-export default function ContactDetail({ contact, onBack }: ContactDetailProps) {
+export default function ContactDetail({ contact, onBack, allUsers, appUser }: ContactDetailProps) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [events, setEvents] = useState<ContactEvent[]>([]);
-  const { appUser } = useAuth();
-
+  
   useEffect(() => {
     if (contact) {
       db.getContactEvents(contact.id).then(setEvents);
@@ -160,7 +162,7 @@ export default function ContactDetail({ contact, onBack }: ContactDetailProps) {
         <div className="p-4 md:p-6 space-y-8">
             {/* Timeline */}
             <div className="space-y-6">
-                <TimelineFeed contactId={contact.id} events={events} />
+                <TimelineFeed contactId={contact.id} events={events} allUsers={allUsers} appUser={appUser} />
             </div>
 
             {/* Details Section */}

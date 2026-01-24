@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Contact } from '@/lib/contacts-types';
+import { Space, User } from '@/lib/data';
 import ContactsList from './contacts-list';
 import ContactDetail from './contact-detail';
-import { Space } from '@/lib/data';
 import CreateContactDialog from './create-contact-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -23,13 +23,18 @@ export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
   const { appUser } = useAuth();
 
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (activeSpace) {
       setIsLoading(true);
-      db.getContacts(activeSpace.id).then(fetchedContacts => {
+      Promise.all([
+          db.getContacts(activeSpace.id),
+          db.getAllUsers()
+      ]).then(([fetchedContacts, fetchedUsers]) => {
         setContacts(fetchedContacts);
+        setAllUsers(fetchedUsers);
         setIsLoading(false);
       });
     }
@@ -96,6 +101,8 @@ export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
           <ContactDetail
             contact={selectedContact}
             onBack={() => setSelectedContact(null)}
+            allUsers={allUsers}
+            appUser={appUser}
           />
         )}
         <CreateContactDialog
@@ -115,7 +122,7 @@ export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
         onSelectContact={setSelectedContact}
         onNewContact={handleNewContact}
       />
-      <ContactDetail contact={selectedContact} />
+      <ContactDetail contact={selectedContact} allUsers={allUsers} appUser={appUser}/>
       
       <CreateContactDialog
         isOpen={isCreateDialogOpen}
