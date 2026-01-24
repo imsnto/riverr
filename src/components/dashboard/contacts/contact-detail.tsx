@@ -116,59 +116,65 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="p-4 md:p-6 border-b flex items-start justify-between">
-        <div className="flex items-center gap-2 md:gap-4">
-            {isMobile && onBack && (
-              <Button variant="ghost" size="icon" className="-ml-2" onClick={onBack}>
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            )}
-            <Avatar className="h-12 w-12 md:h-16 md:w-16">
-                <AvatarFallback className="text-2xl">{getInitials(contact.name)}</AvatarFallback>
-            </Avatar>
-            <div className="space-y-1">
-                <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-                    {contact.name || 'Unknown Contact'}
-                    <Button variant="ghost" size="icon" className="h-7 w-7"><Edit className="h-4 w-4"/></Button>
-                </h2>
-                <p className="text-muted-foreground">{contact.company}</p>
-                {isAddingNote ? (
-                    <div className="pt-1 space-y-2">
-                        <Textarea
-                            placeholder="Add a note about this contact..."
-                            value={noteContent}
-                            onChange={(e) => setNoteContent(e.target.value)}
-                            rows={3}
-                            autoFocus
-                        />
-                        <div className="flex gap-2">
-                            <Button size="sm" onClick={handleSaveNote}>Save Note</Button>
-                            <Button variant="ghost" size="sm" onClick={() => setIsAddingNote(false)}>Cancel</Button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="flex flex-wrap items-center gap-1 pt-1">
-                        <Button variant="outline" size="sm" className="h-7" onClick={handleMessage}><MessageSquare className="h-3 w-3 mr-1.5" /> Message</Button>
-                        <Button variant="outline" size="sm" className="h-7" onClick={handleCall}><Phone className="h-3 w-3 mr-1.5" /> Call</Button>
-                        <Button variant="outline" size="sm" className="h-7" onClick={handleEmail}><Mail className="h-3 w-3 mr-1.5" /> Email</Button>
-                        <Button variant="outline" size="sm" className="h-7" onClick={() => setIsAddingNote(true)}><PlusCircle className="h-3 w-3 mr-1.5" /> Add Note</Button>
-                    </div>
-                )}
-            </div>
+      <div className="p-4 md:p-6 border-b">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2 md:gap-4">
+              {isMobile && onBack && (
+                <Button variant="ghost" size="icon" className="-ml-2" onClick={onBack}>
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              )}
+              <Avatar className="h-12 w-12 md:h-16 md:w-16">
+                  <AvatarFallback className="text-2xl">{getInitials(contact.name)}</AvatarFallback>
+              </Avatar>
+              <div className="space-y-1">
+                  <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+                      {contact.name || 'Unknown Contact'}
+                      <Button variant="ghost" size="icon" className="h-7 w-7"><Edit className="h-4 w-4"/></Button>
+                  </h2>
+                  <p className="text-muted-foreground">{contact.company}</p>
+              </div>
+          </div>
+          <div>
+            <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-5 w-5" />
+                      </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                      <DropdownMenuItem>Merge contact...</DropdownMenuItem>
+                  </DropdownMenuContent>
+              </DropdownMenu>
+          </div>
         </div>
-        <div>
-           <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-5 w-5" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem>Merge contact...</DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+
+        <div className="mt-4">
+            {isAddingNote ? (
+                <div className="space-y-2">
+                    <Textarea
+                        placeholder="Add a note about this contact..."
+                        value={noteContent}
+                        onChange={(e) => setNoteContent(e.target.value)}
+                        rows={3}
+                        autoFocus
+                    />
+                    <div className="flex gap-2">
+                        <Button size="sm" onClick={handleSaveNote}>Save Note</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setIsAddingNote(false)}>Cancel</Button>
+                    </div>
+                </div>
+            ) : (
+                <div className="flex flex-wrap items-center gap-1">
+                    <Button variant="outline" size="sm" className="h-7" onClick={handleMessage}><MessageSquare className="h-3 w-3 mr-1.5" /> Message</Button>
+                    <Button variant="outline" size="sm" className="h-7" onClick={handleCall}><Phone className="h-3 w-3 mr-1.5" /> Call</Button>
+                    <Button variant="outline" size="sm" className="h-7" onClick={handleEmail}><Mail className="h-3 w-3 mr-1.5" /> Email</Button>
+                    <Button variant="outline" size="sm" className="h-7" onClick={() => setIsAddingNote(true)}><PlusCircle className="h-3 w-3 mr-1.5" /> Add Note</Button>
+                </div>
+            )}
         </div>
       </div>
+
 
       <ScrollArea className="flex-1">
         <div className="p-4 md:p-6 space-y-8">
