@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useMemo } from 'react';
 import { ContactEvent, ContactEventType } from '@/lib/contacts-types';
@@ -13,6 +12,7 @@ import {
   Voicemail,
   PhoneOutgoing,
   MoreHorizontal,
+  Trash2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
@@ -24,6 +24,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 
 interface TimelineFeedProps {
@@ -31,6 +32,8 @@ interface TimelineFeedProps {
   events?: ContactEvent[];
   allUsers: User[];
   appUser: User | null;
+  onDeleteNote: (eventId: string) => void;
+  onOpenConversation: (conversationId: string) => void;
 }
 
 type FilterType = 'all' | 'messages' | 'orders' | 'calls' | 'notes';
@@ -80,17 +83,18 @@ const DateSeparator = ({ date }: { date: string }) => (
     </div>
 );
 
-const TimelineEventRow = ({ event, allUsers, appUser }: { event: ContactEvent, allUsers: User[], appUser: User | null }) => {
+const TimelineEventRow = ({ event, allUsers, appUser, onDeleteNote, onOpenConversation }: { event: ContactEvent; allUsers: User[]; appUser: User | null; onDeleteNote: (id: string) => void; onOpenConversation: (id: string) => void; }) => {
     const Icon = eventIcons[event.type] || StickyNote;
-    const canView = event.ref.conversationId || event.ref.callId;
+    const canDeleteNote = event.type === 'note' && event.ref.createdBy === appUser?.id;
+    const conversationId = event.type.startsWith('chat_') ? event.ref.conversationId : null;
     const createdByAgent = event.ref?.createdBy && event.ref.createdBy === appUser?.id;
 
     return (
-        <div className="relative flex items-start gap-4 group py-2">
-            <div className="absolute left-[-22px] top-2 flex h-8 w-8 items-center justify-center rounded-full bg-background border-2 border-border">
+        <div className="relative flex items-start gap-3 group py-2 pl-12">
+            <div className="absolute left-4 top-[9px] -translate-x-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background border-2 border-border">
                  <Icon className="h-4 w-4 text-muted-foreground" />
             </div>
-            <div className="ml-8 flex-1 rounded-md p-3 transition-colors hover:bg-muted/50">
+            <div className="flex-1 rounded-md p-3 pt-1.5 transition-colors hover:bg-muted/50">
                 <div className="flex justify-between items-start">
                     <div className="text-sm space-y-1">
                         <p>{event.summary}</p>
@@ -102,7 +106,6 @@ const TimelineEventRow = ({ event, allUsers, appUser }: { event: ContactEvent, a
                         )}
                     </div>
                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                         {canView && <Button variant="ghost" size="sm" className="h-7 px-2">View</Button>}
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -110,8 +113,23 @@ const TimelineEventRow = ({ event, allUsers, appUser }: { event: ContactEvent, a
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
-                                <DropdownMenuItem>Action 1</DropdownMenuItem>
-                                <DropdownMenuItem>Action 2</DropdownMenuItem>
+                                {conversationId && (
+                                    <DropdownMenuItem onClick={() => onOpenConversation(conversationId)}>
+                                        Open Conversation
+                                    </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(event.summary)}>
+                                    Copy Text
+                                </DropdownMenuItem>
+                                {canDeleteNote && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onDeleteNote(event.id)}>
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Delete Note
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
                             </DropdownMenuContent>
                          </DropdownMenu>
                     </div>
@@ -125,7 +143,7 @@ const TimelineEventRow = ({ event, allUsers, appUser }: { event: ContactEvent, a
 };
 
 
-export default function TimelineFeed({ contactId, events = [], allUsers, appUser }: TimelineFeedProps) {
+export default function TimelineFeed({ contactId, events = [], allUsers, appUser, onDeleteNote, onOpenConversation }: TimelineFeedProps) {
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   
   const eventCounts = useMemo(() => {
@@ -192,14 +210,14 @@ export default function TimelineFeed({ contactId, events = [], allUsers, appUser
                 </Button>
             ))}
         </div>
-        <div className="relative pl-8">
-            <div className="absolute left-[15px] top-2 bottom-2 w-px bg-border" aria-hidden="true" />
+        <div className="relative">
+            <div className="absolute left-4 top-2 bottom-2 w-px bg-border" aria-hidden="true" />
             {Object.entries(groupedEvents).map(([date, dateEvents]) => (
                 <div key={date} className="relative">
                     <DateSeparator date={date} />
                     <div className="space-y-0">
                          {dateEvents.map((event) => (
-                            <TimelineEventRow key={event.id} event={event} allUsers={allUsers} appUser={appUser} />
+                            <TimelineEventRow key={event.id} event={event} allUsers={allUsers} appUser={appUser} onDeleteNote={onDeleteNote} onOpenConversation={onOpenConversation} />
                         ))}
                     </div>
                 </div>

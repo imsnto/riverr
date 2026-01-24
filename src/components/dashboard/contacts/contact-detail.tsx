@@ -85,6 +85,18 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
 
     toast({ title: 'Note Added' });
   };
+  
+  const handleDeleteNote = async (eventId: string) => {
+    if (!contact) return;
+    await db.deleteContactEvent(contact.id, eventId);
+    setEvents(prev => prev.filter(e => e.id !== eventId));
+    toast({ title: 'Note deleted' });
+  };
+  
+  const handleOpenConversation = (conversationId: string) => {
+      // In a real app this would navigate to the inbox view with the conversation selected.
+      toast({ title: "Action not yet implemented", description: "Navigating to conversations is coming soon." });
+  }
 
 
   if (!contact) {
@@ -162,7 +174,14 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
         <div className="p-4 md:p-6 space-y-8">
             {/* Timeline */}
             <div className="space-y-6">
-                <TimelineFeed contactId={contact.id} events={events} allUsers={allUsers} appUser={appUser} />
+                <TimelineFeed 
+                  contactId={contact.id} 
+                  events={events} 
+                  allUsers={allUsers} 
+                  appUser={appUser} 
+                  onDeleteNote={handleDeleteNote}
+                  onOpenConversation={handleOpenConversation}
+                />
             </div>
 
             {/* Details Section */}

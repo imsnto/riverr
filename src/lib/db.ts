@@ -1000,6 +1000,12 @@ export const addContactEvent = async (contactId: string, eventData: Omit<Contact
     return { id: docRef.id, ...eventData };
 }
 
+export const deleteContactEvent = async (contactId: string, eventId: string): Promise<void> => {
+    const eventRef = doc(db, 'contacts', contactId, 'events', eventId);
+    await deleteDoc(eventRef);
+};
+
+
 // --- Inbox / Chat Management ---
 export const getConversationsForHub = async (hubId: string): Promise<Conversation[]> => {
     const q = query(collection(db, 'conversations'), where('hubId', '==', hubId));
@@ -1273,5 +1279,6 @@ export const updateHelpCenterContent = async (
     await batch.commit();
 }
     
+
 
 
