@@ -32,6 +32,7 @@ import {
   Ticket,
   Deal,
   EscalationIntakeRule,
+  Contact,
 } from '@/lib/data';
 import * as db from '@/lib/db';
 import { useRouter, useParams } from 'next/navigation';
@@ -86,6 +87,7 @@ export default function Dashboard({ view }: { view: string }) {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [slackLogs, setSlackLogs] = useState<SlackMeetingLog[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
 
   // Messaging states
   const [spaceHubs, setSpaceHubs] = useState<Hub[]>([]);
@@ -156,6 +158,7 @@ export default function Dashboard({ view }: { view: string }) {
             fetchedConversations,
             fetchedBots,
             fetchedEscalationRules,
+            fetchedContacts,
           ] = await Promise.all([
             db.getProjectsInHub(activeHub.id),
             db.getAllTasks(activeHub.id),
@@ -171,6 +174,7 @@ export default function Dashboard({ view }: { view: string }) {
             db.getConversationsForHub(activeHub.id),
             db.getBots(activeHub.id),
             db.getEscalationIntakeRules(activeHub.id),
+            db.getContacts(activeSpace.id),
           ]);
           
           setProjects(fetchedProjects);
@@ -194,6 +198,7 @@ export default function Dashboard({ view }: { view: string }) {
           setChatConversations(fetchedConversations.sort((a,b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
           setBots(fetchedBots);
           setEscalationRules(fetchedEscalationRules);
+          setContacts(fetchedContacts);
       
            if (fetchedConversations.length > 0) {
               const convoIds = fetchedConversations.map(c => c.id);
@@ -726,7 +731,7 @@ export default function Dashboard({ view }: { view: string }) {
           deals={deals}
           onUpdateDeals={handleUpdateDeals}
           onAddDeal={handleAddDeal}
-          visitors={visitors}
+          contacts={contacts}
           activeHub={activeHub}
           activeSpace={activeSpace}
           allUsers={allUsers}
@@ -854,4 +859,3 @@ export default function Dashboard({ view }: { view: string }) {
     </SidebarProvider>
   );
 }
-

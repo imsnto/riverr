@@ -3,7 +3,7 @@
 
 import React, { useState, DragEvent, useRef, useMemo } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Deal, Hub, Status, Visitor, Space } from '@/lib/data';
+import { User, Deal, Hub, Status, Contact, Space } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { MoreHorizontal, Plus, Edit } from 'lucide-react';
@@ -20,9 +20,9 @@ const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
 }
 
-const DealCard = ({ deal, onClick, isDragging, allUsers, visitors }: { deal: Deal, onClick: () => void, isDragging: boolean, allUsers: User[], visitors: Visitor[] }) => {
+const DealCard = ({ deal, onClick, isDragging, allUsers, contacts }: { deal: Deal, onClick: () => void, isDragging: boolean, allUsers: User[], contacts: Contact[] }) => {
   const assignee = allUsers.find(u => u.id === deal.assignedTo);
-  const contact = visitors.find(v => v.id === deal.contactId);
+  const contact = contacts.find(v => v.id === deal.contactId);
 
   return (
     <Card
@@ -63,7 +63,7 @@ interface DealsBoardProps {
   activeHub: Hub;
   activeSpace: Space;
   allUsers: User[];
-  visitors: Visitor[];
+  contacts: Contact[];
   onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
   onNavigateToSettings: () => void;
 }
@@ -74,7 +74,7 @@ const defaultStatuses: Status[] = [
     { name: 'Won', color: '#22c55e' }, { name: 'Lost', color: '#ef4444' },
 ];
 
-export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, activeHub, activeSpace, allUsers, visitors, onUpdateActiveHub, onNavigateToSettings }: DealsBoardProps) {
+export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, activeHub, activeSpace, allUsers, contacts, onUpdateActiveHub, onNavigateToSettings }: DealsBoardProps) {
   const [draggedDeal, setDraggedDeal] = useState<string | null>(null);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -208,7 +208,7 @@ export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, activeHub,
                                 {showIndicator && <div className="h-10 border-2 border-dashed border-primary rounded-lg" />}
                                 <div ref={el => dealCardRefs.current[deal.id] = el} draggable onDragStart={(e) => handleDragStart(e, deal.id)} onDragEnd={handleDragEnd}
                                     className={cn("transition-all duration-200", draggedDeal === deal.id ? "opacity-30" : "opacity-100")}>
-                                    <DealCard deal={deal} onClick={() => setSelectedDeal(deal)} isDragging={draggedDeal === deal.id} allUsers={allUsers} visitors={visitors} />
+                                    <DealCard deal={deal} onClick={() => setSelectedDeal(deal)} isDragging={draggedDeal === deal.id} allUsers={allUsers} contacts={contacts} />
                                 </div>
                             </React.Fragment>
                         );
@@ -266,7 +266,7 @@ export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, activeHub,
             onUpdateDeal={handleUpdateDeal}
             statuses={statuses.map(s => s.name)}
             allUsers={allUsers}
-            contact={visitors.find(v => v.id === selectedDeal.contactId) || null}
+            contact={contacts.find(c => c.id === selectedDeal.contactId) || null}
         />
       )}
        <BoardSettingsDialog
@@ -283,7 +283,7 @@ export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, activeHub,
         onOpenChange={setIsCreateDealOpen}
         onSave={handleSaveDeal}
         allUsers={hubMembers}
-        visitors={visitors}
+        contacts={contacts}
         defaultStage={statuses[0]?.name || 'New Lead'}
       />
     </>

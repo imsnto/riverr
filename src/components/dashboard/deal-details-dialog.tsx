@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Deal, User, Visitor } from '@/lib/data';
+import { Deal, User, Contact } from '@/lib/data';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -43,7 +43,7 @@ interface DealDetailsDialogProps {
     onUpdateDeal: (deal: Deal) => void;
     statuses: string[];
     allUsers: User[];
-    contact: Visitor | null;
+    contact: Contact | null;
 }
 
 export default function DealDetailsDialog({ deal: initialDeal, isOpen, onOpenChange, onUpdateDeal, statuses, allUsers, contact }: DealDetailsDialogProps) {
@@ -141,7 +141,7 @@ export default function DealDetailsDialog({ deal: initialDeal, isOpen, onOpenCha
                             <DetailRow icon={AtSign} label="Contact">
                                 <div className="flex items-center gap-2">
                                     <Avatar className="h-6 w-6"><AvatarFallback>{getInitials(contact.name || '?')}</AvatarFallback></Avatar>
-                                    {contact.name} ({contact.email})
+                                    {contact.name} ({contact.primaryEmail})
                                 </div>
                             </DetailRow>
                         )}

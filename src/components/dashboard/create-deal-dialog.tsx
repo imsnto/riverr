@@ -23,7 +23,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { User, Visitor, Deal } from '@/lib/data';
+import { User, Contact, Deal } from '@/lib/data';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { CalendarIcon } from 'lucide-react';
@@ -52,7 +52,7 @@ interface CreateDealDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   onSave: (dealData: Omit<Deal, 'id' | 'hubId' | 'spaceId' | 'status' | 'createdAt' | 'createdBy' | 'updatedAt' | 'isStale' | 'lastActivityAt' >) => void;
   allUsers: User[];
-  visitors: Visitor[];
+  contacts: Contact[];
   defaultStage: string;
 }
 
@@ -61,7 +61,7 @@ export default function CreateDealDialog({
   onOpenChange,
   onSave,
   allUsers,
-  visitors,
+  contacts,
   defaultStage,
 }: CreateDealDialogProps) {
   const { appUser } = useAuth();
@@ -150,7 +150,7 @@ export default function CreateDealDialog({
                     <Select onValueChange={field.onChange} value={field.value ?? ''}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Select a contact" /></SelectTrigger></FormControl>
                         <SelectContent>
-                            {visitors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                            {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                   </FormItem>
