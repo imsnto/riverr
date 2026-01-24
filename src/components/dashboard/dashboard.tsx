@@ -765,3 +765,5 @@ export default function Dashboard({ view }: { view: string }) {
     </SidebarProvider>
   );
 }
+
+    
