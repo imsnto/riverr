@@ -1,13 +1,14 @@
 'use client';
-import React, { useState } from 'react';
+import React from 'react';
 import { Contact } from '@/lib/contacts-types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { AtSign, Edit, Phone, Tag, MoreHorizontal, MessageSquare, Mail, PlusCircle, Copy } from 'lucide-react';
+import { AtSign, Edit, Phone, Tag, MoreHorizontal, MessageSquare, Mail, PlusCircle, Copy, ArrowLeft } from 'lucide-react';
 import TimelineFeed from './timeline-feed';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const getInitials = (name: string | null) => {
     if (!name) return '?';
@@ -16,10 +17,12 @@ const getInitials = (name: string | null) => {
 
 interface ContactDetailProps {
   contact: Contact | null;
+  onBack?: () => void;
 }
 
-export default function ContactDetail({ contact }: ContactDetailProps) {
+export default function ContactDetail({ contact, onBack }: ContactDetailProps) {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const handleCopy = (text: string | null) => {
     if (text) {
@@ -33,7 +36,7 @@ export default function ContactDetail({ contact }: ContactDetailProps) {
 
   if (!contact) {
     return (
-      <div className="flex h-full items-center justify-center bg-background p-8">
+      <div className="hidden h-full items-center justify-center bg-background p-8 md:flex">
         <div className="text-center">
           <AtSign className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-medium">Select a contact</h3>
@@ -48,18 +51,23 @@ export default function ContactDetail({ contact }: ContactDetailProps) {
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="p-6 border-b flex items-start justify-between">
-        <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
+      <div className="p-4 md:p-6 border-b flex items-start justify-between">
+        <div className="flex items-center gap-2 md:gap-4">
+            {isMobile && onBack && (
+              <Button variant="ghost" size="icon" className="-ml-2" onClick={onBack}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            )}
+            <Avatar className="h-12 w-12 md:h-16 md:w-16">
                 <AvatarFallback className="text-2xl">{getInitials(contact.name)}</AvatarFallback>
             </Avatar>
             <div className="space-y-1">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
+                <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2">
                     {contact.name || 'Unknown Contact'}
                     <Button variant="ghost" size="icon" className="h-7 w-7"><Edit className="h-4 w-4"/></Button>
                 </h2>
                 <p className="text-muted-foreground">{contact.company}</p>
-                 <div className="flex items-center gap-1 pt-1">
+                 <div className="flex flex-wrap items-center gap-1 pt-1">
                     <Button variant="outline" size="sm" className="h-7"><MessageSquare className="h-3 w-3 mr-1.5" /> Message</Button>
                     <Button variant="outline" size="sm" className="h-7"><Phone className="h-3 w-3 mr-1.5" /> Call</Button>
                     <Button variant="outline" size="sm" className="h-7"><Mail className="h-3 w-3 mr-1.5" /> Email</Button>
@@ -82,7 +90,7 @@ export default function ContactDetail({ contact }: ContactDetailProps) {
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Timeline */}
             <div className="lg:col-span-2 space-y-6">
                 <TimelineFeed contactId={contact.id} />

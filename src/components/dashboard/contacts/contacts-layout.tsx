@@ -7,6 +7,7 @@ import ContactDetail from './contact-detail';
 import { Space } from '@/lib/data';
 import CreateContactDialog from './create-contact-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ContactsLayoutProps {
     activeSpace: Space | null;
@@ -16,6 +17,7 @@ export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   // Mock data for now
   const [contacts, setContacts] = useState<Contact[]>([]); 
@@ -57,6 +59,31 @@ export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
         description: `${values.name || 'New contact'} has been added.`,
     });
   };
+
+  if (isMobile) {
+    return (
+      <div className="h-full overflow-hidden">
+        {!selectedContact ? (
+          <ContactsList
+            contacts={contacts}
+            selectedContact={null}
+            onSelectContact={setSelectedContact}
+            onNewContact={handleNewContact}
+          />
+        ) : (
+          <ContactDetail
+            contact={selectedContact}
+            onBack={() => setSelectedContact(null)}
+          />
+        )}
+        <CreateContactDialog
+          isOpen={isCreateDialogOpen}
+          onOpenChange={setIsCreateDialogOpen}
+          onSave={handleSaveContact}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="grid h-full grid-cols-1 md:grid-cols-[380px_1fr]">
