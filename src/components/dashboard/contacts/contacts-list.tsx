@@ -4,10 +4,12 @@ import React from 'react';
 import { Contact } from '@/lib/contacts-types';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, MessageSquare, Phone, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { formatDistanceToNow } from 'date-fns';
+import { Badge } from '../ui/badge';
 
 
 const getInitials = (name: string | null) => {
@@ -49,26 +51,45 @@ export default function ContactsList({
                 <p className="text-muted-foreground">No contacts found.</p>
             </div>
         )}
-        {contacts.map((contact) => (
-          <button
-            key={contact.id}
-            onClick={() => onSelectContact(contact)}
-            className={cn(
-              "w-full text-left p-4 cursor-pointer border-b",
-              selectedContact?.id === contact.id ? 'bg-muted' : 'hover:bg-muted/50'
-            )}
-          >
-             <div className="flex items-center space-x-3">
-                <Avatar>
-                    <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
-                </Avatar>
-                <div>
-                    <p className="font-semibold truncate">{contact.name || 'Unknown Contact'}</p>
-                    <p className="text-sm text-muted-foreground truncate">{contact.primaryEmail || contact.primaryPhone}</p>
-                </div>
-            </div>
-          </button>
-        ))}
+        {contacts.map((contact) => {
+            const isAnonymous = !contact.name && !contact.primaryEmail && !contact.primaryPhone;
+            return (
+                <button
+                    key={contact.id}
+                    onClick={() => onSelectContact(contact)}
+                    className={cn(
+                    "w-full text-left p-4 cursor-pointer border-b",
+                    selectedContact?.id === contact.id ? 'bg-muted' : 'hover:bg-muted/50'
+                    )}
+                >
+                    <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-3 overflow-hidden">
+                            <Avatar>
+                                <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
+                            </Avatar>
+                            <div className="overflow-hidden">
+                                <p className="font-semibold truncate flex items-center gap-2">
+                                    {contact.name || 'Anonymous'}
+                                    {isAnonymous && <Badge variant="outline">Anonymous</Badge>}
+                                </p>
+                                <p className="text-sm text-muted-foreground truncate">{contact.primaryEmail || contact.primaryPhone}</p>
+                            </div>
+                        </div>
+                        {contact.lastSeenAt && (
+                             <p className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                {formatDistanceToNow(new Date(contact.lastSeenAt), { addSuffix: true })}
+                            </p>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                        {contact.lastMessageAt && <Badge variant="secondary"><MessageSquare className="h-3 w-3 mr-1.5" />Chat</Badge>}
+                        {contact.lastOrderAt && <Badge variant="secondary"><ShoppingCart className="h-3 w-3 mr-1.5" />Order</Badge>}
+                        {contact.lastCallAt && <Badge variant="secondary"><Phone className="h-3 w-3 mr-1.5" />Call</Badge>}
+                        {contact.tags.slice(0,2).map(tag => <Badge key={tag} variant="outline">{tag}</Badge>)}
+                    </div>
+                </button>
+            )
+        })}
       </ScrollArea>
     </div>
   );
