@@ -711,7 +711,7 @@ export default function Dashboard({ view }: { view: string }) {
       case 'tasks': return (
         <TaskBoard 
           tasks={tasks}
-          onUpdateTasks={onUpdateTasks}
+          onUpdateTasks={handleUpdateTasks}
           projects={projects}
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}

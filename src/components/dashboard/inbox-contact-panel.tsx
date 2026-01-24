@@ -74,10 +74,9 @@ export default function InboxContactPanel({ visitor, onToggle }: InboxContactPan
                 <div>
                     <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Account</h4>
                     <div className="space-y-2">
-                        <DetailRow icon={Milestone} label="User ID" value={visitor.id} />
-                        <DetailRow icon={AtSign} label="Email" value={visitor.email} />
-                        <DetailRow icon={MapPin} label="Location" value={visitor.location} />
-                        <DetailRow icon={Calendar} label="Created" value="2y ago" />
+                        <DetailRow icon={Milestone} label="User ID" value={visitor.id || '-'} />
+                        <DetailRow icon={AtSign} label="Email" value={visitor.email || '-'} />
+                        <DetailRow icon={Calendar} label="Last Activity" value={visitor.lastSeen || '-'} />
                     </div>
                 </div>
 
@@ -87,8 +86,8 @@ export default function InboxContactPanel({ visitor, onToggle }: InboxContactPan
                  <div>
                     <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Page details</h4>
                     <div className="space-y-2">
-                        <DetailRow icon={Milestone} label="Domain" value={visitor.companyId} />
-                        <DetailRow icon={Users} label="Pathname" value={visitor.companyUsers} />
+                        <DetailRow icon={Milestone} label="Domain" value={visitor.domain || '-'} />
+                        <DetailRow icon={Users} label="Pathname" value={visitor.pathname || '-'} />
                     </div>
                 </div>
             </div>

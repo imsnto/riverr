@@ -61,10 +61,9 @@ export default function ContactDetailDialog({ visitor: contact, children, open, 
                 Account Information
               </h4>
               <div className="space-y-3">
-                <DetailRow icon={Milestone} label="User ID" value={contact.id} />
-                <DetailRow icon={AtSign} label="Email" value={contact.email} />
-                <DetailRow icon={MapPin} label="Location" value={contact.location} />
-                <DetailRow icon={Calendar} label="Member Since" value="2 years ago" />
+                <DetailRow icon={Milestone} label="User ID" value={contact.id || '-'} />
+                <DetailRow icon={AtSign} label="Email" value={contact.email || '-'} />
+                <DetailRow icon={Calendar} label="Member Since" value={contact.lastSeen || '-'} />
               </div>
             </section>
 
@@ -76,8 +75,8 @@ export default function ContactDetailDialog({ visitor: contact, children, open, 
                 Context Details
               </h4>
               <div className="space-y-3">
-                <DetailRow icon={Milestone} label="Domain" value={contact.companyId} />
-                <DetailRow icon={Users} label="Pathname" value={contact.companyUsers} />
+                <DetailRow icon={Milestone} label="Domain" value={contact.domain || '-'} />
+                <DetailRow icon={Users} label="Pathname" value={contact.pathname || '-'} />
               </div>
             </section>
           </div>

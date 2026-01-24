@@ -31,7 +31,7 @@
   // Create the iframe
   const iframe = document.createElement('iframe');
   iframe.id = 'riverr-chat-iframe';
-  iframe.src = `${window.location.origin}/chatbot/${hubId}/${botId}`;
+  iframe.src = `https://studio--timeflow-6i3eo.us-central1.hosted.app/chatbot/${hubId}/${botId}`;
   iframe.style.width = '350px';
   iframe.style.height = 'calc(100vh - 120px)';
   iframe.style.maxHeight = '600px';

@@ -54,10 +54,8 @@ export default function ChatbotWidgetPage() {
             setVisitor(fetchedVisitor);
 
             const convos = await db.getConversationsForHub(hubId);
-            console.log('convos',convos)
             const existingConvo = convos.find(c => c.visitorId === visitorId);
 
-            console.log('existingConvo',existingConvo)
             if (existingConvo) {
                 setConversation(existingConvo);
                 const existingMessages = await db.getMessagesForConversations([existingConvo.id]);
@@ -138,8 +136,6 @@ export default function ChatbotWidgetPage() {
         // We can optionally send the message right away
         // handleSendMessage(); 
     };
-
-    console.log('messages', messages)
 
     return (
         <div className="w-full h-screen text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: bot.styleSettings?.backgroundColor }}>
