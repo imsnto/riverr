@@ -1,4 +1,3 @@
-
 'use client'
 // src/lib/db.ts
 
@@ -69,6 +68,8 @@ import {
   conversations,
   chatMessages,
   Activity,
+  Contact,
+  ContactEvent,
 } from "./data";
 import { randomBytes } from "crypto";
 import { FirestorePermissionError } from "./errors";
@@ -963,6 +964,42 @@ export const deleteDocument = async (docId: string): Promise<void> => {
   await deleteDoc(doc(db, "documents", docId));
 };
 
+// --- Contact Management ---
+export const getContacts = async (spaceId: string): Promise<Contact[]> => {
+    const q = query(collection(db, 'contacts'), where('tenantId', '==', spaceId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact));
+};
+
+export const addContact = async (contactData: Omit<Contact, 'id'>): Promise<Contact> => {
+    const collRef = collection(db, 'contacts');
+    try {
+        const docRef = await addDoc(collRef, contactData);
+        return { id: docRef.id, ...contactData };
+    } catch (serverError) {
+        const permissionError = new FirestorePermissionError({
+            path: collRef.path,
+            operation: 'create',
+            requestResourceData: contactData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw serverError;
+    }
+};
+
+export const getContactEvents = async (contactId: string): Promise<ContactEvent[]> => {
+    const collRef = collection(db, 'contacts', contactId, 'events');
+    const q = query(collRef, orderBy('timestamp', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactEvent));
+}
+
+export const addContactEvent = async (contactId: string, eventData: Omit<ContactEvent, 'id'>): Promise<ContactEvent> => {
+    const collRef = collection(db, 'contacts', contactId, 'events');
+    const docRef = await addDoc(collRef, eventData);
+    return { id: docRef.id, ...eventData };
+}
+
 // --- Inbox / Chat Management ---
 export const getConversationsForHub = async (hubId: string): Promise<Conversation[]> => {
     const q = query(collection(db, 'conversations'), where('hubId', '==', hubId));
@@ -1236,4 +1273,5 @@ export const updateHelpCenterContent = async (
     await batch.commit();
 }
     
+
 

@@ -844,3 +844,5 @@ export const phaseTemplates: PhaseTemplate[] = [];
 export const jobFlowTemplates: JobFlowTemplate[] = [];
 export const jobs: Job[] = [];
 export const jobFlowTasks: JobFlowTask[] = [];
+
+export type { Contact, ContactEvent, ContactEventType, ContactSource, Visitor, VisitorType, CallRecord } from './contacts-types';

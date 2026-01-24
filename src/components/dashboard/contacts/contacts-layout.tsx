@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Contact } from '@/lib/contacts-types';
 import ContactsList from './contacts-list';
 import ContactDetail from './contact-detail';
@@ -8,6 +8,8 @@ import { Space } from '@/lib/data';
 import CreateContactDialog from './create-contact-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import * as db from '@/lib/db';
+import { useAuth } from '@/hooks/use-auth';
 
 interface ContactsLayoutProps {
     activeSpace: Space | null;
@@ -18,20 +20,31 @@ export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { appUser } = useAuth();
 
-  // Mock data for now
-  const [contacts, setContacts] = useState<Contact[]>([]); 
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (activeSpace) {
+      setIsLoading(true);
+      db.getContacts(activeSpace.id).then(fetchedContacts => {
+        setContacts(fetchedContacts);
+        setIsLoading(false);
+      });
+    }
+  }, [activeSpace]);
 
   const handleNewContact = () => {
       setIsCreateDialogOpen(true);
   };
   
-  const handleSaveContact = (values: { name?: string; company?: string; email?: string; phone?: string; }) => {
-    // This is where you would call a db function to create the contact
-    // For now, we'll just add it to the local state and show a toast
-    const newContact: Contact = {
-        id: `contact_${Date.now()}`,
-        tenantId: activeSpace?.id || 'tenant-1',
+  const handleSaveContact = async (values: { name?: string; company?: string; email?: string; phone?: string; }) => {
+    if (!activeSpace || !appUser) return;
+    
+    const now = new Date();
+    const newContactData: Omit<Contact, 'id'> = {
+        tenantId: activeSpace.id,
         name: values.name || null,
         company: values.company || null,
         emails: values.email ? [values.email.toLowerCase()] : [],
@@ -41,9 +54,9 @@ export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
         source: 'manual',
         externalIds: {},
         tags: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        lastSeenAt: new Date(),
+        createdAt: now,
+        updatedAt: now,
+        lastSeenAt: now,
         lastMessageAt: null,
         lastOrderAt: null,
         lastCallAt: null,
@@ -51,8 +64,17 @@ export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
         isMerged: false,
     };
     
+    const newContact = await db.addContact(newContactData);
+    
+    await db.addContactEvent(newContact.id, {
+        type: 'identity_added',
+        summary: `Contact created manually by ${appUser.name}.`,
+        timestamp: new Date(),
+        ref: { createdBy: appUser.id },
+    });
+
     setContacts(prev => [newContact, ...prev]);
-    setSelectedContact(newContact); // select the newly created contact
+    setSelectedContact(newContact);
     
     toast({
         title: "Contact Created",

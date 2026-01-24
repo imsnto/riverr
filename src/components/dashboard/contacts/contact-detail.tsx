@@ -1,6 +1,5 @@
-
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Contact, ContactEvent } from '@/lib/contacts-types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Textarea } from '@/components/ui/textarea';
+import * as db from '@/lib/db';
+import { useAuth } from '@/hooks/use-auth';
 
 const getInitials = (name: string | null) => {
     if (!name) return '?';
@@ -28,6 +29,15 @@ export default function ContactDetail({ contact, onBack }: ContactDetailProps) {
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [events, setEvents] = useState<ContactEvent[]>([]);
+  const { appUser } = useAuth();
+
+  useEffect(() => {
+    if (contact) {
+      db.getContactEvents(contact.id).then(setEvents);
+    } else {
+      setEvents([]);
+    }
+  }, [contact]);
 
   const handleCopy = (text: string | null) => {
     if (text) {
@@ -55,16 +65,17 @@ export default function ContactDetail({ contact, onBack }: ContactDetailProps) {
       }
   };
 
-  const handleSaveNote = () => {
-    if (!noteContent.trim() || !contact) return;
+  const handleSaveNote = async () => {
+    if (!noteContent.trim() || !contact || !appUser) return;
 
-    const newEvent: ContactEvent = {
-        id: `evt_${Date.now()}`,
+    const eventData: Omit<ContactEvent, 'id'> = {
         type: 'note',
         timestamp: new Date(),
         summary: noteContent,
-        ref: { contactId: contact.id },
+        ref: { contactId: contact.id, createdBy: appUser.id },
     };
+
+    const newEvent = await db.addContactEvent(contact.id, eventData);
 
     setEvents(prev => [newEvent, ...prev]);
     setNoteContent('');
