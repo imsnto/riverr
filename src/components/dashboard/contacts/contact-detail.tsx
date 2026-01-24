@@ -116,7 +116,7 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="p-4 md:p-6 border-b">
+      <div className="p-4 md:p-6 border-b shrink-0">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2 md:gap-4">
               {isMobile && onBack && (
@@ -177,21 +177,20 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
 
 
       <ScrollArea className="flex-1">
-        <div className="p-4 md:p-6 space-y-8">
-            {/* Timeline */}
-            <div className="space-y-6">
-                <TimelineFeed 
-                  contactId={contact.id} 
-                  events={events} 
-                  allUsers={allUsers} 
-                  appUser={appUser} 
-                  onDeleteNote={handleDeleteNote}
-                  onOpenConversation={handleOpenConversation}
-                />
-            </div>
-
-            {/* Details Section */}
-            <div className="space-y-6">
+        <div className="p-4 md:p-6">
+          <TimelineFeed 
+            contactId={contact.id} 
+            events={events} 
+            allUsers={allUsers} 
+            appUser={appUser} 
+            onDeleteNote={handleDeleteNote}
+            onOpenConversation={handleOpenConversation}
+          />
+        </div>
+      </ScrollArea>
+      
+      <div className="p-4 md:p-6 border-t bg-card shrink-0">
+          <div className="space-y-6">
                  <div>
                     <h4 className="font-semibold mb-2">Contact Info</h4>
                     <div className="space-y-2 text-sm">
@@ -234,8 +233,7 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
                     </div>
                  </div>
             </div>
-        </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
