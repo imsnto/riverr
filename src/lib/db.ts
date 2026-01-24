@@ -20,6 +20,7 @@ import {
   Timestamp,
   serverTimestamp,
   orderBy,
+  onSnapshot,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import {
@@ -1208,20 +1209,40 @@ export const getConversationsForHub = async (hubId: string): Promise<Conversatio
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
 };
 
-export const getMessagesForConversations = async (conversationIds: string[]): Promise<ChatMessage[]> => {
-  if (conversationIds.length === 0) return [];
-  const messages: ChatMessage[] = [];
-  // Firestore 'in' query is limited to 30 items
+export const getMessagesForConversations = (
+  conversationIds: string[], 
+  onUpdate: (messages: ChatMessage[]) => void
+) => {
+  if (conversationIds.length === 0) {
+    onUpdate([]);
+    return () => {}; // Return empty cleanup
+  }
+
+  const unsubscribers: (() => void)[] = [];
+  const chunkMap = new Map();
+
   for (let i = 0; i < conversationIds.length; i += 30) {
     const chunk = conversationIds.slice(i, i + 30);
+    const chunkIndex = i;
     const q = query(collection(db, 'chat_messages'), where('conversationId', 'in', chunk), orderBy('timestamp', 'asc'));
-    const snapshot = await getDocs(q);
-    snapshot.forEach(doc => {
-      messages.push({ id: doc.id, ...doc.data() } as ChatMessage);
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      const messages: ChatMessage[] = [];
+      snapshot.forEach(doc => messages.push({ id: doc.id, ...doc.data() } as ChatMessage));
+      
+      chunkMap.set(chunkIndex, messages);
+      
+      const allMessages = Array.from(chunkMap.values())
+        .flat()
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+      onUpdate(allMessages);
     });
+    unsubscribers.push(unsub);
   }
-  return messages;
-}
+
+  return () => unsubscribers.forEach(fn => fn());
+};
 
 export const addChatMessage = async (message: Omit<ChatMessage, "id">): Promise<ChatMessage> => {
   const collRef = collection(db, "chat_messages");

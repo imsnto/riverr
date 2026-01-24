@@ -32,6 +32,7 @@ export default function ChatbotWidgetPage() {
     const scrollAreaRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        let unsubscribeMessages: (() => void) | undefined;
         const initialize = async () => {
             setIsLoading(true);
 
@@ -58,8 +59,10 @@ export default function ChatbotWidgetPage() {
 
             if (existingConvo) {
                 setConversation(existingConvo);
-                const existingMessages = await db.getMessagesForConversations([existingConvo.id]);
-                setMessages(existingMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
+                unsubscribeMessages = db.getMessagesForConversations(
+                    [existingConvo.id], 
+                    (msgs) => setMessages(msgs)
+                );
             }
             if(appUser){
                 details = {
@@ -75,6 +78,9 @@ export default function ChatbotWidgetPage() {
             setIsLoading(false);
         };
         initialize();
+        return () => {
+            if (unsubscribeMessages) unsubscribeMessages();
+        };
     }, [botId, hubId,appUser]);
 
     useEffect(() => {

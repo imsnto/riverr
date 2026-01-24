@@ -1,7 +1,7 @@
 // src/components/dashboard/dashboard.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AppSidebar } from './AppSidebar';
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -75,6 +75,7 @@ export default function Dashboard({ view }: { view: string }) {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
+  const messageUnsubscribeRef = useRef<(() => void) | null>(null);
   const isMobile = useIsMobile();
 
   const [currentView, setCurrentView] = useState<AppView>(view as AppView || 'overview');
@@ -123,7 +124,10 @@ export default function Dashboard({ view }: { view: string }) {
 
   const fetchData = async () => {
     if (!appUser) return;
-
+if (messageUnsubscribeRef.current) {
+    messageUnsubscribeRef.current();
+    messageUnsubscribeRef.current = null;
+  }
         // Always fetch all users
         const fetchedUsers = await db.getAllUsers();
         setAllUsers(fetchedUsers);
@@ -200,24 +204,43 @@ export default function Dashboard({ view }: { view: string }) {
           setEscalationRules(fetchedEscalationRules);
           setContacts(fetchedContacts);
       
-           if (fetchedConversations.length > 0) {
-              const convoIds = fetchedConversations.map(c => c.id);
-              const [fetchedMessages, fetchedVisitors] = await Promise.all([
-                  db.getMessagesForConversations(convoIds),
-                  Promise.all([...new Set(fetchedConversations.map(c => c.visitorId).filter(Boolean))].map(id => db.getOrCreateVisitor(id!)))
-              ]);
-              setChatMessages(fetchedMessages);
-              setVisitors(fetchedVisitors as Visitor[]);
-          } else {
-              setChatMessages([]);
-              setVisitors([]);
-          }
+// ... (top of your fetchData)
+
+if (fetchedConversations.length > 0) {
+  const convoIds = fetchedConversations.map(c => c.id);
+  
+  // 1. Visitors: Awaited once (Static)
+  const visitorIds = [...new Set(fetchedConversations.map(c => c.visitorId).filter(Boolean))];
+  const fetchedVisitors = await Promise.all(
+    visitorIds.map(id => db.getOrCreateVisitor(id!))
+  );
+  setVisitors(fetchedVisitors as Visitor[]);
+
+  // 2. Messages: Real-time (Subscription)
+  // We don't 'await' this. It will call setChatMessages whenever something changes.
+  const unsub = db.getMessagesForConversations(convoIds, (messages) => {
+    setChatMessages(messages);
+  });
+  
+  // Store the unsubscribe function in our Ref
+  messageUnsubscribeRef.current = unsub;
+
+} else {
+  setChatMessages([]);
+  setVisitors([]);
+}
         }
   };
 
 
   useEffect(() => {
     fetchData();
+    return () => {
+      // Final cleanup when component dies
+      if (messageUnsubscribeRef.current) {
+        messageUnsubscribeRef.current();
+      }
+    };
   }, [appUser, activeSpace, activeHub]);
   
   useEffect(() => {
