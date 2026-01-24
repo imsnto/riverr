@@ -4,7 +4,7 @@ import React from 'react';
 import { Contact } from '@/lib/contacts-types';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -20,17 +20,24 @@ interface ContactsListProps {
   contacts: Contact[];
   selectedContact: Contact | null;
   onSelectContact: (contact: Contact) => void;
+  onNewContact: () => void;
 }
 
 export default function ContactsList({
   contacts,
   selectedContact,
   onSelectContact,
+  onNewContact,
 }: ContactsListProps) {
   return (
     <div className="flex flex-col h-full border-r bg-card">
       <div className="p-4 border-b">
-        <h2 className="text-xl font-bold">Contacts</h2>
+        <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold">Contacts</h2>
+            <Button variant="ghost" size="icon" onClick={onNewContact}>
+                <Plus className="h-5 w-5" />
+            </Button>
+        </div>
         <div className="relative mt-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search contacts..." className="pl-10" />
