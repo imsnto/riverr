@@ -427,9 +427,23 @@ export default function Dashboard({ view }: { view: string }) {
     })
   };
 
-  const handleAddDeal = async (dealData: Omit<Deal, 'id' | 'hubId' | 'spaceId'>) => {
-    const dealWithHub = { ...dealData, hubId: activeHub.id, spaceId: activeSpace.id };
-    const newDeal = await db.addDeal(dealWithHub);
+  const handleAddDeal = async (dealData: Omit<Deal, 'id' | 'hubId' | 'spaceId' | 'status' | 'createdAt' | 'createdBy' | 'updatedAt' | 'isStale' | 'lastActivityAt' >) => {
+    if (!appUser || !activeHub || !activeSpace) return;
+    const now = new Date().toISOString();
+
+    const fullDealData: Omit<Deal, 'id'> = {
+      ...dealData,
+      hubId: activeHub.id,
+      spaceId: activeSpace.id,
+      status: activeHub.dealStatuses?.[0]?.name || 'New Lead',
+      createdAt: now,
+      createdBy: appUser.id,
+      updatedAt: now,
+      lastActivityAt: now,
+      isStale: false,
+    };
+    
+    const newDeal = await db.addDeal(fullDealData);
     setDeals(prev => [...prev, newDeal]);
     toast({ title: 'Deal Created' });
   };

@@ -59,7 +59,7 @@ const DealCard = ({ deal, onClick, isDragging, allUsers, contacts }: { deal: Dea
 interface DealsBoardProps {
   deals: Deal[];
   onUpdateDeals: (deals: Deal[]) => void;
-  onAddDeal: (dealData: Omit<Deal, 'id' | 'hubId' | 'spaceId'>) => void;
+  onAddDeal: (dealData: Omit<Deal, 'id' | 'hubId' | 'spaceId' | 'status' | 'createdAt' | 'createdBy' | 'updatedAt' | 'isStale' | 'lastActivityAt' >) => void;
   activeHub: Hub;
   activeSpace: Space;
   allUsers: User[];
@@ -179,7 +179,7 @@ export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, activeHub,
         setIsSettingsOpen(false);
     }
     
-    const handleSaveDeal = (dealData: Omit<Deal, 'id' | 'hubId' | 'spaceId'>) => {
+    const handleSaveDeal = (dealData: Omit<Deal, 'id' | 'hubId' | 'spaceId' | 'status' | 'createdAt' | 'createdBy' | 'updatedAt' | 'isStale' | 'lastActivityAt' >) => {
         onAddDeal(dealData);
         setIsCreateDealOpen(false);
     };
