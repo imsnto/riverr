@@ -89,7 +89,7 @@ const TimelineEventRow = ({ event, allUsers, appUser }: { event: ContactEvent, a
             <div className="absolute left-[-22px] top-2 flex h-8 w-8 items-center justify-center rounded-full bg-background border-2 border-border">
                  <Icon className="h-4 w-4 text-muted-foreground" />
             </div>
-            <div className="flex-1 rounded-md p-3 -ml-2 transition-colors hover:bg-muted/50">
+            <div className="flex-1 rounded-md p-3 transition-colors hover:bg-muted/50">
                 <div className="flex justify-between items-start">
                     <div className="text-sm space-y-1">
                         <p>{event.summary}</p>
