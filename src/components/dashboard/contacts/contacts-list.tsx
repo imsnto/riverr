@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
-import { Badge } from '../ui/badge';
+import { Badge } from '@/components/ui/badge';
 
 
 const getInitials = (name: string | null) => {
