@@ -55,6 +55,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import MobileBottomNav from './mobile-bottom-nav';
 import TeamTimesheets from './team-timesheets';
 import { DashboardSkeleton } from './dashboard-skeleton';
+import ContactsLayout from './contacts/contacts-layout';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -247,6 +248,8 @@ export default function Dashboard({ view }: { view: string }) {
     setCurrentView(newView);
     if (activeSpace && params.hubId) {
       router.push(`/space/${activeSpace.id}/hub/${params.hubId}/${newView}`);
+    } else if (newView === 'contacts') {
+      router.push('/contacts');
     }
   };
 
@@ -652,6 +655,7 @@ export default function Dashboard({ view }: { view: string }) {
       case 'help-center': return <HelpCenterLayout
         onSaveArticle={handleSaveArticle}
         />;
+      case 'contacts': return <ContactsLayout {...props} />;
       case 'settings': return <SettingsLayout {...props} onSendMessageFromBotPreview={handleSendMessageFromBotPreview} chatMessages={chatMessages} chatContacts={chatContacts} chatConversations={chatConversations} bots={bots} onBotUpdate={handleBotUpdate} onBotAdd={handleBotAdd} />;
       case 'team-timesheets': return <TeamTimesheets {...props} />;
       case 'inbox': return <InboxLayout 
@@ -708,6 +712,7 @@ export default function Dashboard({ view }: { view: string }) {
               currentView === 'inbox' ||
               currentView === 'tasks' ||
               currentView === 'settings' ||
+              currentView === 'contacts' ||
               (currentView === 'help-center' && !isMobile)
                 ? "overflow-hidden"
                 : "overflow-y-auto",
