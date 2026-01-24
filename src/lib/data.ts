@@ -129,7 +129,7 @@ export interface Deal {
   value: number | null;
   currency: string | null;
   closeDate: string | null; // ISO String
-  nextStep: string | null;
+  nextStep: string | null; // e.g. “Call”, “Demo”, “Follow-up”
   nextStepAt: string | null; // ISO String
   assignedTo: string | null; // userId
   contactId: string | null;
@@ -139,6 +139,7 @@ export interface Deal {
   createdAt: string; // ISO String
   createdBy: string; // userId
   updatedAt: string; // ISO String
+  lastActivityAt: string; // ISO String
 }
 
 export interface EscalationIntakeRule {
@@ -587,7 +588,7 @@ export const visitors: (Omit<Visitor, 'id'> & { id: string })[] = [
         name: 'John Doe',
         email: 'john.doe@example.com',
         avatarUrl: 'https://i.pravatar.cc/150?u=john-doe',
-        location: 'New York, USA',
+        location: {pathname: '/pricing', domain: 'acme.com'},
         lastSeen: '2 hours ago',
         companyName: 'Acme Inc.',
         sessions: 12,
@@ -601,7 +602,7 @@ export const visitors: (Omit<Visitor, 'id'> & { id: string })[] = [
         name: 'Jane Smith',
         email: 'jane.smith@example.com',
         avatarUrl: 'https://i.pravatar.cc/150?u=jane-smith',
-        location: 'London, UK',
+        location: {pathname: '/about', domain: 'innovate.com'},
         lastSeen: '5 minutes ago',
         companyName: 'Innovate LLC',
         sessions: 3,
@@ -615,7 +616,7 @@ export const visitors: (Omit<Visitor, 'id'> & { id: string })[] = [
         name: 'Sarah Lee',
         email: 'sarah.lee@example.com',
         avatarUrl: 'https://i.pravatar.cc/150?u=sarah-lee',
-        location: 'Singapore',
+        location: {pathname: '/', domain: 'tech.com'},
         lastSeen: '1 day ago',
         companyName: 'Tech Solutions',
         sessions: 25,
@@ -629,7 +630,7 @@ export const visitors: (Omit<Visitor, 'id'> & { id: string })[] = [
         name: 'Mike Chen',
         email: 'mike.chen@example.com',
         avatarUrl: 'https://i.pravatar.cc/150?u=mike-chen',
-        location: 'San Francisco, USA',
+        location: {pathname: '/contact', domain: 'creative.co'},
         lastSeen: '3 hours ago',
         companyName: 'Creative Co.',
         sessions: 8,
@@ -643,7 +644,7 @@ export const visitors: (Omit<Visitor, 'id'> & { id: string })[] = [
         name: 'Emily Carter',
         email: 'emily.carter@example.com',
         avatarUrl: 'https://i.pravatar.cc/150?u=emily-carter',
-        location: 'Austin, USA',
+        location: {pathname: '/features', domain: 'datasys.com'},
         lastSeen: '15 minutes ago',
         companyName: 'Data Systems',
         sessions: 5,
@@ -657,7 +658,7 @@ export const visitors: (Omit<Visitor, 'id'> & { id: string })[] = [
         name: 'David Rodriguez',
         email: 'david.r@example.com',
         avatarUrl: 'https://i.pravatar.cc/150?u=david-rodriguez',
-        location: 'Miami, USA',
+        location: {pathname: '/blog', domain: 'global-exports.com'},
         lastSeen: 'Now',
         companyName: 'Global Exports',
         sessions: 1,
@@ -671,7 +672,7 @@ export const visitors: (Omit<Visitor, 'id'> & { id: string })[] = [
         name: 'Olivia Martinez',
         email: 'olivia.m@example.com',
         avatarUrl: 'https://i.pravatar.cc/150?u=olivia-martinez',
-        location: 'Toronto, Canada',
+        location: {pathname: '/jobs', domain: 'bright.co'},
         lastSeen: '20 minutes ago',
         companyName: 'Bright Ideas Co.',
         sessions: 7,
@@ -685,7 +686,7 @@ export const visitors: (Omit<Visitor, 'id'> & { id: string })[] = [
         name: 'Daniel Kim',
         email: 'daniel.k@example.com',
         avatarUrl: 'https://i.pravatar.cc/150?u=daniel-kim',
-        location: 'Seoul, South Korea',
+        location: {pathname: '/', domain: 'future.tech'},
         lastSeen: '8 hours ago',
         companyName: 'Future Tech',
         sessions: 15,
@@ -699,7 +700,7 @@ export const visitors: (Omit<Visitor, 'id'> & { id: string })[] = [
         name: 'Test User',
         email: 'test.user@example.com',
         avatarUrl: 'https://i.pravatar.cc/150?u=test-user',
-        location: 'Testville, USA',
+        location: {pathname: '/test', domain: 'test.com'},
         lastSeen: new Date().toISOString(),
         companyName: 'Test Corp',
         sessions: 1,

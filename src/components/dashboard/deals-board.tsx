@@ -1,3 +1,4 @@
+// src/components/dashboard/deals-board.tsx
 'use client';
 
 import React, { useState, DragEvent, useRef, useMemo } from 'react';
@@ -5,40 +6,19 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { User, Deal, Hub, Status, Visitor, Space } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { MoreHorizontal, Plus, Edit, Trash2, Palette, Archive, CheckCircle, Folder, ChevronsUpDown, ArrowLeft, DollarSign } from 'lucide-react';
-import { Button, buttonVariants } from '../ui/button';
+import { MoreHorizontal, Plus, Edit } from 'lucide-react';
+import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '../ui/dropdown-menu';
-import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { useAuth } from '@/hooks/use-auth';
 import DealDetailsDialog from './deal-details-dialog';
 import BoardSettingsDialog from './board-settings-dialog';
+import CreateDealDialog from './create-deal-dialog';
 
 const getInitials = (name: string) => {
     if (!name) return '';
     return name.split(' ').map(n => n[0]).join('');
 }
-
-const STATUS_COLORS = [
-    { name: 'Gray', color: '#6b7280' }, { name: 'Stone', color: '#78716c' }, { name: 'Zinc', color: '#71717a' },
-    { name: 'Red', color: '#ef4444' }, { name: 'Rose', color: '#f43f5e' }, { name: 'Orange', color: '#f97316' },
-    { name: 'Amber', color: '#f59e0b' }, { name: 'Yellow', color: '#eab308' }, { name: 'Lime', color: '#84cc16' },
-    { name: 'Green', color: '#22c55e' }, { name: 'Emerald', color: '#10b981' }, { name: 'Teal', color: '#14b8a6' },
-    { name: 'Cyan', color: '#06b6d4' }, { name: 'Sky', color: '#0ea5e9' }, { name: 'Blue', color: '#3b82f6' },
-    { name: 'Indigo', color: '#6366f1' }, { name: 'Violet', color: '#8b5cf6' }, { name: 'Purple', color: '#a855f7' },
-    { name: 'Fuchsia', color: '#d946ef' }, { name: 'Pink', color: '#ec4899' },
-];
 
 const DealCard = ({ deal, onClick, isDragging, allUsers, visitors }: { deal: Deal, onClick: () => void, isDragging: boolean, allUsers: User[], visitors: Visitor[] }) => {
   const assignee = allUsers.find(u => u.id === deal.assignedTo);
@@ -79,6 +59,7 @@ const DealCard = ({ deal, onClick, isDragging, allUsers, visitors }: { deal: Dea
 interface DealsBoardProps {
   deals: Deal[];
   onUpdateDeals: (deals: Deal[]) => void;
+  onAddDeal: (dealData: Omit<Deal, 'id' | 'hubId' | 'spaceId'>) => void;
   activeHub: Hub;
   activeSpace: Space;
   allUsers: User[];
@@ -93,10 +74,11 @@ const defaultStatuses: Status[] = [
     { name: 'Won', color: '#22c55e' }, { name: 'Lost', color: '#ef4444' },
 ];
 
-export default function DealsBoard({ deals, onUpdateDeals, activeHub, activeSpace, allUsers, visitors, onUpdateActiveHub, onNavigateToSettings }: DealsBoardProps) {
+export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, activeHub, activeSpace, allUsers, visitors, onUpdateActiveHub, onNavigateToSettings }: DealsBoardProps) {
   const [draggedDeal, setDraggedDeal] = useState<string | null>(null);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCreateDealOpen, setIsCreateDealOpen] = useState(false);
   const { appUser } = useAuth();
   
   const statuses = activeHub.dealStatuses || defaultStatuses;
@@ -196,6 +178,11 @@ export default function DealsBoard({ deals, onUpdateDeals, activeHub, activeSpac
         });
         setIsSettingsOpen(false);
     }
+    
+    const handleSaveDeal = (dealData: Omit<Deal, 'id' | 'hubId' | 'spaceId'>) => {
+        onAddDeal(dealData);
+        setIsCreateDealOpen(false);
+    };
 
 
     const renderStatusColumn = (status: Status) => {
@@ -244,6 +231,10 @@ export default function DealsBoard({ deals, onUpdateDeals, activeHub, activeSpac
               </Button>
             </div>
              <div className="flex items-center gap-4">
+                <Button onClick={() => setIsCreateDealOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Deal
+                </Button>
                 <div className="flex -space-x-2">
                     {hubMembers.slice(0, 5).map(member => (
                         <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
@@ -286,6 +277,14 @@ export default function DealsBoard({ deals, onUpdateDeals, activeHub, activeSpac
         initialMembers={activeHub.settings?.dealMembers || Object.keys(activeSpace.members)}
         onSave={handleSaveSettings}
         appUser={appUser}
+      />
+      <CreateDealDialog
+        isOpen={isCreateDealOpen}
+        onOpenChange={setIsCreateDealOpen}
+        onSave={handleSaveDeal}
+        allUsers={hubMembers}
+        visitors={visitors}
+        defaultStage={statuses[0]?.name || 'New Lead'}
       />
     </>
   );

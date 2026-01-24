@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -6,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Plus, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Hub, User, DealAutomationRule } from '@/lib/data';
+import { Hub, User, DealAutomationRule, Project } from '@/lib/data';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import DealAutomationRuleDialog from './deal-automation-rule-dialog';
@@ -146,5 +145,4 @@ export default function DealAutomationSettings({ activeHub, allUsers, allHubs, p
     </>
   );
 }
-
     

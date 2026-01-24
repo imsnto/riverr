@@ -33,7 +33,6 @@ export default function ChatbotWidgetPage() {
 
     useEffect(() => {
         const initialize = async () => {
-            if (status === 'loading') return;
             setIsLoading(true);
 
             const fetchedBot = await db.getBot(botId);
@@ -50,7 +49,21 @@ export default function ChatbotWidgetPage() {
                 domain: url.hostname,
                 pathname: url.pathname
             };
-            if (appUser) {
+
+            const fetchedVisitor = await db.getOrCreateVisitor(visitorId);
+            setVisitor(fetchedVisitor);
+
+            const convos = await db.getConversationsForHub(hubId);
+            console.log('convos',convos)
+            const existingConvo = convos.find(c => c.visitorId === visitorId);
+
+            console.log('existingConvo',existingConvo)
+            if (existingConvo) {
+                setConversation(existingConvo);
+                const existingMessages = await db.getMessagesForConversations([existingConvo.id]);
+                setMessages(existingMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
+            }
+            if(appUser){
                 details = {
                     name: appUser.name,
                     email: appUser.email,
@@ -59,18 +72,7 @@ export default function ChatbotWidgetPage() {
                     domain: url.hostname,
                     pathname: url.pathname
                 }
-            }
-            const fetchedVisitor = await db.getOrCreateVisitor(visitorId);
-            setVisitor(fetchedVisitor);
-
-            const convos = await db.getConversationsForHub(hubId);
-            const existingConvo = convos.find(c => c.visitorId === visitorId);
-
-            if (existingConvo) {
-                console.log('existingConvo',existingConvo)
-                setConversation(existingConvo);
-                const existingMessages = await db.getMessagesForConversations([existingConvo.id]);
-                setMessages(existingMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
+                await db.updateVisitor(visitorId, details)
             }
             setIsLoading(false);
         };

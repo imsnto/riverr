@@ -90,11 +90,11 @@ export const seedDatabase = async () => {
     users.forEach((user, i) => batch.set(doc(db, "users", userIds[i]), user));
 
     spaces.forEach((space) => batch.set(doc(db, "spaces", space.id), space));
-    
+
     // Seed hubs with specific IDs
     hubs.forEach((hub) => {
-        const { id, ...hubData } = hub;
-        batch.set(doc(db, "hubs", id), hubData);
+      const { id, ...hubData } = hub;
+      batch.set(doc(db, "hubs", id), hubData);
     });
 
     // Seed visitors, conversations, messages
@@ -102,7 +102,7 @@ export const seedDatabase = async () => {
       const { id, ...visitorData } = visitor;
       batch.set(doc(db, "visitors", id), visitorData);
     });
-    
+
     conversations.forEach((convo) => {
       const { id, ...convoData } = convo;
       batch.set(doc(db, "conversations", id), convoData);
@@ -112,7 +112,7 @@ export const seedDatabase = async () => {
       const { id, ...msgData } = msg;
       batch.set(doc(db, "chat_messages", id), msgData);
     });
-    
+
     await batch.commit();
     console.log("Database seeded successfully!");
   }
@@ -263,7 +263,7 @@ export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
 
 export const addHub = (hub: Omit<Hub, 'id'>) => {
   const collectionRef = collection(db, 'hubs');
-  
+
   addDoc(collectionRef, hub)
     .catch(async (serverError) => {
       const permissionError = new FirestorePermissionError({
@@ -273,7 +273,7 @@ export const addHub = (hub: Omit<Hub, 'id'>) => {
       });
 
       errorEmitter.emit('permission-error', permissionError);
-  });
+    });
 };
 
 
@@ -286,38 +286,38 @@ export const updateHub = async (
 };
 
 const defaultStatuses: Status[] = [
-    { name: 'Backlog', color: '#6b7280' },
-    { name: 'In Progress', color: '#3b82f6' },
-    { name: 'In Review', color: '#f59e0b' },
-    { name: 'Done', color: '#22c55e' },
+  { name: 'Backlog', color: '#6b7280' },
+  { name: 'In Progress', color: '#3b82f6' },
+  { name: 'In Review', color: '#f59e0b' },
+  { name: 'Done', color: '#22c55e' },
 ];
 
 const defaultTicketStatuses: Status[] = [
-    { name: 'New', color: '#6b7280' },
-    { name: 'Open', color: '#3b82f6' },
-    { name: 'Waiting on Customer', color: '#f59e0b' },
-    { name: 'Escalated', color: '#ef4444' },
-    { name: 'Closed', color: '#22c55e' },
+  { name: 'New', color: '#6b7280' },
+  { name: 'Open', color: '#3b82f6' },
+  { name: 'Waiting on Customer', color: '#f59e0b' },
+  { name: 'Escalated', color: '#ef4444' },
+  { name: 'Closed', color: '#22c55e' },
 ];
 
 export const createDefaultHubForSpace = async (spaceId: string, userId: string, hubData: Partial<Omit<Hub, 'id' | 'spaceId'>>) => {
-    const finalHubData: Omit<Hub, 'id'> = {
-        name: hubData.name || 'Default Hub',
-        spaceId,
-        type: hubData.type || 'project-management',
-        createdAt: new Date().toISOString(),
-        createdBy: userId,
-        isDefault: hubData.isDefault || true,
-        settings: hubData.settings || { components: ['tasks', 'documents', 'messages'], defaultView: 'tasks' },
-        isPrivate: hubData.isPrivate || false,
-        memberIds: hubData.memberIds || [],
-        statuses: hubData.statuses || defaultStatuses,
-        ticketStatuses: hubData.ticketStatuses || defaultTicketStatuses,
-        ticketClosingStatusName: 'Closed',
-        closingStatusName: hubData.closingStatusName,
-    };
-    const hubRef = await addDoc(collection(db, 'hubs'), finalHubData);
-    return { id: hubRef.id, ...finalHubData };
+  const finalHubData: Omit<Hub, 'id'> = {
+    name: hubData.name || 'Default Hub',
+    spaceId,
+    type: hubData.type || 'project-management',
+    createdAt: new Date().toISOString(),
+    createdBy: userId,
+    isDefault: hubData.isDefault || true,
+    settings: hubData.settings || { components: ['tasks', 'documents', 'messages'], defaultView: 'tasks' },
+    isPrivate: hubData.isPrivate || false,
+    memberIds: hubData.memberIds || [],
+    statuses: hubData.statuses || defaultStatuses,
+    ticketStatuses: hubData.ticketStatuses || defaultTicketStatuses,
+    ticketClosingStatusName: 'Closed',
+    closingStatusName: hubData.closingStatusName,
+  };
+  const hubRef = await addDoc(collection(db, 'hubs'), finalHubData);
+  return { id: hubRef.id, ...finalHubData };
 };
 
 
@@ -448,66 +448,66 @@ export const updateTicket = async (
 
 // --- Deal Management ---
 export const getDealsInHub = async (hubId: string): Promise<Deal[]> => {
-    const q = query(collection(db, "deals"), where("hubId", "==", hubId));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Deal));
+  const q = query(collection(db, "deals"), where("hubId", "==", hubId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Deal));
 };
 
 export const addDeal = async (deal: Omit<Deal, "id">): Promise<Deal> => {
-    const docRef = await addDoc(collection(db, "deals"), deal);
-    return { ...deal, id: docRef.id };
+  const docRef = await addDoc(collection(db, "deals"), deal);
+  return { ...deal, id: docRef.id };
 };
 
 export const updateDeal = async (dealId: string, data: Partial<Deal>): Promise<void> => {
-    const dealRef = doc(db, "deals", dealId);
-    await updateDoc(dealRef, data);
+  const dealRef = doc(db, "deals", dealId);
+  await updateDoc(dealRef, data);
 };
 
 // --- Escalation & Automation Management ---
 export const getEscalationIntakeRules = async (hubId: string): Promise<EscalationIntakeRule[]> => {
-    const rulesRef = collection(db, 'hubs', hubId, 'escalation_intake');
-    const snapshot = await getDocs(rulesRef);
-    return snapshot.docs.map(doc => ({ id: doc.id, hubId, ...doc.data() } as EscalationIntakeRule));
+  const rulesRef = collection(db, 'hubs', hubId, 'escalation_intake');
+  const snapshot = await getDocs(rulesRef);
+  return snapshot.docs.map(doc => ({ id: doc.id, hubId, ...doc.data() } as EscalationIntakeRule));
 };
 
 export const saveEscalationIntakeRule = async (hubId: string, rule: Omit<EscalationIntakeRule, 'id' | 'hubId'>, ruleId?: string): Promise<EscalationIntakeRule> => {
-    if (ruleId) {
-        const ruleRef = doc(db, 'hubs', hubId, 'escalation_intake', ruleId);
-        await updateDoc(ruleRef, rule);
-        return { ...rule, id: ruleId, hubId };
-    } else {
-        const collRef = collection(db, 'hubs', hubId, 'escalation_intake');
-        const docRef = await addDoc(collRef, rule);
-        return { ...rule, id: docRef.id, hubId };
-    }
+  if (ruleId) {
+    const ruleRef = doc(db, 'hubs', hubId, 'escalation_intake', ruleId);
+    await updateDoc(ruleRef, rule);
+    return { ...rule, id: ruleId, hubId };
+  } else {
+    const collRef = collection(db, 'hubs', hubId, 'escalation_intake');
+    const docRef = await addDoc(collRef, rule);
+    return { ...rule, id: docRef.id, hubId };
+  }
 };
 
 export const deleteEscalationIntakeRule = async (hubId: string, ruleId: string): Promise<void> => {
-    const ruleRef = doc(db, 'hubs', hubId, 'escalation_intake', ruleId);
-    await deleteDoc(ruleRef);
+  const ruleRef = doc(db, 'hubs', hubId, 'escalation_intake', ruleId);
+  await deleteDoc(ruleRef);
 };
 
 
 export const getDealAutomationRules = async (hubId: string): Promise<DealAutomationRule[]> => {
-    const q = query(collection(db, "deal_automation_rules"), where("hubId", "==", hubId));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DealAutomationRule));
+  const q = query(collection(db, "deal_automation_rules"), where("hubId", "==", hubId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DealAutomationRule));
 };
 
 export const saveDealAutomationRule = async (rule: Omit<DealAutomationRule, 'id'>, ruleId?: string): Promise<DealAutomationRule> => {
-    if (ruleId) {
-        const ruleRef = doc(db, "deal_automation_rules", ruleId);
-        await updateDoc(ruleRef, rule);
-        return { ...rule, id: ruleId };
-    } else {
-        const docRef = await addDoc(collection(db, "deal_automation_rules"), rule);
-        return { ...rule, id: docRef.id };
-    }
+  if (ruleId) {
+    const ruleRef = doc(db, "deal_automation_rules", ruleId);
+    await updateDoc(ruleRef, rule);
+    return { ...rule, id: ruleId };
+  } else {
+    const docRef = await addDoc(collection(db, "deal_automation_rules"), rule);
+    return { ...rule, id: docRef.id };
+  }
 };
 
 export const deleteDealAutomationRule = async (ruleId: string): Promise<void> => {
-    const ruleRef = doc(db, "deal_automation_rules", ruleId);
-    await deleteDoc(ruleRef);
+  const ruleRef = doc(db, "deal_automation_rules", ruleId);
+  await deleteDoc(ruleRef);
 };
 
 
@@ -573,13 +573,13 @@ export const addChannel = async (
     const docRef = await addDoc(collRef, channel);
     return { ...channel, id: docRef.id };
   } catch (serverError) {
-      const permissionError = new FirestorePermissionError({
-          path: collRef.path,
-          operation: 'create',
-          requestResourceData: channel,
-      });
-      errorEmitter.emit('permission-error', permissionError);
-      throw serverError;
+    const permissionError = new FirestorePermissionError({
+      path: collRef.path,
+      operation: 'create',
+      requestResourceData: channel,
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw serverError;
   }
 };
 
@@ -591,13 +591,13 @@ export const updateChannel = async (
   try {
     await updateDoc(channelRef, data);
   } catch (serverError) {
-      const permissionError = new FirestorePermissionError({
-          path: channelRef.path,
-          operation: 'update',
-          requestResourceData: data,
-      });
-      errorEmitter.emit('permission-error', permissionError);
-      throw serverError;
+    const permissionError = new FirestorePermissionError({
+      path: channelRef.path,
+      operation: 'update',
+      requestResourceData: data,
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw serverError;
   }
 };
 
@@ -765,10 +765,10 @@ const createSubtasks = (
     const now = new Date().toISOString();
     const subtaskRef = doc(collection(db, "tasks"));
     const subtaskCreationActivity: Activity = {
-        id: `act-creation-job-${subtaskRef.id}`,
-        user_id: createdBy,
-        timestamp: now,
-        type: 'task_creation',
+      id: `act-creation-job-${subtaskRef.id}`,
+      user_id: createdBy,
+      timestamp: now,
+      type: 'task_creation',
     };
 
     const subtaskTitle = subtaskTemplate.titleTemplate.replace(
@@ -834,10 +834,10 @@ const createTasksForPhase = async (
     const now = new Date().toISOString();
     const taskRef = doc(collection(db, "tasks"));
     const taskCreationActivity: Activity = {
-        id: `act-creation-job-${taskRef.id}`,
-        user_id: createdBy,
-        timestamp: now,
-        type: 'task_creation',
+      id: `act-creation-job-${taskRef.id}`,
+      user_id: createdBy,
+      timestamp: now,
+      type: 'task_creation',
     };
     const taskData: Omit<Task, "id"> = {
       project_id: null,
@@ -1161,66 +1161,66 @@ export const logChatMessageEventIfLinked = async (
 };
 
 export const getContacts = async (spaceId: string): Promise<Contact[]> => {
-    const q = query(collection(db, 'contacts'), where('tenantId', '==', spaceId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact));
+  const q = query(collection(db, 'contacts'), where('tenantId', '==', spaceId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact));
 };
 
 export const addContact = async (contactData: Omit<Contact, 'id'>): Promise<Contact> => {
-    const collRef = collection(db, 'contacts');
-    try {
-        const docRef = await addDoc(collRef, contactData);
-        return { id: docRef.id, ...contactData };
-    } catch (serverError) {
-        const permissionError = new FirestorePermissionError({
-            path: collRef.path,
-            operation: 'create',
-            requestResourceData: contactData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        throw serverError;
-    }
+  const collRef = collection(db, 'contacts');
+  try {
+    const docRef = await addDoc(collRef, contactData);
+    return { id: docRef.id, ...contactData };
+  } catch (serverError) {
+    const permissionError = new FirestorePermissionError({
+      path: collRef.path,
+      operation: 'create',
+      requestResourceData: contactData,
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw serverError;
+  }
 };
 
 export const getContactEvents = async (contactId: string): Promise<ContactEvent[]> => {
-    const collRef = collection(db, 'contacts', contactId, 'events');
-    const q = query(collRef, orderBy('timestamp', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactEvent));
+  const collRef = collection(db, 'contacts', contactId, 'events');
+  const q = query(collRef, orderBy('timestamp', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactEvent));
 }
 
 export const addContactEvent = async (contactId: string, eventData: Omit<ContactEvent, 'id'>): Promise<ContactEvent> => {
-    const collRef = collection(db, 'contacts', contactId, 'events');
-    const docRef = await addDoc(collRef, eventData);
-    return { id: docRef.id, ...eventData };
+  const collRef = collection(db, 'contacts', contactId, 'events');
+  const docRef = await addDoc(collRef, eventData);
+  return { id: docRef.id, ...eventData };
 }
 
 export const deleteContactEvent = async (contactId: string, eventId: string): Promise<void> => {
-    const eventRef = doc(db, 'contacts', contactId, 'events', eventId);
-    await deleteDoc(eventRef);
+  const eventRef = doc(db, 'contacts', contactId, 'events', eventId);
+  await deleteDoc(eventRef);
 };
 
 
 // --- Inbox / Chat Management ---
 export const getConversationsForHub = async (hubId: string): Promise<Conversation[]> => {
-    const q = query(collection(db, 'conversations'), where('hubId', '==', hubId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
+  const q = query(collection(db, 'conversations'), where('hubId', '==', hubId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
 };
 
 export const getMessagesForConversations = async (conversationIds: string[]): Promise<ChatMessage[]> => {
-    if (conversationIds.length === 0) return [];
-    const messages: ChatMessage[] = [];
-    // Firestore 'in' query is limited to 30 items
-    for (let i = 0; i < conversationIds.length; i+=30) {
-        const chunk = conversationIds.slice(i, i + 30);
-        const q = query(collection(db, 'chat_messages'), where('conversationId', 'in', chunk), orderBy('timestamp', 'asc'));
-        const snapshot = await getDocs(q);
-        snapshot.forEach(doc => {
-            messages.push({ id: doc.id, ...doc.data() } as ChatMessage);
-        });
-    }
-    return messages;
+  if (conversationIds.length === 0) return [];
+  const messages: ChatMessage[] = [];
+  // Firestore 'in' query is limited to 30 items
+  for (let i = 0; i < conversationIds.length; i += 30) {
+    const chunk = conversationIds.slice(i, i + 30);
+    const q = query(collection(db, 'chat_messages'), where('conversationId', 'in', chunk), orderBy('timestamp', 'asc'));
+    const snapshot = await getDocs(q);
+    snapshot.forEach(doc => {
+      messages.push({ id: doc.id, ...doc.data() } as ChatMessage);
+    });
+  }
+  return messages;
 }
 
 export const addChatMessage = async (message: Omit<ChatMessage, "id">): Promise<ChatMessage> => {
@@ -1232,12 +1232,12 @@ export const addChatMessage = async (message: Omit<ChatMessage, "id">): Promise<
   if (message.conversationId) {
     const lastMessageAuthorDoc = await getDoc(doc(db, "visitors", message.authorId));
     const lastMessageAuthorName = lastMessageAuthorDoc.exists() ? lastMessageAuthorDoc.data().name : 'Agent';
-    
+
     const conversationUpdateData = {
-        lastMessageAt: message.timestamp,
-        lastMessage: (message.content || "").slice(0, 140),
-        lastMessageAuthor: lastMessageAuthorName,
-        updatedAt: serverTimestamp(),
+      lastMessageAt: message.timestamp,
+      lastMessage: (message.content || "").slice(0, 140),
+      lastMessageAuthor: lastMessageAuthorName,
+      updatedAt: serverTimestamp(),
     };
     await updateConversation(message.conversationId, conversationUpdateData as any);
 
@@ -1251,12 +1251,12 @@ export const addChatMessage = async (message: Omit<ChatMessage, "id">): Promise<
       const ticketsQuery = query(collection(db, "tickets"), where("conversationId", "==", message.conversationId), limit(1));
       const ticketSnap = await getDocs(ticketsQuery);
       if (!ticketSnap.empty) {
-          const ticketDoc = ticketSnap.docs[0];
-          await updateTicket(ticketDoc.id, {
-              lastMessagePreview: (message.content || "").slice(0, 140),
-              lastMessageAt: message.timestamp,
-              updatedAt: new Date().toISOString(),
-          });
+        const ticketDoc = ticketSnap.docs[0];
+        await updateTicket(ticketDoc.id, {
+          lastMessagePreview: (message.content || "").slice(0, 140),
+          lastMessageAt: message.timestamp,
+          updatedAt: new Date().toISOString(),
+        });
       }
     }
   }
@@ -1265,79 +1265,79 @@ export const addChatMessage = async (message: Omit<ChatMessage, "id">): Promise<
 };
 
 export const updateConversation = async (conversationId: string, data: Partial<Conversation>): Promise<void> => {
-    const convRef = doc(db, 'conversations', conversationId);
-    try {
-        await updateDoc(convRef, data);
-        if (data.contactId) {
-            const ticketsQuery = query(collection(db, "tickets"), where("conversationId", "==", conversationId), limit(1));
-            const ticketSnap = await getDocs(ticketsQuery);
-            if (!ticketSnap.empty) {
-                const ticketDoc = ticketSnap.docs[0];
-                await updateDoc(ticketDoc.ref, { contactId: data.contactId });
-            }
-        }
-    } catch (serverError) {
-        const permissionError = new FirestorePermissionError({
-            path: convRef.path,
-            operation: 'update',
-            requestResourceData: data,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        throw serverError;
+  const convRef = doc(db, 'conversations', conversationId);
+  try {
+    await updateDoc(convRef, data);
+    if (data.contactId) {
+      const ticketsQuery = query(collection(db, "tickets"), where("conversationId", "==", conversationId), limit(1));
+      const ticketSnap = await getDocs(ticketsQuery);
+      if (!ticketSnap.empty) {
+        const ticketDoc = ticketSnap.docs[0];
+        await updateDoc(ticketDoc.ref, { contactId: data.contactId });
+      }
     }
+  } catch (serverError) {
+    const permissionError = new FirestorePermissionError({
+      path: convRef.path,
+      operation: 'update',
+      requestResourceData: data,
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw serverError;
+  }
 }
 
 export const addConversation = async (conversation: Omit<Conversation, 'id'>): Promise<Conversation> => {
-    const collRef = collection(db, 'conversations');
-    try {
-        const docRef = await addDoc(collRef, conversation);
-        const newConversation = { ...conversation, id: docRef.id };
-        
-        // Auto-create a ticket if this is a new conversation
-        const ticketsQuery = query(collection(db, "tickets"), where("conversationId", "==", newConversation.id), limit(1));
-        const existingTicketSnap = await getDocs(ticketsQuery);
-        
-        if (existingTicketSnap.empty) {
-            const hub = await getDoc(doc(db, 'hubs', newConversation.hubId));
-            if (hub.exists()) {
-                const hubData = hub.data() as Hub;
-                const visitor = await getDoc(doc(db, 'visitors', newConversation.visitorId!));
-                const visitorName = visitor.exists() ? visitor.data().name : 'Anonymous';
-        
-                const newTicketData: Omit<Ticket, 'id'> = {
-                    hubId: newConversation.hubId,
-                    spaceId: hubData.spaceId,
-                    status: 'New', // Default starting status
-                    title: `Support: ${visitorName}`,
-                    description: null,
-                    priority: null,
-                    type: 'question',
-                    assignedTo: null,
-                    contactId: newConversation.contactId || null,
-                    conversationId: newConversation.id,
-                    channel: 'Widget',
-                    lastMessagePreview: newConversation.lastMessage,
-                    lastMessageAt: newConversation.lastMessageAt,
-                    createdAt: new Date().toISOString(),
-                    createdBy: newConversation.visitorId!,
-                    updatedAt: new Date().toISOString(),
-                    escalation: { status: 'none' }
-                };
-                await addTicket(newTicketData);
-            }
-        }
-        
-        return newConversation;
+  const collRef = collection(db, 'conversations');
+  try {
+    const docRef = await addDoc(collRef, conversation);
+    const newConversation = { ...conversation, id: docRef.id };
 
-    } catch (serverError) {
-        const permissionError = new FirestorePermissionError({
-            path: collRef.path,
-            operation: 'create',
-            requestResourceData: conversation,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        throw serverError;
+    // Auto-create a ticket if this is a new conversation
+    const ticketsQuery = query(collection(db, "tickets"), where("conversationId", "==", newConversation.id), limit(1));
+    const existingTicketSnap = await getDocs(ticketsQuery);
+
+    if (existingTicketSnap.empty) {
+      const hub = await getDoc(doc(db, 'hubs', newConversation.hubId));
+      if (hub.exists()) {
+        const hubData = hub.data() as Hub;
+        const visitor = await getDoc(doc(db, 'visitors', newConversation.visitorId!));
+        const visitorName = visitor.exists() ? visitor.data().name : 'Anonymous';
+
+        const newTicketData: Omit<Ticket, 'id'> = {
+          hubId: newConversation.hubId,
+          spaceId: hubData.spaceId,
+          status: 'New', // Default starting status
+          title: `Support: ${visitorName}`,
+          description: null,
+          priority: null,
+          type: 'question',
+          assignedTo: null,
+          contactId: newConversation.contactId || null,
+          conversationId: newConversation.id,
+          channel: 'Widget',
+          lastMessagePreview: newConversation.lastMessage,
+          lastMessageAt: newConversation.lastMessageAt,
+          createdAt: new Date().toISOString(),
+          createdBy: newConversation.visitorId!,
+          updatedAt: new Date().toISOString(),
+          escalation: { status: 'none' }
+        };
+        await addTicket(newTicketData);
+      }
     }
+
+    return newConversation;
+
+  } catch (serverError) {
+    const permissionError = new FirestorePermissionError({
+      path: collRef.path,
+      operation: 'create',
+      requestResourceData: conversation,
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw serverError;
+  }
 }
 
 
@@ -1353,13 +1353,13 @@ export const getBot = async (botId: string): Promise<Bot | null> => {
   try {
     const botDoc = await getDoc(botDocRef);
     return botDoc.exists() ? ({ id: botDoc.id, ...botDoc.data() } as Bot) : null;
-  } catch(serverError: any) {
+  } catch (serverError: any) {
     if (serverError.code === 'permission-denied') {
-        const permissionError = new FirestorePermissionError({
-            path: botDocRef.path,
-            operation: 'get'
-        });
-        errorEmitter.emit('permission-error', permissionError);
+      const permissionError = new FirestorePermissionError({
+        path: botDocRef.path,
+        operation: 'get'
+      });
+      errorEmitter.emit('permission-error', permissionError);
     }
     throw serverError;
   }
@@ -1372,9 +1372,9 @@ export const addBot = async (bot: Omit<Bot, "id">): Promise<Bot> => {
     return { ...bot, id: docRef.id };
   } catch (serverError) {
     const permissionError = new FirestorePermissionError({
-        path: collRef.path,
-        operation: 'create',
-        requestResourceData: bot,
+      path: collRef.path,
+      operation: 'create',
+      requestResourceData: bot,
     });
     errorEmitter.emit('permission-error', permissionError);
     throw serverError;
@@ -1387,119 +1387,134 @@ export const updateBot = async (botId: string, data: Partial<Bot>): Promise<void
 };
 
 export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Visitor>): Promise<Visitor> => {
-    const visitorRef = doc(db, 'visitors', visitorId);
-    try {
-        const visitorSnap = await getDoc(visitorRef);
-        if (visitorSnap.exists()) {
-            return { id: visitorSnap.id, ...visitorSnap.data() } as Visitor;
-        } else {
-            const newVisitor: Omit<Visitor, 'id'> = {
-                name: details?.name || 'Anonymous User',
-                email: details?.email || 'N/A',
-                avatarUrl: details?.avatarUrl || `https://placehold.co/100x100.png?text=${(details?.name?.[0] || 'U')}`,
-                location: {pathname: details?.pathname || '', domain: details?.domain || ''},
-                lastSeen: new Date().toISOString(),
-                companyName: 'N/A',
-                sessions: 1,
-                companyId: 'N/A',
-                companyUsers: 1,
-                companyPlan: 'N/A',
-                companySpend: '$0.00',
-            };
-            
-            setDoc(visitorRef, newVisitor)
-                .catch(async (serverError) => {
-                    const permissionError = new FirestorePermissionError({
-                        path: visitorRef.path,
-                        operation: 'create',
-                        requestResourceData: newVisitor,
-                    });
-                    errorEmitter.emit('permission-error', permissionError);
-                });
+  const visitorRef = doc(db, 'visitors', visitorId);
+  try {
+    const visitorSnap = await getDoc(visitorRef);
+    if (visitorSnap.exists()) {
+      return { id: visitorSnap.id, ...visitorSnap.data() } as Visitor;
+    } else {
+      const newVisitor: Omit<Visitor, 'id'> = {
+        name: details?.name || 'Anonymous User',
+        email: details?.email || 'N/A',
+        avatarUrl: details?.avatarUrl || `https://placehold.co/100x100.png?text=${(details?.name?.[0] || 'U')}`,
+        location: { pathname: details?.pathname || '', domain: details?.domain || '' },
+        lastSeen: new Date().toISOString(),
+        companyName: 'N/A',
+        sessions: 1,
+        companyId: 'N/A',
+        companyUsers: 1,
+        companyPlan: 'N/A',
+        companySpend: '$0.00',
+      };
 
-            return { id: visitorId, ...newVisitor };
-        }
-    } catch (serverError: any) {
-        if (serverError.code === 'permission-denied') {
-            const permissionError = new FirestorePermissionError({
-                path: visitorRef.path,
-                operation: 'get'
-            });
-            errorEmitter.emit('permission-error', permissionError);
-        }
-        throw serverError;
+      setDoc(visitorRef, newVisitor)
+        .catch(async (serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: visitorRef.path,
+            operation: 'create',
+            requestResourceData: newVisitor,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        });
+
+      return { id: visitorId, ...newVisitor };
     }
+  } catch (serverError: any) {
+    if (serverError.code === 'permission-denied') {
+      const permissionError = new FirestorePermissionError({
+        path: visitorRef.path,
+        operation: 'get'
+      });
+      errorEmitter.emit('permission-error', permissionError);
+    }
+    throw serverError;
+  }
 }
+
+export const updateVisitor = async (visitorId: string, updates: Partial<Visitor>): Promise<void> => {
+  const visitorRef = doc(db, 'visitors', visitorId);
+  try {
+    const visitorSnap = await getDoc(visitorRef);
+    if (visitorSnap.exists()) {
+      await updateDoc(visitorRef, {
+        ...updates,
+        lastSeen: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error("Failed to update visitor:", error);
+  }
+};
 
 // --- Help Center Management ---
 export const getHelpCenters = async (hubId: string): Promise<HelpCenter[]> => {
-    const q = query(collection(db, 'help_centers'), where('hubId', '==', hubId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenter));
+  const q = query(collection(db, 'help_centers'), where('hubId', '==', hubId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenter));
 }
 
 export const addHelpCenter = async (helpCenter: Omit<HelpCenter, 'id'>): Promise<HelpCenter> => {
-    const collRef = collection(db, 'help_centers');
-    try {
-        const docRef = await addDoc(collRef, helpCenter);
-        return { id: docRef.id, ...helpCenter };
-    } catch (serverError) {
-        const permissionError = new FirestorePermissionError({
-            path: collRef.path,
-            operation: 'create',
-            requestResourceData: helpCenter,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        throw serverError;
-    }
+  const collRef = collection(db, 'help_centers');
+  try {
+    const docRef = await addDoc(collRef, helpCenter);
+    return { id: docRef.id, ...helpCenter };
+  } catch (serverError) {
+    const permissionError = new FirestorePermissionError({
+      path: collRef.path,
+      operation: 'create',
+      requestResourceData: helpCenter,
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw serverError;
+  }
 }
 
 export const updateHelpCenter = async (helpCenterId: string, data: Partial<HelpCenter>): Promise<void> => {
-    const hcRef = doc(db, 'help_centers', helpCenterId);
-    await updateDoc(hcRef, data);
+  const hcRef = doc(db, 'help_centers', helpCenterId);
+  await updateDoc(hcRef, data);
 }
 
 export const getHelpCenterCollections = async (hubId: string): Promise<HelpCenterCollection[]> => {
-    const q = query(collection(db, 'help_center_collections'), where('hubId', '==', hubId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenterCollection));
+  const q = query(collection(db, 'help_center_collections'), where('hubId', '==', hubId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenterCollection));
 }
 
 export const addHelpCenterCollection = async (collectionData: Omit<HelpCenterCollection, 'id'>): Promise<HelpCenterCollection> => {
-    const docRef = await addDoc(collection(db, 'help_center_collections'), collectionData);
-    return { id: docRef.id, ...collectionData };
+  const docRef = await addDoc(collection(db, 'help_center_collections'), collectionData);
+  return { id: docRef.id, ...collectionData };
 }
 
 export const updateHelpCenterCollection = async (collectionId: string, data: Partial<HelpCenterCollection>): Promise<void> => {
-    const collectionRef = doc(db, "help_center_collections", collectionId);
-    await updateDoc(collectionRef, data);
+  const collectionRef = doc(db, "help_center_collections", collectionId);
+  await updateDoc(collectionRef, data);
 }
 
 export const deleteHelpCenterCollection = async (collectionId: string): Promise<void> => {
-    const collectionRef = doc(db, "help_center_collections", collectionId);
-    await deleteDoc(collectionRef);
+  const collectionRef = doc(db, "help_center_collections", collectionId);
+  await deleteDoc(collectionRef);
 }
 
 export const getHelpCenterArticles = async (hubId: string): Promise<HelpCenterArticle[]> => {
-    const q = query(collection(db, 'help_center_articles'), where('hubId', '==', hubId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenterArticle));
+  const q = query(collection(db, 'help_center_articles'), where('hubId', '==', hubId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenterArticle));
 }
 
 export const addHelpCenterArticle = async (articleData: Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle> => {
-    const collRef = collection(db, 'help_center_articles');
-    try {
-        const docRef = await addDoc(collRef, articleData);
-        return { id: docRef.id, ...articleData };
-    } catch (serverError) {
-        const permissionError = new FirestorePermissionError({
-            path: collRef.path,
-            operation: 'create',
-            requestResourceData: articleData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        throw serverError;
-    }
+  const collRef = collection(db, 'help_center_articles');
+  try {
+    const docRef = await addDoc(collRef, articleData);
+    return { id: docRef.id, ...articleData };
+  } catch (serverError) {
+    const permissionError = new FirestorePermissionError({
+      path: collRef.path,
+      operation: 'create',
+      requestResourceData: articleData,
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw serverError;
+  }
 }
 
 export const updateHelpCenterArticle = async (articleId: string, data: Partial<HelpCenterArticle>): Promise<void> => {
@@ -1508,40 +1523,39 @@ export const updateHelpCenterArticle = async (articleId: string, data: Partial<H
 };
 
 export const updateHelpCenterContent = async (
-    helpCenterId: string,
-    selectedIds: { articles: string[], collections: string[] },
-    allArticles: HelpCenterArticle[],
-    allCollections: HelpCenterCollection[]
+  helpCenterId: string,
+  selectedIds: { articles: string[], collections: string[] },
+  allArticles: HelpCenterArticle[],
+  allCollections: HelpCenterCollection[]
 ) => {
-    const batch = writeBatch(db);
+  const batch = writeBatch(db);
 
-    // Process articles
-    allArticles.forEach(article => {
-        const articleRef = doc(db, 'help_center_articles', article.id);
-        const shouldBeInHC = selectedIds.articles.includes(article.id);
-        const isInHC = article.helpCenterIds?.includes(helpCenterId);
+  // Process articles
+  allArticles.forEach(article => {
+    const articleRef = doc(db, 'help_center_articles', article.id);
+    const shouldBeInHC = selectedIds.articles.includes(article.id);
+    const isInHC = article.helpCenterIds?.includes(helpCenterId);
 
-        if (shouldBeInHC && !isInHC) {
-            batch.update(articleRef, { helpCenterIds: arrayUnion(helpCenterId) });
-        } else if (!shouldBeInHC && isInHC) {
-            batch.update(articleRef, { helpCenterIds: arrayRemove(helpCenterId) });
-        }
-    });
+    if (shouldBeInHC && !isInHC) {
+      batch.update(articleRef, { helpCenterIds: arrayUnion(helpCenterId) });
+    } else if (!shouldBeInHC && isInHC) {
+      batch.update(articleRef, { helpCenterIds: arrayRemove(helpCenterId) });
+    }
+  });
 
-    // Process collections
-    allCollections.forEach(collection => {
-        const collectionRef = doc(db, 'help_center_collections', collection.id);
-        const shouldBeInHC = selectedIds.collections.includes(collection.id);
-        const isInHC = collection.helpCenterIds?.includes(helpCenterId);
+  // Process collections
+  allCollections.forEach(collection => {
+    const collectionRef = doc(db, 'help_center_collections', collection.id);
+    const shouldBeInHC = selectedIds.collections.includes(collection.id);
+    const isInHC = collection.helpCenterIds?.includes(helpCenterId);
 
-        if (shouldBeInHC && !isInHC) {
-            batch.update(collectionRef, { helpCenterIds: arrayUnion(helpCenterId) });
-        } else if (!shouldBeInHC && isInHC) {
-            batch.update(collectionRef, { helpCenterIds: arrayRemove(helpCenterId) });
-        }
-    });
-    
-    await batch.commit();
+    if (shouldBeInHC && !isInHC) {
+      batch.update(collectionRef, { helpCenterIds: arrayUnion(helpCenterId) });
+    } else if (!shouldBeInHC && isInHC) {
+      batch.update(collectionRef, { helpCenterIds: arrayRemove(helpCenterId) });
+    }
+  });
+
+  await batch.commit();
 }
 
-    

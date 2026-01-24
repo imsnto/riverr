@@ -1,4 +1,3 @@
-
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -423,6 +422,13 @@ export default function Dashboard({ view }: { view: string }) {
     })
   };
 
+  const handleAddDeal = async (dealData: Omit<Deal, 'id' | 'hubId' | 'spaceId'>) => {
+    const dealWithHub = { ...dealData, hubId: activeHub.id, spaceId: activeSpace.id };
+    const newDeal = await db.addDeal(dealWithHub);
+    setDeals(prev => [...prev, newDeal]);
+    toast({ title: 'Deal Created' });
+  };
+
 
   const handleUpdateActiveHub = async (updatedData: Partial<Hub>) => {
     if (!activeHub) return;
@@ -686,7 +692,7 @@ export default function Dashboard({ view }: { view: string }) {
       case 'tasks': return (
         <TaskBoard 
           tasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
+          onUpdateTasks={onUpdateTasks}
           projects={projects}
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
@@ -719,6 +725,7 @@ export default function Dashboard({ view }: { view: string }) {
       case 'deals': return <DealsBoard
           deals={deals}
           onUpdateDeals={handleUpdateDeals}
+          onAddDeal={handleAddDeal}
           visitors={visitors}
           activeHub={activeHub}
           activeSpace={activeSpace}
@@ -847,3 +854,4 @@ export default function Dashboard({ view }: { view: string }) {
     </SidebarProvider>
   );
 }
+
