@@ -3,6 +3,8 @@
 export const HUB_VIEWS = {
   overview: "/overview",
   tasks: "/tasks",
+  tickets: "/tickets",
+  deals: "/deals",
   inbox: "/inbox",
   "help-center": "/help-center",
   flows: "/flows",
@@ -12,3 +14,5 @@ export const HUB_VIEWS = {
 } as const;
 
 export type AppView = keyof typeof HUB_VIEWS;
+
+    

@@ -31,8 +31,12 @@ export interface Hub {
   isDefault: boolean;
   memberIds?: string[];
   isPrivate?: boolean;
-  statuses: Status[];
+  statuses: Status[]; // For Projects
+  ticketStatuses?: Status[]; // For Tickets
+  dealStatuses?: Status[]; // For Deals
   closingStatusName?: string;
+  ticketClosingStatusName?: string;
+  dealClosingStatusName?: string;
 }
 
 
@@ -77,6 +81,45 @@ export interface Task {
   attachments: Attachment[];
   spaceId: string;
 }
+
+export interface Ticket {
+  id: string;
+  hubId: string;
+  spaceId: string;
+  status: string;
+  title: string;
+  description: string | null;
+  priority: 'Low' | 'Medium' | 'High' | 'Urgent' | null;
+  assignedTo: string | null;
+  contactId: string | null;
+  conversationId: string | null;
+  channel: 'Widget' | 'OpenPhone' | 'Order' | 'Manual' | null;
+  lastMessagePreview: string | null;
+  lastMessageAt: string | null;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+}
+
+export interface Deal {
+  id: string;
+  hubId: string;
+  spaceId: string;
+  status: string;
+  title: string;
+  description: string | null;
+  value: number | null;
+  closeDate: string | null;
+  nextStep: string | null;
+  nextStepAt: string | null;
+  assignedTo: string | null;
+  contactId: string | null;
+  source: 'Inbound Chat' | 'Referral' | 'Website' | 'Manual' | 'Import' | null;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+}
+
 
 export interface Document {
   id: string;
@@ -317,7 +360,7 @@ export interface Bot {
   agentIds?: string[];
 }
 
-export interface Visitor { // Renamed from ChatContact
+export interface Visitor {
   id: string;
   name: string;
   email: string;
@@ -457,6 +500,9 @@ export const tasks: Task[] = [
   // Populated by DB seed
 ];
 
+export const tickets: Ticket[] = [];
+export const deals: Deal[] = [];
+
 export const timeEntries: TimeEntry[] = [
   // Populated by DB seed
 ];
@@ -473,7 +519,7 @@ export const messages: Message[] = [
     // Populated by DB seed
 ];
 
-export const visitors: (Omit<Visitor, 'id'> & { id: string })[] = [ // Renamed from chatContacts
+export const visitors: (Omit<Visitor, 'id'> & { id: string })[] = [
     {
         id: 'contact-1',
         name: 'John Doe',
@@ -850,3 +896,5 @@ export const jobs: Job[] = [];
 export const jobFlowTasks: JobFlowTask[] = [];
 
 export type { Contact, ContactEvent, ContactEventType, ContactSource, VisitorType, CallRecord } from './contacts-types';
+
+    

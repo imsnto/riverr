@@ -24,6 +24,8 @@ import {
   Check,
   MessageCircle,
   Building2,
+  Ticket,
+  DollarSign,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
@@ -176,7 +178,9 @@ const allMiddleItems: {
   label: string;
   fixed?: boolean;
 }[] = [
-  { key: "tasks", icon: <FolderKanban className="w-5 h-5" />, label: 'Tasks' },
+  { key: "tasks", icon: <FolderKanban className="w-5 h-5" />, label: 'Projects' },
+  { key: "tickets", icon: <Ticket className="w-5 h-5" />, label: 'Tickets' },
+  { key: "deals", icon: <DollarSign className="w-5 h-5" />, label: 'Deals' },
   { key: "inbox", icon: <MessageCircle className="w-5 h-5" />, label: 'Inbox' },
   { key: "contacts", icon: <AtSign className="w-5 h-5" />, label: 'Contacts' },
   { key: 'help-center', icon: <BookOpen className="w-5 h-5" />, label: 'Knowledge' },
@@ -348,3 +352,5 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 };
 
 export default AppSidebar;
+
+    

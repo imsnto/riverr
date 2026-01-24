@@ -12,12 +12,16 @@ import {
   MessageCircle,
   Settings,
   BookOpen,
+  Ticket,
+  DollarSign,
 } from 'lucide-react';
 import React from 'react';
 
 const navItems: { key: AppView; icon: React.ReactNode; label: string }[] = [
   { key: 'overview', icon: <BarChart />, label: 'Dashboard' },
   { key: 'tasks', icon: <FolderKanban />, label: 'Projects' },
+  { key: 'tickets', icon: <Ticket />, label: 'Tickets' },
+  { key: 'deals', icon: <DollarSign />, label: 'Deals' },
   { key: 'inbox', icon: <MessageCircle />, label: 'Inbox' },
   { key: 'help-center', icon: <BookOpen />, label: 'Knowledge' },
   { key: 'settings', icon: <Settings />, label: 'Settings' },
@@ -65,3 +69,5 @@ export default function MobileBottomNav({
     </div>
   );
 }
+
+    
