@@ -30,9 +30,9 @@ export default function ChatbotWidgetPage() {
     const [chatStarted, setChatStarted] = useState(false);
     const [messageText, setMessageText] = useState('');
     const scrollAreaRef = useRef<HTMLDivElement>(null);
+    const unsubRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
-        let unsubscribeMessages: (() => void) | undefined;
         const initialize = async () => {
             setIsLoading(true);
 
@@ -59,7 +59,7 @@ export default function ChatbotWidgetPage() {
 
             if (existingConvo) {
                 setConversation(existingConvo);
-                unsubscribeMessages = db.getMessagesForConversations(
+                unsubRef.current = db.getMessagesForConversations(
                     [existingConvo.id], 
                     (msgs) => setMessages(msgs)
                 );
@@ -78,7 +78,7 @@ export default function ChatbotWidgetPage() {
         };
         initialize();
         return () => {
-            if (unsubscribeMessages) unsubscribeMessages();
+            if (unsubRef.current) unsubRef.current();
         };
     }, [botId, hubId,appUser]);
 
@@ -109,6 +109,10 @@ export default function ChatbotWidgetPage() {
             const newConvo = await db.addConversation(newConvoData);
             setConversation(newConvo);
             currentConversation = newConvo;
+            unsubRef.current = db.getMessagesForConversations(
+                [newConvo.id], 
+                (msgs) => setMessages(msgs)
+            );
         }
 
         const newMessageData: Omit<ChatMessage, 'id'> = {
@@ -120,7 +124,7 @@ export default function ChatbotWidgetPage() {
             timestamp: new Date().toISOString(),
         };
 
-        const newMessage = await db.addChatMessage(newMessageData);
+        await db.addChatMessage(newMessageData);
         setMessageText('');
     };
 

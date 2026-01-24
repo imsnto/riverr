@@ -21,12 +21,6 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-        <script
-          src="https://studio--timeflow-6i3eo.us-central1.hosted.app/chatbot-loader.js"
-          data-bot-id="usALDhLW8Fvmwsyaml89"
-          data-hub-id="ezy7Dc0yrqY5XSPpl7Gv"
-          async
-        ></script>
       </head>
       <body className="font-body antialiased" suppressHydrationWarning>
         <AuthProvider>

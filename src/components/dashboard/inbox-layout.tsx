@@ -106,7 +106,7 @@ export default function InboxLayout({
                 open={isContactDailog}
                 onOpenChange={setIsContactDailog}
               />
-            </div> : <div className='flex justify-center items-center w-full h-screen'>Loading...</div>
+            </div> : <div className='flex justify-center items-center w-full h-screen'>Select or start a new conversation.</div>
         }
       </div>
     </div>
