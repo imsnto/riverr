@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, DragEvent, useRef, useMemo } from 'react';
@@ -24,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useAuth } from '@/hooks/use-auth';
 import TicketDetailsDialog from './ticket-details-dialog';
+import BoardSettingsDialog from './board-settings-dialog';
 
 const getInitials = (name: string) => {
     if (!name) return '';
@@ -99,6 +99,7 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { toast } = useToast();
   const { appUser } = useAuth();
   
@@ -112,10 +113,18 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
 
   const hubMembers = useMemo(() => {
     if (!activeHub || !activeSpace) return [];
-    if (activeHub.isPrivate && activeHub.memberIds) {
-        return allUsers.filter(u => activeHub.memberIds?.includes(u.id));
+    
+    let memberIds: string[] | undefined;
+
+    if (activeHub.settings?.ticketMembers) {
+      memberIds = activeHub.settings.ticketMembers;
+    } else if (activeHub.isPrivate && activeHub.memberIds) {
+      memberIds = activeHub.memberIds;
+    } else {
+      memberIds = Object.keys(activeSpace.members);
     }
-    return allUsers.filter(u => activeSpace.members[u.id]);
+    
+    return allUsers.filter(u => memberIds?.includes(u.id));
   }, [activeHub, activeSpace, allUsers]);
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, ticketId: string) => {
@@ -185,6 +194,17 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
         onUpdateTickets(tickets.map(t => t.id === updatedTicket.id ? updatedTicket : t));
     };
 
+     const handleSaveSettings = (newMemberIds: string[]) => {
+        onUpdateActiveHub({
+            settings: {
+                ...activeHub.settings,
+                ticketMembers: newMemberIds,
+            }
+        });
+        setIsSettingsOpen(false);
+        toast({ title: "Ticket members updated." });
+    }
+
     const renderStatusColumn = (status: Status) => {
       const columnTickets = tickets.filter(ticket => ticket.status === status.name);
       return (
@@ -225,7 +245,12 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
     <>
       <div className="flex h-full min-w-0 flex-col overflow-hidden">
         <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-4 border-b">
-            <h1 className="text-2xl font-bold">Tickets</h1>
+            <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold">Tickets</h1>
+                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsSettingsOpen(true)}>
+                    <Edit className="h-4 w-4" />
+                </Button>
+            </div>
              <div className="flex items-center gap-4">
                 <div className="flex -space-x-2">
                     {hubMembers.slice(0, 5).map(member => (
@@ -264,6 +289,15 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
             conversation={conversations.find(c => c.id === selectedTicket.conversationId) || null}
         />
       )}
+       <BoardSettingsDialog
+        isOpen={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        boardName="Ticket"
+        allUsers={allUsers.filter(u => activeSpace.members[u.id])}
+        initialMembers={activeHub.settings?.ticketMembers || Object.keys(activeSpace.members)}
+        onSave={handleSaveSettings}
+        appUser={appUser}
+      />
     </>
   );
 }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, DragEvent, useRef, useMemo } from 'react';
@@ -24,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useAuth } from '@/hooks/use-auth';
 import DealDetailsDialog from './deal-details-dialog';
+import BoardSettingsDialog from './board-settings-dialog';
 
 const getInitials = (name: string) => {
     if (!name) return '';
@@ -96,6 +96,7 @@ const defaultStatuses: Status[] = [
 export default function DealsBoard({ deals, onUpdateDeals, activeHub, activeSpace, allUsers, visitors, onUpdateActiveHub, onNavigateToSettings }: DealsBoardProps) {
   const [draggedDeal, setDraggedDeal] = useState<string | null>(null);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { appUser } = useAuth();
   
   const statuses = activeHub.dealStatuses || defaultStatuses;
@@ -105,10 +106,18 @@ export default function DealsBoard({ deals, onUpdateDeals, activeHub, activeSpac
 
   const hubMembers = useMemo(() => {
     if (!activeHub || !activeSpace) return [];
-    if (activeHub.isPrivate && activeHub.memberIds) {
-        return allUsers.filter(u => activeHub.memberIds?.includes(u.id));
+    
+    let memberIds: string[] | undefined;
+
+    if (activeHub.settings?.dealMembers) {
+      memberIds = activeHub.settings.dealMembers;
+    } else if (activeHub.isPrivate && activeHub.memberIds) {
+      memberIds = activeHub.memberIds;
+    } else {
+      memberIds = Object.keys(activeSpace.members);
     }
-    return allUsers.filter(u => activeSpace.members[u.id]);
+    
+    return allUsers.filter(u => memberIds?.includes(u.id));
   }, [activeHub, activeSpace, allUsers]);
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, dealId: string) => {
@@ -178,6 +187,17 @@ export default function DealsBoard({ deals, onUpdateDeals, activeHub, activeSpac
         onUpdateDeals(deals.map(d => d.id === updatedDeal.id ? updatedDeal : d));
     };
 
+     const handleSaveSettings = (newMemberIds: string[]) => {
+        onUpdateActiveHub({
+            settings: {
+                ...activeHub.settings,
+                dealMembers: newMemberIds,
+            }
+        });
+        setIsSettingsOpen(false);
+    }
+
+
     const renderStatusColumn = (status: Status) => {
       const columnDeals = deals.filter(deal => deal.status === status.name);
       return (
@@ -217,7 +237,12 @@ export default function DealsBoard({ deals, onUpdateDeals, activeHub, activeSpac
     <>
       <div className="flex h-full min-w-0 flex-col overflow-hidden">
         <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-4 border-b">
-            <h1 className="text-2xl font-bold">Deals</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold">Deals</h1>
+               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsSettingsOpen(true)}>
+                  <Edit className="h-4 w-4" />
+              </Button>
+            </div>
              <div className="flex items-center gap-4">
                 <div className="flex -space-x-2">
                     {hubMembers.slice(0, 5).map(member => (
@@ -254,6 +279,15 @@ export default function DealsBoard({ deals, onUpdateDeals, activeHub, activeSpac
             contact={visitors.find(v => v.id === selectedDeal.contactId) || null}
         />
       )}
+       <BoardSettingsDialog
+        isOpen={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        boardName="Deal"
+        allUsers={allUsers.filter(u => activeSpace.members[u.id])}
+        initialMembers={activeHub.settings?.dealMembers || Object.keys(activeSpace.members)}
+        onSave={handleSaveSettings}
+        appUser={appUser}
+      />
     </>
   );
 }
