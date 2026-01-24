@@ -68,8 +68,7 @@ export default function ChatbotWidgetPage() {
                 details = {
                     name: appUser.name,
                     email: appUser.email,
-                    image: appUser.avatarUrl,
-                    id: appUser.id,
+                    avatarUrl: appUser.avatarUrl,
                     domain: url.hostname,
                     pathname: url.pathname
                 }
@@ -122,7 +121,6 @@ export default function ChatbotWidgetPage() {
         };
 
         const newMessage = await db.addChatMessage(newMessageData);
-        setMessages(prev => [...prev, newMessage]);
         setMessageText('');
     };
 

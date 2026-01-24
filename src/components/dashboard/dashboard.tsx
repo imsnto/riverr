@@ -553,8 +553,6 @@ if (fetchedConversations.length > 0) {
     
     const newMessage = await db.addChatMessage(newMessageData);
     
-    setChatMessages(prev => [...prev, newMessage]);
-    
     setChatConversations(prev => prev.map(convo => {
       if (convo.id === conversationId) {
         return {
@@ -625,7 +623,6 @@ if (fetchedConversations.length > 0) {
       return [conversation, ...otherConvos].sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
     });
     
-    setChatMessages(prevMessages => [...prevMessages, newMessage]);
   };
 
 
