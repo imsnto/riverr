@@ -17,6 +17,18 @@ const getInitials = (name: string | null) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
+const getDateFromTimestamp = (timestamp: any): Date => {
+  if (!timestamp) {
+    return new Date(); // Or handle as an invalid date
+  }
+  if (typeof timestamp.toDate === 'function') {
+    // Firestore Timestamp
+    return timestamp.toDate();
+  }
+  // JS Date object, ISO string, etc.
+  return new Date(timestamp);
+};
+
 
 interface ContactsListProps {
   contacts: Contact[];
@@ -77,7 +89,7 @@ export default function ContactsList({
                         </div>
                         {contact.lastSeenAt && (
                              <p className="text-xs text-muted-foreground flex-shrink-0 ml-2">
-                                {formatDistanceToNow(new Date(contact.lastSeenAt), { addSuffix: true })}
+                                {formatDistanceToNow(getDateFromTimestamp(contact.lastSeenAt), { addSuffix: true })}
                             </p>
                         )}
                     </div>
