@@ -14,5 +14,3 @@ export const HUB_VIEWS = {
 } as const;
 
 export type AppView = keyof typeof HUB_VIEWS;
-
-    

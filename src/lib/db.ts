@@ -70,6 +70,7 @@ import {
   ContactEvent,
   Ticket,
   Deal,
+  DealAutomationRule,
 } from "./data";
 import { FirestorePermissionError } from "./errors";
 import { errorEmitter } from "./error-emitter";
@@ -442,6 +443,46 @@ export const updateTicket = async (
 ): Promise<void> => {
   const ticketRef = doc(db, "tickets", ticketId);
   await updateDoc(ticketRef, data);
+};
+
+// --- Deal Management ---
+export const getDealsInHub = async (hubId: string): Promise<Deal[]> => {
+    const q = query(collection(db, "deals"), where("hubId", "==", hubId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Deal));
+};
+
+export const addDeal = async (deal: Omit<Deal, "id">): Promise<Deal> => {
+    const docRef = await addDoc(collection(db, "deals"), deal);
+    return { ...deal, id: docRef.id };
+};
+
+export const updateDeal = async (dealId: string, data: Partial<Deal>): Promise<void> => {
+    const dealRef = doc(db, "deals", dealId);
+    await updateDoc(dealRef, data);
+};
+
+// --- Deal Automation Management ---
+export const getDealAutomationRules = async (hubId: string): Promise<DealAutomationRule[]> => {
+    const q = query(collection(db, "deal_automation_rules"), where("hubId", "==", hubId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DealAutomationRule));
+};
+
+export const saveDealAutomationRule = async (rule: Omit<DealAutomationRule, 'id'>, ruleId?: string): Promise<DealAutomationRule> => {
+    if (ruleId) {
+        const ruleRef = doc(db, "deal_automation_rules", ruleId);
+        await updateDoc(ruleRef, rule);
+        return { ...rule, id: ruleId };
+    } else {
+        const docRef = await addDoc(collection(db, "deal_automation_rules"), rule);
+        return { ...rule, id: docRef.id };
+    }
+};
+
+export const deleteDealAutomationRule = async (ruleId: string): Promise<void> => {
+    const ruleRef = doc(db, "deal_automation_rules", ruleId);
+    await deleteDoc(ruleRef);
 };
 
 

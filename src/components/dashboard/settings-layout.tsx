@@ -21,12 +21,14 @@ import {
   Conversation,
   ChatMessage,
   Bot,
+  DealAutomationRule,
 } from '@/lib/data';
 import InboxSettings from './inbox-settings';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import DealAutomationSettings from './deal-automation-settings';
 
-type SettingsView = 'users' | 'spaces' | 'hub' | 'inbox' | 'timesheets';
+type SettingsView = 'users' | 'spaces' | 'hub' | 'inbox' | 'timesheets' | 'deal-automation';
 
 interface SettingsLayoutProps {
   allUsers: User[];
@@ -55,12 +57,14 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
   const isMobile = useIsMobile();
 
   const hubHasInbox = props.activeHub?.settings?.components?.includes('inbox');
+  const hubHasDeals = props.activeHub?.settings?.components?.includes('deals');
 
   const navItems = [
     { key: 'users', label: 'Users & Permissions' },
     { key: 'spaces', label: 'Spaces' },
     { key: 'hub', label: 'Hub Settings', disabled: !props.activeHub },
     { key: 'inbox', label: 'Inbox', disabled: !hubHasInbox },
+    { key: 'deal-automation', label: 'Deal Automation', disabled: !hubHasDeals },
     { key: 'timesheets', label: 'Timesheets' },
   ];
 
@@ -105,6 +109,8 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             onBotUpdate={props.onBotUpdate}
             onBotAdd={props.onBotAdd}
          />;
+      case 'deal-automation':
+        return <DealAutomationSettings activeHub={props.activeHub} allUsers={props.allUsers} />;
       case 'timesheets':
         return (
           <TeamTimesheets

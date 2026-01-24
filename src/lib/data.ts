@@ -105,19 +105,47 @@ export interface Deal {
   id: string;
   hubId: string;
   spaceId: string;
-  status: string;
+  status: string; // This is the Kanban column/stage name
   title: string;
   description: string | null;
   value: number | null;
-  closeDate: string | null;
+  currency: string | null;
+  closeDate: string | null; // ISO String
   nextStep: string | null;
-  nextStepAt: string | null;
-  assignedTo: string | null;
+  nextStepAt: string | null; // ISO String
+  assignedTo: string | null; // userId
   contactId: string | null;
   source: 'Inbound Chat' | 'Referral' | 'Website' | 'Manual' | 'Import' | null;
-  createdAt: string;
-  createdBy: string;
-  updatedAt: string;
+  tags?: string[];
+  isStale?: boolean;
+  createdAt: string; // ISO String
+  createdBy: string; // userId
+  updatedAt: string; // ISO String
+}
+
+export interface DealAutomationRule {
+    id: string;
+    hubId: string;
+    name: string;
+    trigger: {
+        type: 'stage_changed' | 'deal_updated' | 'deal_stale';
+        fromStage?: string;
+        toStage?: string;
+        staleDays?: number;
+    };
+    action: {
+        type: 'send_email' | 'create_task' | 'update_field' | 'send_notification';
+        templateId?: string; // for email
+        taskTitle?: string; // for task
+        assignTo?: string; // for task
+        field?: string; // for update_field
+        value?: any; // for update_field
+        channel?: string; // for notification
+        message?: string; // for notification
+    };
+    isEnabled: boolean;
+    createdAt: string;
+    createdBy: string;
 }
 
 
@@ -897,4 +925,3 @@ export const jobFlowTasks: JobFlowTask[] = [];
 
 export type { Contact, ContactEvent, ContactEventType, ContactSource, VisitorType, CallRecord } from './contacts-types';
 
-    

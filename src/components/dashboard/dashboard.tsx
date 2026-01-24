@@ -59,6 +59,7 @@ import TeamTimesheets from './team-timesheets';
 import { DashboardSkeleton } from './dashboard-skeleton';
 import ContactsLayout from './contacts/contacts-layout';
 import TicketsBoard from './tickets-board';
+import DealsBoard from './deals-board';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -143,6 +144,7 @@ export default function Dashboard({ view }: { view: string }) {
             fetchedProjects,
             fetchedTasks,
             fetchedTickets,
+            fetchedDeals,
             fetchedSlackLogs,
             fetchedJobFlowTemplates,
             fetchedPhaseTemplates,
@@ -156,6 +158,7 @@ export default function Dashboard({ view }: { view: string }) {
             db.getProjectsInHub(activeHub.id),
             db.getAllTasks(activeHub.id),
             db.getTicketsInHub(activeHub.id),
+            db.getDealsInHub(activeHub.id),
             db.getSlackMeetingLogsInSpace(activeSpace.id), // This is space-wide for now
             db.getJobFlowTemplates(activeHub.id),
             db.getPhaseTemplates(activeHub.id),
@@ -177,6 +180,7 @@ export default function Dashboard({ view }: { view: string }) {
 
           setTasks(fetchedTasks);
           setTickets(fetchedTickets);
+          setDeals(fetchedDeals);
           setSlackLogs(fetchedSlackLogs);
           setJobFlowTemplates(fetchedJobFlowTemplates);
           setPhaseTemplates(fetchedPhaseTemplates);
@@ -401,6 +405,15 @@ export default function Dashboard({ view }: { view: string }) {
     updatedTickets.forEach(ticket => {
         if(ticket.id) {
             db.updateTicket(ticket.id, ticket);
+        }
+    })
+  };
+  
+  const handleUpdateDeals = (updatedDeals: Deal[]) => {
+    setDeals(updatedDeals);
+    updatedDeals.forEach(deal => {
+        if(deal.id) {
+            db.updateDeal(deal.id, deal);
         }
     })
   };
@@ -666,7 +679,8 @@ export default function Dashboard({ view }: { view: string }) {
           onDeleteProject={handleDeleteProject}
         />
       );
-      case 'tickets': return <TicketsBoard tickets={tickets} onUpdateTickets={handleUpdateTickets} {...props} />;
+      case 'tickets': return <TicketsBoard tickets={tickets} onUpdateTickets={handleUpdateTickets} visitors={visitors} conversations={chatConversations} {...props} />;
+      case 'deals': return <DealsBoard deals={deals} onUpdateDeals={handleUpdateDeals} visitors={visitors} {...props} />;
       case 'help-center': return <HelpCenterLayout
         onSaveArticle={handleSaveArticle}
         />;
@@ -727,6 +741,7 @@ export default function Dashboard({ view }: { view: string }) {
               currentView === 'inbox' ||
               currentView === 'tasks' ||
               currentView === 'tickets' ||
+              currentView === 'deals' ||
               currentView === 'settings' ||
               currentView === 'contacts' ||
               (currentView === 'help-center' && !isMobile)

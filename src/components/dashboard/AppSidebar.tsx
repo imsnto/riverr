@@ -352,5 +352,3 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 };
 
 export default AppSidebar;
-
-    
