@@ -238,6 +238,7 @@ export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, onDataRefr
   return (
     <>
       <div className="flex h-full min-w-0 flex-col overflow-hidden">
+        {/* Desktop Header */}
         <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-4 border-b">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold">Deals</h1>
@@ -263,6 +264,16 @@ export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, onDataRefr
                         </Avatar>
                     )}
                 </div>
+            </div>
+        </div>
+         {/* Mobile Header */}
+        <div className="md:hidden w-full min-w-0 p-4 border-b">
+            <div className="flex items-center justify-between">
+                <h1 className="text-xl font-bold">Deals</h1>
+                <Button size="sm" onClick={() => setIsCreateDealOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Deal
+                </Button>
             </div>
         </div>
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">

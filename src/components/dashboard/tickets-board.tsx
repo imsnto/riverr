@@ -3,7 +3,7 @@
 
 import React, { useState, DragEvent, useRef, useMemo } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Ticket, Hub, Status, Visitor, Conversation, Space, EscalationIntakeRule } from '@/lib/data';
+import { User, Ticket, Hub, Status, Visitor, Conversation, Space, EscalationIntakeRule, Project } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { MoreHorizontal, Plus, Edit } from 'lucide-react';
@@ -242,6 +242,7 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
   return (
     <>
       <div className="flex h-full min-w-0 flex-col overflow-hidden">
+        {/* Desktop Header */}
         <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-4 border-b">
             <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold">Tickets</h1>
@@ -267,6 +268,16 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
                         </Avatar>
                     )}
                 </div>
+            </div>
+        </div>
+        {/* Mobile Header */}
+        <div className="md:hidden w-full min-w-0 p-4 border-b">
+            <div className="flex items-center justify-between">
+                <h1 className="text-xl font-bold">Tickets</h1>
+                <Button size="sm" onClick={() => setIsCreateTicketOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Ticket
+                </Button>
             </div>
         </div>
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
