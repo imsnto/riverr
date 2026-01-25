@@ -769,7 +769,7 @@ if (fetchedConversations.length > 0) {
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
-          allHubs={spaceHubs}
+          allHubs={allHubs}
           escalationRules={escalationRules}
           projects={projects}
       />;
@@ -842,7 +842,7 @@ if (fetchedConversations.length > 0) {
               projects={projects}
               selectedProjectId={selectedProjectId}
               onSelectProject={handleSelectProject}
-              onNewProject={onNewProject}
+              onNewProject={handleNewProject}
             />
           )}
           <main
