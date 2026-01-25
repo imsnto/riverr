@@ -760,7 +760,7 @@ if (fetchedConversations.length > 0) {
       );
       case 'tickets': return <TicketsBoard 
           tickets={tickets} 
-          onUpdateTickets={onUpdateTickets}
+          onUpdateTickets={handleUpdateTickets}
           visitors={visitors} 
           conversations={chatConversations}
           activeHub={activeHub}
@@ -776,6 +776,7 @@ if (fetchedConversations.length > 0) {
           deals={deals}
           onUpdateDeals={onUpdateDeals}
           onAddDeal={handleAddDeal}
+          onDataRefresh={fetchData}
           contacts={contacts}
           activeHub={activeHub}
           activeSpace={activeSpace}

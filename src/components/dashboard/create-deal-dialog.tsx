@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -30,6 +30,7 @@ import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Calendar } from '../ui/calendar';
 import { format } from 'date-fns';
+import ContactCombobox from './contacts/contact-combobox';
 
 const dealSchema = z.object({
   title: z.string().min(1, 'Title is required.'),
@@ -52,6 +53,7 @@ interface CreateDealDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSave: (dealData: DealFormValues) => void;
+  onDataRefresh: () => void;
   allUsers: User[];
   contacts: Contact[];
   statuses: Status[];
@@ -62,6 +64,7 @@ export default function CreateDealDialog({
   isOpen,
   onOpenChange,
   onSave,
+  onDataRefresh,
   allUsers,
   contacts,
   statuses,
@@ -161,12 +164,12 @@ export default function CreateDealDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Contact</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Select a contact" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                            {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+                    <ContactCombobox 
+                        contacts={contacts}
+                        value={field.value || null}
+                        onChange={field.onChange}
+                        onDataRefresh={onDataRefresh}
+                    />
                   </FormItem>
                 )}
               />

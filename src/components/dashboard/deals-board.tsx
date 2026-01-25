@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { User, Deal, Hub, Status, Contact, Space } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { MoreHorizontal, Plus, Edit, Calendar } from 'lucide-react';
+import { MoreHorizontal, Plus, Edit, Calendar, Folder } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -56,7 +56,7 @@ const DealCard = ({ deal, onClick, isDragging, allUsers, contacts }: { deal: Dea
          </div>
         {assignee && (
             <Avatar className="h-6 w-6">
-                <AvatarImage src={assignee.avatarUrl} alt={assignee.name} />
+                <AvatarImage src={assignee?.avatarUrl} alt={assignee.name} />
                 <AvatarFallback>{getInitials(assignee.name)}</AvatarFallback>
             </Avatar>
         )}
@@ -69,6 +69,7 @@ interface DealsBoardProps {
   deals: Deal[];
   onUpdateDeals: (deals: Deal[]) => void;
   onAddDeal: (dealData: DealFormValues) => void;
+  onDataRefresh: () => void;
   activeHub: Hub;
   activeSpace: Space;
   allUsers: User[];
@@ -83,7 +84,7 @@ const defaultStatuses: Status[] = [
     { name: 'Won', color: '#22c55e' }, { name: 'Lost', color: '#ef4444' },
 ];
 
-export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, activeHub, activeSpace, allUsers, contacts, onUpdateActiveHub, onNavigateToSettings }: DealsBoardProps) {
+export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, onDataRefresh, activeHub, activeSpace, allUsers, contacts, onUpdateActiveHub, onNavigateToSettings }: DealsBoardProps) {
   const [draggedDeal, setDraggedDeal] = useState<string | null>(null);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -205,8 +206,7 @@ export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, activeHub,
             <div className="flex justify-between items-center mb-4 px-1 shrink-0">
                 <div className="flex items-center gap-2">
                     <span className="w-3 h-3 rounded-full" style={{ backgroundColor: status.color }}/>
-                    <h2 className="text-lg font-semibold">{status.name}</h2>
-                    <span className="text-sm font-normal text-muted-foreground">({columnDeals.length})</span>
+                    <h2 className="text-lg font-semibold">{status.name} ({columnDeals.length})</h2>
                 </div>
             </div>
             <div className="bg-primary/5 rounded-lg p-2 flex-1 min-h-0 overflow-y-auto">
@@ -297,6 +297,7 @@ export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, activeHub,
         isOpen={isCreateDealOpen}
         onOpenChange={setIsCreateDealOpen}
         onSave={handleSaveDeal}
+        onDataRefresh={onDataRefresh}
         allUsers={hubMembers}
         contacts={contacts}
         statuses={statuses}
