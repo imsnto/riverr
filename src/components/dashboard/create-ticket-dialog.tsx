@@ -35,6 +35,7 @@ const ticketSchema = z.object({
   type: z.enum(['bug', 'question', 'feature']),
   priority: z.enum(['Low', 'Medium', 'High', 'Urgent']).optional(),
   contactId: z.string().optional(),
+  assignedTo: z.string().optional(),
   escalateNow: z.boolean().default(false),
   intakeRuleId: z.string().optional(),
 });
@@ -60,6 +61,7 @@ export default function CreateTicketDialog({
   onOpenChange,
   activeHub,
   activeSpace,
+  allUsers,
   onCreateTicket,
   contacts,
   onDataRefresh,
@@ -75,14 +77,24 @@ export default function CreateTicketDialog({
       description: '',
       type: 'question',
       escalateNow: false,
+      assignedTo: appUser?.id,
     },
   });
 
   useEffect(() => {
-    if (!isOpen) {
-      form.reset();
+    if (isOpen) {
+      form.reset({
+        title: '',
+        description: '',
+        type: 'question',
+        escalateNow: false,
+        assignedTo: appUser?.id,
+        contactId: undefined,
+        priority: undefined,
+        intakeRuleId: undefined,
+      });
     }
-  }, [isOpen, form]);
+  }, [isOpen, form, appUser]);
 
   const escalateNow = form.watch('escalateNow');
   const ticketType = form.watch('type');
@@ -104,7 +116,7 @@ export default function CreateTicketDialog({
       description: values.description || null,
       type: values.type,
       priority: values.priority || null,
-      assignedTo: null,
+      assignedTo: values.assignedTo || null,
       contactId: values.contactId || null,
       conversationId: null,
       channel: 'Manual',
@@ -178,7 +190,7 @@ export default function CreateTicketDialog({
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Priority</FormLabel>
-                             <Select onValueChange={field.onChange} defaultValue={field.value}>
+                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Set priority" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     <SelectItem value="Low">Low</SelectItem>
@@ -196,7 +208,7 @@ export default function CreateTicketDialog({
               name="contactId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Contact (Optional)</FormLabel>
+                  <FormLabel>Contact</FormLabel>
                   <ContactCombobox 
                     contacts={contacts}
                     value={field.value || null}
@@ -204,6 +216,21 @@ export default function CreateTicketDialog({
                     onDataRefresh={onDataRefresh}
                   />
                 </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="assignedTo"
+              render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>Assignee</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Assign a user" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                              {allUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                          </SelectContent>
+                      </Select>
+                  </FormItem>
               )}
             />
 
@@ -236,7 +263,7 @@ export default function CreateTicketDialog({
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Escalation Rule</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Select an escalation route" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     {availableRules.map(rule => {

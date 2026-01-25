@@ -315,7 +315,7 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
         onOpenChange={setIsCreateTicketOpen}
         activeHub={activeHub}
         activeSpace={activeSpace}
-        allUsers={allUsers}
+        allUsers={hubMembers}
         contacts={contacts}
         onDataRefresh={onDataRefresh}
         onCreateTicket={handleCreateTicket}
