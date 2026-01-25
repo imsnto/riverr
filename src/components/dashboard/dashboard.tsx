@@ -1,3 +1,4 @@
+
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -457,6 +458,7 @@ if (fetchedConversations.length > 0) {
 
     const fullDealData: Omit<Deal, 'id'> = {
       title: dealData.title,
+      status: dealData.status,
       description: dealData.description || null,
       value: dealData.value || null,
       currency: 'USD',
@@ -469,7 +471,6 @@ if (fetchedConversations.length > 0) {
       tags: [],
       hubId: activeHub.id,
       spaceId: activeSpace.id,
-      status: dealData.status,
       createdAt: now,
       createdBy: appUser.id,
       updatedAt: now,
@@ -750,7 +751,7 @@ if (fetchedConversations.length > 0) {
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
-          onNewTaskRequest={onNewTaskRequest}
+          onNewTaskRequest={handleNewTaskRequest}
           onTaskClick={setSelectedTask}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
