@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Ticket, User, Conversation, Visitor } from '@/lib/data';
+import { Ticket, User, Conversation, Contact } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -43,7 +43,7 @@ interface TicketDetailsDialogProps {
     onUpdateTicket: (ticket: Ticket) => void;
     statuses: string[];
     allUsers: User[];
-    contact: Visitor | null;
+    contact: Contact | null;
     conversation: Conversation | null;
 }
 
@@ -132,7 +132,7 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
                             <DetailRow icon={AtSign} label="Contact">
                                 <div className="flex items-center gap-2">
                                     <Avatar className="h-6 w-6"><AvatarFallback>{getInitials(contact.name || '?')}</AvatarFallback></Avatar>
-                                    {contact.name} ({contact.email})
+                                    {contact.name} ({contact.primaryEmail})
                                 </div>
                             </DetailRow>
                         )}

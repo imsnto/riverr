@@ -25,8 +25,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Checkbox } from '../ui/checkbox';
-import { Hub, Space, User, Visitor, EscalationIntakeRule, Project, Ticket } from '@/lib/data';
+import { Hub, Space, User, EscalationIntakeRule, Project, Ticket, Contact } from '@/lib/data';
 import { useAuth } from '@/hooks/use-auth';
+import ContactCombobox from './contacts/contact-combobox';
 
 const ticketSchema = z.object({
   title: z.string().min(1, 'Title is required.'),
@@ -46,11 +47,12 @@ interface CreateTicketDialogProps {
   activeHub: Hub;
   activeSpace: Space;
   allUsers: User[];
-  visitors: Visitor[];
   onCreateTicket: (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => void;
   allHubs: Hub[];
   escalationRules: EscalationIntakeRule[];
   projects: Project[];
+  contacts: Contact[];
+  onDataRefresh: () => void;
 }
 
 export default function CreateTicketDialog({
@@ -59,7 +61,8 @@ export default function CreateTicketDialog({
   activeHub,
   activeSpace,
   onCreateTicket,
-  visitors,
+  contacts,
+  onDataRefresh,
   escalationRules,
   allHubs,
   projects
@@ -189,19 +192,19 @@ export default function CreateTicketDialog({
                 />
             </div>
             <FormField
-                control={form.control}
-                name="contactId"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Contact (Optional)</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Link a contact" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {visitors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </FormItem>
-                )}
+              control={form.control}
+              name="contactId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contact (Optional)</FormLabel>
+                  <ContactCombobox 
+                    contacts={contacts}
+                    value={field.value || null}
+                    onChange={field.onChange}
+                    onDataRefresh={onDataRefresh}
+                  />
+                </FormItem>
+              )}
             />
 
             <FormField

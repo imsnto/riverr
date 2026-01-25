@@ -3,7 +3,7 @@
 
 import React, { useState, DragEvent, useRef, useMemo } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Ticket, Hub, Status, Visitor, Conversation, Space, EscalationIntakeRule, Project } from '@/lib/data';
+import { User, Ticket, Hub, Status, Visitor, Conversation, Space, EscalationIntakeRule, Project, Contact } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { MoreHorizontal, Plus, Edit } from 'lucide-react';
@@ -21,9 +21,9 @@ const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
 }
 
-const TicketCard = ({ ticket, onClick, isDragging, allUsers, visitors }: { ticket: Ticket, onClick: () => void, isDragging: boolean, allUsers: User[], visitors: Visitor[] }) => {
+const TicketCard = ({ ticket, onClick, isDragging, allUsers, contacts }: { ticket: Ticket, onClick: () => void, isDragging: boolean, allUsers: User[], contacts: Contact[] }) => {
   const assignee = allUsers.find(u => u.id === ticket.assignedTo);
-  const contact = visitors.find(v => v.id === ticket.contactId);
+  const contact = contacts.find(c => c.id === ticket.contactId);
 
   return (
     <Card
@@ -63,13 +63,14 @@ interface TicketsBoardProps {
   activeHub: Hub;
   activeSpace: Space;
   allUsers: User[];
-  visitors: Visitor[];
   conversations: Conversation[];
   onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
   onNavigateToSettings: () => void;
   allHubs: Hub[];
   escalationRules: EscalationIntakeRule[];
   projects: Project[];
+  contacts: Contact[];
+  onDataRefresh: () => void;
 }
 
 const defaultStatuses: Status[] = [
@@ -78,7 +79,7 @@ const defaultStatuses: Status[] = [
     { name: 'Closed', color: '#22c55e' },
 ];
 
-export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, activeSpace, allUsers, visitors, conversations, onUpdateActiveHub, onNavigateToSettings, allHubs, escalationRules, projects }: TicketsBoardProps) {
+export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, activeSpace, allUsers, conversations, onUpdateActiveHub, onNavigateToSettings, allHubs, escalationRules, projects, contacts, onDataRefresh }: TicketsBoardProps) {
   const [draggedTicket, setDraggedTicket] = useState<string | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -227,7 +228,7 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
                                 {showIndicator && <div className="h-10 border-2 border-dashed border-primary rounded-lg" />}
                                 <div ref={el => ticketCardRefs.current[ticket.id] = el} draggable onDragStart={(e) => handleDragStart(e, ticket.id)} onDragEnd={handleDragEnd}
                                     className={cn("transition-all duration-200", draggedTicket === ticket.id ? "opacity-30" : "opacity-100")}>
-                                    <TicketCard ticket={ticket} onClick={() => setSelectedTicket(ticket)} isDragging={draggedTicket === ticket.id} allUsers={allUsers} visitors={visitors} />
+                                    <TicketCard ticket={ticket} onClick={() => setSelectedTicket(ticket)} isDragging={draggedTicket === ticket.id} allUsers={allUsers} contacts={contacts} />
                                 </div>
                             </React.Fragment>
                         );
@@ -296,7 +297,7 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
             onUpdateTicket={handleUpdateTicket}
             statuses={statuses.map(s => s.name)}
             allUsers={allUsers}
-            contact={visitors.find(v => v.id === selectedTicket.contactId) || null}
+            contact={contacts.find(c => c.id === selectedTicket.contactId) || null}
             conversation={conversations.find(c => c.id === selectedTicket.conversationId) || null}
         />
       )}
@@ -315,7 +316,8 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
         activeHub={activeHub}
         activeSpace={activeSpace}
         allUsers={allUsers}
-        visitors={visitors}
+        contacts={contacts}
+        onDataRefresh={onDataRefresh}
         onCreateTicket={handleCreateTicket}
         allHubs={allHubs}
         escalationRules={escalationRules}
