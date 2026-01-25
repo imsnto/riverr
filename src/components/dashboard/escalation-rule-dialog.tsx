@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -69,8 +69,10 @@ export default function EscalationRuleDialog({ isOpen, onOpenChange, onSave, rul
     // Note: This assumes statuses are on the project level for dev boards.
     // This might need to be adapted if dev boards use hub-level statuses.
     const board = projects.find(p => p.id === selectedBoardId);
-    // A placeholder if the project doesn't have statuses defined.
-    return (board && (activeHub.statuses || [])).map(s => s.name);
+    if (!board) {
+        return [];
+    }
+    return (activeHub.statuses || []).map(s => s.name);
   }, [selectedBoardId, projects, activeHub.statuses]);
 
 
