@@ -79,7 +79,7 @@ export default function DealDetailsDialog({ deal: initialDeal, isOpen, onOpenCha
                             </Select>
                         </DetailRow>
                         <DetailRow icon={UserIcon} label="Owner">
-                             <Select value={deal.assignedTo || ''} onValueChange={(value) => handleFieldChange('assignedTo', value)}>
+                             <Select value={deal.assignedTo || 'unassigned'} onValueChange={(value) => handleFieldChange('assignedTo', value === 'unassigned' ? null : value)}>
                                 <SelectTrigger className="h-8">
                                     <SelectValue>
                                         {assignee ? (
@@ -91,7 +91,7 @@ export default function DealDetailsDialog({ deal: initialDeal, isOpen, onOpenCha
                                     </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">Unassigned</SelectItem>
+                                    <SelectItem value="unassigned">Unassigned</SelectItem>
                                     {allUsers.map(user => (
                                         <SelectItem key={user.id} value={user.id}>
                                             <div className="flex items-center gap-2">

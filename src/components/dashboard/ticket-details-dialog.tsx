@@ -72,7 +72,7 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
     }
     
     const assignee = allUsers.find(u => u.id === ticket.assignedTo);
-    const createdBy = allUsers.find(u => u.id === ticket.createdBy) || visitors.find(v => v.id === ticket.createdBy);
+    const createdBy = allUsers.find(u => u.id === ticket.createdBy) || (contact && contact.id === ticket.createdBy ? contact : null);
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -93,7 +93,7 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
                             </Select>
                         </DetailRow>
                         <DetailRow icon={UserIcon} label="Assignee">
-                            <Select value={ticket.assignedTo || ''} onValueChange={(value) => handleFieldChange('assignedTo', value)}>
+                            <Select value={ticket.assignedTo || 'unassigned'} onValueChange={(value) => handleFieldChange('assignedTo', value === 'unassigned' ? null : value)}>
                                 <SelectTrigger className="h-8">
                                     <SelectValue>
                                         {assignee ? (
@@ -105,7 +105,7 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
                                     </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">Unassigned</SelectItem>
+                                    <SelectItem value="unassigned">Unassigned</SelectItem>
                                     {allUsers.map(user => (
                                         <SelectItem key={user.id} value={user.id}>
                                             <div className="flex items-center gap-2">
