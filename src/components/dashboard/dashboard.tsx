@@ -769,7 +769,7 @@ if (fetchedConversations.length > 0) {
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
-          allHubs={allHubs}
+          allHubs={spaceHubs}
           escalationRules={escalationRules}
           projects={projects}
       />;
