@@ -460,7 +460,7 @@ if (fetchedConversations.length > 0) {
       description: dealData.description || null,
       value: dealData.value || null,
       currency: 'USD',
-      assignedTo: dealData.assignedTo || null,
+      assignedTo: dealData.assignedTo || appUser.id,
       contactId: dealData.contactId || null,
       source: (dealData.source as any) || null,
       nextStep: dealData.nextStep || null,
@@ -742,7 +742,7 @@ if (fetchedConversations.length > 0) {
       case 'tasks': return (
         <TaskBoard 
           tasks={tasks}
-          onUpdateTasks={onUpdateTasks}
+          onUpdateTasks={handleUpdateTasks}
           projects={projects}
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
@@ -750,7 +750,7 @@ if (fetchedConversations.length > 0) {
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
-          onNewTaskRequest={handleNewTaskRequest}
+          onNewTaskRequest={onNewTaskRequest}
           onTaskClick={setSelectedTask}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
@@ -774,7 +774,7 @@ if (fetchedConversations.length > 0) {
       />;
       case 'deals': return <DealsBoard
           deals={deals}
-          onUpdateDeals={onUpdateDeals}
+          onUpdateDeals={handleUpdateDeals}
           onAddDeal={handleAddDeal}
           onDataRefresh={fetchData}
           contacts={contacts}
