@@ -61,6 +61,7 @@ import { DashboardSkeleton } from './dashboard-skeleton';
 import ContactsLayout from './contacts/contacts-layout';
 import TicketsBoard from './tickets-board';
 import DealsBoard from './deals-board';
+import { DealFormValues } from './create-deal-dialog';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -450,15 +451,25 @@ if (fetchedConversations.length > 0) {
     })
   };
 
-  const handleAddDeal = async (dealData: Omit<Deal, 'id' | 'hubId' | 'spaceId' | 'status' | 'createdAt' | 'createdBy' | 'updatedAt' | 'isStale' | 'lastActivityAt' >) => {
+  const handleAddDeal = async (dealData: DealFormValues) => {
     if (!appUser || !activeHub || !activeSpace) return;
     const now = new Date().toISOString();
 
     const fullDealData: Omit<Deal, 'id'> = {
-      ...dealData,
+      title: dealData.title,
+      description: dealData.description || null,
+      value: dealData.value || null,
+      currency: 'USD',
+      assignedTo: dealData.assignedTo || null,
+      contactId: dealData.contactId || null,
+      source: (dealData.source as any) || null,
+      nextStep: dealData.nextStep || null,
+      nextStepAt: dealData.nextStepAt?.toISOString() || null,
+      closeDate: null,
+      tags: [],
       hubId: activeHub.id,
       spaceId: activeSpace.id,
-      status: activeHub.dealStatuses?.[0]?.name || 'New Lead',
+      status: dealData.status,
       createdAt: now,
       createdBy: appUser.id,
       updatedAt: now,
@@ -731,7 +742,7 @@ if (fetchedConversations.length > 0) {
       case 'tasks': return (
         <TaskBoard 
           tasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
+          onUpdateTasks={onUpdateTasks}
           projects={projects}
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
@@ -749,7 +760,7 @@ if (fetchedConversations.length > 0) {
       );
       case 'tickets': return <TicketsBoard 
           tickets={tickets} 
-          onUpdateTickets={handleUpdateTickets} 
+          onUpdateTickets={onUpdateTickets}
           visitors={visitors} 
           conversations={chatConversations}
           activeHub={activeHub}
@@ -763,7 +774,7 @@ if (fetchedConversations.length > 0) {
       />;
       case 'deals': return <DealsBoard
           deals={deals}
-          onUpdateDeals={handleUpdateDeals}
+          onUpdateDeals={onUpdateDeals}
           onAddDeal={handleAddDeal}
           contacts={contacts}
           activeHub={activeHub}

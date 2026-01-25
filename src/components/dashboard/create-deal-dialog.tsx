@@ -23,7 +23,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { User, Contact, Deal } from '@/lib/data';
+import { User, Contact, Deal, Status } from '@/lib/data';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { CalendarIcon } from 'lucide-react';
@@ -34,6 +34,7 @@ import { format } from 'date-fns';
 const dealSchema = z.object({
   title: z.string().min(1, 'Title is required.'),
   contactId: z.string().optional(),
+  status: z.string().min(1, "Stage is required."),
   value: z.preprocess(
     (val) => (val === '' ? undefined : val),
     z.coerce.number().optional()
@@ -45,14 +46,15 @@ const dealSchema = z.object({
   description: z.string().optional(),
 });
 
-type DealFormValues = z.infer<typeof dealSchema>;
+export type DealFormValues = z.infer<typeof dealSchema>;
 
 interface CreateDealDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (dealData: Omit<Deal, 'id' | 'hubId' | 'spaceId' | 'status' | 'createdAt' | 'createdBy' | 'updatedAt' | 'isStale' | 'lastActivityAt' >) => void;
+  onSave: (dealData: DealFormValues) => void;
   allUsers: User[];
   contacts: Contact[];
+  statuses: Status[];
   defaultStage: string;
 }
 
@@ -62,6 +64,7 @@ export default function CreateDealDialog({
   onSave,
   allUsers,
   contacts,
+  statuses,
   defaultStage,
 }: CreateDealDialogProps) {
   const { appUser } = useAuth();
@@ -71,7 +74,8 @@ export default function CreateDealDialog({
       title: '',
       contactId: '',
       value: undefined,
-      assignedTo: '',
+      assignedTo: appUser?.id || '',
+      status: defaultStage,
       nextStep: '',
       nextStepAt: undefined,
       source: '',
@@ -80,28 +84,23 @@ export default function CreateDealDialog({
   });
 
   useEffect(() => {
-    if (!isOpen) {
-      form.reset();
+    if (isOpen) {
+      form.reset({
+        title: '',
+        contactId: '',
+        value: undefined,
+        assignedTo: appUser?.id || '',
+        status: defaultStage,
+        nextStep: '',
+        nextStepAt: undefined,
+        source: '',
+        description: '',
+      });
     }
-  }, [isOpen, form]);
+  }, [isOpen, form, appUser, defaultStage]);
 
   const onSubmit = (values: DealFormValues) => {
-    if (!appUser) return;
-    const now = new Date().toISOString();
-    const newDeal: Omit<Deal, 'id' | 'hubId' | 'spaceId' | 'status' | 'createdAt' | 'createdBy' | 'updatedAt' | 'isStale' | 'lastActivityAt'> = {
-      title: values.title,
-      description: values.description || null,
-      value: values.value || null,
-      currency: 'USD',
-      assignedTo: values.assignedTo || null,
-      contactId: values.contactId || null,
-      source: values.source as any || null,
-      nextStep: values.nextStep || null,
-      nextStepAt: values.nextStepAt?.toISOString() || null,
-      closeDate: null,
-      tags: [],
-    };
-    onSave(newDeal);
+    onSave(values);
     onOpenChange(false);
   };
 
@@ -124,6 +123,21 @@ export default function CreateDealDialog({
                     <Input placeholder="e.g., Acme Corp Website Redesign" {...field} />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Stage</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select a stage" /></SelectTrigger></FormControl>
+                      <SelectContent>
+                          {statuses.map(s => <SelectItem key={s.name} value={s.name}>{s.name}</SelectItem>)}
+                      </SelectContent>
+                  </Select>
                 </FormItem>
               )}
             />

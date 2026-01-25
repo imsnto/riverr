@@ -6,14 +6,15 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { User, Deal, Hub, Status, Contact, Space } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { MoreHorizontal, Plus, Edit } from 'lucide-react';
+import { MoreHorizontal, Plus, Edit, Calendar } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import DealDetailsDialog from './deal-details-dialog';
 import BoardSettingsDialog from './board-settings-dialog';
-import CreateDealDialog from './create-deal-dialog';
+import CreateDealDialog, { DealFormValues } from './create-deal-dialog';
+import { format, parseISO } from 'date-fns';
 
 const getInitials = (name: string) => {
     if (!name) return '';
@@ -36,12 +37,20 @@ const DealCard = ({ deal, onClick, isDragging, allUsers, contacts }: { deal: Dea
         <CardTitle className="text-sm font-medium">{deal.title}</CardTitle>
         {deal.value && <p className="text-xs text-muted-foreground">${deal.value.toLocaleString()}</p>}
       </CardHeader>
+      {deal.nextStep && (
+        <CardContent className="p-3 pt-0">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Calendar className="h-3 w-3" />
+                <span>{deal.nextStep}{deal.nextStepAt ? `: ${format(parseISO(deal.nextStepAt), "MMM d")}` : ''}</span>
+            </div>
+        </CardContent>
+      )}
       <CardFooter className="flex justify-between items-center p-3 pt-0">
          <div className="flex items-center gap-2 text-muted-foreground">
             {contact && (
                 <div className="flex items-center gap-1 text-xs">
                     <Avatar className="h-4 w-4"><AvatarFallback>{getInitials(contact.name || '?')}</AvatarFallback></Avatar>
-                    {contact.name}
+                    <span className="truncate max-w-[100px]">{contact.name}</span>
                 </div>
             )}
          </div>
@@ -59,7 +68,7 @@ const DealCard = ({ deal, onClick, isDragging, allUsers, contacts }: { deal: Dea
 interface DealsBoardProps {
   deals: Deal[];
   onUpdateDeals: (deals: Deal[]) => void;
-  onAddDeal: (dealData: Omit<Deal, 'id' | 'hubId' | 'spaceId' | 'status' | 'createdAt' | 'createdBy' | 'updatedAt' | 'isStale' | 'lastActivityAt' >) => void;
+  onAddDeal: (dealData: DealFormValues) => void;
   activeHub: Hub;
   activeSpace: Space;
   allUsers: User[];
@@ -179,7 +188,7 @@ export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, activeHub,
         setIsSettingsOpen(false);
     }
     
-    const handleSaveDeal = (dealData: Omit<Deal, 'id' | 'hubId' | 'spaceId' | 'status' | 'createdAt' | 'createdBy' | 'updatedAt' | 'isStale' | 'lastActivityAt' >) => {
+    const handleSaveDeal = (dealData: DealFormValues) => {
         onAddDeal(dealData);
         setIsCreateDealOpen(false);
     };
@@ -197,9 +206,15 @@ export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, activeHub,
                 <div className="flex items-center gap-2">
                     <span className="w-3 h-3 rounded-full" style={{ backgroundColor: status.color }}/>
                     <h2 className="text-lg font-semibold">{status.name}</h2>
+                    <span className="text-sm font-normal text-muted-foreground">({columnDeals.length})</span>
                 </div>
             </div>
             <div className="bg-primary/5 rounded-lg p-2 flex-1 min-h-0 overflow-y-auto">
+                {columnDeals.length === 0 && !draggedDeal && (
+                    <div className="text-center text-xs text-muted-foreground p-4">
+                       Drop a deal here
+                    </div>
+                )}
                 <div className="space-y-0.5">
                     {columnDeals.map((deal, index) => {
                         const showIndicator = dropIndicator?.status === status.name && dropIndicator.index === index;
@@ -284,9 +299,9 @@ export default function DealsBoard({ deals, onUpdateDeals, onAddDeal, activeHub,
         onSave={handleSaveDeal}
         allUsers={hubMembers}
         contacts={contacts}
+        statuses={statuses}
         defaultStage={statuses[0]?.name || 'New Lead'}
       />
     </>
   );
 }
-    
