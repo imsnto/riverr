@@ -26,6 +26,9 @@
   container.style.bottom = '20px';
   container.style.right = '20px';
   container.style.zIndex = '9999';
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.alignItems = 'end';
   document.body.appendChild(container);
 
   // Create the iframe
@@ -33,7 +36,7 @@
   iframe.id = 'riverr-chat-iframe';
   iframe.src = `https://studio--timeflow-6i3eo.us-central1.hosted.app/chatbot/${hubId}/${botId}`;
   iframe.style.width = '350px';
-  iframe.style.height = 'calc(100vh - 120px)';
+  iframe.style.height = 'calc(100vh - 170px)';
   iframe.style.maxHeight = '600px';
   iframe.style.border = 'none';
   iframe.style.borderRadius = '0.75rem';

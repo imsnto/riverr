@@ -38,6 +38,7 @@ const isPublicForVisitor = (msg: ChatMessage) => {
 
 export default function ChatbotWidgetPage() {
   const params = useParams();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { hubId, botId } = params as { hubId: string; botId: string };
   const { appUser } = useAuth();
 
@@ -52,6 +53,7 @@ export default function ChatbotWidgetPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [chatStarted, setChatStarted] = useState(false);
   const [messageText, setMessageText] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const unsubRef = useRef<(() => void) | null>(null);
@@ -63,6 +65,10 @@ export default function ChatbotWidgetPage() {
       .filter(isPublicForVisitor)
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }, [messages]);
+
+    useEffect(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -153,6 +159,7 @@ export default function ChatbotWidgetPage() {
     if (!messageText.trim() || !visitor) return;
 
     let currentConversation = conversation;
+    setLoading(true);
 
     // Create conversation if needed
     if (!currentConversation) {
@@ -201,6 +208,7 @@ export default function ChatbotWidgetPage() {
     setMessageText('');
     setChatStarted(true);
     setViewMode('chat');
+    setLoading(false);
   };
 
   const promptButtons = bot?.promptButtons || [];
@@ -395,6 +403,7 @@ export default function ChatbotWidgetPage() {
             </>
           )}
         </div>
+        <div ref={messagesEndRef} />
       </ScrollArea>
 
       {/* Footer */}
@@ -413,8 +422,8 @@ export default function ChatbotWidgetPage() {
                 }
               }}
               minRows={1}
-              className="bg-zinc-800 border-zinc-700 text-white pr-10"
-              disabled={viewMode !== 'chat'}
+              className="bg-zinc-800 border-zinc-700 text-white text-[16px] pr-10"
+              disabled={viewMode !== 'chat' || loading}
             />
             <Button
               size="icon"
@@ -423,7 +432,7 @@ export default function ChatbotWidgetPage() {
               disabled={viewMode !== 'chat' || !messageText.trim()}
               className="absolute right-1 bottom-1 h-8 w-8 hover:bg-zinc-700"
             >
-              <Send className="h-4 w-4" />
+              {loading ? <Loader2 className='h-4 w-4 animate-spin' /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
         ) : (
