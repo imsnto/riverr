@@ -302,7 +302,7 @@ export default function InboxConversationView({
         allHubs={allHubs}
         escalationRules={escalationRules}
         projects={projects}
-        defaultContactId={conversation.contactId}
+        contactInfo={contact ? { id: contact.id, name: contact.name, email: contact.email } : undefined}
         disableContactSelection={true}
       />
     </>

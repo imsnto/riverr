@@ -57,6 +57,7 @@ interface CreateTicketDialogProps {
   onDataRefresh: () => void;
   defaultContactId?: string | null;
   disableContactSelection?: boolean;
+  contactInfo?: { id: string; name: string | null; email: string | null; };
 }
 
 const getInitials = (name: string | null) => {
@@ -79,6 +80,7 @@ export default function CreateTicketDialog({
   projects,
   defaultContactId,
   disableContactSelection = false,
+  contactInfo,
 }: CreateTicketDialogProps) {
   const { appUser } = useAuth();
   const form = useForm<TicketFormValues>({
@@ -89,7 +91,7 @@ export default function CreateTicketDialog({
       type: 'question',
       escalateNow: false,
       assignedTo: appUser?.id,
-      contactId: defaultContactId || undefined,
+      contactId: contactInfo?.id || defaultContactId || undefined,
     },
   });
 
@@ -101,18 +103,19 @@ export default function CreateTicketDialog({
         type: 'question',
         escalateNow: false,
         assignedTo: appUser?.id,
-        contactId: defaultContactId || undefined,
+        contactId: contactInfo?.id || defaultContactId || undefined,
         priority: undefined,
         intakeRuleId: undefined,
       });
     }
-  }, [isOpen, form, appUser, defaultContactId]);
+  }, [isOpen, form, appUser, defaultContactId, contactInfo]);
 
   const escalateNow = form.watch('escalateNow');
   const ticketType = form.watch('type');
   
   const currentContactId = form.watch('contactId');
   const selectedContact = contacts.find(c => c.id === currentContactId);
+  const displayContact = contactInfo || selectedContact;
 
 
   const availableRules = escalationRules.filter(rule => 
@@ -219,14 +222,14 @@ export default function CreateTicketDialog({
                     )}
                 />
             </div>
-            {disableContactSelection && selectedContact ? (
+            {disableContactSelection && displayContact ? (
                 <FormItem>
                     <FormLabel>Contact</FormLabel>
                     <div className="flex items-center gap-2 p-2 border rounded-md bg-muted">
                         <Avatar className="h-6 w-6">
-                            <AvatarFallback>{getInitials(selectedContact.name)}</AvatarFallback>
+                            <AvatarFallback>{getInitials(displayContact.name)}</AvatarFallback>
                         </Avatar>
-                        <span>{selectedContact.name || selectedContact.primaryEmail}</span>
+                        <span>{displayContact.name || displayContact.email}</span>
                     </div>
                 </FormItem>
             ) : (
