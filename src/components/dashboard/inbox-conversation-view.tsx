@@ -133,29 +133,33 @@ export default function InboxConversationView({ conversation, messages, contact,
 
 
   return (
-    <div className="relative grid grid-rows-[1fr_auto] h-full min-h-0 bg-background md:bg-card">
+    <div className="relative grid grid-rows-[auto_1fr_auto] h-full min-h-0 bg-background md:bg-card">
       {/* Floating mini header */}
       <div className="pointer-events-none absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-background/90 to-transparent">
-        <div className="pointer-events-auto flex items-center gap-3 p-3">
-          {isMobile && onBack && (
-            <Button variant="ghost" size="icon" className="-ml-1" onClick={onBack}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          )}
-
-          <div
-            className={cn(
-              "flex items-center gap-2 rounded-full border bg-background/80 backdrop-blur px-3 py-1.5 shadow-sm"
+        <div className="pointer-events-auto grid grid-cols-3 items-center gap-3 p-3">
+          <div className="flex justify-start">
+            {isMobile && onBack && (
+              <Button variant="ghost" size="icon" className="-ml-1" onClick={onBack}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
             )}
-          >
-            <Avatar className="h-7 w-7">
-              <AvatarImage src={contact.avatarUrl || undefined} alt={contact.name || ''} />
-              <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
-            </Avatar>
-            <span className="text-sm font-semibold leading-none">{contact.name}</span>
+          </div>
+          
+          <div className="flex justify-center">
+            <div
+                className={cn(
+                "flex items-center gap-2 rounded-full border bg-background/80 backdrop-blur px-3 py-1.5 shadow-sm"
+                )}
+            >
+                <Avatar className="h-7 w-7">
+                <AvatarImage src={contact.avatarUrl || undefined} alt={contact.name || ''} />
+                <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-semibold leading-none">{contact.name}</span>
+            </div>
           </div>
 
-          <div className="ml-auto pointer-events-auto">
+          <div className="flex justify-end">
             {isMobile ? (
               <Button variant="ghost" size="icon" onClick={onToggleContactDailog}>
                 <Info className="h-5 w-5" />
