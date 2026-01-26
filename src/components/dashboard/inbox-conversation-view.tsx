@@ -146,9 +146,10 @@ export default function InboxConversationView({ conversation, messages, contact,
           </div>
           
           <div className="flex justify-center">
-            <div
+            <button
+                onClick={isMobile ? onToggleContactDailog : onToggleContactPanel}
                 className={cn(
-                "flex items-center gap-2 rounded-full border bg-background/80 backdrop-blur px-3 py-1.5 shadow-sm"
+                "flex items-center gap-2 rounded-full border bg-background/80 backdrop-blur px-3 py-1.5 shadow-sm hover:bg-accent transition-colors"
                 )}
             >
                 <Avatar className="h-7 w-7">
@@ -156,7 +157,7 @@ export default function InboxConversationView({ conversation, messages, contact,
                 <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
                 </Avatar>
                 <span className="text-sm font-semibold leading-none">{contact.name}</span>
-            </div>
+            </button>
           </div>
 
           <div className="flex justify-end">
