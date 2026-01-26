@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -134,39 +133,39 @@ export default function InboxConversationView({ conversation, messages, contact,
 
 
   return (
-    <div className="flex flex-col h-full bg-background md:bg-card">
+    <div className="grid grid-rows-[auto_1fr_auto] h-full bg-background md:bg-card">
       {/* Header */}
-      <div className="relative flex h-24 flex-shrink-0 flex-col items-center justify-center border-b p-4 text-center">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2">
-              {isMobile && onBack && (
-                  <Button variant="ghost" size="icon" className="-ml-2" onClick={onBack}>
-                      <ArrowLeft className="h-5 w-5" />
-                  </Button>
-              )}
-          </div>
-          <Avatar className="h-8 w-8">
-              <AvatarImage src={contact.avatarUrl || undefined} alt={contact.name || ''} />
-              <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
-          </Avatar>
-          <h3 className="mt-1 font-semibold">{contact.name}</h3>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2">
-              {isMobile ? (
-                  <Button variant="ghost" size="icon" onClick={onToggleContactDailog}>
-                      <Info className="h-5 w-5" />
-                  </Button>
-              ) : (
-                  !isContactPanelOpen && (
-                  <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
-                      <PanelLeftClose className="h-4 w-4" />
-                  </Button>
-                  )
-              )}
-          </div>
+      <div className="relative flex h-24 flex-col items-center justify-center border-b p-4 text-center">
+        <div className="absolute left-4 top-1/2 -translate-y-1/2">
+            {isMobile && onBack && (
+                <Button variant="ghost" size="icon" className="-ml-2" onClick={onBack}>
+                    <ArrowLeft className="h-5 w-5" />
+                </Button>
+            )}
+        </div>
+        <Avatar className="h-8 w-8">
+            <AvatarImage src={contact.avatarUrl || undefined} alt={contact.name || ''} />
+            <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
+        </Avatar>
+        <h3 className="mt-1 font-semibold">{contact.name}</h3>
+        <div className="absolute right-4 top-1/2 -translate-y-1/2">
+            {isMobile ? (
+                <Button variant="ghost" size="icon" onClick={onToggleContactDailog}>
+                    <Info className="h-5 w-5" />
+                </Button>
+            ) : (
+                !isContactPanelOpen && (
+                <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
+                    <PanelLeftClose className="h-4 w-4" />
+                </Button>
+                )
+            )}
+        </div>
       </div>
 
 
       {/* Messages */}
-      <ScrollArea className="flex-1 min-h-0">
+      <ScrollArea className="overflow-y-auto">
         <div className="p-4 space-y-6">
           {conversationMessages.map(renderMessageBubble)}
           <div ref={messagesEndRef} />
@@ -174,7 +173,7 @@ export default function InboxConversationView({ conversation, messages, contact,
       </ScrollArea>
 
       {/* Composer */}
-       <div className={cn("p-2 border-t bg-background md:bg-card flex items-end gap-2 flex-shrink-0", isNote && "bg-amber-50 dark:bg-amber-950/50")}>
+       <div className={cn("p-2 border-t bg-background md:bg-card flex items-end gap-2", isNote && "bg-amber-50 dark:bg-amber-950/50")}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full">
@@ -218,7 +217,7 @@ export default function InboxConversationView({ conversation, messages, contact,
             value={messageText}
             onChange={e => setMessageText(e.target.value)}
             onKeyDown={handleKeyDown}
-            style={{ fontSize: isMobile ? '16px' : undefined }}
+            style={{ fontSize: '16px' }}
           />
           <div className="absolute right-1.5 bottom-1.5 flex items-center gap-1">
             {isNote && <Button variant="ghost" size="sm" onClick={() => setIsNote(false)}>Cancel Note</Button>}
