@@ -155,10 +155,7 @@ export default function ChatbotWidgetPage() {
                 {bot.styleSettings?.logoUrl ? (
                     <img src={bot.styleSettings.logoUrl} alt="Bot Logo" className="h-6 w-6 object-contain" />
                 ) : (
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 text-white">
-                        <path d="M12 2L13.84 7.64L19.5 9.5L13.84 11.36L12 17L10.16 11.36L4.5 9.5L10.16 7.64L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-                        <path d="M12 2L13.84 7.64L19.5 9.5L13.84 11.36L12 17L10.16 11.36L4.5 9.5L10.16 7.64L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" transform="rotate(90 12 12)" />
-                    </svg>
+                    <div className="h-6 w-6 shrink-0" />
                 )}
                 <div>
                     <h3 className="font-bold text-white">{bot.name}</h3>
@@ -251,9 +248,10 @@ export default function ChatbotWidgetPage() {
                             </Button>
                         )}
                     </div>
-                    <a href="#" className="underline" onClick={e => e.preventDefault()}>We run on Riverr</a>
                 </div>
             </div>
         </div>
     );
 }
+
+    

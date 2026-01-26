@@ -486,7 +486,7 @@ export default function BotSettingsDialog({
                 </div>
             ) : (
              <>
-                <div className="w-80 h-[450px] text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: watchedValues.backgroundColor }}>
+                <div className="w-80 h-[450px] text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden mb-20" style={{ backgroundColor: watchedValues.backgroundColor }}>
                     {/* Header */}
                     <div className="p-3 border-b flex items-center gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
                         <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" disabled>
@@ -495,10 +495,7 @@ export default function BotSettingsDialog({
                         {watchedValues.logoUrl ? (
                             <img src={watchedValues.logoUrl} alt="Bot Logo" className="h-6 w-6 object-contain" />
                         ) : (
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 text-white">
-                                <path d="M12 2L13.84 7.64L19.5 9.5L13.84 11.36L12 17L10.16 11.36L4.5 9.5L10.16 7.64L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-                                <path d="M12 2L13.84 7.64L19.5 9.5L13.84 11.36L12 17L10.16 11.36L4.5 9.5L10.16 7.64L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" transform="rotate(90 12 12)"/>
-                            </svg>
+                           <div className="h-6 w-6 shrink-0" />
                         )}
                         <div>
                             <h3 className="font-bold text-white">{watchedValues.name}</h3>
@@ -576,7 +573,6 @@ export default function BotSettingsDialog({
                                     </Button>
                                 )}
                             </div>
-                            <a href="#" className="underline">We run on Intercom</a>
                         </div>
                     </div>
                 </div>
@@ -590,3 +586,5 @@ export default function BotSettingsDialog({
     </Dialog>
   );
 }
+
+    
