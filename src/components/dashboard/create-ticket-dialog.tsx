@@ -28,6 +28,7 @@ import { Checkbox } from '../ui/checkbox';
 import { Hub, Space, User, EscalationIntakeRule, Project, Ticket, Contact } from '@/lib/data';
 import { useAuth } from '@/hooks/use-auth';
 import ContactCombobox from './contacts/contact-combobox';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 const ticketSchema = z.object({
   title: z.string().min(1, 'Title is required.'),
@@ -54,7 +55,15 @@ interface CreateTicketDialogProps {
   projects: Project[];
   contacts: Contact[];
   onDataRefresh: () => void;
+  defaultContactId?: string | null;
+  disableContactSelection?: boolean;
 }
+
+const getInitials = (name: string | null) => {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+}
+
 
 export default function CreateTicketDialog({
   isOpen,
@@ -67,7 +76,9 @@ export default function CreateTicketDialog({
   onDataRefresh,
   escalationRules,
   allHubs,
-  projects
+  projects,
+  defaultContactId,
+  disableContactSelection = false,
 }: CreateTicketDialogProps) {
   const { appUser } = useAuth();
   const form = useForm<TicketFormValues>({
@@ -78,6 +89,7 @@ export default function CreateTicketDialog({
       type: 'question',
       escalateNow: false,
       assignedTo: appUser?.id,
+      contactId: defaultContactId || undefined,
     },
   });
 
@@ -89,15 +101,19 @@ export default function CreateTicketDialog({
         type: 'question',
         escalateNow: false,
         assignedTo: appUser?.id,
-        contactId: undefined,
+        contactId: defaultContactId || undefined,
         priority: undefined,
         intakeRuleId: undefined,
       });
     }
-  }, [isOpen, form, appUser]);
+  }, [isOpen, form, appUser, defaultContactId]);
 
   const escalateNow = form.watch('escalateNow');
   const ticketType = form.watch('type');
+  
+  const currentContactId = form.watch('contactId');
+  const selectedContact = contacts.find(c => c.id === currentContactId);
+
 
   const availableRules = escalationRules.filter(rule => 
     rule.enabled &&
@@ -203,21 +219,33 @@ export default function CreateTicketDialog({
                     )}
                 />
             </div>
-            <FormField
-              control={form.control}
-              name="contactId"
-              render={({ field }) => (
+            {disableContactSelection && selectedContact ? (
                 <FormItem>
-                  <FormLabel>Contact</FormLabel>
-                  <ContactCombobox 
-                    contacts={contacts}
-                    value={field.value || null}
-                    onChange={field.onChange}
-                    onDataRefresh={onDataRefresh}
-                  />
+                    <FormLabel>Contact</FormLabel>
+                    <div className="flex items-center gap-2 p-2 border rounded-md bg-muted">
+                        <Avatar className="h-6 w-6">
+                            <AvatarFallback>{getInitials(selectedContact.name)}</AvatarFallback>
+                        </Avatar>
+                        <span>{selectedContact.name || selectedContact.primaryEmail}</span>
+                    </div>
                 </FormItem>
-              )}
-            />
+            ) : (
+                <FormField
+                    control={form.control}
+                    name="contactId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Contact</FormLabel>
+                        <ContactCombobox 
+                            contacts={contacts}
+                            value={field.value || null}
+                            onChange={field.onChange}
+                            onDataRefresh={onDataRefresh}
+                        />
+                        </FormItem>
+                    )}
+                />
+            )}
             <FormField
               control={form.control}
               name="assignedTo"
