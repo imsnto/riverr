@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -13,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card } from '../ui/card';
 import CreateTicketDialog from './create-ticket-dialog';
+import { Badge } from '../ui/badge';
 
 interface InboxConversationViewProps {
   conversation: Conversation | null;
@@ -34,6 +36,7 @@ interface InboxConversationViewProps {
   contacts: Contact[];
   onDataRefresh: () => void;
   onCreateTicket: (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => void;
+  tickets: Ticket[];
 }
 
 const getInitials = (name: string | null) => {
@@ -60,7 +63,8 @@ export default function InboxConversationView({
     projects,
     contacts,
     onDataRefresh,
-    onCreateTicket
+    onCreateTicket,
+    tickets
 }: InboxConversationViewProps) {
   const [isNote, setIsNote] = useState(false);
   const [messageText, setMessageText] = useState('');
@@ -115,11 +119,27 @@ export default function InboxConversationView({
     const agent = isCustomer ? null : users.find(u => u.id === msg.authorId);
 
     if (msg.type === 'event') {
-      return (
-        <div key={msg.id} className="text-center text-xs text-muted-foreground my-4">
-          <span>{msg.content}</span>
-        </div>
-      )
+        const linkedTicket = (msg as any).linked_ticket_id
+            ? tickets.find(t => t.id === (msg as any).linked_ticket_id)
+            : null;
+        
+        const ticketStatus = linkedTicket && activeHub.ticketStatuses
+            ? activeHub.ticketStatuses.find(s => s.name === linkedTicket.status)
+            : null;
+
+        return (
+            <div key={msg.id} className="text-center text-xs text-muted-foreground my-4">
+                <span>{msg.content}</span>
+                {linkedTicket && ticketStatus && (
+                     <div className="mt-2 flex justify-center">
+                        <Badge style={{ backgroundColor: ticketStatus.color, color: "white" }}>
+                            <TicketIcon className="h-3 w-3 mr-1.5" />
+                            Ticket is {linkedTicket.status}
+                        </Badge>
+                    </div>
+                )}
+            </div>
+        )
     }
 
     if (msg.type === 'note') {

@@ -459,6 +459,20 @@ if (fetchedConversations.length > 0) {
     const newTicket = await db.addTicket(finalTicketData);
     setTickets(prev => [...prev, newTicket]);
     toast({ title: "Ticket created" });
+
+    // Add a message to the conversation
+    if (newTicket.conversationId) {
+        const messageContent = `Ticket created: "${newTicket.title}"`;
+        await db.addChatMessage({
+            conversationId: newTicket.conversationId,
+            authorId: appUser.id,
+            type: 'event',
+            senderType: 'agent',
+            content: messageContent,
+            timestamp: new Date().toISOString(),
+            linked_ticket_id: newTicket.id,
+        });
+    }
   };
   
   const handleUpdateDeals = (updatedDeals: Deal[]) => {
@@ -833,6 +847,7 @@ if (fetchedConversations.length > 0) {
                             projects={projects}
                             contacts={contacts}
                             onDataRefresh={fetchData}
+                            tickets={tickets}
                             onCreateTicket={handleCreateTicket}
                          />;
       default:

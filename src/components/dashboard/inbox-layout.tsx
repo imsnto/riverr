@@ -27,6 +27,7 @@ interface InboxLayoutProps {
   projects: Project[];
   contacts: Contact[];
   onDataRefresh: () => void;
+  tickets: Ticket[];
   onCreateTicket: (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => void;
 }
 
@@ -46,6 +47,7 @@ export default function InboxLayout({
   projects,
   contacts,
   onDataRefresh,
+  tickets,
   onCreateTicket,
 }: InboxLayoutProps) {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
@@ -124,6 +126,7 @@ export default function InboxLayout({
                 projects={projects}
                 contacts={contacts}
                 onDataRefresh={onDataRefresh}
+                tickets={tickets}
                 onCreateTicket={onCreateTicket}
               />
               {isContactPanelOpen && (

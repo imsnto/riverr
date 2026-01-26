@@ -1,3 +1,4 @@
+
 // src/lib/data.ts
 
 // --- Core Entities ---
@@ -460,6 +461,7 @@ export interface ChatMessage {
   content: string;
   timestamp: string; // ISO String
   senderType?: 'contact' | 'agent';
+  linked_ticket_id?: string;
 }
 
 // --- Help Center Interfaces ---
