@@ -747,10 +747,10 @@ if (fetchedConversations.length > 0) {
           projects={projects}
           onSelectProject={handleSelectProject}
           allTasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
+          onUpdateTasks={onUpdateTasks}
           activeHub={activeHub}
           allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
+          onUpdateActiveHub={onUpdateActiveHub}
           onNewProject={handleNewProject}
           onNewTaskRequest={handleNewTaskRequest}
           onTaskClick={setSelectedTask}
@@ -767,7 +767,7 @@ if (fetchedConversations.length > 0) {
           activeHub={activeHub}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
+          onUpdateActiveHub={onUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
           allHubs={spaceHubs}
           escalationRules={escalationRules}
@@ -784,7 +784,7 @@ if (fetchedConversations.length > 0) {
           activeHub={activeHub}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
+          onUpdateActiveHub={onUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
       />;
       case 'help-center': return <HelpCenterLayout
@@ -860,7 +860,7 @@ if (fetchedConversations.length > 0) {
               (currentView === 'help-center' && !isMobile)
                 ? "overflow-hidden"
                 : "overflow-y-auto",
-              isMobile && "pb-20"
+              isMobile && !hideMobileBottomNav && "pb-20"
             )}
           >
             {renderView()}
