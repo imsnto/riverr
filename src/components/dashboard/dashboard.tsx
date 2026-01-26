@@ -443,6 +443,23 @@ if (fetchedConversations.length > 0) {
         }
     })
   };
+
+  const handleCreateTicket = async (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => {
+    if (!appUser) return;
+    const finalTicketData = { ...ticketData };
+    if (escalateNow) {
+        finalTicketData.status = 'Escalated';
+        finalTicketData.escalation = {
+            status: 'queued', // Backend would change this to 'sent' or 'failed'
+            requestedAt: new Date().toISOString(),
+            requestedBy: appUser.id,
+            intakeRuleId: intakeRuleId
+        };
+    }
+    const newTicket = await db.addTicket(finalTicketData);
+    setTickets(prev => [...prev, newTicket]);
+    toast({ title: "Ticket created" });
+  };
   
   const handleUpdateDeals = (updatedDeals: Deal[]) => {
     setDeals(updatedDeals);
@@ -774,6 +791,7 @@ if (fetchedConversations.length > 0) {
           projects={projects}
           contacts={contacts}
           onDataRefresh={fetchData}
+          onCreateTicket={handleCreateTicket}
       />;
       case 'deals': return <DealsBoard
           deals={deals}
@@ -799,7 +817,7 @@ if (fetchedConversations.length > 0) {
                                         tasks={tasks}
                                         timeEntries={timeEntries}
                                         appUser={appUser} />;
-      case 'inbox': return <InboxLayout 
+      case 'inbox': return <InboxLayout
                             users={allUsers}
                             appUser={appUser}
                             visitors={visitors}
@@ -808,6 +826,14 @@ if (fetchedConversations.length > 0) {
                             onSendMessage={handleSendMessageFromAgent}
                             onAssignConversation={handleAssignConversation}
                             setHideMobileBottomNav={setHideMobileBottomNav}
+                            activeHub={activeHub}
+                            activeSpace={activeSpace}
+                            allHubs={spaceHubs}
+                            escalationRules={escalationRules}
+                            projects={projects}
+                            contacts={contacts}
+                            onDataRefresh={fetchData}
+                            onCreateTicket={handleCreateTicket}
                          />;
       default:
         return (

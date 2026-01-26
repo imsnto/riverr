@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Conversation, Visitor, ChatMessage, User } from '@/lib/data';
+import { Conversation, Visitor, ChatMessage, User, Hub, Space, EscalationIntakeRule, Project, Contact, Ticket } from '@/lib/data';
 import InboxConversationList from './inbox-conversation-list';
 import InboxConversationView from './inbox-conversation-view';
 import InboxContactPanel from './inbox-contact-panel';
@@ -19,6 +20,14 @@ interface InboxLayoutProps {
   onSendMessage: (conversationId: string, content: string, type: 'reply' | 'note') => void;
   onAssignConversation: (conversationId: string, assigneeId: string | null) => void;
   setHideMobileBottomNav?: (hide: boolean) => void;
+  activeHub: Hub;
+  activeSpace: Space;
+  allHubs: Hub[];
+  escalationRules: EscalationIntakeRule[];
+  projects: Project[];
+  contacts: Contact[];
+  onDataRefresh: () => void;
+  onCreateTicket: (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => void;
 }
 
 export default function InboxLayout({
@@ -30,6 +39,14 @@ export default function InboxLayout({
   onSendMessage,
   onAssignConversation,
   setHideMobileBottomNav,
+  activeHub,
+  activeSpace,
+  allHubs,
+  escalationRules,
+  projects,
+  contacts,
+  onDataRefresh,
+  onCreateTicket,
 }: InboxLayoutProps) {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isContactPanelOpen, setIsContactPanelOpen] = useState(true);
@@ -100,6 +117,14 @@ export default function InboxLayout({
                 onSendMessage={handleAgentSendMessage}
                 onAssignConversation={onAssignConversation}
                 onBack={() => setSelectedConversationId(null)}
+                activeHub={activeHub}
+                activeSpace={activeSpace}
+                allHubs={allHubs}
+                escalationRules={escalationRules}
+                projects={projects}
+                contacts={contacts}
+                onDataRefresh={onDataRefresh}
+                onCreateTicket={onCreateTicket}
               />
               {isContactPanelOpen && (
                 <div className="hidden xl:block h-full min-h-0">

@@ -1,17 +1,19 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Conversation, ChatMessage, Visitor, User } from '@/lib/data';
+import { Conversation, ChatMessage, Visitor, User, Ticket, Hub, Space, EscalationIntakeRule, Project, Contact } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
-import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon } from 'lucide-react';
+import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card } from '../ui/card';
+import CreateTicketDialog from './create-ticket-dialog';
 
 interface InboxConversationViewProps {
   conversation: Conversation | null;
@@ -25,6 +27,14 @@ interface InboxConversationViewProps {
   onAssignConversation: (conversationId: string, assigneeId: string | null) => void;
   onBack?: () => void;
   onToggleContactDailog: () => void;
+  activeHub: Hub;
+  activeSpace: Space;
+  allHubs: Hub[];
+  escalationRules: EscalationIntakeRule[];
+  projects: Project[];
+  contacts: Contact[];
+  onDataRefresh: () => void;
+  onCreateTicket: (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => void;
 }
 
 const getInitials = (name: string | null) => {
@@ -32,11 +42,32 @@ const getInitials = (name: string | null) => {
   return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
-export default function InboxConversationView({ conversation, messages, contact, users, appUser, isContactPanelOpen, onToggleContactPanel, onSendMessage, onAssignConversation, onBack, onToggleContactDailog }: InboxConversationViewProps) {
+export default function InboxConversationView({ 
+    conversation, 
+    messages, 
+    contact, 
+    users, 
+    appUser, 
+    isContactPanelOpen, 
+    onToggleContactPanel, 
+    onSendMessage, 
+    onAssignConversation, 
+    onBack, 
+    onToggleContactDailog,
+    activeHub,
+    activeSpace,
+    allHubs,
+    escalationRules,
+    projects,
+    contacts,
+    onDataRefresh,
+    onCreateTicket
+}: InboxConversationViewProps) {
   const [isNote, setIsNote] = useState(false);
   const [messageText, setMessageText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const [isCreateTicketOpen, setIsCreateTicketOpen] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -133,118 +164,146 @@ export default function InboxConversationView({ conversation, messages, contact,
 
 
   return (
-    <div className="relative grid grid-rows-[auto_1fr_auto] h-full min-h-0 bg-background md:bg-card">
-      {/* Floating mini header */}
-      <div className="pointer-events-none absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-background/90 to-transparent">
-        <div className="pointer-events-auto grid grid-cols-3 items-center gap-3 p-3">
-          <div className="flex justify-start">
-            {isMobile && onBack && (
-              <Button variant="ghost" size="icon" className="-ml-1" onClick={onBack}>
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            )}
-          </div>
-          
-          <div className="flex justify-center">
-            <button
-                onClick={isMobile ? onToggleContactDailog : onToggleContactPanel}
-                className={cn(
-                "flex items-center gap-2 rounded-full border bg-background/80 backdrop-blur px-3 py-1.5 shadow-sm hover:bg-accent transition-colors"
-                )}
-            >
-                <Avatar className="h-7 w-7">
-                <AvatarImage src={contact.avatarUrl || undefined} alt={contact.name || ''} />
-                <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-semibold leading-none">{contact.name}</span>
-            </button>
-          </div>
-
-          <div className="flex justify-end">
-            {isMobile ? (
-              <Button variant="ghost" size="icon" onClick={onToggleContactDailog}>
-                <Info className="h-5 w-5" />
-              </Button>
-            ) : (
-              !isContactPanelOpen && (
-                <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
-                  <PanelLeftClose className="h-4 w-4" />
+    <>
+      <div className="relative grid grid-rows-[auto_1fr_auto] h-full min-h-0 bg-background md:bg-card">
+        {/* Floating mini header */}
+        <div className="pointer-events-none absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-background/90 to-transparent">
+          <div className="pointer-events-auto grid grid-cols-3 items-center gap-3 p-3">
+            <div className="flex justify-start">
+              {isMobile && onBack && (
+                <Button variant="ghost" size="icon" className="-ml-1" onClick={onBack}>
+                  <ArrowLeft className="h-5 w-5" />
                 </Button>
-              )
-            )}
+              )}
+            </div>
+            
+            <div className="flex justify-center">
+              <button
+                  onClick={isMobile ? onToggleContactDailog : onToggleContactPanel}
+                  className={cn(
+                  "flex items-center gap-2 rounded-full border bg-background/80 backdrop-blur px-3 py-1.5 shadow-sm hover:bg-accent transition-colors"
+                  )}
+              >
+                  <Avatar className="h-7 w-7">
+                  <AvatarImage src={contact.avatarUrl || undefined} alt={contact.name || ''} />
+                  <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-semibold leading-none">{contact.name}</span>
+              </button>
+            </div>
+
+            <div className="flex justify-end">
+              {isMobile ? (
+                <Button variant="ghost" size="icon" onClick={onToggleContactDailog}>
+                  <Info className="h-5 w-5" />
+                </Button>
+              ) : (
+                !isContactPanelOpen && (
+                  <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
+                    <PanelLeftClose className="h-4 w-4" />
+                  </Button>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <ScrollArea className="h-full min-h-0">
+          {/* IMPORTANT: top padding so messages never go under the floating header */}
+          <div className="p-4 pt-16 space-y-6">
+            {conversationMessages.map(renderMessageBubble)}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
+
+        {/* Composer */}
+        <div className={cn("p-2 border-t bg-background md:bg-card flex items-end gap-2", isNote && "bg-amber-50 dark:bg-amber-950/50")}>
+          <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full">
+                  <Plus className="h-5 w-5" />
+              </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="top">
+              <DropdownMenuItem onSelect={() => setIsNote(true)}>
+                  <StickyNote className="mr-2 h-4 w-4"/>
+                  Add Internal Note
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setIsCreateTicketOpen(true)}>
+                  <TicketIcon className="mr-2 h-4 w-4"/>
+                  Create Ticket
+              </DropdownMenuItem>
+              <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                  <UserIcon className="mr-2 h-4 w-4" />
+                  <span>Assign to...</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                      <DropdownMenuItem onSelect={() => handleAssign(null)}>Unassigned</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {users.map(user => (
+                      <DropdownMenuItem key={user.id} onSelect={() => handleAssign(user.id)}>
+                          {user.name}
+                      </DropdownMenuItem>
+                      ))}
+                  </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+              </DropdownMenuSub>
+              </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="relative flex-1">
+              <Textarea
+              placeholder={isNote ? "Add an internal note..." : "Message..."}
+              className={cn(
+                  "rounded-2xl pr-12 py-2.5",
+                  isNote ? "bg-amber-100 dark:bg-amber-950/50" : "bg-muted"
+              )}
+              minRows={1}
+              maxRows={5}
+              value={messageText}
+              onChange={e => setMessageText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              style={{ fontSize: '16px' }}
+              />
+              <div className="absolute right-1.5 bottom-1.5 flex items-center gap-1">
+              {isNote && <Button variant="ghost" size="sm" onClick={() => setIsNote(false)}>Cancel Note</Button>}
+              <Button 
+                  size="icon" 
+                  className="h-8 w-8 rounded-full" 
+                  onClick={handleSend}
+                  disabled={!messageText.trim()}
+              >
+                  <Send className="h-4 w-4" />
+              </Button>
+              </div>
           </div>
         </div>
       </div>
-
-      {/* Messages */}
-      <ScrollArea className="h-full min-h-0">
-        {/* IMPORTANT: top padding so messages never go under the floating header */}
-        <div className="p-4 pt-16 space-y-6">
-          {conversationMessages.map(renderMessageBubble)}
-          <div ref={messagesEndRef} />
-        </div>
-      </ScrollArea>
-
-      {/* Composer */}
-      <div className={cn("p-2 border-t bg-background md:bg-card flex items-end gap-2", isNote && "bg-amber-50 dark:bg-amber-950/50")}>
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full">
-                <Plus className="h-5 w-5" />
-            </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="top">
-            <DropdownMenuItem onSelect={() => setIsNote(true)}>
-                <StickyNote className="mr-2 h-4 w-4"/>
-                Add Internal Note
-            </DropdownMenuItem>
-            <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                <UserIcon className="mr-2 h-4 w-4" />
-                <span>Assign to...</span>
-                </DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                <DropdownMenuSubContent>
-                    <DropdownMenuItem onSelect={() => handleAssign(null)}>Unassigned</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    {users.map(user => (
-                    <DropdownMenuItem key={user.id} onSelect={() => handleAssign(user.id)}>
-                        {user.name}
-                    </DropdownMenuItem>
-                    ))}
-                </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-            </DropdownMenuSub>
-            </DropdownMenuContent>
-        </DropdownMenu>
-
-        <div className="relative flex-1">
-            <Textarea
-            placeholder={isNote ? "Add an internal note..." : "Message..."}
-            className={cn(
-                "rounded-2xl pr-12 py-2.5",
-                isNote ? "bg-amber-100 dark:bg-amber-950/50" : "bg-muted"
-            )}
-            minRows={1}
-            maxRows={5}
-            value={messageText}
-            onChange={e => setMessageText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            style={{ fontSize: '16px' }}
-            />
-            <div className="absolute right-1.5 bottom-1.5 flex items-center gap-1">
-            {isNote && <Button variant="ghost" size="sm" onClick={() => setIsNote(false)}>Cancel Note</Button>}
-            <Button 
-                size="icon" 
-                className="h-8 w-8 rounded-full" 
-                onClick={handleSend}
-                disabled={!messageText.trim()}
-            >
-                <Send className="h-4 w-4" />
-            </Button>
-            </div>
-        </div>
-      </div>
-    </div>
+      <CreateTicketDialog
+        isOpen={isCreateTicketOpen}
+        onOpenChange={setIsCreateTicketOpen}
+        activeHub={activeHub}
+        activeSpace={activeSpace}
+        allUsers={users}
+        contacts={contacts}
+        onDataRefresh={onDataRefresh}
+        onCreateTicket={(ticketData, escalate, ruleId) => {
+            const ticketWithConvo = {
+                ...ticketData,
+                conversationId: conversation.id,
+                contactId: conversation.contactId,
+                title: ticketData.title || `Ticket from conversation with ${contact.name}`,
+                description: ticketData.description || `Created from conversation: ${conversation.lastMessage}`
+            };
+            onCreateTicket(ticketWithConvo, escalate, ruleId);
+        }}
+        allHubs={allHubs}
+        escalationRules={escalationRules}
+        projects={projects}
+      />
+    </>
   );
 }
