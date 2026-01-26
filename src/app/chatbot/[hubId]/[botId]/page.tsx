@@ -187,7 +187,7 @@ export default function ChatbotWidgetPage() {
                             ))}
                         </div>
                     ) : (
-                        messages.map(msg => (
+                        messages.filter(msg => msg.type === 'message').map(msg => (
                             <div key={msg.id} className={`flex items-end gap-2 ${msg.senderType === 'agent' ? 'justify-start' : 'justify-end'}`}>
                                 {
                                     msg.senderType === 'agent' ? (
@@ -253,5 +253,7 @@ export default function ChatbotWidgetPage() {
         </div>
     );
 }
+
+    
 
     
