@@ -133,86 +133,92 @@ export default function InboxConversationView({ conversation, messages, contact,
 
 
   return (
-    <div className="grid grid-rows-[auto_1fr_auto] h-full min-h-0 bg-background md:bg-card">
-      {/* Header */}
-      <div className="grid grid-cols-3 items-center h-24 border-b p-4 text-center">
-        <div className="flex justify-start">
+    <div className="relative grid grid-rows-[1fr_auto] h-full min-h-0 bg-background md:bg-card">
+      {/* Floating mini header */}
+      <div className="pointer-events-none absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-background/90 to-transparent">
+        <div className="pointer-events-auto flex items-center gap-3 p-3">
           {isMobile && onBack && (
-            <Button variant="ghost" size="icon" className="h-10 w-10" onClick={onBack}>
+            <Button variant="ghost" size="icon" className="-ml-1" onClick={onBack}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
-        </div>
-        <div className="flex flex-col items-center justify-center">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={contact.avatarUrl || undefined} alt={contact.name || ''} />
-            <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
-          </Avatar>
-          <h3 className="mt-1 font-semibold">{contact.name}</h3>
-        </div>
-        <div className="flex justify-end">
-          {isMobile ? (
-            <Button variant="ghost" size="icon" className="h-10 w-10" onClick={onToggleContactDailog}>
-              <Info className="h-5 w-5" />
-            </Button>
-          ) : (
-            !isContactPanelOpen && (
-              <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
-                <PanelLeftClose className="h-4 w-4" />
+
+          <div
+            className={cn(
+              "flex items-center gap-2 rounded-full border bg-background/80 backdrop-blur px-3 py-1.5 shadow-sm"
+            )}
+          >
+            <Avatar className="h-7 w-7">
+              <AvatarImage src={contact.avatarUrl || undefined} alt={contact.name || ''} />
+              <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
+            </Avatar>
+            <span className="text-sm font-semibold leading-none">{contact.name}</span>
+          </div>
+
+          <div className="ml-auto pointer-events-auto">
+            {isMobile ? (
+              <Button variant="ghost" size="icon" onClick={onToggleContactDailog}>
+                <Info className="h-5 w-5" />
               </Button>
-            )
-          )}
+            ) : (
+              !isContactPanelOpen && (
+                <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
+                  <PanelLeftClose className="h-4 w-4" />
+                </Button>
+              )
+            )}
+          </div>
         </div>
       </div>
 
-
       {/* Messages */}
       <ScrollArea className="h-full min-h-0">
-        <div className="p-4 space-y-6">
+        {/* IMPORTANT: top padding so messages never go under the floating header */}
+        <div className="p-4 pt-16 space-y-6">
           {conversationMessages.map(renderMessageBubble)}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 
       {/* Composer */}
-       <div className={cn("p-2 border-t bg-background md:bg-card flex items-end gap-2", isNote && "bg-amber-50 dark:bg-amber-950/50")}>
+      <div className={cn("p-2 border-t bg-background md:bg-card flex items-end gap-2", isNote && "bg-amber-50 dark:bg-amber-950/50")}>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full">
-              <Plus className="h-5 w-5" />
+                <Plus className="h-5 w-5" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="top">
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top">
             <DropdownMenuItem onSelect={() => setIsNote(true)}>
-              <StickyNote className="mr-2 h-4 w-4"/>
-              Add Internal Note
+                <StickyNote className="mr-2 h-4 w-4"/>
+                Add Internal Note
             </DropdownMenuItem>
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
+                <DropdownMenuSubTrigger>
                 <UserIcon className="mr-2 h-4 w-4" />
                 <span>Assign to...</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuPortal>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
                 <DropdownMenuSubContent>
-                  <DropdownMenuItem onSelect={() => handleAssign(null)}>Unassigned</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {users.map(user => (
+                    <DropdownMenuItem onSelect={() => handleAssign(null)}>Unassigned</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {users.map(user => (
                     <DropdownMenuItem key={user.id} onSelect={() => handleAssign(user.id)}>
-                      {user.name}
+                        {user.name}
                     </DropdownMenuItem>
-                  ))}
+                    ))}
                 </DropdownMenuSubContent>
-              </DropdownMenuPortal>
+                </DropdownMenuPortal>
             </DropdownMenuSub>
-          </DropdownMenuContent>
+            </DropdownMenuContent>
         </DropdownMenu>
 
         <div className="relative flex-1">
-          <Textarea
+            <Textarea
             placeholder={isNote ? "Add an internal note..." : "Message..."}
             className={cn(
-              "rounded-2xl pr-12 py-2.5",
-               isNote ? "bg-amber-100 dark:bg-amber-950/50" : "bg-muted"
+                "rounded-2xl pr-12 py-2.5",
+                isNote ? "bg-amber-100 dark:bg-amber-950/50" : "bg-muted"
             )}
             minRows={1}
             maxRows={5}
@@ -220,8 +226,8 @@ export default function InboxConversationView({ conversation, messages, contact,
             onChange={e => setMessageText(e.target.value)}
             onKeyDown={handleKeyDown}
             style={{ fontSize: '16px' }}
-          />
-          <div className="absolute right-1.5 bottom-1.5 flex items-center gap-1">
+            />
+            <div className="absolute right-1.5 bottom-1.5 flex items-center gap-1">
             {isNote && <Button variant="ghost" size="sm" onClick={() => setIsNote(false)}>Cancel Note</Button>}
             <Button 
                 size="icon" 
@@ -229,9 +235,9 @@ export default function InboxConversationView({ conversation, messages, contact,
                 onClick={handleSend}
                 disabled={!messageText.trim()}
             >
-              <Send className="h-4 w-4" />
+                <Send className="h-4 w-4" />
             </Button>
-          </div>
+            </div>
         </div>
       </div>
     </div>
