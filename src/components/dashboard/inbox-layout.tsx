@@ -67,7 +67,7 @@ export default function InboxLayout({
       {/* Conversation List - Always rendered, hidden on mobile when a convo is selected */}
       <div
         className={cn(
-          "h-full flex-col border-r bg-card",
+          "h-full flex-col border-r bg-card min-h-0",
           selectedConversationId ? 'hidden md:flex' : 'flex'
         )}
       >
@@ -83,7 +83,7 @@ export default function InboxLayout({
       {/* Conversation View & Contact Panel Wrapper */}
       <div
         className={cn(
-          "h-full flex-col",
+          "h-full flex-col overflow-hidden",
           !selectedConversationId ? 'hidden md:flex' : 'flex'
         )}
       >
@@ -104,7 +104,7 @@ export default function InboxLayout({
                 onBack={() => setSelectedConversationId(null)}
               />
               {isContactPanelOpen && (
-                <div className="hidden xl:block h-full">
+                <div className="hidden xl:block h-full min-h-0">
                   <InboxContactPanel
                     visitor={selectedVisitor}
                     onToggle={() => setIsContactPanelOpen(false)}
@@ -116,7 +116,7 @@ export default function InboxLayout({
                 open={isContactDailog}
                 onOpenChange={setIsContactDailog}
               />
-            </div> : <div className='flex justify-center items-center w-full h-screen'>Select or start a new conversation.</div>
+            </div> : <div className='flex justify-center items-center w-full h-full'>Select or start a new conversation.</div>
         }
       </div>
     </div>
