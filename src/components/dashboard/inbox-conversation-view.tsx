@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -135,37 +136,39 @@ export default function InboxConversationView({ conversation, messages, contact,
   return (
     <div className="grid grid-rows-[auto_1fr_auto] h-full bg-background md:bg-card">
       {/* Header */}
-      <div className="relative flex h-24 flex-col items-center justify-center border-b p-4 text-center">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2">
-            {isMobile && onBack && (
-                <Button variant="ghost" size="icon" className="-ml-2" onClick={onBack}>
-                    <ArrowLeft className="h-5 w-5" />
-                </Button>
-            )}
+      <div className="grid grid-cols-3 items-center h-24 border-b p-4 text-center">
+        <div className="flex justify-start">
+          {isMobile && onBack && (
+            <Button variant="ghost" size="icon" className="-ml-2" onClick={onBack}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
         </div>
-        <Avatar className="h-8 w-8">
+        <div className="flex flex-col items-center">
+          <Avatar className="h-8 w-8">
             <AvatarImage src={contact.avatarUrl || undefined} alt={contact.name || ''} />
             <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
-        </Avatar>
-        <h3 className="mt-1 font-semibold">{contact.name}</h3>
-        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-            {isMobile ? (
-                <Button variant="ghost" size="icon" onClick={onToggleContactDailog}>
-                    <Info className="h-5 w-5" />
-                </Button>
-            ) : (
-                !isContactPanelOpen && (
-                <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
-                    <PanelLeftClose className="h-4 w-4" />
-                </Button>
-                )
-            )}
+          </Avatar>
+          <h3 className="mt-1 font-semibold">{contact.name}</h3>
+        </div>
+        <div className="flex justify-end">
+          {isMobile ? (
+            <Button variant="ghost" size="icon" onClick={onToggleContactDailog}>
+              <Info className="h-5 w-5" />
+            </Button>
+          ) : (
+            !isContactPanelOpen && (
+              <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
+                <PanelLeftClose className="h-4 w-4" />
+              </Button>
+            )
+          )}
         </div>
       </div>
 
 
       {/* Messages */}
-      <ScrollArea className="overflow-y-auto">
+      <ScrollArea>
         <div className="p-4 space-y-6">
           {conversationMessages.map(renderMessageBubble)}
           <div ref={messagesEndRef} />
@@ -209,7 +212,7 @@ export default function InboxConversationView({ conversation, messages, contact,
           <Textarea
             placeholder={isNote ? "Add an internal note..." : "Message..."}
             className={cn(
-              "rounded-2xl pr-12 py-2.5 text-base md:text-sm",
+              "rounded-2xl pr-12 py-2.5",
                isNote ? "bg-amber-100 dark:bg-amber-950/50" : "bg-muted"
             )}
             minRows={1}
