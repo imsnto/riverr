@@ -1211,7 +1211,8 @@ export const getConversationsForHub = async (hubId: string): Promise<Conversatio
 
 export const getMessagesForConversations = (
   conversationIds: string[], 
-  onUpdate: (messages: ChatMessage[]) => void
+  onUpdate: (messages: ChatMessage[]) => void,
+  publicOnly: boolean = false,
 ) => {
   if (conversationIds.length === 0) {
     onUpdate([]);
@@ -1224,7 +1225,14 @@ export const getMessagesForConversations = (
   for (let i = 0; i < conversationIds.length; i += 30) {
     const chunk = conversationIds.slice(i, i + 30);
     const chunkIndex = i;
-    const q = query(collection(db, 'chat_messages'), where('conversationId', 'in', chunk), orderBy('timestamp', 'asc'));
+    
+    const baseQuery = collection(db, 'chat_messages');
+    let q;
+    if (publicOnly) {
+      q = query(baseQuery, where('conversationId', 'in', chunk), where('type', '==', 'message'), orderBy('timestamp', 'asc'));
+    } else {
+      q = query(baseQuery, where('conversationId', 'in', chunk), orderBy('timestamp', 'asc'));
+    }
 
     const unsub = onSnapshot(q, (snapshot) => {
       const messages: ChatMessage[] = [];

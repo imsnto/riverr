@@ -61,7 +61,8 @@ export default function ChatbotWidgetPage() {
                 setConversation(existingConvo);
                 unsubRef.current = db.getMessagesForConversations(
                     [existingConvo.id], 
-                    (msgs) => setMessages(msgs)
+                    (msgs) => setMessages(msgs),
+                    true // Fetch public messages only
                 );
             }
             if(appUser){
@@ -111,7 +112,8 @@ export default function ChatbotWidgetPage() {
             currentConversation = newConvo;
             unsubRef.current = db.getMessagesForConversations(
                 [newConvo.id], 
-                (msgs) => setMessages(msgs)
+                (msgs) => setMessages(msgs),
+                true // Fetch public messages only
             );
         }
 
@@ -187,7 +189,7 @@ export default function ChatbotWidgetPage() {
                             ))}
                         </div>
                     ) : (
-                        messages.filter(msg => msg.type === 'message').map(msg => (
+                        messages.map(msg => (
                             <div key={msg.id} className={`flex items-end gap-2 ${msg.senderType === 'agent' ? 'justify-start' : 'justify-end'}`}>
                                 {
                                     msg.senderType === 'agent' ? (
@@ -253,7 +255,3 @@ export default function ChatbotWidgetPage() {
         </div>
     );
 }
-
-    
-
-    
