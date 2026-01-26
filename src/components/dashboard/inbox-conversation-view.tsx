@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -27,7 +28,7 @@ interface InboxConversationViewProps {
   onToggleContactDailog: () => void;
 }
 
-const getInitials = (name: string) => {
+const getInitials = (name: string | null) => {
   if (!name) return '?';
   return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
@@ -136,27 +137,33 @@ export default function InboxConversationView({ conversation, messages, contact,
     <div className="flex flex-col h-full bg-background md:bg-card">
       {/* Header */}
       <div className="p-4 border-b flex-shrink-0">
-        <div className="relative flex items-center justify-center h-full">
+        <div className="flex items-center justify-between">
+            <div className="md:w-1/4 flex justify-start">
             {isMobile && onBack && (
-                <Button variant="ghost" size="icon" className="absolute left-0" onClick={onBack}>
+                <Button variant="ghost" size="icon" className="-ml-2" onClick={onBack}>
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
             )}
-            <div className="text-center">
-                <h3 className="font-semibold">{contact.name}</h3>
-                {assignee && <p className="text-xs text-muted-foreground">Assigned to {assignee.name}</p>}
             </div>
-            <div className="absolute right-0 flex items-center">
-                {!isContactPanelOpen && !isMobile && (
-                    <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
-                        <PanelLeftClose className="h-4 w-4" />
-                    </Button>
-                )}
-                {isMobile && (
-                    <Button variant="ghost" size="icon" onClick={onToggleContactDailog}>
-                        <Info className="h-5 w-5" />
-                    </Button>
-                )}
+            <div className="flex flex-col items-center text-center">
+                <Avatar className="h-8 w-8 mb-1">
+                    <AvatarImage src={contact.avatarUrl || undefined} alt={contact.name || ''} />
+                    <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
+                </Avatar>
+                <h3 className="font-semibold">{contact.name}</h3>
+            </div>
+            <div className="md:w-1/4 flex justify-end items-center">
+            {isMobile ? (
+                <Button variant="ghost" size="icon" onClick={onToggleContactDailog}>
+                    <Info className="h-5 w-5" />
+                </Button>
+            ) : (
+                !isContactPanelOpen && (
+                <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
+                    <PanelLeftClose className="h-4 w-4" />
+                </Button>
+                )
+            )}
             </div>
         </div>
       </div>
@@ -214,6 +221,7 @@ export default function InboxConversationView({ conversation, messages, contact,
             value={messageText}
             onChange={e => setMessageText(e.target.value)}
             onKeyDown={handleKeyDown}
+            style={{ fontSize: isMobile ? '16px' : undefined }}
           />
           <div className="absolute right-1.5 bottom-1.5 flex items-center gap-1">
             {isNote && <Button variant="ghost" size="sm" onClick={() => setIsNote(false)}>Cancel Note</Button>}
