@@ -486,7 +486,7 @@ export default function BotSettingsDialog({
                 </div>
             ) : (
              <>
-                <div className="w-80 h-[450px] text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden mb-20" style={{ backgroundColor: watchedValues.backgroundColor }}>
+                <div className="w-80 h-[450px] text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden mb-4" style={{ backgroundColor: watchedValues.backgroundColor }}>
                     {/* Header */}
                     <div className="p-3 border-b flex items-center gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
                         <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" disabled>
@@ -519,7 +519,7 @@ export default function BotSettingsDialog({
                                     <p className="text-sm whitespace-pre-wrap">{watchedValues.welcomeMessage}</p>
                                 </div>
                             </div>
-                            <p className="text-xs text-zinc-500">Fin • AI Agent • Just now</p>
+                            <p className="text-xs text-zinc-500">AI Agent • Just now</p>
 
                             {(messages.length === 0 && !chatStarted) ? (
                                 <div className="pt-2 space-y-2">
