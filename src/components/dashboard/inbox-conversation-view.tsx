@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -136,29 +135,29 @@ export default function InboxConversationView({ conversation, messages, contact,
   return (
     <div className="flex flex-col h-full bg-background md:bg-card">
       {/* Header */}
-      <div className="p-4 border-b flex justify-between items-center flex-shrink-0">
-        <div className="flex items-center gap-2">
-          {isMobile && onBack && (
-            <Button variant="ghost" size="icon" className="-ml-2" onClick={onBack}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          )}
-          <div className="text-center md:text-left">
-            <h3 className="font-semibold">{contact.name}</h3>
-            {assignee && <p className="text-xs text-muted-foreground">Assigned to {assignee.name}</p>}
-          </div>
-        </div>
-        <div>
-            {!isContactPanelOpen && !isMobile && (
-              <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
-                <PanelLeftClose className="h-4 w-4" />
-              </Button>
-            )}
-             {isMobile && (
-                <Button variant="ghost" size="icon" onClick={onToggleContactDailog}>
-                    <Info className="h-4 w-4" />
+      <div className="p-4 border-b flex-shrink-0">
+        <div className="relative flex items-center justify-center h-full">
+            {isMobile && onBack && (
+                <Button variant="ghost" size="icon" className="absolute left-0" onClick={onBack}>
+                    <ArrowLeft className="h-5 w-5" />
                 </Button>
             )}
+            <div className="text-center">
+                <h3 className="font-semibold">{contact.name}</h3>
+                {assignee && <p className="text-xs text-muted-foreground">Assigned to {assignee.name}</p>}
+            </div>
+            <div className="absolute right-0 flex items-center">
+                {!isContactPanelOpen && !isMobile && (
+                    <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
+                        <PanelLeftClose className="h-4 w-4" />
+                    </Button>
+                )}
+                {isMobile && (
+                    <Button variant="ghost" size="icon" onClick={onToggleContactDailog}>
+                        <Info className="h-5 w-5" />
+                    </Button>
+                )}
+            </div>
         </div>
       </div>
 
@@ -207,7 +206,7 @@ export default function InboxConversationView({ conversation, messages, contact,
           <Textarea
             placeholder={isNote ? "Add an internal note..." : "Message..."}
             className={cn(
-              "bg-muted/50 rounded-2xl pr-12 py-2.5",
+              "text-base md:text-sm bg-muted/50 rounded-2xl pr-12 py-2.5",
                isNote ? "bg-amber-100 dark:bg-amber-950/50" : "bg-muted"
             )}
             minRows={1}
