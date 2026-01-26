@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -83,13 +81,13 @@ export default function InboxLayout({
       {/* Conversation View & Contact Panel Wrapper */}
       <div
         className={cn(
-          "h-full flex-col overflow-hidden",
+          "h-full flex-col overflow-hidden min-h-0",
           !selectedConversationId ? 'hidden md:flex' : 'flex'
         )}
       >
         {
           selectedConversation ?
-            <div className={cn("grid h-full grid-cols-[1fr]", isContactPanelOpen ? "xl:grid-cols-[1fr_380px]" : "grid-cols-[1fr]")}>
+            <div className={cn("grid h-full min-h-0 grid-cols-[1fr]", isContactPanelOpen ? "xl:grid-cols-[1fr_380px]" : "grid-cols-[1fr]")}>
               <InboxConversationView
                 conversation={selectedConversation}
                 messages={messages}

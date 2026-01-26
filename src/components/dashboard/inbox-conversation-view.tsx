@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -134,17 +133,17 @@ export default function InboxConversationView({ conversation, messages, contact,
 
 
   return (
-    <div className="grid grid-rows-[auto_1fr_auto] h-full bg-background md:bg-card">
+    <div className="grid grid-rows-[auto_1fr_auto] h-full min-h-0 bg-background md:bg-card">
       {/* Header */}
       <div className="grid grid-cols-3 items-center h-24 border-b p-4 text-center">
         <div className="flex justify-start">
           {isMobile && onBack && (
-            <Button variant="ghost" size="icon" className="-ml-2" onClick={onBack}>
+            <Button variant="ghost" size="icon" className="h-10 w-10" onClick={onBack}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
         </div>
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center justify-center">
           <Avatar className="h-8 w-8">
             <AvatarImage src={contact.avatarUrl || undefined} alt={contact.name || ''} />
             <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
@@ -153,7 +152,7 @@ export default function InboxConversationView({ conversation, messages, contact,
         </div>
         <div className="flex justify-end">
           {isMobile ? (
-            <Button variant="ghost" size="icon" onClick={onToggleContactDailog}>
+            <Button variant="ghost" size="icon" className="h-10 w-10" onClick={onToggleContactDailog}>
               <Info className="h-5 w-5" />
             </Button>
           ) : (
@@ -168,7 +167,7 @@ export default function InboxConversationView({ conversation, messages, contact,
 
 
       {/* Messages */}
-      <ScrollArea>
+      <ScrollArea className="h-full min-h-0">
         <div className="p-4 space-y-6">
           {conversationMessages.map(renderMessageBubble)}
           <div ref={messagesEndRef} />
