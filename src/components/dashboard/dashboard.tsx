@@ -79,6 +79,7 @@ export default function Dashboard({ view }: { view: string }) {
   const { toast } = useToast();
   const messageUnsubscribeRef = useRef<(() => void) | null>(null);
   const isMobile = useIsMobile();
+  const [hideMobileBottomNav, setHideMobileBottomNav] = useState(false);
 
   const [currentView, setCurrentView] = useState<AppView>(view as AppView || 'overview');
   
@@ -742,11 +743,11 @@ if (fetchedConversations.length > 0) {
       case 'overview': return <div className="p-8"><Overview {...overviewProps} /></div>;
       case 'tasks': return (
         <TaskBoard 
-          tasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
+          project={projects.find(p => p.id === selectedProjectId)!}
           projects={projects}
-          selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
+          allTasks={tasks}
+          onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
@@ -806,6 +807,7 @@ if (fetchedConversations.length > 0) {
                             messages={chatMessages}
                             onSendMessage={handleSendMessageFromAgent}
                             onAssignConversation={handleAssignConversation}
+                            setHideMobileBottomNav={setHideMobileBottomNav}
                          />;
       default:
         return (
@@ -897,7 +899,7 @@ if (fetchedConversations.length > 0) {
           />
         )}
       </div>
-      {isMobile && activeHub && (
+      {isMobile && !hideMobileBottomNav && activeHub && (
         <MobileBottomNav
           currentView={currentView}
           onChangeView={handleViewChange}

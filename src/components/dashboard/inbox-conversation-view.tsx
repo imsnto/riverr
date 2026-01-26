@@ -6,13 +6,13 @@ import { Conversation, ChatMessage, Visitor, User } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Card } from '../ui/card';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
-import { PanelLeftClose, ArrowLeft, Info } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Card } from '../ui/card';
 
 interface InboxConversationViewProps {
   conversation: Conversation | null;
@@ -25,20 +25,19 @@ interface InboxConversationViewProps {
   onSendMessage: (conversationId: string, message: Omit<ChatMessage, 'id' | 'conversationId'>) => void;
   onAssignConversation: (conversationId: string, assigneeId: string | null) => void;
   onBack?: () => void;
-  onToggleContactDailog: () => void
+  onToggleContactDailog: () => void;
 }
-
 
 const getInitials = (name: string) => {
   if (!name) return '?';
   return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
-
 export default function InboxConversationView({ conversation, messages, contact, users, appUser, isContactPanelOpen, onToggleContactPanel, onSendMessage, onAssignConversation, onBack, onToggleContactDailog }: InboxConversationViewProps) {
-  const [activeTab, setActiveTab] = useState<'reply' | 'note'>('reply');
+  const [isNote, setIsNote] = useState(false);
   const [messageText, setMessageText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -46,7 +45,8 @@ export default function InboxConversationView({ conversation, messages, contact,
 
   if (!conversation || !contact) {
     return (
-      <div className="grid grid-rows-[auto_1fr_auto] h-full items-center justify-center p-4">
+      <div className="flex h-full items-center justify-center p-4">
+        <p className="text-muted-foreground">Select a conversation to start messaging.</p>
       </div>
     );
   }
@@ -56,7 +56,7 @@ export default function InboxConversationView({ conversation, messages, contact,
 
     const newMessage: Omit<ChatMessage, 'id' | 'conversationId'> = {
       authorId: appUser.id,
-      type: activeTab,
+      type: isNote ? 'note' : 'message',
       senderType: 'agent',
       content: messageText,
       timestamp: new Date().toISOString(),
@@ -64,6 +64,14 @@ export default function InboxConversationView({ conversation, messages, contact,
 
     onSendMessage(conversation.id, newMessage);
     setMessageText('');
+    setIsNote(false);
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   }
 
   const handleAssign = (userId: string | null) => {
@@ -74,7 +82,7 @@ export default function InboxConversationView({ conversation, messages, contact,
   const conversationMessages = messages.filter(m => m.conversationId === conversation.id);
 
   const renderMessageBubble = (msg: ChatMessage) => {
-    const isCustomer = msg.authorId === contact.id;
+    const isCustomer = msg.senderType === 'contact';
     const agent = isCustomer ? null : users.find(u => u.id === msg.authorId);
 
     if (msg.type === 'event') {
@@ -105,16 +113,18 @@ export default function InboxConversationView({ conversation, messages, contact,
     }
 
     return (
-      <div key={msg.id} className={cn("flex items-start gap-4", !isCustomer ? "flex-row-reverse" : "")}>
-        <Avatar className="h-8 w-8 mt-1">
-          <AvatarImage src={isCustomer ? contact.avatarUrl : agent?.avatarUrl} />
-          <AvatarFallback>{isCustomer ? getInitials(contact.name) : getInitials(agent?.name || '')}</AvatarFallback>
-        </Avatar>
+      <div key={msg.id} className={cn("flex items-end gap-2", isCustomer ? "" : "justify-end")}>
+        {isCustomer && (
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={contact.avatarUrl} />
+              <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
+            </Avatar>
+        )}
         <div>
-          <div className={cn("rounded-lg p-3 max-w-xl", isCustomer ? "bg-[#353535b5]" : "bg-primary text-primary-foreground")}>
+          <div className={cn("rounded-2xl p-3 max-w-md", isCustomer ? "bg-muted rounded-bl-none" : "bg-primary text-primary-foreground rounded-br-none")}>
             <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
           </div>
-          <p className={cn("text-[11px] mt-1 opacity-70", isCustomer ? "" : "text-primary-foreground/70")}>
+          <p className={cn("text-[11px] mt-1 opacity-70", isCustomer ? "" : "text-right")}>
             {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}
           </p>
         </div>
@@ -124,95 +134,98 @@ export default function InboxConversationView({ conversation, messages, contact,
 
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-background md:bg-card">
       {/* Header */}
       <div className="p-4 border-b flex justify-between items-center flex-shrink-0">
-        <div className="flex items-center gap-2 py-2">
-          {onBack && (
-            <Button variant="ghost" size="icon" className="md:hidden -ml-2" onClick={onBack}>
+        <div className="flex items-center gap-2">
+          {isMobile && onBack && (
+            <Button variant="ghost" size="icon" className="-ml-2" onClick={onBack}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
-          <p className="text-sm">
-            Conversation with <span className="font-semibold">{contact.name}</span>
-            {assignee && <> assigned to <span className="font-semibold">{assignee.name}</span></>}
-          </p>
+          <div className="text-center md:text-left">
+            <h3 className="font-semibold">{contact.name}</h3>
+            {assignee && <p className="text-xs text-muted-foreground">Assigned to {assignee.name}</p>}
+          </div>
         </div>
-        {!isContactPanelOpen && (
-          <Button variant="ghost" size="icon" className="hidden xl:inline-flex" onClick={onToggleContactPanel}>
-            <PanelLeftClose className="h-4 w-4" />
-          </Button>
-        )}
-         <Button variant="ghost" size="icon" className="xl:hidden" onClick={onToggleContactDailog}>
-            <Info className="h-4 w-4" />
-          </Button>
+        <div>
+            {!isContactPanelOpen && !isMobile && (
+              <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
+                <PanelLeftClose className="h-4 w-4" />
+              </Button>
+            )}
+             {isMobile && (
+                <Button variant="ghost" size="icon" onClick={onToggleContactDailog}>
+                    <Info className="h-4 w-4" />
+                </Button>
+            )}
+        </div>
       </div>
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0">
-        <div className="p-4 space-y-6 h-[10px]">
+        <div className="p-4 space-y-6">
           {conversationMessages.map(renderMessageBubble)}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 
       {/* Composer */}
-      <div className="p-4 border-t bg-card flex-shrink-0">
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'reply' | 'note')}>
-          <TabsList>
-            <TabsTrigger value="reply">Reply</TabsTrigger>
-            <TabsTrigger value="note">Note</TabsTrigger>
-          </TabsList>
-          <TabsContent value="reply" className="mt-2">
-            <Textarea
-              placeholder="Type your reply..."
-              className="mb-2"
-              minRows={3}
-              value={messageText}
-              onChange={e => setMessageText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
-          </TabsContent>
-          <TabsContent value="note" className="mt-2">
-            <Textarea
-              placeholder="Add an internal note..."
-              className="mb-2 bg-amber-50 dark:bg-amber-950/50"
-              minRows={3}
-              value={messageText}
-              onChange={e => setMessageText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
-          </TabsContent>
-        </Tabs>
-        <div className="flex justify-between items-center mt-2">
-          <div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">Assign</Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onSelect={() => handleAssign(null)}>Unassigned</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {users.map(user => (
-                  <DropdownMenuItem key={user.id} onSelect={() => handleAssign(user.id)}>
-                    {user.name}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={handleSend} disabled={!messageText.trim()}>Send {activeTab === 'note' && ' Note'}</Button>
+       <div className={cn("p-2 border-t bg-background md:bg-card flex items-end gap-2", isNote && "bg-amber-50 dark:bg-amber-950/50")}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full">
+              <Plus className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" side="top">
+            <DropdownMenuItem onSelect={() => setIsNote(true)}>
+              <StickyNote className="mr-2 h-4 w-4"/>
+              Add Internal Note
+            </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <UserIcon className="mr-2 h-4 w-4" />
+                <span>Assign to...</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onSelect={() => handleAssign(null)}>Unassigned</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {users.map(user => (
+                    <DropdownMenuItem key={user.id} onSelect={() => handleAssign(user.id)}>
+                      {user.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <div className="relative flex-1">
+          <Textarea
+            placeholder={isNote ? "Add an internal note..." : "Message..."}
+            className={cn(
+              "bg-muted/50 rounded-2xl pr-12 py-2.5",
+               isNote ? "bg-amber-100 dark:bg-amber-950/50" : "bg-muted"
+            )}
+            minRows={1}
+            maxRows={5}
+            value={messageText}
+            onChange={e => setMessageText(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <div className="absolute right-1.5 bottom-1.5 flex items-center gap-1">
+            {isNote && <Button variant="ghost" size="sm" onClick={() => setIsNote(false)}>Cancel Note</Button>}
+            <Button 
+                size="icon" 
+                className="h-8 w-8 rounded-full" 
+                onClick={handleSend}
+                disabled={!messageText.trim()}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </div>

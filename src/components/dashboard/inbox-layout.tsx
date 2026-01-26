@@ -10,6 +10,7 @@ import InboxContactPanel from './inbox-contact-panel';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import ContactDetailDialog from './inbox-contact-dailog';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface InboxLayoutProps {
   users: User[];
@@ -19,6 +20,7 @@ interface InboxLayoutProps {
   messages: ChatMessage[];
   onSendMessage: (conversationId: string, content: string, type: 'reply' | 'note') => void;
   onAssignConversation: (conversationId: string, assigneeId: string | null) => void;
+  setHideMobileBottomNav?: (hide: boolean) => void;
 }
 
 export default function InboxLayout({
@@ -29,10 +31,18 @@ export default function InboxLayout({
   messages,
   onSendMessage,
   onAssignConversation,
+  setHideMobileBottomNav,
 }: InboxLayoutProps) {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isContactPanelOpen, setIsContactPanelOpen] = useState(true);
   const [isContactDailog, setIsContactDailog] = useState(false);
+  const isMobile = useIsMobile();
+
+  useEffect(() => {
+    if (setHideMobileBottomNav) {
+      setHideMobileBottomNav(isMobile && !!selectedConversationId);
+    }
+  }, [isMobile, selectedConversationId, setHideMobileBottomNav]);
 
   useEffect(() => {
     // On desktop, select the first conversation by default
