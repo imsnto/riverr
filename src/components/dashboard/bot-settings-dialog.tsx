@@ -473,7 +473,7 @@ export default function BotSettingsDialog({
                                     </FormItem>
                                 )}
                             />
-                            <FormField
+                             <FormField
                                 control={form.control}
                                 name="backgroundColor"
                                 render={({ field }) => (
@@ -482,10 +482,18 @@ export default function BotSettingsDialog({
                                     <FormControl>
                                     <div className="flex items-center gap-2">
                                         <Input placeholder="#111827" {...field} />
-                                        <div
-                                        className="w-8 h-8 rounded-md border"
-                                        style={{ backgroundColor: field.value }}
-                                        ></div>
+                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer">
+                                            <div
+                                                className="w-full h-full"
+                                                style={{ backgroundColor: field.value }}
+                                            ></div>
+                                            <input
+                                                type="color"
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            />
+                                        </div>
                                     </div>
                                     </FormControl>
                                     <FormMessage />
@@ -500,11 +508,19 @@ export default function BotSettingsDialog({
                                     <FormLabel>Header Text Color</FormLabel>
                                     <FormControl>
                                     <div className="flex items-center gap-2">
-                                        <Input placeholder="#ffffff" {...field} />
-                                        <div
-                                        className="w-8 h-8 rounded-md border"
-                                        style={{ backgroundColor: field.value }}
-                                        ></div>
+                                        <Input placeholder="#ffffff" {...field} value={field.value || ''} />
+                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer">
+                                            <div
+                                                className="w-full h-full"
+                                                style={{ backgroundColor: field.value || '#ffffff' }}
+                                            ></div>
+                                            <input
+                                                type="color"
+                                                value={field.value || '#ffffff'}
+                                                onChange={field.onChange}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            />
+                                        </div>
                                     </div>
                                     </FormControl>
                                     <FormMessage />
@@ -520,7 +536,18 @@ export default function BotSettingsDialog({
                                     <FormControl>
                                         <div className="flex items-center gap-2">
                                             <Input placeholder="#0057ff" {...field} />
-                                            <div className="w-8 h-8 rounded-md border" style={{ backgroundColor: field.value }}></div>
+                                            <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer">
+                                                <div
+                                                    className="w-full h-full"
+                                                    style={{ backgroundColor: field.value }}
+                                                ></div>
+                                                <input
+                                                    type="color"
+                                                    value={field.value}
+                                                    onChange={field.onChange}
+                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                />
+                                            </div>
                                         </div>
                                     </FormControl>
                                      <FormMessage />
@@ -535,11 +562,19 @@ export default function BotSettingsDialog({
                                     <FormLabel>Customer Message Text Color</FormLabel>
                                     <FormControl>
                                     <div className="flex items-center gap-2">
-                                        <Input placeholder="#ffffff" {...field} />
-                                        <div
-                                        className="w-8 h-8 rounded-md border"
-                                        style={{ backgroundColor: field.value }}
-                                        ></div>
+                                        <Input placeholder="#ffffff" {...field} value={field.value || ''} />
+                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer">
+                                            <div
+                                                className="w-full h-full"
+                                                style={{ backgroundColor: field.value || '#ffffff' }}
+                                            ></div>
+                                            <input
+                                                type="color"
+                                                value={field.value || '#ffffff'}
+                                                onChange={field.onChange}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            />
+                                        </div>
                                     </div>
                                     </FormControl>
                                     <FormMessage />
@@ -616,7 +651,7 @@ export default function BotSettingsDialog({
                         <div className="flex items-center gap-2">
                           <h3 className="font-bold truncate text-base" style={{ color: watchedValues.headerTextColor || '#ffffff' }}>{watchedValues.name}</h3>
                           {selectedAgents.length > 0 && (
-                            <div className="flex -space-x-2 overflow-hidden">
+                            <div className="flex -space-x-2 overflow-hidden ml-2">
                               {selectedAgents.map(agent => (
                                 <Avatar key={agent.id} className="h-5 w-5 border-2" style={{ borderColor: watchedValues.backgroundColor }}>
                                     <AvatarImage src={agent.avatarUrl} alt={agent.name} />

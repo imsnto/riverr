@@ -370,7 +370,7 @@ export default function ChatbotWidgetPage() {
           <div className="flex items-center gap-2">
             <h3 className="font-bold truncate text-base" style={{ color: bot.styleSettings?.headerTextColor || '#ffffff' }}>{bot.name}</h3>
             {bot.agents && bot.agents.length > 0 && (
-              <div className="flex -space-x-2 overflow-hidden">
+              <div className="flex -space-x-2 overflow-hidden ml-2">
                 {bot.agents.map(agent => (
                   <Avatar key={agent.id} className="h-5 w-5 border-2" style={{ borderColor: bot.styleSettings?.backgroundColor }}>
                       <AvatarImage src={agent.avatarUrl} alt={agent.name} />
