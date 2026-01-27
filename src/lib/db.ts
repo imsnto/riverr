@@ -274,6 +274,14 @@ export const deleteSpace = async (spaceId: string): Promise<void> => {
 };
 
 // --- Hub Management ---
+export const getHub = async (hubId: string): Promise<Hub | null> => {
+    const docRef = doc(db, "hubs", hubId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as Hub;
+    }
+    return null;
+}
 export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
   const q = query(collection(db, 'hubs'), where('spaceId', '==', spaceId));
   const querySnapshot = await getDocs(q);

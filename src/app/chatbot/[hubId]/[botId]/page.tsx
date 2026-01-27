@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { Bot as BotData, Visitor, Conversation, ChatMessage, Attachment } from '@/lib/data';
+import { Bot as BotData, Visitor, Conversation, ChatMessage, Attachment, Contact } from '@/lib/data';
 import * as db from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -37,6 +37,7 @@ export default function ChatbotWidgetPage() {
   const [bot, setBot] = useState<BotData | null>(null);
   const [visitor, setVisitor] = useState<Visitor | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [spaceId, setSpaceId] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
@@ -66,8 +67,16 @@ export default function ChatbotWidgetPage() {
     const initialize = async () => {
       setIsLoading(true);
 
-      const fetchedBot = await db.getBot(botId);
+      const [fetchedBot, hub] = await Promise.all([
+        db.getBot(botId),
+        db.getHub(hubId)
+      ]);
+
       setBot(fetchedBot);
+      if(hub) {
+        setSpaceId(hub.spaceId);
+      }
+
 
       // visitor id
       let visitorId = localStorage.getItem('riverr_chat_visitor_id');
@@ -130,22 +139,52 @@ export default function ChatbotWidgetPage() {
 
   const handleSendMessage = async () => {
     if (!messageText.trim() && attachments.length === 0) return;
-    if (!visitor) return;
+    if (!visitor || !spaceId) return;
 
     let currentConversation = conversation;
     setLoading(true);
 
     if (!currentConversation) {
-      const newConvoData: Omit<Conversation, 'id'> = {
-        hubId,
-        contactId: null,
-        visitorId: visitor.id,
-        assigneeId: null,
-        status: 'unassigned',
-        lastMessage: messageText || "Sent an attachment",
-        lastMessageAt: new Date().toISOString(),
-        lastMessageAuthor: visitor.name,
-      };
+        let contactId = visitor.contactId;
+
+        if (!contactId) {
+            const newContactData: Omit<Contact, 'id'> = {
+                tenantId: spaceId,
+                name: visitor.name || null,
+                emails: visitor.email ? [visitor.email] : [],
+                primaryEmail: visitor.email || null,
+                phones: [],
+                primaryPhone: null,
+                company: null,
+                source: 'chat',
+                externalIds: { visitorId: visitor.id },
+                tags: [],
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                lastSeenAt: new Date(),
+                lastMessageAt: new Date(),
+                lastOrderAt: null,
+                lastCallAt: null,
+                mergeParentId: null,
+                isMerged: false,
+            };
+
+            const newContact = await db.addContact(newContactData);
+            contactId = newContact.id;
+            await db.updateVisitor(visitor.id, { contactId });
+            setVisitor(v => v ? {...v, contactId} : null);
+        }
+
+        const newConvoData: Omit<Conversation, 'id'> = {
+            hubId,
+            contactId: contactId,
+            visitorId: visitor.id,
+            assigneeId: null,
+            status: 'unassigned',
+            lastMessage: messageText || "Sent an attachment",
+            lastMessageAt: new Date().toISOString(),
+            lastMessageAuthor: visitor.name,
+        };
 
       const newConvo = await db.addConversation(newConvoData);
       setConversation(newConvo);
