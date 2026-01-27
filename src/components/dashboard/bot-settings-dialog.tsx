@@ -688,7 +688,7 @@ export default function BotSettingsDialog({
                         <div className="flex items-center gap-3">
                             <h3 className="font-bold truncate text-base" style={{ color: watchedValues.headerTextColor || '#ffffff' }}>{watchedValues.name}</h3>
                             {selectedAgents.length > 0 && (
-                                <div className="flex -space-x-2 overflow-hidden">
+                                <div className="flex -space-x-2 overflow-hidden ml-2">
                                 {selectedAgents.map(agent => (
                                     <Avatar key={agent.id} className="h-5 w-5 border-2" style={{ borderColor: watchedValues.backgroundColor }}>
                                         <AvatarImage src={agent.avatarUrl} alt={agent.name} />
@@ -708,7 +708,7 @@ export default function BotSettingsDialog({
                     
                     {/* Body */}
                     <ScrollArea className="flex-1" ref={scrollAreaRef}>
-                        <div className="p-4 space-y-4 max-w-full break-all text-wrap">
+                        <div className="p-4 space-y-4 max-w-full text-wrap">
                              <div className="flex items-end gap-2">
                                 <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
                                     <p className="text-sm whitespace-pre-wrap">{watchedValues.welcomeMessage}</p>
@@ -728,7 +728,7 @@ export default function BotSettingsDialog({
                                 >
                                     {isAgent ? (
                                         <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
-                                        {msg.content && <div className="text-sm prose prose-sm prose-invert" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
+                                        {msg.content && <div className="text-sm prose prose-sm prose-invert [hyphens:manual]" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
                                         </div>
                                     ) : (
                                         <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-words" style={{ backgroundColor: watchedValues.primaryColor, color: watchedValues.customerTextColor || '#ffffff' }}>
