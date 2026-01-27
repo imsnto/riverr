@@ -1,4 +1,5 @@
 
+
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -443,6 +444,11 @@ if (fetchedConversations.length > 0) {
         }
     })
   };
+  
+  const handleUpdateTicket = (updatedTicket: Ticket) => {
+    setTickets(prev => prev.map(t => t.id === updatedTicket.id ? updatedTicket : t));
+    db.updateTicket(updatedTicket.id, updatedTicket);
+  };
 
   const handleCreateTicket = async (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => {
     if (!appUser) return;
@@ -849,6 +855,7 @@ if (fetchedConversations.length > 0) {
                             onDataRefresh={fetchData}
                             tickets={tickets}
                             onCreateTicket={handleCreateTicket}
+                            onUpdateTicket={handleUpdateTicket}
                          />;
       default:
         return (

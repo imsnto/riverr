@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -29,6 +30,7 @@ interface InboxLayoutProps {
   onDataRefresh: () => void;
   tickets: Ticket[];
   onCreateTicket: (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => void;
+  onUpdateTicket: (ticket: Ticket) => void;
 }
 
 export default function InboxLayout({
@@ -49,6 +51,7 @@ export default function InboxLayout({
   onDataRefresh,
   tickets,
   onCreateTicket,
+  onUpdateTicket,
 }: InboxLayoutProps) {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isContactPanelOpen, setIsContactPanelOpen] = useState(true);
@@ -128,6 +131,7 @@ export default function InboxLayout({
                 onDataRefresh={onDataRefresh}
                 tickets={tickets}
                 onCreateTicket={onCreateTicket}
+                onUpdateTicket={onUpdateTicket}
               />
               {isContactPanelOpen && (
                 <div className="hidden xl:block h-full min-h-0">
