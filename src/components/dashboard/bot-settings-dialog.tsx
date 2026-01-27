@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Bot as BotData, Visitor, ChatMessage, User, HelpCenter } from '@/lib/data';
-import { Bot, MessageSquare, ChevronLeft, MoreHorizontal, X, ChevronDown, Home, Ticket, Send, Check, ChevronsUpDown, Library } from 'lucide-react';
+import { Bot, MessageSquare, ChevronLeft, MoreHorizontal, X, ChevronDown, Home, Ticket, Send, Check, ChevronsUpDown, Library, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Textarea } from '../ui/textarea';
@@ -459,6 +459,7 @@ export default function BotSettingsDialog({
                                                     }}
                                                 />
                                                 <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                                    <Upload className="mr-2 h-4 w-4" />
                                                     Upload Logo
                                                 </Button>
                                                 {field.value && (
@@ -605,31 +606,31 @@ export default function BotSettingsDialog({
              <>
                 <div className="w-80 h-[450px] text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden mb-4" style={{ backgroundColor: watchedValues.backgroundColor }}>
                     {/* Header */}
-                    <div className="p-3 border-b flex items-center justify-between gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-                        <div className="w-8" />
-                        <div className="flex flex-col items-center text-center">
-                            {watchedValues.logoUrl ? (
-                                <img src={watchedValues.logoUrl} alt="Bot Logo" className="h-8 w-8 object-contain rounded-full" />
-                            ) : (
-                                <div className="h-8 w-8 shrink-0" />
-                            )}
-                            <h3 className="font-bold truncate text-base mt-1" style={{ color: watchedValues.headerTextColor || '#ffffff' }}>{watchedValues.name}</h3>
-                            {selectedAgents.length > 0 && (
-                                <div className="flex justify-center -space-x-2 overflow-hidden mt-1">
-                                    {selectedAgents.map(agent => (
-                                        <Avatar key={agent.id} className="h-5 w-5 border-2" style={{ borderColor: watchedValues.backgroundColor }}>
-                                            <AvatarImage src={agent.avatarUrl} alt={agent.name} />
-                                            <AvatarFallback>{getInitials(agent.name)}</AvatarFallback>
-                                        </Avatar>
-                                    ))}
-                                </div>
-                            )}
+                    <div className="p-3 border-b flex items-center justify-between shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                      <div className="flex items-center gap-3">
+                        {watchedValues.logoUrl ? (
+                          <img src={watchedValues.logoUrl} alt="Bot Logo" className="h-8 w-8 object-contain rounded-full" />
+                        ) : (
+                          <div className="h-8 w-8 shrink-0" />
+                        )}
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold truncate text-base" style={{ color: watchedValues.headerTextColor || '#ffffff' }}>{watchedValues.name}</h3>
+                          {selectedAgents.length > 0 && (
+                            <div className="flex -space-x-2 overflow-hidden">
+                              {selectedAgents.map(agent => (
+                                <Avatar key={agent.id} className="h-5 w-5 border-2" style={{ borderColor: watchedValues.backgroundColor }}>
+                                    <AvatarImage src={agent.avatarUrl} alt={agent.name} />
+                                    <AvatarFallback>{getInitials(agent.name)}</AvatarFallback>
+                                </Avatar>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => onOpenChange(false)}>
-                                <X className="h-5 w-5" />
-                            </Button>
-                        </div>
+                      </div>
+
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => onOpenChange(false)}>
+                        <X className="h-5 w-5" />
+                      </Button>
                     </div>
                     
                     {/* Body */}
