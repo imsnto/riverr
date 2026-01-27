@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -11,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { ScrollArea } from '../ui/scroll-area';
 import { 
     AtSign, Calendar, Flag, MessageSquare, User as UserIcon, X, Tag, Copy, 
-    GitMerge, Briefcase, Clock, FileText, ChevronRight, CheckCircle, Edit3
+    GitMerge, Briefcase, Clock, FileText, ChevronRight, CheckCircle, Edit3, Edit
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -199,6 +200,21 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
                 <ScrollArea className="flex-1">
                   <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
+                        {/* LATEST MESSAGE */}
+                        {ticket.lastMessagePreview && (
+                            <div>
+                                <h4 className="font-semibold mb-2">Latest Message</h4>
+                                <Card>
+                                    <CardContent className="p-4">
+                                        <p className="text-sm text-muted-foreground italic">"{ticket.lastMessagePreview}"</p>
+                                        <div className="text-xs text-right mt-2">
+                                            - {ticket.lastMessageAuthor}, {formatDistanceToNow(parseISO(ticket.lastMessageAt!), { addSuffix: true })}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
+
                         {/* ACTIVITY TIMELINE */}
                         <div>
                             <h4 className="font-semibold mb-2">Activity</h4>
@@ -270,6 +286,22 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
                                 </CardFooter>
                             </Card>
                         )}
+                         {/* CONVERSATION */}
+                        {ticket.conversationId && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-base">
+                                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                        Linked Conversation
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <Button variant="outline" className="w-full" onClick={handleOpenConversation}>
+                                        View Conversation
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        )}
                         {/* DETAILS */}
                         <Card>
                             <CardHeader><CardTitle>Details</CardTitle></CardHeader>
@@ -312,7 +344,9 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
                 </ScrollArea>
                  <DialogFooter className="p-6 pt-4 border-t flex justify-between">
                     <div>
-                        <Button variant="outline" onClick={handleOpenConversation}><MessageSquare className="mr-2 h-4 w-4"/> Open Conversation</Button>
+                        {ticket.conversationId && (
+                            <Button variant="outline" onClick={handleOpenConversation}><MessageSquare className="mr-2 h-4 w-4"/> Open Conversation</Button>
+                        )}
                     </div>
                     <div className="flex gap-2">
                         <Button variant="outline" onClick={() => {}}><Edit3 className="mr-2 h-4 w-4" /> Add Note</Button>
