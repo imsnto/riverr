@@ -70,9 +70,12 @@ export default async function HelpCenterPage({ params }: { params: { hcId: strin
         return <div className="text-center p-8">Help Center not found.</div>;
     }
 
-    const { helpCenter, collections } = data;
+    const { helpCenter, collections, articles } = data;
     const topLevelCollections = collections.filter(c => !c.parentId);
+    const rootArticles = articles.filter(a => !a.folderId);
     const featuredLinks = topLevelCollections.slice(0, 5);
+
+    const gridItems = [...topLevelCollections, ...rootArticles];
 
     return (
         <div className="bg-background text-foreground">
@@ -108,28 +111,50 @@ export default async function HelpCenterPage({ params }: { params: { hcId: strin
                     </div>
                 </div>
 
-                {/* Collection Grid */}
+                {/* Collection and Article Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {topLevelCollections.map(collection => (
-                         <Link href={`/hc/${params.hcId}/collections/${collection.id}`} key={collection.id}>
-                            <Card className="hover:shadow-lg transition-shadow h-full">
-                                <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-                                    <div className="bg-muted p-3 rounded-lg">
-                                        {getIconForCollection(collection.name)}
-                                    </div>
-                                    <CardTitle className="text-lg">{collection.name}</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex items-center text-sm text-muted-foreground gap-2">
-                                        <Users className="h-4 w-4"/> 
-                                        <span>{collection.authorCount} authors</span>
-                                        <span>•</span>
-                                        <span>{collection.articleCount} articles</span>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </Link>
-                    ))}
+                    {gridItems.map(item => {
+                         if ('articleCount' in item) {
+                            const collection = item as (HelpCenterCollection & { articleCount: number; authorCount: number });
+                            return (
+                                <Link href={`/hc/${params.hcId}/collections/${collection.id}`} key={collection.id}>
+                                    <Card className="hover:shadow-lg transition-shadow h-full">
+                                        <CardHeader className="flex flex-row items-center gap-4 space-y-0">
+                                            <div className="bg-muted p-3 rounded-lg">
+                                                {getIconForCollection(collection.name)}
+                                            </div>
+                                            <CardTitle className="text-lg">{collection.name}</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="flex items-center text-sm text-muted-foreground gap-2">
+                                                <Users className="h-4 w-4"/> 
+                                                <span>{collection.authorCount} authors</span>
+                                                <span>•</span>
+                                                <span>{collection.articleCount} articles</span>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </Link>
+                            )
+                         } else {
+                            const article = item as HelpCenterArticle;
+                            return (
+                                <Link href={`/hc/${params.hcId}/articles/${article.id}`} key={article.id}>
+                                    <Card className="hover:shadow-lg transition-shadow h-full">
+                                        <CardHeader className="flex flex-row items-center gap-4 space-y-0">
+                                            <div className="bg-muted p-3 rounded-lg">
+                                                <FileText className="h-6 w-6" />
+                                            </div>
+                                            <CardTitle className="text-lg">{article.title}</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <p className="text-sm text-muted-foreground line-clamp-2">{article.subtitle || 'Click to read more...'}</p>
+                                        </CardContent>
+                                    </Card>
+                                </Link>
+                            )
+                         }
+                    })}
                 </div>
             </main>
         </div>
