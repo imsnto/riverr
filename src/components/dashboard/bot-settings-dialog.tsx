@@ -22,8 +22,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Bot as BotData, Visitor, ChatMessage, User, HelpCenter } from '@/lib/data';
-import { Bot, MessageSquare, ChevronLeft, MoreHorizontal, X, ChevronDown, Home, Ticket, Send, Check, ChevronsUpDown, Library, Upload } from 'lucide-react';
+import { Bot as BotData, ChatMessage, User, HelpCenter } from '@/lib/data';
+import { Bot as BotIcon, MessageSquare, ChevronLeft, MoreHorizontal, X, ChevronDown, Home, Ticket, Send, Check, ChevronsUpDown, Library, Upload, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Textarea } from '../ui/textarea';
@@ -36,6 +36,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Badge } from '../ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Checkbox } from '../ui/checkbox';
+import { useAuth } from '@/hooks/use-auth';
+import { answerChatQuestion } from '@/ai/flows/answer-chat-question';
+import { marked } from 'marked';
 
 
 function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
@@ -119,9 +122,6 @@ interface BotSettingsDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   bot: BotData | null;
   onSave: (botData: BotData | Omit<BotData, 'id' | 'hubId'>) => void;
-  onSendMessage: (content: string) => void;
-  messages: ChatMessage[];
-  contact: Visitor | null;
   appUser: User | null;
   allUsers: User[];
   helpCenters: HelpCenter[];
@@ -137,18 +137,18 @@ export default function BotSettingsDialog({
   onOpenChange,
   bot,
   onSave,
-  onSendMessage,
-  messages,
-  contact,
   allUsers,
   helpCenters,
 }: BotSettingsDialogProps) {
   const [chatStarted, setChatStarted] = useState(false);
   const [previewMessage, setPreviewMessage] = useState('');
+  const [previewMessages, setPreviewMessages] = useState<ChatMessage[]>([]);
+  const [isAiThinking, setIsAiThinking] = useState(false);
   const [isPreviewMinimized, setIsPreviewMinimized] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [origin, setOrigin] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { appUser } = useAuth();
 
 
   const form = useForm<BotSettingsFormValues>({
@@ -179,7 +179,7 @@ export default function BotSettingsDialog({
         viewport.scrollTop = viewport.scrollHeight;
       }
     }
-  }, [messages, chatStarted]);
+  }, [previewMessages, isAiThinking]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -226,6 +226,7 @@ export default function BotSettingsDialog({
       if (!isOpen) {
           setChatStarted(false);
           setPreviewMessage('');
+          setPreviewMessages([]);
           setIsPreviewMinimized(false);
       }
   }, [isOpen]);
@@ -267,27 +268,64 @@ export default function BotSettingsDialog({
     onOpenChange(false);
   };
   
-  const handlePreviewSend = () => {
-    if (!previewMessage.trim()) return;
-    onSendMessage(previewMessage);
-    setPreviewMessage('');
-  }
+    const handlePreviewSend = async () => {
+        if (!previewMessage.trim() || !appUser || !bot) return;
 
-  const renderMessageBubble = (msg: ChatMessage) => {
-    const uniqueKey = `${msg.id}-${msg.timestamp}`;
-    
-    if (msg.type !== 'message' || !contact) {
-        return null;
-    }
-    
-    return (
-      <div key={uniqueKey} className="flex items-end gap-2 justify-end">
-        <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm" style={{ backgroundColor: watchedValues.primaryColor, color: watchedValues.customerTextColor || '#ffffff' }}>
-          <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-        </div>
-      </div>
-    );
-  };
+        const userMessage: ChatMessage = {
+            id: `user-msg-${Date.now()}`,
+            conversationId: 'preview-convo',
+            authorId: appUser.id,
+            type: 'message',
+            senderType: 'contact', // Simulating a contact
+            content: previewMessage,
+            timestamp: new Date().toISOString(),
+        };
+        setPreviewMessages(prev => [...prev, userMessage]);
+        const question = previewMessage;
+        setPreviewMessage('');
+        setIsAiThinking(true);
+
+        try {
+            const aiResponse = await answerChatQuestion({
+                question: question,
+                hubId: bot.hubId,
+                allowedHelpCenterIds: watchedValues.allowedHelpCenterIds || [],
+                userId: 'preview-user-id', // Simulate a generic user for access control check
+            });
+
+            let responseContent = aiResponse.answer;
+            if (aiResponse.sources && aiResponse.sources.length > 0) {
+                const sourcesText = aiResponse.sources.map(source => `- [${source.title}](${source.url})`).join('\n');
+                responseContent += `\n\n**Sources:**\n${sourcesText}`;
+            }
+
+            const aiMessage: ChatMessage = {
+                id: `ai-msg-${Date.now()}`,
+                conversationId: 'preview-convo',
+                authorId: 'ai_agent',
+                type: 'message',
+                senderType: 'agent',
+                content: responseContent,
+                timestamp: new Date().toISOString(),
+            };
+            setPreviewMessages(prev => [...prev, aiMessage]);
+
+        } catch (e) {
+            console.error("AI preview failed:", e);
+            const errorMessage: ChatMessage = {
+                 id: `err-msg-${Date.now()}`,
+                conversationId: 'preview-convo',
+                authorId: 'ai_agent',
+                type: 'message',
+                senderType: 'agent',
+                content: "Sorry, I encountered an error during this preview. Check the server logs for more details.",
+                timestamp: new Date().toISOString(),
+            };
+            setPreviewMessages(prev => [...prev, errorMessage]);
+        } finally {
+            setIsAiThinking(false);
+        }
+    };
   
   const embedScript = bot ? `
   <script
@@ -439,7 +477,7 @@ export default function BotSettingsDialog({
                                                 <Avatar className="h-16 w-16 rounded-md">
                                                     <AvatarImage src={field.value || undefined} alt="Logo preview" className="object-contain" />
                                                     <AvatarFallback className="rounded-md">
-                                                        <Bot />
+                                                        <BotIcon />
                                                     </AvatarFallback>
                                                 </Avatar>
                                                 <input
@@ -648,10 +686,11 @@ export default function BotSettingsDialog({
                         ) : (
                           <div className="h-8 w-8 shrink-0" />
                         )}
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold truncate text-base" style={{ color: watchedValues.headerTextColor || '#ffffff' }}>{watchedValues.name}</h3>
+                        <h3 className="font-bold truncate text-base" style={{ color: watchedValues.headerTextColor || '#ffffff' }}>{watchedValues.name}</h3>
+                      </div>
+                       <div className="flex items-center">
                           {selectedAgents.length > 0 && (
-                            <div className="flex -space-x-2 overflow-hidden ml-2">
+                            <div className="flex -space-x-2 overflow-hidden mr-2">
                               {selectedAgents.map(agent => (
                                 <Avatar key={agent.id} className="h-5 w-5 border-2" style={{ borderColor: watchedValues.backgroundColor }}>
                                     <AvatarImage src={agent.avatarUrl} alt={agent.name} />
@@ -660,52 +699,82 @@ export default function BotSettingsDialog({
                               ))}
                             </div>
                           )}
-                        </div>
-                      </div>
-
-                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => onOpenChange(false)}>
-                        <X className="h-5 w-5" />
-                      </Button>
+                         <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => onOpenChange(false)}>
+                            <X className="h-5 w-5" />
+                        </Button>
+                       </div>
                     </div>
                     
                     {/* Body */}
                     <ScrollArea className="flex-1" ref={scrollAreaRef}>
                         <div className="p-4 space-y-4 max-w-full break-all text-wrap">
-                            <div className="flex items-end gap-2">
+                             <div className="flex items-end gap-2">
                                 <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
                                     <p className="text-sm whitespace-pre-wrap">{watchedValues.welcomeMessage}</p>
                                 </div>
                             </div>
-                            <p className="text-xs text-zinc-500">AI Agent • Just now</p>
+                             <p className="text-xs text-zinc-500">AI Agent • Just now</p>
 
-                            {(messages.length > 0) && messages.map(renderMessageBubble)}
+                            {previewMessages.map(msg => {
+                                const isAgent = msg.senderType === 'agent';
+                                const isUser = msg.senderType === 'contact';
+                                const contentHtml = isAgent ? marked(msg.content) : msg.content;
+                                
+                                return (
+                                <div
+                                    key={msg.id}
+                                    className={cn('flex items-end gap-2', isAgent ? 'justify-start' : 'justify-end')}
+                                >
+                                    {isAgent ? (
+                                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
+                                        {msg.content && <div className="text-sm prose prose-sm prose-invert" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
+                                        </div>
+                                    ) : (
+                                        <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm" style={{ backgroundColor: watchedValues.primaryColor, color: watchedValues.customerTextColor || '#ffffff' }}>
+                                            {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+                                        </div>
+                                    )}
+                                </div>
+                                );
+                            })}
+                            {isAiThinking && (
+                                <div className="flex items-end gap-2">
+                                    <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs flex items-center gap-2">
+                                    <BotIcon className="h-4 w-4 animate-pulse" />
+                                    <p className="text-sm">Thinking...</p>
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
                     </ScrollArea>
                     
                     {/* Footer */}
-                    <div className="p-4 border-t shrink-0 space-y-3" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-                        {(chatStarted || messages.length > 0) ? (
-                            <div className="relative">
-                            <Textarea 
+                    <div className="p-2 border-t shrink-0 flex items-end gap-2" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                        <div className="relative flex-1">
+                            <Textarea
                                 placeholder="Message..."
                                 value={previewMessage}
                                 onChange={(e) => setPreviewMessage(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePreviewSend(); }}}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handlePreviewSend();
+                                    }
+                                }}
                                 minRows={1}
-                                className="bg-zinc-800 border-zinc-700 text-white pr-10"
+                                className="bg-zinc-800 border-zinc-700 text-white pr-10 resize-none"
                             />
-                            <Button size="icon" variant="ghost" onClick={handlePreviewSend} disabled={!previewMessage.trim()} className="absolute right-1 bottom-1 h-8 w-8 hover:bg-zinc-700">
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={handlePreviewSend}
+                                disabled={!previewMessage.trim()}
+                                className="absolute right-1 bottom-1 h-8 w-8 hover:bg-zinc-700"
+                            >
                                 <Send className="h-4 w-4" />
                             </Button>
-                            </div>
-                        ) : (
-                            <div className="text-center">
-                                <Button className="w-full bg-zinc-800 hover:bg-zinc-700 text-white" onClick={() => setChatStarted(true)}>
-                                    <MessageSquare className="h-4 w-4 mr-2" />
-                                    Send us a message
-                                </Button>
-                            </div>
-                        )}
+                        </div>
                     </div>
                 </div>
                 <div className="absolute bottom-6 right-6 h-14 w-14 rounded-full flex items-center justify-center shadow-lg cursor-pointer bg-white" onClick={() => setIsPreviewMinimized(true)}>

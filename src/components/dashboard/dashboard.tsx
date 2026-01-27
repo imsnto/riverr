@@ -662,65 +662,6 @@ if (fetchedConversations.length > 0) {
     }
   };
 
-  const handleSendMessageFromBotPreview = async (content: string) => {
-    if (!activeHub) return;
-    
-    const visitorId = 'preview-contact-1'; // Hardcoded for preview user
-    const timestamp = new Date().toISOString();
-
-    // Ensure preview visitor exists
-    const visitor = await db.getOrCreateVisitor(visitorId, { name: 'Preview User' });
-    if (!visitors.some(c => c.id === visitorId)) {
-        setVisitors(prev => [...prev, visitor]);
-    }
-    
-    let conversation: Conversation;
-    const existingConvo = chatConversations.find(c => c.visitorId === visitorId && c.hubId === activeHub.id);
-    
-    if (existingConvo) {
-        conversation = {
-            ...existingConvo,
-            lastMessage: content,
-            lastMessageAt: timestamp,
-            lastMessageAuthor: 'Preview User',
-        };
-        await db.updateConversation(conversation.id, {
-            lastMessage: content,
-            lastMessageAt: timestamp,
-            lastMessageAuthor: 'Preview User',
-        });
-    } else {
-        const newConversationData: Omit<Conversation, 'id'> = {
-            hubId: activeHub.id,
-            contactId: null,
-            visitorId: visitorId,
-            assigneeId: null,
-            status: 'unassigned',
-            lastMessage: content,
-            lastMessageAt: timestamp,
-            lastMessageAuthor: 'Preview User',
-        };
-        conversation = await db.addConversation(newConversationData);
-    }
-    
-    const newMessageData: Omit<ChatMessage, 'id'> = {
-        conversationId: conversation.id,
-        authorId: visitorId,
-        type: 'message',
-        senderType: 'contact',
-        content: content,
-        timestamp: timestamp,
-    };
-    const newMessage = await db.addChatMessage(newMessageData);
-
-    // Optimistic update of local state
-    setChatConversations(prevConvos => {
-      const otherConvos = prevConvos.filter(c => c.id !== conversation.id);
-      return [conversation, ...otherConvos].sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
-    });
-    
-  };
-
 
   const handleAssignConversation = async (conversationId: string, assigneeId: string | null) => {
     const status = assigneeId ? 'open' : 'unassigned';
@@ -811,10 +752,6 @@ if (fetchedConversations.length > 0) {
       timeEntries,
       activeHub,
       onUpdateActiveHub: handleUpdateActiveHub,
-      onSendMessageFromBotPreview: handleSendMessageFromBotPreview,
-      chatMessages,
-      visitors,
-      chatConversations,
       bots,
       onBotUpdate: handleBotUpdate,
       onBotAdd: handleBotAdd,

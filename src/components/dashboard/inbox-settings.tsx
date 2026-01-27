@@ -31,10 +31,6 @@ import * as db from '@/lib/db';
 
 
 interface InboxSettingsProps {
-  onSendMessageFromBotPreview: (content: string) => void;
-  chatMessages: ChatMessage[];
-  visitors: Visitor[];
-  chatConversations: Conversation[];
   allUsers: User[];
   appUser: User | null;
   bots: BotData[];
@@ -44,10 +40,6 @@ interface InboxSettingsProps {
 }
 
 export default function InboxSettings({ 
-    onSendMessageFromBotPreview,
-    chatMessages,
-    visitors,
-    chatConversations,
     allUsers,
     appUser,
     bots,
@@ -77,11 +69,6 @@ export default function InboxSettings({
         onBotAdd(botWithHubId as Omit<BotData, 'id'>);
     }
   };
-
-  const previewVisitor = visitors.find(c => c.id === 'preview-contact-1');
-  const previewConversation = chatConversations.find(c => c.visitorId === previewVisitor?.id);
-  const previewMessages = previewConversation ? chatMessages.filter(m => m.conversationId === previewConversation.id) : [];
-
 
   return (
     <>
@@ -172,9 +159,6 @@ export default function InboxSettings({
           onOpenChange={setIsDialogOpen}
           bot={selectedBot}
           onSave={handleSaveBot}
-          onSendMessage={onSendMessageFromBotPreview}
-          messages={previewMessages}
-          contact={previewVisitor || null}
           appUser={appUser}
           allUsers={allUsers}
           helpCenters={helpCenters}

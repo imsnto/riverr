@@ -50,10 +50,6 @@ interface SettingsLayoutProps {
   timeEntries: TimeEntry[];
   activeHub: Hub | null;
   onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
-  onSendMessageFromBotPreview: (content: string) => void;
-  chatMessages: ChatMessage[];
-  visitors: Visitor[];
-  chatConversations: Conversation[];
   bots: Bot[];
   onBotUpdate: (botId: string, data: Partial<Bot>) => void;
   onBotAdd: (bot: Omit<Bot, 'id'>) => void;
@@ -121,10 +117,6 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
         );
        case 'inbox':
         return <InboxSettings 
-            onSendMessageFromBotPreview={props.onSendMessageFromBotPreview}
-            chatMessages={props.chatMessages}
-            visitors={props.visitors}
-            chatConversations={props.chatConversations}
             allUsers={props.allUsers}
             appUser={props.appUser}
             bots={props.bots}
