@@ -39,7 +39,7 @@ export default function HubSelectionPage() {
 
   const handleHubSelect = (hub: Hub) => {
     setActiveHub(hub);
-    const defaultView = hub.isDefault ? (hub.settings?.defaultView || 'tasks') : 'tasks';
+    const defaultView = hub.isDefault ? (hub.settings?.defaultView || 'overview') : 'overview';
     router.push(`/space/${spaceId}/hub/${hub.id}/${defaultView}`);
   };
   

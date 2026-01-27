@@ -309,7 +309,7 @@ export const createDefaultHubForSpace = async (spaceId: string, userId: string, 
     createdAt: new Date().toISOString(),
     createdBy: userId,
     isDefault: hubData.isDefault || true,
-    settings: hubData.settings || { components: ['tasks', 'documents', 'messages'], defaultView: 'tasks' },
+    settings: hubData.settings || { components: ['overview', 'tasks', 'documents', 'messages'], defaultView: 'overview' },
     isPrivate: hubData.isPrivate || false,
     memberIds: hubData.memberIds || [],
     statuses: hubData.statuses || defaultStatuses,
@@ -343,6 +343,17 @@ export const getProjectsInHub = async (
     (doc) => ({ id: doc.id, ...doc.data() } as Project)
   );
 };
+
+export const getProjectsInSpace = async (
+  spaceId: string
+): Promise<Project[]> => {
+  const q = query(collection(db, "projects"), where("space_id", "==", spaceId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(
+    (doc) => ({ id: doc.id, ...doc.data() } as Project)
+  );
+};
+
 
 export const addProject = async (
   project: Omit<Project, "id">
@@ -898,7 +909,6 @@ export const launchJob = async (
   roleUserMapping: Record<string, string>,
   createdBy: string,
   spaceId: string,
-  hubId: string,
 ): Promise<Job> => {
   const batch = writeBatch(db);
 
@@ -911,7 +921,7 @@ export const launchJob = async (
     createdAt: new Date().toISOString(),
     roleUserMapping: roleUserMapping,
     space_id: spaceId,
-    hubId: hubId,
+    hubId: template.hubId,
   };
   const jobRef = doc(collection(db, "jobs"));
   batch.set(jobRef, newJobData);
@@ -927,7 +937,7 @@ export const launchJob = async (
     jobRef.id,
     jobName,
     roleUserMapping,
-    hubId,
+    template.hubId,
     spaceId,
     createdBy
   );
@@ -1588,4 +1598,5 @@ export const updateHelpCenterContent = async (
 
   await batch.commit();
 }
+
 

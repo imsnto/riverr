@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
@@ -21,13 +20,13 @@ export default function RootPage() {
                 try {
                     const space = JSON.parse(lastSpace);
                     const hub = JSON.parse(lastHub);
-                    const defaultView = hub.settings?.defaultView || 'tasks';
+                    const defaultView = hub.settings?.defaultView || 'overview';
                     router.push(`/space/${space.id}/hub/${hub.id}/${defaultView}`);
                 } catch (e) {
                     router.push('/space-selection');
                 }
             } else if (activeSpace && activeHub) {
-                const defaultView = activeHub.settings?.defaultView || 'tasks';
+                const defaultView = activeHub.settings?.defaultView || 'overview';
                 router.push(`/space/${activeSpace.id}/hub/${activeHub.id}/${defaultView}`);
             } else {
                 router.push('/space-selection');
