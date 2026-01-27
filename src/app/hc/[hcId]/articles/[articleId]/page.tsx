@@ -24,8 +24,9 @@ async function getArticleData(articleId: string) {
     if (article.content) {
         const headingRegex = /<h([2-3])(.*?)>(.*?)<\/h\1>/gi; // Only h2 and h3
         article.content = article.content.replace(headingRegex, (match, level, attrs, innerText) => {
-            const slug = innerText.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
-            toc.push({ level: parseInt(level), text: innerText, slug });
+            const textContent = innerText.replace(/<[^>]+>/g, '').trim(); // Strip HTML tags
+            const slug = textContent.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
+            toc.push({ level: parseInt(level), text: textContent, slug });
             // Avoid adding id if one already exists
             if (attrs.includes('id=')) {
                 return match;
