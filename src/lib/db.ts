@@ -75,6 +75,8 @@ import {
 } from "./data";
 import { FirestorePermissionError } from "./errors";
 import { errorEmitter } from "./error-emitter";
+import seedData from './riverr-help-data.json';
+
 
 const whimsicalAdjectives = [
   "Clever", "Silly", "Witty", "Happy", "Brave", "Curious", "Dapper", "Eager", "Fancy",
@@ -1574,3 +1576,38 @@ export const updateHelpCenterContent = async (
 
   await batch.commit();
 }
+
+export const importRiverrHelpDocs = async (hubId: string, authorId: string) => {
+  // Check if data is already seeded to prevent duplicates
+  const firstArticleRef = doc(db, 'help_center_articles', seedData.articles[0].id);
+  const docSnap = await getDoc(firstArticleRef);
+  if (docSnap.exists()) {
+    console.log("Help center data already seeded.");
+    return;
+  }
+
+  const batch = writeBatch(db);
+
+  // Seed Help Centers
+  seedData.helpCenters.forEach(hc => {
+    const docRef = doc(db, 'help_centers', hc.id);
+    batch.set(docRef, { ...hc, hubId });
+  });
+
+  // Seed Collections
+  seedData.collections.forEach(coll => {
+    const docRef = doc(db, 'help_center_collections', coll.id);
+    batch.set(docRef, { ...coll, hubId });
+  });
+
+  // Seed Articles
+  seedData.articles.forEach(article => {
+    // @ts-ignore
+    const { sourceUrl, ...articleData } = article; // remove sourceUrl if it exists
+    const docRef = doc(db, 'help_center_articles', article.id);
+    batch.set(docRef, { ...articleData, hubId, authorId });
+  });
+
+  await batch.commit();
+  console.log("Successfully imported Riverr help documents.");
+};

@@ -1,0 +1,58 @@
+
+{
+  "helpCenters": [
+    {
+      "id": "hc_riverr_en",
+      "name": "Riverr Help Center (EN)",
+      "hubId": "your_hub_id"
+    }
+  ],
+  "collections": [
+    {
+      "id": "folder_1",
+      "name": "Getting Started",
+      "description": "Guides for new users.",
+      "hubId": "your_hub_id",
+      "parentId": null,
+      "helpCenterIds": ["hc_riverr_en"]
+    },
+    {
+      "id": "folder_2",
+      "name": "Advanced Features",
+      "description": "In-depth guides for power users.",
+      "hubId": "your_hub_id",
+      "parentId": "folder_1",
+      "helpCenterIds": ["hc_riverr_en"]
+    }
+  ],
+  "articles": [
+    {
+      "id": "article_1",
+      "title": "Welcome to Our App!",
+      "content": "<h1>Hello World!</h1><p>This is your first article. You can use any <strong>HTML</strong> tags you need to format your content.</p>",
+      "status": "published",
+      "folderId": "folder_1",
+      "helpCenterIds": ["hc_riverr_en"],
+      "hubId": "your_hub_id",
+      "authorId": "REPLACE_WITH_AN_AUTHOR_USER_ID",
+      "createdAt": "2023-10-27T10:00:00Z",
+      "updatedAt": "2023-10-27T10:00:00Z",
+      "isPublic": true,
+      "allowedUserIds": []
+    },
+    {
+      "id": "article_2",
+      "title": "How to Use Advanced Feature X",
+      "content": "<h2>Feature X Explained</h2><p>Here is how it works in detail...</p>",
+      "status": "published",
+      "folderId": "folder_2",
+      "helpCenterIds": ["hc_riverr_en"],
+      "hubId": "your_hub_id",
+      "authorId": "REPLACE_WITH_AN_AUTHOR_USER_ID",
+      "createdAt": "2023-10-27T11:00:00Z",
+      "updatedAt": "2023-10-27T11:00:00Z",
+      "isPublic": true,
+      "allowedUserIds": []
+    }
+  ]
+}

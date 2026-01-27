@@ -9,7 +9,7 @@ import { Button } from '../ui/button';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
-import { FolderPlus, Plus, Search, ChevronRight, Move, Link as LinkIcon, Library, ArrowLeft } from 'lucide-react';
+import { FolderPlus, Plus, Search, ChevronRight, Move, Link as LinkIcon, Library, ArrowLeft, DownloadCloud } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
@@ -18,6 +18,7 @@ import AddToHelpCenterDialog from './add-to-help-center-dialog';
 import AddArticlesToCollectionDialog from './add-articles-to-collection-dialog';
 import ManageHelpCenterContentDialog from './manage-help-center-content-dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { importRiverrHelpDocs } from '@/lib/db';
 
 interface HelpCenterLayoutProps {
     onSaveArticle: (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => Promise<HelpCenterArticle | void>;
@@ -61,6 +62,9 @@ export default function HelpCenterLayout({
 
     const isMobile = useIsMobile();
     const [mobileContentVisible, setMobileContentVisible] = useState(false);
+    
+    const [isImporting, setIsImporting] = useState(false);
+    const [hasImported, setHasImported] = useState(false);
 
     
     const { toast } = useToast();
@@ -338,6 +342,22 @@ export default function HelpCenterLayout({
         }
     };
     
+     const handleImport = async () => {
+        if (!appUser || !activeHub) return;
+        setIsImporting(true);
+        try {
+            await importRiverrHelpDocs(activeHub.id, appUser.id);
+            toast({ title: "Import Successful", description: "Riverr help documents have been seeded." });
+            setHasImported(true);
+            refreshData();
+        } catch (e) {
+            console.error(e);
+            toast({ variant: "destructive", title: "Import Failed" });
+        } finally {
+            setIsImporting(false);
+        }
+    }
+    
     const articleToEdit = articles.find(a => a.id === selectedArticleId);
     if (articleToEdit && appUser) {
          return (
@@ -412,6 +432,10 @@ export default function HelpCenterLayout({
                             </Button>
                             <Button onClick={handleCreateArticle}>
                                 <Plus className="mr-2 h-4 w-4" /> New Article
+                            </Button>
+                            <Button variant="secondary" onClick={handleImport} disabled={isImporting || hasImported}>
+                                <DownloadCloud className="mr-2 h-4 w-4" />
+                                {isImporting ? "Importing..." : (hasImported ? "Imported" : "Import Riverr Docs")}
                             </Button>
                         </>
                     )}
