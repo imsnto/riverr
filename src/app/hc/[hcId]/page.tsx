@@ -72,6 +72,7 @@ export default async function HelpCenterPage({ params }: { params: { hcId: strin
 
     const { helpCenter, collections } = data;
     const topLevelCollections = collections.filter(c => !c.parentId);
+    const featuredLinks = topLevelCollections.slice(0, 5);
 
     return (
         <div className="bg-background text-foreground">
@@ -98,11 +99,12 @@ export default async function HelpCenterPage({ params }: { params: { hcId: strin
                 <div className="mb-12">
                     <h2 className="text-2xl font-bold mb-6">Get the most out of {helpCenter.name}</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
-                        <Link href="#" className="flex items-center justify-between p-3 rounded-md hover:bg-muted"><span>Getting started</span> <ChevronsRight className="h-4 w-4" /></Link>
-                        <Link href="#" className="flex items-center justify-between p-3 rounded-md hover:bg-muted"><span>Setting up the Inbox</span> <ChevronsRight className="h-4 w-4" /></Link>
-                        <Link href="#" className="flex items-center justify-between p-3 rounded-md hover:bg-muted"><span>Leveraging AI and automation</span> <ChevronsRight className="h-4 w-4" /></Link>
-                        <Link href="#" className="flex items-center justify-between p-3 rounded-md hover:bg-muted"><span>Creating content for self-serve</span> <ChevronsRight className="h-4 w-4" /></Link>
-                        <Link href="#" className="flex items-center justify-between p-3 rounded-md hover:bg-muted"><span>Improving your customer experience</span> <ChevronsRight className="h-4 w-4" /></Link>
+                        {featuredLinks.map(collection => (
+                            <Link key={collection.id} href={`/hc/${params.hcId}/collections/${collection.id}`} className="flex items-center justify-between p-3 rounded-md hover:bg-muted">
+                                <span>{collection.name}</span>
+                                <ChevronsRight className="h-4 w-4" />
+                            </Link>
+                        ))}
                     </div>
                 </div>
 
