@@ -828,14 +828,14 @@ if (fetchedConversations.length > 0) {
       );
       case 'tickets': return <TicketsBoard 
           tickets={tickets} 
-          onUpdateTickets={onUpdateTickets}
+          onUpdateTickets={handleUpdateTickets}
           conversations={chatConversations}
           activeHub={activeHub}
           activeSpace={activeSpace}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
-          allHubs={spaceHubs}
+          allHubs={allHubs}
           escalationRules={escalationRules}
           projects={projects}
           contacts={contacts}
@@ -877,7 +877,7 @@ if (fetchedConversations.length > 0) {
                             setHideMobileBottomNav={setHideMobileBottomNav}
                             activeHub={activeHub}
                             activeSpace={activeSpace}
-                            allHubs={spaceHubs}
+                            allHubs={allHubs}
                             escalationRules={escalationRules}
                             projects={projects}
                             contacts={contacts}
@@ -922,7 +922,7 @@ if (fetchedConversations.length > 0) {
               projects={projects}
               selectedProjectId={selectedProjectId}
               onSelectProject={handleSelectProject}
-              onNewProject={onNewProject}
+              onNewProject={handleNewProject}
             />
           )}
           <main
