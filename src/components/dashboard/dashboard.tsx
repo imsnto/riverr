@@ -294,10 +294,14 @@ if (fetchedConversations.length > 0) {
   // Handle view change from sidebar
   const handleViewChange = (newView: AppView) => {
     setCurrentView(newView);
-    if (activeSpace && params.hubId) {
-      router.push(`/space/${activeSpace.id}/hub/${params.hubId}/${newView}`);
-    } else if (newView === 'contacts') {
+    if (newView === 'contacts') {
       router.push('/contacts');
+    } else if (activeSpace && activeHub) {
+      router.push(`/space/${activeSpace.id}/hub/${activeHub.id}/${newView}`);
+    } else if (activeSpace) {
+      router.push(`/space/${activeSpace.id}/hubs`);
+    } else {
+      router.push('/space-selection');
     }
   };
 
@@ -617,7 +621,7 @@ if (fetchedConversations.length > 0) {
     const newMessage = await db.addChatMessage(newMessageData);
     
     if (type === 'message') {
-        setChatConversations(prev => prev.map(convo => {
+        const updatedConversations = chatConversations.map(convo => {
           if (convo.id === conversationId) {
             return {
               ...convo,
@@ -627,7 +631,9 @@ if (fetchedConversations.length > 0) {
             }
           }
           return convo;
-        }).sort((a,b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
+        }).sort((a,b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+
+        setChatConversations(updatedConversations);
 
         // Optimistically update ticket preview
         setTickets(prevTickets => prevTickets.map(ticket => {
