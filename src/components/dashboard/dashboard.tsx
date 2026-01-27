@@ -104,7 +104,8 @@ export default function Dashboard({ view }: { view: string }) {
   const [bots, setBots] = useState<Bot[]>([]);
   const [escalationRules, setEscalationRules] = useState<EscalationIntakeRule[]>([]);
 
-  // Help Center states - now managed within HelpCenterLayout
+  // Help Center states
+  const [helpCenters, setHelpCenters] = useState<HelpCenter[]>([]);
   
   // Mentions
   const [lastMentionsRead, setLastMentionsRead] = useState<string | null>(null);
@@ -167,6 +168,7 @@ if (messageUnsubscribeRef.current) {
             fetchedBots,
             fetchedEscalationRules,
             fetchedContacts,
+            fetchedHelpCenters,
           ] = await Promise.all([
             db.getProjectsInHub(activeHub.id),
             db.getAllTasks(activeHub.id),
@@ -183,6 +185,7 @@ if (messageUnsubscribeRef.current) {
             db.getBots(activeHub.id),
             db.getEscalationIntakeRules(activeHub.id),
             db.getContacts(activeSpace.id),
+            db.getHelpCenters(activeHub.id),
           ]);
           
           setProjects(fetchedProjects);
@@ -207,6 +210,7 @@ if (messageUnsubscribeRef.current) {
           setBots(fetchedBots);
           setEscalationRules(fetchedEscalationRules);
           setContacts(fetchedContacts);
+          setHelpCenters(fetchedHelpCenters);
       
 // ... (top of your fetchData)
 
@@ -815,6 +819,7 @@ if (fetchedConversations.length > 0) {
       onBotUpdate: handleBotUpdate,
       onBotAdd: handleBotAdd,
       escalationRules,
+      helpCenters,
     }
 
 
@@ -826,7 +831,7 @@ if (fetchedConversations.length > 0) {
           projects={projects}
           onSelectProject={handleSelectProject}
           allTasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
+          onUpdateTasks={onUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
@@ -848,7 +853,7 @@ if (fetchedConversations.length > 0) {
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
-          allHubs={spaceHubs}
+          allHubs={allHubs}
           escalationRules={escalationRules}
           projects={projects}
           contacts={contacts}
@@ -890,7 +895,7 @@ if (fetchedConversations.length > 0) {
                             setHideMobileBottomNav={setHideMobileBottomNav}
                             activeHub={activeHub!}
                             activeSpace={activeSpace}
-                            allHubs={spaceHubs}
+                            allHubs={allHubs}
                             escalationRules={escalationRules}
                             projects={projects}
                             contacts={contacts}

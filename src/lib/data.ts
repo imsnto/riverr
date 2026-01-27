@@ -427,6 +427,7 @@ export interface Bot {
   };
   promptButtons?: string[];
   agentIds?: string[];
+  allowedHelpCenterIds?: string[];
 }
 
 export interface Visitor {

@@ -22,6 +22,7 @@ import {
   Bot,
   DealAutomationRule,
   EscalationIntakeRule,
+  HelpCenter,
 } from '@/lib/data';
 import InboxSettings from './inbox-settings';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -57,6 +58,7 @@ interface SettingsLayoutProps {
   onBotUpdate: (botId: string, data: Partial<Bot>) => void;
   onBotAdd: (bot: Omit<Bot, 'id'>) => void;
   escalationRules: EscalationIntakeRule[];
+  helpCenters: HelpCenter[];
 }
 
 export default function SettingsLayout(props: SettingsLayoutProps) {
@@ -128,6 +130,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             bots={props.bots}
             onBotUpdate={props.onBotUpdate}
             onBotAdd={props.onBotAdd}
+            helpCenters={props.helpCenters}
          />;
       case 'deal-automation':
         return <DealAutomationSettings 

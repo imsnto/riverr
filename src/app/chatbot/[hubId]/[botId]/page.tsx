@@ -8,10 +8,12 @@ import * as db from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Plus, X, Loader2, Paperclip, ImageIcon, File as FileIcon } from 'lucide-react';
+import { Send, Plus, X, Loader2, Paperclip, ImageIcon, File as FileIcon, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { answerChatQuestion } from '@/ai/flows/answer-chat-question';
+import { marked } from 'marked';
 
 
 const getInitials = (name?: string) => {
@@ -45,6 +47,7 @@ export default function ChatbotWidgetPage() {
   const [chatStarted, setChatStarted] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isAiThinking, setIsAiThinking] = useState(false);
   
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,7 +64,7 @@ export default function ChatbotWidgetPage() {
 
     useEffect(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    }, [messages, isAiThinking]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -205,21 +208,64 @@ export default function ChatbotWidgetPage() {
       type: file.type.startsWith('image/') ? 'image' : 'file',
     }));
 
+    const userMessageContent = messageText;
     const newMessageData: Omit<ChatMessage, 'id'> = {
       conversationId: currentConversation.id,
       authorId: visitor.id,
       type: 'message',
       senderType: 'contact',
-      content: messageText,
+      content: userMessageContent,
       timestamp: new Date().toISOString(),
       attachments: messageAttachments,
     };
-
-    await db.addChatMessage(newMessageData);
+    
     setMessageText('');
     setAttachments([]);
     setChatStarted(true);
     setLoading(false);
+
+    await db.addChatMessage(newMessageData);
+
+    // NOW call the AI
+    setIsAiThinking(true);
+    try {
+        const aiResponse = await answerChatQuestion({
+            question: userMessageContent,
+            hubId: hubId,
+            allowedHelpCenterIds: bot?.allowedHelpCenterIds || [],
+            userId: visitor.id,
+        });
+
+        let responseContent = aiResponse.answer;
+        if (aiResponse.sources && aiResponse.sources.length > 0) {
+            const sourcesText = aiResponse.sources.map(source => `- [${source.title}](${source.url})`).join('\n');
+            responseContent += `\n\n**Sources:**\n${sourcesText}`;
+        }
+        
+        const aiMessageData: Omit<ChatMessage, 'id'> = {
+            conversationId: currentConversation.id,
+            authorId: 'ai_agent',
+            type: 'message',
+            senderType: 'agent',
+            content: responseContent,
+            timestamp: new Date().toISOString(),
+        };
+        await db.addChatMessage(aiMessageData);
+
+    } catch (e) {
+        console.error("AI failed to answer:", e);
+        const errorMessageData: Omit<ChatMessage, 'id'> = {
+            conversationId: currentConversation.id,
+            authorId: 'ai_agent',
+            type: 'message',
+            senderType: 'agent',
+            content: "Sorry, I encountered an error while trying to find an answer. Please try rephrasing your question.",
+            timestamp: new Date().toISOString(),
+        };
+        await db.addChatMessage(errorMessageData);
+    } finally {
+        setIsAiThinking(false);
+    }
   };
   
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -330,6 +376,10 @@ export default function ChatbotWidgetPage() {
             ) : (
             visibleMessages.map(msg => {
                 const isAgent = msg.senderType === 'agent';
+                const agent = isAgent ? users.find(u => u.id === msg.authorId) : null;
+                const isAI = isAgent && msg.authorId === 'ai_agent';
+                const contentHtml = isAI ? marked(msg.content) : msg.content;
+                
                 return (
                 <div
                     key={msg.id}
@@ -338,10 +388,10 @@ export default function ChatbotWidgetPage() {
                     {isAgent ? (
                     <div>
                         <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
-                        {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+                        {msg.content && <div className="text-sm prose prose-sm prose-invert" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
                         {renderAttachments(msg)}
                         </div>
-                        <p className="text-xs text-zinc-500 mt-2">AI Agent</p>
+                        <p className="text-xs text-zinc-500 mt-2">{agent?.name || 'AI Agent'}</p>
                     </div>
                     ) : (
                     <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm" style={{ backgroundColor: primary, color: bot.styleSettings?.customerTextColor || '#ffffff' }}>
@@ -352,6 +402,14 @@ export default function ChatbotWidgetPage() {
                 </div>
                 );
             })
+            )}
+            {isAiThinking && (
+              <div className="flex items-end gap-2">
+                <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs flex items-center gap-2">
+                  <Bot className="h-4 w-4 animate-pulse" />
+                  <p className="text-sm">Thinking...</p>
+                </div>
+              </div>
             )}
         </div>
         <div ref={messagesEndRef} />

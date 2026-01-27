@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Bot as BotData, Visitor, ChatMessage, Conversation, Hub, User } from '@/lib/data';
+import { Bot as BotData, Visitor, ChatMessage, Conversation, Hub, User, HelpCenter } from '@/lib/data';
 import BotSettingsDialog from './bot-settings-dialog';
 import { Label } from '../ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -39,6 +39,7 @@ interface InboxSettingsProps {
   bots: BotData[];
   onBotUpdate: (botId: string, data: Partial<BotData>) => void;
   onBotAdd: (bot: Omit<BotData, 'id'>) => void;
+  helpCenters: HelpCenter[];
 }
 
 export default function InboxSettings({ 
@@ -51,6 +52,7 @@ export default function InboxSettings({
     bots,
     onBotUpdate,
     onBotAdd,
+    helpCenters,
 }: InboxSettingsProps) {
   const [selectedBot, setSelectedBot] = useState<BotData | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -174,6 +176,7 @@ export default function InboxSettings({
           contact={previewVisitor || null}
           appUser={appUser}
           allUsers={allUsers}
+          helpCenters={helpCenters}
       />
     </>
   );
