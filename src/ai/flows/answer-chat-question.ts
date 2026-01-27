@@ -9,13 +9,13 @@ import { adminDB } from '@/lib/firebase-admin';
 import { HelpCenterArticle } from '@/lib/data';
 
 // 1. DEFINE SCHEMAS
-export const AnswerChatQuestionInputSchema = z.object({
+const AnswerChatQuestionInputSchema = z.object({
   question: z.string().describe("The user's question."),
   hubId: z.string().describe('The ID of the hub where the chat is taking place.'),
   allowedHelpCenterIds: z.array(z.string()).describe('A list of help center IDs the bot is allowed to access.'),
   userId: z.string().describe('The ID of the user asking the question (for access control).'),
 });
-export type AnswerChatQuestionInput = z.infer<typeof AnswerChatQuestionInputSchema>;
+type AnswerChatQuestionInput = z.infer<typeof AnswerChatQuestionInputSchema>;
 
 const AnswerChatQuestionOutputSchema = z.object({
   answer: z.string().describe('A direct, helpful answer to the user\'s question, in plain language.'),
@@ -27,7 +27,7 @@ const AnswerChatQuestionOutputSchema = z.object({
   })).optional().describe('A list of 1-5 source articles used to formulate the answer.'),
   suggestedNextStep: z.string().optional().describe('A suggested next step if the answer is incomplete, e.g., "Would you like me to open a support ticket?"'),
 });
-export type AnswerChatQuestionOutput = z.infer<typeof AnswerChatQuestionOutputSchema>;
+type AnswerChatQuestionOutput = z.infer<typeof AnswerChatQuestionOutputSchema>;
 
 // 2. DEFINE THE TOOL
 const searchHelpCenter = ai.defineTool(
