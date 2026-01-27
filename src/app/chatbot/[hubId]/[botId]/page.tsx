@@ -245,6 +245,7 @@ export default function ChatbotWidgetPage() {
             hubId: hubId,
             allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
             userId: visitor.id,
+            botName: bot.name,
         });
 
         if (aiResponse.suggestedNextStep === "escalate") {
@@ -361,26 +362,23 @@ export default function ChatbotWidgetPage() {
     >
       {/* Header */}
       <div className="p-3 border-b flex items-center justify-between gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-        {/* Placeholder for left side to balance center */}
-        <div className="w-8"></div>
-        
-        <div className="flex flex-col items-center">
-            {bot.styleSettings?.logoUrl ? (
-                <img src={bot.styleSettings.logoUrl} alt="Bot Logo" className="h-8 w-8 object-contain rounded-full" />
-            ) : (
-                <div className="h-8 w-8 shrink-0" />
-            )}
-            <h3 className="font-bold truncate text-base mt-1" style={{ color: bot.styleSettings?.headerTextColor || '#ffffff' }}>{bot.name}</h3>
+        <div className="flex items-center gap-3">
+          {bot.styleSettings?.logoUrl && (
+            <img src={bot.styleSettings.logoUrl} alt="Bot Logo" className="h-8 w-8 object-contain rounded-full" />
+          )}
+          <div className="flex items-center gap-3">
+            <h3 className="font-bold truncate text-base" style={{ color: bot.styleSettings?.headerTextColor || '#ffffff' }}>{bot.name}</h3>
             {bot.agents && bot.agents.length > 0 && (
-                <div className="flex justify-center -space-x-2 overflow-hidden mt-1">
-                    {bot.agents.map(agent => (
-                        <Avatar key={agent.id} className="h-5 w-5 border-2" style={{ borderColor: bot.styleSettings?.backgroundColor }}>
-                            <AvatarImage src={agent.avatarUrl} alt={agent.name} />
-                            <AvatarFallback>{getInitials(agent.name)}</AvatarFallback>
-                        </Avatar>
-                    ))}
-                </div>
+              <div className="flex -space-x-2 overflow-hidden">
+                {bot.agents.map(agent => (
+                  <Avatar key={agent.id} className="h-5 w-5 border-2" style={{ borderColor: bot.styleSettings?.backgroundColor }}>
+                      <AvatarImage src={agent.avatarUrl} alt={agent.name} />
+                      <AvatarFallback>{getInitials(agent.name)}</AvatarFallback>
+                  </Avatar>
+                ))}
+              </div>
             )}
+          </div>
         </div>
 
         <div className="flex items-center">
@@ -395,7 +393,7 @@ export default function ChatbotWidgetPage() {
         <div className="p-4 space-y-4">
             {/* Welcome bubble (always visible) */}
             <div className="flex items-end gap-2">
-            <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
+            <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
                 <p className="text-sm whitespace-pre-wrap">{bot.welcomeMessage}</p>
             </div>
             </div>
@@ -414,14 +412,14 @@ export default function ChatbotWidgetPage() {
                 >
                     {isAgent ? (
                     <div>
-                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
+                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
                         {msg.content && <div className="text-sm prose prose-sm prose-invert" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
                         {renderAttachments(msg)}
                         </div>
                         <p className="text-xs text-zinc-500 mt-2">{agent?.name || 'AI Agent'}</p>
                     </div>
                     ) : (
-                    <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm" style={{ backgroundColor: primary, color: bot.styleSettings?.customerTextColor || '#ffffff' }}>
+                    <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-words" style={{ backgroundColor: primary, color: bot.styleSettings?.customerTextColor || '#ffffff' }}>
                         {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
                         {renderAttachments(msg)}
                     </div>

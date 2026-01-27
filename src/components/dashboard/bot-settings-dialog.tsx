@@ -148,7 +148,7 @@ export default function BotSettingsDialog({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [origin, setOrigin] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { appUser } = useAuth();
+  const { appUser, activeHub } = useAuth();
 
 
   const form = useForm<BotSettingsFormValues>({
@@ -269,7 +269,7 @@ export default function BotSettingsDialog({
   };
   
     const handlePreviewSend = async () => {
-        if (!previewMessage.trim() || !appUser || !bot) return;
+        if (!previewMessage.trim() || !appUser || !activeHub) return;
 
         const userMessage: ChatMessage = {
             id: `user-msg-${Date.now()}`,
@@ -288,9 +288,10 @@ export default function BotSettingsDialog({
         try {
             const aiResponse = await answerChatQuestion({
                 question: question,
-                hubId: bot.hubId,
+                hubId: activeHub.id,
                 allowedHelpCenterIds: watchedValues.allowedHelpCenterIds || [],
                 userId: 'preview-user-id', // Simulate a generic user for access control check
+                botName: watchedValues.name || 'Support Bot',
             });
 
             let responseContent = aiResponse.answer;
@@ -679,26 +680,26 @@ export default function BotSettingsDialog({
              <>
                 <div className="w-80 h-[450px] text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden mb-4" style={{ backgroundColor: watchedValues.backgroundColor }}>
                     {/* Header */}
-                    <div className="p-3 border-b flex items-center justify-between shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                    <div className="p-3 border-b flex items-center justify-between gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
                       <div className="flex items-center gap-3">
-                        {watchedValues.logoUrl ? (
+                        {watchedValues.logoUrl && (
                           <img src={watchedValues.logoUrl} alt="Bot Logo" className="h-8 w-8 object-contain rounded-full" />
-                        ) : (
-                          <div className="h-8 w-8 shrink-0" />
                         )}
-                        <h3 className="font-bold truncate text-base" style={{ color: watchedValues.headerTextColor || '#ffffff' }}>{watchedValues.name}</h3>
+                        <div className="flex items-center gap-3">
+                            <h3 className="font-bold truncate text-base" style={{ color: watchedValues.headerTextColor || '#ffffff' }}>{watchedValues.name}</h3>
+                            {selectedAgents.length > 0 && (
+                                <div className="flex -space-x-2 overflow-hidden">
+                                {selectedAgents.map(agent => (
+                                    <Avatar key={agent.id} className="h-5 w-5 border-2" style={{ borderColor: watchedValues.backgroundColor }}>
+                                        <AvatarImage src={agent.avatarUrl} alt={agent.name} />
+                                        <AvatarFallback>{getInitials(agent.name)}</AvatarFallback>
+                                    </Avatar>
+                                ))}
+                                </div>
+                            )}
+                        </div>
                       </div>
                        <div className="flex items-center">
-                          {selectedAgents.length > 0 && (
-                            <div className="flex -space-x-2 overflow-hidden mr-2">
-                              {selectedAgents.map(agent => (
-                                <Avatar key={agent.id} className="h-5 w-5 border-2" style={{ borderColor: watchedValues.backgroundColor }}>
-                                    <AvatarImage src={agent.avatarUrl} alt={agent.name} />
-                                    <AvatarFallback>{getInitials(agent.name)}</AvatarFallback>
-                                </Avatar>
-                              ))}
-                            </div>
-                          )}
                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => onOpenChange(false)}>
                             <X className="h-5 w-5" />
                         </Button>
@@ -709,7 +710,7 @@ export default function BotSettingsDialog({
                     <ScrollArea className="flex-1" ref={scrollAreaRef}>
                         <div className="p-4 space-y-4 max-w-full break-all text-wrap">
                              <div className="flex items-end gap-2">
-                                <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
+                                <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
                                     <p className="text-sm whitespace-pre-wrap">{watchedValues.welcomeMessage}</p>
                                 </div>
                             </div>
@@ -726,11 +727,11 @@ export default function BotSettingsDialog({
                                     className={cn('flex items-end gap-2', isAgent ? 'justify-start' : 'justify-end')}
                                 >
                                     {isAgent ? (
-                                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
+                                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
                                         {msg.content && <div className="text-sm prose prose-sm prose-invert" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
                                         </div>
                                     ) : (
-                                        <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm" style={{ backgroundColor: watchedValues.primaryColor, color: watchedValues.customerTextColor || '#ffffff' }}>
+                                        <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-words" style={{ backgroundColor: watchedValues.primaryColor, color: watchedValues.customerTextColor || '#ffffff' }}>
                                             {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
                                         </div>
                                     )}
