@@ -3,12 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Ticket, User, Conversation, Contact } from '@/lib/data';
+import { Ticket, User, Conversation, Contact, Activity } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 import { 
     AtSign, Calendar, Flag, MessageSquare, User as UserIcon, X, Tag, Copy, 
@@ -18,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../ui/card';
+import { useAuth } from '@/hooks/use-auth';
 
 const getInitials = (name: string | null) => {
     if (!name) return '?';
@@ -50,6 +50,45 @@ const PriorityBadge = ({ priority }: { priority: Ticket['priority'] }) => {
 };
 
 
+const TicketActivityItem = ({ activity, allUsers }: { activity: Activity; allUsers: User[] }) => {
+    const user = allUsers.find(u => u.id === activity.user_id);
+    const renderContent = () => {
+        switch (activity.type) {
+            case 'ticket_creation':
+                return (
+                    <div><span className="font-semibold">{user?.name || 'Unknown'}</span> created this ticket.</div>
+                );
+            case 'status_change':
+                return (
+                    <div><span className="font-semibold">{user?.name}</span> changed status from <Badge variant="outline">{activity.from}</Badge> to <Badge variant="outline">{activity.to}</Badge></div>
+                );
+            case 'assignee_change':
+                const fromUser = allUsers.find(u => u.id === activity.from)?.name || activity.from || 'Unassigned';
+                const toUser = allUsers.find(u => u.id === activity.to)?.name || activity.to || 'Unassigned';
+                return (
+                    <div><span className="font-semibold">{user?.name}</span> changed assignee from <Badge variant="outline">{fromUser}</Badge> to <Badge variant="outline">{toUser}</Badge></div>
+                );
+            default:
+                return null;
+        }
+    }
+    if (!renderContent()) return null;
+
+    return (
+        <div className="flex items-start gap-3">
+            <Avatar className="h-6 w-6 mt-1">
+                <AvatarImage src={user?.avatarUrl} alt={user?.name} />
+                <AvatarFallback>{user ? getInitials(user.name) : 'U'}</AvatarFallback>
+            </Avatar>
+            <div className="text-sm">
+                {renderContent()}
+                <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}</p>
+            </div>
+        </div>
+    )
+}
+
+
 interface TicketDetailsDialogProps {
     ticket: Ticket | null;
     isOpen: boolean;
@@ -65,6 +104,7 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
     const { toast } = useToast();
     const router = useRouter();
     const [ticket, setTicket] = useState(initialTicket);
+    const { appUser } = useAuth();
 
     useEffect(() => {
         setTicket(initialTicket);
@@ -73,7 +113,36 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
     if (!ticket) return null;
     
     const handleFieldChange = (field: keyof Ticket, value: any) => {
-        const updatedTicket = { ...ticket, [field]: value, updatedAt: new Date().toISOString() };
+        let updatedTicket = { ...ticket, [field]: value, updatedAt: new Date().toISOString() };
+
+        if (appUser) {
+            if (field === 'status' && ticket.status !== value) {
+                const newActivity: Activity = {
+                    id: `act-${Date.now()}`,
+                    user_id: appUser.id,
+                    timestamp: new Date().toISOString(),
+                    type: 'status_change',
+                    from: ticket.status,
+                    to: value,
+                };
+                updatedTicket.activities = [...(updatedTicket.activities || []), newActivity];
+            }
+
+            if (field === 'assignedTo' && ticket.assignedTo !== value) {
+                const fromUser = allUsers.find(u => u.id === ticket.assignedTo)?.name || 'Unassigned';
+                const toUser = allUsers.find(u => u.id === value)?.name || 'Unassigned';
+                const newActivity: Activity = {
+                    id: `act-${Date.now()}`,
+                    user_id: appUser.id,
+                    timestamp: new Date().toISOString(),
+                    type: 'assignee_change',
+                    from: fromUser,
+                    to: toUser,
+                };
+                updatedTicket.activities = [...(updatedTicket.activities || []), newActivity];
+            }
+        }
+        
         setTicket(updatedTicket);
         onUpdateTicket(updatedTicket);
     };
@@ -130,21 +199,23 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
                 <ScrollArea className="flex-1">
                   <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
-                        {/* LATEST MESSAGE */}
+                        {/* ACTIVITY TIMELINE */}
                         <div>
-                            <Card>
-                                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                    <CardTitle className="text-base font-semibold">Latest Message</CardTitle>
-                                    <Button variant="outline" size="sm" onClick={handleOpenConversation}>
-                                        <MessageSquare className="mr-2 h-4 w-4"/>
-                                        Open Conversation
-                                    </Button>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="italic text-muted-foreground">"{ticket.lastMessagePreview || 'No messages yet.'}"</p>
-                                    <p className="text-xs text-muted-foreground mt-2">
-                                        From {ticket.lastMessageAuthor || 'Unknown'}, {ticket.lastMessageAt ? formatDistanceToNow(parseISO(ticket.lastMessageAt), { addSuffix: true }) : 'N/A'}
-                                    </p>
+                            <h4 className="font-semibold mb-2">Activity</h4>
+                             <Card>
+                                <CardContent className="p-4 max-h-60 overflow-y-auto">
+                                    <div className="space-y-4">
+                                    {ticket.activities && ticket.activities.length > 0 ? (
+                                        ticket.activities
+                                            .slice()
+                                            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                                            .map(activity => (
+                                                <TicketActivityItem key={activity.id} activity={activity} allUsers={allUsers} />
+                                            ))
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground text-center py-4">No activity yet.</p>
+                                    )}
+                                    </div>
                                 </CardContent>
                             </Card>
                         </div>
@@ -239,9 +310,14 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
                     </div>
                   </div>
                 </ScrollArea>
-                 <DialogFooter className="p-6 pt-4 border-t">
-                    <Button variant="outline" onClick={() => {}}><Edit3 className="mr-2" /> Add Note</Button>
-                    <Button variant="destructive">Close Ticket</Button>
+                 <DialogFooter className="p-6 pt-4 border-t flex justify-between">
+                    <div>
+                        <Button variant="outline" onClick={handleOpenConversation}><MessageSquare className="mr-2 h-4 w-4"/> Open Conversation</Button>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => {}}><Edit3 className="mr-2 h-4 w-4" /> Add Note</Button>
+                        <Button variant="destructive">Close Ticket</Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

@@ -3,7 +3,7 @@
 
 import React, { useState, DragEvent, useRef, useMemo } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Ticket, Hub, Status, Visitor, Conversation, Space, EscalationIntakeRule, Project, Contact } from '@/lib/data';
+import { User, Ticket, Hub, Status, Visitor, Conversation, Space, EscalationIntakeRule, Project, Contact, Activity } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { MoreHorizontal, Plus, Edit } from 'lucide-react';
@@ -71,6 +71,7 @@ interface TicketsBoardProps {
   projects: Project[];
   contacts: Contact[];
   onDataRefresh: () => void;
+  onCreateTicket: (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => void;
 }
 
 const defaultStatuses: Status[] = [
@@ -79,7 +80,7 @@ const defaultStatuses: Status[] = [
     { name: 'Closed', color: '#22c55e' },
 ];
 
-export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, activeSpace, allUsers, conversations, onUpdateActiveHub, onNavigateToSettings, allHubs, escalationRules, projects, contacts, onDataRefresh }: TicketsBoardProps) {
+export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, activeSpace, allUsers, conversations, onUpdateActiveHub, onNavigateToSettings, allHubs, escalationRules, projects, contacts, onDataRefresh, onCreateTicket }: TicketsBoardProps) {
   const [draggedTicket, setDraggedTicket] = useState<string | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -150,6 +151,20 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
         if (!ticketToMove) return;
 
         const sameColumn = ticketToMove.status === newStatus;
+        let updatedTicket = { ...ticketToMove, status: newStatus, updatedAt: new Date().toISOString() };
+
+        if (!sameColumn && appUser) {
+            const newActivity: Activity = {
+                id: `act-${Date.now()}`,
+                user_id: appUser.id,
+                timestamp: new Date().toISOString(),
+                type: 'status_change',
+                from: ticketToMove.status,
+                to: newStatus,
+            };
+            updatedTicket.activities = [...(ticketToMove.activities || []), newActivity];
+        }
+
         const fromIndex = tickets.filter(t => t.status === ticketToMove.status).findIndex(t => t.id === ticketId);
         let insertIndex = dropIndicator.index;
         if (sameColumn && fromIndex !== -1 && fromIndex < insertIndex) {
@@ -158,7 +173,7 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
 
         const newTickets = tickets.filter(t => t.id !== ticketId);
         const targetColumnTickets = newTickets.filter(t => t.status === newStatus);
-        targetColumnTickets.splice(insertIndex, 0, { ...ticketToMove, status: newStatus, updatedAt: new Date().toISOString() });
+        targetColumnTickets.splice(insertIndex, 0, updatedTicket);
         const otherColumnTickets = newTickets.filter(t => t.status !== newStatus);
         
         onUpdateTickets([...otherColumnTickets, ...targetColumnTickets]);
@@ -186,25 +201,6 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
         toast({ title: "Ticket members updated." });
     }
     
-    const handleCreateTicket = async (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => {
-        // In a real app, this would call a cloud function `createTicketAndMaybeEscalate`
-        const finalTicketData = { ...ticketData };
-        if (escalateNow) {
-            finalTicketData.status = 'Escalated';
-            finalTicketData.escalation = {
-                status: 'queued', // Backend would change this to 'sent' or 'failed'
-                requestedAt: new Date().toISOString(),
-                requestedBy: appUser?.id,
-                intakeRuleId: intakeRuleId
-            };
-        }
-        await addTicket(finalTicketData);
-        // Refresh data
-        // For optimistic UI, we would add the ticket to the local state here.
-        toast({ title: "Ticket created" });
-    }
-
-
     const renderStatusColumn = (status: Status) => {
       const columnTickets = tickets.filter(ticket => ticket.status === status.name);
       return (
@@ -318,7 +314,7 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
         allUsers={hubMembers}
         contacts={contacts}
         onDataRefresh={onDataRefresh}
-        onCreateTicket={handleCreateTicket}
+        onCreateTicket={onCreateTicket}
         allHubs={allHubs}
         escalationRules={escalationRules}
         projects={projects}

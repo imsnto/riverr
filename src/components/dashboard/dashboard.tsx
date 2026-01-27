@@ -452,7 +452,20 @@ if (fetchedConversations.length > 0) {
 
   const handleCreateTicket = async (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => {
     if (!appUser) return;
-    const finalTicketData = { ...ticketData };
+    
+    const now = new Date().toISOString();
+    const creationActivity: Activity = {
+        id: `act-creation-${Date.now()}`,
+        user_id: appUser.id,
+        timestamp: now,
+        type: 'ticket_creation',
+    };
+
+    const finalTicketData: Omit<Ticket, 'id'> = { 
+        ...ticketData, 
+        activities: [...(ticketData.activities || []), creationActivity] 
+    };
+    
     if (escalateNow) {
         finalTicketData.status = 'Escalated';
         finalTicketData.escalation = {
@@ -797,7 +810,7 @@ if (fetchedConversations.length > 0) {
           onUpdateTasks={onUpdateTasks}
           activeHub={activeHub}
           allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
+          onUpdateActiveHub={onUpdateActiveHub}
           onNewProject={handleNewProject}
           onNewTaskRequest={handleNewTaskRequest}
           onTaskClick={setSelectedTask}
@@ -809,12 +822,12 @@ if (fetchedConversations.length > 0) {
       );
       case 'tickets': return <TicketsBoard 
           tickets={tickets} 
-          onUpdateTickets={handleUpdateTickets}
+          onUpdateTickets={onUpdateTickets}
           conversations={chatConversations}
           activeHub={activeHub}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
+          onUpdateActiveHub={onUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
           allHubs={spaceHubs}
           escalationRules={escalationRules}
@@ -832,7 +845,7 @@ if (fetchedConversations.length > 0) {
           activeHub={activeHub}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
+          onUpdateActiveHub={onUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
       />;
       case 'help-center': return <HelpCenterLayout
@@ -903,7 +916,7 @@ if (fetchedConversations.length > 0) {
               projects={projects}
               selectedProjectId={selectedProjectId}
               onSelectProject={handleSelectProject}
-              onNewProject={handleNewProject}
+              onNewProject={onNewProject}
             />
           )}
           <main

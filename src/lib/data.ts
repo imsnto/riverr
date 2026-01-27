@@ -120,6 +120,7 @@ export interface Ticket {
     lastSyncedAt?: string | null;
     errorMessage?: string | null;
   };
+  activities?: Activity[];
 }
 
 export interface Deal {
@@ -267,7 +268,7 @@ export interface Activity {
   id: string;
   user_id: string;
   timestamp: string;
-  type: 'task_creation' | 'status_change' | 'assignee_change' | 'comment' | 'priority_change' | 'due_date_change' | 'subtask_completion';
+  type: 'task_creation' | 'status_change' | 'assignee_change' | 'comment' | 'priority_change' | 'due_date_change' | 'subtask_completion' | 'ticket_creation';
   from?: string; // Previous value
   to?: string; // New value
   comment_id?: string; // Link to a comment
