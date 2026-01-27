@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -17,6 +16,7 @@ import { Card } from '../ui/card';
 import CreateTicketDialog from './create-ticket-dialog';
 import { Badge } from '../ui/badge';
 import TicketDetailsDialog from './ticket-details-dialog';
+import { marked } from 'marked';
 
 interface InboxConversationViewProps {
   conversation: Conversation | null;
@@ -139,6 +139,7 @@ export default function InboxConversationView({
   const renderMessageBubble = (msg: ChatMessage) => {
     const isCustomer = msg.senderType === 'contact';
     const agent = isCustomer ? null : users.find(u => u.id === msg.authorId);
+    const isAI = msg.authorId === 'ai_agent';
 
     if (msg.type === 'event') {
         const eventAuthor = users.find(u => u.id === msg.authorId);
@@ -173,6 +174,8 @@ export default function InboxConversationView({
         </div>
       )
     }
+    
+    const contentHtml = (isAI && msg.content) ? marked.parse(msg.content) : msg.content;
 
     return (
       <div key={msg.id} className={cn("flex items-end gap-2", isCustomer ? "" : "justify-end")}>
@@ -184,12 +187,22 @@ export default function InboxConversationView({
         )}
         <div>
           <div className={cn("rounded-2xl p-3 max-w-md", isCustomer ? "bg-muted rounded-bl-none" : "bg-primary text-primary-foreground rounded-br-none")}>
-            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+             {isAI ? (
+                <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: contentHtml as string }}/>
+            ) : (
+                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+            )}
           </div>
           <p className={cn("text-[11px] mt-1 opacity-70", isCustomer ? "" : "text-right")}>
             {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}
           </p>
         </div>
+         {!isCustomer && agent && (
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={agent.avatarUrl} alt={agent.name || ''} />
+              <AvatarFallback>{getInitials(agent.name)}</AvatarFallback>
+            </Avatar>
+        )}
       </div>
     );
   };
