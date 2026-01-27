@@ -590,7 +590,7 @@ if (fetchedConversations.length > 0) {
     }
  };
  
-  const handleSendMessageFromAgent = async (conversationId: string, messageContent: string, type: 'reply' | 'note') => {
+  const handleSendMessageFromAgent = async (conversationId: string, messageContent: string, type: 'message' | 'note') => {
     if (!appUser) return;
     const newMessageData: Omit<ChatMessage, 'id'> = {
       conversationId: conversationId,
@@ -603,17 +603,27 @@ if (fetchedConversations.length > 0) {
     
     const newMessage = await db.addChatMessage(newMessageData);
     
-    setChatConversations(prev => prev.map(convo => {
-      if (convo.id === conversationId) {
-        return {
-          ...convo,
-          lastMessage: messageContent,
-          lastMessageAt: newMessage.timestamp,
-          lastMessageAuthor: appUser.name,
-        }
-      }
-      return convo;
-    }).sort((a,b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
+    if (type === 'message') {
+        setChatConversations(prev => prev.map(convo => {
+          if (convo.id === conversationId) {
+            return {
+              ...convo,
+              lastMessage: messageContent,
+              lastMessageAt: newMessage.timestamp,
+              lastMessageAuthor: appUser.name,
+            }
+          }
+          return convo;
+        }).sort((a,b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
+
+        // Optimistically update ticket preview
+        setTickets(prevTickets => prevTickets.map(ticket => {
+            if (ticket.conversationId === conversationId) {
+                return { ...ticket, lastMessagePreview: messageContent, lastMessageAt: newMessage.timestamp, lastMessageAuthor: appUser.name };
+            }
+            return ticket;
+        }));
+    }
   };
 
   const handleSendMessageFromBotPreview = async (content: string) => {
@@ -784,7 +794,7 @@ if (fetchedConversations.length > 0) {
           projects={projects}
           onSelectProject={handleSelectProject}
           allTasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
+          onUpdateTasks={onUpdateTasks}
           activeHub={activeHub}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}

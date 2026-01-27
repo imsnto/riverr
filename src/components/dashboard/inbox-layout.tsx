@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -17,7 +18,7 @@ interface InboxLayoutProps {
   visitors: Visitor[];
   conversations: Conversation[];
   messages: ChatMessage[];
-  onSendMessage: (conversationId: string, content: string, type: 'reply' | 'note') => void;
+  onSendMessage: (conversationId: string, content: string, type: 'message' | 'note') => void;
   onAssignConversation: (conversationId: string, assigneeId: string | null) => void;
   setHideMobileBottomNav?: (hide: boolean) => void;
   activeHub: Hub;
@@ -78,7 +79,7 @@ export default function InboxLayout({
   };
 
   const handleAgentSendMessage = (conversationId: string, message: Omit<ChatMessage, 'id' | 'conversationId'>) => {
-    onSendMessage(conversationId, message.content, message.type as 'reply' | 'note');
+    onSendMessage(conversationId, message.content, message.type as 'message' | 'note');
   };
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId) || null;

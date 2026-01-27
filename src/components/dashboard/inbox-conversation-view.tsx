@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -349,7 +350,10 @@ export default function InboxConversationView({
                 conversationId: conversation.id,
                 contactId: conversation.contactId,
                 title: ticketData.title || `Ticket from conversation with ${contact.name}`,
-                description: ticketData.description || `Created from conversation: ${conversation.lastMessage}`
+                description: ticketData.description || `Created from conversation: ${conversation.lastMessage}`,
+                lastMessagePreview: conversation.lastMessage,
+                lastMessageAt: conversation.lastMessageAt,
+                lastMessageAuthor: conversation.lastMessageAuthor,
             };
             onCreateTicket(ticketWithConvo, escalate, ruleId);
         }}
@@ -374,5 +378,3 @@ export default function InboxConversationView({
     </>
   );
 }
-
-    
