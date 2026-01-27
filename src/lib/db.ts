@@ -77,6 +77,25 @@ import {
 import { FirestorePermissionError } from "./errors";
 import { errorEmitter } from "./error-emitter";
 
+const whimsicalAdjectives = [
+  "Clever", "Silly", "Witty", "Happy", "Brave", "Curious", "Dapper", "Eager", "Fancy",
+  "Gentle", "Jolly", "Kindly", "Lucky", "Merry", "Nifty", "Plucky", "Quirky", "Sunny",
+  "Thrifty", "Zippy", "Agile", "Blissful", "Calm", "Dandy", "Elated", "Fearless"
+];
+
+const whimsicalNouns = [
+  "Alpaca", "Badger", "Capybara", "Dingo", "Echidna", "Fossa", "Gecko", "Hedgehog",
+  "Impala", "Jerboa", "Koala", "Loris", "Mongoose", "Narwhal", "Okapi", "Pangolin",
+  "Quokka", "Serval", "Tarsier", "Urial", "Wallaby", "Xerus", "Zebra", "Aardvark"
+];
+
+const generateWhimsicalName = () => {
+  const adj = whimsicalAdjectives[Math.floor(Math.random() * whimsicalAdjectives.length)];
+  const noun = whimsicalNouns[Math.floor(Math.random() * whimsicalNouns.length)];
+  return `${adj} ${noun}`;
+};
+
+
 // --- Seeding ---
 export const seedDatabase = async () => {
   const usersRef = collection(db, "users");
@@ -1393,12 +1412,19 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
   try {
     const visitorSnap = await getDoc(visitorRef);
     if (visitorSnap.exists()) {
-      return { id: visitorSnap.id, ...visitorSnap.data() } as Visitor;
+      const existingVisitor = { id: visitorSnap.id, ...visitorSnap.data() } as Visitor;
+      if (!existingVisitor.name) {
+        const newName = generateWhimsicalName();
+        await updateDoc(visitorRef, { name: newName });
+        existingVisitor.name = newName;
+      }
+      return existingVisitor;
     } else {
+      const name = details?.name || generateWhimsicalName();
       const newVisitor: Omit<Visitor, 'id'> = {
-        name: details?.name || 'Anonymous User',
+        name: name,
         email: details?.email || 'N/A',
-        avatarUrl: details?.avatarUrl || `https://placehold.co/100x100.png?text=${(details?.name?.[0] || 'U')}`,
+        avatarUrl: details?.avatarUrl || `https://placehold.co/100x100.png?text=${(name?.[0] || 'U')}`,
         domain: details?.domain || '',
         pathname: details?.pathname || '',
         lastSeen: new Date().toISOString(),
@@ -1561,6 +1587,7 @@ export const updateHelpCenterContent = async (
 
   await batch.commit();
 }
+
 
 
 
