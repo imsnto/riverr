@@ -2,7 +2,7 @@
 'use client';
 import React, { useState, useCallback, useEffect } from 'react';
 import { HelpCenterArticle, User } from '@/lib/data';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Bot, Trash2, MessageSquare, Loader2, Share2, Globe, Lock, ArrowLeft, MoreHorizontal, Star } from 'lucide-react';
 import TiptapEditor, { useEditor } from '@/components/document/TiptapEditor';
@@ -14,6 +14,18 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { formatDistanceToNow } from 'date-fns';
 import HelpCenterArticleShareDialog from './help-center-article-share-dialog';
 import { Toolbar } from '@/components/document/TiptapToolbar';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { cn } from '@/lib/utils';
+
 
 interface HelpCenterArticleEditorProps {
     article: HelpCenterArticle;
@@ -21,6 +33,7 @@ interface HelpCenterArticleEditorProps {
     allUsers: User[];
     appUser: User;
     onBack: () => void;
+    onDelete: (articleId: string) => void;
 }
 
 const getInitials = (name: string) => {
@@ -44,7 +57,7 @@ const SaveStatusIndicator = ({ isSaving, lastSaved }: { isSaving: boolean, lastS
 }
 
 
-export default function HelpCenterArticleEditor({ article: initialArticle, onSave, allUsers, appUser, onBack }: HelpCenterArticleEditorProps) {
+export default function HelpCenterArticleEditor({ article: initialArticle, onSave, allUsers, appUser, onBack, onDelete }: HelpCenterArticleEditorProps) {
     const [article, setArticle] = useState(initialArticle);
     const [lastSavedArticle, setLastSavedArticle] = useState(initialArticle);
     const [editor, setEditor] = useState<Editor | null>(null);
@@ -53,6 +66,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
     const { toast } = useToast();
     const [isTitleDerived, setIsTitleDerived] = useState(initialArticle.title === '');
     const [isShareOpen, setIsShareOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const author = allUsers.find(u => u.id === article.authorId);
 
     const hasUnsavedChanges = JSON.stringify(article) !== JSON.stringify(lastSavedArticle);
@@ -134,84 +148,105 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
     };
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="w-full shrink-0 px-4 md:px-8 pt-4 md:pt-8">
-                <div className="max-w-4xl mx-auto">
-                    <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
-                            <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
-                                <ArrowLeft className="h-4 w-4 mr-2" /> Back
-                            </Button>
-                            /
-                             <div className="flex items-center gap-2 min-w-0">
-                                {article.isPublic === false ? <Lock className="h-4 w-4 text-muted-foreground shrink-0" /> : <Globe className="h-4 w-4 text-muted-foreground shrink-0" />}
-                                <Input
-                                    value={article.title}
-                                    onChange={(e) => {
-                                        setIsTitleDerived(false);
-                                        setArticle(prev => ({...prev, title: e.target.value}))
-                                    }}
-                                    className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground truncate"
-                                    placeholder="Article Title"
-                                />
+        <>
+            <div className="flex flex-col h-full">
+                <div className="w-full shrink-0 px-4 md:px-8 pt-4 md:pt-8">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="flex justify-between items-center mb-4">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+                                <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
+                                    <ArrowLeft className="h-4 w-4 mr-2" /> Back
+                                </Button>
+                                /
+                                <div className="flex items-center gap-2 min-w-0">
+                                    {article.isPublic === false ? <Lock className="h-4 w-4 text-muted-foreground shrink-0" /> : <Globe className="h-4 w-4 text-muted-foreground shrink-0" />}
+                                    <Input
+                                        value={article.title}
+                                        onChange={(e) => {
+                                            setIsTitleDerived(false);
+                                            setArticle(prev => ({...prev, title: e.target.value}))
+                                        }}
+                                        className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground truncate"
+                                        placeholder="Article Title"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 md:gap-4 shrink-0">
+                                <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
+                                <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
+                                    {article.status === 'draft' ? 'Draft' : 'Published'}
+                                </Badge>
+                                <Button variant="outline" size="sm" onClick={() => setIsShareOpen(true)}>
+                                    <Share2 className="h-4 w-4 mr-2" /> Share
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={handlePublish}>
+                                    {article.status === 'published' ? 'Unpublish' : 'Publish'}
+                                </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive focus:text-destructive">
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            <span>Delete Article</span>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 md:gap-4 shrink-0">
-                            <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
-                            <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
-                                {article.status === 'draft' ? 'Draft' : 'Published'}
-                            </Badge>
-                             <Button variant="outline" size="sm" onClick={() => setIsShareOpen(true)}>
-                                <Share2 className="h-4 w-4 mr-2" /> Share
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={handlePublish}>
-                                {article.status === 'published' ? 'Unpublish' : 'Publish'}
-                            </Button>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        <span>Delete Article</span>
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </div>
+                        
+                        {author && (
+                            <div className="flex items-center gap-2 mb-4">
+                                <Avatar className="h-6 w-6">
+                                    <AvatarImage src={author.avatarUrl} />
+                                    <AvatarFallback>{getInitials(author.name)}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-xs text-muted-foreground">Written by {author.name}</span>
+                            </div>
+                        )}
                     </div>
-                    
-                    {author && (
-                        <div className="flex items-center gap-2 mb-4">
-                            <Avatar className="h-6 w-6">
-                                <AvatarImage src={author.avatarUrl} />
-                                <AvatarFallback>{getInitials(author.name)}</AvatarFallback>
-                            </Avatar>
-                            <span className="text-xs text-muted-foreground">Written by {author.name}</span>
-                        </div>
-                    )}
                 </div>
-            </div>
-            
-            <div className="flex-1 flex justify-center overflow-y-auto px-4 md:px-8">
-                <div className="w-full max-w-4xl relative">
-                    <TiptapEditor 
-                        content={article.content}
-                        onChange={handleContentChange}
-                        onEditorInstance={onEditorInstance}
-                    />
+                
+                <div className="flex-1 flex justify-center overflow-y-auto px-4 md:px-8">
+                    <div className="w-full max-w-4xl relative">
+                        <TiptapEditor 
+                            content={article.content}
+                            onChange={handleContentChange}
+                            onEditorInstance={onEditorInstance}
+                        />
+                    </div>
                 </div>
-            </div>
 
-            <HelpCenterArticleShareDialog
-                isOpen={isShareOpen}
-                onOpenChange={setIsShareOpen}
-                article={article}
-                onSave={handleSharingSave}
-                allUsers={allUsers}
-            />
-        </div>
+                <HelpCenterArticleShareDialog
+                    isOpen={isShareOpen}
+                    onOpenChange={setIsShareOpen}
+                    article={article}
+                    onSave={handleSharingSave}
+                    allUsers={allUsers}
+                />
+            </div>
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the article "{article.title}".
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => onDelete(article.id)}
+                            className={cn(buttonVariants({ variant: "destructive" }))}
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     );
 }

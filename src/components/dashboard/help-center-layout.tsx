@@ -5,11 +5,11 @@ import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar'
 import { HelpCenter, HelpCenterCollection, HelpCenterArticle, User } from '@/lib/data';
 import HelpCenterArticleEditor from './help-center-article-editor';
 import { useAuth } from '@/hooks/use-auth';
-import { Button } from '../ui/button';
+import { Button, buttonVariants } from '../ui/button';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
-import { FolderPlus, Plus, Search, ChevronRight, Move, Link as LinkIcon, Library, ArrowLeft, DownloadCloud } from 'lucide-react';
+import { FolderPlus, Plus, Search, ChevronRight, Move, Link as LinkIcon, Library, ArrowLeft, DownloadCloud, Trash2 } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
@@ -18,7 +18,8 @@ import AddToHelpCenterDialog from './add-to-help-center-dialog';
 import AddArticlesToCollectionDialog from './add-articles-to-collection-dialog';
 import ManageHelpCenterContentDialog from './manage-help-center-content-dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { importRiverrHelpDocs } from '@/lib/db';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { cn } from '@/lib/utils';
 
 interface HelpCenterLayoutProps {
     onSaveArticle: (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => Promise<HelpCenterArticle | void>;
@@ -59,13 +60,11 @@ export default function HelpCenterLayout({
     const [isAddToHCOpen, setIsAddToHCOpen] = useState(false);
     const [isManageArticlesOpen, setIsManageArticlesOpen] = useState(false);
     const [isManageContentOpen, setIsManageContentOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
 
     const isMobile = useIsMobile();
     const [mobileContentVisible, setMobileContentVisible] = useState(false);
-    
-    const [isImporting, setIsImporting] = useState(false);
-    const [hasImported, setHasImported] = useState(false);
-
     
     const { toast } = useToast();
 
@@ -277,6 +276,28 @@ export default function HelpCenterLayout({
         refreshData();
         setSelectedItems([]);
     };
+    
+    const handleDeleteSelectedItems = async () => {
+        const articlesToDelete = selectedItems.filter(id => articles.some(a => a.id === id));
+        const collectionsToDelete = selectedItems.filter(id => collections.some(c => c.id === id));
+    
+        const promises: Promise<void>[] = [];
+        articlesToDelete.forEach(id => promises.push(db.deleteHelpCenterArticle(id)));
+        collectionsToDelete.forEach(id => promises.push(db.deleteHelpCenterCollection(id)));
+    
+        await Promise.all(promises);
+        toast({ title: `${selectedItems.length} item(s) deleted.` });
+        refreshData();
+        setSelectedItems([]);
+        setIsDeleteDialogOpen(false);
+    };
+
+    const handleDeleteArticle = async (articleId: string) => {
+        await db.deleteHelpCenterArticle(articleId);
+        toast({ title: "Article deleted" });
+        refreshData();
+        setSelectedArticleId(null);
+    };
 
     const handleAddToHelpCenters = async (helpCenterIds: string[]) => {
         const promises = selectedItems.map(itemId => {
@@ -342,22 +363,6 @@ export default function HelpCenterLayout({
         }
     };
     
-     const handleImport = async () => {
-        if (!appUser || !activeHub) return;
-        setIsImporting(true);
-        try {
-            await importRiverrHelpDocs(activeHub.id, appUser.id);
-            toast({ title: "Import Successful", description: "Riverr help documents have been seeded." });
-            setHasImported(true);
-            refreshData();
-        } catch (e) {
-            console.error(e);
-            toast({ variant: "destructive", title: "Import Failed" });
-        } finally {
-            setIsImporting(false);
-        }
-    }
-    
     const articleToEdit = articles.find(a => a.id === selectedArticleId);
     if (articleToEdit && appUser) {
          return (
@@ -372,6 +377,7 @@ export default function HelpCenterLayout({
                    allUsers={[]}
                    appUser={appUser}
                    onBack={() => setSelectedArticleId(null)}
+                   onDelete={handleDeleteArticle}
                 />
             </div>
         );
@@ -433,10 +439,6 @@ export default function HelpCenterLayout({
                             <Button onClick={handleCreateArticle}>
                                 <Plus className="mr-2 h-4 w-4" /> New Article
                             </Button>
-                            <Button variant="secondary" onClick={handleImport} disabled={isImporting || hasImported}>
-                                <DownloadCloud className="mr-2 h-4 w-4" />
-                                {isImporting ? "Importing..." : (hasImported ? "Imported" : "Import Riverr Docs")}
-                            </Button>
                         </>
                     )}
                 </div>
@@ -457,6 +459,9 @@ export default function HelpCenterLayout({
                     </Button>
                     <Button variant="secondary" size="sm" onClick={() => setIsAddToHCOpen(true)}>
                         <LinkIcon className="mr-2 h-4 w-4" /> Add to Knowledge Base...
+                    </Button>
+                     <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)}>
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete
                     </Button>
                  </div>
              )}
@@ -520,6 +525,25 @@ export default function HelpCenterLayout({
                 onSave={handleManageContentSave}
             />
         )}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete {selectedItems.length} item(s) and any nested content.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        onClick={handleDeleteSelectedItems}
+                        className={cn(buttonVariants({ variant: "destructive" }))}
+                    >
+                        Delete
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
       </>
     );
 
