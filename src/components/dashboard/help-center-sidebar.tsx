@@ -1,15 +1,15 @@
-
 'use client';
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
 import { Button } from '../ui/button';
-import { Book, ChevronRight, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus, GripVertical, FileText } from 'lucide-react';
+import { Book, ChevronRight, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus, GripVertical, FileText, Settings, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '../ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
+import Link from 'next/link';
 
 export type HelpCenterSidebarView = 'knowledge-bases' | 'library' | 'all-articles';
 
@@ -195,6 +195,30 @@ export default function HelpCenterSidebar({
                                 onViewChange('knowledge-bases');
                             }}
                         />
+                        {activeHelpCenterId && sidebarView === 'knowledge-bases' && (
+                            <div className="mt-2 px-1">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="sm" className="w-full justify-start">
+                                            <Settings className="mr-2 h-4 w-4" />
+                                            Settings
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        <DropdownMenuItem asChild>
+                                            <Link href={`/hc/${activeHelpCenterId}`} target="_blank" rel="noopener noreferrer">
+                                                <ExternalLink className="mr-2 h-4 w-4" />
+                                                View Public Page
+                                            </Link>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem disabled>
+                                            <Edit className="mr-2 h-4 w-4" />
+                                            Edit Name
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        )}
                     </CollapsibleContent>
                  </Collapsible>
               </div>
