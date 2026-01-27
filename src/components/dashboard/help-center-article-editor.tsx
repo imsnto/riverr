@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
+import { uploadImageToFirebase } from '@/lib/db';
 
 
 interface HelpCenterArticleEditorProps {
@@ -71,6 +72,13 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
     const author = allUsers.find(u => u.id === article.authorId);
 
     const hasUnsavedChanges = JSON.stringify(article) !== JSON.stringify(lastSavedArticle);
+
+    const uploadImage = useCallback(
+      (file: File) => {
+        return uploadImageToFirebase(file, article.hubId, article.id);
+      },
+      [article.hubId, article.id]
+    );
 
     const onEditorInstance = useCallback((editor: Editor) => {
         setEditor(editor);
@@ -225,6 +233,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                             content={article.content}
                             onChange={handleContentChange}
                             onEditorInstance={onEditorInstance}
+                            uploadImage={uploadImage}
                         />
                     </div>
                 </div>
