@@ -1,4 +1,5 @@
 
+
 'use client'
 // src/lib/db.ts
 
@@ -1103,84 +1104,40 @@ export const deleteDocument = async (docId: string): Promise<void> => {
 };
 
 // --- Contact, Visitor, and Conversation Management ---
-
-const normalizeEmail = (email?: string | null) =>
-  (email || "").trim().toLowerCase();
-
-const normalizePhone = (phone?: string | null) =>
-  (phone || "").replace(/[^\d+]/g, ""); // simple for now
-
-export const findOrCreateContactByIdentity = async (
-  tenantId: string,
-  identity: { email?: string; phone?: string; name?: string }
-): Promise<Contact> => {
-  const email = normalizeEmail(identity.email);
-  const phone = normalizePhone(identity.phone);
-
-  // Try email match
-  if (email) {
-    const q1 = query(collection(db, "contacts"),
-      where("tenantId", "==", tenantId),
-      where("primaryEmail", "==", email),
-      limit(1)
-    );
-    const snap1 = await getDocs(q1);
-    if (!snap1.empty) return { id: snap1.docs[0].id, ...snap1.docs[0].data() } as Contact;
-  }
-
-  // Try phone match (basic: primaryPhone)
-  if (phone) {
-    const q2 = query(collection(db, "contacts"),
-      where("tenantId", "==", tenantId),
-      where("primaryPhone", "==", phone),
-      limit(1)
-    );
-    const snap2 = await getDocs(q2);
-    if (!snap2.empty) return { id: snap2.docs[0].id, ...snap2.docs[0].data() } as Contact;
-  }
-
-  // Create new contact
-  const now = new Date().toISOString();
-  return await addContact({
-    tenantId,
-    name: identity.name || null,
-    company: null,
-    emails: email ? [email] : [],
-    phones: phone ? [phone] : [],
-    primaryEmail: email || null,
-    primaryPhone: phone || null,
-    source: "chat",
-    externalIds: {},
-    tags: [],
-    createdAt: now,
-    updatedAt: now,
-    lastSeenAt: now,
-    lastMessageAt: null,
-    lastOrderAt: null,
-    lastCallAt: null,
-    mergeParentId: null,
-    isMerged: false,
-  } as any);
+export const findOrCreateContact = async (spaceId: string, details: { email?: string, name?: string }): Promise<Contact> => {
+    if (details.email) {
+      const q = query(collection(db, "contacts"), where("primaryEmail", "==", details.email.toLowerCase()), where("tenantId", "==", spaceId), limit(1));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Contact;
+      }
+    }
+  
+    // Create new if not found
+    const now = new Date();
+    const newContactData: Omit<Contact, 'id'> = {
+      tenantId: spaceId,
+      name: details.name || null,
+      emails: details.email ? [details.email.toLowerCase()] : [],
+      primaryEmail: details.email?.toLowerCase() || null,
+      phones: [],
+      primaryPhone: null,
+      company: null,
+      source: 'chat',
+      externalIds: {},
+      tags: [],
+      createdAt: now,
+      updatedAt: now,
+      lastSeenAt: now,
+      lastMessageAt: null,
+      lastOrderAt: null,
+      lastCallAt: null,
+      isMerged: false,
+      mergeParentId: null,
+    };
+    return addContact(newContactData);
 };
 
-export const attachContactToConversation = async (
-  tenantId: string,
-  conversationId: string,
-  contactId: string,
-  visitorId?: string | null
-) => {
-  await updateConversation(conversationId, {
-    contactId,
-    ...(visitorId ? { visitorId } : {}),
-  } as any);
-
-  await addContactEvent(contactId, {
-    type: "identity_added",
-    timestamp: serverTimestamp() as any,
-    summary: "Identity attached from chat",
-    ref: { conversationId, visitorId: visitorId || null },
-  });
-};
 
 export const getContacts = async (spaceId: string): Promise<Contact[]> => {
   const q = query(collection(db, 'contacts'), where('tenantId', '==', spaceId));

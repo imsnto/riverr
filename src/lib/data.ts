@@ -443,6 +443,7 @@ export interface Visitor {
   companyUsers: number;
   companyPlan: string;
   companySpend: string;
+  contactId?: string;
 }
 
 export interface Conversation {
@@ -451,12 +452,16 @@ export interface Conversation {
   contactId: string | null;
   visitorId?: string | null;
   assigneeId: string | null;
-  status: 'open' | 'unassigned' | 'closed';
+  status: 'bot' | 'human' | 'closed';
   lastMessage: string;
   lastMessageAt: string; // ISO String
   lastMessageAuthor: string;
   lastMessagePreview?: string;
   updatedAt?: string;
+  escalated?: boolean;
+  escalationReason?: string;
+  visitorName?: string;
+  visitorEmail?: string;
 }
 
 export interface ChatMessage {
