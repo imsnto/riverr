@@ -104,6 +104,7 @@ export interface Ticket {
   channel: 'Widget' | 'OpenPhone' | 'Order' | 'Manual' | null;
   lastMessagePreview: string | null;
   lastMessageAt: string | null;
+  lastMessageAuthor: string | null;
   createdAt: string;
   createdBy: string;
   updatedAt: string;

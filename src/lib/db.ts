@@ -1267,7 +1267,7 @@ export const addChatMessage = async (message: Omit<ChatMessage, "id">): Promise<
     const docRef = await addDoc(collRef, message);
     const saved = { ...message, id: docRef.id };
   
-    // Only update summaries for actual messages, not system events
+    // Only update summaries for actual messages, not system events or notes
     if (message.conversationId && message.type === 'message') {
       let authorName = "System";
       if (message.senderType === 'agent') {

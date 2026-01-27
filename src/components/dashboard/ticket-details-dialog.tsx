@@ -127,27 +127,26 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="p-4 border-b flex items-center gap-2">
-                    <Button variant="outline" onClick={handleOpenConversation}><MessageSquare className="mr-2"/> Open Conversation</Button>
-                    <Button variant="outline"><Edit3 className="mr-2"/> Add Note</Button>
-                    <Button variant="outline"><GitMerge className="mr-2"/> Escalate</Button>
-                    <div className="flex-grow" />
-                    <Button variant="destructive">Close Ticket</Button>
-                </div>
-
-
                 <ScrollArea className="flex-1">
                   <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
                         {/* LATEST MESSAGE */}
                         <div>
-                            <h4 className="font-semibold mb-2">Latest Message</h4>
-                            <div className="border rounded-lg p-4 bg-muted/40">
-                                <p className="italic text-muted-foreground">"{ticket.lastMessagePreview || 'No messages yet.'}"</p>
-                                <p className="text-xs text-muted-foreground mt-2">
-                                    From {ticket.lastMessageAuthor || 'Unknown'}, {ticket.lastMessageAt ? formatDistanceToNow(parseISO(ticket.lastMessageAt), { addSuffix: true }) : 'N/A'}
-                                </p>
-                            </div>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                    <CardTitle className="text-base font-semibold">Latest Message</CardTitle>
+                                    <Button variant="outline" size="sm" onClick={handleOpenConversation}>
+                                        <MessageSquare className="mr-2 h-4 w-4"/>
+                                        Open Conversation
+                                    </Button>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="italic text-muted-foreground">"{ticket.lastMessagePreview || 'No messages yet.'}"</p>
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                        From {ticket.lastMessageAuthor || 'Unknown'}, {ticket.lastMessageAt ? formatDistanceToNow(parseISO(ticket.lastMessageAt), { addSuffix: true }) : 'N/A'}
+                                    </p>
+                                </CardContent>
+                            </Card>
                         </div>
 
                         {/* LINKED DEV WORK */}
@@ -240,6 +239,10 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
                     </div>
                   </div>
                 </ScrollArea>
+                 <DialogFooter className="p-6 pt-4 border-t">
+                    <Button variant="outline" onClick={() => {}}><Edit3 className="mr-2" /> Add Note</Button>
+                    <Button variant="destructive">Close Ticket</Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

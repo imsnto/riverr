@@ -141,6 +141,7 @@ export default function CreateTicketDialog({
       channel: 'Manual',
       lastMessageAt: now,
       lastMessagePreview: 'Ticket created manually.',
+      lastMessageAuthor: appUser.name,
       createdAt: now,
       createdBy: appUser.id,
       updatedAt: now,
