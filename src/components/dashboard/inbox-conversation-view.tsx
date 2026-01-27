@@ -188,9 +188,9 @@ export default function InboxConversationView({
         <div>
           <div className={cn("rounded-2xl p-3 max-w-md", isCustomer ? "bg-muted rounded-bl-none" : "bg-primary text-primary-foreground rounded-br-none")}>
              {isAI ? (
-                <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: contentHtml as string }}/>
+                <div className="prose prose-sm dark:prose-invert max-w-none break-all" dangerouslySetInnerHTML={{ __html: contentHtml as string }}/>
             ) : (
-                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                <p className="text-sm whitespace-pre-wrap break-all">{msg.content}</p>
             )}
           </div>
           <p className={cn("text-[11px] mt-1 opacity-70", isCustomer ? "" : "text-right")}>

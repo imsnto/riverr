@@ -386,14 +386,14 @@ export default function ChatbotWidgetPage() {
                 >
                     {isAgent ? (
                     <div>
-                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
-                        {msg.content && <div className="text-sm prose prose-sm prose-invert break-words" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
+                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
+                        {msg.content && <div className="text-sm prose prose-sm prose-invert max-w-none break-all" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
                         {renderAttachments(msg)}
                         </div>
                         <p className="text-xs text-zinc-500 mt-2">{agent?.name || 'AI Agent'}</p>
                     </div>
                     ) : (
-                    <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-words" style={{ backgroundColor: primary, color: bot.styleSettings?.customerTextColor || '#ffffff' }}>
+                    <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-all" style={{ backgroundColor: primary, color: bot.styleSettings?.customerTextColor || '#ffffff' }}>
                         {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
                         {renderAttachments(msg)}
                     </div>
