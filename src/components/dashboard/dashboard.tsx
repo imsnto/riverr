@@ -298,8 +298,10 @@ if (fetchedConversations.length > 0) {
         router.push(`/space/${activeSpace?.id}/hub/${activeHub.id}/${newView}`);
     } else if (activeSpace) {
       router.push(`/space/${activeSpace.id}/hubs`);
+    } else if (newView === 'contacts') {
+        router.push('/contacts');
     } else {
-      router.push('/space-selection');
+        router.push('/space-selection');
     }
   };
 
@@ -346,7 +348,7 @@ if (fetchedConversations.length > 0) {
     }
   }, [view, currentView]);
 
-  if (!appUser || !activeSpace || !activeHub) {
+  if (!appUser || !activeSpace || (view !== 'contacts' && !activeHub)) {
     return <DashboardSkeleton />;
   }
   
@@ -381,6 +383,9 @@ if (fetchedConversations.length > 0) {
   };
   
   const handleAddTask = async (task: Omit<Task, 'id'>): Promise<Task> => {
+    if (!activeHub) {
+        throw new Error("Cannot add task without an active hub.");
+    }
     const now = new Date().toISOString();
     const creationActivity: Activity = {
         id: `act-creation-${Date.now()}`,
@@ -453,7 +458,7 @@ if (fetchedConversations.length > 0) {
   };
 
   const handleCreateTicket = async (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => {
-    if (!appUser) return;
+    if (!appUser || !activeHub) return;
     
     const now = new Date().toISOString();
     const creationActivity: Activity = {
@@ -463,10 +468,20 @@ if (fetchedConversations.length > 0) {
         type: 'ticket_creation',
     };
 
-    const finalTicketData: Omit<Ticket, 'id'> = { 
+    let finalTicketData: Omit<Ticket, 'id'> = { 
         ...ticketData, 
         activities: [...(ticketData.activities || []), creationActivity] 
     };
+
+    const convo = ticketData.conversationId ? chatConversations.find(c => c.id === ticketData.conversationId) : null;
+    if (convo) {
+      finalTicketData = {
+        ...finalTicketData,
+        lastMessagePreview: convo.lastMessage,
+        lastMessageAt: convo.lastMessageAt,
+        lastMessageAuthor: convo.lastMessageAuthor,
+      }
+    }
     
     if (escalateNow) {
         finalTicketData.status = 'Escalated';
@@ -812,7 +827,7 @@ if (fetchedConversations.length > 0) {
           onSelectProject={handleSelectProject}
           allTasks={tasks}
           onUpdateTasks={handleUpdateTasks}
-          activeHub={activeHub}
+          activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
@@ -828,12 +843,12 @@ if (fetchedConversations.length > 0) {
           tickets={tickets} 
           onUpdateTickets={handleUpdateTickets}
           conversations={chatConversations}
-          activeHub={activeHub}
+          activeHub={activeHub!}
           activeSpace={activeSpace}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
-          allHubs={allHubs}
+          allHubs={spaceHubs}
           escalationRules={escalationRules}
           projects={projects}
           contacts={contacts}
@@ -846,7 +861,7 @@ if (fetchedConversations.length > 0) {
           onAddDeal={handleAddDeal}
           onDataRefresh={fetchData}
           contacts={contacts}
-          activeHub={activeHub}
+          activeHub={activeHub!}
           activeSpace={activeSpace}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
@@ -873,9 +888,9 @@ if (fetchedConversations.length > 0) {
                             onSendMessage={handleSendMessageFromAgent}
                             onAssignConversation={handleAssignConversation}
                             setHideMobileBottomNav={setHideMobileBottomNav}
-                            activeHub={activeHub}
+                            activeHub={activeHub!}
                             activeSpace={activeSpace}
-                            allHubs={allHubs}
+                            allHubs={spaceHubs}
                             escalationRules={escalationRules}
                             projects={projects}
                             contacts={contacts}
@@ -967,7 +982,7 @@ if (fetchedConversations.length > 0) {
             onRemoveTask={handleDeleteTask}
             onTaskSelect={setSelectedTask}
             onLogTime={handleLogTime}
-            statuses={activeHub.statuses?.map(s => s.name) || []}
+            statuses={activeHub!.statuses?.map(s => s.name) || []}
             allUsers={allUsers}
             allTasks={tasks}
             projects={projects}
