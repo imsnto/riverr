@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -178,17 +177,17 @@ export default function InboxConversationView({
     const contentHtml = (isAI && msg.content) ? marked.parse(msg.content) : msg.content;
 
     return (
-      <div key={msg.id} className={cn("flex items-end gap-2", isCustomer ? "" : "justify-end")}>
+      <div key={msg.id} className={cn("flex items-end gap-2 min-w-0", isCustomer ? "" : "justify-end")}>
         {isCustomer && (
             <Avatar className="h-8 w-8">
               <AvatarImage src={contact.avatarUrl} />
               <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
             </Avatar>
         )}
-        <div>
+        <div className="min-w-0">
           <div className={cn("rounded-2xl p-3 max-w-md", isCustomer ? "bg-muted rounded-bl-none" : "bg-primary text-primary-foreground rounded-br-none")}>
              {isAI ? (
-                <div className="prose prose-sm dark:prose-invert max-w-none break-all" dangerouslySetInnerHTML={{ __html: contentHtml as string }}/>
+                <div className="text-sm prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden [&_a]:break-all [&_a]:whitespace-normal [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:overflow-x-auto [&_code]:break-words" dangerouslySetInnerHTML={{ __html: contentHtml as string }}/>
             ) : (
                 <p className="text-sm whitespace-pre-wrap break-all">{msg.content}</p>
             )}

@@ -11,10 +11,10 @@ import { Send, Plus, X, Loader2, Paperclip, ImageIcon, File as FileIcon, Bot } f
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { answerChatQuestion } from '@/ai/flows/answer-chat-question';
 import { marked } from 'marked';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { invokeAgent } from '@/app/actions/chat';
 
 
 interface BotDataWithAgents extends BotData {
@@ -54,7 +54,6 @@ export default function ChatbotWidgetPage() {
   const [isCapturingIdentity, setIsCapturingIdentity] = useState(false);
   const [capturedName, setCapturedName] = useState('');
   const [capturedEmail, setCapturedEmail] = useState('');
-  const [conversationState, setConversationState] = useState<'ai_active' | 'escalation_offered' | 'escalation_declined' | 'human_assigned'>('ai_active');
   
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,6 +61,7 @@ export default function ChatbotWidgetPage() {
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const unsubRef = useRef<(() => void) | null>(null);
+  const convoUnsubRef = useRef<(() => void) | null>(null);
 
   const visibleMessages = useMemo(() => {
     return messages
@@ -122,6 +122,7 @@ export default function ChatbotWidgetPage() {
 
     return () => {
       if (unsubRef.current) unsubRef.current();
+      if (convoUnsubRef.current) convoUnsubRef.current();
     };
   }, [botId, hubId, appUser]);
 
@@ -142,7 +143,7 @@ export default function ChatbotWidgetPage() {
       const existingConvo = convos.find(c => c.visitorId === visitorId);
 
       if (existingConvo) {
-        setConversation(existingConvo);
+        convoUnsubRef.current = db.getConversation(existingConvo.id, setConversation);
         unsubRef.current = db.getMessagesForConversations(
           [existingConvo.id],
           (msgs) => setMessages(msgs),
@@ -175,8 +176,6 @@ export default function ChatbotWidgetPage() {
       await loadVisitorAndConversation(visitorId);
   }
 
-  const DECLINE_PHRASES = ["no", "don’t", "not yet", "just answer", "stop", "i said no"];
-
   const handleSendMessage = async () => {
     if (!messageText.trim() && attachments.length === 0) return;
     if (!visitor || !spaceId || !bot) return;
@@ -199,15 +198,16 @@ export default function ChatbotWidgetPage() {
             visitorId: visitor.id,
             assigneeId,
             status: 'bot', // Start with bot
+            state: 'ai_active',
             lastMessage: messageText || "Sent an attachment",
             lastMessageAt: new Date().toISOString(),
             lastMessageAuthor: visitor.name,
         };
 
       const newConvo = await db.addConversation(newConvoData);
-      setConversation(newConvo);
       currentConversation = newConvo;
 
+      convoUnsubRef.current = db.getConversation(newConvo.id, setConversation);
       unsubRef.current = db.getMessagesForConversations(
         [newConvo.id],
         (msgs) => setMessages(msgs),
@@ -233,6 +233,13 @@ export default function ChatbotWidgetPage() {
       attachments: messageAttachments,
     };
     
+    const incomingMessage: any = {
+        id: `msg-${Date.now()}`,
+        role: 'user',
+        text: userMessageContent,
+        createdAt: newMessageData.timestamp
+    }
+    
     setMessageText('');
     setAttachments([]);
     setLoading(false);
@@ -240,75 +247,22 @@ export default function ChatbotWidgetPage() {
     await db.addChatMessage(newMessageData);
 
     setIsAiThinking(true);
-
-    let currentState = conversationState;
-    if (currentState === 'escalation_offered' && DECLINE_PHRASES.some(phrase => userMessageContent.toLowerCase().includes(phrase))) {
-        currentState = 'escalation_declined';
-        setConversationState('escalation_declined');
-    }
     
-    const historyForAI = messages.filter(isPublicForVisitor).map(msg => ({
-        role: msg.senderType === 'agent' ? 'model' : 'user',
-        content: msg.content
-    }));
-
+    const botConfig = {
+      id: bot.id,
+      hubId: bot.hubId,
+      name: bot.name,
+      allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
+    };
+    
     try {
-        const aiResponse = await answerChatQuestion({
-            question: userMessageContent,
-            hubId: hubId,
-            allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
-            userId: visitor.id,
-            botName: bot.name,
-            conversationState: currentState,
-            history: historyForAI
+        await invokeAgent({
+            bot: botConfig,
+            conversation: currentConversation,
+            message: incomingMessage,
         });
-
-        if (aiResponse.suggestedNextStep === "escalate") {
-          setConversationState('human_assigned');
-          await db.addChatMessage({
-              conversationId: currentConversation.id,
-              authorId: 'ai_agent',
-              type: 'message',
-              senderType: 'agent',
-              content: aiResponse.answer || "I'm connecting you with a team member who can help.",
-              timestamp: new Date().toISOString(),
-          });
-          await db.updateConversation(currentConversation.id, { status: 'human', escalated: true, escalationReason: "AI Escalation" });
-
-        } else {
-            if (aiResponse.suggestedNextStep === 'offer_escalation') {
-                setConversationState('escalation_offered');
-            } else if (currentState !== 'escalation_declined') {
-                setConversationState('ai_active');
-            }
-            let responseContent = aiResponse.answer;
-            if (aiResponse.sources && aiResponse.sources.length > 0) {
-                const sourcesText = aiResponse.sources.map(source => `- [${source.title}](${source.url})`).join('\n');
-                responseContent += `\n\n**Sources:**\n${sourcesText}`;
-            }
-            
-            const aiMessageData: Omit<ChatMessage, 'id'> = {
-                conversationId: currentConversation.id,
-                authorId: 'ai_agent',
-                type: 'message',
-                senderType: 'agent',
-                content: responseContent,
-                timestamp: new Date().toISOString(),
-            };
-            await db.addChatMessage(aiMessageData);
-        }
-
     } catch (e) {
-        console.error("AI failed to answer:", e);
-        const errorMessageData: Omit<ChatMessage, 'id'> = {
-            conversationId: currentConversation.id,
-            authorId: 'ai_agent',
-            type: 'message',
-            senderType: 'agent',
-            content: "Sorry, I encountered an error while trying to find an answer. Please try rephrasing your question.",
-            timestamp: new Date().toISOString(),
-        };
-        await db.addChatMessage(errorMessageData);
+        console.error("Agent failed to answer:", e);
     } finally {
         setIsAiThinking(false);
     }
@@ -423,23 +377,23 @@ export default function ChatbotWidgetPage() {
                 const isAgent = msg.senderType === 'agent';
                 const agent = isAgent ? bot.agents?.find(u => u.id === msg.authorId) : null;
                 const isAI = isAgent && msg.authorId === 'ai_agent';
-                const contentHtml = isAI ? marked(msg.content) : msg.content;
+                const contentHtml = isAI ? marked.parse(msg.content) : msg.content;
                 
                 return (
                 <div
                     key={msg.id}
-                    className={cn('flex items-end gap-2', isAgent ? 'justify-start' : 'justify-end')}
+                    className={cn('flex items-end gap-2 min-w-0', isAgent ? 'justify-start' : 'justify-end')}
                 >
                     {isAgent ? (
-                    <div>
-                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
-                        {msg.content && <div className="text-sm prose prose-sm prose-invert" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
+                    <div className="min-w-0">
+                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
+                        {msg.content && <div className="text-sm prose prose-sm prose-invert max-w-none break-words overflow-hidden [&_a]:break-all [&_a]:whitespace-normal [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:overflow-x-auto [&_code]:break-words" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
                         {renderAttachments(msg)}
                         </div>
                         <p className="text-xs text-zinc-500 mt-2">{agent?.name || 'AI Agent'}</p>
                     </div>
                     ) : (
-                    <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-words" style={{ backgroundColor: primary, color: bot.styleSettings?.customerTextColor || '#ffffff' }}>
+                    <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-all" style={{ backgroundColor: primary, color: bot.styleSettings?.customerTextColor || '#ffffff' }}>
                         {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
                         {renderAttachments(msg)}
                     </div>
