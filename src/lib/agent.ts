@@ -319,7 +319,7 @@ function buildSources(chunks: HelpChunk[], max = 3) {
 function formatAnswerWithSources(answer: string, sources?: ReturnType<typeof buildSources>) {
   if (!sources || sources.length === 0) return answer;
 
-  return [answer.trim(), "", "Sources:", ...sources.map((s) => `- ${s.title} — ${s.url}`)].join("\n");
+  return [answer.trim(), "", "Sources:", ...sources.map((s) => `- [${s.title}](${s.url})`)].join("\n");
 }
 
 // -------------------------
@@ -382,7 +382,7 @@ export async function handleIncomingMessage(args: {
     await adapters.persistAssistantMessage({
       conversationId: conversation.id,
       hubId: conversation.hubId,
-      text: `No problem. I’ll stay with you here.\n\nWhat are you trying to do in **${botName}**? If you tell me the screen you’re on or what you expected to happen, I’ll guide you.`,
+      text: `No problem. I’ll stay with you here.\n\nWhat are you trying to do in **${botName}**? If you tell me the screen you’re on and what you expected to happen, I’ll guide you.`,
       meta: { intent, handoff: "declined" },
     });
     return;
