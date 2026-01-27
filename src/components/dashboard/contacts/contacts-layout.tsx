@@ -10,12 +10,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import * as db from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
+import { useSearchParams } from 'next/navigation';
 
 interface ContactsLayoutProps {
     activeSpace: Space | null;
 }
 
 export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
+  const searchParams = useSearchParams();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -39,6 +41,16 @@ export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
       });
     }
   }, [activeSpace]);
+
+  useEffect(() => {
+    const contactIdFromUrl = searchParams.get('contactId');
+    if (contactIdFromUrl && contacts.length > 0) {
+      const contactToSelect = contacts.find(c => c.id === contactIdFromUrl);
+      if (contactToSelect) {
+        setSelectedContact(contactToSelect);
+      }
+    }
+  }, [searchParams, contacts]);
 
   const handleNewContact = () => {
       setIsCreateDialogOpen(true);

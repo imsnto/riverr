@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Ticket, User, Conversation, Contact } from '@/lib/data';
 import { Badge } from '../ui/badge';
@@ -62,6 +63,7 @@ interface TicketDetailsDialogProps {
 
 export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onOpenChange, onUpdateTicket, statuses, allUsers, contact, conversation }: TicketDetailsDialogProps) {
     const { toast } = useToast();
+    const router = useRouter();
     const [ticket, setTicket] = useState(initialTicket);
 
     useEffect(() => {
@@ -76,9 +78,35 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
         onUpdateTicket(updatedTicket);
     };
 
-    const handleCopy = (text: string) => {
+    const handleCopy = (text: string | null) => {
+      if (!text) return;
       navigator.clipboard.writeText(text);
       toast({ title: 'Copied to clipboard', description: text });
+    };
+
+    const handleOpenConversation = () => {
+        if (ticket?.conversationId && ticket.hubId && ticket.spaceId) {
+          onOpenChange(false);
+          router.push(`/space/${ticket.spaceId}/hub/${ticket.hubId}/inbox?conversationId=${ticket.conversationId}`);
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Conversation not found",
+            description: "This ticket is not linked to a conversation.",
+          });
+        }
+    };
+    
+    const handleOpenContactProfile = () => {
+        if (contact?.id) {
+            onOpenChange(false);
+            router.push(`/contacts?contactId=${contact.id}`);
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Contact not found"
+            });
+        }
     };
 
     const assignee = allUsers.find(u => u.id === ticket.assignedTo);
@@ -100,7 +128,7 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
                 </DialogHeader>
 
                 <div className="p-4 border-b flex items-center gap-2">
-                    <Button variant="outline"><MessageSquare className="mr-2"/> Open Conversation</Button>
+                    <Button variant="outline" onClick={handleOpenConversation}><MessageSquare className="mr-2"/> Open Conversation</Button>
                     <Button variant="outline"><Edit3 className="mr-2"/> Add Note</Button>
                     <Button variant="outline"><GitMerge className="mr-2"/> Escalate</Button>
                     <div className="flex-grow" />
@@ -168,7 +196,7 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
                                     )}
                                 </CardContent>
                                 <CardFooter>
-                                     <Button variant="secondary" className="w-full">View Full Profile</Button>
+                                     <Button variant="secondary" className="w-full" onClick={handleOpenContactProfile}>View Full Profile</Button>
                                 </CardFooter>
                             </Card>
                         )}

@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -11,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import ContactDetailDialog from './inbox-contact-dailog';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useSearchParams } from 'next/navigation';
 
 interface InboxLayoutProps {
   users: User[];
@@ -53,6 +52,7 @@ export default function InboxLayout({
   onCreateTicket,
   onUpdateTicket,
 }: InboxLayoutProps) {
+  const searchParams = useSearchParams();
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isContactPanelOpen, setIsContactPanelOpen] = useState(true);
   const [isContactDailog, setIsContactDailog] = useState(false);
@@ -65,11 +65,13 @@ export default function InboxLayout({
   }, [isMobile, selectedConversationId, setHideMobileBottomNav]);
 
   useEffect(() => {
-    // On desktop, select the first conversation by default
-    if (window.innerWidth >= 768 && !selectedConversationId && conversations.length > 0) {
+    const convoIdFromUrl = searchParams.get('conversationId');
+    if (convoIdFromUrl) {
+      setSelectedConversationId(convoIdFromUrl);
+    } else if (window.innerWidth >= 768 && !selectedConversationId && conversations.length > 0) {
       setSelectedConversationId(conversations[0].id);
     }
-  }, [selectedConversationId, conversations]);
+  }, [searchParams, selectedConversationId, conversations]);
 
   const handleSelectConversation = (id: string) => {
     setSelectedConversationId(id);

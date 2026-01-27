@@ -1,4 +1,3 @@
-
 'use client'
 // src/lib/db.ts
 
@@ -1172,24 +1171,6 @@ export const attachContactToConversation = async (
   });
 };
 
-export const logChatMessageEventIfLinked = async (
-  conversation: Conversation,
-  msg: Omit<ChatMessage, "id">,
-) => {
-  if (!conversation.contactId) return;
-
-  const preview =
-    (msg.content || "").slice(0, 140);
-
-  await addContactEvent(conversation.contactId, {
-    type: "chat_message",
-    timestamp: msg.timestamp || (serverTimestamp() as any),
-    summary: preview || "Message",
-    ref: { conversationId: conversation.id },
-    payload: { direction: msg.senderType || "unknown" },
-  });
-};
-
 export const getContacts = async (spaceId: string): Promise<Contact[]> => {
   const q = query(collection(db, 'contacts'), where('tenantId', '==', spaceId));
   const snapshot = await getDocs(q);
@@ -1282,30 +1263,29 @@ export const getMessagesForConversations = (
 };
 
 export const addChatMessage = async (message: Omit<ChatMessage, "id">): Promise<ChatMessage> => {
-  const collRef = collection(db, "chat_messages");
-  const docRef = await addDoc(collRef, message);
-  const saved = { ...message, id: docRef.id };
-
-  // update conversation summary
-  if (message.conversationId) {
-    const lastMessageAuthorDoc = await getDoc(doc(db, "visitors", message.authorId));
-    const lastMessageAuthorName = lastMessageAuthorDoc.exists() ? lastMessageAuthorDoc.data().name : 'Agent';
-
-    const conversationUpdateData = {
-      lastMessageAt: message.timestamp,
-      lastMessage: (message.content || "").slice(0, 140),
-      lastMessageAuthor: lastMessageAuthorName,
-      updatedAt: serverTimestamp(),
-    };
-    await updateConversation(message.conversationId, conversationUpdateData as any);
-
-    // load conversation to see if contactId is linked
-    const convoSnap = await getDoc(doc(db, "conversations", message.conversationId));
-    if (convoSnap.exists()) {
-      const convo = { id: convoSnap.id, ...convoSnap.data() } as Conversation;
-      await logChatMessageEventIfLinked(convo, saved);
-
-      // Also update ticket if it exists
+    const collRef = collection(db, "chat_messages");
+    const docRef = await addDoc(collRef, message);
+    const saved = { ...message, id: docRef.id };
+  
+    // Only update summaries for actual messages, not system events
+    if (message.conversationId && message.type === 'message') {
+      let authorName = "System";
+      if (message.senderType === 'agent') {
+        const userDoc = await getDoc(doc(db, 'users', message.authorId));
+        if (userDoc.exists()) authorName = userDoc.data().name;
+      } else { // 'contact'
+        const visitorDoc = await getDoc(doc(db, 'visitors', message.authorId));
+        if (visitorDoc.exists()) authorName = visitorDoc.data().name;
+      }
+  
+      const conversationUpdateData = {
+        lastMessageAt: message.timestamp,
+        lastMessage: (message.content || "").slice(0, 140),
+        lastMessageAuthor: authorName,
+        updatedAt: serverTimestamp(),
+      };
+      await updateConversation(message.conversationId, conversationUpdateData as any);
+  
       const ticketsQuery = query(collection(db, "tickets"), where("conversationId", "==", message.conversationId), limit(1));
       const ticketSnap = await getDocs(ticketsQuery);
       if (!ticketSnap.empty) {
@@ -1313,14 +1293,14 @@ export const addChatMessage = async (message: Omit<ChatMessage, "id">): Promise<
         await updateTicket(ticketDoc.id, {
           lastMessagePreview: (message.content || "").slice(0, 140),
           lastMessageAt: message.timestamp,
+          lastMessageAuthor: authorName,
           updatedAt: new Date().toISOString(),
         });
       }
     }
-  }
-
-  return saved;
-};
+    
+    return saved;
+  };
 
 export const updateConversation = async (conversationId: string, data: Partial<Conversation>): Promise<void> => {
   const convRef = doc(db, 'conversations', conversationId);
@@ -1425,8 +1405,7 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
         name: name,
         email: details?.email || 'N/A',
         avatarUrl: details?.avatarUrl || `https://placehold.co/100x100.png?text=${(name?.[0] || 'U')}`,
-        domain: details?.domain || '',
-        pathname: details?.pathname || '',
+        location: {pathname: details?.location?.pathname || '', domain: details?.location?.domain || ''},
         lastSeen: new Date().toISOString(),
         companyName: 'N/A',
         sessions: 1,
@@ -1587,7 +1566,3 @@ export const updateHelpCenterContent = async (
 
   await batch.commit();
 }
-
-
-
-
