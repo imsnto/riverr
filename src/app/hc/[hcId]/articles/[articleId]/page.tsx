@@ -25,7 +25,7 @@ async function getArticleData(articleId: string) {
         adminDB.collection('help_center_collections').get(),
     ]);
 
-    const author = authorSnap.exists() ? { id: authorSnap.id, ...authorSnap.data() } as User : null;
+    const author = authorSnap.exists ? { id: authorSnap.id, ...authorSnap.data() } as User : null;
     
     const allCollections = allCollectionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenterCollection));
     
