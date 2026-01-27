@@ -1,42 +1,60 @@
 /**
- * agent.ts (DROP-IN)
- * Brand-aware support agent with:
- * - Greeting handling (never dumb refusal)
- * - Help center RAG (semantic search)
- * - Escalation state machine (offer once, respect "no")
- * - Billing + upset immediate escalation
- * - Article-topic override (e.g., "bins" MUST answer if docs exist)
- * - Optional identity capture (name/email) at chat start
+ * agent.ts (FIXED DROP-IN)
  *
- * You wire this into your existing inbox pipeline:
- * - Call handleIncomingMessage(...) whenever a visitor sends a message
- * - Persist returned updates to your DB (conversation state, visitor info, messages)
- *
- * NOTE: This file intentionally has small "adapter" interfaces you implement:
- *   - searchHelpCenter(query, filters) -> returns chunks + article metadata
- *   - getArticleById(articleId) -> optional
- *   - escalateToHuman(...) -> assigns conversation to human queue
- *   - persistMessage(...) -> writes assistant messages
+ * Fixes:
+ * - Escalation state sticks even if your existing ConversationState enum is limited
+ * - Handoff is offered once, respects "no", and never repeats after decline
+ * - Explicit topic retry search (expanded query then raw topic keyword)
+ * - No "I am designed to..." garbage, no "no matching article" statements
  */
 
-import type { ConversationState as ImportedConversationState, Conversation as ImportedConversation } from './data';
+import type { Conversation as ImportedConversation } from "./data";
 
-export type ConversationState = ImportedConversationState;
-
+/**
+ * IMPORTANT:
+ * Do NOT alias your ConversationState from ./data.
+ * Your DB enum likely doesn't include escalation_offered/declined.
+ * We keep our own internal state and persist via a dedicated "handoff" object.
+ */
 export type MessageRole = "user" | "assistant" | "internal";
 
 export interface BotConfig {
   id: string;
   hubId: string;
-  name: string; // e.g., "Riverr Help" or "Joe's Pizza Help"
+  name: string;
   allowedHelpCenterIds: string[];
-  // optional tuning:
   requireIdentityBeforeEscalation?: boolean; // default true
   allowAIWithoutSources?: boolean; // default true
+
+  // optional tuning
+  forceImmediateEscalationOnBilling?: boolean; // default true
+  forceImmediateEscalationOnUpset?: boolean; // default false (recommend: offer first)
 }
 
-export type Conversation = ImportedConversation;
+export type Conversation = ImportedConversation & {
+  // These may or may not exist in your current model. We treat them as optional.
+  state?: string | null;
+  escalated?: boolean;
+  escalationReason?: string | null;
+  assignedAgentId?: string | null;
 
+  visitorName?: string | null;
+  visitorEmail?: string | null;
+  userId?: string | null;
+
+  // optional: last known intent
+  lastIntent?: Intent | null;
+
+  /**
+   * Sticky handoff state that will work even if your existing state enum is limited.
+   * Persist this field in your DB and use it to drive UI + logic.
+   */
+  handoff?: {
+    status: "none" | "offered" | "declined" | "completed";
+    reason?: string;
+    offeredAt?: string; // ISO
+  } | null;
+};
 
 export interface IncomingMessage {
   id: string;
@@ -68,16 +86,8 @@ export interface SearchHelpCenterResult {
 }
 
 export interface AgentAdapters {
-  /**
-   * Semantic search over your indexed help center chunks.
-   * MUST filter by hubId and allowedHelpCenterIds inside this function.
-   */
   searchHelpCenter: (params: SearchHelpCenterParams) => Promise<SearchHelpCenterResult>;
 
-  /**
-   * Escalation hook to your inbox queue / ticketing system.
-   * Should set assigned agent/queue, mark conversation as human_assigned in your DB, etc.
-   */
   escalateToHuman: (args: {
     conversationId: string;
     hubId: string;
@@ -85,9 +95,6 @@ export interface AgentAdapters {
     transcriptHint?: string;
   }) => Promise<void>;
 
-  /**
-   * Persist the assistant message to your DB/inbox.
-   */
   persistAssistantMessage: (args: {
     conversationId: string;
     hubId: string;
@@ -96,10 +103,6 @@ export interface AgentAdapters {
     meta?: Record<string, unknown>;
   }) => Promise<void>;
 
-  /**
-   * Persist any conversation updates (state, visitor identity).
-   * Make this an atomic patch in your DB.
-   */
   updateConversation: (args: {
     conversationId: string;
     hubId: string;
@@ -121,16 +124,7 @@ export type Intent =
   | "human_request"
   | "unknown";
 
-const GREETINGS = [
-  "hi",
-  "hello",
-  "hey",
-  "yo",
-  "hiya",
-  "good morning",
-  "good afternoon",
-  "good evening",
-];
+const GREETINGS = ["hi", "hello", "hey", "yo", "hiya", "good morning", "good afternoon", "good evening"];
 
 const BILLING_KEYWORDS = [
   "billing",
@@ -177,23 +171,12 @@ const HUMAN_REQUEST_KEYWORDS = [
   "team member",
 ];
 
-const DECLINE_ESCALATION = [
-  "no",
-  "nope",
-  "don't",
-  "do not",
-  "not yet",
-  "stop",
-  "just answer",
-  "i said no",
-  "answer me",
-];
+const DECLINE_ESCALATION = ["no", "nope", "don't", "do not", "not yet", "stop", "just answer", "i said no", "answer me"];
 
-const IDENTITY_EMAIL_REGEX =
-  /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
+const IDENTITY_EMAIL_REGEX = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
 
 function normalize(s: string) {
-  return s.trim().toLowerCase();
+  return (s ?? "").trim().toLowerCase();
 }
 
 function containsAny(haystack: string, needles: string[]) {
@@ -219,19 +202,16 @@ function isUpset(text: string) {
   const t = normalize(text);
   const upset = containsAny(t, UPSET_PHRASES);
   const profanity = PROFANITY.some((p) => t.includes(p));
-  // Treat directed profanity or high frustration as upset
   return upset || profanity;
 }
 
 function isDecline(text: string) {
   const t = normalize(text);
-  // if user types only "no" or "no." or "no thanks", etc.
   if (t === "no" || t === "no." || t === "no thanks" || t === "no thank you") return true;
   return DECLINE_ESCALATION.some((d) => t.includes(normalize(d)));
 }
 
 function looksAccountSpecific(text: string) {
-  // You can customize this list for your product.
   const patterns = [
     "my order",
     "my shipment",
@@ -253,7 +233,6 @@ function inferIntent(text: string): Intent {
   if (isUpset(text)) return "upset";
   if (looksAccountSpecific(text)) return "account_specific";
 
-  // Heuristic: "how do i", "help", "can't", etc.
   const t = normalize(text);
   if (t.includes("how do i") || t.includes("how to") || t.startsWith("help")) return "how_to";
   if (t.includes("doesn't work") || t.includes("not working") || t.includes("error")) return "troubleshooting";
@@ -265,10 +244,6 @@ function inferIntent(text: string): Intent {
 // Topic override (article-first)
 // -------------------------
 
-/**
- * Optional: known topic aliases -> query expansions
- * Add your product’s common nouns here.
- */
 const TOPIC_ALIASES: Record<string, string[]> = {
   bins: ["bins", "using bins", "production bins"],
   batching: ["batching items", "batch items", "batching"],
@@ -291,15 +266,12 @@ function detectExplicitTopic(text: string): string | null {
 // -------------------------
 
 function extractEmail(text: string): string | null {
-  const match = text.match(IDENTITY_EMAIL_REGEX);
+  const match = (text ?? "").match(IDENTITY_EMAIL_REGEX);
   return match?.[1] ?? null;
 }
 
-/**
- * Very light name guess: if user says "I'm Brad" / "I am Brad" / "My name is Brad"
- */
 function extractName(text: string): string | null {
-  const t = text.trim();
+  const t = (text ?? "").trim();
   const patterns = [
     /^i['’]m\s+([A-Za-z][A-Za-z.'-]{1,})/i,
     /^i\s+am\s+([A-Za-z][A-Za-z.'-]{1,})/i,
@@ -313,11 +285,11 @@ function extractName(text: string): string | null {
 }
 
 function needsIdentity(convo: Conversation) {
-  return !convo.visitorEmail; // email is the key for follow-up
+  return !convo.visitorEmail;
 }
 
 // -------------------------
-// Response rendering helpers
+// Rendering helpers
 // -------------------------
 
 function brand(bot: BotConfig) {
@@ -328,12 +300,14 @@ function buildSources(chunks: HelpChunk[], max = 3) {
   const sorted = [...chunks].sort((a, b) => b.score - a.score);
   const picked: HelpChunk[] = [];
   const seen = new Set<string>();
+
   for (const c of sorted) {
     if (seen.has(c.articleId)) continue;
     seen.add(c.articleId);
     picked.push(c);
     if (picked.length >= max) break;
   }
+
   return picked.map((c) => ({
     articleId: c.articleId,
     title: c.title,
@@ -345,13 +319,7 @@ function buildSources(chunks: HelpChunk[], max = 3) {
 function formatAnswerWithSources(answer: string, sources?: ReturnType<typeof buildSources>) {
   if (!sources || sources.length === 0) return answer;
 
-  const lines = [
-    answer.trim(),
-    "",
-    "Sources:",
-    ...sources.map((s) => `- ${s.title} — ${s.url}`),
-  ];
-  return lines.join("\n");
+  return [answer.trim(), "", "Sources:", ...sources.map((s) => `- ${s.title} — ${s.url}`)].join("\n");
 }
 
 // -------------------------
@@ -361,33 +329,31 @@ function formatAnswerWithSources(answer: string, sources?: ReturnType<typeof bui
 export async function handleIncomingMessage(args: {
   bot: BotConfig;
   conversation: Conversation;
-  message: IncomingMessage; // user message
+  message: IncomingMessage;
   adapters: AgentAdapters;
 }) {
-  const { bot, conversation, message, adapters } = args;
+  const { bot, adapters } = args;
+  let conversation = args.conversation; // local copy we can refresh via patch assumptions
   const botName = brand(bot);
 
-  // If human already assigned, do nothing (AI must be quiet)
-  if (conversation.state === "human_assigned" || conversation.escalated) {
+  // If human assigned or already escalated, AI stays quiet.
+  if (conversation.escalated || conversation.state === "human_assigned" || conversation.handoff?.status === "completed") {
     return;
   }
 
-  const text = message.text ?? "";
+  const text = args.message.text ?? "";
   const intent = inferIntent(text);
+
+  // Persist lastIntent (handy for debugging + UI)
   await adapters.updateConversation({
     conversationId: conversation.id,
     hubId: conversation.hubId,
     patch: { lastIntent: intent },
   });
 
-  // If user declined escalation recently, lock it out unless they explicitly request a human
-  const escalationLocked =
-    conversation.state === "escalation_declined" && intent !== "human_request";
-
-  // Capture identity opportunistically (user might paste email in any message)
+  // Opportunistic identity capture
   const maybeEmail = extractEmail(text);
   const maybeName = extractName(text);
-
   if (maybeEmail || maybeName) {
     await adapters.updateConversation({
       conversationId: conversation.id,
@@ -397,9 +363,32 @@ export async function handleIncomingMessage(args: {
         visitorName: maybeName ?? conversation.visitorName ?? null,
       },
     });
+    conversation = {
+      ...conversation,
+      visitorEmail: maybeEmail ?? conversation.visitorEmail ?? null,
+      visitorName: maybeName ?? conversation.visitorName ?? null,
+    };
   }
 
-  // 1) Greetings should NEVER escalate and NEVER search-refuse
+  // If a handoff was offered and user declines, mark declined and DO NOT repeat handoff.
+  const handoffStatus = conversation.handoff?.status ?? "none";
+  if (handoffStatus === "offered" && isDecline(text)) {
+    await adapters.updateConversation({
+      conversationId: conversation.id,
+      hubId: conversation.hubId,
+      patch: { handoff: { ...(conversation.handoff ?? { status: "none" }), status: "declined" } },
+    });
+
+    await adapters.persistAssistantMessage({
+      conversationId: conversation.id,
+      hubId: conversation.hubId,
+      text: `No problem. I’ll stay with you here.\n\nWhat are you trying to do in **${botName}**? If you tell me the screen you’re on or what you expected to happen, I’ll guide you.`,
+      meta: { intent, handoff: "declined" },
+    });
+    return;
+  }
+
+  // Greeting
   if (intent === "greeting") {
     const askIdentity = needsIdentity(conversation);
     const reply = askIdentity
@@ -410,123 +399,140 @@ export async function handleIncomingMessage(args: {
       conversationId: conversation.id,
       hubId: conversation.hubId,
       text: reply,
+      meta: { intent },
     });
     return;
   }
 
-  // 2) If user explicitly requests a human, escalate (unless you want identity first)
+  // Explicit human request: escalate (optionally ask for email first)
   if (intent === "human_request") {
-    // optional: identity gate before escalation
     const requireIdentity = bot.requireIdentityBeforeEscalation ?? true;
-    const convoNeedsIdentity = needsIdentity(conversation);
-    if (requireIdentity && convoNeedsIdentity) {
+    if (requireIdentity && needsIdentity(conversation)) {
+      await adapters.updateConversation({
+        conversationId: conversation.id,
+        hubId: conversation.hubId,
+        patch: {
+          handoff: { status: "offered", reason: "User requested human", offeredAt: new Date().toISOString() },
+        },
+      });
+
       await adapters.persistAssistantMessage({
         conversationId: conversation.id,
         hubId: conversation.hubId,
         text: `Totally. Before I connect you with the **${botName}** team, what’s the best email to reach you?`,
-      });
-      // Offer escalation but wait for email
-      await adapters.updateConversation({
-        conversationId: conversation.id,
-        hubId: conversation.hubId,
-        patch: { state: "escalation_offered" },
+        meta: { intent, handoff: "offered" },
       });
       return;
     }
 
-    await doEscalate(adapters, conversation, `User requested a human`);
+    await doEscalate(adapters, conversation, "User requested a human");
     await adapters.persistAssistantMessage({
       conversationId: conversation.id,
       hubId: conversation.hubId,
       text: `Got it. I’m connecting you with someone from the **${botName}** team now.`,
+      meta: { intent, handoff: "completed" },
     });
     return;
   }
 
-  // 3) If escalation was offered and user says "no", lock escalation and try to help
-  if (conversation.state === "escalation_offered" && isDecline(text)) {
+  // HARD escalation triggers (billing / upset)
+  // Key fix: If user previously declined (handoffStatus === "declined"), do NOT re-offer.
+  const handoffDeclined = handoffStatus === "declined";
+  if (!handoffDeclined && (intent === "billing" || intent === "upset")) {
+    const requireIdentity = bot.requireIdentityBeforeEscalation ?? true;
+    const shouldForceBilling = bot.forceImmediateEscalationOnBilling ?? true;
+    const shouldForceUpset = bot.forceImmediateEscalationOnUpset ?? false;
+
+    const reason = intent === "billing" ? "Billing-related issue" : "Upset/frustrated user";
+
+    // Offer (or force) handoff
     await adapters.updateConversation({
       conversationId: conversation.id,
       hubId: conversation.hubId,
-      patch: { state: "escalation_declined" },
+      patch: { handoff: { status: "offered", reason, offeredAt: new Date().toISOString() } },
     });
 
-    // Immediately pivot to help (no repeats)
-    await adapters.persistAssistantMessage({
-      conversationId: conversation.id,
-      hubId: conversation.hubId,
-      text: `No problem. I’ll stay with you here.\n\nWhat are you trying to do in **${botName}**? If you tell me the screen you’re on or what you expected to happen, I can guide you.`,
-    });
-    return;
-  }
+    if (requireIdentity && needsIdentity(conversation)) {
+      await adapters.persistAssistantMessage({
+        conversationId: conversation.id,
+        hubId: conversation.hubId,
+        text:
+          intent === "billing"
+            ? `This looks billing-related, so I want a teammate to handle it.\n\nWhat’s the best email for the **${botName}** team to reach you?`
+            : `I’m sorry this has been frustrating. I can bring in someone from the **${botName}** team.\n\nWhat’s the best email to reach you?`,
+        meta: { intent, handoff: "offered" },
+      });
+      return;
+    }
 
-  // 4) Hard escalation triggers (billing/upset) — but respect escalation lock if user said no
-  if (!escalationLocked && (intent === "billing" || intent === "upset")) {
-    // Offer escalation ONCE (don’t force)
-    await adapters.updateConversation({
-      conversationId: conversation.id,
-      hubId: conversation.hubId,
-      patch: { state: "escalation_offered" },
-    });
-
-    const askIdentityFirst =
-      (bot.requireIdentityBeforeEscalation ?? true) && needsIdentity(conversation);
-
-    const msg = intent === "billing"
-      ? (askIdentityFirst
-          ? `This looks billing-related, so I want a teammate to handle it.\n\nWhat’s your email so the **${botName}** team can reach you?`
-          : `This looks billing-related, so I’m going to connect you with someone from the **${botName}** team. If you’d rather I keep trying here, just say “no”.`)
-      : (askIdentityFirst
-          ? `I’m sorry this has been frustrating. Let me bring in someone from the **${botName}** team.\n\nWhat’s your email so we can follow up?`
-          : `I’m sorry this has been frustrating. I can connect you with someone from the **${botName}** team. If you’d rather I keep trying here, just say “no”.`);
+    // If forcing escalation, do it now. Otherwise offer and wait for user choice.
+    if ((intent === "billing" && shouldForceBilling) || (intent === "upset" && shouldForceUpset)) {
+      await doEscalate(adapters, conversation, reason);
+      await adapters.persistAssistantMessage({
+        conversationId: conversation.id,
+        hubId: conversation.hubId,
+        text: `I’m going to connect you with someone from the **${botName}** team now.`,
+        meta: { intent, handoff: "completed" },
+      });
+      return;
+    }
 
     await adapters.persistAssistantMessage({
       conversationId: conversation.id,
       hubId: conversation.hubId,
-      text: msg,
+      text:
+        intent === "billing"
+          ? `This looks billing-related. I can connect you with someone from the **${botName}** team.\n\nIf you’d prefer I keep helping here, just reply “no”.`
+          : `I’m sorry this has been frustrating. I can connect you with someone from the **${botName}** team.\n\nIf you’d prefer I keep helping here, just reply “no”.`,
+      meta: { intent, handoff: "offered" },
     });
-
-    // Only auto-escalate if you want; recommended: wait for confirmation OR email.
-    // If you DO want immediate escalation for billing/upset, uncomment:
-    // await doEscalate(adapters, conversation, intent === "billing" ? "Billing issue" : "Upset user");
     return;
   }
 
-  // 5) Topic override: if user mentions known topic (e.g., bins), force doc search + answer
+  // Topic override (bins, etc.)
   const explicitTopic = detectExplicitTopic(text);
-  const query = explicitTopic
-    ? TOPIC_ALIASES[explicitTopic].join(" OR ")
-    : text;
 
-  // 6) Retrieve help chunks (semantic)
-  const search = await adapters.searchHelpCenter({
+  // Retrieval query: expanded for explicit topics
+  const expandedQuery = explicitTopic ? TOPIC_ALIASES[explicitTopic].join(" OR ") : text;
+
+  // Search attempt #1
+  const search1 = await adapters.searchHelpCenter({
     hubId: bot.hubId,
     allowedHelpCenterIds: bot.allowedHelpCenterIds,
     userId: conversation.userId ?? null,
-    query,
-    topK: 8,
+    query: expandedQuery,
+    topK: 10,
   });
 
-  const chunks = search.chunks ?? [];
+  let chunks = search1.chunks ?? [];
+  let sources = buildSources(chunks, 3);
+
+  // Search attempt #2 (explicit topic raw keyword) if topic present but results weak
+  if (explicitTopic && sources.length === 0) {
+    const search2 = await adapters.searchHelpCenter({
+      hubId: bot.hubId,
+      allowedHelpCenterIds: bot.allowedHelpCenterIds,
+      userId: conversation.userId ?? null,
+      query: explicitTopic, // raw keyword retry
+      topK: 10,
+    });
+    chunks = search2.chunks ?? chunks;
+    sources = buildSources(chunks, 3);
+  }
+
   const topScore = chunks.length ? Math.max(...chunks.map((c) => c.score)) : 0;
 
-  const sources = buildSources(chunks, 3);
-
-  // 7) Decide answer strategy
-  // Confidence thresholds
   const HIGH = 0.78;
   const MED = 0.55;
 
-  // If explicit topic and we have ANY relevant doc, answer even if score is medium
+  // If explicit topic and ANY sources exist, answer (even medium)
   const mustAnswerFromDocs = Boolean(explicitTopic) && sources.length > 0;
 
-  // If we found strong docs, answer with doc-grounded summary
   if (mustAnswerFromDocs || topScore >= HIGH) {
     const answer = synthesizeFromChunks({
       botName,
       userText: text,
       chunks,
-      sources,
       explicitTopic,
     });
 
@@ -537,53 +543,33 @@ export async function handleIncomingMessage(args: {
       sources,
       meta: { intent, topScore, explicitTopic: explicitTopic ?? null },
     });
-
-    // If we were in escalation_offered state and user pivoted to a doc topic, clear it
-    if (conversation.state === "escalation_offered") {
-      await adapters.updateConversation({
-        conversationId: conversation.id,
-        hubId: conversation.hubId,
-        patch: { state: "ai_active" },
-      });
-    }
     return;
   }
 
-  // If medium relevance: provide helpful general guidance + 1 clarification question + optional sources
   if (topScore >= MED) {
-    const answer = generalHelpfulAnswer({
-      botName,
-      userText: text,
-      sources,
-    });
-
-    const withSources =
+    const answer = generalHelpfulAnswer({ botName, userText: text });
+    const out =
       bot.allowAIWithoutSources ?? true
         ? formatAnswerWithSources(answer, sources)
-        : (sources.length ? formatAnswerWithSources(answer, sources) : answer);
+        : sources.length
+          ? formatAnswerWithSources(answer, sources)
+          : answer;
 
     await adapters.persistAssistantMessage({
       conversationId: conversation.id,
       hubId: conversation.hubId,
-      text: withSources,
+      text: out,
       sources,
       meta: { intent, topScore },
     });
     return;
   }
 
-  // Low relevance: DO NOT say "no article found".
-  // Give best-effort guidance + ask one clarifying question.
-  const fallback = lowConfidencePivot({
-    botName,
-    userText: text,
-    intent,
-  });
-
+  // Low relevance fallback (never mention search failure)
   await adapters.persistAssistantMessage({
     conversationId: conversation.id,
     hubId: conversation.hubId,
-    text: fallback,
+    text: lowConfidencePivot({ botName, intent }),
     meta: { intent, topScore },
   });
 }
@@ -599,6 +585,7 @@ async function doEscalate(adapters: AgentAdapters, conversation: Conversation, r
     patch: {
       escalated: true,
       escalationReason: reason,
+      handoff: { status: "completed", reason, offeredAt: conversation.handoff?.offeredAt },
       state: "human_assigned",
     },
   });
@@ -611,21 +598,16 @@ async function doEscalate(adapters: AgentAdapters, conversation: Conversation, r
 }
 
 // -------------------------
-// Answer synthesis helpers
+// Answer helpers
 // -------------------------
 
 function synthesizeFromChunks(args: {
   botName: string;
   userText: string;
   chunks: HelpChunk[];
-  sources: Array<{ title: string; url: string; articleId: string; score: number }>;
   explicitTopic: string | null;
 }) {
-  const { botName, userText, chunks, explicitTopic } = args;
-
-  // Keep it short and helpful. Don’t paste huge chunks. Summarize.
-  // This is deliberately heuristic so it works without an LLM.
-  // If you want, replace this with a real LLM call using chunks as context.
+  const { botName, chunks, explicitTopic } = args;
 
   const best = [...chunks].sort((a, b) => b.score - a.score).slice(0, 3);
   const bullets = best
@@ -633,53 +615,36 @@ function synthesizeFromChunks(args: {
     .join("\n")
     .split("\n")
     .map((l) => l.trim())
-    .filter((l) => l.length > 0 && l.length < 140)
-    .slice(0, 5);
+    .filter((l) => l.length > 0 && l.length < 160)
+    .slice(0, 6);
 
-  const topic = explicitTopic ? `**${explicitTopic}**` : "this";
-  const intro = `Sure, here’s what you need to know about ${topic} in **${botName}**:`;
-
-  const answerLines = [intro];
+  const topic = explicitTopic ? `**${explicitTopic}**` : "that";
+  const lines: string[] = [`Sure, here’s what you need to know about ${topic} in **${botName}**:`];
 
   if (bullets.length) {
-    answerLines.push("");
-    answerLines.push("Key points:");
+    lines.push("");
+    lines.push("Key points:");
     for (const b of bullets) {
-      // normalize bullet formatting
       const cleaned = b.replace(/^[-•]\s*/, "");
-      answerLines.push(`- ${cleaned}`);
+      lines.push(`- ${cleaned}`);
     }
   } else {
-    answerLines.push("");
-    answerLines.push(
-      `Tell me what screen you’re on and what you’re trying to do, and I’ll give you the exact steps.`
-    );
+    lines.push("");
+    lines.push(`Tell me what screen you’re on in **${botName}** and what you’re trying to do, and I’ll give exact steps.`);
   }
 
-  // Ask a clarifier at the end (only if needed)
   if (!explicitTopic) {
-    answerLines.push("");
-    answerLines.push(`Quick question: are you trying to accomplish in **${botName}**?`);
+    lines.push("");
+    lines.push(`Quick question: what are you trying to accomplish in **${botName}**?`);
   }
 
-  return answerLines.join("\n");
+  return lines.join("\n");
 }
 
-function generalHelpfulAnswer(args: {
-  botName: string;
-  userText: string;
-  sources: Array<{ title: string; url: string; articleId: string; score: number }>;
-}) {
-  const { botName, userText, sources } = args;
-
-  const intro = `I can help with that in **${botName}**.`;
-  const hint = sources.length
-    ? `I found a couple related guides. Here’s the quickest path based on what you said:`
-    : `Here’s the quickest path based on what you said:`;
-
+function generalHelpfulAnswer(args: { botName: string; userText: string }) {
+  const { botName, userText } = args;
   const q = normalize(userText);
 
-  // A few generic “helpful” patterns you can expand over time:
   let steps: string[] = [];
   if (q.includes("upload") && (q.includes("image") || q.includes("photo") || q.includes("png") || q.includes("jpg"))) {
     steps = [
@@ -689,9 +654,9 @@ function generalHelpfulAnswer(args: {
     ];
   } else if (q.includes("integrat") || q.includes("shopify") || q.includes("etsy")) {
     steps = [
-      `Open **Integrations** in ${botName}.`,
+      `Open **Integrations** in **${botName}**.`,
       `Select your platform and follow the connect steps.`,
-      `If you tell me which platform, I’ll give exact instructions.`,
+      `Tell me which platform and I’ll give the exact steps.`,
     ];
   } else {
     steps = [
@@ -700,25 +665,22 @@ function generalHelpfulAnswer(args: {
     ];
   }
 
-  const lines = [intro, "", hint, "", "Steps:"];
-  steps.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
-
-  lines.push("");
-  lines.push(`Quick question: are you doing this inside Products, Orders, or the Production workflow?`);
-
-  return lines.join("\n");
+  return [
+    `I can help with that in **${botName}**.`,
+    "",
+    "Steps:",
+    ...steps.map((s, i) => `${i + 1}. ${s}`),
+    "",
+    `Quick question: where are you doing this in **${botName}** (Products, Orders, or Production)?`,
+  ].join("\n");
 }
 
-function lowConfidencePivot(args: { botName: string; userText: string; intent: Intent }) {
-  const { botName, userText, intent } = args;
-
-  // Never mention search failure.
-  // Try to be useful and ask 1 clarifying question.
+function lowConfidencePivot(args: { botName: string; intent: Intent }) {
+  const { botName, intent } = args;
 
   if (intent === "account_specific") {
-    return `I can help, but I’ll need one detail so I don’t point you the wrong way.\n\nWhat exactly are you trying to check in **${botName}** (order status, tracking, invoice, or something else)?`;
+    return `I can help with that in **${botName}**, but I need one detail so I don’t point you the wrong way.\n\nAre you trying to check an order, tracking, invoice, or subscription?`;
   }
 
-  // Default
-  return `Got it. I can help with that in **${botName}**.\n\nTo make sure I give the right steps: what screen are you on right now, and what were you trying to do when it didn’t work?`;
+  return `Got it. I can help with that in **${botName}**.\n\nWhat screen are you on right now, and what were you trying to do when it didn’t work?`;
 }

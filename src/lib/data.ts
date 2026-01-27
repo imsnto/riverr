@@ -472,6 +472,11 @@ export interface Conversation {
   visitorEmail?: string;
   state?: ConversationState;
   lastIntent?: string | null;
+  handoff?: {
+    status: "none" | "offered" | "declined" | "completed";
+    reason?: string;
+    offeredAt?: string; // ISO
+  } | null;
 }
 
 export interface ChatMessage {
