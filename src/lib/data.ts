@@ -411,11 +411,6 @@ export interface Bot {
   name: string;
   welcomeMessage?: string;
   layout: 'default' | 'compact';
-  spaces: {
-    home: boolean;
-    messages: boolean;
-    tickets: boolean;
-  };
   styleSettings?: {
     primaryColor: string;
     backgroundColor: string;

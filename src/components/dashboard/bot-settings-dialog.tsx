@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -105,8 +106,7 @@ const botSettingsSchema = z.object({
   headerTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
   customerTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
   logoUrl: z.string().url().optional().or(z.literal('')),
-  showTickets: z.boolean(),
-  agentIds: z.array(z.string()).optional(),
+  agentIds: z.array(z.string()).min(1, 'Please select at least one agent.'),
   allowedHelpCenterIds: z.array(z.string()).optional(),
   identityCaptureEnabled: z.boolean().default(true),
   identityCaptureRequired: z.boolean().default(false),
@@ -161,7 +161,6 @@ export default function BotSettingsDialog({
       headerTextColor: '#ffffff',
       customerTextColor: '#ffffff',
       logoUrl: '',
-      showTickets: false,
       agentIds: [],
       allowedHelpCenterIds: [],
       identityCaptureEnabled: true,
@@ -171,6 +170,7 @@ export default function BotSettingsDialog({
   });
   
   const watchedValues = form.watch();
+  const selectedAgents = allUsers.filter(u => watchedValues.agentIds?.includes(u.id));
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -198,7 +198,6 @@ export default function BotSettingsDialog({
         headerTextColor: bot.styleSettings?.headerTextColor || '#ffffff',
         customerTextColor: bot.styleSettings?.customerTextColor || '#ffffff',
         logoUrl: bot.styleSettings?.logoUrl || '',
-        showTickets: bot.spaces?.tickets ?? false,
         agentIds: bot.agentIds || [],
         allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
         identityCaptureEnabled: bot.identityCapture?.enabled ?? true,
@@ -214,7 +213,6 @@ export default function BotSettingsDialog({
             headerTextColor: '#ffffff',
             customerTextColor: '#ffffff',
             logoUrl: '',
-            showTickets: true,
             agentIds: [],
             allowedHelpCenterIds: [],
             identityCaptureEnabled: true,
@@ -237,11 +235,6 @@ export default function BotSettingsDialog({
         name: values.name,
         welcomeMessage: values.welcomeMessage,
         layout: 'default' as const,
-        spaces: {
-            messages: true,
-            tickets: values.showTickets,
-            home: bot?.spaces?.home || false,
-        },
         styleSettings: {
             primaryColor: values.primaryColor,
             backgroundColor: values.backgroundColor,
@@ -351,26 +344,6 @@ export default function BotSettingsDialog({
                         </FormItem>
                     )}
                 />
-
-                 <div className="space-y-2">
-                    <FormLabel>Spaces</FormLabel>
-                    <Card className="p-2 space-y-1">
-                         <FormField
-                            control={form.control}
-                            name="showTickets"
-                            render={({ field }) => (
-                                <FormItem className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
-                                    <div className="flex items-center gap-3">
-                                        <FormLabel className="font-normal">Tickets</FormLabel>
-                                    </div>
-                                    <FormControl>
-                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                    </FormControl>
-                                </FormItem>
-                            )}
-                        />
-                    </Card>
-                </div>
                 
                  <Accordion type="single" collapsible defaultValue="content" className="w-full">
                     <AccordionItem value="content">
@@ -601,23 +574,27 @@ export default function BotSettingsDialog({
              <>
                 <div className="w-80 h-[450px] text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden mb-4" style={{ backgroundColor: watchedValues.backgroundColor }}>
                     {/* Header */}
-                    <div className="p-3 border-b flex items-center gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" disabled>
-                            <ChevronLeft className="h-5 w-5" />
-                        </Button>
-                        {watchedValues.logoUrl ? (
-                            <img src={watchedValues.logoUrl} alt="Bot Logo" className="h-6 w-6 object-contain" />
-                        ) : (
-                           <div className="h-6 w-6 shrink-0" />
-                        )}
-                        <div>
-                            <h3 className="font-bold" style={{ color: watchedValues.headerTextColor || '#ffffff' }}>{watchedValues.name}</h3>
-                            <p className="text-xs text-zinc-400">We'll reply as soon as we can</p>
+                    <div className="p-3 border-b flex items-center justify-between gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                        <div className="w-8" />
+                        <div className="flex flex-col items-center text-center">
+                            {watchedValues.logoUrl ? (
+                                <img src={watchedValues.logoUrl} alt="Bot Logo" className="h-8 w-8 object-contain rounded-full" />
+                            ) : (
+                                <div className="h-8 w-8 shrink-0" />
+                            )}
+                            <h3 className="font-bold truncate text-sm mt-1" style={{ color: watchedValues.headerTextColor || '#ffffff' }}>{watchedValues.name}</h3>
+                            {selectedAgents.length > 0 && (
+                                <div className="flex justify-center -space-x-2 overflow-hidden mt-1">
+                                    {selectedAgents.map(agent => (
+                                        <Avatar key={agent.id} className="h-5 w-5 border-2" style={{ borderColor: watchedValues.backgroundColor }}>
+                                            <AvatarImage src={agent.avatarUrl} alt={agent.name} />
+                                            <AvatarFallback>{getInitials(agent.name)}</AvatarFallback>
+                                        </Avatar>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                        <div className="ml-auto flex items-center">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700">
-                                <MoreHorizontal className="h-5 w-5" />
-                            </Button>
+                        <div className="flex items-center">
                             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => onOpenChange(false)}>
                                 <X className="h-5 w-5" />
                             </Button>
@@ -662,21 +639,6 @@ export default function BotSettingsDialog({
                                 </Button>
                             </div>
                         )}
-                        <div className="flex justify-between items-center text-xs text-zinc-500">
-                            <div className="flex items-center gap-3">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => { if (!chatStarted) setChatStarted(true); }}>
-                                    <Home className="h-5 w-5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => { if (!chatStarted) setChatStarted(true); }}>
-                                    <MessageSquare className="h-5 w-5" />
-                                </Button>
-                                {watchedValues.showTickets && (
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={() => { if (!chatStarted) setChatStarted(true); }}>
-                                        <Ticket className="h-5 w-5" />
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
                     </div>
                 </div>
                 <div className="absolute bottom-6 right-6 h-14 w-14 rounded-full flex items-center justify-center shadow-lg cursor-pointer bg-white" onClick={() => setIsPreviewMinimized(true)}>

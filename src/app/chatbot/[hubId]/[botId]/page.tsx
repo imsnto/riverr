@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { Bot as BotData, Visitor, Conversation, ChatMessage, Attachment, Contact } from '@/lib/data';
+import { Bot as BotData, Visitor, Conversation, ChatMessage, Attachment, Contact, User } from '@/lib/data';
 import * as db from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,6 +15,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { answerChatQuestion } from '@/ai/flows/answer-chat-question';
 import { marked } from 'marked';
 import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+
+interface BotDataWithAgents extends BotData {
+  agents?: User[];
+}
 
 
 const getInitials = (name?: string) => {
@@ -35,7 +41,7 @@ export default function ChatbotWidgetPage() {
   const { hubId, botId } = params as { hubId: string; botId: string };
   const { appUser } = useAuth();
 
-  const [bot, setBot] = useState<BotData | null>(null);
+  const [bot, setBot] = useState<BotDataWithAgents | null>(null);
   const [visitor, setVisitor] = useState<Visitor | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [spaceId, setSpaceId] = useState<string | null>(null);
@@ -72,12 +78,27 @@ export default function ChatbotWidgetPage() {
     const initialize = async () => {
       setIsLoading(true);
 
-      const [fetchedBot, hub] = await Promise.all([
+      const botSettingsResponse = await fetch(`/api/bot-settings?botId=${botId}`);
+      if (!botSettingsResponse.ok) {
+        console.error("Failed to fetch bot settings");
+        setIsLoading(false);
+        return;
+      }
+      const botSettings = await botSettingsResponse.json();
+
+      const [fullBotDoc, hub] = await Promise.all([
         db.getBot(botId),
         db.getHub(hubId)
       ]);
+      
+      if (!fullBotDoc) {
+          setIsLoading(false);
+          return;
+      }
 
-      setBot(fetchedBot);
+      const combinedBotData = { ...fullBotDoc, ...botSettings };
+      setBot(combinedBotData);
+      
       if(hub) {
         setSpaceId(hub.spaceId);
       }
@@ -85,7 +106,7 @@ export default function ChatbotWidgetPage() {
       let visitorId = localStorage.getItem('riverr_chat_visitor_id');
       const fetchedVisitor = visitorId ? await db.getOrCreateVisitor(visitorId) : null;
       
-      if (!appUser && fetchedBot?.identityCapture.enabled && (!fetchedVisitor || (!fetchedVisitor.name && !fetchedVisitor.email))) {
+      if (!appUser && combinedBotData?.identityCapture.enabled && (!fetchedVisitor || (!fetchedVisitor.name && !fetchedVisitor.email))) {
         setIsCapturingIdentity(true);
       } else {
         setIsCapturingIdentity(false);
@@ -157,7 +178,7 @@ export default function ChatbotWidgetPage() {
 
   const handleSendMessage = async () => {
     if (!messageText.trim() && attachments.length === 0) return;
-    if (!visitor || !spaceId) return;
+    if (!visitor || !spaceId || !bot) return;
 
     let currentConversation = conversation;
     setLoading(true);
@@ -168,11 +189,14 @@ export default function ChatbotWidgetPage() {
         await db.updateVisitor(visitor.id, { contactId: contact.id });
         setVisitor(v => v ? {...v, contactId: contact.id} : null);
 
+        const agentIds = bot.agentIds || [];
+        const assigneeId = agentIds.length > 0 ? agentIds[Math.floor(Math.random() * agentIds.length)] : null;
+        
         const newConvoData: Omit<Conversation, 'id'> = {
             hubId,
             contactId: contact.id,
             visitorId: visitor.id,
-            assigneeId: null,
+            assigneeId,
             status: 'bot', // Start with bot
             lastMessage: messageText || "Sent an attachment",
             lastMessageAt: new Date().toISOString(),
@@ -220,12 +244,11 @@ export default function ChatbotWidgetPage() {
         const aiResponse = await answerChatQuestion({
             question: userMessageContent,
             hubId: hubId,
-            allowedHelpCenterIds: bot?.allowedHelpCenterIds || [],
+            allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
             userId: visitor.id,
-            isAnonymous: !visitor.email,
         });
 
-        if (aiResponse.escalate) {
+        if (aiResponse.suggestedNextStep === "escalate") {
           const handoffMessage = aiResponse.answer || "I'm connecting you with a team member who can help.";
           await db.addChatMessage({
               conversationId: currentConversation.id,
@@ -235,7 +258,7 @@ export default function ChatbotWidgetPage() {
               content: handoffMessage,
               timestamp: new Date().toISOString(),
           });
-          await db.updateConversation(currentConversation.id, { status: 'human', escalated: true, escalationReason: aiResponse.escalationReason });
+          await db.updateConversation(currentConversation.id, { status: 'human', escalated: true, escalationReason: "AI Escalation" });
 
         } else {
             let responseContent = aiResponse.answer;
@@ -349,6 +372,16 @@ export default function ChatbotWidgetPage() {
                 <div className="h-8 w-8 shrink-0" />
             )}
             <h3 className="font-bold truncate text-sm mt-1" style={{ color: bot.styleSettings?.headerTextColor || '#ffffff' }}>{bot.name}</h3>
+            {bot.agents && bot.agents.length > 0 && (
+                <div className="flex justify-center -space-x-2 overflow-hidden mt-1">
+                    {bot.agents.map(agent => (
+                        <Avatar key={agent.id} className="h-5 w-5 border-2" style={{ borderColor: bot.styleSettings?.backgroundColor }}>
+                            <AvatarImage src={agent.avatarUrl} alt={agent.name} />
+                            <AvatarFallback>{getInitials(agent.name)}</AvatarFallback>
+                        </Avatar>
+                    ))}
+                </div>
+            )}
         </div>
 
         <div className="flex items-center">
@@ -371,7 +404,7 @@ export default function ChatbotWidgetPage() {
 
             {(visibleMessages.length > 0) && visibleMessages.map(msg => {
                 const isAgent = msg.senderType === 'agent';
-                const agent = isAgent ? users.find(u => u.id === msg.authorId) : null;
+                const agent = isAgent ? bot.agents?.find(u => u.id === msg.authorId) : null;
                 const isAI = isAgent && msg.authorId === 'ai_agent';
                 const contentHtml = isAI ? marked(msg.content) : msg.content;
                 

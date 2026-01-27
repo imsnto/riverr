@@ -18,10 +18,29 @@ export async function GET(request: NextRequest) {
     }
 
     const botData = botDoc.data();
+    const agentIds = botData?.agentIds || [];
+    
+    let agents: { id: string; name: string; avatarUrl: string }[] = [];
+    if (agentIds.length > 0) {
+        const userPromises = agentIds.map((id: string) => adminDB.collection('users').doc(id).get());
+        const userDocs = await Promise.all(userPromises);
+        agents = userDocs
+            .filter(doc => doc.exists)
+            .map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    name: data?.name || 'Agent',
+                    avatarUrl: data?.avatarUrl || '',
+                };
+            });
+    }
+
     // Only return public-safe settings
     const safeSettings = {
         name: botData?.name,
-        styleSettings: botData?.styleSettings
+        styleSettings: botData?.styleSettings,
+        agents: agents,
     };
 
     return NextResponse.json(safeSettings);
