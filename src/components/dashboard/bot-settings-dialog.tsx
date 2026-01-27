@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -149,6 +148,7 @@ export default function BotSettingsDialog({
   const [isPreviewMinimized, setIsPreviewMinimized] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [origin, setOrigin] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
 
   const form = useForm<BotSettingsFormValues>({
@@ -428,16 +428,47 @@ export default function BotSettingsDialog({
                     <AccordionItem value="branding">
                         <AccordionTrigger>Branding</AccordionTrigger>
                         <AccordionContent className="space-y-4">
-                             <FormField
+                            <FormField
                                 control={form.control}
                                 name="logoUrl"
                                 render={({ field }) => (
                                     <FormItem>
-                                    <FormLabel>Logo URL</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="https://your-domain.com/logo.png" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
+                                        <FormLabel>Logo</FormLabel>
+                                        <FormControl>
+                                            <div className="flex items-center gap-4">
+                                                <Avatar className="h-16 w-16 rounded-md">
+                                                    <AvatarImage src={field.value || undefined} alt="Logo preview" className="object-contain" />
+                                                    <AvatarFallback className="rounded-md">
+                                                        <Bot />
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    ref={fileInputRef}
+                                                    onChange={(e) => {
+                                                        if (e.target.files && e.target.files[0]) {
+                                                            const file = e.target.files[0];
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => {
+                                                                field.onChange(reader.result as string);
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                />
+                                                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                                    Upload Logo
+                                                </Button>
+                                                {field.value && (
+                                                    <Button type="button" variant="ghost" size="sm" onClick={() => field.onChange('')}>
+                                                        Remove
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -582,7 +613,7 @@ export default function BotSettingsDialog({
                             ) : (
                                 <div className="h-8 w-8 shrink-0" />
                             )}
-                            <h3 className="font-bold truncate text-sm mt-1" style={{ color: watchedValues.headerTextColor || '#ffffff' }}>{watchedValues.name}</h3>
+                            <h3 className="font-bold truncate text-base mt-1" style={{ color: watchedValues.headerTextColor || '#ffffff' }}>{watchedValues.name}</h3>
                             {selectedAgents.length > 0 && (
                                 <div className="flex justify-center -space-x-2 overflow-hidden mt-1">
                                     {selectedAgents.map(agent => (

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -371,7 +370,7 @@ export default function ChatbotWidgetPage() {
             ) : (
                 <div className="h-8 w-8 shrink-0" />
             )}
-            <h3 className="font-bold truncate text-sm mt-1" style={{ color: bot.styleSettings?.headerTextColor || '#ffffff' }}>{bot.name}</h3>
+            <h3 className="font-bold truncate text-base mt-1" style={{ color: bot.styleSettings?.headerTextColor || '#ffffff' }}>{bot.name}</h3>
             {bot.agents && bot.agents.length > 0 && (
                 <div className="flex justify-center -space-x-2 overflow-hidden mt-1">
                     {bot.agents.map(agent => (
