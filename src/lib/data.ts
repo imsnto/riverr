@@ -490,6 +490,7 @@ export interface HelpCenterCollection {
 export interface HelpCenterArticle {
   id: string;
   title: string;
+  subtitle?: string;
   content: string;
   status: 'draft' | 'published';
   folderId: string | null;

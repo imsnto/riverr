@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
+import { Textarea } from '../ui/textarea';
 
 
 interface HelpCenterArticleEditorProps {
@@ -160,15 +161,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                                 /
                                 <div className="flex items-center gap-2 min-w-0">
                                     {article.isPublic === false ? <Lock className="h-4 w-4 text-muted-foreground shrink-0" /> : <Globe className="h-4 w-4 text-muted-foreground shrink-0" />}
-                                    <Input
-                                        value={article.title}
-                                        onChange={(e) => {
-                                            setIsTitleDerived(false);
-                                            setArticle(prev => ({...prev, title: e.target.value}))
-                                        }}
-                                        className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground truncate"
-                                        placeholder="Article Title"
-                                    />
+                                    <span className="truncate">{article.title || 'Untitled Article'}</span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 md:gap-4 shrink-0">
@@ -212,6 +205,22 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                 
                 <div className="flex-1 flex justify-center overflow-y-auto px-4 md:px-8">
                     <div className="w-full max-w-4xl relative">
+                        <Input
+                            value={article.title}
+                            onChange={(e) => {
+                                setIsTitleDerived(false);
+                                setArticle(prev => ({...prev, title: e.target.value}))
+                            }}
+                            className="border-none focus-visible:ring-0 p-0 h-auto text-4xl font-bold tracking-tight mb-2"
+                            placeholder="Article Title"
+                        />
+                        <Textarea
+                            value={article.subtitle || ''}
+                            onChange={(e) => setArticle(prev => ({ ...prev, subtitle: e.target.value }))}
+                            placeholder="Add a subtitle..."
+                            className="border-none focus-visible:ring-0 p-0 h-auto text-lg text-muted-foreground resize-none overflow-hidden mb-6"
+                            minRows={1}
+                        />
                         <TiptapEditor 
                             content={article.content}
                             onChange={handleContentChange}

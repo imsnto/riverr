@@ -149,6 +149,7 @@ export default function HelpCenterLayout({
       if (!appUser || !activeHub) return;
       const newArticleData: Omit<HelpCenterArticle, 'id'> = {
         title: '',
+        subtitle: '',
         content: '<h1></h1>',
         status: 'draft',
         folderId: sidebarView === 'library' ? selectedCollectionId : null,
