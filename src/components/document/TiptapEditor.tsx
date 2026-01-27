@@ -20,6 +20,7 @@ import { FontSize } from '@/lib/tiptap-fontsize';
 
 import { Toolbar } from './TiptapToolbar';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 export { useEditor };
 
 export default function TiptapEditor({
@@ -37,6 +38,7 @@ export default function TiptapEditor({
 }) {
   const isMobile = useIsMobile();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -62,7 +64,7 @@ export default function TiptapEditor({
       FontSize,
     ],
     content,
-    autofocus: 'end',
+    autofocus: !isMobile ? 'end' : false,
     editorProps: {
       attributes: {
         class:
@@ -113,10 +115,10 @@ export default function TiptapEditor({
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
+    onFocus: () => setIsFocused(true),
     onBlur: () => {
-      if (onBlur) {
-        onBlur();
-      }
+        setIsFocused(false);
+        if (onBlur) onBlur();
     },
     onCreate: ({ editor }) => {
       if (onEditorInstance) {
@@ -126,19 +128,21 @@ export default function TiptapEditor({
   });
 
   useEffect(() => {
-    const visualViewport = window.visualViewport;
-    if (!isMobile || !visualViewport) return;
+    const vv = window.visualViewport;
+    if (!isMobile || !vv) return;
 
-    const handleResize = () => {
-      const offset = window.innerHeight - visualViewport.height;
-      setKeyboardHeight(offset > 0 ? offset : 0);
+    const update = () => {
+      const keyboard = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKeyboardHeight(keyboard);
     };
 
-    visualViewport.addEventListener('resize', handleResize);
-    handleResize();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    update();
 
     return () => {
-      visualViewport.removeEventListener('resize', handleResize);
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
     };
   }, [isMobile]);
 
@@ -160,10 +164,18 @@ export default function TiptapEditor({
       <EditorContent editor={editor} />
       {isMobile && (
         <div
-          className="fixed left-0 right-0 z-20 bg-card border-t p-1 overflow-x-auto transition-all duration-150 ease-in-out"
-          style={{ bottom: `${keyboardHeight}px` }}
+          className="fixed left-0 right-0 z-20 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/70 transition-all duration-150 ease-in-out"
+          style={{
+            bottom: `${keyboardHeight}px`,
+            transform: isFocused ? "translateY(0px)" : "translateY(12px)",
+            opacity: isFocused ? 1 : 0,
+            pointerEvents: isFocused ? "auto" : "none",
+          }}
         >
-          <Toolbar editor={editor} uploadImage={uploadImage} />
+          {/* This wrapper creates the horizontal scrolling strip */}
+          <div className="overflow-x-auto [-webkit-overflow-scrolling:touch]">
+            <Toolbar editor={editor} uploadImage={uploadImage} variant="mobile" />
+          </div>
         </div>
       )}
     </div>

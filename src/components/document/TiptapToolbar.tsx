@@ -38,11 +38,12 @@ import { Input } from '../ui/input';
 type Props = {
   editor: Editor;
   uploadImage: (file: File) => Promise<string>;
+  variant?: 'desktop' | 'mobile';
 };
 
 const FONT_SIZES = ['12px', '14px', '16px', '18px', '24px', '30px', '36px'];
 
-export function Toolbar({ editor, uploadImage }: Props) {
+export function Toolbar({ editor, uploadImage, variant = 'desktop' }: Props) {
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -90,7 +91,13 @@ export function Toolbar({ editor, uploadImage }: Props) {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-1 p-2">
+    <div
+      className={
+        variant === 'mobile'
+          ? 'flex items-center gap-1 p-2 whitespace-nowrap'
+          : 'flex flex-wrap items-center gap-1 p-2'
+      }
+    >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="w-24 justify-start">
