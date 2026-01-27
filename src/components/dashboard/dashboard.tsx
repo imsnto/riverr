@@ -810,7 +810,7 @@ if (fetchedConversations.length > 0) {
           onUpdateTasks={onUpdateTasks}
           activeHub={activeHub}
           allUsers={allUsers}
-          onUpdateActiveHub={onUpdateActiveHub}
+          onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
           onNewTaskRequest={handleNewTaskRequest}
           onTaskClick={setSelectedTask}
@@ -827,7 +827,7 @@ if (fetchedConversations.length > 0) {
           activeHub={activeHub}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={onUpdateActiveHub}
+          onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
           allHubs={spaceHubs}
           escalationRules={escalationRules}
@@ -845,7 +845,7 @@ if (fetchedConversations.length > 0) {
           activeHub={activeHub}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={onUpdateActiveHub}
+          onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
       />;
       case 'help-center': return <HelpCenterLayout
