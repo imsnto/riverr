@@ -59,7 +59,7 @@ export function Toolbar({ editor, uploadImage, variant = 'desktop' }: Props) {
 
     try {
       const url = await uploadImage(file);
-      editor.chain().focus().setImage({ src: url, alt: file.name }).run();
+      editor.chain().focus().setImage({ src: url, alt: file.name }).insertContent('<p></p>').run();
     } catch (error) {
       console.error('Image upload failed:', error);
       // You could add a toast notification here for errors

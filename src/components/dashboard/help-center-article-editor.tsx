@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useCallback, useEffect } from 'react';
 import { HelpCenterArticle, User } from '@/lib/data';

@@ -57,6 +57,9 @@ export default function TiptapEditor({
       Image.configure({
         inline: false,
         allowBase64: false,
+        HTMLAttributes: {
+          class: 'tiptap-image',
+        },
       }),
       Youtube.configure({ inline: false, width: 640, height: 360 }),
       TextStyle,
@@ -76,7 +79,9 @@ export default function TiptapEditor({
         if (!file) return false;
 
         uploadImage(file).then((url) => {
-          editor?.chain().focus().setImage({ src: url, alt: file.name }).run();
+          if (editor) {
+            editor.chain().focus().setImage({ src: url, alt: file.name }).insertContent('<p></p>').run();
+          }
         });
 
         return true;
@@ -89,23 +94,9 @@ export default function TiptapEditor({
 
         event.preventDefault();
 
-        const coordinates = view.posAtCoords({
-          left: event.clientX,
-          top: event.clientY,
-        });
-
         uploadImage(file).then((url) => {
-          if (coordinates) {
-            editor
-              ?.chain()
-              .focus()
-              .insertContentAt(coordinates.pos, {
-                type: 'image',
-                attrs: { src: url, alt: file.name },
-              })
-              .run();
-          } else {
-            editor?.chain().focus().setImage({ src: url, alt: file.name }).run();
+          if (editor) {
+            editor.chain().focus().setImage({ src: url, alt: file.name }).insertContent('<p></p>').run();
           }
         });
 
