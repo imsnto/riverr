@@ -4,7 +4,7 @@ import { HelpCenter, HelpCenterCollection, HelpCenterArticle, User } from '@/lib
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Book, Settings, Bot, ChevronsRight, Users, BookOpen } from 'lucide-react';
+import { Search, Book, Settings, Bot, ChevronsRight, Users, BookOpen, FileText } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import React from 'react';
