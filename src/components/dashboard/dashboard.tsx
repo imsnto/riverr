@@ -294,10 +294,8 @@ if (fetchedConversations.length > 0) {
   // Handle view change from sidebar
   const handleViewChange = (newView: AppView) => {
     setCurrentView(newView);
-    if (newView === 'contacts') {
-      router.push('/contacts');
-    } else if (activeSpace && activeHub) {
-      router.push(`/space/${activeSpace.id}/hub/${activeHub.id}/${newView}`);
+    if (activeHub) {
+        router.push(`/space/${activeSpace?.id}/hub/${activeHub.id}/${newView}`);
     } else if (activeSpace) {
       router.push(`/space/${activeSpace.id}/hubs`);
     } else {
@@ -813,7 +811,7 @@ if (fetchedConversations.length > 0) {
           projects={projects}
           onSelectProject={handleSelectProject}
           allTasks={tasks}
-          onUpdateTasks={onUpdateTasks}
+          onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
