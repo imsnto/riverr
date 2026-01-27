@@ -140,13 +140,12 @@ export default function BotSettingsDialog({
   allUsers,
   helpCenters,
 }: BotSettingsDialogProps) {
-  const [chatStarted, setChatStarted] = useState(false);
   const [previewMessage, setPreviewMessage] = useState('');
   const [previewMessages, setPreviewMessages] = useState<ChatMessage[]>([]);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [isPreviewMinimized, setIsPreviewMinimized] = useState(false);
+  const [previewConversationState, setPreviewConversationState] = useState<'ai_active' | 'escalation_offered' | 'escalation_declined' | 'human_assigned'>('ai_active');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const [origin, setOrigin] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { appUser, activeHub } = useAuth();
 
@@ -180,12 +179,6 @@ export default function BotSettingsDialog({
       }
     }
   }, [previewMessages, isAiThinking]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-        setOrigin(window.location.origin);
-    }
-  }, [])
 
 
   useEffect(() => {
@@ -224,10 +217,10 @@ export default function BotSettingsDialog({
   
   useEffect(() => {
       if (!isOpen) {
-          setChatStarted(false);
           setPreviewMessage('');
           setPreviewMessages([]);
           setIsPreviewMinimized(false);
+          setPreviewConversationState('ai_active');
       }
   }, [isOpen]);
 
@@ -250,7 +243,6 @@ export default function BotSettingsDialog({
             required: values.identityCaptureRequired,
             captureMessage: values.identityCaptureMessage,
         },
-        // Hardcoded escalation triggers for now, based on the prompt
         escalationTriggers: {
             billingKeywords: [
                 'refund', 'charge', 'charged', 'billing', 'invoice', 
@@ -268,6 +260,8 @@ export default function BotSettingsDialog({
     onOpenChange(false);
   };
   
+    const DECLINE_PHRASES = ["no", "don’t", "not yet", "just answer", "stop", "i said no"];
+
     const handlePreviewSend = async () => {
         if (!previewMessage.trim() || !appUser || !activeHub) return;
 
@@ -276,7 +270,7 @@ export default function BotSettingsDialog({
             conversationId: 'preview-convo',
             authorId: appUser.id,
             type: 'message',
-            senderType: 'contact', // Simulating a contact
+            senderType: 'contact',
             content: previewMessage,
             timestamp: new Date().toISOString(),
         };
@@ -284,15 +278,36 @@ export default function BotSettingsDialog({
         const question = previewMessage;
         setPreviewMessage('');
         setIsAiThinking(true);
+        
+        let currentState = previewConversationState;
+        if (currentState === 'escalation_offered' && DECLINE_PHRASES.some(phrase => question.toLowerCase().includes(phrase))) {
+            currentState = 'escalation_declined';
+            setPreviewConversationState('escalation_declined');
+        }
+
+        const historyForAI = previewMessages.map(msg => ({
+            role: msg.senderType === 'agent' ? 'model' : 'user',
+            content: msg.content
+        } as const));
 
         try {
             const aiResponse = await answerChatQuestion({
                 question: question,
                 hubId: activeHub.id,
                 allowedHelpCenterIds: watchedValues.allowedHelpCenterIds || [],
-                userId: 'preview-user-id', // Simulate a generic user for access control check
+                userId: 'preview-user-id',
                 botName: watchedValues.name || 'Support Bot',
+                conversationState: currentState,
+                history: historyForAI,
             });
+
+            if (aiResponse.suggestedNextStep === 'offer_escalation') {
+                setPreviewConversationState('escalation_offered');
+            } else if (aiResponse.suggestedNextStep === 'escalate') {
+                setPreviewConversationState('human_assigned');
+            } else if (currentState !== 'escalation_declined') {
+                setPreviewConversationState('ai_active');
+            }
 
             let responseContent = aiResponse.answer;
             if (aiResponse.sources && aiResponse.sources.length > 0) {
@@ -728,7 +743,7 @@ export default function BotSettingsDialog({
                                 >
                                     {isAgent ? (
                                         <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
-                                        {msg.content && <div className="text-sm prose prose-sm prose-invert [hyphens:manual]" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
+                                        {msg.content && <div className="text-sm prose prose-sm prose-invert" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
                                         </div>
                                     ) : (
                                         <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-words" style={{ backgroundColor: watchedValues.primaryColor, color: watchedValues.customerTextColor || '#ffffff' }}>

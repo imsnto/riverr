@@ -48,13 +48,13 @@ export default function ChatbotWidgetPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [chatStarted, setChatStarted] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [loading, setLoading] = useState(false);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [isCapturingIdentity, setIsCapturingIdentity] = useState(false);
   const [capturedName, setCapturedName] = useState('');
   const [capturedEmail, setCapturedEmail] = useState('');
+  const [conversationState, setConversationState] = useState<'ai_active' | 'escalation_offered' | 'escalation_declined' | 'human_assigned'>('ai_active');
   
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -175,6 +175,8 @@ export default function ChatbotWidgetPage() {
       await loadVisitorAndConversation(visitorId);
   }
 
+  const DECLINE_PHRASES = ["no", "don’t", "not yet", "just answer", "stop", "i said no"];
+
   const handleSendMessage = async () => {
     if (!messageText.trim() && attachments.length === 0) return;
     if (!visitor || !spaceId || !bot) return;
@@ -233,33 +235,52 @@ export default function ChatbotWidgetPage() {
     
     setMessageText('');
     setAttachments([]);
-    setChatStarted(true);
     setLoading(false);
 
     await db.addChatMessage(newMessageData);
 
     setIsAiThinking(true);
+
+    let currentState = conversationState;
+    if (currentState === 'escalation_offered' && DECLINE_PHRASES.some(phrase => userMessageContent.toLowerCase().includes(phrase))) {
+        currentState = 'escalation_declined';
+        setConversationState('escalation_declined');
+    }
+    
+    const historyForAI = messages.filter(isPublicForVisitor).map(msg => ({
+        role: msg.senderType === 'agent' ? 'model' : 'user',
+        content: msg.content
+    }));
+
     try {
         const aiResponse = await answerChatQuestion({
             question: userMessageContent,
             hubId: hubId,
             allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
             userId: visitor.id,
+            botName: bot.name,
+            conversationState: currentState,
+            history: historyForAI
         });
 
         if (aiResponse.suggestedNextStep === "escalate") {
-          const handoffMessage = aiResponse.answer || "I'm connecting you with a team member who can help.";
+          setConversationState('human_assigned');
           await db.addChatMessage({
               conversationId: currentConversation.id,
               authorId: 'ai_agent',
               type: 'message',
               senderType: 'agent',
-              content: handoffMessage,
+              content: aiResponse.answer || "I'm connecting you with a team member who can help.",
               timestamp: new Date().toISOString(),
           });
           await db.updateConversation(currentConversation.id, { status: 'human', escalated: true, escalationReason: "AI Escalation" });
 
         } else {
+            if (aiResponse.suggestedNextStep === 'offer_escalation') {
+                setConversationState('escalation_offered');
+            } else if (currentState !== 'escalation_declined') {
+                setConversationState('ai_active');
+            }
             let responseContent = aiResponse.answer;
             if (aiResponse.sources && aiResponse.sources.length > 0) {
                 const sourcesText = aiResponse.sources.map(source => `- [${source.title}](${source.url})`).join('\n');
@@ -360,14 +381,12 @@ export default function ChatbotWidgetPage() {
       style={{ backgroundColor: bg }}
     >
       {/* Header */}
-      <div className="p-3 border-b flex items-center justify-between shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+      <div className="p-3 border-b flex items-center justify-between gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
         <div className="flex items-center gap-3">
-          {bot.styleSettings?.logoUrl ? (
-              <img src={bot.styleSettings.logoUrl} alt="Bot Logo" className="h-8 w-8 object-contain rounded-full" />
-          ) : (
-              <div className="h-8 w-8 shrink-0" />
+          {bot.styleSettings?.logoUrl && (
+            <img src={bot.styleSettings.logoUrl} alt="Bot Logo" className="h-8 w-8 object-contain rounded-full" />
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <h3 className="font-bold truncate text-base" style={{ color: bot.styleSettings?.headerTextColor || '#ffffff' }}>{bot.name}</h3>
             {bot.agents && bot.agents.length > 0 && (
               <div className="flex -space-x-2 overflow-hidden ml-2">
@@ -382,9 +401,11 @@ export default function ChatbotWidgetPage() {
           </div>
         </div>
 
-        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={handleClose}>
-          <X className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center">
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={handleClose}>
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       {/* Body */}
@@ -392,7 +413,7 @@ export default function ChatbotWidgetPage() {
         <div className="p-4 space-y-4">
             {/* Welcome bubble (always visible) */}
             <div className="flex items-end gap-2">
-            <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
+            <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
                 <p className="text-sm whitespace-pre-wrap">{bot.welcomeMessage}</p>
             </div>
             </div>
@@ -411,14 +432,14 @@ export default function ChatbotWidgetPage() {
                 >
                     {isAgent ? (
                     <div>
-                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
+                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
                         {msg.content && <div className="text-sm prose prose-sm prose-invert" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
                         {renderAttachments(msg)}
                         </div>
                         <p className="text-xs text-zinc-500 mt-2">{agent?.name || 'AI Agent'}</p>
                     </div>
                     ) : (
-                    <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm" style={{ backgroundColor: primary, color: bot.styleSettings?.customerTextColor || '#ffffff' }}>
+                    <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-words" style={{ backgroundColor: primary, color: bot.styleSettings?.customerTextColor || '#ffffff' }}>
                         {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
                         {renderAttachments(msg)}
                     </div>
