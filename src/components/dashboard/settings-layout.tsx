@@ -1,4 +1,3 @@
-
 // src/components/dashboard/settings-layout.tsx
 'use client';
 
@@ -29,6 +28,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import DealAutomationSettings from './deal-automation-settings';
 import EscalationIntakeSettings from './escalation-intake-settings';
+import { LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
 
 type SettingsView = 'users' | 'spaces' | 'hub' | 'inbox' | 'timesheets' | 'deal-automation' | 'escalation-intake';
 
@@ -59,6 +61,13 @@ interface SettingsLayoutProps {
 export default function SettingsLayout(props: SettingsLayoutProps) {
   const [activeView, setActiveView] = useState<SettingsView>('users');
   const isMobile = useIsMobile();
+  const { signOut } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut();
+    router.push('/login');
+  };
 
   const hubHasInbox = props.activeHub?.settings?.components?.includes('inbox');
   const hubHasDeals = props.activeHub?.settings?.components?.includes('deals');
@@ -155,9 +164,9 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
   if (isMobile) {
     return (
         <div className="flex flex-col h-full">
-            <div className="p-4 border-b">
+            <div className="p-4 border-b flex items-center gap-2">
                 <Select value={activeView} onValueChange={(v) => setActiveView(v as SettingsView)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Select a setting" />
                     </SelectTrigger>
                     <SelectContent>
@@ -168,6 +177,9 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
                         ))}
                     </SelectContent>
                 </Select>
+                <Button variant="outline" size="icon" onClick={handleLogout}>
+                    <LogOut className="h-4 w-4" />
+                </Button>
             </div>
             <main className="flex-1 p-4 overflow-y-auto">
                 {renderContent()}
@@ -178,21 +190,29 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
 
   return (
     <div className="flex flex-row h-full">
-      <aside className="w-80 border-r bg-card p-4">
-        <h2 className="text-xl font-bold mb-4">Settings</h2>
-        <nav className="flex flex-col space-y-2">
-          {navItems.map((item) => (
-            <Button
-              key={item.key}
-              variant={activeView === item.key ? 'secondary' : 'ghost'}
-              onClick={() => setActiveView(item.key as SettingsView)}
-              className="justify-start"
-              disabled={item.disabled}
-            >
-              {item.label}
-            </Button>
-          ))}
-        </nav>
+      <aside className="w-80 border-r bg-card p-4 flex flex-col">
+        <div className="flex-1">
+          <h2 className="text-xl font-bold mb-4">Settings</h2>
+          <nav className="flex flex-col space-y-2">
+            {navItems.map((item) => (
+              <Button
+                key={item.key}
+                variant={activeView === item.key ? 'secondary' : 'ghost'}
+                onClick={() => setActiveView(item.key as SettingsView)}
+                className="justify-start"
+                disabled={item.disabled}
+              >
+                {item.label}
+              </Button>
+            ))}
+          </nav>
+        </div>
+        <div>
+          <Button variant="outline" className="w-full justify-start" onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Log Out
+          </Button>
+        </div>
       </aside>
       <main className="flex-1 p-8 overflow-y-auto">
         {renderContent()}
@@ -200,5 +220,3 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
     </div>
   );
 }
-
-    
