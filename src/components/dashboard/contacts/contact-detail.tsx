@@ -13,6 +13,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Textarea } from '@/components/ui/textarea';
 import * as db from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 const getInitials = (name: string | null) => {
     if (!name) return '?';
@@ -32,6 +33,7 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [events, setEvents] = useState<ContactEvent[]>([]);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   
   useEffect(() => {
     if (contact) {
@@ -113,7 +115,54 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
     );
   }
 
+  const contactInfoContent = (
+    <div className="space-y-6">
+        <div>
+            <h4 className="font-semibold mb-2">Contact Info</h4>
+            <div className="space-y-2 text-sm">
+                {contact.primaryEmail && (
+                    <div className="flex items-center justify-between group">
+                        <div className="flex items-center gap-2 truncate">
+                            <AtSign className="h-4 w-4 text-muted-foreground" />
+                            <span className="truncate">{contact.primaryEmail}</span>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => handleCopy(contact.primaryEmail)}>
+                            <Copy className="h-3 w-3" />
+                        </Button>
+                    </div>
+                )}
+                {contact.primaryPhone && (
+                    <div className="flex items-center justify-between group">
+                        <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-muted-foreground" />
+                            <span>{contact.primaryPhone}</span>
+                        </div>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => handleCopy(contact.primaryPhone)}>
+                            <Copy className="h-3 w-3" />
+                        </Button>
+                    </div>
+                )}
+                {!contact.primaryEmail && !contact.primaryPhone && (
+                        <p className="text-xs text-muted-foreground">No contact info provided.</p>
+                )}
+            </div>
+        </div>
+        <div>
+            <h4 className="font-semibold mb-2">Tags</h4>
+            <div className="flex flex-wrap gap-2">
+                {contact.tags.map(tag => (
+                    <div key={tag} className="flex items-center text-sm bg-muted px-2 py-1 rounded-md">
+                        <Tag className="h-3 w-3 mr-1.5" /> {tag}
+                    </div>
+                ))}
+                <Button variant="outline" size="sm">Add tag</Button>
+            </div>
+        </div>
+    </div>
+  );
+
   return (
+    <>
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <div className="p-4 md:p-6 border-b shrink-0">
@@ -164,6 +213,20 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
                         <Button variant="ghost" size="sm" onClick={() => setIsAddingNote(false)}>Cancel</Button>
                     </div>
                 </div>
+            ) : isMobile ? (
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="h-7 flex-1" onClick={handleMessage}><MessageSquare className="h-3 w-3 mr-1.5" /> Message</Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                           <Button variant="outline" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={handleCall}><Phone className="mr-2 h-4 w-4"/> Call</DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleEmail}><Mail className="mr-2 h-4 w-4"/> Email</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setIsAddingNote(true)}><PlusCircle className="mr-2 h-4 w-4"/> Add Note</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             ) : (
                 <div className="flex flex-wrap items-center gap-1">
                     <Button variant="outline" size="sm" className="h-7" onClick={handleMessage}><MessageSquare className="h-3 w-3 mr-1.5" /> Message</Button>
@@ -189,51 +252,24 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
         </div>
       </ScrollArea>
       
-      <div className="p-4 md:p-6 border-t bg-card shrink-0">
-          <div className="space-y-6">
-                 <div>
-                    <h4 className="font-semibold mb-2">Contact Info</h4>
-                    <div className="space-y-2 text-sm">
-                        {contact.primaryEmail && (
-                            <div className="flex items-center justify-between group">
-                                <div className="flex items-center gap-2 truncate">
-                                    <AtSign className="h-4 w-4 text-muted-foreground" />
-                                    <span className="truncate">{contact.primaryEmail}</span>
-                                </div>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => handleCopy(contact.primaryEmail)}>
-                                    <Copy className="h-3 w-3" />
-                                </Button>
-                            </div>
-                        )}
-                        {contact.primaryPhone && (
-                            <div className="flex items-center justify-between group">
-                                <div className="flex items-center gap-2">
-                                    <Phone className="h-4 w-4 text-muted-foreground" />
-                                    <span>{contact.primaryPhone}</span>
-                                </div>
-                                 <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => handleCopy(contact.primaryPhone)}>
-                                    <Copy className="h-3 w-3" />
-                                </Button>
-                            </div>
-                        )}
-                        {!contact.primaryEmail && !contact.primaryPhone && (
-                             <p className="text-xs text-muted-foreground">No contact info provided.</p>
-                        )}
-                    </div>
-                 </div>
-                 <div>
-                    <h4 className="font-semibold mb-2">Tags</h4>
-                    <div className="flex flex-wrap gap-2">
-                       {contact.tags.map(tag => (
-                           <div key={tag} className="flex items-center text-sm bg-muted px-2 py-1 rounded-md">
-                               <Tag className="h-3 w-3 mr-1.5" /> {tag}
-                           </div>
-                       ))}
-                       <Button variant="outline" size="sm">Add tag</Button>
-                    </div>
-                 </div>
-            </div>
+      <div className="p-4 border-t bg-card shrink-0 md:hidden">
+        <Button variant="outline" className="w-full" onClick={() => setIsSheetOpen(true)}>View Details</Button>
+      </div>
+
+      <div className="hidden p-4 md:p-6 border-t bg-card shrink-0 md:block">
+          {contactInfoContent}
       </div>
     </div>
+    <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <SheetContent side="bottom" className="rounded-t-lg">
+            <SheetHeader className="text-left">
+                <SheetTitle>Contact Details</SheetTitle>
+            </SheetHeader>
+            <div className="py-4">
+                {contactInfoContent}
+            </div>
+        </SheetContent>
+    </Sheet>
+    </>
   );
 }
