@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -141,15 +140,18 @@ export default function InboxConversationView({
     const agent = isCustomer ? null : users.find(u => u.id === msg.authorId);
 
     if (msg.type === 'event') {
-        const linkedTicket = (msg as any).linked_ticket_id
-            ? tickets.find(t => t.id === (msg as any).linked_ticket_id)
-            : null;
-        
-        const ticketStatus = linkedTicket && activeHub.ticketStatuses
-            ? activeHub.ticketStatuses.find(s => s.name === linkedTicket.status)
-            : null;
-
-        return null; // Don't render event messages for now
+        const eventAuthor = users.find(u => u.id === msg.authorId);
+        return (
+            <div key={msg.id} className="flex justify-center py-2">
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                    <TicketIcon className="h-4 w-4" />
+                    <span className="font-semibold">{eventAuthor?.name}</span>
+                    <span>{msg.content}</span>
+                    <span>·</span>
+                    <span>{formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}</span>
+                </div>
+            </div>
+        );
     }
 
     if (msg.type === 'note') {
@@ -196,7 +198,7 @@ export default function InboxConversationView({
     <>
       <div className="relative grid grid-rows-[auto_1fr_auto] h-full min-h-0 bg-background md:bg-card">
         {/* Header */}
-        <div className="p-3 border-b flex justify-between items-center shrink-0">
+        <div className="p-3 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-2">
             {isMobile && onBack && (
               <Button variant="ghost" size="icon" className="-ml-1" onClick={onBack}>
@@ -372,3 +374,5 @@ export default function InboxConversationView({
     </>
   );
 }
+
+    
