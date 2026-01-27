@@ -1355,6 +1355,11 @@ export const updateBot = async (botId: string, data: Partial<Bot>): Promise<void
   await updateDoc(botRef, data);
 };
 
+export const deleteBot = async (botId: string): Promise<void> => {
+  const botRef = doc(db, "bots", botId);
+  await deleteDoc(botRef);
+};
+
 export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Visitor>): Promise<Visitor> => {
   const visitorRef = doc(db, 'visitors', visitorId);
   try {

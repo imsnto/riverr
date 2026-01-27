@@ -690,6 +690,12 @@ if (fetchedConversations.length > 0) {
       const newBot = await db.addBot(bot);
       setBots(prev => [...prev, newBot]);
   }
+
+  const handleBotDelete = async (botId: string) => {
+    await db.deleteBot(botId);
+    setBots(prev => prev.filter(b => b.id !== botId));
+    toast({ title: "Bot Deleted" });
+  };
   
   const handleSaveArticle = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle> => {
     let savedArticle: HelpCenterArticle;
@@ -755,6 +761,7 @@ if (fetchedConversations.length > 0) {
       bots,
       onBotUpdate: handleBotUpdate,
       onBotAdd: handleBotAdd,
+      onBotDelete: handleBotDelete,
       escalationRules,
       helpCenters,
     }

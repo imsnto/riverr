@@ -5,7 +5,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Bot, Edit, MoreHorizontal, Plus, Trash2, ChevronsUpDown, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -28,6 +28,17 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 import * as db from '@/lib/db';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 
 interface InboxSettingsProps {
@@ -36,6 +47,7 @@ interface InboxSettingsProps {
   bots: BotData[];
   onBotUpdate: (botId: string, data: Partial<BotData>) => void;
   onBotAdd: (bot: Omit<BotData, 'id'>) => void;
+  onBotDelete: (botId: string) => void;
   helpCenters: HelpCenter[];
 }
 
@@ -45,11 +57,14 @@ export default function InboxSettings({
     bots,
     onBotUpdate,
     onBotAdd,
+    onBotDelete,
     helpCenters,
 }: InboxSettingsProps) {
   const [selectedBot, setSelectedBot] = useState<BotData | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { activeHub } = useAuth();
+  const [botToDelete, setBotToDelete] = useState<BotData | null>(null);
+  const { toast } = useToast();
 
   const handleEditBot = (bot: BotData) => {
     setSelectedBot(bot);
@@ -69,6 +84,23 @@ export default function InboxSettings({
         onBotAdd(botWithHubId as Omit<BotData, 'id'>);
     }
   };
+
+  const handleDeleteClick = (bot: BotData) => {
+    setBotToDelete(bot);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!botToDelete) return;
+    try {
+      onBotDelete(botToDelete.id);
+      toast({ title: "Bot deleted successfully." });
+    } catch (err) {
+      toast({ variant: 'destructive', title: "Failed to delete bot." });
+    } finally {
+      setBotToDelete(null);
+    }
+  };
+
 
   return (
     <>
@@ -126,7 +158,7 @@ export default function InboxSettings({
                           <Edit className="mr-2 h-4 w-4" />
                           Edit Bot & Install
                         </DropdownMenuItem>
-                        <DropdownMenuItem disabled className="text-destructive">
+                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleDeleteClick(bot); }} className="text-destructive">
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
                         </DropdownMenuItem>
@@ -163,6 +195,25 @@ export default function InboxSettings({
           allUsers={allUsers}
           helpCenters={helpCenters}
       />
+      <AlertDialog open={!!botToDelete} onOpenChange={() => setBotToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will permanently delete the bot "{botToDelete?.name}". This action cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                    onClick={handleDeleteConfirm}
+                    className={cn(buttonVariants({ variant: "destructive" }))}
+                >
+                    Delete
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

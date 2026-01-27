@@ -53,6 +53,7 @@ interface SettingsLayoutProps {
   bots: Bot[];
   onBotUpdate: (botId: string, data: Partial<Bot>) => void;
   onBotAdd: (bot: Omit<Bot, 'id'>) => void;
+  onBotDelete: (botId: string) => void;
   escalationRules: EscalationIntakeRule[];
   helpCenters: HelpCenter[];
 }
@@ -122,6 +123,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             bots={props.bots}
             onBotUpdate={props.onBotUpdate}
             onBotAdd={props.onBotAdd}
+            onBotDelete={props.onBotDelete}
             helpCenters={props.helpCenters}
          />;
       case 'deal-automation':
