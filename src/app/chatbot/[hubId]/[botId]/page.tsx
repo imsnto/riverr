@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { answerChatQuestion } from '@/ai/flows/answer-chat-question';
 import { marked } from 'marked';
+import { Input } from '@/components/ui/input';
 
 
 const getInitials = (name?: string) => {
@@ -23,10 +24,8 @@ const getInitials = (name?: string) => {
 
 // Customer widget MUST NEVER show internal-only content.
 const isPublicForVisitor = (msg: ChatMessage) => {
-  const anyMsg = msg as any;
+  if (msg.visibility === 'internal' || msg.isInternal) return false;
   if (msg.type === 'note') return false;
-  if (anyMsg.visibility && anyMsg.visibility !== 'public') return false;
-  if (anyMsg.isInternal === true) return false;
   return true;
 };
 
@@ -48,6 +47,9 @@ export default function ChatbotWidgetPage() {
   const [messageText, setMessageText] = useState('');
   const [loading, setLoading] = useState(false);
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [isCapturingIdentity, setIsCapturingIdentity] = useState(false);
+  const [capturedName, setCapturedName] = useState('');
+  const [capturedEmail, setCapturedEmail] = useState('');
   
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -80,56 +82,19 @@ export default function ChatbotWidgetPage() {
         setSpaceId(hub.spaceId);
       }
 
-
-      // visitor id
       let visitorId = localStorage.getItem('riverr_chat_visitor_id');
-      if (!visitorId) {
-        visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-        localStorage.setItem('riverr_chat_visitor_id', visitorId);
+      const fetchedVisitor = visitorId ? await db.getOrCreateVisitor(visitorId) : null;
+      
+      if (!appUser && fetchedBot?.identityCapture.enabled && (!fetchedVisitor || (!fetchedVisitor.name && !fetchedVisitor.email))) {
+        setIsCapturingIdentity(true);
+      } else {
+        setIsCapturingIdentity(false);
+        if (!visitorId) {
+            visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+            localStorage.setItem('riverr_chat_visitor_id', visitorId);
+        }
+        await loadVisitorAndConversation(visitorId);
       }
-
-      // referrer details (guard for empty referrer)
-      const referrer = document.referrer || window.location.href;
-      let domain = '';
-      let pathname = '';
-      try {
-        const url = new URL(referrer);
-        domain = url.hostname;
-        pathname = url.pathname;
-      } catch {
-        // ignore
-      }
-
-      const fetchedVisitor = await db.getOrCreateVisitor(visitorId);
-      setVisitor(fetchedVisitor);
-
-      // Load / attach existing convo for this visitor
-      const convos = await db.getConversationsForHub(hubId);
-      const existingConvo = convos.find(c => c.visitorId === visitorId);
-
-      if (existingConvo) {
-        setConversation(existingConvo);
-
-        // Subscribe to messages. Even if db says “public only”, we still filter client-side.
-        unsubRef.current = db.getMessagesForConversations(
-          [existingConvo.id],
-          (msgs) => setMessages(msgs),
-          true // Fetch public messages only (still filtered again on client)
-        );
-      }
-
-      // Update visitor if known appUser (optional)
-      if (appUser) {
-        const details: any = {
-          name: appUser.name,
-          email: appUser.email,
-          avatarUrl: appUser.avatarUrl,
-          domain,
-          pathname,
-        };
-        await db.updateVisitor(visitorId, details);
-      }
-
       setIsLoading(false);
     };
 
@@ -140,6 +105,56 @@ export default function ChatbotWidgetPage() {
     };
   }, [botId, hubId, appUser]);
 
+  const loadVisitorAndConversation = async (visitorId: string) => {
+      const referrer = document.referrer || window.location.href;
+      let domain = '';
+      let pathname = '';
+      try {
+        const url = new URL(referrer);
+        domain = url.hostname;
+        pathname = url.pathname;
+      } catch {}
+
+      const fetchedVisitor = await db.getOrCreateVisitor(visitorId, { location: { domain, pathname }});
+      setVisitor(fetchedVisitor);
+
+      const convos = await db.getConversationsForHub(hubId);
+      const existingConvo = convos.find(c => c.visitorId === visitorId);
+
+      if (existingConvo) {
+        setConversation(existingConvo);
+        unsubRef.current = db.getMessagesForConversations(
+          [existingConvo.id],
+          (msgs) => setMessages(msgs),
+          true
+        );
+      }
+
+      if (appUser && fetchedVisitor) {
+        await db.updateVisitor(visitorId, {
+          name: appUser.name,
+          email: appUser.email,
+          avatarUrl: appUser.avatarUrl,
+        });
+      }
+  }
+  
+  const handleIdentitySubmit = async () => {
+      if (!capturedName.trim() || !capturedEmail.trim()) {
+          // You might want to show an error message
+          return;
+      }
+      let visitorId = localStorage.getItem('riverr_chat_visitor_id');
+      if (!visitorId) {
+          visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+          localStorage.setItem('riverr_chat_visitor_id', visitorId);
+      }
+      
+      await db.updateVisitor(visitorId, { name: capturedName, email: capturedEmail });
+      setIsCapturingIdentity(false);
+      await loadVisitorAndConversation(visitorId);
+  }
+
   const handleSendMessage = async () => {
     if (!messageText.trim() && attachments.length === 0) return;
     if (!visitor || !spaceId) return;
@@ -148,42 +163,17 @@ export default function ChatbotWidgetPage() {
     setLoading(true);
 
     if (!currentConversation) {
-        let contactId = visitor.contactId;
+        const contact = await db.findOrCreateContact(spaceId, { email: visitor.email || undefined, name: visitor.name || undefined });
 
-        if (!contactId) {
-            const newContactData: Omit<Contact, 'id'> = {
-                tenantId: spaceId,
-                name: visitor.name || null,
-                emails: visitor.email ? [visitor.email] : [],
-                primaryEmail: visitor.email || null,
-                phones: [],
-                primaryPhone: null,
-                company: null,
-                source: 'chat',
-                externalIds: { visitorId: visitor.id },
-                tags: [],
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                lastSeenAt: new Date(),
-                lastMessageAt: new Date(),
-                lastOrderAt: null,
-                lastCallAt: null,
-                mergeParentId: null,
-                isMerged: false,
-            };
-
-            const newContact = await db.addContact(newContactData);
-            contactId = newContact.id;
-            await db.updateVisitor(visitor.id, { contactId });
-            setVisitor(v => v ? {...v, contactId} : null);
-        }
+        await db.updateVisitor(visitor.id, { contactId: contact.id });
+        setVisitor(v => v ? {...v, contactId: contact.id} : null);
 
         const newConvoData: Omit<Conversation, 'id'> = {
             hubId,
-            contactId: contactId,
+            contactId: contact.id,
             visitorId: visitor.id,
             assigneeId: null,
-            status: 'unassigned',
+            status: 'bot', // Start with bot
             lastMessage: messageText || "Sent an attachment",
             lastMessageAt: new Date().toISOString(),
             lastMessageAuthor: visitor.name,
@@ -200,7 +190,6 @@ export default function ChatbotWidgetPage() {
       );
     }
     
-    // This is a simplified attachment handling. In a real app, you'd upload to cloud storage.
     const messageAttachments: Attachment[] = attachments.map(file => ({
       id: `att_${Date.now()}_${file.name}`,
       name: file.name,
@@ -226,7 +215,6 @@ export default function ChatbotWidgetPage() {
 
     await db.addChatMessage(newMessageData);
 
-    // NOW call the AI
     setIsAiThinking(true);
     try {
         const aiResponse = await answerChatQuestion({
@@ -234,23 +222,38 @@ export default function ChatbotWidgetPage() {
             hubId: hubId,
             allowedHelpCenterIds: bot?.allowedHelpCenterIds || [],
             userId: visitor.id,
+            isAnonymous: !visitor.email,
         });
 
-        let responseContent = aiResponse.answer;
-        if (aiResponse.sources && aiResponse.sources.length > 0) {
-            const sourcesText = aiResponse.sources.map(source => `- [${source.title}](${source.url})`).join('\n');
-            responseContent += `\n\n**Sources:**\n${sourcesText}`;
+        if (aiResponse.escalate) {
+          const handoffMessage = aiResponse.answer || "I'm connecting you with a team member who can help.";
+          await db.addChatMessage({
+              conversationId: currentConversation.id,
+              authorId: 'ai_agent',
+              type: 'message',
+              senderType: 'agent',
+              content: handoffMessage,
+              timestamp: new Date().toISOString(),
+          });
+          await db.updateConversation(currentConversation.id, { status: 'human', escalated: true, escalationReason: aiResponse.escalationReason });
+
+        } else {
+            let responseContent = aiResponse.answer;
+            if (aiResponse.sources && aiResponse.sources.length > 0) {
+                const sourcesText = aiResponse.sources.map(source => `- [${source.title}](${source.url})`).join('\n');
+                responseContent += `\n\n**Sources:**\n${sourcesText}`;
+            }
+            
+            const aiMessageData: Omit<ChatMessage, 'id'> = {
+                conversationId: currentConversation.id,
+                authorId: 'ai_agent',
+                type: 'message',
+                senderType: 'agent',
+                content: responseContent,
+                timestamp: new Date().toISOString(),
+            };
+            await db.addChatMessage(aiMessageData);
         }
-        
-        const aiMessageData: Omit<ChatMessage, 'id'> = {
-            conversationId: currentConversation.id,
-            authorId: 'ai_agent',
-            type: 'message',
-            senderType: 'agent',
-            content: responseContent,
-            timestamp: new Date().toISOString(),
-        };
-        await db.addChatMessage(aiMessageData);
 
     } catch (e) {
         console.error("AI failed to answer:", e);
@@ -280,14 +283,6 @@ export default function ChatbotWidgetPage() {
     }
   };
 
-
-  const promptButtons = bot?.promptButtons || [];
-
-  const handlePromptClick = (text: string) => {
-    setMessageText(text);
-    setChatStarted(true);
-  };
-
   if (isLoading || !bot) {
     return (
       <div
@@ -302,6 +297,20 @@ export default function ChatbotWidgetPage() {
   const bg = bot.styleSettings?.backgroundColor;
   const primary = bot.styleSettings?.primaryColor;
   
+  if (isCapturingIdentity) {
+      return (
+          <div className="w-full h-screen text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden p-4 justify-center items-center" style={{ backgroundColor: bg }}>
+              <div className="w-full max-w-sm space-y-4">
+                  <p className="text-center">{bot.identityCapture?.captureMessage || 'Before we start, could I get your name and email?'}</p>
+                  <Input type="text" placeholder="Your name" value={capturedName} onChange={(e) => setCapturedName(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white" />
+                  <Input type="email" placeholder="Your email" value={capturedEmail} onChange={(e) => setCapturedEmail(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white" />
+                  <Button onClick={handleIdentitySubmit} className="w-full" style={{ backgroundColor: primary }}>Start Chat</Button>
+                  {!bot.identityCapture.required && <Button variant="link" className="w-full text-zinc-400" onClick={() => setIsCapturingIdentity(false)}>Skip for now</Button>}
+              </div>
+          </div>
+      )
+  }
+
   const renderAttachments = (msg: ChatMessage) => {
     if (!msg.attachments || msg.attachments.length === 0) return null;
     
@@ -360,21 +369,7 @@ export default function ChatbotWidgetPage() {
             </div>
             <p className="text-xs text-zinc-500">AI Agent</p>
 
-            {(visibleMessages.length === 0 && !chatStarted) ? (
-            <div className="pt-2 space-y-2">
-                {promptButtons.map((prompt, index) => (
-                <Button
-                    key={index}
-                    onClick={() => handlePromptClick(prompt)}
-                    variant="outline"
-                    className="w-full justify-center bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white rounded-md"
-                >
-                    {prompt}
-                </Button>
-                ))}
-            </div>
-            ) : (
-            visibleMessages.map(msg => {
+            {(visibleMessages.length > 0) && visibleMessages.map(msg => {
                 const isAgent = msg.senderType === 'agent';
                 const agent = isAgent ? users.find(u => u.id === msg.authorId) : null;
                 const isAI = isAgent && msg.authorId === 'ai_agent';
@@ -401,8 +396,7 @@ export default function ChatbotWidgetPage() {
                     )}
                 </div>
                 );
-            })
-            )}
+            })}
             {isAiThinking && (
               <div className="flex items-end gap-2">
                 <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs flex items-center gap-2">

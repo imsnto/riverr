@@ -23,8 +23,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Bot as BotData, Visitor, ChatMessage, User } from '@/lib/data';
-import { Bot, MessageSquare, ChevronLeft, MoreHorizontal, X, ChevronDown, Home, Ticket, Send, Check, ChevronsUpDown } from 'lucide-react';
+import { Bot as BotData, Visitor, ChatMessage, User, HelpCenter } from '@/lib/data';
+import { Bot, MessageSquare, ChevronLeft, MoreHorizontal, X, ChevronDown, Home, Ticket, Send, Check, ChevronsUpDown, Library } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Textarea } from '../ui/textarea';
@@ -106,10 +106,11 @@ const botSettingsSchema = z.object({
   customerTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
   logoUrl: z.string().url().optional().or(z.literal('')),
   showTickets: z.boolean(),
-  promptButton1: z.string().optional(),
-  promptButton2: z.string().optional(),
-  promptButton3: z.string().optional(),
   agentIds: z.array(z.string()).optional(),
+  allowedHelpCenterIds: z.array(z.string()).optional(),
+  identityCaptureEnabled: z.boolean().default(true),
+  identityCaptureRequired: z.boolean().default(false),
+  identityCaptureMessage: z.string().optional(),
 });
 
 type BotSettingsFormValues = z.infer<typeof botSettingsSchema>;
@@ -124,6 +125,7 @@ interface BotSettingsDialogProps {
   contact: Visitor | null;
   appUser: User | null;
   allUsers: User[];
+  helpCenters: HelpCenter[];
 }
 
 const getInitials = (name?: string) => {
@@ -139,7 +141,8 @@ export default function BotSettingsDialog({
   onSendMessage,
   messages,
   contact,
-  allUsers
+  allUsers,
+  helpCenters,
 }: BotSettingsDialogProps) {
   const [chatStarted, setChatStarted] = useState(false);
   const [previewMessage, setPreviewMessage] = useState('');
@@ -159,10 +162,11 @@ export default function BotSettingsDialog({
       customerTextColor: '#ffffff',
       logoUrl: '',
       showTickets: false,
-      promptButton1: '',
-      promptButton2: '',
-      promptButton3: '',
       agentIds: [],
+      allowedHelpCenterIds: [],
+      identityCaptureEnabled: true,
+      identityCaptureRequired: false,
+      identityCaptureMessage: 'Before we start, could I get your name and email?',
     },
   });
   
@@ -195,10 +199,11 @@ export default function BotSettingsDialog({
         customerTextColor: bot.styleSettings?.customerTextColor || '#ffffff',
         logoUrl: bot.styleSettings?.logoUrl || '',
         showTickets: bot.spaces?.tickets ?? false,
-        promptButton1: bot.promptButtons?.[0] || '',
-        promptButton2: bot.promptButtons?.[1] || '',
-        promptButton3: bot.promptButtons?.[2] || '',
         agentIds: bot.agentIds || [],
+        allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
+        identityCaptureEnabled: bot.identityCapture?.enabled ?? true,
+        identityCaptureRequired: bot.identityCapture?.required ?? false,
+        identityCaptureMessage: bot.identityCapture?.captureMessage || 'Before we start, could I get your name and email?',
       });
     } else {
         form.reset({
@@ -210,10 +215,11 @@ export default function BotSettingsDialog({
             customerTextColor: '#ffffff',
             logoUrl: '',
             showTickets: true,
-            promptButton1: 'Just browsing',
-            promptButton2: 'Talk to sales',
-            promptButton3: 'Get support',
             agentIds: [],
+            allowedHelpCenterIds: [],
+            identityCaptureEnabled: true,
+            identityCaptureRequired: false,
+            identityCaptureMessage: 'Before we start, could I get your name and email?',
         });
     }
   }, [bot, form]);
@@ -243,8 +249,21 @@ export default function BotSettingsDialog({
             customerTextColor: values.customerTextColor || '#ffffff',
             logoUrl: values.logoUrl || '',
         },
-        promptButtons: [values.promptButton1, values.promptButton2, values.promptButton3].filter(Boolean) as string[],
         agentIds: values.agentIds || [],
+        allowedHelpCenterIds: values.allowedHelpCenterIds || [],
+        identityCapture: {
+            enabled: values.identityCaptureEnabled,
+            required: values.identityCaptureRequired,
+            captureMessage: values.identityCaptureMessage,
+        },
+        // Hardcoded escalation triggers for now, based on the prompt
+        escalationTriggers: {
+            billingKeywords: [
+                'refund', 'charge', 'charged', 'billing', 'invoice', 
+                'payment', 'credit card', 'overcharged', 'subscription', 'pricing error'
+            ],
+            sentimentThreshold: -0.5,
+        }
     };
 
     if (bot) {
@@ -261,11 +280,6 @@ export default function BotSettingsDialog({
     setPreviewMessage('');
   }
 
-  const handlePromptClick = (text: string) => {
-    onSendMessage(text);
-    setChatStarted(true);
-  };
-
   const renderMessageBubble = (msg: ChatMessage) => {
     const uniqueKey = `${msg.id}-${msg.timestamp}`;
     
@@ -281,8 +295,6 @@ export default function BotSettingsDialog({
       </div>
     );
   };
-
-  const promptButtons = [watchedValues.promptButton1, watchedValues.promptButton2, watchedValues.promptButton3].filter(Boolean);
   
   const embedScript = bot ? `
   <script
@@ -360,8 +372,8 @@ export default function BotSettingsDialog({
                     </Card>
                 </div>
                 
-                 <Accordion type="single" collapsible defaultValue="welcome-message" className="w-full">
-                    <AccordionItem value="welcome-message">
+                 <Accordion type="single" collapsible defaultValue="content" className="w-full">
+                    <AccordionItem value="content">
                         <AccordionTrigger>Content</AccordionTrigger>
                         <AccordionContent className="space-y-4">
                              <FormField
@@ -377,12 +389,67 @@ export default function BotSettingsDialog({
                                     </FormItem>
                                 )}
                             />
-                            <div className="space-y-2">
-                                <FormLabel>Prompt Buttons</FormLabel>
-                                <FormField control={form.control} name="promptButton1" render={({ field }) => (<FormItem><FormControl><Input placeholder="Prompt 1..." {...field} /></FormControl></FormItem>)} />
-                                <FormField control={form.control} name="promptButton2" render={({ field }) => (<FormItem><FormControl><Input placeholder="Prompt 2..." {...field} /></FormControl></FormItem>)} />
-                                <FormField control={form.control} name="promptButton3" render={({ field }) => (<FormItem><FormControl><Input placeholder="Prompt 3..." {...field} /></FormControl></FormItem>)} />
-                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                     <AccordionItem value="knowledge">
+                        <AccordionTrigger>Knowledge Sources</AccordionTrigger>
+                         <AccordionContent className="space-y-4">
+                              <FormField
+                                control={form.control}
+                                name="allowedHelpCenterIds"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                    <FormLabel>Allowed Help Centers</FormLabel>
+                                    <p className="text-sm text-muted-foreground">Select which knowledge bases this bot can use to answer questions.</p>
+                                    <MultiSelectPopover 
+                                        title="Help Centers"
+                                        options={helpCenters.map(hc => ({ value: hc.id, label: hc.name }))}
+                                        selected={field.value || []}
+                                        onChange={field.onChange}
+                                    />
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="identity-capture">
+                        <AccordionTrigger>Identity Capture</AccordionTrigger>
+                        <AccordionContent className="space-y-4">
+                             <FormField
+                                control={form.control}
+                                name="identityCaptureEnabled"
+                                render={({ field }) => (
+                                    <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                                        <FormLabel>Enable Identity Capture</FormLabel>
+                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                             {watchedValues.identityCaptureEnabled && (
+                                <>
+                                    <FormField
+                                        control={form.control}
+                                        name="identityCaptureMessage"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Capture Message</FormLabel>
+                                            <FormControl><Textarea placeholder="Before we start..." {...field} value={field.value || ''} /></FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                     <FormField
+                                        control={form.control}
+                                        name="identityCaptureRequired"
+                                        render={({ field }) => (
+                                            <FormItem className="flex items-center space-x-2">
+                                                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                                <FormLabel>Is providing an email required?</FormLabel>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </>
+                             )}
                         </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="branding">
@@ -567,17 +634,7 @@ export default function BotSettingsDialog({
                             </div>
                             <p className="text-xs text-zinc-500">AI Agent • Just now</p>
 
-                            {(messages.length === 0 && !chatStarted) ? (
-                                <div className="pt-2 space-y-2">
-                                    {promptButtons.map((prompt, index) => (
-                                        <Button key={index} onClick={() => handlePromptClick(prompt!)} variant="outline" className="w-full justify-center bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white rounded-md">
-                                            {prompt}
-                                        </Button>
-                                    ))}
-                                </div>
-                            ) : (
-                                messages.map(renderMessageBubble)
-                            )}
+                            {(messages.length > 0) && messages.map(renderMessageBubble)}
                         </div>
                     </ScrollArea>
                     
@@ -631,4 +688,45 @@ export default function BotSettingsDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function MultiSelectPopover({ title, options, selected, onChange }: { title: string, options: { value: string, label: string }[], selected: string[], onChange: (selected: string[]) => void }) {
+    const [open, setOpen] = useState(false);
+
+    const handleSelect = (value: string) => {
+        const newSelected = selected.includes(value) ? selected.filter(v => v !== value) : [...selected, value];
+        onChange(newSelected);
+    }
+    
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between h-auto">
+                    <div className="flex flex-wrap gap-1">
+                        {selected.length > 0 ? selected.map(value => {
+                            const option = options.find(o => o.value === value);
+                            return <Badge variant="secondary" key={value}>{option?.label || 'Unknown'}</Badge>;
+                        }) : `Select ${title}...`}
+                    </div>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                <Command>
+                    <CommandInput placeholder={`Search ${title}...`} />
+                    <CommandList>
+                        <CommandEmpty>No options found.</CommandEmpty>
+                        <CommandGroup>
+                            {options.map((option) => (
+                                <CommandItem key={option.value} value={option.label} onSelect={() => handleSelect(option.value)}>
+                                    <Check className={cn("mr-2 h-4 w-4", selected.includes(option.value) ? "opacity-100" : "opacity-0")} />
+                                    {option.label}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
 }

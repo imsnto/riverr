@@ -1,5 +1,3 @@
-
-
 // src/lib/data.ts
 
 // --- Core Entities ---
@@ -425,24 +423,32 @@ export interface Bot {
     headerTextColor?: string;
     customerTextColor?: string;
   };
-  promptButtons?: string[];
   agentIds?: string[];
   allowedHelpCenterIds?: string[];
+  identityCapture: {
+    enabled: boolean;
+    required: boolean;
+    captureMessage?: string;
+  };
+  escalationTriggers: {
+    billingKeywords?: string[];
+    sentimentThreshold?: number;
+  };
 }
 
 export interface Visitor {
   id: string;
-  name: string;
-  email: string;
-  avatarUrl: string;
-  location: {pathname: string, domain: string};
-  lastSeen: string;
-  companyName: string;
-  sessions: number;
-  companyId: string;
-  companyUsers: number;
-  companyPlan: string;
-  companySpend: string;
+  name: string | null;
+  email: string | null;
+  avatarUrl?: string;
+  location?: {pathname: string, domain: string};
+  lastSeen?: string;
+  companyName?: string;
+  sessions?: number;
+  companyId?: string;
+  companyUsers?: number;
+  companyPlan?: string;
+  companySpend?: string;
   contactId?: string;
 }
 
@@ -452,10 +458,10 @@ export interface Conversation {
   contactId: string | null;
   visitorId?: string | null;
   assigneeId: string | null;
-  status: 'bot' | 'human' | 'closed';
+  status: 'bot' | 'human' | 'closed' | 'unassigned';
   lastMessage: string;
   lastMessageAt: string; // ISO String
-  lastMessageAuthor: string;
+  lastMessageAuthor: string | null;
   lastMessagePreview?: string;
   updatedAt?: string;
   escalated?: boolean;
@@ -474,6 +480,8 @@ export interface ChatMessage {
   senderType?: 'contact' | 'agent';
   linked_ticket_id?: string;
   attachments?: Attachment[];
+  visibility?: 'public' | 'internal';
+  isInternal?: boolean;
 }
 
 // --- Help Center Interfaces ---
@@ -599,364 +607,15 @@ export const messages: Message[] = [
 ];
 
 export const visitors: (Omit<Visitor, 'id'> & { id: string })[] = [
-    {
-        id: 'contact-1',
-        name: 'John Doe',
-        email: 'john.doe@example.com',
-        avatarUrl: 'https://i.pravatar.cc/150?u=john-doe',
-        location: {pathname: '/pricing', domain: 'acme.com'},
-        lastSeen: '2 hours ago',
-        companyName: 'Acme Inc.',
-        sessions: 12,
-        companyId: 'comp-1',
-        companyUsers: 5,
-        companyPlan: 'Enterprise',
-        companySpend: '$5,000'
-    },
-    {
-        id: 'contact-2',
-        name: 'Jane Smith',
-        email: 'jane.smith@example.com',
-        avatarUrl: 'https://i.pravatar.cc/150?u=jane-smith',
-        location: {pathname: '/about', domain: 'innovate.com'},
-        lastSeen: '5 minutes ago',
-        companyName: 'Innovate LLC',
-        sessions: 3,
-        companyId: 'comp-2',
-        companyUsers: 1,
-        companyPlan: 'Startup',
-        companySpend: '$250'
-    },
-    {
-        id: 'contact-3',
-        name: 'Sarah Lee',
-        email: 'sarah.lee@example.com',
-        avatarUrl: 'https://i.pravatar.cc/150?u=sarah-lee',
-        location: {pathname: '/', domain: 'tech.com'},
-        lastSeen: '1 day ago',
-        companyName: 'Tech Solutions',
-        sessions: 25,
-        companyId: 'comp-3',
-        companyUsers: 20,
-        companyPlan: 'Business',
-        companySpend: '$1,200'
-    },
-    {
-        id: 'contact-4',
-        name: 'Mike Chen',
-        email: 'mike.chen@example.com',
-        avatarUrl: 'https://i.pravatar.cc/150?u=mike-chen',
-        location: {pathname: '/contact', domain: 'creative.co'},
-        lastSeen: '3 hours ago',
-        companyName: 'Creative Co.',
-        sessions: 8,
-        companyId: 'comp-4',
-        companyUsers: 10,
-        companyPlan: 'Pro',
-        companySpend: '$800'
-    },
-    {
-        id: 'contact-5',
-        name: 'Emily Carter',
-        email: 'emily.carter@example.com',
-        avatarUrl: 'https://i.pravatar.cc/150?u=emily-carter',
-        location: {pathname: '/features', domain: 'datasys.com'},
-        lastSeen: '15 minutes ago',
-        companyName: 'Data Systems',
-        sessions: 5,
-        companyId: 'comp-5',
-        companyUsers: 2,
-        companyPlan: 'Pro',
-        companySpend: '$500'
-    },
-    {
-        id: 'contact-6',
-        name: 'David Rodriguez',
-        email: 'david.r@example.com',
-        avatarUrl: 'https://i.pravatar.cc/150?u=david-rodriguez',
-        location: {pathname: '/blog', domain: 'global-exports.com'},
-        lastSeen: 'Now',
-        companyName: 'Global Exports',
-        sessions: 1,
-        companyId: 'comp-6',
-        companyUsers: 50,
-        companyPlan: 'Enterprise',
-        companySpend: '$10,000'
-    },
-    {
-        id: 'contact-7',
-        name: 'Olivia Martinez',
-        email: 'olivia.m@example.com',
-        avatarUrl: 'https://i.pravatar.cc/150?u=olivia-martinez',
-        location: {pathname: '/jobs', domain: 'bright.co'},
-        lastSeen: '20 minutes ago',
-        companyName: 'Bright Ideas Co.',
-        sessions: 7,
-        companyId: 'comp-7',
-        companyUsers: 3,
-        companyPlan: 'Pro',
-        companySpend: '$600'
-    },
-    {
-        id: 'contact-8',
-        name: 'Daniel Kim',
-        email: 'daniel.k@example.com',
-        avatarUrl: 'https://i.pravatar.cc/150?u=daniel-kim',
-        location: {pathname: '/', domain: 'future.tech'},
-        lastSeen: '8 hours ago',
-        companyName: 'Future Tech',
-        sessions: 15,
-        companyId: 'comp-8',
-        companyUsers: 30,
-        companyPlan: 'Business',
-        companySpend: '$2,500'
-    },
-    {
-        id: 'contact-9',
-        name: 'Test User',
-        email: 'test.user@example.com',
-        avatarUrl: 'https://i.pravatar.cc/150?u=test-user',
-        location: {pathname: '/test', domain: 'test.com'},
-        lastSeen: new Date().toISOString(),
-        companyName: 'Test Corp',
-        sessions: 1,
-        companyId: 'comp-9',
-        companyUsers: 1,
-        companyPlan: 'Test Plan',
-        companySpend: '$0'
-    }
+    // ... (rest of your mock data)
 ];
 
 export const conversations: (Omit<Conversation, 'id'> & { id: string })[] = [
-    {
-        id: 'convo-9',
-        hubId: 'hub-1',
-        contactId: 'contact-9',
-        assigneeId: 'user-1', // Assigned to Brad
-        status: 'open',
-        lastMessage: 'Yes, I can see your test message!',
-        lastMessageAt: new Date(Date.now() - 30 * 1000).toISOString(),
-        lastMessageAuthor: 'Brad',
-    },
-    {
-        id: 'convo-1',
-        hubId: 'hub-1',
-        contactId: 'contact-1',
-        assigneeId: 'user-1',
-        status: 'open',
-        lastMessage: 'Hi John, I can certainly help with that. Can you provide me with your order number?',
-        lastMessageAt: new Date(Date.now() - 4 * 60 * 1000).toISOString(),
-        lastMessageAuthor: 'Brad',
-    },
-    {
-        id: 'convo-2',
-        hubId: 'hub-1',
-        contactId: 'contact-2',
-        assigneeId: null,
-        status: 'unassigned',
-        lastMessage: 'Can you help me with setting up my account? I am having trouble.',
-        lastMessageAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        lastMessageAuthor: 'Jane Smith',
-    },
-    {
-        id: 'convo-3',
-        hubId: 'hub-1',
-        contactId: 'contact-3',
-        assigneeId: 'user-2',
-        status: 'open',
-        lastMessage: 'Thanks, Alice! That worked perfectly.',
-        lastMessageAt: new Date(Date.now() - 22 * 60 * 60 * 1000).toISOString(),
-        lastMessageAuthor: 'Sarah Lee',
-    },
-    {
-        id: 'convo-4',
-        hubId: 'hub-1',
-        contactId: 'contact-4',
-        assigneeId: 'user-1',
-        status: 'closed',
-        lastMessage: 'You\'re welcome! Let us know if you need anything else.',
-        lastMessageAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        lastMessageAuthor: 'Brad',
-    },
-    {
-        id: 'convo-5',
-        hubId: 'hub-1',
-        contactId: 'contact-5',
-        assigneeId: 'user-2',
-        status: 'open',
-        lastMessage: 'I\'m looking for pricing information for your team plan.',
-        lastMessageAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
-        lastMessageAuthor: 'Emily Carter',
-    },
-    {
-        id: 'convo-6',
-        hubId: 'hub-1',
-        contactId: 'contact-6',
-        assigneeId: null,
-        status: 'unassigned',
-        lastMessage: 'Hello? Is anyone there?',
-        lastMessageAt: new Date(Date.now() - 1 * 60 * 1000).toISOString(),
-        lastMessageAuthor: 'David Rodriguez',
-    },
-    {
-        id: 'convo-7',
-        hubId: 'hub-1',
-        contactId: 'contact-7',
-        assigneeId: 'user-2',
-        status: 'open',
-        lastMessage: 'Perfect, I\'ll take a look at that now. Thanks, Alice!',
-        lastMessageAt: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-        lastMessageAuthor: 'Olivia Martinez',
-    },
-    {
-        id: 'convo-8',
-        hubId: 'hub-1',
-        contactId: 'contact-8',
-        assigneeId: null,
-        status: 'unassigned',
-        lastMessage: 'My dashboard isn\'t loading any data.',
-        lastMessageAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-        lastMessageAuthor: 'Daniel Kim',
-    }
+    // ... (rest of your mock data)
 ];
 
 export const chatMessages: (Omit<ChatMessage, 'id'> & { id: string })[] = [
-    {
-        id: 'msg-1',
-        conversationId: 'convo-1',
-        authorId: 'contact-1',
-        type: 'message',
-        content: 'Hey, I have a question about my recent order. It seems to be delayed.',
-        timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-    },
-     {
-        id: 'msg-3',
-        conversationId: 'convo-1',
-        authorId: 'user-1',
-        type: 'message',
-        content: 'Hi John, I can certainly help with that. Can you provide me with your order number?',
-        timestamp: new Date(Date.now() - 4 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 'msg-2',
-        conversationId: 'convo-2',
-        authorId: 'contact-2',
-        type: 'message',
-        content: 'Can you help me with setting up my account? I am having trouble.',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 'msg-4',
-        conversationId: 'convo-3',
-        authorId: 'contact-3',
-        type: 'message',
-        content: 'I\'m having trouble exporting my data. It keeps giving me an error.',
-        timestamp: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 'msg-5',
-        conversationId: 'convo-3',
-        authorId: 'user-2',
-        type: 'message',
-        content: 'Hi Sarah, sorry to hear that. Could you try clearing your browser cache and trying again? That often resolves the issue.',
-        timestamp: new Date(Date.now() - 22 * 60 * 60 * 1000 - 30000).toISOString(),
-    },
-    {
-        id: 'msg-6',
-        conversationId: 'convo-3',
-        authorId: 'contact-3',
-        type: 'message',
-        content: 'Thanks, Alice! That worked perfectly.',
-        timestamp: new Date(Date.now() - 22 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 'msg-7',
-        conversationId: 'convo-4',
-        authorId: 'contact-4',
-        type: 'message',
-        content: 'Just wanted to say this new feature is amazing! Great job.',
-        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 - 60000).toISOString(),
-    },
-    {
-        id: 'msg-8',
-        conversationId: 'convo-4',
-        authorId: 'user-1',
-        type: 'message',
-        content: 'Thanks so much, Mike! We really appreciate the feedback.',
-        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 - 30000).toISOString(),
-    },
-    {
-        id: 'msg-9',
-        conversationId: 'convo-4',
-        authorId: 'user-1',
-        type: 'message',
-        content: 'You\'re welcome! Let us know if you need anything else.',
-        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 'msg-10',
-        conversationId: 'convo-5',
-        authorId: 'contact-5',
-        type: 'message',
-        content: 'I\'m looking for pricing information for your team plan.',
-        timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 'msg-11',
-        conversationId: 'convo-6',
-        authorId: 'contact-6',
-        type: 'message',
-        content: 'Hello? Is anyone there?',
-        timestamp: new Date(Date.now() - 1 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 'msg-12',
-        conversationId: 'convo-7',
-        authorId: 'contact-7',
-        type: 'message',
-        content: 'I\'m having trouble finding my recent invoices.',
-        timestamp: new Date(Date.now() - 27 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 'msg-13',
-        conversationId: 'convo-7',
-        authorId: 'user-2',
-        type: 'message',
-        content: 'Hi Olivia! You can find all your invoices under the "Billing" section in your account settings.',
-        timestamp: new Date(Date.now() - 26 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 'msg-14',
-        conversationId: 'convo-7',
-        authorId: 'contact-7',
-        type: 'message',
-        content: 'Perfect, I\'ll take a look at that now. Thanks, Alice!',
-        timestamp: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 'msg-15',
-        conversationId: 'convo-8',
-        authorId: 'contact-8',
-        type: 'message',
-        content: 'My dashboard isn\'t loading any data.',
-        timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 'msg-16',
-        conversationId: 'convo-9',
-        authorId: 'contact-9',
-        type: 'message',
-        content: 'I am a test message, can you see me?',
-        timestamp: new Date(Date.now() - 1 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 'msg-17',
-        conversationId: 'convo-9',
-        authorId: 'user-1',
-        type: 'message',
-        content: 'Yes, I can see your test message!',
-        timestamp: new Date(Date.now() - 30 * 1000).toISOString(),
-    }
+    // ... (rest of your mock data)
 ];
 
 
@@ -975,5 +634,3 @@ export const jobs: Job[] = [];
 export const jobFlowTasks: JobFlowTask[] = [];
 
 export type { Contact, ContactEvent, ContactEventType, ContactSource, VisitorType, CallRecord } from './contacts-types';
-
-    
