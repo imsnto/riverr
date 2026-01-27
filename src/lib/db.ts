@@ -1330,44 +1330,7 @@ export const addConversation = async (conversation: Omit<Conversation, 'id'>): P
   const collRef = collection(db, 'conversations');
   try {
     const docRef = await addDoc(collRef, conversation);
-    const newConversation = { ...conversation, id: docRef.id };
-
-    // Auto-create a ticket if this is a new conversation
-    const ticketsQuery = query(collection(db, "tickets"), where("conversationId", "==", newConversation.id), limit(1));
-    const existingTicketSnap = await getDocs(ticketsQuery);
-
-    if (existingTicketSnap.empty) {
-      const hub = await getDoc(doc(db, 'hubs', newConversation.hubId));
-      if (hub.exists()) {
-        const hubData = hub.data() as Hub;
-        const visitor = await getDoc(doc(db, 'visitors', newConversation.visitorId!));
-        const visitorName = visitor.exists() ? visitor.data().name : 'Anonymous';
-
-        const newTicketData: Omit<Ticket, 'id'> = {
-          hubId: newConversation.hubId,
-          spaceId: hubData.spaceId,
-          status: 'New', // Default starting status
-          title: `Support: ${visitorName}`,
-          description: null,
-          priority: null,
-          type: 'question',
-          assignedTo: null,
-          contactId: newConversation.contactId || null,
-          conversationId: newConversation.id,
-          channel: 'Widget',
-          lastMessagePreview: newConversation.lastMessage,
-          lastMessageAt: newConversation.lastMessageAt,
-          createdAt: new Date().toISOString(),
-          createdBy: newConversation.visitorId!,
-          updatedAt: new Date().toISOString(),
-          escalation: { status: 'none' }
-        };
-        await addTicket(newTicketData);
-      }
-    }
-
-    return newConversation;
-
+    return { ...conversation, id: docRef.id };
   } catch (serverError) {
     const permissionError = new FirestorePermissionError({
       path: collRef.path,
@@ -1598,5 +1561,6 @@ export const updateHelpCenterContent = async (
 
   await batch.commit();
 }
+
 
 
