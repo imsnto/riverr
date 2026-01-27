@@ -2,24 +2,16 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { Bot as BotData, Visitor, Conversation, ChatMessage } from '@/lib/data';
+import { Bot as BotData, Visitor, Conversation, ChatMessage, Attachment } from '@/lib/data';
 import * as db from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, MessageSquare, Home, Ticket, ChevronLeft, MoreHorizontal, Loader2 } from 'lucide-react';
+import { Send, Plus, X, Loader2, Paperclip, ImageIcon, File as FileIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-type ViewMode = 'chat' | 'tickets';
-
-type TicketLite = {
-  id: string;
-  title?: string | null;
-  status?: string | null;
-  createdAt?: string | null;
-  updatedAt?: string | null;
-};
 
 const getInitials = (name?: string) => {
   if (!name) return '';
@@ -27,7 +19,6 @@ const getInitials = (name?: string) => {
 };
 
 // Customer widget MUST NEVER show internal-only content.
-// We filter by msg.type === 'note' AND also allow future expansion (visibility/internal flag).
 const isPublicForVisitor = (msg: ChatMessage) => {
   const anyMsg = msg as any;
   if (msg.type === 'note') return false;
@@ -47,20 +38,20 @@ export default function ChatbotWidgetPage() {
   const [conversation, setConversation] = useState<Conversation | null>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [tickets, setTickets] = useState<TicketLite[]>([]);
-  const [viewMode, setViewMode] = useState<ViewMode>('chat');
 
   const [isLoading, setIsLoading] = useState(true);
   const [chatStarted, setChatStarted] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const unsubRef = useRef<(() => void) | null>(null);
 
-  // --- Derived: safe messages for visitor ---
   const visibleMessages = useMemo(() => {
-    // sort defensively if your snapshot doesn’t guarantee order
     return messages
       .filter(isPublicForVisitor)
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
@@ -112,16 +103,6 @@ export default function ChatbotWidgetPage() {
           (msgs) => setMessages(msgs),
           true // Fetch public messages only (still filtered again on client)
         );
-
-        // Tickets: load for this conversation if ticketing enabled
-        if (fetchedBot?.spaces?.tickets) {
-          try {
-            const t = await (db as any).getTicketsForConversation?.(existingConvo.id);
-            if (Array.isArray(t)) setTickets(t);
-          } catch {
-            // ignore until ticket functions exist
-          }
-        }
       }
 
       // Update visitor if known appUser (optional)
@@ -146,22 +127,13 @@ export default function ChatbotWidgetPage() {
     };
   }, [botId, hubId, appUser]);
 
-  // Auto-scroll on new visible messages (chat view only)
-  useEffect(() => {
-    if (viewMode !== 'chat') return;
-    if (!scrollAreaRef.current) return;
-
-    const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
-    if (viewport) viewport.scrollTop = viewport.scrollHeight;
-  }, [visibleMessages.length, viewMode]);
-
   const handleSendMessage = async () => {
-    if (!messageText.trim() || !visitor) return;
+    if (!messageText.trim() && attachments.length === 0) return;
+    if (!visitor) return;
 
     let currentConversation = conversation;
     setLoading(true);
 
-    // Create conversation if needed
     if (!currentConversation) {
       const newConvoData: Omit<Conversation, 'id'> = {
         hubId,
@@ -169,7 +141,7 @@ export default function ChatbotWidgetPage() {
         visitorId: visitor.id,
         assigneeId: null,
         status: 'unassigned',
-        lastMessage: messageText,
+        lastMessage: messageText || "Sent an attachment",
         lastMessageAt: new Date().toISOString(),
         lastMessageAuthor: visitor.name,
       };
@@ -183,74 +155,45 @@ export default function ChatbotWidgetPage() {
         (msgs) => setMessages(msgs),
         true
       );
-
-      // also load tickets for new convo
-      if (bot?.spaces?.tickets) {
-        try {
-          const t = await (db as any).getTicketsForConversation?.(newConvo.id);
-          if (Array.isArray(t)) setTickets(t);
-        } catch {
-          // ignore
-        }
-      }
     }
+    
+    // This is a simplified attachment handling. In a real app, you'd upload to cloud storage.
+    const messageAttachments: Attachment[] = attachments.map(file => ({
+      id: `att_${Date.now()}_${file.name}`,
+      name: file.name,
+      url: URL.createObjectURL(file), // Temporary URL
+      type: file.type.startsWith('image/') ? 'image' : 'file',
+    }));
 
     const newMessageData: Omit<ChatMessage, 'id'> = {
       conversationId: currentConversation.id,
       authorId: visitor.id,
-      type: 'message', // customer can only send public messages
+      type: 'message',
       senderType: 'contact',
       content: messageText,
       timestamp: new Date().toISOString(),
+      attachments: messageAttachments,
     };
 
     await db.addChatMessage(newMessageData);
     setMessageText('');
+    setAttachments([]);
     setChatStarted(true);
-    setViewMode('chat');
     setLoading(false);
   };
+  
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      setAttachments(prev => [...prev, ...Array.from(event.target.files!)]);
+    }
+  };
+
 
   const promptButtons = bot?.promptButtons || [];
 
   const handlePromptClick = (text: string) => {
     setMessageText(text);
     setChatStarted(true);
-    setViewMode('chat');
-  };
-
-  // Tickets actions
-  const refreshTickets = async (conversationId: string) => {
-    if (!bot?.spaces?.tickets) return;
-    try {
-      const t = await (db as any).getTicketsForConversation?.(conversationId);
-      if (Array.isArray(t)) setTickets(t);
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleCreateTicket = async () => {
-    if (!bot?.spaces?.tickets) return;
-    if (!conversation || !visitor) return;
-
-    try {
-      // You implement this in db: create ticket linked to conversationId + visitorId
-      const created = await (db as any).createTicketFromConversation?.({
-        hubId,
-        conversationId: conversation.id,
-        visitorId: visitor.id,
-        title: `Support request from ${visitor.name || 'Visitor'}`,
-      });
-
-      if (created) {
-        await refreshTickets(conversation.id);
-        setViewMode('tickets');
-      }
-    } catch {
-      // If not implemented yet, do nothing (but keep UI)
-      console.warn('Ticket creation not implemented in db yet.');
-    }
   };
 
   if (isLoading || !bot) {
@@ -266,6 +209,27 @@ export default function ChatbotWidgetPage() {
 
   const bg = bot.styleSettings?.backgroundColor;
   const primary = bot.styleSettings?.primaryColor;
+  
+  const renderAttachments = (msg: ChatMessage) => {
+    if (!msg.attachments || msg.attachments.length === 0) return null;
+    
+    return (
+      <div className="mt-2 space-y-2">
+        {msg.attachments.map(att => (
+          <div key={att.id}>
+            {att.type === 'image' ? (
+              <img src={att.url} alt={att.name} className="rounded-lg max-w-xs max-h-64 object-cover" />
+            ) : (
+              <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-white hover:underline bg-zinc-700/50 p-2 rounded-md max-w-xs">
+                <FileIcon className="h-4 w-4" />
+                <span className="truncate">{att.name}</span>
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div
@@ -273,218 +237,139 @@ export default function ChatbotWidgetPage() {
       style={{ backgroundColor: bg }}
     >
       {/* Header */}
-      <div className="p-3 border-b flex items-center gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" disabled>
-          <ChevronLeft className="h-5 w-5" />
-        </Button>
-
-        {bot.styleSettings?.logoUrl ? (
-          <img src={bot.styleSettings.logoUrl} alt="Bot Logo" className="h-6 w-6 object-contain" />
-        ) : (
-          <div className="h-6 w-6 shrink-0" />
-        )}
-
-        <div className="min-w-0">
-          <h3 className="font-bold text-white truncate">{bot.name}</h3>
-          <p className="text-xs text-zinc-400 truncate">
-            {viewMode === 'tickets' ? 'Tickets' : "We'll reply as soon as we can"}
-          </p>
+      <div className="p-3 border-b flex items-center justify-between gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+        {/* Placeholder for left side to balance center */}
+        <div className="w-8"></div>
+        
+        <div className="flex flex-col items-center">
+            {bot.styleSettings?.logoUrl ? (
+                <img src={bot.styleSettings.logoUrl} alt="Bot Logo" className="h-8 w-8 object-contain rounded-full" />
+            ) : (
+                <div className="h-8 w-8 shrink-0" />
+            )}
+            <h3 className="font-bold text-white truncate text-sm mt-1">{bot.name}</h3>
         </div>
 
-        <div className="ml-auto flex items-center">
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" disabled>
-            <MoreHorizontal className="h-5 w-5" />
+        <div className="flex items-center">
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700">
+            <X className="h-5 w-5" />
           </Button>
         </div>
       </div>
 
       {/* Body */}
       <ScrollArea className="flex-1" ref={scrollAreaRef}>
-        <div className="p-4 space-y-2">
-          {viewMode === 'chat' && (
-            <>
-              {/* Welcome bubble (always visible) */}
-              <div className="flex items-end gap-2">
-                <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
-                  <p className="text-sm whitespace-pre-wrap">{bot.welcomeMessage}</p>
-                </div>
-              </div>
-              <p className="text-xs text-zinc-500">AI Agent</p>
+        <div className="p-4 space-y-4">
+            {/* Welcome bubble (always visible) */}
+            <div className="flex items-end gap-2">
+            <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
+                <p className="text-sm whitespace-pre-wrap">{bot.welcomeMessage}</p>
+            </div>
+            </div>
+            <p className="text-xs text-zinc-500">AI Agent</p>
 
-              {(visibleMessages.length === 0 && !chatStarted) ? (
-                <div className="pt-2 space-y-2">
-                  {promptButtons.map((prompt, index) => (
-                    <Button
-                      key={index}
-                      onClick={() => handlePromptClick(prompt)}
-                      variant="outline"
-                      className="w-full justify-center bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white rounded-md"
-                    >
-                      {prompt}
-                    </Button>
-                  ))}
-                </div>
-              ) : (
-                visibleMessages.map(msg => {
-                  const isAgent = msg.senderType === 'agent';
-                  return (
-                    <div
-                      key={msg.id}
-                      className={cn('flex items-end gap-2', isAgent ? 'justify-start' : 'justify-end')}
-                    >
-                      {isAgent ? (
-                        <div>
-                          <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
-                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                          </div>
-                          <p className="text-xs text-zinc-500 mt-2">AI Agent</p>
+            {(visibleMessages.length === 0 && !chatStarted) ? (
+            <div className="pt-2 space-y-2">
+                {promptButtons.map((prompt, index) => (
+                <Button
+                    key={index}
+                    onClick={() => handlePromptClick(prompt)}
+                    variant="outline"
+                    className="w-full justify-center bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white rounded-md"
+                >
+                    {prompt}
+                </Button>
+                ))}
+            </div>
+            ) : (
+            visibleMessages.map(msg => {
+                const isAgent = msg.senderType === 'agent';
+                return (
+                <div
+                    key={msg.id}
+                    className={cn('flex items-end gap-2', isAgent ? 'justify-start' : 'justify-end')}
+                >
+                    {isAgent ? (
+                    <div>
+                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
+                        {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+                        {renderAttachments(msg)}
                         </div>
-                      ) : (
-                        <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm" style={{ backgroundColor: primary }}>
-                          <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                        </div>
-                      )}
+                        <p className="text-xs text-zinc-500 mt-2">AI Agent</p>
                     </div>
-                  );
-                })
-              )}
-            </>
-          )}
-
-          {viewMode === 'tickets' && (
-            <>
-              {!bot.spaces?.tickets ? (
-                <div className="text-sm text-zinc-300">
-                  Ticketing is not enabled for this bot.
-                </div>
-              ) : !conversation ? (
-                <div className="text-sm text-zinc-300">
-                  Start a chat first so we can attach tickets to your conversation.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold">Your tickets</p>
-                    <Button
-                      size="sm"
-                      className="bg-zinc-800 hover:bg-zinc-700 text-white"
-                      onClick={handleCreateTicket}
-                      disabled={!conversation}
-                    >
-                      Create ticket
-                    </Button>
-                  </div>
-
-                  {tickets.length === 0 ? (
-                    <div className="text-sm text-zinc-300">
-                      No tickets yet. Create one if you need tracked support.
+                    ) : (
+                    <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm" style={{ backgroundColor: primary }}>
+                        {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+                        {renderAttachments(msg)}
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {tickets.map(t => (
-                        <div key={t.id} className="rounded-lg border border-white/10 bg-zinc-900/40 p-3">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-semibold truncate">
-                              {t.title || 'Support Ticket'}
-                            </p>
-                            <span className="text-[11px] text-zinc-400 shrink-0">
-                              {t.status || 'open'}
-                            </span>
-                          </div>
-                          <p className="text-xs text-zinc-400 mt-1">
-                            Ticket ID: {t.id}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                    )}
                 </div>
-              )}
-            </>
-          )}
+                );
+            })
+            )}
         </div>
         <div ref={messagesEndRef} />
       </ScrollArea>
 
       {/* Footer */}
-      <div className="p-4 border-t shrink-0 space-y-3" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-        {(chatStarted || visibleMessages.length > 0) ? (
-          <div className="relative">
+      <div className="p-2 border-t shrink-0 flex items-end gap-2" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+        <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" multiple />
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0">
+                    <Plus className="h-5 w-5"/>
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="w-auto p-1">
+                <Button variant="ghost" className="w-full justify-start" onClick={() => fileInputRef.current?.click()}>
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    Attachment
+                </Button>
+            </PopoverContent>
+        </Popover>
+
+        <div className="relative flex-1">
+            {attachments.length > 0 && (
+                <div className="p-2 space-y-1">
+                {attachments.map((file, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 text-sm bg-zinc-800 p-2 rounded-md">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                        {file.type.startsWith('image/') ? (
+                        <ImageIcon className="h-4 w-4 flex-shrink-0" />
+                        ) : (
+                        <FileIcon className="h-4 w-4 flex-shrink-0" />
+                        )}
+                        <span className="truncate">{file.name}</span>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                    </div>
+                ))}
+                </div>
+            )}
             <Textarea
-              placeholder={viewMode === 'tickets' ? 'Switch to chat to message…' : 'Message...'}
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              onKeyDown={(e) => {
-                if (viewMode !== 'chat') return;
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              minRows={1}
-              className="bg-zinc-800 border-zinc-700 text-white text-[16px] pr-10"
-              disabled={viewMode !== 'chat' || loading}
+                placeholder={'Message...'}
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                    }
+                }}
+                minRows={1}
+                className="bg-zinc-800 border-zinc-700 text-white pr-10 resize-none text-[16px]"
             />
             <Button
-              size="icon"
-              variant="ghost"
-              onClick={handleSendMessage}
-              disabled={viewMode !== 'chat' || !messageText.trim()}
-              className="absolute right-1 bottom-1 h-8 w-8 hover:bg-zinc-700"
-            >
-              {loading ? <Loader2 className='h-4 w-4 animate-spin' /> : <Send className="h-4 w-4" />}
-            </Button>
-          </div>
-        ) : (
-          <div className="text-center">
-            <Button
-              className="w-full bg-zinc-800 hover:bg-zinc-700 text-white"
-              onClick={() => { setChatStarted(true); setViewMode('chat'); }}
-            >
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Send us a message
-            </Button>
-          </div>
-        )}
-
-        {/* Bottom nav */}
-        <div className="flex justify-between items-center text-xs text-zinc-500">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn("h-8 w-8 hover:bg-zinc-700", viewMode === 'chat' && "bg-zinc-800")}
-              onClick={() => { if (!chatStarted) setChatStarted(true); setViewMode('chat'); }}
-            >
-              <MessageSquare className="h-5 w-5" />
-            </Button>
-
-            {bot.spaces?.tickets && (
-              <Button
-                variant="ghost"
                 size="icon"
-                className={cn("h-8 w-8 hover:bg-zinc-700", viewMode === 'tickets' && "bg-zinc-800")}
-                onClick={() => { if (!chatStarted) setChatStarted(true); setViewMode('tickets'); }}
-              >
-                <Ticket className="h-5 w-5" />
-              </Button>
-            )}
-
-            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" disabled>
-              <Home className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {/* Optional “Create ticket” quick action when enabled */}
-          {bot.spaces?.tickets && conversation && (
-            <Button
-              size="sm"
-              className="bg-zinc-800 hover:bg-zinc-700 text-white"
-              onClick={handleCreateTicket}
+                variant="ghost"
+                onClick={handleSendMessage}
+                disabled={(!messageText.trim() && attachments.length === 0) || loading}
+                className="absolute right-1 bottom-1 h-8 w-8 hover:bg-zinc-700"
             >
-              Create ticket
+                {loading ? <Loader2 className='h-4 w-4 animate-spin' /> : <Send className="h-4 w-4" />}
             </Button>
-          )}
         </div>
       </div>
     </div>
