@@ -422,6 +422,8 @@ export interface Bot {
     primaryColor: string;
     backgroundColor: string;
     logoUrl: string;
+    headerTextColor?: string;
+    customerTextColor?: string;
   };
   promptButtons?: string[];
   agentIds?: string[];

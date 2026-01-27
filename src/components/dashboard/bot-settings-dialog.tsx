@@ -102,6 +102,8 @@ const botSettingsSchema = z.object({
   welcomeMessage: z.string().optional(),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.'),
   backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.'),
+  headerTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
+  customerTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
   logoUrl: z.string().url().optional().or(z.literal('')),
   showTickets: z.boolean(),
   promptButton1: z.string().optional(),
@@ -153,6 +155,8 @@ export default function BotSettingsDialog({
       welcomeMessage: 'Hi there',
       primaryColor: '#3b82f6',
       backgroundColor: '#111827',
+      headerTextColor: '#ffffff',
+      customerTextColor: '#ffffff',
       logoUrl: '',
       showTickets: false,
       promptButton1: '',
@@ -187,6 +191,8 @@ export default function BotSettingsDialog({
         welcomeMessage: bot.welcomeMessage || 'Hi there',
         primaryColor: bot.styleSettings?.primaryColor || '#3b82f6',
         backgroundColor: bot.styleSettings?.backgroundColor || '#111827',
+        headerTextColor: bot.styleSettings?.headerTextColor || '#ffffff',
+        customerTextColor: bot.styleSettings?.customerTextColor || '#ffffff',
         logoUrl: bot.styleSettings?.logoUrl || '',
         showTickets: bot.spaces?.tickets ?? false,
         promptButton1: bot.promptButtons?.[0] || '',
@@ -200,6 +206,8 @@ export default function BotSettingsDialog({
             welcomeMessage: 'Hi there! How can we help you today?',
             primaryColor: '#3b82f6',
             backgroundColor: '#111827',
+            headerTextColor: '#ffffff',
+            customerTextColor: '#ffffff',
             logoUrl: '',
             showTickets: true,
             promptButton1: 'Just browsing',
@@ -231,6 +239,8 @@ export default function BotSettingsDialog({
         styleSettings: {
             primaryColor: values.primaryColor,
             backgroundColor: values.backgroundColor,
+            headerTextColor: values.headerTextColor || '#ffffff',
+            customerTextColor: values.customerTextColor || '#ffffff',
             logoUrl: values.logoUrl || '',
         },
         promptButtons: [values.promptButton1, values.promptButton2, values.promptButton3].filter(Boolean) as string[],
@@ -265,7 +275,7 @@ export default function BotSettingsDialog({
     
     return (
       <div key={uniqueKey} className="flex items-end gap-2 justify-end">
-        <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm" style={{ backgroundColor: watchedValues.primaryColor }}>
+        <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm" style={{ backgroundColor: watchedValues.primaryColor, color: watchedValues.customerTextColor || '#ffffff' }}>
           <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
         </div>
       </div>
@@ -410,12 +420,31 @@ export default function BotSettingsDialog({
                                 </FormItem>
                                 )}
                             />
+                             <FormField
+                                control={form.control}
+                                name="headerTextColor"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Header Text Color</FormLabel>
+                                    <FormControl>
+                                    <div className="flex items-center gap-2">
+                                        <Input placeholder="#ffffff" {...field} />
+                                        <div
+                                        className="w-8 h-8 rounded-md border"
+                                        style={{ backgroundColor: field.value }}
+                                        ></div>
+                                    </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
                             <FormField
                                 control={form.control}
                                 name="primaryColor"
                                 render={({ field }) => (
                                     <FormItem>
-                                    <FormLabel>Customer Message Color</FormLabel>
+                                    <FormLabel>Customer Message Background</FormLabel>
                                     <FormControl>
                                         <div className="flex items-center gap-2">
                                             <Input placeholder="#0057ff" {...field} />
@@ -424,6 +453,25 @@ export default function BotSettingsDialog({
                                     </FormControl>
                                      <FormMessage />
                                     </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="customerTextColor"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Customer Message Text Color</FormLabel>
+                                    <FormControl>
+                                    <div className="flex items-center gap-2">
+                                        <Input placeholder="#ffffff" {...field} />
+                                        <div
+                                        className="w-8 h-8 rounded-md border"
+                                        style={{ backgroundColor: field.value }}
+                                        ></div>
+                                    </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
                                 )}
                             />
                         </AccordionContent>
@@ -496,7 +544,7 @@ export default function BotSettingsDialog({
                            <div className="h-6 w-6 shrink-0" />
                         )}
                         <div>
-                            <h3 className="font-bold text-white">{watchedValues.name}</h3>
+                            <h3 className="font-bold" style={{ color: watchedValues.headerTextColor || '#ffffff' }}>{watchedValues.name}</h3>
                             <p className="text-xs text-zinc-400">We'll reply as soon as we can</p>
                         </div>
                         <div className="ml-auto flex items-center">

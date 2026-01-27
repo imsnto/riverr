@@ -293,7 +293,7 @@ export default function ChatbotWidgetPage() {
             ) : (
                 <div className="h-8 w-8 shrink-0" />
             )}
-            <h3 className="font-bold text-white truncate text-sm mt-1">{bot.name}</h3>
+            <h3 className="font-bold truncate text-sm mt-1" style={{ color: bot.styleSettings?.headerTextColor || '#ffffff' }}>{bot.name}</h3>
         </div>
 
         <div className="flex items-center">
@@ -344,7 +344,7 @@ export default function ChatbotWidgetPage() {
                         <p className="text-xs text-zinc-500 mt-2">AI Agent</p>
                     </div>
                     ) : (
-                    <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm" style={{ backgroundColor: primary }}>
+                    <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm" style={{ backgroundColor: primary, color: bot.styleSettings?.customerTextColor || '#ffffff' }}>
                         {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
                         {renderAttachments(msg)}
                     </div>
