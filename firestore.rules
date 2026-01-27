@@ -130,9 +130,13 @@ service cloud.firestore {
       );
     }
     
-    match /chat_contacts/{contactId} {
+    match /contacts/{contactId} {
       allow create, get: if true;
       allow update, list: if isAuthenticated();
+    }
+    
+    match /visitors/{visitorId} {
+        allow read, write: if true;
     }
     
     match /conversations/{conversationId} {
