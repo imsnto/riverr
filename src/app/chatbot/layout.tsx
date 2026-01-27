@@ -9,7 +9,7 @@ export default function ChatbotLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="dark font-body antialiased bg-transparent" suppressHydrationWarning>
+      <body className="font-body antialiased bg-transparent" suppressHydrationWarning>
         {children}
         <Toaster />
       </body>

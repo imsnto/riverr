@@ -103,7 +103,7 @@ export default async function ArticlePage({ params }: { params: { hcId: string; 
                     </header>
                     
                     <div
-                        className="prose max-w-none"
+                        className="prose dark:prose-invert max-w-none"
                         dangerouslySetInnerHTML={{ __html: article.content }}
                     />
                 </article>
