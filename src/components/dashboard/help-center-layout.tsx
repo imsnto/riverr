@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
 import { FolderPlus, Plus, Search, ChevronRight, Move, Link as LinkIcon, Library, ArrowLeft, DownloadCloud, Trash2 } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
+import HelpCenterFormDialog from './help-center-form-dialog';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import MoveToFolderDialog from './move-to-folder-dialog';
@@ -55,6 +56,9 @@ export default function HelpCenterLayout({
     const [isCollectionDialogOpen, setIsCollectionDialogOpen] = useState(false);
     const [editingCollection, setEditingCollection] = useState<HelpCenterCollection | null>(null);
     
+    const [isHCDialogOpen, setIsHCDialogOpen] = useState(false);
+    const [editingHelpCenter, setEditingHelpCenter] = useState<HelpCenter | null>(null);
+
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [isMoveToFolderOpen, setIsMoveToFolderOpen] = useState(false);
     const [isAddToHCOpen, setIsAddToHCOpen] = useState(false);
@@ -67,12 +71,6 @@ export default function HelpCenterLayout({
     const [mobileContentVisible, setMobileContentVisible] = useState(false);
     
     const { toast } = useToast();
-
-    useEffect(() => {
-        if (activeHub) {
-            refreshData();
-        }
-    }, [activeHub]);
     
     const refreshData = () => {
         if (activeHub) {
@@ -81,6 +79,13 @@ export default function HelpCenterLayout({
             db.getHelpCenterArticles(activeHub.id).then(setArticles);
         }
     }
+
+    useEffect(() => {
+        if (activeHub) {
+            refreshData();
+        }
+    }, [activeHub]);
+    
 
     const showContentOnMobile = () => {
         if (isMobile) {
@@ -120,6 +125,32 @@ export default function HelpCenterLayout({
         setEditingCollection(collection);
         setIsCollectionDialogOpen(true);
     }
+    
+    const handleEditHelpCenter = (hc: HelpCenter) => {
+        setEditingHelpCenter(hc);
+        setIsHCDialogOpen(true);
+    };
+
+    const handleSaveHelpCenter = async (name: string) => {
+        if (!editingHelpCenter || !activeHub) {
+            toast({ variant: "destructive", title: "Something went wrong." });
+            return;
+        }
+
+        try {
+            await db.updateHelpCenter(editingHelpCenter.id, { name });
+            toast({ title: "Knowledge Base updated" });
+            refreshData();
+            if (activeHelpCenterId === editingHelpCenter.id) {
+                setActiveHelpCenterId(editingHelpCenter.id);
+            }
+        } catch (e) {
+            toast({ variant: "destructive", title: "Failed to update Knowledge Base" });
+        } finally {
+            setIsHCDialogOpen(false);
+            setEditingHelpCenter(null);
+        }
+    };
 
     const handleSaveCollection = async (values: { name: string; description?: string }, collectionId?: string) => {
         if (!activeHub) {
@@ -399,6 +430,7 @@ export default function HelpCenterLayout({
             onSelectHelpCenter={handleSelectHelpCenter}
             sidebarView={sidebarView}
             onViewChange={handleViewChange}
+            onEditHelpCenter={handleEditHelpCenter}
         />
     );
 
@@ -493,6 +525,12 @@ export default function HelpCenterLayout({
             onSave={handleSaveCollection}
             collection={editingCollection}
             parentId={selectedCollectionId || undefined}
+        />
+         <HelpCenterFormDialog
+            isOpen={isHCDialogOpen}
+            onOpenChange={setIsHCDialogOpen}
+            helpCenter={editingHelpCenter}
+            onSave={handleSaveHelpCenter}
         />
         <MoveToFolderDialog
             isOpen={isMoveToFolderOpen}

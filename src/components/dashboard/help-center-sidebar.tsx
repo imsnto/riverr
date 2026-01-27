@@ -25,6 +25,7 @@ interface HelpCenterSidebarProps {
   helpCenters: HelpCenter[];
   activeHelpCenterId: string | null;
   onSelectHelpCenter: (id: string | null) => void;
+  onEditHelpCenter: (hc: HelpCenter) => void;
   
   // View Control
   sidebarView: HelpCenterSidebarView;
@@ -132,6 +133,7 @@ export default function HelpCenterSidebar({
     helpCenters,
     activeHelpCenterId,
     onSelectHelpCenter,
+    onEditHelpCenter,
     sidebarView,
     onViewChange,
 }: HelpCenterSidebarProps) {
@@ -211,7 +213,10 @@ export default function HelpCenterSidebar({
                                                 View Public Page
                                             </Link>
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem disabled>
+                                        <DropdownMenuItem onSelect={() => {
+                                            const hc = helpCenters.find(h => h.id === activeHelpCenterId);
+                                            if (hc) onEditHelpCenter(hc);
+                                        }}>
                                             <Edit className="mr-2 h-4 w-4" />
                                             Edit Name
                                         </DropdownMenuItem>
