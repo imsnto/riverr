@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -188,6 +189,12 @@ export default function ChatbotWidgetPage() {
     }
   };
 
+  const handleClose = () => {
+    if (window.parent) {
+      window.parent.postMessage('close-riverr-chat', '*');
+    }
+  };
+
 
   const promptButtons = bot?.promptButtons || [];
 
@@ -251,7 +258,7 @@ export default function ChatbotWidgetPage() {
         </div>
 
         <div className="flex items-center">
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700">
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={handleClose}>
             <X className="h-5 w-5" />
           </Button>
         </div>
