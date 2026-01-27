@@ -8,8 +8,8 @@ export default function ChatbotLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
-      <body className="font-body antialiased bg-transparent" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
+      <body className="dark font-body antialiased bg-transparent" suppressHydrationWarning>
         {children}
         <Toaster />
       </body>
