@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -23,14 +22,26 @@ import { Toolbar } from './TiptapToolbar';
 import { useIsMobile } from '@/hooks/use-mobile';
 export { useEditor };
 
-export default function TiptapEditor({ content, onChange, onBlur, onEditorInstance }: { content: string; onChange: (html: string) => void, onBlur?: () => void, onEditorInstance?: (editor: Editor) => void }) {
+export default function TiptapEditor({
+  content,
+  onChange,
+  onBlur,
+  onEditorInstance,
+  uploadImage,
+}: {
+  content: string;
+  onChange: (html: string) => void;
+  onBlur?: () => void;
+  onEditorInstance?: (editor: Editor) => void;
+  uploadImage: (file: File) => Promise<string>;
+}) {
   const isMobile = useIsMobile();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        textStyle: false, 
+        textStyle: false,
       }),
       Bold,
       Italic,
@@ -41,7 +52,10 @@ export default function TiptapEditor({ content, onChange, onBlur, onEditorInstan
       ListItem,
       Blockquote,
       Link.configure({ openOnClick: false }),
-      Image,
+      Image.configure({
+        inline: false,
+        allowBase64: false,
+      }),
       Youtube.configure({ inline: false, width: 640, height: 360 }),
       TextStyle,
       FontFamily,
@@ -51,7 +65,49 @@ export default function TiptapEditor({ content, onChange, onBlur, onEditorInstan
     autofocus: 'end',
     editorProps: {
       attributes: {
-        class: 'prose dark:prose-invert max-w-none focus:outline-none min-h-[400px]',
+        class:
+          'prose dark:prose-invert max-w-none focus:outline-none min-h-[400px]',
+      },
+      handlePaste(view, event) {
+        const items = Array.from(event.clipboardData?.items ?? []);
+        const file = items.find((i) => i.type.startsWith('image/'))?.getAsFile();
+        if (!file) return false;
+
+        uploadImage(file).then((url) => {
+          editor?.chain().focus().setImage({ src: url, alt: file.name }).run();
+        });
+
+        return true;
+      },
+      handleDrop(view, event, slice, moved) {
+        if (moved) return false;
+        const files = Array.from(event.dataTransfer?.files ?? []);
+        const file = files.find((f) => f.type.startsWith('image/'));
+        if (!file) return false;
+
+        event.preventDefault();
+
+        const coordinates = view.posAtCoords({
+          left: event.clientX,
+          top: event.clientY,
+        });
+
+        uploadImage(file).then((url) => {
+          if (coordinates) {
+            editor
+              ?.chain()
+              .focus()
+              .insertContentAt(coordinates.pos, {
+                type: 'image',
+                attrs: { src: url, alt: file.name },
+              })
+              .run();
+          } else {
+            editor?.chain().focus().setImage({ src: url, alt: file.name }).run();
+          }
+        });
+
+        return true;
       },
     },
     onUpdate: ({ editor }) => {
@@ -63,10 +119,10 @@ export default function TiptapEditor({ content, onChange, onBlur, onEditorInstan
       }
     },
     onCreate: ({ editor }) => {
-        if (onEditorInstance) {
-            onEditorInstance(editor);
-        }
-    }
+      if (onEditorInstance) {
+        onEditorInstance(editor);
+      }
+    },
   });
 
   useEffect(() => {
@@ -89,7 +145,7 @@ export default function TiptapEditor({ content, onChange, onBlur, onEditorInstan
   if (!editor) {
     return null;
   }
-  
+
   if (isMobile === undefined) {
     return null; // Avoid rendering mismatch
   }
@@ -98,16 +154,16 @@ export default function TiptapEditor({ content, onChange, onBlur, onEditorInstan
     <div className="flex flex-col gap-4">
       {!isMobile && (
         <div className="sticky top-0 z-10 border bg-card rounded-lg p-1">
-            <Toolbar editor={editor} />
+          <Toolbar editor={editor} uploadImage={uploadImage} />
         </div>
       )}
       <EditorContent editor={editor} />
       {isMobile && (
-        <div 
+        <div
           className="fixed left-0 right-0 z-20 bg-card border-t p-1 overflow-x-auto transition-all duration-150 ease-in-out"
           style={{ bottom: `${keyboardHeight}px` }}
         >
-            <Toolbar editor={editor} />
+          <Toolbar editor={editor} uploadImage={uploadImage} />
         </div>
       )}
     </div>

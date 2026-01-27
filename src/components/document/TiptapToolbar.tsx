@@ -1,4 +1,3 @@
-
 'use client';
 
 import { type Editor } from '@tiptap/react';
@@ -26,7 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Toggle } from '@/components/ui/toggle';
 import { EditLink } from './EditLink';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,20 +37,35 @@ import { Input } from '../ui/input';
 
 type Props = {
   editor: Editor;
+  uploadImage: (file: File) => Promise<string>;
 };
 
 const FONT_SIZES = ['12px', '14px', '16px', '18px', '24px', '30px', '36px'];
 
-export function Toolbar({ editor }: Props) {
-  const [imageUrl, setImageUrl] = useState('');
+export function Toolbar({ editor, uploadImage }: Props) {
   const [youtubeUrl, setYoutubeUrl] = useState('');
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
 
-  const addImage = () => {
-    if (imageUrl) {
-      editor.commands.setImage({ src: imageUrl });
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/') || file.size > 8 * 1024 * 1024) {
+      // You could add a toast notification here for errors
+      console.error('Invalid file type or size');
+      return;
     }
-    setImageUrl('');
-    // Popover will close on its own
+
+    try {
+      const url = await uploadImage(file);
+      editor.chain().focus().setImage({ src: url, alt: file.name }).run();
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      // You could add a toast notification here for errors
+    } finally {
+      // Allow re-selecting the same file
+      e.target.value = '';
+    }
   };
   
   const addYoutubeVideo = () => {
@@ -212,36 +226,22 @@ export function Toolbar({ editor }: Props) {
         <Quote className="h-4 w-4" />
       </Toggle>
       <Separator orientation="vertical" className="h-8" />
-       {/* Image Popover */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button size="sm" variant="ghost">
-            <ImageIcon className="h-4 w-4" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-80">
-          <div className="grid gap-4">
-            <div className="space-y-2">
-              <h4 className="font-medium leading-none">Add Image</h4>
-              <p className="text-sm text-muted-foreground">
-                Paste an image URL.
-              </p>
-            </div>
-            <Input
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://..."
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addImage();
-                }
-              }}
-            />
-            <Button onClick={addImage}>Add Image</Button>
-          </div>
-        </PopoverContent>
-      </Popover>
+       
+      {/* Image Upload Button */}
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => imageInputRef.current?.click()}
+      >
+        <ImageIcon className="h-4 w-4" />
+      </Button>
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={handleImageUpload}
+      />
       
       {/* Link Component */}
       <EditLink editor={editor} />

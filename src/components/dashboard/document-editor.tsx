@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
@@ -17,6 +16,7 @@ import NewDocumentDialog from './new-document-dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
+import { uploadImageToFirebase } from '@/lib/db';
 
 interface DocumentEditorProps {
   initialDocument: Document;
@@ -61,6 +61,13 @@ export default function DocumentEditor({
   const [isTitleDerived, setIsTitleDerived] = useState(initialDocument.name === '');
   
   const hasUnsavedChanges = JSON.stringify(document) !== JSON.stringify(lastSavedDocument);
+
+  const uploadImage = useCallback(
+    (file: File) => {
+      return uploadImageToFirebase(file, document.hubId, document.id);
+    },
+    [document.hubId, document.id]
+  );
 
   const onEditorInstance = useCallback((editor: Editor) => {
     setEditor(editor);
@@ -191,6 +198,7 @@ export default function DocumentEditor({
                         content={document.content} 
                         onChange={handleContentChange} 
                         onEditorInstance={onEditorInstance}
+                        uploadImage={uploadImage}
                     />
                 </div>
             </div>
@@ -298,6 +306,7 @@ export default function DocumentEditor({
                     content={document.content} 
                     onChange={handleContentChange} 
                     onEditorInstance={onEditorInstance}
+                    uploadImage={uploadImage}
                 />
             </div>
         </div>
