@@ -8,7 +8,6 @@ import { z } from 'genkit';
 import { adminDB } from '@/lib/firebase-admin';
 import { HelpCenterArticle } from '@/lib/data';
 
-// 1. DEFINE SCHEMAS
 const AnswerChatQuestionInputSchema = z.object({
   question: z.string().describe("The user's question."),
   hubId: z.string().describe('The ID of the hub where the chat is taking place.'),
@@ -26,11 +25,10 @@ const AnswerChatQuestionOutputSchema = z.object({
     url: z.string(),
     relevanceScore: z.number().optional(),
   })).optional().describe('A list of 1-3 source articles used to formulate the answer.'),
-  suggestedNextStep: z.string().optional().describe('A suggested next step if the answer is incomplete, e.g., "Would you like me to open a ticket?" or "escalate"'),
+  suggestedNextStep: z.string().optional().nullable().describe('A suggested next step if the answer is incomplete, e.g., "Would you like me to open a ticket?" or "escalate"'),
 });
 type AnswerChatQuestionOutput = z.infer<typeof AnswerChatQuestionOutputSchema>;
 
-// 2. DEFINE THE TOOL
 const searchHelpCenter = ai.defineTool(
   {
     name: 'search_help_center',
@@ -88,7 +86,6 @@ const searchHelpCenter = ai.defineTool(
 );
 
 
-// 3. DEFINE THE PROMPT & FLOW
 const answerChatPrompt = ai.definePrompt({
     name: 'answerChatPrompt',
     input: { schema: AnswerChatQuestionInputSchema },
@@ -130,7 +127,6 @@ const answerChatQuestionFlow = ai.defineFlow(
   }
 );
 
-// 4. EXPORT THE WRAPPER FUNCTION
 export async function answerChatQuestion(input: AnswerChatQuestionInput): Promise<AnswerChatQuestionOutput> {
   return answerChatQuestionFlow(input);
 }
