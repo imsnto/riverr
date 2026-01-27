@@ -20,6 +20,13 @@ export interface Space {
   members: Record<string, SpaceMember>; // Map of user IDs to their roles/permissions
 }
 
+export type ConversationState =
+  | "ai_active"
+  | "escalation_offered"
+  | "escalation_declined"
+  | "human_assigned"
+  | "closed";
+
 export interface Hub {
   id: string;
   name: string;
@@ -418,7 +425,7 @@ export interface Bot {
     headerTextColor?: string;
     customerTextColor?: string;
   };
-  agentIds?: string[];
+  agentIds: string[];
   allowedHelpCenterIds?: string[];
   identityCapture: {
     enabled: boolean;
@@ -463,6 +470,8 @@ export interface Conversation {
   escalationReason?: string;
   visitorName?: string;
   visitorEmail?: string;
+  state?: ConversationState;
+  lastIntent?: string | null;
 }
 
 export interface ChatMessage {

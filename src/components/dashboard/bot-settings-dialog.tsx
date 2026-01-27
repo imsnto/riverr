@@ -22,7 +22,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Bot as BotData, ChatMessage, User, HelpCenter } from '@/lib/data';
+import { Bot as BotData, ChatMessage, User, HelpCenter, ConversationState, Conversation as ConversationData } from '@/lib/data';
 import { Bot as BotIcon, MessageSquare, ChevronLeft, MoreHorizontal, X, ChevronDown, Home, Ticket, Send, Check, ChevronsUpDown, Library, Upload, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -37,8 +37,9 @@ import { Badge } from '../ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Checkbox } from '../ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
-import { answerChatQuestion } from '@/ai/flows/answer-chat-question';
 import { marked } from 'marked';
+import { handleIncomingMessage, AgentAdapters, BotConfig, Conversation as AgentConversation, IncomingMessage } from '@/lib/agent';
+import { searchHelpCenterAction } from '@/app/actions/chat';
 
 
 function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
@@ -144,7 +145,7 @@ export default function BotSettingsDialog({
   const [previewMessages, setPreviewMessages] = useState<ChatMessage[]>([]);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [isPreviewMinimized, setIsPreviewMinimized] = useState(false);
-  const [previewConversationState, setPreviewConversationState] = useState<'ai_active' | 'escalation_offered' | 'escalation_declined' | 'human_assigned'>('ai_active');
+  const [previewConversation, setPreviewConversation] = useState<AgentConversation | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { appUser, activeHub } = useAuth();
@@ -220,9 +221,22 @@ export default function BotSettingsDialog({
           setPreviewMessage('');
           setPreviewMessages([]);
           setIsPreviewMinimized(false);
-          setPreviewConversationState('ai_active');
+          setPreviewConversation(null);
+      } else {
+        // Initialize preview conversation
+        if (activeHub) {
+            setPreviewConversation({
+                id: 'preview-convo-1',
+                hubId: activeHub.id,
+                state: 'ai_active',
+                escalated: false,
+                visitorName: appUser?.name,
+                visitorEmail: appUser?.email,
+                userId: appUser?.id,
+            });
+        }
       }
-  }, [isOpen]);
+  }, [isOpen, activeHub, appUser]);
 
   const onSubmit = (values: BotSettingsFormValues) => {
     const commonData = {
@@ -236,7 +250,7 @@ export default function BotSettingsDialog({
             customerTextColor: values.customerTextColor || '#ffffff',
             logoUrl: values.logoUrl || '',
         },
-        agentIds: values.agentIds || [],
+        agentIds: values.agentIds,
         allowedHelpCenterIds: values.allowedHelpCenterIds || [],
         identityCapture: {
             enabled: values.identityCaptureEnabled,
@@ -260,10 +274,8 @@ export default function BotSettingsDialog({
     onOpenChange(false);
   };
   
-    const DECLINE_PHRASES = ["no", "don’t", "not yet", "just answer", "stop", "i said no"];
-
     const handlePreviewSend = async () => {
-        if (!previewMessage.trim() || !appUser || !activeHub) return;
+        if (!previewMessage.trim() || !appUser || !activeHub || !previewConversation) return;
 
         const userMessage: ChatMessage = {
             id: `user-msg-${Date.now()}`,
@@ -275,66 +287,62 @@ export default function BotSettingsDialog({
             timestamp: new Date().toISOString(),
         };
         setPreviewMessages(prev => [...prev, userMessage]);
-        const question = previewMessage;
-        setPreviewMessage('');
-        setIsAiThinking(true);
         
-        let currentState = previewConversationState;
-        if (currentState === 'escalation_offered' && DECLINE_PHRASES.some(phrase => question.toLowerCase().includes(phrase))) {
-            currentState = 'escalation_declined';
-            setPreviewConversationState('escalation_declined');
+        const incomingMessage: IncomingMessage = {
+            id: userMessage.id,
+            role: 'user',
+            text: previewMessage,
+            createdAt: userMessage.timestamp,
         }
 
-        const historyForAI = previewMessages.map(msg => ({
-            role: msg.senderType === 'agent' ? 'model' : 'user',
-            content: msg.content
-        } as const));
+        setPreviewMessage('');
+        setIsAiThinking(true);
+
+        const botConfig: BotConfig = {
+            id: bot?.id || 'preview-bot',
+            hubId: activeHub.id,
+            name: watchedValues.name || 'Support Bot',
+            allowedHelpCenterIds: watchedValues.allowedHelpCenterIds || [],
+        };
+        
+        const mockAdapters: AgentAdapters = {
+            searchHelpCenter: searchHelpCenterAction,
+            escalateToHuman: async (args) => {
+                setPreviewConversation(prev => prev ? { ...prev, state: 'human_assigned', escalated: true, escalationReason: args.reason } : prev);
+            },
+            persistAssistantMessage: async (args) => {
+                const aiMessage: ChatMessage = {
+                    id: `ai-msg-${Date.now()}`,
+                    conversationId: 'preview-convo',
+                    authorId: 'ai_agent',
+                    type: 'message',
+                    senderType: 'agent',
+                    content: args.text,
+                    timestamp: new Date().toISOString(),
+                };
+                setPreviewMessages(prev => [...prev, aiMessage]);
+            },
+            updateConversation: async (args) => {
+                 setPreviewConversation(prev => prev ? { ...prev, ...args.patch } : prev);
+            },
+        };
 
         try {
-            const aiResponse = await answerChatQuestion({
-                question: question,
-                hubId: activeHub.id,
-                allowedHelpCenterIds: watchedValues.allowedHelpCenterIds || [],
-                userId: 'preview-user-id',
-                botName: watchedValues.name || 'Support Bot',
-                conversationState: currentState,
-                history: historyForAI,
+            await handleIncomingMessage({
+                bot: botConfig,
+                conversation: previewConversation,
+                message: incomingMessage,
+                adapters: mockAdapters,
             });
-
-            if (aiResponse.suggestedNextStep === 'offer_escalation') {
-                setPreviewConversationState('escalation_offered');
-            } else if (aiResponse.suggestedNextStep === 'escalate') {
-                setPreviewConversationState('human_assigned');
-            } else if (currentState !== 'escalation_declined') {
-                setPreviewConversationState('ai_active');
-            }
-
-            let responseContent = aiResponse.answer;
-            if (aiResponse.sources && aiResponse.sources.length > 0) {
-                const sourcesText = aiResponse.sources.map(source => `- [${source.title}](${source.url})`).join('\n');
-                responseContent += `\n\n**Sources:**\n${sourcesText}`;
-            }
-
-            const aiMessage: ChatMessage = {
-                id: `ai-msg-${Date.now()}`,
-                conversationId: 'preview-convo',
-                authorId: 'ai_agent',
-                type: 'message',
-                senderType: 'agent',
-                content: responseContent,
-                timestamp: new Date().toISOString(),
-            };
-            setPreviewMessages(prev => [...prev, aiMessage]);
-
         } catch (e) {
-            console.error("AI preview failed:", e);
-            const errorMessage: ChatMessage = {
+            console.error("Agent Handler failed:", e);
+             const errorMessage: ChatMessage = {
                  id: `err-msg-${Date.now()}`,
                 conversationId: 'preview-convo',
                 authorId: 'ai_agent',
                 type: 'message',
                 senderType: 'agent',
-                content: "Sorry, I encountered an error during this preview. Check the server logs for more details.",
+                content: "Sorry, I encountered an error during this preview. Check the console for details.",
                 timestamp: new Date().toISOString(),
             };
             setPreviewMessages(prev => [...prev, errorMessage]);
@@ -743,7 +751,7 @@ export default function BotSettingsDialog({
                                 >
                                     {isAgent ? (
                                         <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
-                                        {msg.content && <div className="text-sm prose prose-sm prose-invert" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
+                                        {msg.content && <div className="text-sm prose prose-sm prose-invert break-words" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
                                         </div>
                                     ) : (
                                         <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-words" style={{ backgroundColor: watchedValues.primaryColor, color: watchedValues.customerTextColor || '#ffffff' }}>

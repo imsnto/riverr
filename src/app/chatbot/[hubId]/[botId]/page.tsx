@@ -11,10 +11,10 @@ import { Send, Plus, X, Loader2, Paperclip, ImageIcon, File as FileIcon, Bot } f
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { answerChatQuestion } from '@/ai/flows/answer-chat-question';
 import { marked } from 'marked';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { invokeAgent } from '@/app/actions/chat';
 
 
 interface BotDataWithAgents extends BotData {
@@ -48,7 +48,6 @@ export default function ChatbotWidgetPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [chatStarted, setChatStarted] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [loading, setLoading] = useState(false);
   const [isAiThinking, setIsAiThinking] = useState(false);
@@ -62,6 +61,7 @@ export default function ChatbotWidgetPage() {
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const unsubRef = useRef<(() => void) | null>(null);
+  const convoUnsubRef = useRef<(() => void) | null>(null);
 
   const visibleMessages = useMemo(() => {
     return messages
@@ -122,6 +122,7 @@ export default function ChatbotWidgetPage() {
 
     return () => {
       if (unsubRef.current) unsubRef.current();
+      if (convoUnsubRef.current) convoUnsubRef.current();
     };
   }, [botId, hubId, appUser]);
 
@@ -142,7 +143,7 @@ export default function ChatbotWidgetPage() {
       const existingConvo = convos.find(c => c.visitorId === visitorId);
 
       if (existingConvo) {
-        setConversation(existingConvo);
+        convoUnsubRef.current = db.getConversation(existingConvo.id, setConversation);
         unsubRef.current = db.getMessagesForConversations(
           [existingConvo.id],
           (msgs) => setMessages(msgs),
@@ -197,15 +198,16 @@ export default function ChatbotWidgetPage() {
             visitorId: visitor.id,
             assigneeId,
             status: 'bot', // Start with bot
+            state: 'ai_active',
             lastMessage: messageText || "Sent an attachment",
             lastMessageAt: new Date().toISOString(),
             lastMessageAuthor: visitor.name,
         };
 
       const newConvo = await db.addConversation(newConvoData);
-      setConversation(newConvo);
       currentConversation = newConvo;
 
+      convoUnsubRef.current = db.getConversation(newConvo.id, setConversation);
       unsubRef.current = db.getMessagesForConversations(
         [newConvo.id],
         (msgs) => setMessages(msgs),
@@ -231,64 +233,36 @@ export default function ChatbotWidgetPage() {
       attachments: messageAttachments,
     };
     
+    const incomingMessage: any = {
+        id: `msg-${Date.now()}`,
+        role: 'user',
+        text: userMessageContent,
+        createdAt: newMessageData.timestamp
+    }
+    
     setMessageText('');
     setAttachments([]);
-    setChatStarted(true);
     setLoading(false);
 
     await db.addChatMessage(newMessageData);
 
     setIsAiThinking(true);
+    
+    const botConfig = {
+      id: bot.id,
+      hubId: bot.hubId,
+      name: bot.name,
+      allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
+    };
+    
     try {
-        const aiResponse = await answerChatQuestion({
-            question: userMessageContent,
-            hubId: hubId,
-            allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
-            userId: visitor.id,
-            botName: bot.name,
+        await invokeAgent({
+            bot: botConfig,
+            conversation: currentConversation,
+            message: incomingMessage,
         });
-
-        if (aiResponse.suggestedNextStep === "escalate") {
-          const handoffMessage = aiResponse.answer || "I'm connecting you with a team member who can help.";
-          await db.addChatMessage({
-              conversationId: currentConversation.id,
-              authorId: 'ai_agent',
-              type: 'message',
-              senderType: 'agent',
-              content: handoffMessage,
-              timestamp: new Date().toISOString(),
-          });
-          await db.updateConversation(currentConversation.id, { status: 'human', escalated: true, escalationReason: "AI Escalation" });
-
-        } else {
-            let responseContent = aiResponse.answer;
-            if (aiResponse.sources && aiResponse.sources.length > 0) {
-                const sourcesText = aiResponse.sources.map(source => `- [${source.title}](${source.url})`).join('\n');
-                responseContent += `\n\n**Sources:**\n${sourcesText}`;
-            }
-            
-            const aiMessageData: Omit<ChatMessage, 'id'> = {
-                conversationId: currentConversation.id,
-                authorId: 'ai_agent',
-                type: 'message',
-                senderType: 'agent',
-                content: responseContent,
-                timestamp: new Date().toISOString(),
-            };
-            await db.addChatMessage(aiMessageData);
-        }
-
     } catch (e) {
-        console.error("AI failed to answer:", e);
-        const errorMessageData: Omit<ChatMessage, 'id'> = {
-            conversationId: currentConversation.id,
-            authorId: 'ai_agent',
-            type: 'message',
-            senderType: 'agent',
-            content: "Sorry, I encountered an error while trying to find an answer. Please try rephrasing your question.",
-            timestamp: new Date().toISOString(),
-        };
-        await db.addChatMessage(errorMessageData);
+        console.error("Agent failed to answer:", e);
     } finally {
         setIsAiThinking(false);
     }
@@ -403,7 +377,7 @@ export default function ChatbotWidgetPage() {
                 const isAgent = msg.senderType === 'agent';
                 const agent = isAgent ? bot.agents?.find(u => u.id === msg.authorId) : null;
                 const isAI = isAgent && msg.authorId === 'ai_agent';
-                const contentHtml = isAI ? marked(msg.content) : msg.content;
+                const contentHtml = isAI ? marked.parse(msg.content) : msg.content;
                 
                 return (
                 <div
@@ -412,8 +386,8 @@ export default function ChatbotWidgetPage() {
                 >
                     {isAgent ? (
                     <div>
-                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
-                        {msg.content && <div className="text-sm prose prose-sm prose-invert break-words [hyphens:manual]" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
+                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
+                        {msg.content && <div className="text-sm prose prose-sm prose-invert break-words" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
                         {renderAttachments(msg)}
                         </div>
                         <p className="text-xs text-zinc-500 mt-2">{agent?.name || 'AI Agent'}</p>
