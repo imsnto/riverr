@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -6,7 +7,7 @@ import * as db from '@/lib/db';
 import type { Firestore } from "firebase-admin/firestore";
 
 // ---- CONFIG YOU SHOULD SET ----
-const PUBLIC_HELP_BASE_URL = "https://help.riverr.app"; // change if your help domain differs
+const PUBLIC_HELP_BASE_URL = "https://6000-firebase-studio-1753688090358.cluster-ys234awlzbhwoxmkkse6qo3fz6.cloudworkstations.dev"; // change if your help domain differs
 const ARTICLES_COLLECTION = "help_center_articles";
 
 // Optional: lightweight in-memory cache to reduce reads per hub/helpCenterIds combo
