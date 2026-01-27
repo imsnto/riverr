@@ -475,6 +475,7 @@ export interface HelpCenter {
   id: string;
   name: string;
   hubId: string;
+  coverImageUrl?: string;
 }
 
 export interface HelpCenterCollection {

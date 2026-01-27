@@ -31,8 +31,9 @@ import EscalationIntakeSettings from './escalation-intake-settings';
 import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import KnowledgeBaseSettings from './knowledge-base-settings';
 
-type SettingsView = 'users' | 'spaces' | 'hub' | 'inbox' | 'timesheets' | 'deal-automation' | 'escalation-intake';
+type SettingsView = 'users' | 'spaces' | 'hub' | 'inbox' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'knowledge-base';
 
 interface SettingsLayoutProps {
   allUsers: User[];
@@ -71,6 +72,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
 
   const hubHasInbox = props.activeHub?.settings?.components?.includes('inbox');
   const hubHasDeals = props.activeHub?.settings?.components?.includes('deals');
+  const hubHasHelpCenter = props.activeHub?.settings?.components?.includes('help-center');
 
   const navItems = [
     { key: 'users', label: 'Users & Permissions' },
@@ -79,6 +81,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
     { key: 'inbox', label: 'Inbox', disabled: !hubHasInbox },
     { key: 'deal-automation', label: 'Deal Automation', disabled: !hubHasDeals },
     { key: 'escalation-intake', label: 'Escalation Intake', disabled: !props.activeHub },
+    { key: 'knowledge-base', label: 'Knowledge Base', disabled: !hubHasHelpCenter },
     { key: 'timesheets', label: 'Timesheets' },
   ];
 
@@ -141,6 +144,8 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
           projects={props.projects}
           rules={props.escalationRules}
         />;
+      case 'knowledge-base':
+        return <KnowledgeBaseSettings activeHub={props.activeHub} />;
       case 'timesheets':
         return (
           <TeamTimesheets
