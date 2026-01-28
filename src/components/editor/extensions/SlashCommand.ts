@@ -1,28 +1,21 @@
 
-import { Extension } from '@tiptap/core';
-import Suggestion, { type SuggestionOptions } from '@tiptap/suggestion';
-import { ReactRenderer } from '@tiptap/react';
-import tippy, { type Instance as TippyInstance } from 'tippy.js';
-import { SlashCommandList } from '../slash/SlashCommandList';
+import { Extension } from '@tiptap/core'
+import Suggestion, { type SuggestionOptions } from '@tiptap/suggestion'
+import { ReactRenderer } from '@tiptap/react'
+import tippy, { type Instance as TippyInstance } from 'tippy.js'
+import { SlashCommandList } from '../slash/SlashCommandList'
+import { PluginKey } from 'prosemirror-state'
+
+type Range = { from: number; to: number }
 
 type CommandItem = {
-  title: string;
-  description?: string;
-  icon?: string;
-  run: (opts: { editor: any; range: { from: number; to: number } }) => void;
-};
-
-export interface SlashCommandOptions {
-  uploadImage: (file: File) => Promise<string>;
+  title: string
+  description?: string
+  run: (opts: { editor: any; range: Range }) => void
 }
 
-declare module '@tiptap/core' {
-  interface Commands<ReturnType> {
-    slashCommand: {
-      // no commands, extension is suggestion-based
-      _dummy: () => ReturnType;
-    };
-  }
+export interface SlashCommandOptions {
+  uploadImage: (file: File) => Promise<string>
 }
 
 export const SlashCommand = Extension.create<SlashCommandOptions>({
@@ -31,104 +24,108 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
   addOptions() {
     return {
       uploadImage: async () => '',
-    };
+    }
   },
 
   addProseMirrorPlugins() {
-    const editor = this.editor;
+    const editor = this.editor
 
-    const items = ({ query }: { query: string }): CommandItem[] => {
-      const q = query.toLowerCase().trim();
+    const getItems = ({ query }: { query: string }): CommandItem[] => {
+      const q = (query ?? '').toLowerCase().trim()
 
       const all: CommandItem[] = [
         {
           title: 'Text',
-          description: 'Continue with normal text',
+          description: 'Continue writing',
           run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).run();
+            editor.chain().focus().deleteRange(range).run()
           },
         },
         {
           title: 'Heading 1',
           run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run();
+            editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run()
           },
         },
         {
           title: 'Heading 2',
           run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run();
+            editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run()
           },
         },
         {
           title: 'Heading 3',
           run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run();
+            editor.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run()
           },
         },
         {
           title: 'Bullet List',
           run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).toggleBulletList().run();
+            editor.chain().focus().deleteRange(range).toggleBulletList().run()
           },
         },
         {
           title: 'Numbered List',
           run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).toggleOrderedList().run();
+            editor.chain().focus().deleteRange(range).toggleOrderedList().run()
           },
         },
         {
           title: 'Blockquote',
           run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).toggleBlockquote().run();
+            editor.chain().focus().deleteRange(range).toggleBlockquote().run()
           },
         },
         {
           title: 'Image',
           description: 'Upload an image',
           run: ({ editor, range }) => {
-            // List component will call back into editor via props
-            // We just remove the "/" text now; actual insert happens from UI
-            editor.chain().focus().deleteRange(range).run();
-            editor.commands.setMeta('slash:image', true);
+            // The list component will open the file picker.
+            // We just remove the "/" text.
+            editor.chain().focus().deleteRange(range).run()
+            editor.commands.setMeta('slash:image', true)
           },
         },
         {
           title: 'YouTube',
           description: 'Embed a YouTube URL',
           run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).run();
-            editor.commands.setMeta('slash:youtube', true);
+            editor.chain().focus().deleteRange(range).run()
+            editor.commands.setMeta('slash:youtube', true)
           },
         },
-      ];
+      ]
 
-      if (!q) return all;
-      return all.filter((i) => i.title.toLowerCase().includes(q));
-    };
+      if (!q) return all
+      return all.filter((i) => i.title.toLowerCase().includes(q))
+    }
 
     const suggestion: Omit<SuggestionOptions, 'editor'> = {
       char: '/',
       startOfLine: false,
       allowSpaces: false,
-      items,
-      command: ({ editor, range, props }: any) => {
-        props.run({ editor, range });
+
+      items: getItems,
+
+      command: ({ editor, range, props }) => {
+        props.run({ editor, range })
       },
+
+      // ✅ REQUIRED by @tiptap/suggestion
       render: () => {
-        let reactRenderer: ReactRenderer | null = null;
-        let popup: TippyInstance | null = null;
+        let reactRenderer: ReactRenderer | null = null
+        let popup: TippyInstance | null = null
 
         return {
           onStart: (props) => {
             reactRenderer = new ReactRenderer(SlashCommandList, {
+              editor: props.editor,
               props: {
                 ...props,
                 uploadImage: this.options.uploadImage,
               },
-              editor: props.editor,
-            });
+            })
 
             popup = tippy('body', {
               getReferenceClientRect: props.clientRect as any,
@@ -138,44 +135,46 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
               interactive: true,
               trigger: 'manual',
               placement: 'bottom-start',
-            })[0];
+            })[0]
           },
 
           onUpdate(props) {
             reactRenderer?.updateProps({
               ...props,
-              uploadImage: this.options.uploadImage,
-            });
+              uploadImage: (editor.extensionManager.extensions.find(e => e.name === 'slashCommand') as any)?.options?.uploadImage
+                ?? (reactRenderer as any)?.props?.uploadImage
+                ?? (() => Promise.resolve('')),
+            })
 
             popup?.setProps({
               getReferenceClientRect: props.clientRect as any,
-            });
+            })
           },
 
           onKeyDown(props) {
-            // Let the list handle arrows/enter/escape
-            // @ts-expect-error - exposed by component via ref-like prop
-            const handled = reactRenderer?.ref?.onKeyDown?.(props);
-            if (handled) return true;
+            // Forward keyboard to the list if it exposed onKeyDown via ref
+            // @ts-expect-error
+            const handled = reactRenderer?.ref?.onKeyDown?.(props)
+            if (handled) return true
 
             if (props.event.key === 'Escape') {
-              popup?.hide();
-              return true;
+              popup?.hide()
+              return true
             }
 
-            return false;
+            return false
           },
 
           onExit() {
-            popup?.destroy();
-            reactRenderer?.destroy();
-            popup = null;
-            reactRenderer = null;
+            popup?.destroy()
+            reactRenderer?.destroy()
+            popup = null
+            reactRenderer = null
           },
-        };
+        }
       },
-    };
+    }
 
-    return [Suggestion({ editor, ...suggestion })];
+    return [Suggestion({ editor, ...suggestion })]
   },
-});
+})
