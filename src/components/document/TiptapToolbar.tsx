@@ -34,7 +34,6 @@ import {
 } from '../ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Input } from '../ui/input';
-import { TextSelection } from 'prosemirror-state';
 
 type Props = {
   editor: Editor;
@@ -47,40 +46,41 @@ const FONT_SIZES = ['12px', '14px', '16px', '18px', '24px', '30px', '36px'];
 export function Toolbar({ editor, uploadImage, variant = 'desktop' }: Props) {
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const lastSelectionRef = useRef<number | null>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/') || file.size > 8 * 1024 * 1024) {
-      // You could add a toast notification here for errors
-      console.error('Invalid file type or size');
-      return;
-    }
+    if (!file || !editor) return;
 
     try {
-        const url = await uploadImage(file);
-        const { view, state } = editor;
-        const { schema } = state;
-        
-        const imageNode = schema.nodes.image.create({ src: url, alt: file.name });
-        const paragraph = schema.nodes.paragraph.create();
+      const url = await uploadImage(file);
 
-        let tr = state.tr.replaceSelectionWith(imageNode);
-        const insertPos = tr.selection.to;
-        tr = tr.insert(insertPos, paragraph);
-        
-        const $pos = tr.doc.resolve(Math.min(insertPos + 1, tr.doc.content.size));
-        tr = tr.setSelection(TextSelection.near($pos, 1));
-        
-        view.dispatch(tr.scrollIntoView());
-        view.focus();
+      // Restore focus first
+      editor.commands.focus();
 
-    } catch (error) {
-      console.error('Image upload failed:', error);
-      // You could add a toast notification here for errors
+      // Restore cursor position if we have one
+      if (lastSelectionRef.current !== null) {
+        editor.commands.setTextSelection(lastSelectionRef.current);
+      }
+
+      // Insert image + paragraph
+      editor
+        .chain()
+        .focus()
+        .insertContent([
+          {
+            type: 'image',
+            attrs: { src: url, alt: file.name },
+          },
+          {
+            type: 'paragraph',
+          },
+        ])
+        .run();
+
+    } catch (err) {
+      console.error('Image upload failed', err);
     } finally {
-      // Allow re-selecting the same file
       e.target.value = '';
     }
   };
@@ -254,7 +254,12 @@ export function Toolbar({ editor, uploadImage, variant = 'desktop' }: Props) {
       <Button
         size="sm"
         variant="ghost"
-        onClick={() => imageInputRef.current?.click()}
+        onClick={() => {
+            if (editor) {
+              lastSelectionRef.current = editor.state.selection.from;
+            }
+            imageInputRef.current?.click();
+          }}
       >
         <ImageIcon className="h-4 w-4" />
       </Button>

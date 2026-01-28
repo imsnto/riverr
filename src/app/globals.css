@@ -97,3 +97,11 @@ body {
   display: block;
   border-radius: 12px;
 }
+
+.ProseMirror:focus {
+  outline: none;
+}
+
+.ProseMirror p {
+  min-height: 1em;
+}
