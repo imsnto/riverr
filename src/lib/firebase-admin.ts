@@ -18,5 +18,5 @@ if (!admin.apps.length) {
   
   export const adminAuth = admin.auth();
   export const adminDB = admin.firestore();
-  export const adminStorage = admin.storage().bucket();
+  export const adminStorage = admin.storage().bucket("timeflow-6i3eo.appspot.com");
   export default admin;
