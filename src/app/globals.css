@@ -91,8 +91,9 @@ body {
   }
 }
 
-.tiptap-image {
+.ProseMirror img.tiptap-image {
   max-width: 100%;
   height: auto;
+  display: block;
   border-radius: 12px;
 }

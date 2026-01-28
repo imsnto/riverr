@@ -59,7 +59,16 @@ export function Toolbar({ editor, uploadImage, variant = 'desktop' }: Props) {
 
     try {
       const url = await uploadImage(file);
-      editor.chain().focus().setImage({ src: url, alt: file.name }).insertContent('<p></p>').run();
+      editor
+        .chain()
+        .focus()
+        .setImage({ src: url, alt: file.name })
+        .insertContent({ type: 'paragraph' })
+        .run();
+      
+      // After inserting, focus at the end to ensure cursor is in the new paragraph
+      editor.commands.focus('end');
+
     } catch (error) {
       console.error('Image upload failed:', error);
       // You could add a toast notification here for errors

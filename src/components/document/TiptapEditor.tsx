@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Editor, EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Bold from '@tiptap/extension-bold';
@@ -85,9 +85,15 @@ export default function TiptapEditor({
         if (!file) return false;
 
         uploadImageRef.current(file).then((url) => {
-          if (editor) {
-            editor.chain().focus().setImage({ src: url, alt: file.name }).insertContent('<p></p>').run();
-          }
+          const { schema } = view.state;
+          const imageNode = schema.nodes.image.create({ src: url, alt: file.name });
+          const paragraph = schema.nodes.paragraph.create();
+
+          const tr = view.state.tr
+            .replaceSelectionWith(imageNode)
+            .insert(view.state.selection.from + imageNode.nodeSize, paragraph);
+
+          view.dispatch(tr.scrollIntoView());
         });
 
         return true;
@@ -101,9 +107,18 @@ export default function TiptapEditor({
         event.preventDefault();
 
         uploadImageRef.current(file).then((url) => {
-          if (editor) {
-            editor.chain().focus().setImage({ src: url, alt: file.name }).insertContent('<p></p>').run();
-          }
+          const { schema } = view.state;
+          const imageNode = schema.nodes.image.create({ src: url, alt: file.name });
+          const paragraph = schema.nodes.paragraph.create();
+          
+          const coords = view.posAtCoords({ left: event.clientX, top: event.clientY });
+          const pos = coords?.pos ?? view.state.selection.from;
+
+          const tr = view.state.tr
+            .insert(pos, imageNode)
+            .insert(pos + imageNode.nodeSize, paragraph);
+
+          view.dispatch(tr.scrollIntoView());
         });
 
         return true;
