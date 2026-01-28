@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -105,4 +106,8 @@ body {
 
 .ProseMirror p {
   min-height: 1.2em;
+}
+
+.ProseMirror {
+  caret-color: currentColor;
 }

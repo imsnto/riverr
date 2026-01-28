@@ -1,167 +1,181 @@
-'use client';
 
-import { Extension, Editor } from '@tiptap/core'
-import Suggestion, { type SuggestionOptions } from '@tiptap/suggestion'
-import { PluginKey } from 'prosemirror-state'
-import { renderSlashMenu } from '../SlashMenu'
-import { TextSelection } from 'prosemirror-state'
+import { Extension } from '@tiptap/core';
+import Suggestion, { type SuggestionOptions } from '@tiptap/suggestion';
+import { ReactRenderer } from '@tiptap/react';
+import tippy, { type Instance as TippyInstance } from 'tippy.js';
+import { SlashCommandList } from '../slash/SlashCommandList';
 
-export type SlashItem = {
-  title: string
-  description?: string
-  icon?: React.ReactNode
-  command: (ctx: { editor: Editor; range: { from: number; to: number } }) => void
+type CommandItem = {
+  title: string;
+  description?: string;
+  icon?: string;
+  run: (opts: { editor: any; range: { from: number; to: number } }) => void;
+};
+
+export interface SlashCommandOptions {
+  uploadImage: (file: File) => Promise<string>;
 }
 
-export type SlashCommandOptions = {
-    uploadImage: (file: File) => Promise<string>;
-    suggestion: Omit<SuggestionOptions<SlashItem>, 'editor'>
-}
-
-function openImagePickerAndInsert(editor: Editor, uploadImage: (file: File) => Promise<string>) {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.style.display = 'none';
-
-    const { from, to } = editor.state.selection;
-    const selection = { from, to };
-
-    input.onchange = async () => {
-        const file = input.files?.[0];
-        document.body.removeChild(input);
-        if (!file) return;
-
-        try {
-            const url = await uploadImage(file);
-
-            editor.commands.focus();
-            editor.view.dispatch(
-                editor.state.tr.setSelection(
-                    TextSelection.create(editor.state.doc, selection.from, selection.to)
-                )
-            );
-
-            editor.chain().focus().insertContent([
-                { type: 'image', attrs: { src: url, alt: file.name } },
-                { type: 'paragraph' }
-            ]).run();
-        } catch (e) {
-            console.error('Image upload failed', e);
-        }
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    slashCommand: {
+      // no commands, extension is suggestion-based
+      _dummy: () => ReturnType;
     };
-
-    document.body.appendChild(input);
-    input.click();
+  }
 }
-
-
-function openYoutubePrompt(editor: Editor) {
-  const url = window.prompt('Paste a YouTube URL');
-  if (!url) return;
-  editor.chain().focus().setYoutubeVideo({ src: url, width: 640, height: 360 }).run();
-}
-
 
 export const SlashCommand = Extension.create<SlashCommandOptions>({
   name: 'slashCommand',
 
   addOptions() {
     return {
-      uploadImage: async (file: File) => { 
-        console.error("uploadImage function not provided to SlashCommand extension");
-        return "";
-      },
-      suggestion: {
-        char: '/',
-        pluginKey: new PluginKey('slashCommand'),
-        allow: ({ editor, state, range }) => {
-          if (!editor || !editor.isEditable) return false;
-          const $from = state.doc.resolve(range.from);
-          return $from.parent.type.name === 'paragraph';
-        },
-        command: ({ editor, range, props }) => {
-          if (!editor) return;
-          props.command({ editor, range });
-        },
-        render: renderSlashMenu(),
-      },
+      uploadImage: async () => '',
     };
   },
-  
-  addProseMirrorPlugins() {
-    return [
-      Suggestion({
-        editor: this.editor,
-        ...this.options.suggestion,
-        items: ({ query }) => {
-            const items: SlashItem[] = [
-                {
-                  title: 'Text',
-                  description: 'Start writing with plain text',
-                  command: ({ editor, range }) => {
-                    editor.chain().focus().deleteRange(range).setParagraph().run()
-                  },
-                },
-                {
-                  title: 'Heading 1',
-                  command: ({ editor, range }) => {
-                    editor.chain().focus().deleteRange(range).toggleHeading({ level: 1 }).run()
-                  },
-                },
-                {
-                  title: 'Heading 2',
-                  command: ({ editor, range }) => {
-                    editor.chain().focus().deleteRange(range).toggleHeading({ level: 2 }).run()
-                  },
-                },
-                 {
-                  title: 'Heading 3',
-                  command: ({ editor, range }) => {
-                    editor.chain().focus().deleteRange(range).toggleHeading({ level: 3 }).run()
-                  },
-                },
-                {
-                  title: 'Bullet List',
-                  command: ({ editor, range }) => {
-                    editor.chain().focus().deleteRange(range).toggleBulletList().run()
-                  },
-                },
-                {
-                  title: 'Numbered List',
-                  command: ({ editor, range }) => {
-                    editor.chain().focus().deleteRange(range).toggleOrderedList().run()
-                  },
-                },
-                {
-                  title: 'Quote',
-                  command: ({ editor, range }) => {
-                    editor.chain().focus().deleteRange(range).toggleBlockquote().run()
-                  },
-                },
-                {
-                    title: 'Image',
-                    description: 'Upload an image from your device',
-                    command: ({ editor, range }) => {
-                        editor.chain().focus().deleteRange(range).run();
-                        openImagePickerAndInsert(editor, this.options.uploadImage);
-                    }
-                },
-                {
-                    title: 'YouTube Video',
-                    description: 'Embed a YouTube video',
-                    command: ({ editor, range }) => {
-                        editor.chain().focus().deleteRange(range).run();
-                        openYoutubePrompt(editor);
-                    }
-                }
-            ];
 
-            if (!query) return items;
-            const q = query.toLowerCase();
-            return items.filter(i => i.title.toLowerCase().includes(q));
-        }
-      }),
-    ];
+  addProseMirrorPlugins() {
+    const editor = this.editor;
+
+    const items = ({ query }: { query: string }): CommandItem[] => {
+      const q = query.toLowerCase().trim();
+
+      const all: CommandItem[] = [
+        {
+          title: 'Text',
+          description: 'Continue with normal text',
+          run: ({ editor, range }) => {
+            editor.chain().focus().deleteRange(range).run();
+          },
+        },
+        {
+          title: 'Heading 1',
+          run: ({ editor, range }) => {
+            editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run();
+          },
+        },
+        {
+          title: 'Heading 2',
+          run: ({ editor, range }) => {
+            editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run();
+          },
+        },
+        {
+          title: 'Heading 3',
+          run: ({ editor, range }) => {
+            editor.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run();
+          },
+        },
+        {
+          title: 'Bullet List',
+          run: ({ editor, range }) => {
+            editor.chain().focus().deleteRange(range).toggleBulletList().run();
+          },
+        },
+        {
+          title: 'Numbered List',
+          run: ({ editor, range }) => {
+            editor.chain().focus().deleteRange(range).toggleOrderedList().run();
+          },
+        },
+        {
+          title: 'Blockquote',
+          run: ({ editor, range }) => {
+            editor.chain().focus().deleteRange(range).toggleBlockquote().run();
+          },
+        },
+        {
+          title: 'Image',
+          description: 'Upload an image',
+          run: ({ editor, range }) => {
+            // List component will call back into editor via props
+            // We just remove the "/" text now; actual insert happens from UI
+            editor.chain().focus().deleteRange(range).run();
+            editor.commands.setMeta('slash:image', true);
+          },
+        },
+        {
+          title: 'YouTube',
+          description: 'Embed a YouTube URL',
+          run: ({ editor, range }) => {
+            editor.chain().focus().deleteRange(range).run();
+            editor.commands.setMeta('slash:youtube', true);
+          },
+        },
+      ];
+
+      if (!q) return all;
+      return all.filter((i) => i.title.toLowerCase().includes(q));
+    };
+
+    const suggestion: Omit<SuggestionOptions, 'editor'> = {
+      char: '/',
+      startOfLine: false,
+      allowSpaces: false,
+      items,
+      command: ({ editor, range, props }: any) => {
+        props.run({ editor, range });
+      },
+      render: () => {
+        let reactRenderer: ReactRenderer | null = null;
+        let popup: TippyInstance | null = null;
+
+        return {
+          onStart: (props) => {
+            reactRenderer = new ReactRenderer(SlashCommandList, {
+              props: {
+                ...props,
+                uploadImage: this.options.uploadImage,
+              },
+              editor: props.editor,
+            });
+
+            popup = tippy('body', {
+              getReferenceClientRect: props.clientRect as any,
+              appendTo: () => document.body,
+              content: reactRenderer.element,
+              showOnCreate: true,
+              interactive: true,
+              trigger: 'manual',
+              placement: 'bottom-start',
+            })[0];
+          },
+
+          onUpdate(props) {
+            reactRenderer?.updateProps({
+              ...props,
+              uploadImage: this.options.uploadImage,
+            });
+
+            popup?.setProps({
+              getReferenceClientRect: props.clientRect as any,
+            });
+          },
+
+          onKeyDown(props) {
+            // Let the list handle arrows/enter/escape
+            // @ts-expect-error - exposed by component via ref-like prop
+            const handled = reactRenderer?.ref?.onKeyDown?.(props);
+            if (handled) return true;
+
+            if (props.event.key === 'Escape') {
+              popup?.hide();
+              return true;
+            }
+
+            return false;
+          },
+
+          onExit() {
+            popup?.destroy();
+            reactRenderer?.destroy();
+            popup = null;
+            reactRenderer = null;
+          },
+        };
+      },
+    };
+
+    return [Suggestion({ editor, ...suggestion })];
   },
 });
