@@ -127,9 +127,12 @@ export default function TiptapEditor({
           placement: 'top',
           maxWidth: 'none',
         }}
-        shouldShow={({ editor }) => {
-          const { from, to } = editor.state.selection;
-          return editor.isFocused && from !== to; // only when text is highlighted
+        shouldShow={(props) => {
+          if (!props.editor) {
+            return false;
+          }
+          const { from, to } = props.editor.state.selection;
+          return props.editor.isFocused && from !== to; // only when text is highlighted
         }}
       >
         <BubbleToolbar editor={editor} />
