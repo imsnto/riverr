@@ -4,7 +4,6 @@ import Suggestion, { type SuggestionOptions } from '@tiptap/suggestion'
 import { ReactRenderer } from '@tiptap/react'
 import tippy, { type Instance as TippyInstance } from 'tippy.js'
 import { SlashCommandList } from '../slash/SlashCommandList'
-import { PluginKey } from 'prosemirror-state'
 
 type Range = { from: number; to: number }
 
@@ -28,8 +27,6 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
   },
 
   addProseMirrorPlugins() {
-    const editor = this.editor
-
     const getItems = ({ query }: { query: string }): CommandItem[] => {
       const q = (query ?? '').toLowerCase().trim()
 
@@ -37,64 +34,43 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
         {
           title: 'Text',
           description: 'Continue writing',
-          run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).run()
-          },
+          run: ({ editor, range }) => editor.chain().focus().deleteRange(range).run(),
         },
         {
           title: 'Heading 1',
-          run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run()
-          },
+          run: ({ editor, range }) =>
+            editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run(),
         },
         {
           title: 'Heading 2',
-          run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run()
-          },
+          run: ({ editor, range }) =>
+            editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run(),
         },
         {
           title: 'Heading 3',
-          run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run()
-          },
+          run: ({ editor, range }) =>
+            editor.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run(),
         },
         {
           title: 'Bullet List',
-          run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).toggleBulletList().run()
-          },
+          run: ({ editor, range }) =>
+            editor.chain().focus().deleteRange(range).toggleBulletList().run(),
         },
         {
           title: 'Numbered List',
-          run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).toggleOrderedList().run()
-          },
+          run: ({ editor, range }) =>
+            editor.chain().focus().deleteRange(range).toggleOrderedList().run(),
         },
         {
           title: 'Blockquote',
-          run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).toggleBlockquote().run()
-          },
+          run: ({ editor, range }) =>
+            editor.chain().focus().deleteRange(range).toggleBlockquote().run(),
         },
-        {
-          title: 'Image',
-          description: 'Upload an image',
-          run: ({ editor, range }) => {
-            // The list component will open the file picker.
-            // We just remove the "/" text.
-            editor.chain().focus().deleteRange(range).run()
-            editor.commands.setMeta('slash:image', true)
-          },
-        },
-        {
-          title: 'YouTube',
-          description: 'Embed a YouTube URL',
-          run: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).run()
-            editor.commands.setMeta('slash:youtube', true)
-          },
-        },
+
+        // IMPORTANT: Image + YouTube are handled inside the list component
+        // so we don’t run anything here besides “no-op”
+        { title: 'Image', description: 'Upload an image', run: () => {} },
+        { title: 'YouTube', description: 'Embed a YouTube URL', run: () => {} },
       ]
 
       if (!q) return all
@@ -108,11 +84,11 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
 
       items: getItems,
 
+      // For normal items we still call props.run, but image/youtube are handled in UI
       command: ({ editor, range, props }) => {
-        props.run({ editor, range })
+        props.run?.({ editor, range })
       },
 
-      // ✅ REQUIRED by @tiptap/suggestion
       render: () => {
         let reactRenderer: ReactRenderer | null = null
         let popup: TippyInstance | null = null
@@ -141,9 +117,7 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
           onUpdate(props) {
             reactRenderer?.updateProps({
               ...props,
-              uploadImage: (editor.extensionManager.extensions.find(e => e.name === 'slashCommand') as any)?.options?.uploadImage
-                ?? (reactRenderer as any)?.props?.uploadImage
-                ?? (() => Promise.resolve('')),
+              uploadImage: this.options.uploadImage,
             })
 
             popup?.setProps({
@@ -152,7 +126,6 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
           },
 
           onKeyDown(props) {
-            // Forward keyboard to the list if it exposed onKeyDown via ref
             // @ts-expect-error
             const handled = reactRenderer?.ref?.onKeyDown?.(props)
             if (handled) return true
@@ -161,7 +134,6 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
               popup?.hide()
               return true
             }
-
             return false
           },
 
@@ -175,6 +147,6 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
       },
     }
 
-    return [Suggestion({ editor, ...suggestion })]
+    return [Suggestion({ editor: this.editor, ...suggestion })]
   },
 })
