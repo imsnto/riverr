@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
-import { Editor, EditorContent, useEditor } from '@tiptap/react';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { Editor, EditorContent, useEditor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Bold from '@tiptap/extension-bold';
 import Italic from '@tiptap/extension-italic';
@@ -16,13 +16,24 @@ import Image from '@tiptap/extension-image';
 import Youtube from '@tiptap/extension-youtube';
 import TextStyle from '@tiptap/extension-text-style';
 import { FontFamily } from '@tiptap/extension-font-family';
-import { FontSize } from '@/lib/tiptap-fontsize';
 import { TextSelection } from 'prosemirror-state';
 
-import { Toolbar } from './TiptapToolbar';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
-export { useEditor };
+import { FontSize } from '@/lib/tiptap-fontsize';
+import { BubbleToolbar } from './BubbleToolbar';
+import { SlashCommand } from './slash-command/SlashCommand';
+
+type Props = {
+  content: string;
+  onChange: (html: string) => void;
+  onBlur?: () => void;
+  onEditorInstance?: (editor: Editor) => void;
+  uploadImage: (file: File) => Promise<string>;
+  /**
+   * Fix #1: when entering an existing doc, do NOT jump to bottom.
+   * We'll set selection to start and avoid autofocus-to-end behaviors.
+   */
+  startAtTop?: boolean;
+};
 
 export default function TiptapEditor({
   content,
@@ -30,26 +41,14 @@ export default function TiptapEditor({
   onBlur,
   onEditorInstance,
   uploadImage,
-}: {
-  content: string;
-  onChange: (html: string) => void;
-  onBlur?: () => void;
-  onEditorInstance?: (editor: Editor) => void;
-  uploadImage: (file: File) => Promise<string>;
-}) {
-  const isMobile = useIsMobile();
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [isFocused, setIsFocused] = useState(false);
+  startAtTop = true,
+}: Props) {
+  const lastSelectionRef = useRef<{ from: number; to: number } | null>(null);
 
-  // Use a ref to hold the latest uploadImage function to avoid stale closures
-  const uploadImageRef = React.useRef(uploadImage);
-  useEffect(() => {
-    uploadImageRef.current = uploadImage;
-  }, [uploadImage]);
-
-  const editor = useEditor({
-    extensions: [
+  const extensions = useMemo(
+    () => [
       StarterKit.configure({
+        // keep paragraphs as default. no “title as first line” logic here.
         textStyle: false,
       }),
       Bold,
@@ -64,158 +63,79 @@ export default function TiptapEditor({
       Image.configure({
         inline: false,
         allowBase64: false,
-        HTMLAttributes: {
-          class: 'tiptap-image',
-        },
+        HTMLAttributes: { class: 'tiptap-image' },
       }),
       Youtube.configure({ inline: false, width: 640, height: 360 }),
       TextStyle,
       FontFamily,
       FontSize,
+
+      // Slash command menu ( / )
+      SlashCommand({
+        uploadImage,
+        // selection restore is handled centrally so image insert is reliable
+        onRememberSelection: (sel) => (lastSelectionRef.current = sel),
+        onRestoreSelection: (editor) => {
+          const sel = lastSelectionRef.current;
+          if (!sel) return;
+          // Restore selection before inserting.
+          editor.commands.setTextSelection(sel);
+        },
+      }),
     ],
+    [uploadImage]
+  );
+
+  const editor = useEditor({
+    extensions,
     content,
-    autofocus: !isMobile ? 'start' : false,
+    autofocus: false, // important: prevents “jump to bottom” on load
     editorProps: {
       attributes: {
-        class:
-          'prose dark:prose-invert max-w-none focus:outline-none min-h-[400px]',
-      },
-      handlePaste(view, event) {
-        const items = Array.from(event.clipboardData?.items ?? []);
-        const file = items.find((i) => i.type.startsWith('image/'))?.getAsFile();
-        if (!file) return false;
-      
-        event.preventDefault();
-      
-        uploadImageRef.current(file).then((url) => {
-          const { schema } = view.state;
-      
-          // Safety: if image node isn't registered for some reason
-          if (!schema.nodes.image) return;
-      
-          const imageNode = schema.nodes.image.create({ src: url, alt: file.name });
-          const paragraph = schema.nodes.paragraph.create();
-      
-          let tr = view.state.tr.replaceSelectionWith(imageNode);
-      
-          // After replaceSelectionWith, ProseMirror updates tr.selection to be after the inserted node
-          const insertPos = tr.selection.to;
-      
-          tr = tr.insert(insertPos, paragraph);
-      
-          // Place cursor *inside* the new paragraph (position + 1 moves into the paragraph text)
-          const $pos = tr.doc.resolve(Math.min(insertPos + 1, tr.doc.content.size));
-          tr = tr.setSelection(TextSelection.near($pos, 1));
-      
-          view.dispatch(tr.scrollIntoView());
-          view.focus();
-        });
-      
-        return true;
-      },
-      
-      handleDrop(view, event, slice, moved) {
-        if (moved) return false;
-      
-        const files = Array.from(event.dataTransfer?.files ?? []);
-        const file = files.find((f) => f.type.startsWith('image/'));
-        if (!file) return false;
-      
-        event.preventDefault();
-      
-        uploadImageRef.current(file).then((url) => {
-          const { schema } = view.state;
-          if (!schema.nodes.image) return;
-      
-          const imageNode = schema.nodes.image.create({ src: url, alt: file.name });
-          const paragraph = schema.nodes.paragraph.create();
-      
-          const coords = view.posAtCoords({ left: event.clientX, top: event.clientY });
-          const basePos = coords?.pos ?? view.state.selection.from;
-      
-          let tr = view.state.tr.insert(basePos, imageNode);
-      
-          // Use the transaction doc to compute the correct "after image" position
-          const afterImagePos = basePos + imageNode.nodeSize;
-      
-          tr = tr.insert(afterImagePos, paragraph);
-      
-          const $pos = tr.doc.resolve(Math.min(afterImagePos + 1, tr.doc.content.size));
-          tr = tr.setSelection(TextSelection.near($pos, 1));
-      
-          view.dispatch(tr.scrollIntoView());
-          view.focus();
-        });
-      
-        return true;
+        class: 'prose dark:prose-invert max-w-none focus:outline-none min-h-[400px]',
       },
     },
-    onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
-    },
-    onFocus: () => setIsFocused(true),
-    onBlur: () => {
-        setIsFocused(false);
-        if (onBlur) onBlur();
-    },
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    onBlur: () => onBlur?.(),
     onCreate: ({ editor }) => {
-      if (onEditorInstance) {
-        onEditorInstance(editor);
+      onEditorInstance?.(editor);
+
+      if (startAtTop) {
+        // Put cursor at start and keep scroll at top.
+        // Use requestAnimationFrame to let layout settle first.
+        requestAnimationFrame(() => {
+          try {
+            editor.commands.setTextSelection(1);
+            // Don’t force focus unless you want it.
+            // If you DO want focus immediately, uncomment:
+            // editor.commands.focus('start');
+          } catch {}
+        });
       }
     },
   });
 
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!isMobile || !vv) return;
-
-    const update = () => {
-      const keyboard = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      setKeyboardHeight(keyboard);
-    };
-
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    update();
-
-    return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-    };
-  }, [isMobile]);
-
-  if (!editor) {
-    return null;
-  }
-
-  if (isMobile === undefined) {
-    return null; // Avoid rendering mismatch
-  }
+  if (!editor) return null;
 
   return (
-    <div className="flex flex-col gap-4">
-      {!isMobile && (
-        <div className="sticky top-0 z-10 border bg-card rounded-lg p-1">
-          <Toolbar editor={editor} uploadImage={uploadImage} />
-        </div>
-      )}
+    <div className="relative">
+      {/* Bubble toolbar only when selection exists */}
+      <BubbleMenu
+        editor={editor}
+        tippyOptions={{
+          duration: 150,
+          placement: 'top',
+          maxWidth: 'none',
+        }}
+        shouldShow={({ editor }) => {
+          const { from, to } = editor.state.selection;
+          return editor.isFocused && from !== to; // only when text is highlighted
+        }}
+      >
+        <BubbleToolbar editor={editor} />
+      </BubbleMenu>
+
       <EditorContent editor={editor} />
-      {isMobile && (
-        <div
-          className="fixed left-0 right-0 z-20 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/70 transition-all duration-150 ease-in-out"
-          style={{
-            bottom: `${keyboardHeight}px`,
-            transform: isFocused ? "translateY(0px)" : "translateY(12px)",
-            opacity: isFocused ? 1 : 0,
-            pointerEvents: isFocused ? "auto" : "none",
-          }}
-        >
-          {/* This wrapper creates the horizontal scrolling strip */}
-          <div className="overflow-x-auto [-webkit-overflow-scrolling:touch]">
-            <Toolbar editor={editor} uploadImage={uploadImage} variant="mobile" />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
