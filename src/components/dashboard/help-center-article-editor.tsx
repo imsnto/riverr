@@ -1,10 +1,11 @@
+
 'use client';
 import React, { useState, useCallback, useEffect } from 'react';
 import { HelpCenterArticle, User } from '@/lib/data';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Bot, Trash2, MessageSquare, Loader2, Share2, Globe, Lock, ArrowLeft, MoreHorizontal, Star } from 'lucide-react';
-import TiptapEditor, { useEditor } from '@/components/document/TiptapEditor';
+import TiptapEditor from '@/components/document/TiptapEditor';
 import { Editor } from '@tiptap/react';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -12,7 +13,7 @@ import { Badge } from '../ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
 import HelpCenterArticleShareDialog from './help-center-article-share-dialog';
-import { Toolbar } from '@/components/document/TiptapToolbar';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,13 +66,12 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(initialArticle.updatedAt ? new Date(initialArticle.updatedAt) : null);
     const { toast } = useToast();
-    const [isTitleDerived, setIsTitleDerived] = useState(initialArticle.title === '');
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const author = allUsers.find(u => u.id === article.authorId);
 
     const hasUnsavedChanges = JSON.stringify(article) !== JSON.stringify(lastSavedArticle);
-
+    
     const uploadImage = useCallback(
       (file: File) => {
         return uploadImageToFirebase(file, article.hubId, article.id);
@@ -81,7 +81,6 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
 
     const onEditorInstance = useCallback((editor: Editor) => {
         setEditor(editor);
-        editor.chain().focus('end').run();
     }, []);
 
     const handleSave = useCallback(async (articleToSave: HelpCenterArticle) => {
@@ -90,7 +89,6 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
         setIsSaving(true);
         const updatedArticle = { ...articleToSave, updatedAt: new Date().toISOString() };
         
-        // Use a timeout to simulate a network request and prevent rapid-fire saves
         await new Promise(resolve => setTimeout(resolve, 500));
 
         try {
@@ -111,12 +109,11 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
         
     }, [onSave, isSaving, toast]);
     
-    // Auto-save logic
     useEffect(() => {
         if (hasUnsavedChanges) {
             const timer = setTimeout(() => {
                 handleSave(article);
-            }, 1500); // Save 1.5 seconds after last change
+            }, 1500);
 
             return () => clearTimeout(timer);
         }
@@ -124,19 +121,12 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
 
 
     const handleContentChange = (newContent: string) => {
-        setArticle(prevArticle => {
-            let newTitle = prevArticle.title;
-            if (editor && isTitleDerived) {
-                const firstNode = editor.state.doc.content.firstChild;
-                if (firstNode && firstNode.type.name === 'heading' && firstNode.textContent) {
-                    newTitle = firstNode.textContent;
-                } else if (firstNode && firstNode.textContent === '' && prevArticle.title !== '') {
-                    newTitle = '';
-                }
-            }
-            return { ...prevArticle, title: newTitle, content: newContent };
-        });
+        setArticle(prevArticle => ({ ...prevArticle, content: newContent }));
     };
+    
+    const handleTitleChange = (newTitle: string) => {
+        setArticle(prev => ({ ...prev, title: newTitle }));
+    }
 
     const handlePublish = async () => {
         const newStatus = article.status === 'published' ? 'draft' : 'published';
@@ -165,11 +155,6 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                                 <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
                                     <ArrowLeft className="h-4 w-4 mr-2" /> Back
                                 </Button>
-                                /
-                                <div className="flex items-center gap-2 min-w-0">
-                                    {article.isPublic === false ? <Lock className="h-4 w-4 text-muted-foreground shrink-0" /> : <Globe className="h-4 w-4 text-muted-foreground shrink-0" />}
-                                    <span className="truncate">{article.title || 'Untitled Article'}</span>
-                                </div>
                             </div>
                             <div className="flex items-center gap-2 md:gap-4 shrink-0">
                                 <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
@@ -214,10 +199,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                     <div className="w-full max-w-4xl relative">
                         <Input
                             value={article.title}
-                            onChange={(e) => {
-                                setIsTitleDerived(false);
-                                setArticle(prev => ({...prev, title: e.target.value}))
-                            }}
+                            onChange={(e) => handleTitleChange(e.target.value)}
                             className="border-none focus-visible:ring-0 p-0 h-auto text-4xl font-bold tracking-tight mb-2"
                             placeholder="Article Title"
                         />

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useMemo, useRef } from 'react';
@@ -20,7 +21,7 @@ import { TextSelection } from 'prosemirror-state';
 
 import { FontSize } from '@/lib/tiptap-fontsize';
 import { BubbleToolbar } from './BubbleToolbar';
-import { SlashCommand } from './slash-command/SlashCommand';
+import { SlashCommand } from '@/components/editor/extensions/SlashCommand';
 
 type Props = {
   content: string;
@@ -43,12 +44,9 @@ export default function TiptapEditor({
   uploadImage,
   startAtTop = true,
 }: Props) {
-  const lastSelectionRef = useRef<{ from: number; to: number } | null>(null);
-
   const extensions = useMemo(
     () => [
       StarterKit.configure({
-        // keep paragraphs as default. no “title as first line” logic here.
         textStyle: false,
       }),
       Bold,
@@ -69,19 +67,9 @@ export default function TiptapEditor({
       TextStyle,
       FontFamily,
       FontSize,
-
-      // Slash command menu ( / )
-      SlashCommand({
+      SlashCommand.configure({
         uploadImage,
-        // selection restore is handled centrally so image insert is reliable
-        onRememberSelection: (sel) => (lastSelectionRef.current = sel),
-        onRestoreSelection: (editor) => {
-          const sel = lastSelectionRef.current;
-          if (!sel) return;
-          // Restore selection before inserting.
-          editor.commands.setTextSelection(sel);
-        },
-      }),
+      })
     ],
     [uploadImage]
   );
@@ -89,7 +77,7 @@ export default function TiptapEditor({
   const editor = useEditor({
     extensions,
     content,
-    autofocus: false, // important: prevents “jump to bottom” on load
+    autofocus: false, 
     editorProps: {
       attributes: {
         class: 'prose dark:prose-invert max-w-none focus:outline-none min-h-[400px]',
@@ -101,25 +89,18 @@ export default function TiptapEditor({
       onEditorInstance?.(editor);
 
       if (startAtTop) {
-        // Put cursor at start and keep scroll at top.
-        // Use requestAnimationFrame to let layout settle first.
         requestAnimationFrame(() => {
           try {
             editor.commands.setTextSelection(1);
-            // Don’t force focus unless you want it.
-            // If you DO want focus immediately, uncomment:
-            // editor.commands.focus('start');
           } catch {}
         });
       }
     },
   });
 
-  if (!editor) return null;
 
   return (
     <div className="relative">
-      {/* Bubble toolbar only when selection exists */}
       {editor && (
         <BubbleMenu
           editor={editor}
@@ -128,9 +109,11 @@ export default function TiptapEditor({
             placement: 'top',
             maxWidth: 'none',
           }}
-          shouldShow={({ editor }) => {
-            const { from, to } = editor.state.selection;
-            return editor.isFocused && from !== to;
+          shouldShow={({ editor, from, to }) => {
+             if (!editor?.isFocused) {
+                return false;
+             }
+            return from !== to;
           }}
         >
           <BubbleToolbar editor={editor} />

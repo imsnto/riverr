@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Bot, Trash2, MessageSquare, Loader2, Share2, Star, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import TiptapEditor, { useEditor } from '@/components/document/TiptapEditor';
+import TiptapEditor from '@/components/document/TiptapEditor';
 import { useAuth } from '@/hooks/use-auth';
 import CommentsPanel from './CommentsPanel';
 import AssistantPanel from './AssistantPanel';
@@ -240,13 +241,6 @@ export default function DocumentEditor({
                         <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-muted-foreground hover:text-foreground">
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
-                        /
-                        <Input 
-                            value={document.name}
-                            onChange={(e) => handleTitleChange(e.target.value)}
-                            placeholder="Untitled"
-                            className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground"
-                        />
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -287,8 +281,14 @@ export default function DocumentEditor({
             </div>
         </div>
 
-        <div className="flex-1 flex justify-center pt-12 md:pt-16 px-4 md:px-24">
+        <div className="flex-1 flex justify-center pt-8 px-4 md:px-24">
             <div className="w-full max-w-4xl">
+                 <Input 
+                    value={document.name}
+                    onChange={(e) => handleTitleChange(e.target.value)}
+                    placeholder="Untitled Document"
+                    className="border-none focus-visible:ring-0 p-0 h-auto text-4xl font-bold tracking-tight mb-4"
+                />
                 <TiptapEditor 
                     content={document.content} 
                     onChange={handleContentChange} 
