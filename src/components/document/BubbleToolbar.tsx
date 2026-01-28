@@ -1,11 +1,13 @@
 'use client';
 
 import React from 'react';
-import { Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/react';
 import { Bold, Italic, Underline, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export function BubbleToolbar({ editor }: { editor: Editor }) {
+export function BubbleToolbar({ editor }: { editor?: Editor | null }) {
+  if (!editor) return null;
+
   return (
     <div className="flex items-center gap-1 rounded-xl border bg-card/95 backdrop-blur px-2 py-1 shadow-sm">
       <Button

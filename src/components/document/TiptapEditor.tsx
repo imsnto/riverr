@@ -120,24 +120,22 @@ export default function TiptapEditor({
   return (
     <div className="relative">
       {/* Bubble toolbar only when selection exists */}
-      <BubbleMenu
-        editor={editor}
-        tippyOptions={{
-          duration: 150,
-          placement: 'top',
-          maxWidth: 'none',
-        }}
-        shouldShow={(props) => {
-          // This is the most defensive check to prevent the error.
-          if (!props || !props.editor || !props.editor.state) {
-            return false;
-          }
-          const { from, to } = props.editor.state.selection;
-          return props.editor.isFocused && from !== to;
-        }}
-      >
-        <BubbleToolbar editor={editor} />
-      </BubbleMenu>
+      {editor && (
+        <BubbleMenu
+          editor={editor}
+          tippyOptions={{
+            duration: 150,
+            placement: 'top',
+            maxWidth: 'none',
+          }}
+          shouldShow={({ editor }) => {
+            const { from, to } = editor.state.selection;
+            return editor.isFocused && from !== to;
+          }}
+        >
+          <BubbleToolbar editor={editor} />
+        </BubbleMenu>
+      )}
 
       <EditorContent editor={editor} />
     </div>
