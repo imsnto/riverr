@@ -40,6 +40,12 @@ export default function TiptapEditor({
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isFocused, setIsFocused] = useState(false);
 
+  // Use a ref to hold the latest uploadImage function to avoid stale closures
+  const uploadImageRef = React.useRef(uploadImage);
+  useEffect(() => {
+    uploadImageRef.current = uploadImage;
+  }, [uploadImage]);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -78,7 +84,7 @@ export default function TiptapEditor({
         const file = items.find((i) => i.type.startsWith('image/'))?.getAsFile();
         if (!file) return false;
 
-        uploadImage(file).then((url) => {
+        uploadImageRef.current(file).then((url) => {
           if (editor) {
             editor.chain().focus().setImage({ src: url, alt: file.name }).insertContent('<p></p>').run();
           }
@@ -94,7 +100,7 @@ export default function TiptapEditor({
 
         event.preventDefault();
 
-        uploadImage(file).then((url) => {
+        uploadImageRef.current(file).then((url) => {
           if (editor) {
             editor.chain().focus().setImage({ src: url, alt: file.name }).insertContent('<p></p>').run();
           }
