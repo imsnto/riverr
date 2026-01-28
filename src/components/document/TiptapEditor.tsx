@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useMemo, useRef } from 'react';
@@ -128,14 +127,13 @@ export default function TiptapEditor({
           placement: 'top',
           maxWidth: 'none',
         }}
-        shouldShow={({ editor: bubbleEditor, from, to }) => {
-          // This is a more robust check to prevent the error.
-          // It ensures the editor instance is fully available and focused before showing the menu.
-          if (!bubbleEditor || !bubbleEditor.state || !bubbleEditor.isFocused) {
+        shouldShow={(props) => {
+          // This is the most defensive check to prevent the error.
+          if (!props || !props.editor || !props.editor.state) {
             return false;
           }
-          // Show the menu only when there is an active text selection.
-          return from !== to;
+          const { from, to } = props.editor.state.selection;
+          return props.editor.isFocused && from !== to;
         }}
       >
         <BubbleToolbar editor={editor} />
