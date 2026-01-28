@@ -12,6 +12,7 @@ if (!admin.apps.length) {
         // convert literal \n to real newlines
         privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
       }),
+      storageBucket: "timeflow-6i3eo.appspot.com",
     });
   }
   
