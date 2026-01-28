@@ -175,11 +175,11 @@ export const SlashCommand = (opts: Options) => {
                 });
 
                 reactRoot.render(
-                  React.createElement(SlashMenu, {
-                    items: props.items,
-                    selectedIndex: props.selectedIndex,
-                    onSelect: (item) => props.command(item),
-                  })
+                  <SlashMenu
+                    items={props.items}
+                    selectedIndex={props.selectedIndex}
+                    onSelect={(item) => props.command(item)}
+                  />
                 );
               },
 
@@ -189,11 +189,11 @@ export const SlashCommand = (opts: Options) => {
                 });
 
                 reactRoot?.render(
-                   React.createElement(SlashMenu, {
-                    items: props.items,
-                    selectedIndex: props.selectedIndex,
-                    onSelect: (item) => props.command(item),
-                  })
+                  <SlashMenu
+                    items={props.items}
+                    selectedIndex={props.selectedIndex}
+                    onSelect={(item) => props.command(item)}
+                  />
                 );
               },
 
