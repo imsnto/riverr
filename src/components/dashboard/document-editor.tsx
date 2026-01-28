@@ -58,7 +58,6 @@ export default function DocumentEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(initialDocument.updatedAt ? new Date(initialDocument.updatedAt) : null);
   const isMobile = useIsMobile();
-  const [isTitleDerived, setIsTitleDerived] = useState(initialDocument.name === '');
   
   const hasUnsavedChanges = JSON.stringify(document) !== JSON.stringify(lastSavedDocument);
 
@@ -101,22 +100,10 @@ export default function DocumentEditor({
   }, [document, hasUnsavedChanges, handleSave]);
   
   const handleContentChange = (newContent: string) => {
-    setDocument(prevDoc => {
-        let newTitle = prevDoc.name;
-        if (editor && isTitleDerived) {
-            const firstNode = editor.state.doc.content.firstChild;
-            if (firstNode && firstNode.type.name === 'heading' && firstNode.textContent) {
-                newTitle = firstNode.textContent;
-            } else if (firstNode && firstNode.textContent === '' && prevDoc.name !== '') {
-                newTitle = 'Untitled';
-            }
-        }
-        return { ...prevDoc, name: newTitle, content: newContent };
-    });
+    setDocument(prevDoc => ({ ...prevDoc, content: newContent }));
   };
   
   const handleTitleChange = (newTitle: string) => {
-    setIsTitleDerived(false);
     setDocument(prev => ({ ...prev, name: newTitle }));
   }
 

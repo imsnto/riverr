@@ -74,7 +74,7 @@ export default function TiptapEditor({
       FontSize,
     ],
     content,
-    autofocus: !isMobile ? 'end' : false,
+    autofocus: !isMobile ? 'start' : false,
     editorProps: {
       attributes: {
         class:
