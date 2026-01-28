@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Extension, Editor } from '@tiptap/core'
