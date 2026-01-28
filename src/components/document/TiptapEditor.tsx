@@ -17,6 +17,7 @@ import Youtube from '@tiptap/extension-youtube';
 import TextStyle from '@tiptap/extension-text-style';
 import { FontFamily } from '@tiptap/extension-font-family';
 import { FontSize } from '@/lib/tiptap-fontsize';
+import { TextSelection } from 'prosemirror-state';
 
 import { Toolbar } from './TiptapToolbar';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -83,44 +84,69 @@ export default function TiptapEditor({
         const items = Array.from(event.clipboardData?.items ?? []);
         const file = items.find((i) => i.type.startsWith('image/'))?.getAsFile();
         if (!file) return false;
-
+      
+        event.preventDefault();
+      
         uploadImageRef.current(file).then((url) => {
           const { schema } = view.state;
+      
+          // Safety: if image node isn't registered for some reason
+          if (!schema.nodes.image) return;
+      
           const imageNode = schema.nodes.image.create({ src: url, alt: file.name });
           const paragraph = schema.nodes.paragraph.create();
-
-          const tr = view.state.tr
-            .replaceSelectionWith(imageNode)
-            .insert(view.state.selection.from + imageNode.nodeSize, paragraph);
-
+      
+          let tr = view.state.tr.replaceSelectionWith(imageNode);
+      
+          // After replaceSelectionWith, ProseMirror updates tr.selection to be after the inserted node
+          const insertPos = tr.selection.to;
+      
+          tr = tr.insert(insertPos, paragraph);
+      
+          // Place cursor *inside* the new paragraph (position + 1 moves into the paragraph text)
+          const $pos = tr.doc.resolve(Math.min(insertPos + 1, tr.doc.content.size));
+          tr = tr.setSelection(TextSelection.near($pos, 1));
+      
           view.dispatch(tr.scrollIntoView());
+          view.focus();
         });
-
+      
         return true;
       },
+      
       handleDrop(view, event, slice, moved) {
         if (moved) return false;
+      
         const files = Array.from(event.dataTransfer?.files ?? []);
         const file = files.find((f) => f.type.startsWith('image/'));
         if (!file) return false;
-
+      
         event.preventDefault();
-
+      
         uploadImageRef.current(file).then((url) => {
           const { schema } = view.state;
+          if (!schema.nodes.image) return;
+      
           const imageNode = schema.nodes.image.create({ src: url, alt: file.name });
           const paragraph = schema.nodes.paragraph.create();
-          
+      
           const coords = view.posAtCoords({ left: event.clientX, top: event.clientY });
-          const pos = coords?.pos ?? view.state.selection.from;
-
-          const tr = view.state.tr
-            .insert(pos, imageNode)
-            .insert(pos + imageNode.nodeSize, paragraph);
-
+          const basePos = coords?.pos ?? view.state.selection.from;
+      
+          let tr = view.state.tr.insert(basePos, imageNode);
+      
+          // Use the transaction doc to compute the correct "after image" position
+          const afterImagePos = basePos + imageNode.nodeSize;
+      
+          tr = tr.insert(afterImagePos, paragraph);
+      
+          const $pos = tr.doc.resolve(Math.min(afterImagePos + 1, tr.doc.content.size));
+          tr = tr.setSelection(TextSelection.near($pos, 1));
+      
           view.dispatch(tr.scrollIntoView());
+          view.focus();
         });
-
+      
         return true;
       },
     },

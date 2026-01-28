@@ -34,6 +34,7 @@ import {
 } from '../ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Input } from '../ui/input';
+import { TextSelection } from 'prosemirror-state';
 
 type Props = {
   editor: Editor;
@@ -58,16 +59,22 @@ export function Toolbar({ editor, uploadImage, variant = 'desktop' }: Props) {
     }
 
     try {
-      const url = await uploadImage(file);
-      editor
-        .chain()
-        .focus()
-        .setImage({ src: url, alt: file.name })
-        .insertContent({ type: 'paragraph' })
-        .run();
-      
-      // After inserting, focus at the end to ensure cursor is in the new paragraph
-      editor.commands.focus('end');
+        const url = await uploadImage(file);
+        const { view, state } = editor;
+        const { schema } = state;
+        
+        const imageNode = schema.nodes.image.create({ src: url, alt: file.name });
+        const paragraph = schema.nodes.paragraph.create();
+
+        let tr = state.tr.replaceSelectionWith(imageNode);
+        const insertPos = tr.selection.to;
+        tr = tr.insert(insertPos, paragraph);
+        
+        const $pos = tr.doc.resolve(Math.min(insertPos + 1, tr.doc.content.size));
+        tr = tr.setSelection(TextSelection.near($pos, 1));
+        
+        view.dispatch(tr.scrollIntoView());
+        view.focus();
 
     } catch (error) {
       console.error('Image upload failed:', error);
