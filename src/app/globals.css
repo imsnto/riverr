@@ -96,6 +96,7 @@ body {
   height: auto;
   display: block;
   border-radius: 12px;
+  margin: 1rem 0;
 }
 
 .ProseMirror:focus {
@@ -103,5 +104,5 @@ body {
 }
 
 .ProseMirror p {
-  min-height: 1em;
+  min-height: 1.2em;
 }
