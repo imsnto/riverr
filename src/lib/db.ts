@@ -21,8 +21,8 @@ import {
   orderBy,
   onSnapshot,
 } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db } from "./firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "./firebase";
 import {
   Space,
   User,
@@ -1103,7 +1103,6 @@ export const deleteDocument = async (docId: string): Promise<void> => {
 };
 
 export async function uploadImageToFirebase(file: File, hubId: string, docId: string): Promise<string> {
-  const storage = getStorage();
   const safeName = file.name.replace(/[^\w.-]+/g, "_");
   const path = `hubs/${hubId}/docs/${docId}/images/${crypto.randomUUID()}-${safeName}`;
 
