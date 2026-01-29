@@ -91,7 +91,7 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
         <PopoverContent className="w-64 p-2" sideOffset={10}>
           <form onSubmit={handleLinkSubmit} className="flex items-center gap-2">
             <Input
-              type="url"
+              type="text"
               placeholder="Paste link..."
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
