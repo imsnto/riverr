@@ -227,7 +227,7 @@ export async function invokeAgent(args: {
 }) {
     const adapters: AgentAdapters = {
         searchHelpCenter,
-        escalateToHuman: async ({ conversationId, reason }) => {
+        escalateToHuman: async ({ conversationId, hubId, reason }) => {
             await db.updateConversation(conversationId, {
                 status: 'human',
                 escalated: true,
@@ -235,7 +235,7 @@ export async function invokeAgent(args: {
                 state: 'human_assigned',
             });
         },
-        persistAssistantMessage: async ({ conversationId, text, sources }) => {
+        persistAssistantMessage: async ({ conversationId, hubId, text, sources, meta }) => {
             await db.addChatMessage({
                 conversationId,
                 authorId: 'ai_agent',
@@ -245,7 +245,7 @@ export async function invokeAgent(args: {
                 timestamp: new Date().toISOString(),
             });
         },
-        updateConversation: async ({ conversationId, patch }) => {
+        updateConversation: async ({ conversationId, hubId, patch }) => {
             await db.updateConversation(conversationId, patch);
         },
     };
