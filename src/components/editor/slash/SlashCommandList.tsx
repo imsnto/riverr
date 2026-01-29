@@ -92,7 +92,6 @@ export const SlashCommandList = React.forwardRef(function SlashCommandList(
     if (!item) return
 
     if (item.title === 'Image') {
-      deleteSlashTextAndCaptureInsertPos()
       fileInputRef.current?.click()
       return
     }
@@ -122,6 +121,7 @@ export const SlashCommandList = React.forwardRef(function SlashCommandList(
   const handleFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
+    deleteSlashTextAndCaptureInsertPos()
     if (!file) return
 
     try {

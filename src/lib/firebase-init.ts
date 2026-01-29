@@ -7,7 +7,7 @@ const firebaseConfig = {
   appId: '1:209410404537:web:bb2b7ff8376f1149e42b68',
   apiKey: 'AIzaSyAzD2lBIiXFdlngOKolF6NKmCeyyuxoZOw',
   authDomain: 'timeflow-6i3eo.firebaseapp.com',
-  storageBucket: "timeflow-6i3eo.appspot.com",
+  storageBucket: "timeflow-6i3eo.firebasestorage.app",
   measurementId: '', // Optional: add if using analytics
   messagingSenderId: '209410404537'
 };
