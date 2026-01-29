@@ -1,9 +1,9 @@
-
 'use client'
 
 import React, { useEffect, useImperativeHandle, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
 import { Image as ImageIcon, Youtube } from 'lucide-react'
+import { TextSelection } from 'prosemirror-state'
 
 type Range = { from: number; to: number }
 
@@ -27,7 +27,6 @@ export const SlashCommandList = React.forwardRef(function SlashCommandList(
   ref: any,
 ) {
   const [selectedIndex, setSelectedIndex] = useState(0)
-
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   // This is the ONLY position we care about: where the slash command text was

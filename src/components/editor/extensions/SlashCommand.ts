@@ -1,4 +1,3 @@
-
 import { Extension } from '@tiptap/core'
 import Suggestion, { type SuggestionOptions } from '@tiptap/suggestion'
 import { ReactRenderer } from '@tiptap/react'
