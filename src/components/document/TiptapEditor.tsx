@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useMemo, useRef } from 'react';
@@ -115,7 +114,7 @@ export default function TiptapEditor({
           tippyOptions={{ duration: 100, placement: 'top' }}
           shouldShow={({ editor }) => {
             if (!editor) {
-              return false
+              return false;
             }
             const { from, to } = editor.state.selection;
             return from !== to && editor.isEditable;
