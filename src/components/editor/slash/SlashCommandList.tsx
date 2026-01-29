@@ -29,7 +29,7 @@ export const SlashCommandList = React.forwardRef(function SlashCommandList(
   const [selectedIndex, setSelectedIndex] = useState(0)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  // This is the ONLY position we care about: where the slash command text was
+  // The exact position to insert at (captured AFTER deleting the slash text)
   const insertPosRef = useRef<number | null>(null)
 
   useImperativeHandle(ref, () => ({
@@ -53,42 +53,69 @@ export const SlashCommandList = React.forwardRef(function SlashCommandList(
 
   useEffect(() => setSelectedIndex(0), [items])
 
+  const deleteSlashTextAndCaptureInsertPos = () => {
+    // 1) delete the typed "/something"
+    editor.chain().focus().deleteRange(range).run()
+
+    // 2) NOW capture where insertion should occur (post-delete)
+    insertPosRef.current = editor.state.selection.from
+  }
+
+  const insertBlockAndPlaceCursorAfter = (node: any) => {
+    const view = editor.view
+    if (!view || editor.isDestroyed) return
+
+    const { state } = view
+    const { schema } = state
+    const pos = insertPosRef.current ?? state.selection.from
+
+    // Create a paragraph after block so typing works
+    const paragraph = schema.nodes.paragraph?.create()
+
+    let tr = state.tr.insert(pos, node)
+
+    if (paragraph) {
+      const afterBlock = pos + node.nodeSize
+      tr = tr.insert(afterBlock, paragraph)
+
+      // Place cursor inside the new paragraph
+      const insideParagraph = Math.min(afterBlock + 1, tr.doc.content.size)
+      tr = tr.setSelection(TextSelection.near(tr.doc.resolve(insideParagraph), 1))
+    }
+
+    view.dispatch(tr.scrollIntoView())
+    view.focus()
+  }
+
   const selectItem = async (index: number) => {
     const item = items[index]
     if (!item) return
 
-    // IMAGE
     if (item.title === 'Image') {
-      // save insertion point BEFORE picker steals focus
-      insertPosRef.current = range.from
-
-      // delete the "/image" text now while selection is valid
-      editor.chain().focus().deleteRange(range).run()
-
-      // open picker
+      deleteSlashTextAndCaptureInsertPos()
       fileInputRef.current?.click()
       return
     }
 
-    // YOUTUBE
     if (item.title === 'YouTube') {
-      editor.chain().focus().deleteRange(range).run()
+      deleteSlashTextAndCaptureInsertPos()
 
       const url = window.prompt('Paste YouTube URL')
       if (!url) return
 
-      // insert video + paragraph so you can type underneath
-      editor
-        .chain()
-        .focus()
-        .setYoutubeVideo({ src: url, width: 640, height: 360 })
-        .insertContent({ type: 'paragraph' })
-        .run()
+      // Use schema directly (more reliable than chained command)
+      const { schema } = editor.state
+      const yt = schema.nodes.youtube
+      if (!yt) {
+        console.error('YouTube node not in schema. Is Youtube extension enabled?')
+        return
+      }
 
+      const node = yt.create({ src: url, width: 640, height: 360 })
+      insertBlockAndPlaceCursorAfter(node)
       return
     }
 
-    // all other commands
     command(item)
   }
 
@@ -99,35 +126,25 @@ export const SlashCommandList = React.forwardRef(function SlashCommandList(
 
     try {
       const url = await uploadImage(file)
+      if (!url) {
+        console.error('uploadImage returned empty url')
+        return
+      }
 
-      // restore selection to saved insert pos
-      const pos = insertPosRef.current ?? editor.state.selection.from
+      if (editor.isDestroyed) return
 
-      // Focus AFTER picker returns (Safari/Chrome)
+      const { schema } = editor.state
+      const img = schema.nodes.image
+      if (!img) {
+        console.error('Image node not in schema. Is Image extension enabled?')
+        return
+      }
+
+      // Build the node and insert via transaction
+      const node = img.create({ src: url, alt: file.name })
       requestAnimationFrame(() => {
-        editor.commands.focus()
-        editor.commands.setTextSelection(pos)
-
-        // Insert image + paragraph
-        editor
-          .chain()
-          .focus()
-          .insertContent([
-            { type: 'image', attrs: { src: url, alt: file.name } },
-            { type: 'paragraph' },
-          ])
-          .run()
-
-        // Put cursor INSIDE the paragraph we just inserted.
-        // After insertContent, selection is usually after the paragraph node.
-        // Moving left once lands inside it.
-        editor.commands.focus()
-        editor.commands.command(({ tr, dispatch }) => {
-          const nextPos = Math.max(0, tr.selection.from - 1)
-          tr.setSelection((tr.selection as any).constructor.near(tr.doc.resolve(nextPos), 1))
-          dispatch?.(tr)
-          return true
-        })
+        if (editor.isDestroyed) return
+        insertBlockAndPlaceCursorAfter(node)
       })
     } catch (err) {
       console.error('Image upload failed:', err)
@@ -147,7 +164,7 @@ export const SlashCommandList = React.forwardRef(function SlashCommandList(
               'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left',
               index === selectedIndex ? 'bg-muted' : 'hover:bg-muted/60',
             ].join(' ')}
-            onMouseDown={(e) => e.preventDefault()} // keeps editor selection stable
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => selectItem(index)}
           >
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background">
