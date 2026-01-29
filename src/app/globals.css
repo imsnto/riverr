@@ -92,14 +92,6 @@ body {
   }
 }
 
-.ProseMirror img.tiptap-image {
-  max-width: 100%;
-  height: auto;
-  display: block;
-  border-radius: 12px;
-  margin: 1rem 0;
-}
-
 .ProseMirror:focus {
   outline: none;
 }
@@ -110,4 +102,11 @@ body {
 
 .ProseMirror {
   caret-color: currentColor;
+}
+
+/* Clear floats after the editor content */
+.ProseMirror:after {
+  content: "";
+  display: table;
+  clear: both;
 }

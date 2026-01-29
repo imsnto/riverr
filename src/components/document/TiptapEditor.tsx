@@ -17,9 +17,32 @@ import Youtube from '@tiptap/extension-youtube';
 import TextStyle from '@tiptap/extension-text-style';
 import { FontFamily } from '@tiptap/extension-font-family';
 import { FontSize } from '@/lib/tiptap-fontsize';
+import { ReactNodeViewRenderer } from '@tiptap/react';
+import { ResizableImageNode } from './ResizableImageNode';
+import { Button } from '@/components/ui/button';
+import { AlignCenter, PanelLeft, PanelRight } from 'lucide-react';
 
 import { BubbleToolbar } from './BubbleToolbar';
 import { SlashCommand } from '../editor/extensions/SlashCommand';
+
+const CustomImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: { default: null },
+      height: { default: null },
+      'data-float': { default: 'none' },
+      'data-align': { default: 'center' },
+    };
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(ResizableImageNode);
+  },
+}).configure({
+  inline: false,
+  allowBase64: false,
+});
+
 
 type Props = {
   content: string;
@@ -52,6 +75,7 @@ export default function TiptapEditor({
         orderedList: false,
         listItem: false,
         textStyle: false,
+        image: false, // Disable default image
       }),
       Heading.configure({ levels: [1, 2, 3] }),
       Blockquote,
@@ -65,11 +89,7 @@ export default function TiptapEditor({
 
       Link.configure({ openOnClick: false }),
 
-      Image.configure({
-        inline: false,
-        allowBase64: false,
-        HTMLAttributes: { class: 'tiptap-image' },
-      }),
+      CustomImage,
 
       Youtube.configure({ inline: false, width: 640, height: 360 }),
 
@@ -105,24 +125,58 @@ export default function TiptapEditor({
     },
   });
 
+  if (!editor) return null;
+
   return (
     <div className="relative">
-      {/* Bubble toolbar: only shows when there is a non-empty selection */}
-      {editor && (
-        <BubbleMenu
-          editor={editor}
-          tippyOptions={{ duration: 100, placement: 'top' }}
-          shouldShow={({ editor }) => {
-            if (!editor) {
-              return false;
-            }
-            const { from, to } = editor.state.selection;
-            return from !== to && editor.isEditable;
-          }}
-        >
-          <BubbleToolbar editor={editor} />
-        </BubbleMenu>
-      )}
+      {/* Bubble toolbar for text selection */}
+      <BubbleMenu
+        editor={editor}
+        tippyOptions={{ duration: 100, placement: 'top' }}
+        shouldShow={({ editor }) => {
+          const { from, to } = editor.state.selection;
+          return from !== to && editor.isEditable;
+        }}
+      >
+        <BubbleToolbar editor={editor} />
+      </BubbleMenu>
+
+      {/* Bubble toolbar for image resizing/alignment */}
+      <BubbleMenu
+        editor={editor}
+        tippyOptions={{ duration: 100, placement: 'top' }}
+        shouldShow={({ editor }) => editor.isActive('image')}
+      >
+        <div className="flex items-center gap-1 rounded-xl border bg-card/95 backdrop-blur px-2 py-1 shadow">
+            <Button
+              type="button"
+              variant={editor.getAttributes('image')['data-float'] === 'left' ? 'secondary' : 'ghost'}
+              size="sm"
+              title="Float left"
+              onClick={() => editor.chain().focus().updateAttributes('image', { 'data-float': 'left' }).run()}
+            >
+              <PanelLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant={editor.getAttributes('image')['data-float'] === 'none' ? 'secondary' : 'ghost'}
+              size="sm"
+              title="Align center"
+              onClick={() => editor.chain().focus().updateAttributes('image', { 'data-float': 'none', 'data-align': 'center' }).run()}
+            >
+              <AlignCenter className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant={editor.getAttributes('image')['data-float'] === 'right' ? 'secondary' : 'ghost'}
+              size="sm"
+              title="Float right"
+              onClick={() => editor.chain().focus().updateAttributes('image', { 'data-float': 'right' }).run()}
+            >
+              <PanelRight className="h-4 w-4" />
+            </Button>
+        </div>
+      </BubbleMenu>
 
       <EditorContent editor={editor} />
     </div>
