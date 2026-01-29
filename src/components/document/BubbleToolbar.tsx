@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import type { Editor } from '@tiptap/react';
-import { Bold, Italic, Underline, Link as LinkIcon, Check } from 'lucide-react';
+import { Bold, Italic, Underline, Link as LinkIcon, Check, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
@@ -12,18 +12,20 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
 
   const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
+  const [hasLink, setHasLink] = useState(false);
 
   // When popover opens, get the existing link URL
   useEffect(() => {
     if (isLinkPopoverOpen) {
       const existingUrl = editor.getAttributes('link').href || '';
       setLinkUrl(existingUrl);
+      setHasLink(!!existingUrl);
     }
   }, [isLinkPopoverOpen, editor]);
 
   const setLink = useCallback(() => {
     // If user clears the input, remove the link
-    if (linkUrl === '') {
+    if (linkUrl.trim() === '') {
       editor.chain().focus().extendMarkRange('link').unsetLink().run();
       setIsLinkPopoverOpen(false);
       return;
@@ -44,6 +46,11 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
     e.preventDefault();
     setLink();
   };
+  
+  const handleUnlink = () => {
+    editor.chain().focus().extendMarkRange('link').unsetLink().run();
+    setIsLinkPopoverOpen(false);
+  }
 
   return (
     <div className="flex items-center gap-1 rounded-xl border bg-card/95 backdrop-blur px-2 py-1 shadow">
@@ -111,6 +118,18 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
             >
               <Check className="h-4 w-4" />
             </Button>
+            {hasLink && (
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                className="h-8 w-8 flex-shrink-0"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handleUnlink}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </form>
         </PopoverContent>
       </Popover>
