@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -6,14 +7,15 @@ import * as db from '@/lib/db';
 import type { Firestore } from "firebase-admin/firestore";
 
 // ---- CONFIG YOU SHOULD SET ----
-const PUBLIC_HELP_BASE_URL = "https://6000-firebase-studio-1753688090358.cluster-ys234awlzbhwoxmkkse6qo3fz6.cloudworkstations.dev"; // change if your help domain differs
-const ARTICLES_COLLECTION = "help_center_articles";
+// This is no longer used here, but keeping it as a reference for the indexer.
+const PUBLIC_HELP_BASE_URL = "https://6000-firebase-studio-1753688090358.cluster-ys234awlzbhwoxmkkse6qo3fz6.cloudworkstations.dev";
+const CHUNKS_COLLECTION = "help_center_chunks";
 
 // Optional: lightweight in-memory cache to reduce reads per hub/helpCenterIds combo
-const cache = new Map<string, { expiresAt: number; articles: any[] }>();
+const cache = new Map<string, { expiresAt: number; chunks: HelpChunk[] }>();
 const CACHE_TTL_MS = 30_000;
 
-// Your topic aliases (keep in sync with agent if you want)
+// Your topic aliases
 const TOPIC_ALIASES: Record<string, string[]> = {
   bins: ["bins", "using bins", "production bins"],
   batching: ["batching", "batch items", "batching items"],
@@ -28,26 +30,6 @@ function normalize(s: string) {
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function stripHtml(html: string) {
-  return (html ?? "")
-    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function toMillis(updatedAt: any): number {
-  // Firestore Timestamp support
-  if (!updatedAt) return 0;
-  if (typeof updatedAt === "number") return updatedAt;
-  if (updatedAt instanceof Date) return updatedAt.getTime();
-  if (typeof updatedAt.toMillis === "function") return updatedAt.toMillis();
-  const d = new Date(updatedAt);
-  const t = d.getTime();
-  return Number.isFinite(t) ? t : 0;
 }
 
 function expandQuery(rawQuery: string): string[] {
@@ -67,169 +49,99 @@ function tokenize(q: string): string[] {
   return tokens.slice(0, 10);
 }
 
-function scoreArticle(args: {
+function scoreChunk(args: {
+  chunk: HelpChunk;
   queryTokens: string[];
-  title: string;
-  plain: string;
 }): number {
-  const { queryTokens, title, plain } = args;
+  const { chunk, queryTokens } = args;
 
-  const t = normalize(title);
-  const p = normalize(plain);
+  const title = normalize(chunk.title);
+  const path = normalize(chunk.headingPath.join(" "));
+  const text = normalize(chunk.chunkText);
 
-  // Weighted hits: title counts more
   let titleHits = 0;
-  let bodyHits = 0;
+  let pathHits = 0;
+  let textHits = 0;
 
   for (const kw of queryTokens) {
-    if (t.includes(kw)) titleHits += 1;
-    if (p.includes(kw)) bodyHits += 1;
+    if (title.includes(kw)) titleHits++;
+    if (path.includes(kw)) pathHits++;
+    if (text.includes(kw)) textHits++;
   }
 
-  // Simple scoring: title hits matter a lot, body hits matter some
-  // Normalize into 0..1 range-ish
-  const raw = titleHits * 3 + bodyHits * 1;
+  // Boosts for more specific matches
+  const titleExactBoost = queryTokens.some(kw => title === kw) ? 5 : 0;
+  const pathExactBoost = queryTokens.some(kw => path.includes(kw)) ? 2 : 0;
 
-  // Small boost if title starts with query token (often exact doc match)
-  const startsBoost = queryTokens.some((kw) => t.startsWith(kw)) ? 2 : 0;
+  // Weighted scoring: title and path hits matter a lot more
+  const rawScore = (titleHits * 5) + (pathHits * 3) + (textHits * 1);
+  const total = rawScore + titleExactBoost + pathExactBoost;
 
-  const total = raw + startsBoost;
-
-  // Convert to 0..1-ish; clamp
-  const normalized = Math.min(1, total / Math.max(6, queryTokens.length * 3));
+  // Normalize score to a 0..1-ish range
+  const normalized = Math.min(1, total / Math.max(10, queryTokens.length * 5));
   return normalized;
 }
-
-function buildArticleUrl(article: any): string {
-  // Prefer a stored canonical URL/slug if you have it
-  if (article.publicUrl) {
-    return article.publicUrl.startsWith("http") ? article.publicUrl : `${PUBLIC_HELP_BASE_URL}${article.publicUrl}`;
-  }
-  if (article.slug && article.helpCenterIds?.[0]) {
-    return `${PUBLIC_HELP_BASE_URL}/en/${article.helpCenterIds[0]}/${article.slug}`;
-  }
-
-  // Fallback to your current pattern if that matches your frontend router
-  const hc = article.helpCenterIds?.[0] ?? "hc";
-  return `${PUBLIC_HELP_BASE_URL}/hc/${hc}/articles/${article.id}`;
-}
-
-
-function chunkArticle(article: any): Omit<HelpChunk, 'score'>[] {
-    const plain = stripHtml(article.content ?? "");
-    if (!plain) return [];
-
-    // Split by sentences, trying to keep delimiters.
-    const sentences = plain.split(/(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|!)\s/g);
-    const chunks: string[] = [];
-    const targetWords = 120; // Aims for ~160 tokens
-    const overlapSentences = 1;
-
-    let currentChunkSentences: string[] = [];
-    let currentWords = 0;
-
-    for (let i = 0; i < sentences.length; i++) {
-        const sentence = sentences[i];
-        if (!sentence) continue;
-        const sentenceWords = sentence.split(/\s+/).length;
-
-        if (currentWords + sentenceWords > targetWords && currentWords > 0) {
-            chunks.push(currentChunkSentences.join(" "));
-            const sliceIndex = Math.max(0, currentChunkSentences.length - overlapSentences);
-            currentChunkSentences = currentChunkSentences.slice(sliceIndex);
-            currentWords = currentChunkSentences.reduce((sum, s) => sum + s.split(/\s+/).length, 0);
-        }
-        
-        currentChunkSentences.push(sentence);
-        currentWords += sentenceWords;
-    }
-
-    if (currentChunkSentences.length > 0) {
-        chunks.push(currentChunkSentences.join(" "));
-    }
-    
-    return chunks.map(chunkText => ({
-        chunkText,
-        articleId: article.id,
-        title: article.title ?? "Untitled",
-        url: buildArticleUrl(article),
-        helpCenterIds: article.helpCenterIds ?? [],
-        updatedAt: article.updatedAt,
-    }));
-}
-
 
 function makeSearchHelpCenter(adminDB: Firestore) {
   return async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
     const { hubId, allowedHelpCenterIds, userId, query } = params;
-    const topK = Math.max(1, Math.min(params.topK ?? 6, 12)); // Return more chunks
+    const topK = Math.max(1, Math.min(params.topK ?? 10, 20));
 
     if (!hubId || !allowedHelpCenterIds?.length) return { chunks: [] };
 
     const expandedQueries = expandQuery(query);
     if (!expandedQueries.length) return { chunks: [] };
 
-    // Cache key per hub + allowed help centers (order-independent)
+    // --- NEW LOGIC: QUERY CHUNKS DIRECTLY ---
     const cacheKey = `${hubId}::${[...allowedHelpCenterIds].sort().join(",")}`;
     const now = Date.now();
-
-    let articles: any[] | null = null;
+    let hubChunks: HelpChunk[] | null = null;
     const cached = cache.get(cacheKey);
+
     if (cached && cached.expiresAt > now) {
-      articles = cached.articles;
+      hubChunks = cached.articles as HelpChunk[];
     }
+    
+    if (!hubChunks) {
+        const chunksRef = adminDB.collection(CHUNKS_COLLECTION);
+        const qRef = chunksRef
+            .where("hubId", "==", hubId)
+            .where("helpCenterIds", "array-contains-any", allowedHelpCenterIds);
 
-    if (!articles) {
-      const articlesRef = adminDB.collection(ARTICLES_COLLECTION);
-      const qRef = articlesRef
-        .where("hubId", "==", hubId)
-        .where("status", "==", "published")
-        .where("helpCenterIds", "array-contains-any", allowedHelpCenterIds);
+        const snapshot = await qRef.get();
+        if (snapshot.empty) return { chunks: [] };
 
-      const snapshot = await qRef.get();
-      if (snapshot.empty) return { chunks: [] };
-
-      articles = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      cache.set(cacheKey, { expiresAt: now + CACHE_TTL_MS, articles });
+        hubChunks = snapshot.docs.map((doc) => doc.data() as HelpChunk);
+        cache.set(cacheKey, { expiresAt: now + CACHE_TTL_MS, chunks: hubChunks });
     }
-
+    
     // Access control filtering
-    const accessible = articles.filter((article) => {
-      const isPublic = Boolean(article.isPublic);
-      if (!userId) return isPublic;
-      if (isPublic) return true;
-      const allowed: string[] = Array.isArray(article.allowedUserIds) ? article.allowedUserIds : [];
-      return allowed.includes(userId);
+    const accessibleChunks = hubChunks.filter((chunk) => {
+      if (chunk.isPublic) return true;
+      if (!userId) return false; // Must be logged in for private content
+      return chunk.allowedUserIds?.includes(userId);
     });
-
-    if (!accessible.length) return { chunks: [] };
+    
+    if (!accessibleChunks.length) return { chunks: [] };
 
     // Generic queries: return recent topK
     const qNorm = normalize(query);
     if (["help", "docs", "articles", "documentation", "guide", "guides"].includes(qNorm)) {
-      const recentChunks = accessible
-        .sort((a, b) => toMillis(b.updatedAt) - toMillis(a.updatedAt))
-        .slice(0, topK)
-        .flatMap(chunkArticle) // Chunk recent articles
+      const recentChunks = accessibleChunks
+        .sort((a, b) => new Date(b.articleUpdatedAt).getTime() - new Date(a.articleUpdatedAt).getTime())
         .map(chunk => ({...chunk, score: 0.35 }));
 
       return { chunks: recentChunks.slice(0, topK) };
     }
 
-    // --- NEW CHUNKING AND SCORING LOGIC ---
-    const allChunks: Omit<HelpChunk, 'score'>[] = [];
-    for (const article of accessible) {
-        allChunks.push(...chunkArticle(article));
-    }
-
-    const scoredChunks = allChunks
+    // --- Scoring logic ---
+    const scoredChunks = accessibleChunks
       .map((chunk) => {
         let bestScore = 0;
         for (const eq of expandedQueries) {
           const tokens = tokenize(eq);
           if (!tokens.length) continue;
-          // Reuse scoreArticle, but apply it to the chunk text instead of the whole article
-          const s = scoreArticle({ queryTokens: tokens, title: chunk.title, plain: chunk.chunkText });
+          const s = scoreChunk({ chunk, queryTokens: tokens });
           if (s > bestScore) bestScore = s;
         }
         return { ...chunk, score: bestScore };
