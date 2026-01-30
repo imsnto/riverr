@@ -50,10 +50,24 @@ export const ResizableImageNode = ({ editor, node, updateAttributes, selected }:
         >
             <img src={src} alt={alt} title={title} className="block w-full h-auto rounded-lg"/>
             {selected && (
-                <div
-                    className="absolute -bottom-2 -right-2 w-4 h-4 bg-primary rounded-full border-2 border-background cursor-se-resize"
-                    onMouseDown={onResizeStart}
-                />
+                <>
+                    <div
+                        className="absolute -top-2 -left-2 w-4 h-4 bg-primary rounded-full border-2 border-background cursor-nwse-resize"
+                        onMouseDown={onResizeStart}
+                    />
+                    <div
+                        className="absolute -top-2 -right-2 w-4 h-4 bg-primary rounded-full border-2 border-background cursor-nesw-resize"
+                        onMouseDown={onResizeStart}
+                    />
+                    <div
+                        className="absolute -bottom-2 -left-2 w-4 h-4 bg-primary rounded-full border-2 border-background cursor-nesw-resize"
+                        onMouseDown={onResizeStart}
+                    />
+                    <div
+                        className="absolute -bottom-2 -right-2 w-4 h-4 bg-primary rounded-full border-2 border-background cursor-nwse-resize"
+                        onMouseDown={onResizeStart}
+                    />
+                </>
             )}
         </div>
     </NodeViewWrapper>

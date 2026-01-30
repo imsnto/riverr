@@ -17,13 +17,14 @@ import Youtube from '@tiptap/extension-youtube';
 import TextStyle from '@tiptap/extension-text-style';
 import { FontFamily } from '@tiptap/extension-font-family';
 import { FontSize } from '@/lib/tiptap-fontsize';
-import { ReactNodeViewRenderer } from '@tiptap/react';
+import { ReactNodeViewRenderer, Extension } from '@tiptap/react';
 import { ResizableImageNode } from './ResizableImageNode';
 import { Button } from '@/components/ui/button';
 import { AlignCenter, PanelLeft, PanelRight } from 'lucide-react';
 
 import { BubbleToolbar } from './BubbleToolbar';
 import { SlashCommand } from '../editor/extensions/SlashCommand';
+import { Plugin, PluginKey } from 'prosemirror-state';
 
 const CustomImage = Image.extend({
   addAttributes() {
@@ -41,6 +42,28 @@ const CustomImage = Image.extend({
 }).configure({
   inline: false,
   allowBase64: false,
+});
+
+// Custom extension to ensure document always ends with a paragraph
+const TrailingParagraph = Extension.create({
+  name: 'trailingParagraph',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('trailingParagraph'),
+        appendTransaction: (_, oldState, newState) => {
+          const { doc, tr } = newState;
+          const endPosition = doc.content.size;
+          const lastNode = doc.lastChild;
+
+          if (lastNode && lastNode.type.name !== 'paragraph') {
+            return tr.insert(endPosition, newState.schema.nodes.paragraph.create());
+          }
+          return null;
+        },
+      }),
+    ];
+  },
 });
 
 
@@ -101,6 +124,7 @@ export default function TiptapEditor({
       SlashCommand.configure({
         uploadImage: (file: File) => uploadImageRef.current(file),
       }),
+      TrailingParagraph,
     ],
     content,
     // IMPORTANT: do not jump to bottom
