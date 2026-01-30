@@ -28,6 +28,7 @@ export async function indexHelpCenterArticleToChunks(args: {
   const articleId = article.id;
   const articleTitle = article.title ?? "Untitled";
   const articleSubtitle = article.subtitle ?? null;
+  const articleType = article.type ?? 'article';
   const isPublic = Boolean(article.isPublic);
   const allowedUserIds: string[] = Array.isArray(article.allowedUserIds) ? article.allowedUserIds : [];
 
@@ -61,6 +62,7 @@ export async function indexHelpCenterArticleToChunks(args: {
       articleId,
       articleTitle,
       articleSubtitle,
+      articleType,
       order: c.order,
       headingPath: c.headingPath,
       anchor,
@@ -71,6 +73,7 @@ export async function indexHelpCenterArticleToChunks(args: {
       allowedUserIds: isPublic ? [] : allowedUserIds,
       articleUpdatedAt: article.updatedAt ?? nowIso,
       chunkUpdatedAt: nowIso,
+      language: 'en',
       url: url + (anchor ? `#${anchor}` : ""),
     };
   });

@@ -8,6 +8,7 @@ export type HelpCenterChunk = {
   articleId: string;
   articleTitle: string;
   articleSubtitle?: string | null;
+  articleType: 'article' | 'snippet' | 'pdf';
 
   // where in the article this chunk came from
   order: number;                 // 0..N
@@ -26,6 +27,8 @@ export type HelpCenterChunk = {
   // freshness
   articleUpdatedAt: string;      // from article.updatedAt
   chunkUpdatedAt: string;        // when chunk was written
+
+  language: string;
 
   // for later citations
   url: string;
