@@ -6,15 +6,25 @@ import { cn } from '@/lib/utils';
 export const ResizableImageNode = ({ editor, node, updateAttributes, selected }: NodeViewProps) => {
   const { src, alt, title, width } = node.attrs;
 
-  const onResizeStart = (event: React.MouseEvent<HTMLDivElement>) => {
+  const onResizeStart = (event: React.MouseEvent<HTMLDivElement>, handle: 'tl' | 'tr' | 'bl' | 'br') => {
     event.preventDefault();
     event.stopPropagation();
+    
+    const imageDiv = event.currentTarget.parentElement;
+    if (!imageDiv) return;
+
     const startX = event.clientX;
-    const startWidth = node.attrs.width ? parseInt(node.attrs.width, 10) : event.currentTarget.parentElement?.parentElement?.offsetWidth || 300;
+    const startWidth = imageDiv.offsetWidth;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
-      const newWidth = startWidth + (moveEvent.clientX - startX);
-      updateAttributes({ width: `${Math.max(50, newWidth)}px` }); // Min width 50px
+      const deltaX = moveEvent.clientX - startX;
+      // For left handles, we invert the delta; for right, we use it as is.
+      const widthDelta = handle.includes('l') ? -deltaX : deltaX;
+      
+      let newWidth = startWidth + widthDelta;
+      newWidth = Math.max(50, newWidth); // Enforce a minimum width of 50px
+
+      updateAttributes({ width: `${Math.round(newWidth)}px` });
     };
 
     const onMouseUp = () => {
@@ -53,19 +63,19 @@ export const ResizableImageNode = ({ editor, node, updateAttributes, selected }:
                 <>
                     <div
                         className="absolute -top-2 -left-2 w-4 h-4 bg-primary rounded-full border-2 border-background cursor-nwse-resize"
-                        onMouseDown={onResizeStart}
+                        onMouseDown={(e) => onResizeStart(e, 'tl')}
                     />
                     <div
                         className="absolute -top-2 -right-2 w-4 h-4 bg-primary rounded-full border-2 border-background cursor-nesw-resize"
-                        onMouseDown={onResizeStart}
+                        onMouseDown={(e) => onResizeStart(e, 'tr')}
                     />
                     <div
                         className="absolute -bottom-2 -left-2 w-4 h-4 bg-primary rounded-full border-2 border-background cursor-nesw-resize"
-                        onMouseDown={onResizeStart}
+                        onMouseDown={(e) => onResizeStart(e, 'bl')}
                     />
                     <div
                         className="absolute -bottom-2 -right-2 w-4 h-4 bg-primary rounded-full border-2 border-background cursor-nwse-resize"
-                        onMouseDown={onResizeStart}
+                        onMouseDown={(e) => onResizeStart(e, 'br')}
                     />
                 </>
             )}
