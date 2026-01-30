@@ -4,13 +4,13 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { HelpCenterArticle, User } from '@/lib/data';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Bot, Trash2, MessageSquare, Loader2, Share2, Globe, Lock, ArrowLeft, MoreHorizontal, Star, ExternalLink } from 'lucide-react';
+import { Bot, Trash2, MessageSquare, Loader2, Share2, Star, MoreHorizontal, ArrowLeft, ExternalLink, CloudCheck } from 'lucide-react';
 import TiptapEditor from '@/components/document/TiptapEditor';
 import { Editor } from '@tiptap/react';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
 import HelpCenterArticleShareDialog from './help-center-article-share-dialog';
 import Link from 'next/link';
@@ -44,19 +44,26 @@ const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
 };
 
-const SaveStatusIndicator = ({ isSaving, lastSaved }: { isSaving: boolean, lastSaved: Date | null }) => {
+const SaveStatusIndicator = ({ isSaving, lastSaved, isMobile }: { isSaving: boolean, lastSaved: Date | null, isMobile?: boolean }) => {
     if (isSaving) {
         return (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Saving...</span>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground px-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {!isMobile && <span>Saving...</span>}
             </div>
         );
     }
     if (lastSaved) {
-        return <span className="text-xs text-muted-foreground">Saved {formatDistanceToNow(lastSaved, { addSuffix: true })}</span>;
+        if (isMobile) {
+             return (
+                 <div className="flex items-center gap-1.5 px-2 text-muted-foreground">
+                    <CloudCheck className="h-4 w-4" />
+                </div>
+             )
+        }
+        return <span className="text-xs text-muted-foreground px-2">Saved {formatDistanceToNow(lastSaved, { addSuffix: true })}</span>;
     }
-    return null;
+    return isMobile ? <div className="w-8" /> : <div className="w-24"/>;
 }
 
 
@@ -70,6 +77,8 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const author = allUsers.find(u => u.id === article.authorId);
+    const router = useRouter();
+    const isMobile = useIsMobile();
 
     const hasUnsavedChanges = JSON.stringify(article) !== JSON.stringify(lastSavedArticle);
     
@@ -145,6 +154,78 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
         setIsShareOpen(false);
         toast({ title: 'Sharing settings updated' });
     };
+
+    if (isMobile) {
+    return (
+        <>
+            <div className="flex flex-col h-screen">
+                <header className="flex justify-between items-center p-2 border-b">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+                        <Button variant="ghost" size="sm" onClick={() => onBack()} className="text-muted-foreground hover:text-foreground">
+                            <ArrowLeft className="h-4 w-4" />
+                        </Button>
+                        /
+                        <Input 
+                            value={article.title}
+                            onChange={(e) => handleTitleChange(e.target.value)}
+                            placeholder="Untitled"
+                            className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground truncate"
+                        />
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} isMobile={true} />
+                        <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={cn('hidden sm:flex', article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : '')}>
+                            {article.status === 'draft' ? 'Draft' : 'Published'}
+                        </Badge>
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={handlePublish}>
+                                    {article.status === 'published' ? 'Unpublish' : 'Publish'}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setIsShareOpen(true)}>
+                                    <Share2 className="mr-2 h-4 w-4" />
+                                    Share
+                                </DropdownMenuItem>
+                                {article.helpCenterIds && article.helpCenterIds.length > 0 && (
+                                    <DropdownMenuItem asChild>
+                                        <Link href={`/hc/${article.helpCenterIds[0]}/articles/${article.id}`} target="_blank" rel="noopener noreferrer">
+                                            <ExternalLink className="mr-2 h-4 w-4" />
+                                            <span>Preview Live Page</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </header>
+                <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4">
+                     <Input 
+                        value={article.title}
+                        onChange={(e) => handleTitleChange(e.target.value)}
+                        placeholder="Article Title"
+                        className="border-none focus-visible:ring-0 p-0 h-auto text-2xl font-bold tracking-tight mb-2"
+                    />
+                    <TiptapEditor 
+                        content={article.content} 
+                        onChange={handleContentChange} 
+                        onEditorInstance={onEditorInstance}
+                        uploadImage={uploadImage}
+                    />
+                </div>
+            </div>
+        </>
+    );
+  }
 
     return (
         <>
