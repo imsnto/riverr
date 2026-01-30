@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { HelpCenterArticle, User } from '@/lib/data';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Bot, Trash2, MessageSquare, Loader2, Share2, Globe, Lock, ArrowLeft, MoreHorizontal, Star } from 'lucide-react';
+import { Bot, Trash2, MessageSquare, Loader2, Share2, Globe, Lock, ArrowLeft, MoreHorizontal, Star, ExternalLink } from 'lucide-react';
 import TiptapEditor from '@/components/document/TiptapEditor';
 import { Editor } from '@tiptap/react';
 import { useToast } from '@/hooks/use-toast';
@@ -13,6 +13,7 @@ import { Badge } from '../ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
 import HelpCenterArticleShareDialog from './help-center-article-share-dialog';
+import Link from 'next/link';
 
 import {
   AlertDialog,
@@ -161,11 +162,11 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                                 <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
                                     {article.status === 'draft' ? 'Draft' : 'Published'}
                                 </Badge>
-                                <Button variant="outline" size="sm" onClick={() => setIsShareOpen(true)}>
-                                    <Share2 className="h-4 w-4 mr-2" /> Share
-                                </Button>
                                 <Button variant="outline" size="sm" onClick={handlePublish}>
                                     {article.status === 'published' ? 'Unpublish' : 'Publish'}
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsShareOpen(true)}>
+                                    <Share2 className="h-4 w-4" />
                                 </Button>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -174,6 +175,14 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
+                                        {article.helpCenterIds && article.helpCenterIds.length > 0 && (
+                                            <DropdownMenuItem asChild>
+                                                <Link href={`/hc/${article.helpCenterIds[0]}/articles/${article.id}`} target="_blank" rel="noopener noreferrer">
+                                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                                    <span>Preview Live Page</span>
+                                                </Link>
+                                            </DropdownMenuItem>
+                                        )}
                                         <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive focus:text-destructive">
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             <span>Delete Article</span>
