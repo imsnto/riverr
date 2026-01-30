@@ -1,10 +1,10 @@
 
 'use client';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { HelpCenterArticle, User } from '@/lib/data';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Bot, Trash2, MessageSquare, Loader2, Share2, Star, MoreHorizontal, ArrowLeft, ExternalLink, CloudCheck } from 'lucide-react';
+import { Bot, Trash2, MessageSquare, Loader2, Share2, Star, MoreHorizontal, ArrowLeft, ExternalLink, CheckCircle2 } from 'lucide-react';
 import TiptapEditor from '@/components/document/TiptapEditor';
 import { Editor } from '@tiptap/react';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +28,8 @@ import {
 import { cn } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { uploadImageToFirebase } from '@/lib/db';
+import { useRouter } from 'next/navigation';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 
 interface HelpCenterArticleEditorProps {
@@ -57,7 +59,7 @@ const SaveStatusIndicator = ({ isSaving, lastSaved, isMobile }: { isSaving: bool
         if (isMobile) {
              return (
                  <div className="flex items-center gap-1.5 px-2 text-muted-foreground">
-                    <CloudCheck className="h-4 w-4" />
+                    <CheckCircle2 className="h-4 w-4" />
                 </div>
              )
         }
@@ -243,12 +245,14 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                                 <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
                                     {article.status === 'draft' ? 'Draft' : 'Published'}
                                 </Badge>
-                                <Button variant="outline" size="sm" onClick={handlePublish}>
-                                    {article.status === 'published' ? 'Unpublish' : 'Publish'}
-                                </Button>
                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsShareOpen(true)}>
                                     <Share2 className="h-4 w-4" />
                                 </Button>
+                                
+                                <Button variant="outline" size="sm" onClick={handlePublish}>
+                                    {article.status === 'published' ? 'Unpublish' : 'Publish'}
+                                </Button>
+
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="ghost" size="icon" className="h-8 w-8">
