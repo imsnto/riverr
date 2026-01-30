@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -115,10 +114,55 @@ function buildArticleUrl(article: any): string {
   return `${PUBLIC_HELP_BASE_URL}/hc/${hc}/articles/${article.id}`;
 }
 
+
+function chunkArticle(article: any): Omit<HelpChunk, 'score'>[] {
+    const plain = stripHtml(article.content ?? "");
+    if (!plain) return [];
+
+    // Split by sentences, trying to keep delimiters.
+    const sentences = plain.split(/(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|!)\s/g);
+    const chunks: string[] = [];
+    const targetWords = 120; // Aims for ~160 tokens
+    const overlapSentences = 1;
+
+    let currentChunkSentences: string[] = [];
+    let currentWords = 0;
+
+    for (let i = 0; i < sentences.length; i++) {
+        const sentence = sentences[i];
+        if (!sentence) continue;
+        const sentenceWords = sentence.split(/\s+/).length;
+
+        if (currentWords + sentenceWords > targetWords && currentWords > 0) {
+            chunks.push(currentChunkSentences.join(" "));
+            const sliceIndex = Math.max(0, currentChunkSentences.length - overlapSentences);
+            currentChunkSentences = currentChunkSentences.slice(sliceIndex);
+            currentWords = currentChunkSentences.reduce((sum, s) => sum + s.split(/\s+/).length, 0);
+        }
+        
+        currentChunkSentences.push(sentence);
+        currentWords += sentenceWords;
+    }
+
+    if (currentChunkSentences.length > 0) {
+        chunks.push(currentChunkSentences.join(" "));
+    }
+    
+    return chunks.map(chunkText => ({
+        chunkText,
+        articleId: article.id,
+        title: article.title ?? "Untitled",
+        url: buildArticleUrl(article),
+        helpCenterIds: article.helpCenterIds ?? [],
+        updatedAt: article.updatedAt,
+    }));
+}
+
+
 function makeSearchHelpCenter(adminDB: Firestore) {
   return async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
     const { hubId, allowedHelpCenterIds, userId, query } = params;
-    const topK = Math.max(1, Math.min(params.topK ?? 8, 20));
+    const topK = Math.max(1, Math.min(params.topK ?? 6, 12)); // Return more chunks
 
     if (!hubId || !allowedHelpCenterIds?.length) return { chunks: [] };
 
@@ -163,57 +207,38 @@ function makeSearchHelpCenter(adminDB: Firestore) {
     // Generic queries: return recent topK
     const qNorm = normalize(query);
     if (["help", "docs", "articles", "documentation", "guide", "guides"].includes(qNorm)) {
-      const recent = [...accessible]
+      const recentChunks = accessible
         .sort((a, b) => toMillis(b.updatedAt) - toMillis(a.updatedAt))
         .slice(0, topK)
-        .map((article) => ({
-          chunkText: stripHtml(article.content ?? ""),
-          score: 0.35, // low-ish but nonzero since it's “browse”
-          articleId: article.id,
-          title: article.title ?? "Untitled",
-          url: buildArticleUrl(article),
-          helpCenterIds: article.helpCenterIds ?? [],
-          updatedAt: article.updatedAt,
-        }));
-      return { chunks: recent };
+        .flatMap(chunkArticle) // Chunk recent articles
+        .map(chunk => ({...chunk, score: 0.35 }));
+
+      return { chunks: recentChunks.slice(0, topK) };
     }
 
-    // Score across expanded queries and take best score per article
-    const scored = accessible
-      .map((article) => {
-        const title = article.title ?? "";
-        const plain = stripHtml(article.content ?? "");
-        let bestScore = 0;
+    // --- NEW CHUNKING AND SCORING LOGIC ---
+    const allChunks: Omit<HelpChunk, 'score'>[] = [];
+    for (const article of accessible) {
+        allChunks.push(...chunkArticle(article));
+    }
 
+    const scoredChunks = allChunks
+      .map((chunk) => {
+        let bestScore = 0;
         for (const eq of expandedQueries) {
           const tokens = tokenize(eq);
           if (!tokens.length) continue;
-          const s = scoreArticle({ queryTokens: tokens, title, plain });
+          // Reuse scoreArticle, but apply it to the chunk text instead of the whole article
+          const s = scoreArticle({ queryTokens: tokens, title: chunk.title, plain: chunk.chunkText });
           if (s > bestScore) bestScore = s;
         }
-
-        return {
-          article,
-          plain,
-          bestScore,
-        };
+        return { ...chunk, score: bestScore };
       })
-      // keep only meaningful hits
-      .filter((x) => x.bestScore >= 0.12)
-      .sort((a, b) => b.bestScore - a.bestScore)
+      .filter((x) => x.score >= 0.12)
+      .sort((a, b) => b.score - a.score)
       .slice(0, topK);
 
-    const chunks: HelpChunk[] = scored.map(({ article, plain, bestScore }) => ({
-      chunkText: plain, // plain text, not raw HTML
-      score: bestScore,
-      articleId: article.id,
-      title: article.title ?? "Untitled",
-      url: buildArticleUrl(article),
-      helpCenterIds: article.helpCenterIds ?? [],
-      updatedAt: article.updatedAt,
-    }));
-
-    return { chunks };
+    return { chunks: scoredChunks };
   };
 }
 
