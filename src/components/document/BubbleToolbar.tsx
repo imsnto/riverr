@@ -2,10 +2,23 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import type { Editor } from '@tiptap/react';
-import { Bold, Italic, Underline, Link as LinkIcon, Check, Trash2 } from 'lucide-react';
+import { Bold, Italic, Underline, Link as LinkIcon, Check, Trash2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
+
+const getActiveNodeLabel = (editor: Editor) => {
+    if (editor.isActive('heading', { level: 1 })) return 'Heading 1';
+    if (editor.isActive('heading', { level: 2 })) return 'Heading 2';
+    if (editor.isActive('heading', { level: 3 })) return 'Heading 3';
+    if (editor.isActive('bulletList')) return 'Bullet List';
+    if (editor.isActive('orderedList')) return 'Numbered List';
+    if (editor.isActive('blockquote')) return 'Blockquote';
+    return 'Paragraph';
+};
+
 
 export function BubbleToolbar({ editor }: { editor: Editor | null }) {
   if (!editor) return null;
@@ -52,8 +65,47 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
     setIsLinkPopoverOpen(false);
   }
 
+  const activeNodeLabel = getActiveNodeLabel(editor);
+
   return (
     <div className="flex items-center gap-1 rounded-xl border bg-card/95 backdrop-blur px-2 py-1 shadow">
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1 text-sm font-medium w-32 justify-start">
+                    <span className="truncate">{activeNodeLabel}</span>
+                    <ChevronDown className="h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+                <DropdownMenuItem
+                    onSelect={() => editor.chain().focus().setParagraph().run()}
+                    disabled={!editor.can().setParagraph()}
+                >
+                    Paragraph
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    onSelect={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                    disabled={!editor.can().toggleHeading({ level: 1 })}
+                >
+                    Heading 1
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    onSelect={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                    disabled={!editor.can().toggleHeading({ level: 2 })}
+                >
+                    Heading 2
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    onSelect={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+                    disabled={!editor.can().toggleHeading({ level: 3 })}
+                >
+                    Heading 3
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Separator orientation="vertical" className="h-6 mx-1" />
+
       <Button
         type="button"
         variant={editor.isActive('bold') ? 'secondary' : 'ghost'}
