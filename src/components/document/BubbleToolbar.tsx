@@ -76,7 +76,7 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
                     <ChevronDown className="h-4 w-4" />
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
+            <DropdownMenuContent onCloseAutoFocus={(e) => e.preventDefault()}>
                 <DropdownMenuItem
                     onSelect={() => editor.chain().focus().setParagraph().run()}
                     disabled={!editor.can().setParagraph()}
