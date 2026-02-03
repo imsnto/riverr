@@ -1,4 +1,5 @@
 
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -47,7 +48,7 @@ export default function HelpCenterLayout({
     const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
     const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
     const [activeHelpCenterId, setActiveHelpCenterId] = useState<string | null>(null);
-    const { appUser, activeHub } = useAuth();
+    const { appUser, activeHub, activeSpace } = useAuth();
     
     const [helpCenters, setHelpCenters] = useState<HelpCenter[]>([]);
     const [collections, setCollections] = useState<HelpCenterCollection[]>([]);
@@ -177,7 +178,7 @@ export default function HelpCenterLayout({
     }
     
     const handleCreateArticle = async () => {
-      if (!appUser || !activeHub) return;
+      if (!appUser || !activeHub || !activeSpace) return;
       const newArticleData: Omit<HelpCenterArticle, 'id'> = {
         title: '',
         subtitle: '',
@@ -188,6 +189,7 @@ export default function HelpCenterLayout({
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         hubId: activeHub.id,
+        spaceId: activeSpace.id,
         type: 'article',
         isPublic: true,
         allowedUserIds: [],
@@ -603,3 +605,5 @@ export default function HelpCenterLayout({
         </div>
     );
 }
+
+    

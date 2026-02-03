@@ -1,3 +1,4 @@
+
 // src/lib/data.ts
 
 // --- Core Entities ---
@@ -524,8 +525,12 @@ export interface HelpCenterArticle {
   createdAt: string; // ISO String
   updatedAt: string; // ISO String
   hubId: string;
+  spaceId: string;
   isPublic?: boolean;
   allowedUserIds?: string[];
+  slug?: string;
+  publicUrl?: string;
+  language?: string;
 }
 
 
@@ -643,3 +648,5 @@ export const jobs: Job[] = [];
 export const jobFlowTasks: JobFlowTask[] = [];
 
 export type { Contact, ContactEvent, ContactEventType, ContactSource, VisitorType, CallRecord } from './contacts-types';
+
+    
