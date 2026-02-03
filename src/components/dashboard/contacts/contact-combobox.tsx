@@ -57,7 +57,7 @@ export default function ContactCombobox({ contacts, value, onChange, onDataRefre
     
     const now = new Date();
     const newContactData: Omit<Contact, 'id'> = {
-        tenantId: activeSpace.id,
+        spaceId: activeSpace.id,
         name: values.name || null,
         company: values.company || null,
         emails: values.email ? [values.email.toLowerCase()] : [],

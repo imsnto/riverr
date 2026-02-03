@@ -1116,7 +1116,7 @@ export async function uploadImageToFirebase(file: File, hubId: string, docId: st
 // --- Contact, Visitor, and Conversation Management ---
 export const findOrCreateContact = async (spaceId: string, details: { email?: string, name?: string }): Promise<Contact> => {
     if (details.email) {
-      const q = query(collection(db, "contacts"), where("primaryEmail", "==", details.email.toLowerCase()), where("tenantId", "==", spaceId), limit(1));
+      const q = query(collection(db, "contacts"), where("primaryEmail", "==", details.email.toLowerCase()), where("spaceId", "==", spaceId), limit(1));
       const snapshot = await getDocs(q);
       if (!snapshot.empty) {
         return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Contact;
@@ -1126,7 +1126,7 @@ export const findOrCreateContact = async (spaceId: string, details: { email?: st
     // Create new if not found
     const now = new Date();
     const newContactData: Omit<Contact, 'id'> = {
-      tenantId: spaceId,
+      spaceId: spaceId,
       name: details.name || null,
       emails: details.email ? [details.email.toLowerCase()] : [],
       primaryEmail: details.email?.toLowerCase() || null,
@@ -1150,7 +1150,7 @@ export const findOrCreateContact = async (spaceId: string, details: { email?: st
 
 
 export const getContacts = async (spaceId: string): Promise<Contact[]> => {
-  const q = query(collection(db, 'contacts'), where('tenantId', '==', spaceId));
+  const q = query(collection(db, 'contacts'), where('spaceId', '==', spaceId));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact));
 };

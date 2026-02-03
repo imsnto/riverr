@@ -2,7 +2,7 @@ export type ContactSource = "order" | "chat" | "manual" | "call";
 
 export interface Contact {
   id: string;
-  tenantId: string;
+  spaceId: string;
   name: string | null;
   company: string | null;
   emails: string[];
@@ -26,7 +26,7 @@ export type VisitorType = "chat" | "call";
 
 export interface Visitor {
   id: string;
-  tenantId: string;
+  spaceId: string;
   visitorId: string;
   visitorType: VisitorType;
   anonymous: boolean;
@@ -63,7 +63,7 @@ export interface ContactEvent {
 
 export interface CallRecord {
   id: string;
-  tenantId: string;
+  spaceId: string;
   callId: string;
   openPhoneCallId: string;
   openPhoneNumberId: string;
