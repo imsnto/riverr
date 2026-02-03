@@ -2,6 +2,7 @@
 import type { Firestore } from "firebase-admin/firestore";
 import { chunkArticleHtml, estimateTokens } from "./chunking";
 import type { HelpCenterChunk } from "./types";
+import { typesense } from '@/lib/typesense';
 
 function safeSlug(s: string) {
   return (s ?? "")
@@ -52,9 +53,8 @@ export async function indexHelpCenterArticleToChunks(args: {
   const articleUpdatedAtEpoch = article.updatedAt ? new Date(article.updatedAt).getTime() : nowEpoch;
 
 
-  // Write chunks as: bii_help_chunks/{chunkId}
-  // Stable IDs: `${articleId}__${order}`
-  const chunks: HelpCenterChunk[] = specs.map((c) => {
+  // Prepare chunks for Typesense
+  const chunks: Omit<HelpCenterChunk, 'id'> & { id: string }[] = specs.map((c) => {
     const anchor =
       c.headingPath.length
         ? safeSlug(c.headingPath.join("-")) + `-${c.chunkIndex}`
@@ -85,39 +85,16 @@ export async function indexHelpCenterArticleToChunks(args: {
     };
   });
 
-  // Delete old chunks for this article (so edits don’t leave junk behind)
-  const oldSnap = await adminDB
-    .collection("bii_help_chunks")
-    .where("articleId", "==", articleId)
-    .limit(500)
-    .get();
-
-  // Batch delete + write
-  let batch = adminDB.batch();
-  let ops = 0;
-
-  for (const doc of oldSnap.docs) {
-    batch.delete(doc.ref);
-    ops++;
-    if (ops >= 450) {
-      await batch.commit();
-      batch = adminDB.batch();
-      ops = 0;
+  if (chunks.length > 0) {
+    try {
+      // Using 'upsert' action and deterministic IDs handles cleanup of old/stale chunks automatically.
+      await typesense.collections('bii_help_chunks').documents().import(chunks, { action: 'upsert' });
+    } catch (e) {
+      console.error("Failed to index chunks in Typesense:", e);
+      // Depending on requirements, you might want to throw here to fail the reindex job.
     }
   }
 
-  for (const chunk of chunks) {
-    const ref = adminDB.collection("bii_help_chunks").doc(chunk.id);
-    batch.set(ref, chunk, { merge: true });
-    ops++;
-    if (ops >= 450) {
-      await batch.commit();
-      batch = adminDB.batch();
-      ops = 0;
-    }
-  }
-
-  if (ops) await batch.commit();
 
   // Optional: write index metadata back to the article (helps debugging)
   await adminDB.collection("help_center_articles").doc(articleId).set(

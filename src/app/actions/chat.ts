@@ -15,33 +15,29 @@ function normalize(s: string) {
     .trim();
 }
 
-function makeSearchHelpCenter(adminDB: Firestore) {
-  return async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
+async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
     const { hubId, allowedHelpCenterIds, userId, query, topK = 10 } = params;
 
     if (!hubId || !allowedHelpCenterIds?.length) return { chunks: [] };
-
-    const hubDoc = await adminDB.collection('hubs').doc(hubId).get();
-    if (!hubDoc.exists) return { chunks: [] };
-    const spaceId = hubDoc.data()?.spaceId;
-    if (!spaceId) return { chunks: [] };
 
     const searchParameters = {
         'q': query,
         'query_by': 'text,articleTitle,headingPath',
         'query_by_weights': '4,2,1',
         'per_page': topK,
-        'sort_by': '_text_match:desc,updatedAt:desc'
+        'sort_by': '_text_match:desc,chunkUpdatedAt:desc'
     };
+    
+    const hubFilter = `hubId:=${hubId} && helpCenterIds:=[${allowedHelpCenterIds.join(',')}] && status:='published'`;
 
     // Build search for public chunks
-    const publicFilter = `spaceId:=${spaceId} && isPublic:=true && status:='published' && helpCenterIds:=[${allowedHelpCenterIds.join(',')}]`;
+    const publicFilter = `${hubFilter} && isPublic:=true`;
     const publicSearchRequest = { ...searchParameters, filter_by: publicFilter };
     
     // Build search for private chunks if user is logged in
     let privateSearchRequest = null;
     if (userId) {
-        const privateFilter = `spaceId:=${spaceId} && isPublic:=false && status:='published' && allowedUserIds:=[${userId}] && helpCenterIds:=[${allowedHelpCenterIds.join(',')}]`;
+        const privateFilter = `${hubFilter} && isPublic:=false && allowedUserIds:=[${userId}]`;
         privateSearchRequest = { ...searchParameters, filter_by: privateFilter };
     }
     
@@ -72,10 +68,7 @@ function makeSearchHelpCenter(adminDB: Firestore) {
     }).sort((a, b) => b.score - a.score).slice(0, topK);
 
     return { chunks };
-  };
 }
-
-const searchHelpCenter = makeSearchHelpCenter(adminDB);
 
 
 export async function invokeAgent(args: {

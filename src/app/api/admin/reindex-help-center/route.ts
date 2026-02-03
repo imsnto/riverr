@@ -2,11 +2,55 @@
 import { NextResponse } from "next/server";
 import { adminDB } from "@/lib/firebase-admin";
 import { indexHelpCenterArticleToChunks } from "@/lib/knowledge/indexer";
+import { typesense } from "@/lib/typesense";
 
 const PUBLIC_HELP_BASE_URL = process.env.PUBLIC_HELP_BASE_URL || "https://6000-firebase-studio-1753688090358.cluster-ys234awlzbhwoxmkkse6qo3fz6.cloudworkstations.dev";
 
+const typesenseChunkSchema = {
+  "name": "bii_help_chunks",
+  "fields": [
+    { "name": "id", "type": "string" },
+    { "name": "spaceId", "type": "string", "facet": true },
+    { "name": "hubId", "type": "string", "optional": true, "facet": true },
+    { "name": "helpCenterIds", "type": "string[]", "facet": true },
+    { "name": "articleId", "type": "string", "facet": true },
+    { "name": "articleTitle", "type": "string" },
+    { "name": "articleSubtitle", "type": "string", "optional": true },
+    { "name": "articleType", "type": "string", "facet": true },
+    { "name": "chunkIndex", "type": "int32" },
+    { "name": "headingPath", "type": "string[]", "optional": true },
+    { "name": "anchor", "type": "string", "optional": true },
+    { "name": "text", "type": "string" },
+    { "name": "url", "type": "string" },
+    { "name": "status", "type": "string", "facet": true },
+    { "name": "isPublic", "type": "bool", "facet": true },
+    { "name": "allowedUserIds", "type": "string[]", "optional": true, "facet": true },
+    { "name": "language", "type": "string", "facet": true, "default": "en" },
+    { "name": "articleUpdatedAt", "type": "int64" },
+    { "name": "chunkUpdatedAt", "type": "int64" }
+  ],
+  "default_sorting_field": "chunkUpdatedAt"
+};
+
+
+async function ensureCollectionExists() {
+    try {
+        await typesense.collections('bii_help_chunks').retrieve();
+    } catch (error: any) {
+        if (error.httpStatus === 404) {
+            console.log("Creating Typesense collection: bii_help_chunks");
+            await typesense.collections().create(typesenseChunkSchema as any);
+        } else {
+            throw error; // Re-throw other errors
+        }
+    }
+}
+
+
 export async function POST(req: Request) {
   // TODO: protect this route (admin auth / secret)
+  await ensureCollectionExists();
+
   const body = await req.json().catch(() => ({}));
   const hubId = body.hubId as string | undefined;
   const articleId = body.articleId as string | undefined;
