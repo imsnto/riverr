@@ -5,6 +5,7 @@ import { indexHelpCenterArticleToChunks } from "@/lib/knowledge/indexer";
 import { getTypesenseAdmin } from "@/lib/typesense";
 
 const typesense = getTypesenseAdmin();
+const REINDEX_SECRET = process.env.ADMIN_REINDEX_SECRET;
 
 const PUBLIC_HELP_BASE_URL = process.env.PUBLIC_HELP_BASE_URL || "https://6000-firebase-studio-1753688090358.cluster-ys234awlzbhwoxmkkse6qo3fz6.cloudworkstations.dev";
 
@@ -12,37 +13,28 @@ const typesenseChunkSchema = {
   "name": "bii_help_chunks",
   "fields": [
     { "name": "id", "type": "string" },
-
     { "name": "spaceId", "type": "string", "facet": true },
     { "name": "hubId", "type": "string", "optional": true },
-
     { "name": "helpCenterIds", "type": "string[]", "facet": true },
-
     { "name": "articleId", "type": "string", "facet": true },
     { "name": "articleTitle", "type": "string" },
     { "name": "articleSubtitle", "type": "string", "optional": true },
-
     { "name": "articleType", "type": "string", "facet": true },
     { "name": "language", "type": "string", "facet": true, "default": "en" },
-
     { "name": "chunkIndex", "type": "int32" },
     { "name": "headingPath", "type": "string[]", "optional": true },
     { "name": "anchor", "type": "string", "optional": true },
-
     { "name": "text", "type": "string" },
     { "name": "charCount", "type": "int32" },
     { "name": "tokenEstimate", "type": "int32" },
-
     { "name": "url", "type": "string" },
-
     { "name": "status", "type": "string", "facet": true },
     { "name": "isPublic", "type": "bool", "facet": true },
     { "name": "allowedUserIds", "type": "string[]", "optional": true, "facet": true },
-
     { "name": "articleUpdatedAt", "type": "int64" },
     { "name": "chunkUpdatedAt", "type": "int64" }
   ],
-  "default_sorting_field": "articleUpdatedAt"
+  "default_sorting_field": "chunkUpdatedAt"
 };
 
 
@@ -59,9 +51,31 @@ async function ensureCollectionExists() {
     }
 }
 
+async function deleteChunksForArticle(spaceId: string, articleId: string) {
+  try {
+    await typesense.collections("bii_help_chunks").documents().delete({
+      filter_by: `spaceId:=${spaceId} && articleId:=${articleId}`,
+    });
+  } catch (error: any) {
+      // It's okay if no documents were found to delete (404)
+      if (error.httpStatus !== 404) {
+          console.error(`Error deleting chunks for article ${articleId}:`, error);
+          throw error;
+      }
+  }
+}
+
 
 export async function POST(req: Request) {
-  // TODO: protect this route (admin auth / secret)
+  if (!REINDEX_SECRET) {
+    return NextResponse.json({ ok: false, error: "Missing ADMIN_REINDEX_SECRET on the server." }, { status: 500 });
+  }
+
+  const auth = req.headers.get("x-admin-secret");
+  if (auth !== REINDEX_SECRET) {
+    return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
+  }
+
   await ensureCollectionExists();
 
   const body = await req.json().catch(() => ({}));
@@ -72,7 +86,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "hubId is required" }, { status: 400 });
   }
 
-  // Fetch hub to get spaceId
   const hubDoc = await adminDB.collection("hubs").doc(hubId).get();
   if (!hubDoc.exists) {
     return NextResponse.json({ ok: false, error: `Hub ${hubId} not found.` }, { status: 404 });
@@ -82,8 +95,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: `Hub ${hubId} is missing a spaceId.` }, { status: 500 });
   }
 
-
-  // Handle re-indexing a single article
   if (articleId) {
     const articleRef = adminDB.collection("help_center_articles").doc(articleId);
     const docSnap = await articleRef.get();
@@ -95,6 +106,8 @@ export async function POST(req: Request) {
       );
     }
     
+    await deleteChunksForArticle(spaceId, articleId);
+
     const article = { id: docSnap.id, ...docSnap.data() };
     const res = await indexHelpCenterArticleToChunks({
       adminDB,
@@ -106,7 +119,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, hubId, spaceId, articles: 1, totalChunks: res.chunkCount, reindexed: [articleId] });
   }
 
-  // Handle re-indexing all articles in a hub
   const snap = await adminDB
     .collection("help_center_articles")
     .where("hubId", "==", hubId)
@@ -118,6 +130,9 @@ export async function POST(req: Request) {
 
   for (const doc of snap.docs) {
     const article = { id: doc.id, ...doc.data() };
+    
+    await deleteChunksForArticle(spaceId, article.id);
+
     const res = await indexHelpCenterArticleToChunks({
       adminDB,
       article,
