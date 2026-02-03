@@ -10,26 +10,37 @@ const typesenseChunkSchema = {
   "name": "bii_help_chunks",
   "fields": [
     { "name": "id", "type": "string" },
+
     { "name": "spaceId", "type": "string", "facet": true },
-    { "name": "hubId", "type": "string", "optional": true, "facet": true },
+    { "name": "hubId", "type": "string", "optional": true },
+
     { "name": "helpCenterIds", "type": "string[]", "facet": true },
+
     { "name": "articleId", "type": "string", "facet": true },
     { "name": "articleTitle", "type": "string" },
     { "name": "articleSubtitle", "type": "string", "optional": true },
+
     { "name": "articleType", "type": "string", "facet": true },
+    { "name": "language", "type": "string", "facet": true, "default": "en" },
+
     { "name": "chunkIndex", "type": "int32" },
     { "name": "headingPath", "type": "string[]", "optional": true },
     { "name": "anchor", "type": "string", "optional": true },
+
     { "name": "text", "type": "string" },
+    { "name": "charCount", "type": "int32" },
+    { "name": "tokenEstimate", "type": "int32" },
+
     { "name": "url", "type": "string" },
+
     { "name": "status", "type": "string", "facet": true },
     { "name": "isPublic", "type": "bool", "facet": true },
     { "name": "allowedUserIds", "type": "string[]", "optional": true, "facet": true },
-    { "name": "language", "type": "string", "facet": true, "default": "en" },
+
     { "name": "articleUpdatedAt", "type": "int64" },
     { "name": "chunkUpdatedAt", "type": "int64" }
   ],
-  "default_sorting_field": "chunkUpdatedAt"
+  "default_sorting_field": "articleUpdatedAt"
 };
 
 
