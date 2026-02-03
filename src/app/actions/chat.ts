@@ -5,7 +5,9 @@ import { adminDB } from '@/lib/firebase-admin';
 import { handleIncomingMessage, AgentAdapters, BotConfig, Conversation, IncomingMessage, SearchHelpCenterParams, SearchHelpCenterResult, HelpChunk } from '@/lib/agent';
 import * as db from '@/lib/db';
 import type { Firestore } from "firebase-admin/firestore";
-import { typesense } from '@/lib/typesense';
+import { getTypesenseSearch } from '@/lib/typesense';
+
+const typesense = getTypesenseSearch();
 
 function normalize(s: string) {
   return (s ?? "")

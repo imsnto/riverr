@@ -2,7 +2,9 @@
 import { NextResponse } from "next/server";
 import { adminDB } from "@/lib/firebase-admin";
 import { indexHelpCenterArticleToChunks } from "@/lib/knowledge/indexer";
-import { typesense } from "@/lib/typesense";
+import { getTypesenseAdmin } from "@/lib/typesense";
+
+const typesense = getTypesenseAdmin();
 
 const PUBLIC_HELP_BASE_URL = process.env.PUBLIC_HELP_BASE_URL || "https://6000-firebase-studio-1753688090358.cluster-ys234awlzbhwoxmkkse6qo3fz6.cloudworkstations.dev";
 

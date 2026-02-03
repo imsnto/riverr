@@ -2,7 +2,9 @@
 import type { Firestore } from "firebase-admin/firestore";
 import { chunkArticleHtml, estimateTokens } from "./chunking";
 import type { HelpCenterChunk } from "./types";
-import { typesense } from '@/lib/typesense';
+import { getTypesenseAdmin } from '@/lib/typesense';
+
+const typesense = getTypesenseAdmin();
 
 function safeSlug(s: string) {
   return (s ?? "")
@@ -33,6 +35,7 @@ export async function indexHelpCenterArticleToChunks(args: {
   const articleType = article.type ?? 'article';
   const isPublic = Boolean(article.isPublic);
   const allowedUserIds: string[] = Array.isArray(article.allowedUserIds) ? article.allowedUserIds : [];
+  const language = article.language || 'en';
 
   const slug = article.slug ?? safeSlug(articleTitle);
   const hc = helpCenterIds[0];
@@ -80,7 +83,7 @@ export async function indexHelpCenterArticleToChunks(args: {
       allowedUserIds: isPublic ? [] : allowedUserIds,
       articleUpdatedAt: articleUpdatedAtEpoch,
       chunkUpdatedAt: nowEpoch,
-      language: 'en',
+      language: language,
       url: url + (anchor ? `#${anchor}` : ""),
     };
   });
