@@ -15,6 +15,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "hubId is required" }, { status: 400 });
   }
 
+  // Fetch hub to get spaceId
+  const hubDoc = await adminDB.collection("hubs").doc(hubId).get();
+  if (!hubDoc.exists) {
+    return NextResponse.json({ ok: false, error: `Hub ${hubId} not found.` }, { status: 404 });
+  }
+  const spaceId = hubDoc.data()?.spaceId;
+  if (!spaceId) {
+    return NextResponse.json({ ok: false, error: `Hub ${hubId} is missing a spaceId.` }, { status: 500 });
+  }
+
+
   // Handle re-indexing a single article
   if (articleId) {
     const articleRef = adminDB.collection("help_center_articles").doc(articleId);
@@ -31,10 +42,11 @@ export async function POST(req: Request) {
     const res = await indexHelpCenterArticleToChunks({
       adminDB,
       article,
+      spaceId,
       publicHelpBaseUrl: PUBLIC_HELP_BASE_URL,
     });
     
-    return NextResponse.json({ ok: true, hubId, articles: 1, totalChunks: res.chunkCount, reindexed: [articleId] });
+    return NextResponse.json({ ok: true, hubId, spaceId, articles: 1, totalChunks: res.chunkCount, reindexed: [articleId] });
   }
 
   // Handle re-indexing all articles in a hub
@@ -52,11 +64,12 @@ export async function POST(req: Request) {
     const res = await indexHelpCenterArticleToChunks({
       adminDB,
       article,
+      spaceId,
       publicHelpBaseUrl: PUBLIC_HELP_BASE_URL,
     });
     totalChunks += res.chunkCount;
     articlesCount += 1;
   }
 
-  return NextResponse.json({ ok: true, hubId, articles: articlesCount, totalChunks });
+  return NextResponse.json({ ok: true, hubId, spaceId, articles: articlesCount, totalChunks });
 }

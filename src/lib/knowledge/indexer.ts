@@ -14,9 +14,10 @@ function safeSlug(s: string) {
 export async function indexHelpCenterArticleToChunks(args: {
   adminDB: Firestore;
   article: any; // your HelpCenterArticle shape
+  spaceId: string;
   publicHelpBaseUrl: string;
 }) {
-  const { adminDB, article, publicHelpBaseUrl } = args;
+  const { adminDB, article, spaceId, publicHelpBaseUrl } = args;
 
   const status = article.status;
   if (status !== "published") return { chunkCount: 0 };
@@ -45,43 +46,48 @@ export async function indexHelpCenterArticleToChunks(args: {
     overlapTokens: 60,
   });
 
-  const nowIso = new Date().toISOString();
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const nowEpoch = now.getTime();
+  const articleUpdatedAtEpoch = article.updatedAt ? new Date(article.updatedAt).getTime() : nowEpoch;
 
-  // Write chunks as: help_center_chunks/{chunkId}
+
+  // Write chunks as: bii_help_chunks/{chunkId}
   // Stable IDs: `${articleId}__${order}`
   const chunks: HelpCenterChunk[] = specs.map((c) => {
     const anchor =
       c.headingPath.length
-        ? safeSlug(c.headingPath.join("-")) + `-${c.order}`
-        : `chunk-${c.order}`;
+        ? safeSlug(c.headingPath.join("-")) + `-${c.chunkIndex}`
+        : `chunk-${c.chunkIndex}`;
 
     return {
-      id: `${articleId}__${c.order}`,
+      id: `${articleId}__${c.chunkIndex}`,
+      spaceId,
       hubId,
       helpCenterIds,
       articleId,
       articleTitle,
       articleSubtitle,
       articleType,
-      order: c.order,
+      chunkIndex: c.chunkIndex,
       headingPath: c.headingPath,
       anchor,
       text: c.text,
       charCount: c.text.length,
       tokenEstimate: estimateTokens(c.text),
+      status: 'published',
       isPublic,
       allowedUserIds: isPublic ? [] : allowedUserIds,
-      articleUpdatedAt: article.updatedAt ?? nowIso,
-      chunkUpdatedAt: nowIso,
+      articleUpdatedAt: articleUpdatedAtEpoch,
+      chunkUpdatedAt: nowEpoch,
       language: 'en',
       url: url + (anchor ? `#${anchor}` : ""),
     };
   });
 
   // Delete old chunks for this article (so edits don’t leave junk behind)
-  // Option A: query + delete in batches
   const oldSnap = await adminDB
-    .collection("help_center_chunks")
+    .collection("bii_help_chunks")
     .where("articleId", "==", articleId)
     .limit(500)
     .get();
@@ -101,7 +107,7 @@ export async function indexHelpCenterArticleToChunks(args: {
   }
 
   for (const chunk of chunks) {
-    const ref = adminDB.collection("help_center_chunks").doc(chunk.id);
+    const ref = adminDB.collection("bii_help_chunks").doc(chunk.id);
     batch.set(ref, chunk, { merge: true });
     ops++;
     if (ops >= 450) {

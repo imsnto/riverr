@@ -81,7 +81,7 @@ function extractBlocksFromHtml(html: string): Block[] {
 export type ChunkSpec = {
   headingPath: string[];
   text: string;
-  order: number;
+  chunkIndex: number;
 };
 
 export function chunkArticleHtml(args: {
@@ -103,7 +103,7 @@ export function chunkArticleHtml(args: {
   const flush = () => {
     const text = normalizeSpaces(buffer.join("\n"));
     if (!text) return;
-    chunks.push({ headingPath: [...headingPath], text, order: order++ });
+    chunks.push({ headingPath: [...headingPath], text, chunkIndex: order++ });
   };
 
   const pushText = (text: string) => {
