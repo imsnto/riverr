@@ -189,9 +189,12 @@ if (messageUnsubscribeRef.current) {
           ]);
           
           setProjects(fetchedProjects);
-          if (!selectedProjectId && fetchedProjects.length > 0) {
-            setSelectedProjectId(fetchedProjects[0].id);
-          } else if (fetchedProjects.length === 0) {
+          if (fetchedProjects.length > 0) {
+            const projectStillExists = fetchedProjects.some(p => p.id === selectedProjectId);
+            if (!projectStillExists) {
+                setSelectedProjectId(fetchedProjects[0].id);
+            }
+          } else {
             setSelectedProjectId(null);
           }
 
@@ -250,19 +253,6 @@ if (fetchedConversations.length > 0) {
       }
     };
   }, [appUser, activeSpace, activeHub]);
-  
-  useEffect(() => {
-    if (activeHub) {
-        db.getProjectsInHub(activeHub.id).then(fetchedProjects => {
-            setProjects(fetchedProjects);
-            if (!selectedProjectId && fetchedProjects.length > 0) {
-                setSelectedProjectId(fetchedProjects[0].id);
-            } else if (fetchedProjects.length === 0) {
-                setSelectedProjectId(null);
-            }
-        });
-    }
-  }, [activeHub, selectedProjectId])
 
   useEffect(() => {
     if (!appUser) return;
@@ -816,9 +806,9 @@ if (fetchedConversations.length > 0) {
     switch (currentView) {
       case 'overview': return <div className="p-8"><Overview {...overviewProps} /></div>;
       case 'tasks': return (
-        <TaskBoard 
-          project={projects.find(p => p.id === selectedProjectId)!}
+        <TaskBoard
           projects={projects}
+          selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           allTasks={tasks}
           onUpdateTasks={handleUpdateTasks}
