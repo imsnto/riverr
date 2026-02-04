@@ -797,7 +797,7 @@ if (fetchedConversations.length > 0) {
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
-          allHubs={allHubs}
+          allHubs={spaceHubs}
           escalationRules={escalationRules}
           projects={projects}
           contacts={contacts}
@@ -839,7 +839,7 @@ if (fetchedConversations.length > 0) {
                             setHideMobileBottomNav={setHideMobileBottomNav}
                             activeHub={activeHub!}
                             activeSpace={activeSpace}
-                            allHubs={allHubs}
+                            allHubs={spaceHubs}
                             escalationRules={escalationRules}
                             projects={projects}
                             contacts={contacts}
