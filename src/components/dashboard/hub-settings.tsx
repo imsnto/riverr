@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -30,8 +31,7 @@ export default function HubSettings({ activeHub, onUpdateHub, allUsers, allHubs,
   const [selectedComponents, setSelectedComponents] = useState<string[]>(activeHub?.settings?.components || []);
   const [isPrivate, setIsPrivate] = useState(activeHub?.isPrivate || false);
   const [memberIds, setMemberIds] = useState(activeHub?.memberIds || []);
-  const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false);
-  const [intraHubEscalationProjectId, setIntraHubEscalationProjectId] = useState(activeHub?.settings?.intraHubEscalationProjectId || '');
+  const [intraHubEscalationProjectId, setIntraHubEscalationProjectId] = useState<string | null>(activeHub?.settings?.intraHubEscalationProjectId || null);
 
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export default function HubSettings({ activeHub, onUpdateHub, allUsers, allHubs,
       setSelectedComponents(activeHub.settings?.components || []);
       setIsPrivate(activeHub.isPrivate || false);
       setMemberIds(activeHub.memberIds || []);
-      setIntraHubEscalationProjectId(activeHub.settings?.intraHubEscalationProjectId || '');
+      setIntraHubEscalationProjectId(activeHub.settings?.intraHubEscalationProjectId || null);
     }
   }, [activeHub]);
   
@@ -68,7 +68,7 @@ export default function HubSettings({ activeHub, onUpdateHub, allUsers, allHubs,
         settings: {
             ...activeHub.settings,
             components: selectedComponents,
-            intraHubEscalationProjectId: intraHubEscalationProjectId || null,
+            intraHubEscalationProjectId: intraHubEscalationProjectId,
         }
     };
     onUpdateHub(updatedData);
@@ -78,7 +78,7 @@ export default function HubSettings({ activeHub, onUpdateHub, allUsers, allHubs,
     || JSON.stringify(selectedComponents.sort()) !== JSON.stringify((activeHub.settings.components || []).sort())
     || isPrivate !== activeHub.isPrivate
     || JSON.stringify(memberIds.sort()) !== JSON.stringify((activeHub.memberIds || []).sort())
-    || intraHubEscalationProjectId !== (activeHub.settings?.intraHubEscalationProjectId || '');
+    || intraHubEscalationProjectId !== (activeHub.settings?.intraHubEscalationProjectId || null);
   
   const permissionSummary = isPrivate
     ? `${memberIds.length} member(s) have access`
@@ -131,12 +131,12 @@ export default function HubSettings({ activeHub, onUpdateHub, allUsers, allHubs,
         {hasTickets && hasTasks && (
             <div className="space-y-2">
                 <Label htmlFor="intraHubEscalation">Intra-Hub Escalation Project</Label>
-                <Select value={intraHubEscalationProjectId} onValueChange={setIntraHubEscalationProjectId}>
+                <Select value={intraHubEscalationProjectId ?? 'none'} onValueChange={(value) => setIntraHubEscalationProjectId(value === 'none' ? null : value)}>
                     <SelectTrigger id="intraHubEscalation">
                         <SelectValue placeholder="Select a project for local escalations" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         {projects.filter(p => p.hubId === activeHub.id).map(p => (
                             <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                         ))}
