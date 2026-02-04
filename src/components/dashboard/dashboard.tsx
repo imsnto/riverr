@@ -189,12 +189,9 @@ if (messageUnsubscribeRef.current) {
           ]);
           
           setProjects(fetchedProjects);
-          if (fetchedProjects.length > 0) {
-            const projectStillExists = fetchedProjects.some(p => p.id === selectedProjectId);
-            if (!projectStillExists) {
-                setSelectedProjectId(fetchedProjects[0].id);
-            }
-          } else {
+          if (fetchedProjects.length > 0 && (!selectedProjectId || !fetchedProjects.some(p => p.id === selectedProjectId))) {
+            setSelectedProjectId(fetchedProjects[0].id);
+          } else if (fetchedProjects.length === 0) {
             setSelectedProjectId(null);
           }
 
@@ -810,13 +807,13 @@ if (fetchedConversations.length > 0) {
           projects={projects}
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
-          allTasks={tasks}
+          tasks={tasks}
           onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
-          onNewTaskRequest={handleNewTaskRequest}
+          onNewTaskRequest={onNewTaskRequest}
           onTaskClick={setSelectedTask}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
