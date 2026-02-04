@@ -16,11 +16,7 @@ import {
   Task,
   TimeEntry,
   Hub,
-  Visitor,
-  Conversation,
-  ChatMessage,
   Bot,
-  DealAutomationRule,
   EscalationIntakeRule,
   HelpCenter,
 } from '@/lib/data';
@@ -72,6 +68,9 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
   const hubHasInbox = props.activeHub?.settings?.components?.includes('inbox');
   const hubHasDeals = props.activeHub?.settings?.components?.includes('deals');
   const hubHasHelpCenter = props.activeHub?.settings?.components?.includes('help-center');
+  const hubHasTickets = props.activeHub?.settings?.components?.includes('tickets');
+  const hubHasTasks = props.activeHub?.settings?.components?.includes('tasks');
+
 
   const navItems = [
     { key: 'users', label: 'Users & Permissions' },
@@ -79,7 +78,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
     { key: 'hub', label: 'Hub Settings', disabled: !props.activeHub },
     { key: 'inbox', label: 'Inbox', disabled: !hubHasInbox },
     { key: 'deal-automation', label: 'Deal Automation', disabled: !hubHasDeals },
-    { key: 'escalation-intake', label: 'Escalation Intake', disabled: !props.activeHub },
+    { key: 'escalation-intake', label: 'Escalation Intake', disabled: !(hubHasTickets && hubHasTasks) },
     { key: 'knowledge-base', label: 'Knowledge Base', disabled: !hubHasHelpCenter },
     { key: 'timesheets', label: 'Timesheets' },
   ];
@@ -111,9 +110,6 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             activeHub={props.activeHub}
             onUpdateHub={props.onUpdateActiveHub}
             allUsers={props.allUsers}
-            allHubs={props.allHubs}
-            projects={props.projects}
-            escalationRules={props.escalationRules}
           />
         );
        case 'inbox':
@@ -140,6 +136,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
           allHubs={props.allHubs}
           projects={props.projects}
           rules={props.escalationRules}
+          onUpdateActiveHub={props.onUpdateActiveHub}
         />;
       case 'knowledge-base':
         return <KnowledgeBaseSettings activeHub={props.activeHub} />;

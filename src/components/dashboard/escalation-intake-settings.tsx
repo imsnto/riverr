@@ -1,15 +1,16 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Plus, MoreHorizontal, Edit, Trash2, GitMerge } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Hub, User, EscalationIntakeRule, Project } from '@/lib/data';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import EscalationRuleDialog from './escalation-rule-dialog';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface EscalationIntakeSettingsProps {
   activeHub: Hub | null;
@@ -17,12 +18,14 @@ interface EscalationIntakeSettingsProps {
   allHubs: Hub[];
   projects: Project[];
   rules: EscalationIntakeRule[];
+  onUpdateActiveHub: (updatedData: Partial<Hub>) => void;
 }
 
-export default function EscalationIntakeSettings({ activeHub, allUsers, allHubs, projects, rules: initialRules }: EscalationIntakeSettingsProps) {
+export default function EscalationIntakeSettings({ activeHub, allUsers, allHubs, projects, rules: initialRules, onUpdateActiveHub }: EscalationIntakeSettingsProps) {
   const [rules, setRules] = useState<EscalationIntakeRule[]>(initialRules);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedRule, setSelectedRule] = useState<EscalationIntakeRule | null>(null);
+  const [intraHubEscalationProjectId, setIntraHubEscalationProjectId] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -32,6 +35,7 @@ export default function EscalationIntakeSettings({ activeHub, allUsers, allHubs,
   useEffect(() => {
     if (activeHub) {
         db.getEscalationIntakeRules(activeHub.id).then(setRules);
+        setIntraHubEscalationProjectId(activeHub.settings?.intraHubEscalationProjectId || null);
     }
   }, [activeHub]);
 
@@ -69,6 +73,17 @@ export default function EscalationIntakeSettings({ activeHub, allUsers, allHubs,
       }
   }
 
+  const handleIntraHubSave = () => {
+    if (!activeHub) return;
+    onUpdateActiveHub({
+        settings: {
+            ...activeHub.settings,
+            intraHubEscalationProjectId: intraHubEscalationProjectId,
+        }
+    });
+    toast({ title: "Intra-Hub escalation project updated." });
+  }
+
   if (!activeHub) {
     return (
       <Card>
@@ -80,13 +95,50 @@ export default function EscalationIntakeSettings({ activeHub, allUsers, allHubs,
     );
   }
 
+  const hasTickets = activeHub.settings?.components?.includes('tickets');
+  const hasTasks = activeHub.settings?.components?.includes('tasks');
+  const showIntraHubSetting = hasTickets && hasTasks;
+
+  const hasIntraHubChanges = intraHubEscalationProjectId !== (activeHub.settings?.intraHubEscalationProjectId || null);
+
+
   return (
-    <>
+    <div className="space-y-6">
+      {showIntraHubSetting && (
+         <Card>
+            <CardHeader>
+                <CardTitle>Intra-Hub Escalation Project</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-2">
+                    <Label htmlFor="intraHubEscalation">Default Escalation Project</Label>
+                    <Select value={intraHubEscalationProjectId ?? 'none'} onValueChange={(value) => setIntraHubEscalationProjectId(value === 'none' ? null : value)}>
+                        <SelectTrigger id="intraHubEscalation">
+                            <SelectValue placeholder="Select a project for local escalations" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            {projects.filter(p => p.hubId === activeHub.id).map(p => (
+                                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                        When a ticket is escalated, a linked task will be created in this project.
+                    </p>
+                </div>
+            </CardContent>
+             <CardFooter>
+                <Button onClick={handleIntraHubSave} disabled={!hasIntraHubChanges}>Save Changes</Button>
+            </CardFooter>
+         </Card>
+      )}
+
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>Escalation Intake Rules</CardTitle>
+              <CardTitle>Cross-Hub Escalation Intake Rules</CardTitle>
               <CardDescription>Manage how other hubs can escalate items to this hub.</CardDescription>
             </div>
             <Button onClick={handleNewRule}>
@@ -150,8 +202,6 @@ export default function EscalationIntakeSettings({ activeHub, allUsers, allHubs,
         allHubs={allHubs}
         projects={projects.filter(p => p.hubId === activeHub.id)}
       />
-    </>
+    </div>
   );
 }
-
-    
