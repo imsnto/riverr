@@ -72,6 +72,7 @@ interface TicketsBoardProps {
   contacts: Contact[];
   onDataRefresh: () => void;
   onCreateTicket: (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => void;
+  onEscalateTicket: (ticket: Ticket, intakeRuleId: string) => void;
 }
 
 const defaultStatuses: Status[] = [
@@ -80,7 +81,7 @@ const defaultStatuses: Status[] = [
     { name: 'Closed', color: '#22c55e' },
 ];
 
-export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, activeSpace, allUsers, conversations, onUpdateActiveHub, onNavigateToSettings, allHubs, escalationRules, projects, contacts, onDataRefresh, onCreateTicket }: TicketsBoardProps) {
+export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, activeSpace, allUsers, conversations, onUpdateActiveHub, onNavigateToSettings, allHubs, escalationRules, projects, contacts, onDataRefresh, onCreateTicket, onEscalateTicket }: TicketsBoardProps) {
   const [draggedTicket, setDraggedTicket] = useState<string | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -295,6 +296,11 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
             allUsers={allUsers}
             contact={contacts.find(c => c.id === selectedTicket.contactId) || null}
             conversation={conversations.find(c => c.id === selectedTicket.conversationId) || null}
+            onEscalate={onEscalateTicket}
+            activeHub={activeHub}
+            allHubs={allHubs}
+            escalationRules={escalationRules}
+            projects={projects}
         />
       )}
        <BoardSettingsDialog

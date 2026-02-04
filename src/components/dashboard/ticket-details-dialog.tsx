@@ -1,10 +1,10 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Ticket, User, Conversation, Contact, Activity } from '@/lib/data';
+import { Ticket, User, Conversation, Contact, Activity, Hub, EscalationIntakeRule, Project } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../ui/card';
 import { useAuth } from '@/hooks/use-auth';
+import EscalateTicketDialog from './escalate-ticket-dialog';
 
 const getInitials = (name: string | null) => {
     if (!name) return '?';
@@ -99,17 +100,53 @@ interface TicketDetailsDialogProps {
     allUsers: User[];
     contact: Contact | null;
     conversation: Conversation | null;
+    onEscalate: (ticket: Ticket, intakeRuleId: string) => void;
+    activeHub: Hub;
+    allHubs: Hub[];
+    escalationRules: EscalationIntakeRule[];
+    projects: Project[];
 }
 
-export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onOpenChange, onUpdateTicket, statuses, allUsers, contact, conversation }: TicketDetailsDialogProps) {
+export default function TicketDetailsDialog({ 
+    ticket: initialTicket, 
+    isOpen, 
+    onOpenChange, 
+    onUpdateTicket, 
+    statuses, 
+    allUsers, 
+    contact, 
+    conversation,
+    onEscalate,
+    activeHub,
+    allHubs,
+    escalationRules,
+    projects
+}: TicketDetailsDialogProps) {
     const { toast } = useToast();
     const router = useRouter();
     const [ticket, setTicket] = useState(initialTicket);
     const { appUser } = useAuth();
+    const [isEscalateOpen, setIsEscalateOpen] = useState(false);
 
     useEffect(() => {
         setTicket(initialTicket);
     }, [initialTicket]);
+
+    const intraHubEscalationProject = useMemo(() => {
+      if (!activeHub.settings?.intraHubEscalationProjectId) return null;
+      return projects.find(p => p.id === activeHub.settings.intraHubEscalationProjectId);
+    }, [activeHub, projects]);
+
+    const availableRules = useMemo(() => {
+      if (intraHubEscalationProject || !ticket?.type) return [];
+      return escalationRules.filter(rule => 
+          rule.enabled &&
+          rule.allowedSourceHubIds.includes(activeHub.id) &&
+          rule.allowedTypes.includes(ticket.type)
+      );
+    }, [intraHubEscalationProject, escalationRules, activeHub.id, ticket?.type]);
+    
+    const canEscalate = !!intraHubEscalationProject || availableRules.length > 0;
 
     if (!ticket) return null;
     
@@ -236,7 +273,11 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
                                 ) : (
                                     <div className="flex justify-between items-center">
                                         <p className="text-sm text-muted-foreground">Not escalated</p>
-                                        <Button variant="secondary"><GitMerge className="mr-2" /> Escalate to Devs</Button>
+                                        {canEscalate ? (
+                                            <Button variant="secondary" onClick={() => setIsEscalateOpen(true)}><GitMerge className="mr-2" /> Escalate to Devs</Button>
+                                        ) : (
+                                            <Button variant="secondary" disabled><GitMerge className="mr-2" /> No Routes</Button>
+                                        )}
                                     </div>
                                 )}
                              </div>
@@ -334,6 +375,19 @@ export default function TicketDetailsDialog({ ticket: initialTicket, isOpen, onO
                         <Button variant="destructive">Close Ticket</Button>
                     </div>
                 </DialogFooter>
+                 <EscalateTicketDialog
+                    isOpen={isEscalateOpen}
+                    onOpenChange={setIsEscalateOpen}
+                    ticket={ticket}
+                    activeHub={activeHub}
+                    allHubs={allHubs}
+                    escalationRules={escalationRules}
+                    projects={projects}
+                    onConfirm={(intakeRuleId) => {
+                        onEscalate(ticket, intakeRuleId);
+                        setIsEscalateOpen(false);
+                    }}
+                />
             </DialogContent>
         </Dialog>
     );

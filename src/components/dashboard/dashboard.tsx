@@ -477,61 +477,10 @@ if (fetchedConversations.length > 0) {
     const newTicket = await db.addTicket(finalTicketData);
     
     if (escalateNow && intakeRuleId) {
-        let escalationUpdate: Partial<Ticket>['escalation'] = {};
-
-        if (intakeRuleId.startsWith('intra-hub:')) {
-            const projectId = intakeRuleId.split(':')[1];
-            
-            const linkedTaskData: Omit<Task, 'id'> = {
-                name: `[Ticket] ${ticketData.title}`,
-                description: `Created from escalated ticket: ${newTicket.id}\n\n> ${ticketData.description || 'No description.'}`,
-                project_id: projectId,
-                hubId: activeHub.id,
-                spaceId: activeSpace.id,
-                status: 'Backlog',
-                createdBy: appUser.id,
-                createdAt: now,
-                assigned_to: ticketData.assignedTo || appUser.id,
-                due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-                priority: ticketData.priority,
-                linkedTicketId: newTicket.id,
-                sprint_points: null,
-                tags: ['escalated', ticketData.type].filter(Boolean) as string[],
-                time_estimate: null,
-                parentId: null,
-                relationships: [],
-                comments: [],
-                activities: [],
-                attachments: [],
-            };
-            
-            const newTask = await handleAddTask(linkedTaskData);
-            if (newTask) {
-                escalationUpdate = {
-                    status: 'sent',
-                    requestedAt: now,
-                    requestedBy: appUser.id,
-                    devBoardId: projectId,
-                    devItemId: newTask.id,
-                    lastKnownDevStatus: newTask.status,
-                    lastSyncedAt: now,
-                };
-            }
-        } else {
-            escalationUpdate = {
-                status: 'queued',
-                requestedAt: now,
-                requestedBy: appUser.id,
-                intakeRuleId: intakeRuleId,
-            };
-        }
-        
-        await db.updateTicket(newTicket.id, { escalation: escalationUpdate, status: 'Escalated' });
-        newTicket.escalation = escalationUpdate;
-        newTicket.status = 'Escalated';
+        await handleEscalateTicket(newTicket, intakeRuleId);
+    } else {
+        setTickets(prev => [...prev, newTicket]);
     }
-
-    setTickets(prev => [...prev, newTicket]);
     toast({ title: "Ticket created" });
 
     if (newTicket.conversationId) {
@@ -546,6 +495,71 @@ if (fetchedConversations.length > 0) {
             linked_ticket_id: newTicket.id,
         });
     }
+  };
+  
+  const handleEscalateTicket = async (ticket: Ticket, intakeRuleId: string) => {
+    if (!appUser || !activeHub) return;
+
+    const now = new Date().toISOString();
+    let escalationUpdate: Partial<Ticket>['escalation'] = {};
+
+    if (intakeRuleId.startsWith('intra-hub:')) {
+        const projectId = intakeRuleId.split(':')[1];
+        
+        const linkedTaskData: Omit<Task, 'id'> = {
+            name: `[Ticket] ${ticket.title}`,
+            description: `Created from escalated ticket: ${ticket.id}\n\n> ${ticket.description || 'No description.'}`,
+            project_id: projectId,
+            hubId: activeHub.id,
+            spaceId: activeSpace.id,
+            status: 'Backlog',
+            createdBy: appUser.id,
+            createdAt: now,
+            assigned_to: ticket.assignedTo || appUser.id,
+            due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            priority: ticket.priority,
+            linkedTicketId: ticket.id,
+            sprint_points: null,
+            tags: ['escalated', ticket.type].filter(Boolean) as string[],
+            time_estimate: null,
+            parentId: null,
+            relationships: [],
+            comments: [],
+            activities: [],
+            attachments: [],
+        };
+        
+        const newTask = await handleAddTask(linkedTaskData);
+        if (newTask) {
+            escalationUpdate = {
+                status: 'sent',
+                requestedAt: now,
+                requestedBy: appUser.id,
+                devBoardId: projectId,
+                devItemId: newTask.id,
+                lastKnownDevStatus: newTask.status,
+                lastSyncedAt: now,
+            };
+        }
+    } else {
+        escalationUpdate = {
+            status: 'queued',
+            requestedAt: now,
+            requestedBy: appUser.id,
+            intakeRuleId: intakeRuleId,
+        };
+    }
+    
+    const updatedTicketData = {
+        escalation: escalationUpdate,
+        status: 'Escalated'
+    };
+    
+    await db.updateTicket(ticket.id, updatedTicketData);
+    
+    setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, ...updatedTicketData } : t));
+    
+    toast({ title: "Ticket Escalated", description: "A linked developer task has been created." });
   };
   
   const handleUpdateDeals = (updatedDeals: Deal[]) => {
@@ -757,8 +771,8 @@ if (fetchedConversations.length > 0) {
 
   const renderView = () => {
     const overviewProps = {
-      tasks,
       projects,
+      tasks,
       activeSpace,
       activeHub,
       allUsers,
@@ -807,7 +821,7 @@ if (fetchedConversations.length > 0) {
           projects={projects}
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
-          tasks={tasks}
+          allTasks={tasks}
           onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
@@ -836,6 +850,7 @@ if (fetchedConversations.length > 0) {
           contacts={contacts}
           onDataRefresh={fetchData}
           onCreateTicket={handleCreateTicket}
+          onEscalateTicket={handleEscalateTicket}
       />;
       case 'deals': return <DealsBoard
           deals={deals}
