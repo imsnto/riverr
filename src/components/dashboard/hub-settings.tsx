@@ -32,6 +32,7 @@ export default function HubSettings({ activeHub, onUpdateHub, allUsers, allHubs,
   const [isPrivate, setIsPrivate] = useState(activeHub?.isPrivate || false);
   const [memberIds, setMemberIds] = useState(activeHub?.memberIds || []);
   const [intraHubEscalationProjectId, setIntraHubEscalationProjectId] = useState<string | null>(activeHub?.settings?.intraHubEscalationProjectId || null);
+  const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false);
 
 
   useEffect(() => {
