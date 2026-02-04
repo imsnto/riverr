@@ -1,5 +1,6 @@
+
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -117,16 +118,30 @@ export default function CreateTicketDialog({
   const selectedContact = contacts.find(c => c.id === currentContactId);
   const displayContact = contactInfo || selectedContact;
 
+  const intraHubEscalationProject = useMemo(() => {
+    if (!activeHub.settings?.intraHubEscalationProjectId) return null;
+    return projects.find(p => p.id === activeHub.settings.intraHubEscalationProjectId);
+  }, [activeHub, projects]);
 
-  const availableRules = escalationRules.filter(rule => 
-    rule.enabled &&
-    rule.allowedSourceHubIds.includes(activeHub.id) &&
-    rule.allowedTypes.includes(ticketType)
-  );
+  const availableRules = useMemo(() => {
+    if (intraHubEscalationProject) return [];
+    return escalationRules.filter(rule => 
+        rule.enabled &&
+        rule.allowedSourceHubIds.includes(activeHub.id) &&
+        rule.allowedTypes.includes(ticketType)
+    );
+  }, [intraHubEscalationProject, escalationRules, activeHub.id, ticketType]);
+
 
   const onSubmit = (values: TicketFormValues) => {
     if (!appUser) return;
     const now = new Date().toISOString();
+    
+    let finalIntakeRuleId = values.intakeRuleId;
+    if (values.escalateNow && intraHubEscalationProject) {
+        finalIntakeRuleId = `intra-hub:${intraHubEscalationProject.id}`;
+    }
+
     const newTicket: Omit<Ticket, 'id'> = {
       hubId: activeHub.id,
       spaceId: activeSpace.id,
@@ -147,7 +162,7 @@ export default function CreateTicketDialog({
       updatedAt: now,
       escalation: { status: 'none' }
     };
-    onCreateTicket(newTicket, values.escalateNow, values.intakeRuleId);
+    onCreateTicket(newTicket, values.escalateNow, finalIntakeRuleId);
     onOpenChange(false);
   };
 
@@ -275,13 +290,13 @@ export default function CreateTicketDialog({
                         <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
-                        disabled={availableRules.length === 0}
+                        disabled={!intraHubEscalationProject && availableRules.length === 0}
                         />
                     </FormControl>
                     <div className="space-y-1 leading-none">
                         <FormLabel>Escalate to Dev now</FormLabel>
                         <FormDescription>
-                        {availableRules.length === 0 ? "No available escalation routes for this ticket type." : "This will also create a linked task for the dev team."}
+                        {!intraHubEscalationProject && availableRules.length === 0 ? "No available escalation routes for this hub/ticket type." : "This will also create a linked task for the dev team."}
                         </FormDescription>
                     </div>
                     </FormItem>
@@ -289,7 +304,17 @@ export default function CreateTicketDialog({
             />
 
             {escalateNow && (
-                 <FormField
+              <>
+                {intraHubEscalationProject ? (
+                  <FormItem>
+                    <FormLabel>Escalation Target</FormLabel>
+                    <div className="flex items-center gap-2 p-2 border rounded-md bg-muted text-sm">
+                      <span>Escalating to project:</span>
+                      <span className="font-semibold">{intraHubEscalationProject.name}</span>
+                    </div>
+                  </FormItem>
+                ) : (
+                  <FormField
                     control={form.control}
                     name="intakeRuleId"
                     render={({ field }) => (
@@ -311,7 +336,9 @@ export default function CreateTicketDialog({
                             </Select>
                         </FormItem>
                     )}
-                />
+                  />
+                )}
+              </>
             )}
 
             <DialogFooter>

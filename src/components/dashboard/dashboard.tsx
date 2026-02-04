@@ -487,20 +487,66 @@ if (fetchedConversations.length > 0) {
       }
     }
     
-    if (escalateNow) {
-        finalTicketData.status = 'Escalated';
-        finalTicketData.escalation = {
-            status: 'queued', // Backend would change this to 'sent' or 'failed'
-            requestedAt: new Date().toISOString(),
-            requestedBy: appUser.id,
-            intakeRuleId: intakeRuleId
-        };
-    }
     const newTicket = await db.addTicket(finalTicketData);
+    
+    if (escalateNow && intakeRuleId) {
+        let escalationUpdate: Partial<Ticket>['escalation'] = {};
+
+        if (intakeRuleId.startsWith('intra-hub:')) {
+            const projectId = intakeRuleId.split(':')[1];
+            
+            const linkedTaskData: Omit<Task, 'id'> = {
+                name: `[Ticket] ${ticketData.title}`,
+                description: `Created from escalated ticket: ${newTicket.id}\n\n> ${ticketData.description || 'No description.'}`,
+                project_id: projectId,
+                hubId: activeHub.id,
+                spaceId: activeSpace.id,
+                status: 'Backlog',
+                createdBy: appUser.id,
+                createdAt: now,
+                assigned_to: ticketData.assignedTo || appUser.id,
+                due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                priority: ticketData.priority,
+                linkedTicketId: newTicket.id,
+                sprint_points: null,
+                tags: ['escalated', ticketData.type].filter(Boolean) as string[],
+                time_estimate: null,
+                parentId: null,
+                relationships: [],
+                comments: [],
+                activities: [],
+                attachments: [],
+            };
+            
+            const newTask = await handleAddTask(linkedTaskData);
+            if (newTask) {
+                escalationUpdate = {
+                    status: 'sent',
+                    requestedAt: now,
+                    requestedBy: appUser.id,
+                    devBoardId: projectId,
+                    devItemId: newTask.id,
+                    lastKnownDevStatus: newTask.status,
+                    lastSyncedAt: now,
+                };
+            }
+        } else {
+            escalationUpdate = {
+                status: 'queued',
+                requestedAt: now,
+                requestedBy: appUser.id,
+                intakeRuleId: intakeRuleId,
+            };
+        }
+        
+        await db.updateTicket(newTicket.id, { escalation: escalationUpdate, status: 'Escalated' });
+        newTicket.escalation = escalationUpdate;
+        newTicket.status = 'Escalated';
+    }
+
     setTickets(prev => [...prev, newTicket]);
     toast({ title: "Ticket created" });
 
-    // Add a message to the conversation
     if (newTicket.conversationId) {
         const messageContent = `Ticket created: "${newTicket.title}"`;
         await db.addChatMessage({
@@ -775,7 +821,7 @@ if (fetchedConversations.length > 0) {
           projects={projects}
           onSelectProject={handleSelectProject}
           allTasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
+          onUpdateTasks={onUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
@@ -790,7 +836,7 @@ if (fetchedConversations.length > 0) {
       );
       case 'tickets': return <TicketsBoard 
           tickets={tickets} 
-          onUpdateTickets={handleUpdateTickets}
+          onUpdateTickets={onUpdateTickets}
           conversations={chatConversations}
           activeHub={activeHub!}
           activeSpace={activeSpace}
@@ -806,7 +852,7 @@ if (fetchedConversations.length > 0) {
       />;
       case 'deals': return <DealsBoard
           deals={deals}
-          onUpdateDeals={handleUpdateDeals}
+          onUpdateDeals={onUpdateDeals}
           onAddDeal={handleAddDeal}
           onDataRefresh={fetchData}
           contacts={contacts}

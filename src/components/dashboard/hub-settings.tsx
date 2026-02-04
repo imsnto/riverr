@@ -12,6 +12,7 @@ import { Users } from 'lucide-react';
 import HubPermissionDialog from './hub-permission-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import EscalationIntakeSettings from './escalation-intake-settings';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface HubSettingsProps {
   activeHub: Hub | null;
@@ -30,6 +31,8 @@ export default function HubSettings({ activeHub, onUpdateHub, allUsers, allHubs,
   const [isPrivate, setIsPrivate] = useState(activeHub?.isPrivate || false);
   const [memberIds, setMemberIds] = useState(activeHub?.memberIds || []);
   const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false);
+  const [intraHubEscalationProjectId, setIntraHubEscalationProjectId] = useState(activeHub?.settings?.intraHubEscalationProjectId || '');
+
 
   useEffect(() => {
     if (activeHub) {
@@ -37,6 +40,7 @@ export default function HubSettings({ activeHub, onUpdateHub, allUsers, allHubs,
       setSelectedComponents(activeHub.settings?.components || []);
       setIsPrivate(activeHub.isPrivate || false);
       setMemberIds(activeHub.memberIds || []);
+      setIntraHubEscalationProjectId(activeHub.settings?.intraHubEscalationProjectId || '');
     }
   }, [activeHub]);
   
@@ -63,22 +67,27 @@ export default function HubSettings({ activeHub, onUpdateHub, allUsers, allHubs,
         memberIds: isPrivate ? memberIds : [],
         settings: {
             ...activeHub.settings,
-            components: selectedComponents
+            components: selectedComponents,
+            intraHubEscalationProjectId: intraHubEscalationProjectId || null,
         }
     };
     onUpdateHub(updatedData);
   }
 
   const hasChanges = hubName !== activeHub.name 
-    || JSON.stringify(selectedComponents) !== JSON.stringify(activeHub.settings.components)
+    || JSON.stringify(selectedComponents.sort()) !== JSON.stringify((activeHub.settings.components || []).sort())
     || isPrivate !== activeHub.isPrivate
-    || JSON.stringify(memberIds.sort()) !== JSON.stringify((activeHub.memberIds || []).sort());
+    || JSON.stringify(memberIds.sort()) !== JSON.stringify((activeHub.memberIds || []).sort())
+    || intraHubEscalationProjectId !== (activeHub.settings?.intraHubEscalationProjectId || '');
   
   const permissionSummary = isPrivate
     ? `${memberIds.length} member(s) have access`
     : 'Public to everyone in the space';
 
   const spaceUsers = allUsers.filter(u => activeSpace.members[u.id]);
+
+  const hasTickets = selectedComponents.includes('tickets');
+  const hasTasks = selectedComponents.includes('tasks');
 
 
   return (
@@ -119,6 +128,25 @@ export default function HubSettings({ activeHub, onUpdateHub, allUsers, allHubs,
                 setSelected={setSelectedComponents}
             />
         </div>
+        {hasTickets && hasTasks && (
+            <div className="space-y-2">
+                <Label htmlFor="intraHubEscalation">Intra-Hub Escalation Project</Label>
+                <Select value={intraHubEscalationProjectId} onValueChange={setIntraHubEscalationProjectId}>
+                    <SelectTrigger id="intraHubEscalation">
+                        <SelectValue placeholder="Select a project for local escalations" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {projects.filter(p => p.hubId === activeHub.id).map(p => (
+                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                    When a ticket is escalated, a linked task will be created in this project.
+                </p>
+            </div>
+        )}
       </CardContent>
       <CardFooter>
         <Button onClick={handleSaveChanges} disabled={!hasChanges}>Save Changes</Button>
@@ -143,5 +171,3 @@ export default function HubSettings({ activeHub, onUpdateHub, allUsers, allHubs,
     </div>
   );
 }
-
-    
