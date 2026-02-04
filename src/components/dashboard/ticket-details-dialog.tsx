@@ -4,7 +4,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Ticket, User, Conversation, Contact, Activity, Hub, EscalationIntakeRule, Project } from '@/lib/data';
+import { Ticket, User, Conversation, Contact, Activity, Hub, EscalationIntakeRule, Project, Task } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -105,6 +105,8 @@ interface TicketDetailsDialogProps {
     allHubs: Hub[];
     escalationRules: EscalationIntakeRule[];
     projects: Project[];
+    allTasks: Task[];
+    onTaskSelect: (task: Task) => void;
 }
 
 export default function TicketDetailsDialog({ 
@@ -120,7 +122,9 @@ export default function TicketDetailsDialog({
     activeHub,
     allHubs,
     escalationRules,
-    projects
+    projects,
+    allTasks,
+    onTaskSelect,
 }: TicketDetailsDialogProps) {
     const { toast } = useToast();
     const router = useRouter();
@@ -131,6 +135,20 @@ export default function TicketDetailsDialog({
     useEffect(() => {
         setTicket(initialTicket);
     }, [initialTicket]);
+
+    const linkedTask = useMemo(() => {
+        if (!ticket?.escalation?.devItemId) return null;
+        return allTasks.find(t => t.id === ticket.escalation.devItemId);
+    }, [ticket, allTasks]);
+
+    const isDifferentHub = linkedTask && ticket && linkedTask.hubId !== ticket.hubId;
+
+    const handleOpenDevTask = () => {
+        if (linkedTask && !isDifferentHub) {
+            onTaskSelect(linkedTask);
+            onOpenChange(false);
+        }
+    };
 
     const intraHubEscalationProject = useMemo(() => {
       if (!activeHub.settings?.intraHubEscalationProjectId) return null;
@@ -265,10 +283,18 @@ export default function TicketDetailsDialog({
                                 {ticket.escalation?.devItemId ? (
                                     <div className="flex justify-between items-center">
                                         <div>
-                                            <p className="font-medium">Task: {ticket.escalation.devItemId}</p>
-                                            <Badge>{ticket.escalation.lastKnownDevStatus || 'Unknown'}</Badge>
+                                            <p className="font-medium">
+                                                Task: {linkedTask?.name || ticket.escalation.devItemId}
+                                            </p>
+                                            <Badge>{linkedTask?.status || ticket.escalation.lastKnownDevStatus || 'Unknown'}</Badge>
                                         </div>
-                                        <Button variant="outline">Open Dev Task</Button>
+                                        <Button 
+                                            variant="outline"
+                                            onClick={handleOpenDevTask}
+                                            disabled={isDifferentHub || !linkedTask}
+                                        >
+                                            Open Dev Task
+                                        </Button>
                                     </div>
                                 ) : (
                                     <div className="flex justify-between items-center">

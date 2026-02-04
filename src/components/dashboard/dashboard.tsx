@@ -344,8 +344,6 @@ if (fetchedConversations.length > 0) {
   }
   
   const handleUpdateTasks = (updatedTasks: Task[]) => {
-    // This is a simple implementation. A more robust solution
-    // would involve diffing and batching writes to Firestore.
     setTasks(updatedTasks);
     updatedTasks.forEach(task => {
         if(task.id) {
@@ -851,6 +849,8 @@ if (fetchedConversations.length > 0) {
           onDataRefresh={fetchData}
           onCreateTicket={handleCreateTicket}
           onEscalateTicket={handleEscalateTicket}
+          allTasks={tasks}
+          onTaskSelect={setSelectedTask}
       />;
       case 'deals': return <DealsBoard
           deals={deals}

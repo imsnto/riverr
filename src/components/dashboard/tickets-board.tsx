@@ -3,7 +3,7 @@
 
 import React, { useState, DragEvent, useRef, useMemo } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Ticket, Hub, Status, Visitor, Conversation, Space, EscalationIntakeRule, Project, Contact, Activity } from '@/lib/data';
+import { User, Ticket, Hub, Status, Visitor, Conversation, Space, EscalationIntakeRule, Project, Contact, Task } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { MoreHorizontal, Plus, Edit } from 'lucide-react';
@@ -73,6 +73,8 @@ interface TicketsBoardProps {
   onDataRefresh: () => void;
   onCreateTicket: (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => void;
   onEscalateTicket: (ticket: Ticket, intakeRuleId: string) => void;
+  allTasks: Task[];
+  onTaskSelect: (task: Task) => void;
 }
 
 const defaultStatuses: Status[] = [
@@ -81,7 +83,7 @@ const defaultStatuses: Status[] = [
     { name: 'Closed', color: '#22c55e' },
 ];
 
-export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, activeSpace, allUsers, conversations, onUpdateActiveHub, onNavigateToSettings, allHubs, escalationRules, projects, contacts, onDataRefresh, onCreateTicket, onEscalateTicket }: TicketsBoardProps) {
+export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, activeSpace, allUsers, conversations, onUpdateActiveHub, onNavigateToSettings, allHubs, escalationRules, projects, contacts, onDataRefresh, onCreateTicket, onEscalateTicket, allTasks, onTaskSelect }: TicketsBoardProps) {
   const [draggedTicket, setDraggedTicket] = useState<string | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -301,6 +303,8 @@ export default function TicketsBoard({ tickets, onUpdateTickets, activeHub, acti
             allHubs={allHubs}
             escalationRules={escalationRules}
             projects={projects}
+            allTasks={allTasks}
+            onTaskSelect={onTaskSelect}
         />
       )}
        <BoardSettingsDialog
