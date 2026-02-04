@@ -354,6 +354,42 @@ if (fetchedConversations.length > 0) {
     })
   };
 
+  const handleNewTaskRequest = (status?: string) => {
+    if (!appUser || !activeHub || !selectedProjectId) {
+      toast({
+        title: "Cannot Create Task",
+        description: "Please select a project before creating a new task.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newTaskTemplate: Task & { isNew?: boolean } = {
+      id: `new-task-${Date.now()}`, // Temporary ID
+      name: "", // Empty name for creation
+      description: "",
+      project_id: selectedProjectId,
+      hubId: activeHub.id,
+      spaceId: activeSpace.id,
+      status: status || (activeHub.statuses && activeHub.statuses[0].name) || "Backlog",
+      assigned_to: appUser.id,
+      createdBy: appUser.id,
+      createdAt: new Date().toISOString(),
+      due_date: new Date().toISOString(),
+      priority: "Medium",
+      sprint_points: null,
+      tags: [],
+      time_estimate: null,
+      parentId: null,
+      relationships: [],
+      comments: [],
+      activities: [],
+      attachments: [],
+      isNew: true, // Flag for creation mode
+    };
+    setSelectedTask(newTaskTemplate as Task);
+  };
+
   const handleUpdateTask = (task: Task, tempId?: string) => {
     let newTasks = [];
     setTasks(prevTasks => {
@@ -398,42 +434,6 @@ if (fetchedConversations.length > 0) {
       }
   }
 
-  const handleNewTaskRequest = (status?: string) => {
-    if (!appUser || !activeHub || !selectedProjectId) {
-      toast({
-        title: "Cannot Create Task",
-        description: "Please select a project before creating a new task.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const newTaskTemplate: Task & { isNew?: boolean } = {
-      id: `new-task-${Date.now()}`, // Temporary ID
-      name: "", // Empty name for creation
-      description: "",
-      project_id: selectedProjectId,
-      hubId: activeHub.id,
-      spaceId: activeSpace.id,
-      status: status || (activeHub.statuses && activeHub.statuses[0].name) || "Backlog",
-      assigned_to: appUser.id,
-      createdBy: appUser.id,
-      createdAt: new Date().toISOString(),
-      due_date: new Date().toISOString(),
-      priority: "Medium",
-      sprint_points: null,
-      tags: [],
-      time_estimate: null,
-      parentId: null,
-      relationships: [],
-      comments: [],
-      activities: [],
-      attachments: [],
-      isNew: true, // Flag for creation mode
-    };
-    setSelectedTask(newTaskTemplate as Task);
-  };
-  
   const handleUpdateTickets = (updatedTickets: Ticket[]) => {
     setTickets(updatedTickets);
     updatedTickets.forEach(ticket => {
@@ -813,7 +813,7 @@ if (fetchedConversations.length > 0) {
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
-          onNewTaskRequest={onNewTaskRequest}
+          onNewTaskRequest={handleNewTaskRequest}
           onTaskClick={setSelectedTask}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
