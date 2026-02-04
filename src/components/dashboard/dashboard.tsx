@@ -824,7 +824,7 @@ if (fetchedConversations.length > 0) {
           onUpdateTasks={onUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
+          onUpdateActiveHub={onUpdateActiveHub}
           onNewProject={handleNewProject}
           onNewTaskRequest={handleNewTaskRequest}
           onTaskClick={setSelectedTask}
@@ -836,12 +836,12 @@ if (fetchedConversations.length > 0) {
       );
       case 'tickets': return <TicketsBoard 
           tickets={tickets} 
-          onUpdateTickets={onUpdateTickets}
+          onUpdateTickets={handleUpdateTickets}
           conversations={chatConversations}
           activeHub={activeHub!}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
+          onUpdateActiveHub={onUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
           allHubs={spaceHubs}
           escalationRules={escalationRules}
@@ -852,14 +852,14 @@ if (fetchedConversations.length > 0) {
       />;
       case 'deals': return <DealsBoard
           deals={deals}
-          onUpdateDeals={onUpdateDeals}
+          onUpdateDeals={handleUpdateDeals}
           onAddDeal={handleAddDeal}
           onDataRefresh={fetchData}
           contacts={contacts}
           activeHub={activeHub!}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
+          onUpdateActiveHub={onUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
       />;
       case 'help-center': return <HelpCenterLayout
