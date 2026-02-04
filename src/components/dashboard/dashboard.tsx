@@ -828,7 +828,7 @@ if (fetchedConversations.length > 0) {
           onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
           onNewTaskRequest={handleNewTaskRequest}
-          onTaskClick={setSelectedTask}
+          onTaskSelect={setSelectedTask}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
           onEditProject={handleEditProject}
