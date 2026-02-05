@@ -64,6 +64,7 @@ import ContactsLayout from './contacts/contacts-layout';
 import TicketsBoard from './tickets-board';
 import DealsBoard from './deals-board';
 import { DealFormValues } from './create-deal-dialog';
+import { reindexArticleAction } from '@/app/actions/chat';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -746,10 +747,11 @@ if (fetchedConversations.length > 0) {
     let savedArticle: HelpCenterArticle;
     if ('id' in article && article.id) {
         await db.updateHelpCenterArticle(article.id, article);
-        savedArticle = article;
+        savedArticle = article as HelpCenterArticle;
     } else {
         savedArticle = await db.addHelpCenterArticle(article as Omit<HelpCenterArticle, 'id'>);
     }
+    
     // After saving, update the parent folder's timestamp
     if (savedArticle.folderId) {
         try {
@@ -758,6 +760,15 @@ if (fetchedConversations.length > 0) {
             console.error("Could not update parent folder timestamp", e);
         }
     }
+    
+    // Trigger re-indexing in the background
+    if (savedArticle.id && savedArticle.hubId) {
+        reindexArticleAction(savedArticle.id).catch(err => {
+            console.error("Background re-indexing failed:", err);
+            // Optionally show a toast, but maybe not since it's a background task.
+        });
+    }
+
     fetchData(); // Refresh all data to ensure consistency
     return savedArticle;
   };

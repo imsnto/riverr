@@ -22,6 +22,7 @@ import ManageHelpCenterContentDialog from './manage-help-center-content-dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { reindexArticleAction } from '@/app/actions/chat';
 
 interface HelpCenterLayoutProps {
     onSaveArticle: (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => Promise<HelpCenterArticle | void>;
@@ -42,7 +43,7 @@ const Breadcrumbs = ({ crumbs, onCrumbClick }: { crumbs: HelpCenterCollection[],
 }
 
 export default function HelpCenterLayout({ 
-    onSaveArticle: onSaveArticleProp, 
+    onSaveArticle, 
 }: HelpCenterLayoutProps) {
     const [sidebarView, setSidebarView] = useState<HelpCenterSidebarView>('library');
     const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
@@ -93,30 +94,12 @@ export default function HelpCenterLayout({
             setMobileContentVisible(true);
         }
     };
-
-    const onSaveArticle = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>): Promise<void> => {
-        let savedArticle: HelpCenterArticle;
-
-        if ('id' in article && article.id) {
-            await db.updateHelpCenterArticle(article.id, article);
-            savedArticle = article as HelpCenterArticle;
-        } else {
-            savedArticle = await db.addHelpCenterArticle(article as Omit<HelpCenterArticle, 'id'>);
-        }
-
-        if (savedArticle.folderId) {
-            try {
-                await db.updateHelpCenterCollection(savedArticle.folderId, {
-                    updatedAt: new Date().toISOString()
-                });
-            } catch (e) {
-                console.error("Could not update parent folder timestamp", e);
-            }
-        }
-        
+    
+    const handleSaveAndRefresh = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => {
+        await onSaveArticle(article as HelpCenterArticle);
         refreshData();
     };
-    
+
     const handleNewCollection = (parentId?: string) => {
         setEditingCollection(null);
         setIsCollectionDialogOpen(true);
@@ -316,7 +299,10 @@ export default function HelpCenterLayout({
         const collectionsToDelete = selectedItems.filter(id => collections.some(c => c.id === id));
     
         const promises: Promise<void>[] = [];
-        articlesToDelete.forEach(id => promises.push(db.deleteHelpCenterArticle(id)));
+        articlesToDelete.forEach(id => {
+            promises.push(db.deleteHelpCenterArticle(id));
+            promises.push(reindexArticleAction(id).catch(console.error));
+        });
         collectionsToDelete.forEach(id => promises.push(db.deleteHelpCenterCollection(id)));
     
         await Promise.all(promises);
@@ -328,6 +314,7 @@ export default function HelpCenterLayout({
 
     const handleDeleteArticle = async (articleId: string) => {
         await db.deleteHelpCenterArticle(articleId);
+        await reindexArticleAction(articleId).catch(console.error);
         toast({ title: "Article deleted" });
         refreshData();
         setSelectedArticleId(null);
@@ -404,10 +391,7 @@ export default function HelpCenterLayout({
                 <HelpCenterArticleEditor 
                    key={articleToEdit.id}
                    article={articleToEdit} 
-                   onSave={async (article) => { 
-                       await onSaveArticle(article as HelpCenterArticle);
-                       refreshData();
-                   }}
+                   onSave={handleSaveAndRefresh}
                    allUsers={[]}
                    appUser={appUser}
                    onBack={() => setSelectedArticleId(null)}
@@ -605,5 +589,3 @@ export default function HelpCenterLayout({
         </div>
     );
 }
-
-    
