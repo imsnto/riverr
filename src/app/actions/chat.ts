@@ -135,7 +135,7 @@ export async function reindexArticleAction(articleId: string) {
         // Always delete old chunks first. If the doc doesn't exist, we still want to clean up the index.
         await deleteChunksForArticle(articleId);
 
-        if (!docSnap.exists()) {
+        if (!docSnap.exists) {
             console.log(`Article ${articleId} not found, deleted from index.`);
             return { ok: true, message: `Article ${articleId} deleted from index.` };
         }
@@ -154,7 +154,7 @@ export async function reindexArticleAction(articleId: string) {
         }
 
         const hubDoc = await adminDB.collection("hubs").doc(hubId).get();
-        if (!hubDoc.exists()) {
+        if (!hubDoc.exists) {
             throw new Error(`Hub ${hubId} not found.`);
         }
         const spaceId = hubDoc.data()?.spaceId;
