@@ -1,5 +1,4 @@
 
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -321,19 +320,29 @@ export default function HelpCenterLayout({
     };
 
     const handleAddToHelpCenters = async (helpCenterIds: string[]) => {
-        const promises = selectedItems.map(itemId => {
-            const article = articles.find(a => a.id === itemId);
-            if (article) {
-                return db.updateHelpCenterArticle(itemId, { helpCenterIds });
-            }
-            const collection = collections.find(c => c.id === itemId);
-            if (collection) {
-                return db.updateHelpCenterCollection(itemId, { helpCenterIds });
-            }
-            return Promise.resolve();
+        const articleIdsToUpdate = selectedItems.filter(id => articles.some(a => a.id === id));
+        const collectionIdsToUpdate = selectedItems.filter(id => collections.some(c => c.id === id));
+
+        const updatePromises: Promise<void>[] = [];
+
+        articleIdsToUpdate.forEach(id => {
+            updatePromises.push(db.updateHelpCenterArticle(id, { helpCenterIds }));
         });
-        await Promise.all(promises);
+        collectionIdsToUpdate.forEach(id => {
+            updatePromises.push(db.updateHelpCenterCollection(id, { helpCenterIds }));
+        });
+
+        await Promise.all(updatePromises);
         toast({ title: `Updated Knowledge Base associations.` });
+
+        // Now, trigger re-indexing for the affected articles in the background
+        const reindexPromises = articleIdsToUpdate.map(id => reindexArticleAction(id).catch(err => {
+            console.error(`Background re-indexing failed for article ${id}:`, err);
+        }));
+
+        // We don't need to wait for this to finish to update the UI
+        Promise.all(reindexPromises);
+
         refreshData();
         setSelectedItems([]);
     };
