@@ -25,14 +25,14 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
 
     const searchParameters = {
         'q': query,
-        'query_by': 'text,articleTitle,headingPath',
-        'query_by_weights': '4,2,1',
+        'query_by': 'text,title,tags,headingPath',
+        'query_by_weights': '4,2,2,1',
         'per_page': topK,
-        'sort_by': '_text_match:desc,chunkUpdatedAt:desc'
+        'sort_by': '_text_match:desc,sourceUpdatedAt:desc'
     };
     
     // Filter by type: 'doc' to only search knowledge base articles for now
-    const baseFilter = `hubId:=${hubId} && type:='doc' && helpCenterIds:=[${allowedHelpCenterIds.join(',')}] && status:='published'`;
+    const baseFilter = `type:='doc' && hubId:=${hubId} && helpCenterIds:=[${allowedHelpCenterIds.join(',')}] && status:='published'`;
 
     // Build search for public chunks
     const publicFilter = `${baseFilter} && isPublic:=true`;
@@ -57,15 +57,15 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
     
     // Map to the HelpChunk type expected by the agent
     const chunks: HelpChunk[] = uniqueHits.map(hit => {
-        const doc = hit.document as any; // Cast from typesense doc
+        const doc = hit.document as any;
         return {
             chunkText: doc.text,
             score: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
-            articleId: doc.articleId,
-            title: doc.articleTitle,
+            articleId: doc.sourceId,
+            title: doc.title,
             url: doc.url,
             helpCenterIds: doc.helpCenterIds,
-            updatedAt: new Date(doc.updatedAt).toISOString(),
+            updatedAt: new Date(doc.sourceUpdatedAt).toISOString(),
             articleType: doc.articleType,
             articleContent: doc.content || null,
         };
@@ -118,7 +118,7 @@ async function deleteChunksForArticle(articleId: string) {
   const typesenseAdmin = getTypesenseAdmin();
   try {
     await typesenseAdmin.collections('memory_nodes').documents().delete({
-      filter_by: `articleId:=${articleId}`,
+      filter_by: `sourceId:=${articleId}`,
     });
   } catch (error: any) {
     if (error.httpStatus !== 404) {

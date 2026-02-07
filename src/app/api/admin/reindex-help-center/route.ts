@@ -13,30 +13,37 @@ const typesenseMemoryNodeSchema = {
   "name": "memory_nodes",
   "fields": [
     { "name": "id", "type": "string" },
-    { "name": "type", "type": "string", "facet": true },
+    { "name": "type", "type": "string", "facet": true }, // e.g., 'doc', 'ticket'
     { "name": "spaceId", "type": "string", "facet": true },
-    { "name": "hubId", "type": "string", "optional": true },
-    { "name": "helpCenterIds", "type": "string[]", "facet": true, "optional": true },
-    { "name": "articleId", "type": "string", "facet": true, "optional": true },
-    { "name": "articleTitle", "type": "string", "optional": true },
-    { "name": "articleSubtitle", "type": "string", "optional": true },
-    { "name": "articleType", "type": "string", "facet": true, "optional": true },
-    { "name": "language", "type": "string", "facet": true, "default": "en" },
-    { "name": "chunkIndex", "type": "int32", "optional": true },
-    { "name": "headingPath", "type": "string[]", "optional": true },
-    { "name": "anchor", "type": "string", "optional": true },
+    { "name": "hubId", "type": "string", "facet": true },
+    { "name": "sourceId", "type": "string", "facet": true }, // articleId, ticketId
+    
+    // Searchable content
+    { "name": "title", "type": "string", "optional": true },
     { "name": "text", "type": "string" },
-    { "name": "content", "type": "string", "optional": true },
-    { "name": "charCount", "type": "int32", "optional": true },
-    { "name": "tokenEstimate", "type": "int32", "optional": true },
+    { "name": "tags", "type": "string[]", "facet": true, "optional": true },
+
+    // Metadata for filtering & display
+    { "name": "status", "type": "string", "facet": true, "optional": true }, // 'published', 'resolved'
     { "name": "url", "type": "string", "optional": true },
-    { "name": "status", "type": "string", "facet": true, "optional": true },
+    { "name": "language", "type": "string", "facet": true, "default": "en" },
+    
+    // Access control
     { "name": "isPublic", "type": "bool", "facet": true, "optional": true },
     { "name": "allowedUserIds", "type": "string[]", "optional": true, "facet": true },
-    { "name": "articleUpdatedAt", "type": "int64", "optional": true },
-    { "name": "chunkUpdatedAt", "type": "int64", "optional": true }
+    
+    // Timestamps
+    { "name": "sourceCreatedAt", "type": "int64", "optional": true },
+    { "name": "sourceUpdatedAt", "type": "int64", "optional": true },
+    { "name": "indexedAt", "type": "int64" },
+
+    // Doc-specific context, still useful
+    { "name": "helpCenterIds", "type": "string[]", "facet": true, "optional": true },
+    { "name": "headingPath", "type": "string[]", "optional": true },
+    { "name": "content", "type": "string", "optional": true }, // For playbooks
+    { "name": "articleType", "type": "string", "facet": true, "optional": true },
   ],
-  "default_sorting_field": "chunkUpdatedAt"
+  "default_sorting_field": "indexedAt"
 };
 
 
@@ -56,7 +63,7 @@ async function ensureCollectionExists() {
 async function deleteChunksForArticle(spaceId: string, articleId: string) {
   try {
     await typesense.collections("memory_nodes").documents().delete({
-      filter_by: `spaceId:=${spaceId} && articleId:=${articleId}`,
+      filter_by: `spaceId:=${spaceId} && sourceId:=${articleId}`,
     });
   } catch (error: any) {
       // It's okay if no documents were found to delete (404)

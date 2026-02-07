@@ -30,7 +30,6 @@ export async function indexHelpCenterArticleToChunks(args: {
 
   const articleId = article.id;
   const articleTitle = article.title ?? "Untitled";
-  const articleSubtitle = article.subtitle ?? null;
   const articleType = article.type ?? 'article';
   const isPublic = Boolean(article.isPublic);
   const allowedUserIds: string[] = Array.isArray(article.allowedUserIds) ? article.allowedUserIds : [];
@@ -50,8 +49,8 @@ export async function indexHelpCenterArticleToChunks(args: {
   });
 
   const now = new Date();
-  const nowIso = now.toISOString();
   const nowEpoch = now.getTime();
+  const articleCreatedAtEpoch = article.createdAt ? new Date(article.createdAt).getTime() : nowEpoch;
   const articleUpdatedAtEpoch = article.updatedAt ? new Date(article.updatedAt).getTime() : nowEpoch;
 
 
@@ -64,28 +63,31 @@ export async function indexHelpCenterArticleToChunks(args: {
 
     return {
       id: `${articleId}__${c.chunkIndex}`,
-      type: 'doc', // Add type for unified memory
+      type: 'doc',
       spaceId,
       hubId,
-      helpCenterIds,
-      articleId,
-      articleTitle,
-      articleSubtitle,
-      articleType,
-      chunkIndex: c.chunkIndex,
-      headingPath: c.headingPath,
-      anchor,
+      sourceId: articleId,
+      
+      title: articleTitle,
       text: c.text,
-      content: article.type === 'playbook' ? article.content : undefined,
-      charCount: c.text.length,
-      tokenEstimate: estimateTokens(c.text),
+      tags: article.tags || [],
+
       status: 'published',
+      url: url + (anchor ? `#${anchor}` : ""),
+      language,
+      
       isPublic,
       allowedUserIds: isPublic ? [] : allowedUserIds,
-      articleUpdatedAt: articleUpdatedAtEpoch,
-      chunkUpdatedAt: nowEpoch,
-      language: language,
-      url: url + (anchor ? `#${anchor}` : ""),
+      
+      sourceCreatedAt: articleCreatedAtEpoch,
+      sourceUpdatedAt: articleUpdatedAtEpoch,
+      indexedAt: nowEpoch,
+
+      // Doc-specific context
+      helpCenterIds,
+      headingPath: c.headingPath,
+      content: article.type === 'playbook' ? article.content : undefined,
+      articleType: article.type,
     };
   });
 
@@ -104,7 +106,7 @@ export async function indexHelpCenterArticleToChunks(args: {
   await adminDB.collection("help_center_articles").doc(articleId).set(
     {
       chunkCount: chunks.length,
-      chunkedAt: nowIso,
+      chunkedAt: now.toISOString(),
     },
     { merge: true }
   );
