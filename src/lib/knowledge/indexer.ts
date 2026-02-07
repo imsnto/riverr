@@ -76,6 +76,7 @@ export async function indexHelpCenterArticleToChunks(args: {
       headingPath: c.headingPath,
       anchor,
       text: c.text,
+      content: article.type === 'playbook' ? article.content : undefined,
       charCount: c.text.length,
       tokenEstimate: estimateTokens(c.text),
       status: 'published',

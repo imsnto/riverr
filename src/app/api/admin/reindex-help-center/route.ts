@@ -25,6 +25,7 @@ const typesenseChunkSchema = {
     { "name": "headingPath", "type": "string[]", "optional": true },
     { "name": "anchor", "type": "string", "optional": true },
     { "name": "text", "type": "string" },
+    { "name": "content", "type": "string", "optional": true },
     { "name": "charCount", "type": "int32" },
     { "name": "tokenEstimate", "type": "int32" },
     { "name": "url", "type": "string" },

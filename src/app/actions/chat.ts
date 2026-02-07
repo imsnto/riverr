@@ -59,14 +59,14 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
         const doc = hit.document as any; // Cast from typesense doc
         return {
             chunkText: doc.text,
-            // Normalize score: Typesense text_match score is an integer. A simple division can scale it.
-            // This might need tuning depending on observed score ranges.
             score: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
             articleId: doc.articleId,
             title: doc.articleTitle,
             url: doc.url,
             helpCenterIds: doc.helpCenterIds,
-            updatedAt: new Date(doc.updatedAt).toISOString()
+            updatedAt: new Date(doc.updatedAt).toISOString(),
+            articleType: doc.articleType,
+            articleContent: doc.content || null,
         };
     }).sort((a, b) => b.score - a.score).slice(0, topK);
 

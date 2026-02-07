@@ -72,6 +72,8 @@ export interface HelpChunk {
   url: string;
   helpCenterIds: string[];
   updatedAt?: string;
+  articleType: 'article' | 'playbook' | 'snippet' | 'pdf';
+  articleContent: string | null;
 }
 
 export interface SearchHelpCenterParams {
@@ -227,6 +229,7 @@ function inferIntent(text: string): Intent {
   if (looksAccountSpecific(text)) return "account_specific";
 
   const t = normalize(text);
+  if (t.includes('invite')) return 'how_to';
   if (t.includes("how do i") || t.includes("how to") || t.startsWith("help")) return "how_to";
   if (t.includes("doesn't work") || t.includes("not working") || t.includes("error")) return "troubleshooting";
 
@@ -328,6 +331,40 @@ export async function handleIncomingMessage(args: {
 
   const chunks = search.chunks ?? [];
   const topScore = chunks.length ? Math.max(...chunks.map(c => c.score)) : 0;
+  
+  // ---- PLAYBOOK EXECUTION ----
+  const playbookChunk = chunks.find(c => c.articleType === 'playbook');
+  if (playbookChunk && playbookChunk.articleContent) {
+    try {
+      const playbookContent = JSON.parse(playbookChunk.articleContent);
+      if (playbookContent.intent && playbookContent.steps) {
+        const firstStep = playbookContent.steps[0];
+        if (firstStep) {
+          await adapters.persistAssistantMessage({
+            conversationId: conversation.id,
+            hubId: conversation.hubId,
+            text: `OK, I can help with that. Here is the first step: ${firstStep.description}`,
+            meta: { playbook: playbookContent.intent, step: 0, fromPlaybook: true }
+          });
+          await adapters.updateConversation({
+            conversationId: conversation.id,
+            hubId: conversation.hubId,
+            patch: {
+              meta: {
+                ...conversation.meta,
+                activePlaybook: playbookContent.intent,
+                currentStep: 0,
+              }
+            }
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to parse or execute playbook", e);
+    }
+  }
+
 
   // ---- HIGH CONFIDENCE ANSWER ----
   if (topScore >= 0.55) {

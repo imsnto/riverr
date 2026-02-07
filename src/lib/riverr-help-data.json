@@ -1,11 +1,9 @@
-
-
 {
   "helpCenters": [
     {
       "id": "hc_riverr_en",
       "name": "Riverr Help Center (EN)",
-      "hubId": "your_hub_id"
+      "hubId": "hub-1"
     }
   ],
   "collections": [
@@ -13,7 +11,7 @@
       "id": "folder_1",
       "name": "Getting Started",
       "description": "Guides for new users.",
-      "hubId": "your_hub_id",
+      "hubId": "hub-1",
       "parentId": null,
       "helpCenterIds": ["hc_riverr_en"]
     },
@@ -21,7 +19,7 @@
       "id": "folder_2",
       "name": "Advanced Features",
       "description": "In-depth guides for power users.",
-      "hubId": "your_hub_id",
+      "hubId": "hub-1",
       "parentId": "folder_1",
       "helpCenterIds": ["hc_riverr_en"]
     }
@@ -34,8 +32,8 @@
       "status": "published",
       "folderId": "folder_1",
       "helpCenterIds": ["hc_riverr_en"],
-      "hubId": "your_hub_id",
-      "authorId": "REPLACE_WITH_AN_AUTHOR_USER_ID",
+      "hubId": "hub-1",
+      "authorId": "user-1",
       "createdAt": "2023-10-27T10:00:00Z",
       "updatedAt": "2023-10-27T10:00:00Z",
       "type": "article",
@@ -49,8 +47,8 @@
       "status": "published",
       "folderId": "folder_2",
       "helpCenterIds": ["hc_riverr_en"],
-      "hubId": "your_hub_id",
-      "authorId": "REPLACE_WITH_AN_AUTHOR_USER_ID",
+      "hubId": "hub-1",
+      "authorId": "user-1",
       "createdAt": "2023-10-27T11:00:00Z",
       "updatedAt": "2023-10-27T11:00:00Z",
       "type": "article",
@@ -64,8 +62,8 @@
       "status": "published",
       "folderId": "folder_1",
       "helpCenterIds": ["hc_riverr_en"],
-      "hubId": "your_hub_id",
-      "authorId": "REPLACE_WITH_AN_AUTHOR_USER_ID",
+      "hubId": "hub-1",
+      "authorId": "user-1",
       "createdAt": "2023-10-28T12:00:00Z",
       "updatedAt": "2023-10-28T12:00:00Z",
       "type": "playbook",
@@ -74,4 +72,3 @@
     }
   ]
 }
-

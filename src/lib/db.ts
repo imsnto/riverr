@@ -73,6 +73,8 @@ import {
   Deal,
   DealAutomationRule,
   EscalationIntakeRule,
+  conversations,
+  chatMessages,
 } from "./data";
 import { FirestorePermissionError } from "./errors";
 import { errorEmitter } from "./error-emitter";
@@ -133,6 +135,27 @@ export const seedDatabase = async () => {
     chatMessages.forEach((msg) => {
       const { id, ...msgData } = msg;
       batch.set(doc(db, "chat_messages", id), msgData);
+    });
+
+    // Also seed help data if it's a completely fresh DB
+    const helpData = JSON.parse(JSON.stringify(seedData));
+    helpData.helpCenters.forEach((hc: any) => {
+        if (hc.id) {
+            const { id, ...data } = hc;
+            batch.set(doc(db, "help_centers", id), data);
+        }
+    });
+    helpData.collections.forEach((coll: any) => {
+        if (coll.id) {
+            const { id, ...data } = coll;
+            batch.set(doc(db, "help_center_collections", id), data);
+        }
+    });
+    helpData.articles.forEach((art: any) => {
+        if (art.id) {
+            const { id, ...data } = art;
+            batch.set(doc(db, "help_center_articles", id), data);
+        }
     });
 
     await batch.commit();
@@ -1554,5 +1577,3 @@ export const updateHelpCenterContent = async (
 
   await batch.commit();
 }
-
-    
