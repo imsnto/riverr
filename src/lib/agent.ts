@@ -31,6 +31,23 @@ export interface BotConfig {
   forceImmediateEscalationOnUpset?: boolean; // default false (recommend: offer first)
 }
 
+interface PlaybookStep {
+  step: string;
+  description: string;
+}
+
+interface PlaybookContent {
+  intent: string;
+  description: string;
+  steps: PlaybookStep[];
+}
+
+interface ActivePlaybookInfo {
+  intent: string;
+  content: PlaybookContent;
+  currentStep: number;
+}
+
 export type Conversation = ImportedConversation & {
   // These may or may not exist in your current model. We treat them as optional.
   state?: string | null;
@@ -54,7 +71,11 @@ export type Conversation = ImportedConversation & {
     reason?: string;
     offeredAt?: string; // ISO
   } | null;
-  meta?: any;
+  meta?: {
+    attemptCount?: number;
+    activePlaybook?: ActivePlaybookInfo;
+    [key: string]: any;
+  };
 };
 
 export interface IncomingMessage {
@@ -283,6 +304,74 @@ export async function handleIncomingMessage(args: {
 
   if (humanAssigned) return;
 
+  // ---- PLAYBOOK CONTINUATION LOGIC ----
+  const activePlaybookInfo = conversation.meta?.activePlaybook;
+  if (activePlaybookInfo && activePlaybookInfo.content) {
+    const playbookContent = activePlaybookInfo.content;
+    const currentStepIndex = activePlaybookInfo.currentStep;
+    const userMessage = normalize(text);
+
+    // Simple confirmation keywords
+    const confirmationKeywords = ['ok', 'done', 'next', 'yes', 'yep', 'alright'];
+
+    if (confirmationKeywords.includes(userMessage)) {
+      const nextStepIndex = currentStepIndex + 1;
+      if (nextStepIndex < playbookContent.steps.length) {
+        const nextStep = playbookContent.steps[nextStepIndex];
+        await adapters.persistAssistantMessage({
+          conversationId: conversation.id,
+          hubId: conversation.hubId,
+          text: `Great. The next step is: ${nextStep.description}`,
+          meta: { playbook: playbookContent.intent, step: nextStepIndex, fromPlaybook: true }
+        });
+
+        await adapters.updateConversation({
+          conversationId: conversation.id,
+          hubId: conversation.hubId,
+          patch: {
+            meta: {
+              ...conversation.meta,
+              activePlaybook: {
+                ...activePlaybookInfo,
+                currentStep: nextStepIndex,
+              }
+            }
+          }
+        });
+        return; // End execution here, we've handled the playbook step
+      } else {
+        // Playbook finished
+        await adapters.persistAssistantMessage({
+          conversationId: conversation.id,
+          hubId: conversation.hubId,
+          text: `Awesome! You've completed all the steps. Is there anything else I can help with?`,
+          meta: { playbook: playbookContent.intent, step: 'completed' }
+        });
+
+        // Clear the active playbook from conversation meta
+        const newMeta = { ...conversation.meta };
+        delete newMeta.activePlaybook;
+        await adapters.updateConversation({
+          conversationId: conversation.id,
+          hubId: conversation.hubId,
+          patch: { meta: newMeta }
+        });
+        return;
+      }
+    } else {
+        // User said something else, so let's break out of the playbook
+        const newMeta = { ...conversation.meta };
+        delete newMeta.activePlaybook;
+        await adapters.updateConversation({
+          conversationId: conversation.id,
+          hubId: conversation.hubId,
+          patch: { meta: newMeta }
+        });
+        // Let the rest of the agent logic handle the new query
+    }
+  }
+
+
   const intent = inferIntent(text);
 
   // ---- ATTEMPT COUNTING (Fin-style) ----
@@ -352,8 +441,11 @@ export async function handleIncomingMessage(args: {
             patch: {
               meta: {
                 ...conversation.meta,
-                activePlaybook: playbookContent.intent,
-                currentStep: 0,
+                activePlaybook: {
+                  intent: playbookContent.intent,
+                  content: playbookContent,
+                  currentStep: 0,
+                }
               }
             }
           });
