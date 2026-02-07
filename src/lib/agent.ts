@@ -1,3 +1,4 @@
+
 /**
  * agent.ts (FIXED DROP-IN)
  *
@@ -73,6 +74,7 @@ export type Conversation = ImportedConversation & {
   } | null;
   meta?: {
     attemptCount?: number;
+    intentHistory?: Intent[];
     activePlaybook?: ActivePlaybookInfo;
     [key: string]: any;
   };
@@ -374,15 +376,16 @@ export async function handleIncomingMessage(args: {
 
   const intent = inferIntent(text);
 
-  // ---- ATTEMPT COUNTING (Fin-style) ----
+  // ---- ATTEMPT & INTENT HISTORY ----
   const attemptCount = (conversation.meta?.attemptCount ?? 0) + 1;
+  const intentHistory = [...(conversation.meta?.intentHistory ?? []), intent];
 
   await adapters.updateConversation({
     conversationId: conversation.id,
     hubId: conversation.hubId,
     patch: {
       lastIntent: intent,
-      meta: { ...(conversation.meta ?? {}), attemptCount },
+      meta: { ...(conversation.meta ?? {}), attemptCount, intentHistory },
     },
   });
 
@@ -396,15 +399,21 @@ export async function handleIncomingMessage(args: {
     });
     return;
   }
-
-  // ---- BILLING LOGIC (FIN-STYLE, NOT NUCLEAR) ----
-  if (intent === "billing") {
-    if (isHardBilling(text)) {
-      await offerHuman(adapters, conversation, botName, "Billing issue");
-      return;
-    }
-    // Otherwise: answer from docs like normal
+  
+  // ---- IMMEDIATE ESCALATION TRIGGERS ----
+  if (intent === 'human_request') {
+    await offerHuman(adapters, conversation, botName, "User requested a human");
+    return;
   }
+  if (intent === 'upset') {
+      await offerHuman(adapters, conversation, botName, "User seems upset");
+      return;
+  }
+  if (intent === "billing" && isHardBilling(text)) {
+    await offerHuman(adapters, conversation, botName, "Sensitive billing issue");
+    return;
+  }
+
 
   // ---- SALES MODE DETECTION ----
   const salesMode = looksLikeSales(text);
@@ -477,19 +486,31 @@ export async function handleIncomingMessage(args: {
     return;
   }
 
-  // ---- MED CONFIDENCE → PROBE ----
+  // ---- REASONING ON FAILURE ----
+  // Check for repetitive, failing intents
+  const lastTwoIntents = intentHistory.slice(-2);
+  if (
+      lastTwoIntents.length === 2 &&
+      lastTwoIntents[0] !== 'greeting' &&
+      lastTwoIntents[0] === lastTwoIntents[1]
+  ) {
+      await offerHuman(adapters, conversation, botName, "AI unable to resolve repeated query");
+      return;
+  }
+
+  // ---- IF NO REASON TO ESCALATE, PROBE ----
   if (attemptCount < 3) {
     await adapters.persistAssistantMessage({
       conversationId: conversation.id,
       hubId: conversation.hubId,
       text: finProbe(botName, intent),
-      meta: { intent, attemptCount },
+      meta: { intent, attemptCount, intentHistory },
     });
     return;
   }
 
-  // ---- THIRD MISS → OFFER HUMAN (NOT FORCE) ----
-  await offerHuman(adapters, conversation, botName, "Needs clarification");
+  // ---- LAST RESORT: OFFER HUMAN ON 3RD TOTAL MISS ----
+  await offerHuman(adapters, conversation, botName, "Needs clarification after multiple attempts");
 }
 
 function finAnswerFromDocs(args: {
