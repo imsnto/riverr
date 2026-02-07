@@ -107,6 +107,7 @@ export default function HelpCenterArticleList({
       <TableBody>
         {items.map(item => {
           const type = getItemType(item);
+          const name = type === 'collection' ? item.name : ((item as HelpCenterArticle).title || "Untitled Article");
           return (
             <TableRow key={item.id}>
               <TableCell>
@@ -114,7 +115,7 @@ export default function HelpCenterArticleList({
               </TableCell>
               <TableCell>
                 <Button variant="link" className="p-0 h-auto font-semibold" onClick={() => onSelectItem(item.id, type)}>
-                  {type === 'collection' ? item.name : (item as HelpCenterArticle).title}
+                  {name}
                 </Button>
               </TableCell>
               <TableCell>{renderType(item)}</TableCell>
