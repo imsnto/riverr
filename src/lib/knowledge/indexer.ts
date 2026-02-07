@@ -1,7 +1,6 @@
 
 import type { Firestore } from "firebase-admin/firestore";
 import { chunkArticleHtml, estimateTokens } from "./chunking";
-import type { HelpCenterChunk } from "./types";
 import { getTypesenseAdmin } from '@/lib/typesense';
 
 const typesense = getTypesenseAdmin();
@@ -57,7 +56,7 @@ export async function indexHelpCenterArticleToChunks(args: {
 
 
   // Prepare chunks for Typesense
-  const chunks: Omit<HelpCenterChunk, 'id'> & { id: string }[] = specs.map((c) => {
+  const chunks = specs.map((c) => {
     const anchor =
       c.headingPath.length
         ? safeSlug(c.headingPath.join("-")) + `-${c.chunkIndex}`
@@ -65,6 +64,7 @@ export async function indexHelpCenterArticleToChunks(args: {
 
     return {
       id: `${articleId}__${c.chunkIndex}`,
+      type: 'doc', // Add type for unified memory
       spaceId,
       hubId,
       helpCenterIds,
@@ -92,7 +92,7 @@ export async function indexHelpCenterArticleToChunks(args: {
   if (chunks.length > 0) {
     try {
       // Using 'upsert' action and deterministic IDs handles cleanup of old/stale chunks automatically.
-      await typesense.collections('bii_help_chunks').documents().import(chunks, { action: 'upsert' });
+      await typesense.collections('memory_nodes').documents().import(chunks, { action: 'upsert' });
     } catch (e) {
       console.error("Failed to index chunks in Typesense:", e);
       // Depending on requirements, you might want to throw here to fail the reindex job.

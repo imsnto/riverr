@@ -9,31 +9,32 @@ const REINDEX_SECRET = process.env.ADMIN_REINDEX_SECRET;
 
 const PUBLIC_HELP_BASE_URL = process.env.PUBLIC_HELP_BASE_URL || "https://6000-firebase-studio-1753688090358.cluster-ys234awlzbhwoxmkkse6qo3fz6.cloudworkstations.dev";
 
-const typesenseChunkSchema = {
-  "name": "bii_help_chunks",
+const typesenseMemoryNodeSchema = {
+  "name": "memory_nodes",
   "fields": [
     { "name": "id", "type": "string" },
+    { "name": "type", "type": "string", "facet": true },
     { "name": "spaceId", "type": "string", "facet": true },
     { "name": "hubId", "type": "string", "optional": true },
-    { "name": "helpCenterIds", "type": "string[]", "facet": true },
-    { "name": "articleId", "type": "string", "facet": true },
-    { "name": "articleTitle", "type": "string" },
+    { "name": "helpCenterIds", "type": "string[]", "facet": true, "optional": true },
+    { "name": "articleId", "type": "string", "facet": true, "optional": true },
+    { "name": "articleTitle", "type": "string", "optional": true },
     { "name": "articleSubtitle", "type": "string", "optional": true },
-    { "name": "articleType", "type": "string", "facet": true },
+    { "name": "articleType", "type": "string", "facet": true, "optional": true },
     { "name": "language", "type": "string", "facet": true, "default": "en" },
-    { "name": "chunkIndex", "type": "int32" },
+    { "name": "chunkIndex", "type": "int32", "optional": true },
     { "name": "headingPath", "type": "string[]", "optional": true },
     { "name": "anchor", "type": "string", "optional": true },
     { "name": "text", "type": "string" },
     { "name": "content", "type": "string", "optional": true },
-    { "name": "charCount", "type": "int32" },
-    { "name": "tokenEstimate", "type": "int32" },
-    { "name": "url", "type": "string" },
-    { "name": "status", "type": "string", "facet": true },
-    { "name": "isPublic", "type": "bool", "facet": true },
+    { "name": "charCount", "type": "int32", "optional": true },
+    { "name": "tokenEstimate", "type": "int32", "optional": true },
+    { "name": "url", "type": "string", "optional": true },
+    { "name": "status", "type": "string", "facet": true, "optional": true },
+    { "name": "isPublic", "type": "bool", "facet": true, "optional": true },
     { "name": "allowedUserIds", "type": "string[]", "optional": true, "facet": true },
-    { "name": "articleUpdatedAt", "type": "int64" },
-    { "name": "chunkUpdatedAt", "type": "int64" }
+    { "name": "articleUpdatedAt", "type": "int64", "optional": true },
+    { "name": "chunkUpdatedAt", "type": "int64", "optional": true }
   ],
   "default_sorting_field": "chunkUpdatedAt"
 };
@@ -41,11 +42,11 @@ const typesenseChunkSchema = {
 
 async function ensureCollectionExists() {
     try {
-        await typesense.collections('bii_help_chunks').retrieve();
+        await typesense.collections('memory_nodes').retrieve();
     } catch (error: any) {
         if (error.httpStatus === 404) {
-            console.log("Creating Typesense collection: bii_help_chunks");
-            await typesense.collections().create(typesenseChunkSchema as any);
+            console.log("Creating Typesense collection: memory_nodes");
+            await typesense.collections().create(typesenseMemoryNodeSchema as any);
         } else {
             throw error; // Re-throw other errors
         }
@@ -54,7 +55,7 @@ async function ensureCollectionExists() {
 
 async function deleteChunksForArticle(spaceId: string, articleId: string) {
   try {
-    await typesense.collections("bii_help_chunks").documents().delete({
+    await typesense.collections("memory_nodes").documents().delete({
       filter_by: `spaceId:=${spaceId} && articleId:=${articleId}`,
     });
   } catch (error: any) {
@@ -100,7 +101,7 @@ export async function POST(req: Request) {
     const articleRef = adminDB.collection("help_center_articles").doc(articleId);
     const docSnap = await articleRef.get();
 
-    if (!docSnap.exists() || docSnap.data()?.hubId !== hubId) {
+    if (!docSnap.exists || docSnap.data()?.hubId !== hubId) {
       return NextResponse.json(
         { ok: false, error: `Article ${articleId} not found in hub ${hubId}.` },
         { status: 404 }

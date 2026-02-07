@@ -31,23 +31,24 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
         'sort_by': '_text_match:desc,chunkUpdatedAt:desc'
     };
     
-    const hubFilter = `hubId:=${hubId} && helpCenterIds:=[${allowedHelpCenterIds.join(',')}] && status:='published'`;
+    // Filter by type: 'doc' to only search knowledge base articles for now
+    const baseFilter = `hubId:=${hubId} && type:='doc' && helpCenterIds:=[${allowedHelpCenterIds.join(',')}] && status:='published'`;
 
     // Build search for public chunks
-    const publicFilter = `${hubFilter} && isPublic:=true`;
+    const publicFilter = `${baseFilter} && isPublic:=true`;
     const publicSearchRequest = { ...searchParameters, filter_by: publicFilter };
     
     // Build search for private chunks if user is logged in
     let privateSearchRequest = null;
     if (userId) {
-        const privateFilter = `${hubFilter} && isPublic:=false && allowedUserIds:=[${userId}]`;
+        const privateFilter = `${baseFilter} && isPublic:=false && allowedUserIds:=[${userId}]`;
         privateSearchRequest = { ...searchParameters, filter_by: privateFilter };
     }
     
     // Execute searches in parallel
     const [publicResults, privateResults] = await Promise.all([
-        typesense.collections('bii_help_chunks').documents().search(publicSearchRequest),
-        privateSearchRequest ? typesense.collections('bii_help_chunks').documents().search(privateSearchRequest) : Promise.resolve(null)
+        typesense.collections('memory_nodes').documents().search(publicSearchRequest),
+        privateSearchRequest ? typesense.collections('memory_nodes').documents().search(privateSearchRequest) : Promise.resolve(null)
     ]);
     
     // Merge and de-duplicate results
@@ -116,7 +117,7 @@ const PUBLIC_HELP_BASE_URL = process.env.PUBLIC_HELP_BASE_URL || "https://6000-f
 async function deleteChunksForArticle(articleId: string) {
   const typesenseAdmin = getTypesenseAdmin();
   try {
-    await typesenseAdmin.collections('bii_help_chunks').documents().delete({
+    await typesenseAdmin.collections('memory_nodes').documents().delete({
       filter_by: `articleId:=${articleId}`,
     });
   } catch (error: any) {
