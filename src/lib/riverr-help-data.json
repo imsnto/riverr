@@ -1,4 +1,5 @@
 
+
 {
   "helpCenters": [
     {
@@ -37,6 +38,7 @@
       "authorId": "REPLACE_WITH_AN_AUTHOR_USER_ID",
       "createdAt": "2023-10-27T10:00:00Z",
       "updatedAt": "2023-10-27T10:00:00Z",
+      "type": "article",
       "isPublic": true,
       "allowedUserIds": []
     },
@@ -51,8 +53,25 @@
       "authorId": "REPLACE_WITH_AN_AUTHOR_USER_ID",
       "createdAt": "2023-10-27T11:00:00Z",
       "updatedAt": "2023-10-27T11:00:00Z",
+      "type": "article",
+      "isPublic": true,
+      "allowedUserIds": []
+    },
+    {
+      "id": "article_3_playbook",
+      "title": "Playbook: Invite a New User",
+      "content": "{\"intent\":\"user.invite\",\"description\":\"A playbook for inviting a new user to a space.\",\"preconditions\":[\"user_is_space_admin\"],\"steps\":[{\"step\":\"open_settings\",\"description\":\"Navigate to the Settings page.\"},{\"step\":\"go_to_users_tab\",\"description\":\"Select the 'Users & Permissions' tab.\"},{\"step\":\"click_invite_user\",\"description\":\"Click the 'Invite User' button.\"},{\"step\":\"fill_invite_form\",\"description\":\"Fill out the user's email, select their role and spaces.\"},{\"step\":\"send_invite\",\"description\":\"Click 'Invite User' to send the invitation.\"}],\"fallbacks\":[{\"case\":\"user_not_admin\",\"response\":\"It looks like you don't have admin permissions to invite users. You should ask a space administrator to invite them for you.\"}],\"escalation_after\":1}",
+      "status": "published",
+      "folderId": "folder_1",
+      "helpCenterIds": ["hc_riverr_en"],
+      "hubId": "your_hub_id",
+      "authorId": "REPLACE_WITH_AN_AUTHOR_USER_ID",
+      "createdAt": "2023-10-28T12:00:00Z",
+      "updatedAt": "2023-10-28T12:00:00Z",
+      "type": "playbook",
       "isPublic": true,
       "allowedUserIds": []
     }
   ]
 }
+

@@ -1,4 +1,5 @@
 
+
 // src/lib/data.ts
 
 // --- Core Entities ---
@@ -520,7 +521,7 @@ export interface HelpCenterArticle {
   status: 'draft' | 'published';
   folderId: string | null;
   helpCenterIds?: string[];
-  type: 'article' | 'snippet' | 'pdf';
+  type: 'article' | 'snippet' | 'pdf' | 'playbook';
   authorId: string;
   createdAt: string; // ISO String
   updatedAt: string; // ISO String

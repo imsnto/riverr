@@ -3,7 +3,7 @@
 import { HelpCenter, HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Checkbox } from '../ui/checkbox';
-import { Folder, FileText, Lock, Globe } from 'lucide-react';
+import { Folder, FileText, Lock, Globe, GitBranch } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '../ui/button';
@@ -45,6 +45,7 @@ export default function HelpCenterArticleList({
     switch(article.type) {
         case 'pdf': return <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /> PDF</div>;
         case 'snippet': return <Badge variant="outline">Snippet</Badge>;
+        case 'playbook': return <div className="flex items-center gap-2"><GitBranch className="h-4 w-4 text-muted-foreground" /> Playbook</div>;
         case 'article': 
         default:
             return <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /> Article</div>
