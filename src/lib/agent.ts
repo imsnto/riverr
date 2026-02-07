@@ -1,4 +1,5 @@
 
+
 /**
  * agent.ts (FIXED DROP-IN)
  *
@@ -197,7 +198,8 @@ const HUMAN_REQUEST_KEYWORDS = [
   "team member",
 ];
 
-const DECLINE_ESCALATION = ["no", "nope", "don't", "do not", "not yet", "stop", "just answer", "i said no", "answer me"];
+const DECLINE_ESCALATION = ["no", "nope", "not yet", "stop", "just answer", "i said no", "answer me", "it's ok", "that's ok", "im good", "i'm good"];
+const ACCEPT_ESCALATION = ["yes", "ok", "please", "sure", "that would be great", "yep", "alright"];
 
 function normalize(s: string) {
   return (s ?? "").trim().toLowerCase();
@@ -305,6 +307,45 @@ export async function handleIncomingMessage(args: {
     Boolean(conversation.assignedAgentId);
 
   if (humanAssigned) return;
+
+  // ---- HANDLE RESPONSE TO HUMAN HANDOFF OFFER ----
+  if (conversation.handoff?.status === "offered") {
+    const isAffirmative = containsAny(text, ACCEPT_ESCALATION);
+    const isNegative = containsAny(text, DECLINE_ESCALATION);
+
+    if (isAffirmative) {
+      await adapters.escalateToHuman({
+        conversationId: conversation.id,
+        hubId: conversation.hubId,
+        reason: conversation.handoff.reason || "User accepted handoff offer.",
+      });
+      await adapters.persistAssistantMessage({
+        conversationId: conversation.id,
+        hubId: conversation.hubId,
+        text: `Ok, I'll loop in a team member to take over from here. They'll be with you shortly.`,
+        meta: { handoff: "completed" },
+      });
+      return; // Stop processing
+    }
+
+    if (isNegative) {
+      await adapters.updateConversation({
+        conversationId: conversation.id,
+        hubId: conversation.hubId,
+        patch: {
+          handoff: { status: "declined", reason: conversation.handoff.reason },
+        },
+      });
+      await adapters.persistAssistantMessage({
+        conversationId: conversation.id,
+        hubId: conversation.hubId,
+        text: `Ok, sounds good. How else can I help?`,
+        meta: { handoff: "declined" },
+      });
+      return; // Stop processing and wait for next user message.
+    }
+  }
+
 
   // ---- PLAYBOOK CONTINUATION LOGIC ----
   const activePlaybookInfo = conversation.meta?.activePlaybook;
