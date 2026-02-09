@@ -753,9 +753,9 @@ export interface SalesMessagePatternNode {
   pattern: { // The signature
     purpose: 'cold_outreach'|'followup_1'|'followup_2'|'breakup';
     bodyStructure: 'pain->proof->cta'|'proof->pain->cta'|'value_drop->cta'|'question_only'|'other';
-    ctaStyle: 'question'|'calendar_link'|'value_offer'|'soft_close'|'other';
+    ctaStyle: 'question'|'calendar_link'|'value_offer'|'soft_close';
     openerStyle: 'personal'|'pain'|'compliment'|'reference'|'straight_ask'|'other';
-    toneTags: string[];
+    toneTagsSorted: string[];
     lengthBucket: 'short'|'medium'|'long';
   };
   performance: {

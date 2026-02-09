@@ -4,13 +4,14 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as postmark from 'postmark';
 import { gmailAdapter } from '../../src/lib/brain/adapters/gmail';
-import { RawConversationNode, SalesPersonaSegmentNode, SupportIntentNode } from '../../src/lib/data';
+import { RawConversationNode, SalesMessagePatternNode, SalesPersonaSegmentNode, SupportIntentNode } from '../../src/lib/data';
 import { genkit, type GenkitError } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { distillSupportIntent } from '../../src/ai/flows/distill-support-intent';
 import { extractSalesConversation } from '../../src/ai/flows/distill-sales-intelligence';
 import { getTypesenseAdmin } from '../../src/lib/typesense';
 import { summarizeSalesCluster } from '../../src/ai/flows/summarize-sales-cluster';
+import { createHash } from 'crypto';
 
 admin.initializeApp();
 
@@ -18,6 +19,42 @@ admin.initializeApp();
 const ai = genkit({
   plugins: [googleAI()],
 });
+
+// --- Helper Functions for Step 5C ---
+function classifyCTA(cta: string): 'question'|'calendar_link'|'value_offer'|'soft_close'|'hard_close'|'other' {
+    const c = cta.toLowerCase();
+    if (c.includes('book.com') || c.includes('calendar.com') || c.includes('schedule a call')) return 'calendar_link';
+    if (c.endsWith('?')) return 'question';
+    if (c.includes('check out') || c.includes('learn more') || c.includes('download')) return 'value_offer';
+    if (c.includes('let me know your thoughts') || c.includes('worth exploring?')) return 'soft_close';
+    if (c.includes('sign up now') || c.includes('buy now')) return 'hard_close';
+    return 'other';
+}
+
+function classifyOpener(opener: string): 'personal'|'pain'|'compliment'|'reference'|'straight_ask'|'other' {
+    const o = opener.toLowerCase();
+    if (o.includes('saw your post') || o.includes('noticed your background')) return 'personal';
+    if (o.includes('congrats on') || o.includes('impressed by')) return 'compliment';
+    if (o.includes('spoke with') || o.includes('was referred by')) return 'reference';
+    if (o.includes('struggling with') || o.includes('problem of')) return 'pain';
+    if (o.includes('are you responsible for') || o.includes('quick question about')) return 'straight_ask';
+    return 'other';
+}
+
+function generatePatternKey(message: any): string {
+    const signature = {
+        purpose: message.purpose,
+        bodyStructure: message.bodyStructure,
+        ctaStyle: classifyCTA(message.cta),
+        openerStyle: classifyOpener(message.opener),
+        toneTagsSorted: [...message.toneTags].sort(),
+        lengthBucket: message.lengthBucket
+    };
+    const hash = createHash('sha256');
+    hash.update(JSON.stringify(signature));
+    return hash.digest('hex').substring(0, 16);
+}
+
 
 // ✅ Use your verified Postmark info
 const POSTMARK_API_KEY = 'eed163d1-398a-40f8-b555-8ec1c5a53ae5';
@@ -291,6 +328,47 @@ export const processBrainJob = functions.firestore
                     
                     console.log(`Saved and embedded sales extraction for node ${rawDoc.id}.`);
                     
+                    // --- STEP 5C: Process outbound messages for pattern analysis ---
+                    for (const outboundMsg of extraction.outboundMessages) {
+                        const patternKey = generatePatternKey(outboundMsg);
+                        const patternRef = admin.firestore().collection('memory_nodes').doc(`pattern-${patternKey}`);
+
+                        await admin.firestore().runTransaction(async (transaction) => {
+                            const patternDoc = await transaction.get(patternRef);
+
+                            if (!patternDoc.exists) {
+                                const newPatternNode: Omit<SalesMessagePatternNode, 'id'> = {
+                                    type: 'sales_message_pattern',
+                                    spaceId: node.spaceId,
+                                    patternKey: patternKey,
+                                    pattern: {
+                                        purpose: outboundMsg.purpose,
+                                        bodyStructure: outboundMsg.bodyStructure,
+                                        ctaStyle: classifyCTA(outboundMsg.cta),
+                                        openerStyle: classifyOpener(outboundMsg.opener),
+                                        toneTagsSorted: [...outboundMsg.toneTags].sort(),
+                                        lengthBucket: outboundMsg.lengthBucket,
+                                    },
+                                    performance: {
+                                        sampleSize: 1,
+                                    },
+                                    learnedFromNodeIds: [rawDoc.id],
+                                    confidence: 0.5,
+                                    freshnessHalfLifeDays: 90,
+                                    visibility: 'sales_only',
+                                };
+                                transaction.set(patternRef, newPatternNode);
+                            } else {
+                                transaction.update(patternRef, {
+                                    'performance.sampleSize': admin.firestore.FieldValue.increment(1),
+                                    'learnedFromNodeIds': admin.firestore.FieldValue.arrayUnion(rawDoc.id),
+                                });
+                            }
+                        });
+                    }
+                    console.log(`Processed ${extraction.outboundMessages.length} outbound messages for pattern analysis.`);
+
+
                     // --- INDEX IN TYPESENSE ---
                     const typesenseClient = getTypesenseAdmin();
                     try {
