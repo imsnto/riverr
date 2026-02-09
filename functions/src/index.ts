@@ -150,6 +150,7 @@ export const processBrainJob = functions.runWith({ memory: '1GB', timeoutSeconds
                 const finalNode: Omit<RawConversationNode, 'id'> = {
                     ...(rawNode as Omit<RawConversationNode, 'id'>),
                     spaceId: job.params.spaceId,
+                    channel: job.params.channel,
                     embedding: embedding,
                     embeddingModel: embeddingModel,
                     embeddedAt: embeddedAt,
@@ -658,6 +659,7 @@ export const processBrainJob = functions.runWith({ memory: '1GB', timeoutSeconds
       });
     }
   });
+
 
 
 
