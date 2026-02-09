@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import * as db from '@/lib/db';
-import { Loader2, Bot, Users, BrainCircuit, Lightbulb, Search } from 'lucide-react';
-import { RawConversationNode, SalesPersonaSegmentNode, SupportIntentNode } from '@/lib/data';
+import { Loader2, Bot, Users, BrainCircuit, Lightbulb, Search, MessageCircle } from 'lucide-react';
+import { RawConversationNode, SalesMessagePatternNode, SalesPersonaSegmentNode, SupportIntentNode } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
@@ -205,6 +205,31 @@ function SalesPersonaSegmentNodeCard({ node }: { node: SalesPersonaSegmentNode }
     );
 }
 
+function SalesMessagePatternNodeCard({ node }: { node: SalesMessagePatternNode }) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    Message Pattern
+                </CardTitle>
+                 <CardDescription>A unique messaging formula identified by the brain.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">Purpose: {node.pattern.purpose}</Badge>
+                    <Badge variant="outline">Structure: {node.pattern.bodyStructure}</Badge>
+                    <Badge variant="outline">Opener: {node.pattern.openerStyle}</Badge>
+                    <Badge variant="outline">CTA: {node.pattern.ctaStyle}</Badge>
+                    <Badge variant="outline">Length: {node.pattern.lengthBucket}</Badge>
+                    {node.pattern.toneTagsSorted.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                 </div>
+                 <div className="mt-4 text-sm font-medium">Sample Size: <span className="font-bold">{node.performance.sampleSize}</span></div>
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function BrainSettings() {
     const { toast } = useToast();
     const { activeSpace } = useAuth();
@@ -216,6 +241,7 @@ export default function BrainSettings() {
     const [supportIntents, setSupportIntents] = useState<SupportIntentNode[]>([]);
     const [salesExtractions, setSalesExtractions] = useState<SalesExtractionResultWithScore[]>([]);
     const [salesPersonas, setSalesPersonas] = useState<SalesPersonaSegmentNode[]>([]);
+    const [salesPatterns, setSalesPatterns] = useState<SalesMessagePatternNode[]>([]);
     const [isSearching, setIsSearching] = useState(false);
 
 
@@ -223,19 +249,23 @@ export default function BrainSettings() {
         const fetchNodes = async () => {
             if (!activeSpace) return;
             setIsLoadingNodes(true);
-            const [rawNodes, intentNodes, initialSalesExtractions, personaNodes] = await Promise.all([
+            const [rawNodes, intentNodes, initialSalesExtractions, personaNodes, patternNodes] = await Promise.all([
                 db.getMemoryNodes('raw_conversation'),
                 db.getMemoryNodes('support_intent'),
                 db.getSalesExtractions(activeSpace.id),
                 db.getMemoryNodes('sales_persona_segment'),
+                db.getMemoryNodes('sales_message_pattern'),
             ]);
             const spaceRawNodes = rawNodes.filter(n => n.spaceId === activeSpace.id);
             const spaceIntentNodes = intentNodes.filter(n => n.spaceId === activeSpace.id);
             const spacePersonaNodes = personaNodes.filter(n => n.spaceId === activeSpace.id);
+            const spacePatternNodes = patternNodes.filter(n => n.spaceId === activeSpace.id);
+
             setRawConversations(spaceRawNodes);
             setSupportIntents(spaceIntentNodes);
             setSalesExtractions(initialSalesExtractions as SalesExtractionResultWithScore[]);
             setSalesPersonas(spacePersonaNodes);
+            setSalesPatterns(spacePatternNodes);
             setIsLoadingNodes(false);
         };
         fetchNodes();
@@ -335,7 +365,7 @@ export default function BrainSettings() {
                 description: `Started persona clustering job. This may take a few minutes.`,
             });
         } catch (error) {
-            toast({ variant: 'destructive', title: 'Failed to start job' });
+            toast({ variant: "destructive", title: 'Failed to start job' });
         } finally {
             setIsLoadingClustering(false);
         }
@@ -482,6 +512,32 @@ export default function BrainSettings() {
                                 <Users className="mx-auto h-12 w-12 text-muted-foreground" />
                                 <h3 className="mt-2 text-sm font-semibold text-foreground">No Personas Found</h3>
                                 <p className="mt-1 text-sm text-muted-foreground">Run a clustering job to identify customer personas.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Sales Message Patterns ({salesPatterns.length})</CardTitle>
+                        <CardDescription>
+                            Unique outbound message formulas learned from sales conversations.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoadingNodes ? (
+                            <div className="flex items-center justify-center gap-2 py-8">
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <span className="text-muted-foreground">Loading patterns...</span>
+                            </div>
+                        ) : salesPatterns.length > 0 ? (
+                            <div className="space-y-4">
+                                {salesPatterns.map(node => <SalesMessagePatternNodeCard key={node.id} node={node} />)}
+                            </div>
+                        ) : (
+                             <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                                <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground" />
+                                <h3 className="mt-2 text-sm font-semibold text-foreground">No Message Patterns Found</h3>
+                                <p className="mt-1 text-sm text-muted-foreground">Run a sales distillation job to identify message patterns.</p>
                             </div>
                         )}
                     </CardContent>
