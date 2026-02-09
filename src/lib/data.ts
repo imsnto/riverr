@@ -1,4 +1,5 @@
 
+
 // src/lib/data.ts
 
 // --- Core Entities ---
@@ -686,17 +687,18 @@ export interface RawConversationNode {
   sources: { sourceType: string; sourceId: string; sourceUrl?: string }[];
   normalized: { cleanedText: string; lastAgentOrRepMessage?: string };
   textForEmbedding: string;
-  embedding?: any; // To be defined based on vector store
+  embedding?: number[];
+  embeddingModel?: string;
+  embeddedAt?: string;
 }
 
 export interface RawInteractionNode {
   id: string;
   spaceId: string;
-  hubId: string;
   type: 'raw_interaction';
   sourceType: 'web'|'crm'|'product'|string;
   channel: 'sales'|'support';
-  subjectId: string; // `lead:{id}` or `customer:{id}`
+  subjectId: 'lead:{id}'|'customer:{id}';
   eventType: string; // 'pricing_page_view', 'demo_request'
   occurredAt: string;
   payload: Record<string, any>;
@@ -724,7 +726,6 @@ export interface SupportIntentNode {
 export interface SalesPersonaSegmentNode {
   id: string;
   spaceId: string;
-  hubId: string;
   type: 'sales_persona_segment';
   segmentKey: string;
   summary: string;
@@ -742,7 +743,6 @@ export interface SalesPersonaSegmentNode {
 export interface SalesMessagePatternNode {
   id: string;
   spaceId: string;
-  hubId: string;
   type: 'sales_message_pattern';
   patternKey: string;
   purpose: 'cold_outreach'|'followup_1'|'followup_2'|'breakup';
@@ -757,7 +757,6 @@ export interface SalesMessagePatternNode {
 export interface LeadStateNode {
   id: string; // Corresponds to leadId
   spaceId: string;
-  hubId: string;
   type: 'lead_state';
   leadId: string;
   status: 'never_contacted'|'contacted'|'replied'|'meeting'|'closed';

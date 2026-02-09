@@ -1,4 +1,5 @@
 
+
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as postmark from 'postmark';
@@ -87,10 +88,19 @@ export const processBrainJob = functions.firestore
                 const normalizedThread = gmailAdapter.normalize(rawThread);
                 const rawNode = gmailAdapter.toRawNode(normalizedThread);
 
-                // Add space and hub IDs from the job parameters
+                // --- MOCK EMBEDDING STEP ---
+                // In a real system, this would call an embedding service (e.g., Vertex AI).
+                const mockEmbedding = Array.from({ length: 768 }, () => Math.random() * 2 - 1);
+                const embeddedAt = new Date().toISOString();
+                const embeddingModel = "mock-model-v1";
+                // --- END MOCK ---
+
                 const finalNode: Omit<RawConversationNode, 'id'> = {
                     ...(rawNode as Omit<RawConversationNode, 'id'>),
                     spaceId: job.params.spaceId,
+                    embedding: mockEmbedding,
+                    embeddingModel: embeddingModel,
+                    embeddedAt: embeddedAt,
                 };
                 
                 const nodeRef = admin.firestore().collection('memory_nodes').doc();
@@ -99,7 +109,7 @@ export const processBrainJob = functions.firestore
             }
             
             await batch.commit();
-            console.log(`Ingested ${processedCount} conversation(s).`);
+            console.log(`Ingested and embedded ${processedCount} conversation(s).`);
           }
           break;
         // ... other job types will be added here
