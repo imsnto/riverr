@@ -46,8 +46,36 @@ const typesenseMemoryNodeSchema = {
   "default_sorting_field": "indexedAt"
 };
 
+const typesenseSalesExtractionsSchema = {
+  "name": "sales_extractions",
+  "fields": [
+    { "name": "id", "type": "string" },
+    { "name": "spaceId", "type": "string", "facet": true },
+    { "name": "sourceNodeId", "type": "string" },
+    
+    // The embedding vector for clustering
+    { "name": "embedding", "type": "float[]", "num_dim": 768, "optional": true },
 
-async function ensureCollectionExists() {
+    // Searchable text
+    { "name": "recommendedPersonaClusterText", "type": "string" },
+    { "name": "pains", "type": "string[]", "facet": true, "optional": true },
+    { "name": "objections", "type": "string[]", "facet": true, "optional": true },
+    { "name": "buyingSignals", "type": "string[]", "facet": true, "optional": true },
+    
+    // Filtering fields
+    { "name": "outcome", "type": "string", "facet": true },
+    { "name": "industry", "type": "string", "facet": true, "optional": true },
+    { "name": "role", "type": "string", "facet": true, "optional": true },
+    { "name": "orgSize", "type": "string", "facet": true, "optional": true },
+    
+    // Timestamps
+    { "name": "embeddedAt", "type": "string", "optional": true },
+  ],
+  "default_sorting_field": "embeddedAt"
+};
+
+
+async function ensureMemoryNodeCollectionExists() {
     try {
         await typesense.collections('memory_nodes').retrieve();
     } catch (error: any) {
@@ -59,6 +87,20 @@ async function ensureCollectionExists() {
         }
     }
 }
+
+async function ensureSalesExtractionsCollectionExists() {
+    try {
+        await typesense.collections('sales_extractions').retrieve();
+    } catch (error: any) {
+        if (error.httpStatus === 404) {
+            console.log("Creating Typesense collection: sales_extractions");
+            await typesense.collections().create(typesenseSalesExtractionsSchema as any);
+        } else {
+            throw error;
+        }
+    }
+}
+
 
 async function deleteChunksForArticle(spaceId: string, articleId: string) {
   try {
@@ -85,7 +127,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
   }
 
-  await ensureCollectionExists();
+  await ensureMemoryNodeCollectionExists();
+  await ensureSalesExtractionsCollectionExists();
 
   const body = await req.json().catch(() => ({}));
   const hubId = body.hubId as string | undefined;

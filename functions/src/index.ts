@@ -8,6 +8,7 @@ import { genkit, type GenkitError } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { distillSupportIntent } from '../../src/ai/flows/distill-support-intent';
 import { extractSalesConversation } from '../../src/ai/flows/distill-sales-intelligence';
+import { getTypesenseAdmin } from '../../src/lib/typesense';
 
 admin.initializeApp();
 
@@ -263,12 +264,48 @@ export const processBrainJob = functions.firestore
                         conversationText: node.normalized.cleanedText,
                         participants: node.participants,
                     });
+                    
+                    // --- EMBED PERSONA TEXT ---
+                    const { embedding } = await ai.embed({
+                        model: 'googleai/embedding-004',
+                        content: extraction.recommendedPersonaClusterText,
+                    });
+                    const embeddedAt = new Date().toISOString();
+                    const embeddingModel = "embedding-004";
+                    // --- END EMBEDDING ---
+
+                    const finalExtraction = {
+                        ...extraction,
+                        spaceId: node.spaceId,
+                        sourceNodeId: rawDoc.id,
+                        embedding,
+                        embeddingModel,
+                        embeddedAt
+                    };
 
                     // Save extraction to a separate collection
-                    const extractionRef = admin.firestore().collection('sales_extractions').doc(rawDoc.id);
-                    await extractionRef.set(extraction);
+                    const extractionRef = admin.firestore().collection('sales_extractions').doc();
+                    await extractionRef.set(finalExtraction);
                     
-                    console.log(`Saved sales extraction for node ${rawDoc.id}.`);
+                    console.log(`Saved and embedded sales extraction for node ${rawDoc.id}.`);
+                    
+                    // --- INDEX IN TYPESENSE ---
+                    const typesenseClient = getTypesenseAdmin();
+                    try {
+                        const { leadPersonaHints, ...restOfExtraction } = finalExtraction;
+                        const typesenseDoc = {
+                            id: extractionRef.id,
+                            ...restOfExtraction,
+                            industry: leadPersonaHints.industry,
+                            role: leadPersonaHints.role,
+                            orgSize: leadPersonaHints.orgSize,
+                        };
+                        await typesenseClient.collections('sales_extractions').documents().create(typesenseDoc);
+                        console.log(`Indexed sales extraction ${extractionRef.id} in Typesense.`);
+                    } catch (tsError: any) {
+                        console.error(`Failed to index extraction ${extractionRef.id} in Typesense:`, tsError.importResults?.[0]?.error || tsError);
+                        // We don't fail the whole job for a Typesense error, just log it.
+                    }
 
                     // Mark raw node as processed
                     await rawDoc.ref.update({ processedForSales: true });
