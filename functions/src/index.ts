@@ -508,6 +508,17 @@ export const processBrainJob = functions.firestore
             }
           }
           break;
+        case 'update_lead_states':
+          {
+            console.log(`Starting lead state generation/update for space: ${job.params.spaceId}`);
+            // TODO: 1. Fetch leads from a source (e.g., CRM, DB).
+            // TODO: 2. For each lead, score them based on activity.
+            // TODO: 3. Find matching persona segment via vector search.
+            // TODO: 4. Recommend next best action and message pattern.
+            // TODO: 5. Upsert LeadStateNode.
+            console.log('Lead state generation is not yet implemented.');
+          }
+          break;
         // ... other job types will be added here
         default:
           console.warn(`Unknown job type: ${job.type}`);
@@ -531,5 +542,6 @@ export const processBrainJob = functions.firestore
       });
     }
   });
+
 
 

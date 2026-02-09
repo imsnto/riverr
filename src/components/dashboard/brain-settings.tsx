@@ -258,6 +258,7 @@ export default function BrainSettings() {
     const [salesPersonas, setSalesPersonas] = useState<SalesPersonaSegmentNode[]>([]);
     const [salesPatterns, setSalesPatterns] = useState<SalesMessagePatternNode[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [isGeneratingLeads, setIsLoadingLeads] = useState(false);
 
 
     useEffect(() => {
@@ -386,6 +387,24 @@ export default function BrainSettings() {
         }
     }
 
+    const handleGenerateLeads = async () => {
+        if (!activeSpace) return;
+        setIsLoadingLeads(true);
+        try {
+            const jobId = await db.startBrainJob('update_lead_states', { 
+                spaceId: activeSpace.id,
+            });
+            toast({
+                title: 'Job Started',
+                description: `Started lead generation job. This may take a few minutes.`,
+            });
+        } catch (error) {
+            toast({ variant: "destructive", title: 'Failed to start job' });
+        } finally {
+            setIsLoadingLeads(false);
+        }
+    }
+
 
     return (
         <Tabs defaultValue="support" className="space-y-6">
@@ -501,6 +520,18 @@ export default function BrainSettings() {
                             <Button onClick={handleClusterPersonas} disabled={isClustering}>
                                 {isClustering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Cluster Personas
+                            </Button>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div>
+                                <h3 className="font-semibold">4. Generate Lead Suggestions</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Score leads and generate next-best-action recommendations.
+                                </p>
+                            </div>
+                            <Button onClick={handleGenerateLeads} disabled={isGeneratingLeads}>
+                                {isGeneratingLeads && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Generate Leads
                             </Button>
                         </div>
                     </CardContent>
