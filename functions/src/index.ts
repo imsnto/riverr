@@ -449,6 +449,14 @@ export const processBrainJob = functions.firestore
                     aggregatedBuyingSignals,
                     examplePersonas,
                 });
+                
+                const textForEmbedding = `${summary.segmentKey}: ${summary.summary}. Pains: ${summary.commonPains.join(', ')}. Winning Angles: ${summary.winningAngles.join(', ')}`;
+                const { embedding } = await ai.embed({
+                    model: 'googleai/embedding-004',
+                    content: textForEmbedding,
+                });
+                const embeddedAt = new Date().toISOString();
+                const embeddingModel = "embedding-004";
 
                 // 4. Upsert sales_persona_segment nodes.
                 const segmentQuery = admin.firestore().collection('memory_nodes')
@@ -475,6 +483,10 @@ export const processBrainJob = functions.firestore
                         confidence: 0.75,
                         freshnessHalfLifeDays: 120,
                         visibility: 'sales_only',
+                        embedding,
+                        embeddingModel,
+                        embeddedAt,
+                        textForEmbedding,
                     };
                     await admin.firestore().collection('memory_nodes').add(newSegmentNode);
                     console.log(`Created new persona segment: ${summary.segmentKey}`);
@@ -486,6 +498,10 @@ export const processBrainJob = functions.firestore
                         commonObjections: summary.commonObjections,
                         winningAngles: summary.winningAngles,
                         learnedFromNodeIds: admin.firestore.FieldValue.arrayUnion(...learnedFromNodeIds),
+                        embedding,
+                        embeddingModel,
+                        embeddedAt,
+                        textForEmbedding,
                     });
                     console.log(`Updated existing persona segment: ${summary.segmentKey}`);
                 }
@@ -515,4 +531,5 @@ export const processBrainJob = functions.firestore
       });
     }
   });
+
 

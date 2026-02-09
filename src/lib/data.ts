@@ -743,6 +743,10 @@ export interface SalesPersonaSegmentNode {
   confidence: number;
   freshnessHalfLifeDays: number;
   visibility: 'sales_only';
+  embedding?: number[];
+  embeddingModel?: string;
+  embeddedAt?: string;
+  textForEmbedding?: string;
 }
 
 export interface SalesMessagePatternNode {
@@ -795,4 +799,5 @@ export interface LeadStateNode {
 
 
 export type MemoryNode = RawConversationNode | RawInteractionNode | SupportIntentNode | SalesPersonaSegmentNode | SalesMessagePatternNode | LeadStateNode;
+
 
