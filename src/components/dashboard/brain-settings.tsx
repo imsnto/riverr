@@ -52,6 +52,7 @@ export default function BrainSettings() {
     const { toast } = useToast();
     const { activeSpace } = useAuth();
     const [isLoadingJob, setIsLoadingJob] = useState(false);
+    const [isLoadingDistill, setIsLoadingDistill] = useState(false);
     const [isLoadingNodes, setIsLoadingNodes] = useState(true);
     const [rawConversations, setRawConversations] = useState<RawConversationNode[]>([]);
 
@@ -99,6 +100,36 @@ export default function BrainSettings() {
         }
     };
 
+    const handleDistillIntents = async () => {
+        if (!activeSpace) {
+            toast({
+                variant: 'destructive',
+                title: 'No active space',
+                description: 'Please ensure you are in a valid workspace context.',
+            });
+            return;
+        }
+        setIsLoadingDistill(true);
+        try {
+            const jobId = await db.startBrainJob('distill_support_intents', { 
+                spaceId: activeSpace.id,
+            });
+            toast({
+                title: 'Job Started',
+                description: `Started support intent distillation job with ID: ${jobId}`,
+            });
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Failed to start job',
+                description: 'Could not start the distillation job.',
+            });
+            console.error(error);
+        } finally {
+            setIsLoadingDistill(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <Card>
@@ -109,10 +140,10 @@ export default function BrainSettings() {
                         In a production system, this would be automated.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                     <div className="flex items-center justify-between rounded-lg border p-4">
                         <div>
-                            <h3 className="font-semibold">Ingest Historical Conversations</h3>
+                            <h3 className="font-semibold">1. Ingest Historical Conversations</h3>
                             <p className="text-sm text-muted-foreground">
                                 Import and process conversations from connected sources (e.g., email).
                             </p>
@@ -120,6 +151,18 @@ export default function BrainSettings() {
                         <Button onClick={handleIngestConversations} disabled={isLoadingJob}>
                             {isLoadingJob && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Start Ingestion
+                        </Button>
+                    </div>
+                     <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div>
+                            <h3 className="font-semibold">2. Distill Support Intents</h3>
+                            <p className="text-sm text-muted-foreground">
+                                Analyze conversations to create a structured answer library.
+                            </p>
+                        </div>
+                        <Button onClick={handleDistillIntents} disabled={isLoadingDistill}>
+                            {isLoadingDistill && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Start Distillation
                         </Button>
                     </div>
                 </CardContent>

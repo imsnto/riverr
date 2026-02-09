@@ -1,10 +1,12 @@
+
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as postmark from 'postmark';
 import { gmailAdapter } from '../../src/lib/brain/adapters/gmail';
 import { RawConversationNode } from '../../src/lib/data';
-import { genkit } from 'genkit';
+import { genkit, type GenkitError } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
+import { distillSupportIntent } from '../../src/ai/flows/distill-support-intent';
 
 admin.initializeApp();
 
@@ -117,6 +119,52 @@ export const processBrainJob = functions.firestore
             
             await batch.commit();
             console.log(`Ingested and embedded ${processedCount} conversation(s).`);
+          }
+          break;
+        case 'distill_support_intents':
+          {
+            console.log('Starting support intent distillation...');
+            const rawNodesSnapshot = await admin.firestore().collection('memory_nodes')
+                .where('type', '==', 'raw_conversation')
+                .where('channel', '==', 'support')
+                // TODO: Add a flag to prevent re-processing
+                .limit(10) // Process in batches
+                .get();
+
+            if (rawNodesSnapshot.empty) {
+                console.log('No new support conversations to distill.');
+                break;
+            }
+
+            console.log(`Found ${rawNodesSnapshot.docs.length} conversations to process.`);
+            
+            for (const doc of rawNodesSnapshot.docs) {
+                const node = doc.data() as RawConversationNode;
+                
+                // TODO: Here we would check if node has been processed
+                
+                try {
+                    const result = await distillSupportIntent({
+                        conversationText: node.normalized.cleanedText,
+                        lastAgentMessage: node.normalized.lastAgentOrRepMessage,
+                    });
+
+                    console.log(`Distilled Intent: ${result.intentKey}`, result);
+                    // TODO: Here we would upsert the SupportIntentNode
+                    
+                    // Mark as processed
+                    // await doc.ref.update({ processedForIntent: true });
+
+                } catch (e: any) {
+                    console.error(`Failed to distill intent for node ${doc.id}:`, e.message || e);
+                    const error = e as GenkitError;
+                    if (error.data?.llmResponse) {
+                        console.error("LLM Response:", JSON.stringify(error.data.llmResponse, null, 2));
+                    }
+                    // Optionally mark as failed
+                    // await doc.ref.update({ processedForIntent: 'failed' });
+                }
+            }
           }
           break;
         // ... other job types will be added here
