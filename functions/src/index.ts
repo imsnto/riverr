@@ -147,37 +147,69 @@ export const processBrainJob = functions.firestore
                         lastAgentMessage: node.normalized.lastAgentOrRepMessage,
                     });
 
-                    // For now, create one SupportIntentNode per conversation.
-                    // A future step will aggregate these by intentKey.
-                    const newIntentNode: Omit<SupportIntentNode, 'id'> = {
-                        type: 'support_intent',
-                        spaceId: node.spaceId,
-                        hubId: node.hubId || '',
-                        intentKey: result.intentKey,
-                        title: result.customerQuestion,
-                        description: result.resolution,
-                        requiredContext: result.requiredContext,
-                        safeAnswerPolicy: result.safetyCriteria,
-                        answerVariants: [{
-                            variantId: 'default',
-                            style: 'professional',
-                            template: result.resolution,
-                            whenToUse: 'All situations',
-                        }],
-                        escalationRule: { maxAttempts: 2 },
-                        learnedFromNodeIds: [rawDoc.id],
-                        confidence: 0.75, // Starting confidence
-                        freshnessHalfLifeDays: 365,
-                        visibility: 'support_only',
-                    };
-                    
-                    // Save the new derived node
-                    await admin.firestore().collection('memory_nodes').add(newIntentNode);
+                    // Check if an intent with this key already exists for the space
+                    const intentQuery = admin.firestore().collection('memory_nodes')
+                        .where('type', '==', 'support_intent')
+                        .where('spaceId', '==', node.spaceId)
+                        .where('intentKey', '==', result.intentKey)
+                        .limit(1);
+
+                    const intentSnapshot = await intentQuery.get();
+
+                    if (intentSnapshot.empty) {
+                        // --- CREATE NEW INTENT NODE ---
+                        const newIntentNode: Omit<SupportIntentNode, 'id'> = {
+                            type: 'support_intent',
+                            spaceId: node.spaceId,
+                            hubId: node.hubId || '',
+                            intentKey: result.intentKey,
+                            title: result.customerQuestion,
+                            description: result.resolution,
+                            requiredContext: result.requiredContext,
+                            safeAnswerPolicy: result.safetyCriteria,
+                            answerVariants: [{
+                                variantId: 'default',
+                                style: 'professional',
+                                template: result.resolution,
+                                whenToUse: 'All situations',
+                            }],
+                            escalationRule: { maxAttempts: 2 },
+                            learnedFromNodeIds: [rawDoc.id],
+                            confidence: 0.75, // Starting confidence
+                            freshnessHalfLifeDays: 365,
+                            visibility: 'support_only',
+                        };
+                        
+                        await admin.firestore().collection('memory_nodes').add(newIntentNode);
+                        console.log(`Created new intent '${result.intentKey}' from node ${rawDoc.id}.`);
+
+                    } else {
+                        // --- UPDATE EXISTING INTENT NODE ---
+                        const existingDoc = intentSnapshot.docs[0];
+                        const existingIntent = existingDoc.data() as SupportIntentNode;
+
+                        const updates: { [key: string]: any } = {
+                            learnedFromNodeIds: admin.firestore.FieldValue.arrayUnion(rawDoc.id),
+                        };
+
+                        const resolutionExists = existingIntent.answerVariants.some(v => v.template === result.resolution);
+                        
+                        if (!resolutionExists) {
+                            const newVariant = {
+                                variantId: `variant-${Date.now()}`,
+                                style: 'professional',
+                                template: result.resolution,
+                                whenToUse: 'Learned from new example',
+                            };
+                            updates.answerVariants = admin.firestore.FieldValue.arrayUnion(newVariant);
+                        }
+
+                        await existingDoc.ref.update(updates);
+                        console.log(`Updated existing intent '${result.intentKey}' with data from node ${rawDoc.id}.`);
+                    }
 
                     // Mark raw node as processed
                     await rawDoc.ref.update({ processedForIntent: true });
-
-                    console.log(`Distilled and saved intent '${result.intentKey}' from node ${rawDoc.id}.`);
 
                 } catch (e: any) {
                     console.error(`Failed to distill intent for node ${rawDoc.id}:`, e.message || e);
