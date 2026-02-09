@@ -61,7 +61,6 @@ import MobileBottomNav from './mobile-bottom-nav';
 import TeamTimesheets from './team-timesheets';
 import { DashboardSkeleton } from './dashboard-skeleton';
 import ContactsLayout from './contacts/contacts-layout';
-import TicketsBoard from './tickets-board';
 import DealsBoard from './deals-board';
 import { DealFormValues } from './create-deal-dialog';
 import { reindexArticleAction } from '@/app/actions/chat';
@@ -129,31 +128,36 @@ export default function Dashboard({ view }: { view: string }) {
 
 
   const fetchData = async () => {
-    if (!appUser) return;
-if (messageUnsubscribeRef.current) {
-    messageUnsubscribeRef.current();
-    messageUnsubscribeRef.current = null;
-  }
-        // Always fetch all users
-        const fetchedUsers = await db.getAllUsers();
-        setAllUsers(fetchedUsers);
-      
-        // Fetch all spaces for the user to get all project IDs for time entries
-        const allUserSpaces = await db.getSpacesForUser(appUser.id);
-        const allProjectIds: string[] = [];
-        for (const space of allUserSpaces) {
-          const hubs = await db.getHubsForSpace(space.id);
-          for (const hub of hubs) {
+    if (!appUser || !activeSpace) return;
+    if (messageUnsubscribeRef.current) {
+        messageUnsubscribeRef.current();
+        messageUnsubscribeRef.current = null;
+    }
+    
+    // Always fetch all users and space-wide conversations
+    const [fetchedUsers, fetchedConversations] = await Promise.all([
+        db.getAllUsers(),
+        db.getConversationsForSpace(activeSpace.id),
+    ]);
+    setAllUsers(fetchedUsers);
+    setChatConversations(fetchedConversations.sort((a,b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
+
+    // Fetch all spaces for the user to get all project IDs for time entries
+    const allUserSpaces = await db.getSpacesForUser(appUser.id);
+    const allProjectIds: string[] = [];
+    for (const space of allUserSpaces) {
+        const hubs = await db.getHubsForSpace(space.id);
+        for (const hub of hubs) {
             const hubProjects = await db.getProjectsInHub(hub.id);
             allProjectIds.push(...hubProjects.map(p => p.id));
-          }
         }
-        const fetchedTimeEntries = await db.getTimeEntriesInHub(allProjectIds);
-        setTimeEntries(fetchedTimeEntries);
-      
-        // Hub-specific data fetching
-        if (activeSpace && activeHub) {
-          const [
+    }
+    const fetchedTimeEntries = await db.getTimeEntriesInHub(allProjectIds);
+    setTimeEntries(fetchedTimeEntries);
+    
+    // Hub-specific data fetching
+    if (activeHub) {
+        const [
             fetchedProjects,
             fetchedTasks,
             fetchedTickets,
@@ -165,12 +169,11 @@ if (messageUnsubscribeRef.current) {
             fetchedJobs,
             fetchedJobFlowTasks,
             fetchedHubs,
-            fetchedConversations,
             fetchedBots,
             fetchedEscalationRules,
             fetchedContacts,
             fetchedHelpCenters,
-          ] = await Promise.all([
+        ] = await Promise.all([
             db.getProjectsInHub(activeHub.id),
             db.getAllTasks(activeHub.id),
             db.getTicketsInHub(activeHub.id),
@@ -182,68 +185,59 @@ if (messageUnsubscribeRef.current) {
             db.getAllJobs(activeHub.id),
             db.getAllJobFlowTasks(activeHub.id),
             db.getHubsForSpace(activeSpace.id),
-            db.getConversationsForHub(activeHub.id),
             db.getBots(activeHub.id),
             db.getEscalationIntakeRules(activeHub.id),
             db.getContacts(activeSpace.id),
             db.getHelpCenters(activeHub.id),
-          ]);
-          
-          setProjects(fetchedProjects);
-          if (fetchedProjects.length > 0 && (!selectedProjectId || !fetchedProjects.some(p => p.id === selectedProjectId))) {
-            setSelectedProjectId(fetchedProjects[0].id);
-          } else if (fetchedProjects.length === 0) {
-            setSelectedProjectId(null);
-          }
-
-
-          setTasks(fetchedTasks);
-          setTickets(fetchedTickets);
-          setDeals(fetchedDeals);
-          setSlackLogs(fetchedSlackLogs);
-          setJobFlowTemplates(fetchedJobFlowTemplates);
-          setPhaseTemplates(fetchedPhaseTemplates);
-          setTaskTemplates(fetchedTaskTemplates);
-          setJobs(fetchedJobs);
-          setJobFlowTasks(fetchedJobFlowTasks);
-          setSpaceHubs(fetchedHubs);
-          setChatConversations(fetchedConversations.sort((a,b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
-          setBots(fetchedBots);
-          setEscalationRules(fetchedEscalationRules);
-          setContacts(fetchedContacts);
-          setHelpCenters(fetchedHelpCenters);
+        ]);
       
-// ... (top of your fetchData)
-
-if (fetchedConversations.length > 0) {
-  const convoIds = fetchedConversations.map(c => c.id);
-  
-  // 1. Visitors: Awaited once (Static)
-  const visitorIds = [...new Set(fetchedConversations.map(c => c.visitorId).filter(Boolean))];
-  const fetchedVisitors = await Promise.all(
-    visitorIds.map(id => db.getOrCreateVisitor(id!))
-  );
-  setVisitors(fetchedVisitors as Visitor[]);
-
-  // 2. Messages: Real-time (Subscription)
-  // We don't 'await' this. It will call setChatMessages whenever something changes.
-  const unsub = db.getMessagesForConversations(convoIds, (messages) => {
-    setChatMessages(messages);
-  });
-  
-  // Store the unsubscribe function in our Ref
-  messageUnsubscribeRef.current = unsub;
-
-} else {
-  setChatMessages([]);
-  setVisitors([]);
-}
+        setProjects(fetchedProjects);
+        if (fetchedProjects.length > 0 && (!selectedProjectId || !fetchedProjects.some(p => p.id === selectedProjectId))) {
+            setSelectedProjectId(fetchedProjects[0].id);
+        } else if (fetchedProjects.length === 0) {
+            setSelectedProjectId(null);
         }
+
+        setTasks(fetchedTasks);
+        setTickets(fetchedTickets);
+        setDeals(fetchedDeals);
+        setSlackLogs(fetchedSlackLogs);
+        setJobFlowTemplates(fetchedJobFlowTemplates);
+        setPhaseTemplates(fetchedPhaseTemplates);
+        setTaskTemplates(fetchedTaskTemplates);
+        setJobs(fetchedJobs);
+        setJobFlowTasks(fetchedJobFlowTasks);
+        setSpaceHubs(fetchedHubs);
+        setBots(fetchedBots);
+        setEscalationRules(fetchedEscalationRules);
+        setContacts(fetchedContacts);
+        setHelpCenters(fetchedHelpCenters);
+  
+        if (fetchedConversations.length > 0) {
+            const convoIds = fetchedConversations.map(c => c.id);
+            const visitorIds = [...new Set(fetchedConversations.map(c => c.visitorId).filter(Boolean))];
+            
+            const fetchedVisitors = await Promise.all(
+                visitorIds.map(id => db.getOrCreateVisitor(id!))
+            );
+            setVisitors(fetchedVisitors as Visitor[]);
+
+            const unsub = db.getMessagesForConversations(convoIds, (messages) => {
+                setChatMessages(messages);
+            });
+            messageUnsubscribeRef.current = unsub;
+        } else {
+            setChatMessages([]);
+            setVisitors([]);
+        }
+    }
   };
 
 
   useEffect(() => {
-    fetchData();
+    if (activeSpace) {
+      fetchData();
+    }
     return () => {
       // Final cleanup when component dies
       if (messageUnsubscribeRef.current) {
@@ -831,13 +825,13 @@ if (fetchedConversations.length > 0) {
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           tasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
+          onUpdateTasks={onUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
+          onUpdateActiveHub={onUpdateActiveHub}
           onNewProject={handleNewProject}
-          onNewTaskRequest={handleNewTaskRequest}
-          onTaskSelect={setSelectedTask}
+          onNewTaskRequest={onNewTaskRequest}
+          onTaskClick={setSelectedTask}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
           onEditProject={handleEditProject}
@@ -851,7 +845,7 @@ if (fetchedConversations.length > 0) {
           activeHub={activeHub!}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
+          onUpdateActiveHub={onUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
           allHubs={spaceHubs}
           escalationRules={escalationRules}
@@ -872,7 +866,7 @@ if (fetchedConversations.length > 0) {
           activeHub={activeHub!}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
+          onUpdateActiveHub={onUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
       />;
       case 'help-center': return <HelpCenterLayout

@@ -1222,6 +1222,17 @@ export const getConversationsForHub = async (hubId: string): Promise<Conversatio
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
 };
 
+export const getConversationsForSpace = async (spaceId: string): Promise<Conversation[]> => {
+  const hubsInSpace = await getHubsForSpace(spaceId);
+  const hubIds = hubsInSpace.map(h => h.id);
+  if (hubIds.length === 0) return [];
+  
+  const q = query(collection(db, 'conversations'), where('hubId', 'in', hubIds));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
+};
+
+
 export const getMessagesForConversations = (
   conversationIds: string[], 
   onUpdate: (messages: ChatMessage[]) => void,
