@@ -4,14 +4,16 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as postmark from 'postmark';
 import { gmailAdapter } from '../../src/lib/brain/adapters/gmail';
-import { RawConversationNode, SalesMessagePatternNode, SalesPersonaSegmentNode, SupportIntentNode } from '../../src/lib/data';
+import { RawConversationNode, SalesMessagePatternNode, SalesPersonaSegmentNode, SupportIntentNode, Contact, LeadStateNode } from '../../src/lib/data';
 import { genkit, type GenkitError } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { distillSupportIntent } from '../../src/ai/flows/distill-support-intent';
 import { extractSalesConversation } from '../../src/ai/flows/distill-sales-intelligence';
-import { getTypesenseAdmin } from '../../src/lib/typesense';
+import { getTypesenseAdmin, getTypesenseSearch } from '../../src/lib/typesense';
 import { summarizeSalesCluster } from '../../src/ai/flows/summarize-sales-cluster';
 import { createHash } from 'crypto';
+import { recommendNextSalesAction } from '../../src/ai/flows/recommend-next-sales-action';
+
 
 admin.initializeApp();
 
@@ -99,7 +101,7 @@ export const sendInviteEmail = functions.firestore
   });
 
 // Cloud Function to process jobs from the Business Brain queue
-export const processBrainJob = functions.firestore
+export const processBrainJob = functions.runWith({ memory: '1GB', timeoutSeconds: 300 }).firestore
   .document('brain_jobs/{jobId}')
   .onCreate(async (snap, context) => {
     const job = snap.data();
@@ -428,7 +430,6 @@ export const processBrainJob = functions.firestore
             const extractions = extractionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
             console.log(`Found ${extractions.length} extractions to cluster.`);
 
-            // TODO: 2. Run clustering algorithm on embeddings.
             // This is a complex step. For now, we will simulate one big cluster.
             const clusters = [extractions]; // Simulate one cluster with all extractions
 
@@ -511,15 +512,118 @@ export const processBrainJob = functions.firestore
         case 'update_lead_states':
           {
             console.log(`Starting lead state generation/update for space: ${job.params.spaceId}`);
-            // TODO: 1. Fetch leads from a source (e.g., CRM, DB).
-            // TODO: 2. For each lead, score them based on activity.
-            // TODO: 3. Find matching persona segment via vector search.
-            // TODO: 4. Recommend next best action and message pattern.
-            // TODO: 5. Upsert LeadStateNode.
-            console.log('Lead state generation is not yet implemented.');
+            const spaceId = job.params.spaceId;
+            const typesenseClient = getTypesenseSearch();
+
+            // 1. Fetch leads (contacts) for the space.
+            const leadsSnapshot = await admin.firestore().collection('contacts').where('spaceId', '==', spaceId).get();
+            const leads = leadsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Contact }));
+
+            if (leads.length === 0) {
+              console.log('No leads found for this space.');
+              break;
+            }
+            console.log(`Found ${leads.length} leads to process.`);
+
+            // 2. Fetch all sales persona segments with embeddings for this space.
+            const personasSnapshot = await admin.firestore().collection('memory_nodes')
+                .where('spaceId', '==', spaceId)
+                .where('type', '==', 'sales_persona_segment')
+                .get();
+            const personas = personasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as SalesPersonaSegmentNode }));
+            if (personas.length === 0) {
+                console.log("No sales personas found. Cannot match leads.");
+                break;
+            }
+
+             // 3. Fetch the best performing message pattern
+            const patternsSnapshot = await admin.firestore().collection('memory_nodes')
+                .where('spaceId', '==', spaceId)
+                .where('type', '==', 'sales_message_pattern')
+                .orderBy('performance.replyRate', 'desc')
+                .limit(1).get();
+            const bestPattern = patternsSnapshot.empty ? null : patternsSnapshot.docs[0].data() as SalesMessagePatternNode;
+            
+            // 4. For each lead, find matching persona and recommend next action.
+            for (const lead of leads) {
+                try {
+                    // a. Create a text representation of the lead for embedding
+                    const leadText = `Lead: ${lead.name || 'Unknown'}. Email: ${lead.primaryEmail || 'none'}. Company: ${lead.company || 'unknown'}.`;
+                    
+                    // b. Generate embedding for the lead
+                    const { embedding: leadEmbedding } = await ai.embed({
+                        model: 'googleai/embedding-004',
+                        content: leadText,
+                    });
+
+                    // c. Find matching persona via vector search in Typesense
+                    const searchRequest = {
+                        'searches': [{
+                            'collection': 'memory_nodes',
+                            'q': '*',
+                            'vector_query': 'embedding:({embedding}, k:1)'.replace('{embedding}', JSON.stringify(leadEmbedding)),
+                            'filter_by': `spaceId:=${spaceId} && type:='sales_persona_segment'`
+                        }]
+                    };
+                    const searchResult = await typesenseClient.multiSearch.perform(searchRequest, {});
+                    const hits = searchResult.results[0]?.hits;
+
+                    let matchedPersona: SalesPersonaSegmentNode | null = null;
+                    if (hits && hits.length > 0) {
+                        matchedPersona = hits[0].document as SalesPersonaSegmentNode;
+                    }
+                    
+                    // d. Recommend next best action and message pattern.
+                    const recommendation = await recommendNextSalesAction({
+                        lead: {
+                            id: lead.id,
+                            name: lead.name || undefined,
+                            company: lead.company || undefined,
+                            primaryEmail: lead.primaryEmail || undefined,
+                            lastSeenAt: lead.lastSeenAt ? new Date(lead.lastSeenAt.seconds * 1000).toISOString() : undefined
+                        },
+                        matchedPersona: matchedPersona ? {
+                            segmentKey: matchedPersona.segmentKey,
+                            summary: matchedPersona.summary,
+                            commonPains: matchedPersona.commonPains,
+                            winningAngles: matchedPersona.winningAngles,
+                        } : undefined,
+                        bestMessagePattern: bestPattern ? {
+                            patternKey: bestPattern.patternKey,
+                            purpose: bestPattern.pattern.purpose,
+                            bodyStructure: bestPattern.pattern.bodyStructure,
+                            ctaStyle: bestPattern.pattern.ctaStyle,
+                            openerStyle: bestPattern.pattern.openerStyle,
+                            toneTagsSorted: bestPattern.pattern.toneTagsSorted,
+                        } : undefined
+                    });
+
+                    // e. Upsert LeadStateNode.
+                    const leadStateRef = admin.firestore().collection('lead_states').doc(lead.id);
+                    const leadStateData: LeadStateNode = {
+                        id: lead.id,
+                        spaceId: spaceId,
+                        type: 'lead_state',
+                        leadId: lead.id,
+                        status: 'contacted', // Assuming we are recommending an action.
+                        warmScore: matchedPersona ? 75 : 25, // simple scoring
+                        matchedPersonaSegmentKey: matchedPersona?.segmentKey,
+                        recommendedNextAction: recommendation.recommendedNextAction,
+                        recommendedPatternKey: recommendation.recommendedPatternKey,
+                        reasons: [recommendation.reason],
+                        updatedAt: new Date().toISOString(),
+                        visibility: 'sales_only',
+                    };
+                    await leadStateRef.set(leadStateData, { merge: true });
+                    console.log(`Updated lead state for ${lead.id} (${lead.name}). Recommended: ${recommendation.recommendedNextAction}`);
+
+                } catch (e: any) {
+                    console.error(`Failed to process lead ${lead.id}:`, e.message || e);
+                }
+            }
+
           }
           break;
-        // ... other job types will be added here
         default:
           console.warn(`Unknown job type: ${job.type}`);
           throw new Error(`Unknown job type: ${job.type}`);
@@ -542,6 +646,7 @@ export const processBrainJob = functions.firestore
       });
     }
   });
+
 
 
 

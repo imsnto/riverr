@@ -16,12 +16,16 @@ const typesenseMemoryNodeSchema = {
     { "name": "type", "type": "string", "facet": true }, // e.g., 'doc', 'ticket'
     { "name": "spaceId", "type": "string", "facet": true },
     { "name": "hubId", "type": "string", "facet": true },
-    { "name": "sourceId", "type": "string", "facet": true }, // articleId, ticketId
+    { "name": "sourceId", "type": "string", "facet": true, "optional": true }, // articleId, ticketId
     
     // Searchable content
     { "name": "title", "type": "string", "optional": true },
-    { "name": "text", "type": "string" },
+    { "name": "text", "type": "string", "optional": true },
+    { "name": "textForEmbedding", "type": "string", "optional": true },
     { "name": "tags", "type": "string[]", "facet": true, "optional": true },
+
+    // Embedding vector
+    { "name": "embedding", "type": "float[]", "num_dim": 768, "optional": true },
 
     // Metadata for filtering & display
     { "name": "status", "type": "string", "facet": true, "optional": true }, // 'published', 'resolved'
@@ -35,7 +39,7 @@ const typesenseMemoryNodeSchema = {
     // Timestamps
     { "name": "sourceCreatedAt", "type": "int64", "optional": true },
     { "name": "sourceUpdatedAt", "type": "int64", "optional": true },
-    { "name": "indexedAt", "type": "int64" },
+    { "name": "indexedAt", "type": "int64", "optional": true },
 
     // Doc-specific context, still useful
     { "name": "helpCenterIds", "type": "string[]", "facet": true, "optional": true },
