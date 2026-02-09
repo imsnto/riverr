@@ -1,8 +1,17 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as postmark from 'postmark';
+import { gmailAdapter } from '../../src/lib/brain/adapters/gmail';
+import { RawConversationNode } from '../../src/lib/data';
+import { genkit } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 
 admin.initializeApp();
+
+// Initialize genkit for use in this cloud function
+const ai = genkit({
+  plugins: [googleAI()],
+});
 
 // ✅ Use your verified Postmark info
 const POSTMARK_API_KEY = 'eed163d1-398a-40f8-b555-8ec1c5a53ae5';
@@ -43,5 +52,93 @@ export const sendInviteEmail = functions.firestore
       console.log(`✅ Invite email sent to ${invite.email}`);
     } catch (error) {
       console.error(`❌ Error sending invite to ${invite.email}:`, error);
+    }
+  });
+
+// Cloud Function to process jobs from the Business Brain queue
+export const processBrainJob = functions.firestore
+  .document('brain_jobs/{jobId}')
+  .onCreate(async (snap, context) => {
+    const job = snap.data();
+    const jobId = context.params.jobId;
+
+    if (!job) {
+      console.error(`Job ${jobId} has no data.`);
+      return;
+    }
+
+    // Update job status to 'running'
+    await snap.ref.update({
+      status: 'running',
+      startedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    try {
+      console.log(`🧠 Processing job ${jobId} of type: ${job.type}`);
+
+      // Future logic will go here based on job.type
+      switch (job.type) {
+        case 'ingest_conversations':
+          {
+            console.log(`Starting conversation ingestion for source: ${job.params.source}`);
+            if (job.params.source !== 'gmail') {
+                throw new Error(`Unsupported ingestion source: ${job.params.source}`);
+            }
+
+            const rawThreads = await gmailAdapter.fetchBatch({ query: job.params.query, maxResults: 50 });
+            const batch = admin.firestore().batch();
+            let processedCount = 0;
+
+            for (const rawThread of rawThreads) {
+                const normalizedThread = gmailAdapter.normalize(rawThread);
+                const rawNode = gmailAdapter.toRawNode(normalizedThread);
+
+                // --- REAL EMBEDDING STEP ---
+                const { embedding } = await ai.embed({
+                    model: 'googleai/embedding-004',
+                    content: rawNode.textForEmbedding,
+                });
+                const embeddedAt = new Date().toISOString();
+                const embeddingModel = "embedding-004";
+                // --- END REAL EMBEDDING ---
+
+                const finalNode: Omit<RawConversationNode, 'id'> = {
+                    ...(rawNode as Omit<RawConversationNode, 'id'>),
+                    spaceId: job.params.spaceId,
+                    embedding: embedding,
+                    embeddingModel: embeddingModel,
+                    embeddedAt: embeddedAt,
+                };
+                
+                const nodeRef = admin.firestore().collection('memory_nodes').doc();
+                batch.set(nodeRef, finalNode);
+                processedCount++;
+            }
+            
+            await batch.commit();
+            console.log(`Ingested and embedded ${processedCount} conversation(s).`);
+          }
+          break;
+        // ... other job types will be added here
+        default:
+          console.warn(`Unknown job type: ${job.type}`);
+          throw new Error(`Unknown job type: ${job.type}`);
+      }
+
+      // If successful, update status to 'completed'
+      await snap.ref.update({
+        status: 'completed',
+        completedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      console.log(`✅ Successfully completed job ${jobId}`);
+
+    } catch (error: any) {
+      console.error(`❌ Failed to process job ${jobId}:`, error);
+      await snap.ref.update({
+        status: 'failed',
+        completedAt: admin.firestore.FieldValue.serverTimestamp(),
+        error: error.message,
+      });
     }
   });
