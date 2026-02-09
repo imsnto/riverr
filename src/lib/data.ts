@@ -1,5 +1,3 @@
-
-
 // src/lib/data.ts
 
 // --- Core Entities ---
@@ -650,4 +648,126 @@ export const jobFlowTasks: JobFlowTask[] = [];
 
 export type { Contact, ContactEvent, ContactEventType, ContactSource, VisitorType, CallRecord } from './contacts-types';
 
-    
+// --- Business Brain Schemas ---
+
+export interface BrainJob {
+    id: string;
+    type: 'ingest_conversations' | 'distill_support' | 'distill_sales' | 'update_lead_states' | 'embed_node';
+    status: 'pending' | 'running' | 'completed' | 'failed';
+    params: Record<string, any>;
+    createdAt: string;
+    startedAt?: string;
+    completedAt?: string;
+    error?: string;
+    progress?: {
+        current: number;
+        total: number;
+        message: string;
+    }
+}
+
+export interface RawConversationNode {
+  id: string;
+  spaceId: string;
+  hubId: string;
+  type: 'raw_conversation';
+  sourceType: 'gmail'|'m365'|'intercom'|'zendesk'|'slack'|'hubspot'|string;
+  channel: 'support'|'sales'|'success'|'ops';
+  participants: { id?: string; email?: string; name?: string; role: 'customer'|'agent'|'rep'|'internal' }[];
+  startedAt: string;
+  lastAt: string;
+  messages: { at: string; fromRole: string; text: string; meta?: Record<string, any> }[];
+  outcome: {
+    support?: 'resolved'|'escalated'|'unresolved';
+    sales?: 'replied_positive'|'replied_negative'|'no_reply'|'meeting_booked'|'closed_won'|'closed_lost';
+  };
+  visibility: 'internal_only';
+  sources: { sourceType: string; sourceId: string; sourceUrl?: string }[];
+  normalized: { cleanedText: string; lastAgentOrRepMessage?: string };
+  textForEmbedding: string;
+  embedding?: any; // To be defined based on vector store
+}
+
+export interface RawInteractionNode {
+  id: string;
+  spaceId: string;
+  hubId: string;
+  type: 'raw_interaction';
+  sourceType: 'web'|'crm'|'product'|string;
+  channel: 'sales'|'support';
+  subjectId: string; // `lead:{id}` or `customer:{id}`
+  eventType: string; // 'pricing_page_view', 'demo_request'
+  occurredAt: string;
+  payload: Record<string, any>;
+  visibility: 'internal_only' | 'public';
+}
+
+export interface SupportIntentNode {
+  id: string;
+  spaceId: string;
+  hubId: string;
+  type: 'support_intent';
+  intentKey: string;
+  title: string;
+  description: string;
+  requiredContext: { key: string; question: string }[];
+  safeAnswerPolicy: { mustNot: string[]; requiresHumanIf: string[] };
+  answerVariants: { variantId: string; style: string; template: string; whenToUse: string }[];
+  escalationRule: { maxAttempts: number; escalateIfMissingContextKeys?: string[]; escalateIfSentimentBelow?: number };
+  learnedFromNodeIds: string[];
+  confidence: number;
+  freshnessHalfLifeDays: number;
+  visibility: 'support_only';
+}
+
+export interface SalesPersonaSegmentNode {
+  id: string;
+  spaceId: string;
+  hubId: string;
+  type: 'sales_persona_segment';
+  segmentKey: string;
+  summary: string;
+  commonPains: string[];
+  commonObjections: string[];
+  winningAngles: string[];
+  bestCtaTypes: string[];
+  exampleLines: { openers: string[]; proofPoints: string[]; ctas: string[] };
+  learnedFromNodeIds: string[];
+  confidence: number;
+  freshnessHalfLifeDays: number;
+  visibility: 'sales_only';
+}
+
+export interface SalesMessagePatternNode {
+  id: string;
+  spaceId: string;
+  hubId: string;
+  type: 'sales_message_pattern';
+  patternKey: string;
+  purpose: 'cold_outreach'|'followup_1'|'followup_2'|'breakup';
+  pattern: { subjectStyle: string; openerStyle: string; bodyStructure: string; ctaStyle: string; lengthBucket: string; toneTags: string[]; exampleSnippet: string };
+  performance: { sampleSize: number; replyRate?: number; meetingRate?: number; bySegment?: Record<string, any> };
+  learnedFromNodeIds: string[];
+  confidence: number;
+  freshnessHalfLifeDays: number;
+  visibility: 'sales_only';
+}
+
+export interface LeadStateNode {
+  id: string; // Corresponds to leadId
+  spaceId: string;
+  hubId: string;
+  type: 'lead_state';
+  leadId: string;
+  status: 'never_contacted'|'contacted'|'replied'|'meeting'|'closed';
+  lastTouchAt?: string;
+  warmScore: number; // 0..100
+  matchedPersonaSegmentKey?: string;
+  recommendedNextAction: string;
+  recommendedPatternKey?: string;
+  reasons: string[];
+  updatedAt: string;
+  visibility: 'sales_only';
+}
+
+export type MemoryNode = RawConversationNode | RawInteractionNode | SupportIntentNode | SalesPersonaSegmentNode | SalesMessagePatternNode | LeadStateNode;
