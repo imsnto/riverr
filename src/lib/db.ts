@@ -75,6 +75,7 @@ import {
   EscalationIntakeRule,
   conversations,
   chatMessages,
+  BrainJob,
 } from "./data";
 import { FirestorePermissionError } from "./errors";
 import { errorEmitter } from "./error-emitter";
@@ -338,7 +339,7 @@ export const updateHub = async (
   await updateDoc(hubRef, data);
 };
 
-const defaultStatuses: Status[] = [
+const defaultTaskStatuses: Status[] = [
   { name: 'Backlog', color: '#6b7280' },
   { name: 'In Progress', color: '#3b82f6' },
   { name: 'In Review', color: '#f59e0b' },
@@ -364,7 +365,7 @@ export const createDefaultHubForSpace = async (spaceId: string, userId: string, 
     settings: hubData.settings || { components: ['overview', 'tasks', 'documents', 'messages'], defaultView: 'overview' },
     isPrivate: hubData.isPrivate || false,
     memberIds: hubData.memberIds || [],
-    statuses: hubData.statuses || defaultStatuses,
+    statuses: hubData.statuses || defaultTaskStatuses,
     ticketStatuses: hubData.ticketStatuses || defaultTicketStatuses,
     ticketClosingStatusName: 'Closed',
     closingStatusName: hubData.closingStatusName,
@@ -1577,3 +1578,17 @@ export const updateHelpCenterContent = async (
 
   await batch.commit();
 }
+
+
+// --- Business Brain ---
+
+export const startBrainJob = async (type: BrainJob['type'], params: Record<string, any>): Promise<string> => {
+    const jobData: Omit<BrainJob, 'id'> = {
+        type,
+        params,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+    };
+    const docRef = await addDoc(collection(db, 'brain_jobs'), jobData);
+    return docRef.id;
+};

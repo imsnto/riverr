@@ -29,8 +29,9 @@ import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import KnowledgeBaseSettings from './knowledge-base-settings';
+import BrainSettings from './brain-settings';
 
-type SettingsView = 'users' | 'spaces' | 'hub' | 'inbox' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'knowledge-base';
+type SettingsView = 'users' | 'spaces' | 'hub' | 'inbox' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'knowledge-base' | 'brain';
 
 interface SettingsLayoutProps {
   allUsers: User[];
@@ -81,6 +82,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
     { key: 'escalation-intake', label: 'Escalation Intake', disabled: !(hubHasTickets && hubHasTasks) },
     { key: 'knowledge-base', label: 'Knowledge Base', disabled: !hubHasHelpCenter },
     { key: 'timesheets', label: 'Timesheets' },
+    { key: 'brain', label: 'Business Brain' },
   ];
 
   const renderContent = () => {
@@ -151,6 +153,8 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             appUser={props.appUser!}
           />
         );
+      case 'brain':
+        return <BrainSettings />;
       default:
         return null;
     }
