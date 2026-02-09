@@ -329,6 +329,8 @@ export const processBrainJob = functions.firestore
                     console.log(`Saved and embedded sales extraction for node ${rawDoc.id}.`);
                     
                     // --- STEP 5C: Process outbound messages for pattern analysis ---
+                    const isSuccess = extraction.outcome === 'replied_positive' || extraction.outcome === 'meeting_booked';
+
                     for (const outboundMsg of extraction.outboundMessages) {
                         const patternKey = generatePatternKey(outboundMsg);
                         const patternRef = admin.firestore().collection('memory_nodes').doc(`pattern-${patternKey}`);
@@ -351,6 +353,8 @@ export const processBrainJob = functions.firestore
                                     },
                                     performance: {
                                         sampleSize: 1,
+                                        successCount: isSuccess ? 1 : 0,
+                                        replyRate: isSuccess ? 1 : 0,
                                     },
                                     learnedFromNodeIds: [rawDoc.id],
                                     confidence: 0.5,
@@ -359,8 +363,15 @@ export const processBrainJob = functions.firestore
                                 };
                                 transaction.set(patternRef, newPatternNode);
                             } else {
+                                const existingData = patternDoc.data() as SalesMessagePatternNode;
+                                const newSampleSize = (existingData.performance.sampleSize || 0) + 1;
+                                const newSuccessCount = (existingData.performance.successCount || 0) + (isSuccess ? 1 : 0);
+                                const newReplyRate = newSuccessCount / newSampleSize;
+
                                 transaction.update(patternRef, {
-                                    'performance.sampleSize': admin.firestore.FieldValue.increment(1),
+                                    'performance.sampleSize': newSampleSize,
+                                    'performance.successCount': newSuccessCount,
+                                    'performance.replyRate': newReplyRate,
                                     'learnedFromNodeIds': admin.firestore.FieldValue.arrayUnion(rawDoc.id),
                                 });
                             }
@@ -504,3 +515,4 @@ export const processBrainJob = functions.firestore
       });
     }
   });
+

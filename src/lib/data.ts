@@ -751,19 +751,21 @@ export interface SalesMessagePatternNode {
   type: 'sales_message_pattern';
   patternKey: string; // The hash
   pattern: { // The signature
-    purpose: 'cold_outreach'|'followup_1'|'followup_2'|'breakup';
+    purpose: string;
     bodyStructure: 'pain->proof->cta'|'proof->pain->cta'|'value_drop->cta'|'question_only'|'other';
-    ctaStyle: 'question'|'calendar_link'|'value_offer'|'soft_close';
+    ctaStyle: 'question'|'calendar_link'|'value_offer'|'soft_close'|'hard_close'|'other';
     openerStyle: 'personal'|'pain'|'compliment'|'reference'|'straight_ask'|'other';
     toneTagsSorted: string[];
     lengthBucket: 'short'|'medium'|'long';
   };
   performance: {
     sampleSize: number;
+    successCount?: number;
     replyRate?: number;
     meetingRate?: number;
     bySegment?: Record<string, { // key is segmentKey
         sampleSize: number;
+        successCount?: number;
         replyRate?: number;
         meetingRate?: number;
     }>;
@@ -793,3 +795,4 @@ export interface LeadStateNode {
 
 
 export type MemoryNode = RawConversationNode | RawInteractionNode | SupportIntentNode | SalesPersonaSegmentNode | SalesMessagePatternNode | LeadStateNode;
+
