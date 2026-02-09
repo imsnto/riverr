@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import * as db from '@/lib/db';
 import { Loader2, Bot, Users, BrainCircuit, Lightbulb, Search } from 'lucide-react';
-import { RawConversationNode, SupportIntentNode } from '@/lib/data';
+import { RawConversationNode, SalesPersonaSegmentNode, SupportIntentNode } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
@@ -153,6 +153,58 @@ function SalesExtractionNodeCard({ node }: { node: SalesExtractionResultWithScor
     );
 }
 
+function SalesPersonaSegmentNodeCard({ node }: { node: SalesPersonaSegmentNode }) {
+    return (
+        <Card className="bg-primary/5 border-primary/20">
+            <CardHeader>
+                <CardTitle className="text-base font-semibold text-primary flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    {node.segmentKey}
+                </CardTitle>
+                <CardDescription>
+                    {node.summary}
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="item-1">
+                        <AccordionTrigger>View Details</AccordionTrigger>
+                        <AccordionContent>
+                           <div className="space-y-4 text-sm">
+                                {node.commonPains && node.commonPains.length > 0 && (
+                                    <div>
+                                        <h4 className="font-semibold">Common Pains</h4>
+                                        <ul className="list-disc pl-5 mt-1 space-y-1 text-muted-foreground">
+                                            {node.commonPains.map((pain, i) => <li key={i}>{pain}</li>)}
+                                        </ul>
+                                    </div>
+                                )}
+                                 {node.commonObjections && node.commonObjections.length > 0 && (
+                                    <div>
+                                        <h4 className="font-semibold">Common Objections</h4>
+                                        <ul className="list-disc pl-5 mt-1 space-y-1 text-muted-foreground">
+                                            {node.commonObjections.map((o, i) => <li key={i}>{o}</li>)}
+                                        </ul>
+                                    </div>
+                                )}
+                                {node.winningAngles && node.winningAngles.length > 0 && (
+                                    <div>
+                                        <h4 className="font-semibold">Winning Angles</h4>
+                                        <ul className="list-disc pl-5 mt-1 space-y-1 text-green-600">
+                                            {node.winningAngles.map((s, i) => <li key={i}>{s}</li>)}
+                                        </ul>
+                                    </div>
+                                )}
+                                <Badge>{node.learnedFromNodeIds.length} source conversation(s)</Badge>
+                           </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function BrainSettings() {
     const { toast } = useToast();
     const { activeSpace } = useAuth();
@@ -163,6 +215,7 @@ export default function BrainSettings() {
     const [rawConversations, setRawConversations] = useState<RawConversationNode[]>([]);
     const [supportIntents, setSupportIntents] = useState<SupportIntentNode[]>([]);
     const [salesExtractions, setSalesExtractions] = useState<SalesExtractionResultWithScore[]>([]);
+    const [salesPersonas, setSalesPersonas] = useState<SalesPersonaSegmentNode[]>([]);
     const [isSearching, setIsSearching] = useState(false);
 
 
@@ -170,16 +223,19 @@ export default function BrainSettings() {
         const fetchNodes = async () => {
             if (!activeSpace) return;
             setIsLoadingNodes(true);
-            const [rawNodes, intentNodes, initialSalesExtractions] = await Promise.all([
+            const [rawNodes, intentNodes, initialSalesExtractions, personaNodes] = await Promise.all([
                 db.getMemoryNodes('raw_conversation'),
                 db.getMemoryNodes('support_intent'),
-                db.getSalesExtractions(activeSpace.id)
+                db.getSalesExtractions(activeSpace.id),
+                db.getMemoryNodes('sales_persona_segment'),
             ]);
             const spaceRawNodes = rawNodes.filter(n => n.spaceId === activeSpace.id);
             const spaceIntentNodes = intentNodes.filter(n => n.spaceId === activeSpace.id);
+            const spacePersonaNodes = personaNodes.filter(n => n.spaceId === activeSpace.id);
             setRawConversations(spaceRawNodes);
             setSupportIntents(spaceIntentNodes);
             setSalesExtractions(initialSalesExtractions as SalesExtractionResultWithScore[]);
+            setSalesPersonas(spacePersonaNodes);
             setIsLoadingNodes(false);
         };
         fetchNodes();
@@ -279,10 +335,7 @@ export default function BrainSettings() {
                 description: `Started persona clustering job. This may take a few minutes.`,
             });
         } catch (error) {
-            toast({
-                variant: 'destructive',
-                title: 'Failed to start job',
-            });
+            toast({ variant: 'destructive', title: 'Failed to start job' });
         } finally {
             setIsLoadingClustering(false);
         }
@@ -405,6 +458,32 @@ export default function BrainSettings() {
                                 Cluster Personas
                             </Button>
                         </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Sales Persona Segments ({salesPersonas.length})</CardTitle>
+                        <CardDescription>
+                            The customer personas identified from sales conversations.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoadingNodes ? (
+                            <div className="flex items-center justify-center gap-2 py-8">
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <span className="text-muted-foreground">Loading personas...</span>
+                            </div>
+                        ) : salesPersonas.length > 0 ? (
+                            <div className="space-y-4">
+                                {salesPersonas.map(node => <SalesPersonaSegmentNodeCard key={node.id} node={node} />)}
+                            </div>
+                        ) : (
+                             <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                                <Users className="mx-auto h-12 w-12 text-muted-foreground" />
+                                <h3 className="mt-2 text-sm font-semibold text-foreground">No Personas Found</h3>
+                                <p className="mt-1 text-sm text-muted-foreground">Run a clustering job to identify customer personas.</p>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
                 <Card>
