@@ -430,10 +430,22 @@ export const processBrainJob = functions.runWith({ memory: '1GB', timeoutSeconds
             const extractions = extractionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
             console.log(`Found ${extractions.length} extractions to cluster.`);
 
-            // This is a complex step. For now, we will simulate one big cluster.
-            const clusters = [extractions]; // Simulate one cluster with all extractions
+            // A simple clustering approach: group by a composite key of industry and role.
+            const groupedByPersona = new Map<string, any[]>();
+            extractions.forEach(e => {
+                const industry = e.leadPersonaHints?.industry || 'unknown';
+                const role = e.leadPersonaHints?.role || 'unknown';
+                const key = `${industry}-${role}`.toLowerCase();
+                
+                if (!groupedByPersona.has(key)) {
+                    groupedByPersona.set(key, []);
+                }
+                groupedByPersona.get(key)!.push(e);
+            });
 
-            console.log(`Simulated ${clusters.length} cluster(s).`);
+            const clusters = Array.from(groupedByPersona.values());
+
+            console.log(`Created ${clusters.length} cluster(s) based on industry and role.`);
             
             // 3. For each cluster, call LLM to generate summary/name.
             for (const cluster of clusters) {
@@ -646,6 +658,7 @@ export const processBrainJob = functions.runWith({ memory: '1GB', timeoutSeconds
       });
     }
   });
+
 
 
 
