@@ -224,7 +224,22 @@ function SalesMessagePatternNodeCard({ node }: { node: SalesMessagePatternNode }
                     <Badge variant="outline">Length: {node.pattern.lengthBucket}</Badge>
                     {node.pattern.toneTagsSorted.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
                  </div>
-                 <div className="mt-4 text-sm font-medium">Sample Size: <span className="font-bold">{node.performance.sampleSize}</span></div>
+                 <div className="mt-4 grid grid-cols-3 gap-4 text-center border-t pt-4">
+                    <div>
+                        <p className="text-xs text-muted-foreground">Sample Size</p>
+                        <p className="font-bold text-lg">{node.performance.sampleSize}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs text-muted-foreground">Successes</p>
+                        <p className="font-bold text-lg">{node.performance.successCount || 0}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs text-muted-foreground">Reply Rate</p>
+                        <p className="font-bold text-lg text-primary">
+                            {node.performance.replyRate !== undefined ? `${(node.performance.replyRate * 100).toFixed(0)}%` : 'N/A'}
+                        </p>
+                    </div>
+                </div>
             </CardContent>
         </Card>
     );
