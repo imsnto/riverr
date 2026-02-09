@@ -4,12 +4,13 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as postmark from 'postmark';
 import { gmailAdapter } from '../../src/lib/brain/adapters/gmail';
-import { RawConversationNode, SupportIntentNode } from '../../src/lib/data';
+import { RawConversationNode, SalesPersonaSegmentNode, SupportIntentNode } from '../../src/lib/data';
 import { genkit, type GenkitError } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { distillSupportIntent } from '../../src/ai/flows/distill-support-intent';
 import { extractSalesConversation } from '../../src/ai/flows/distill-sales-intelligence';
 import { getTypesenseAdmin } from '../../src/lib/typesense';
+import { summarizeSalesCluster } from '../../src/ai/flows/summarize-sales-cluster';
 
 admin.initializeApp();
 
@@ -335,18 +336,71 @@ export const processBrainJob = functions.firestore
                 console.log('No sales extractions found to cluster for this space.');
                 break;
             }
-            const extractions = extractionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const extractions = extractionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
             console.log(`Found ${extractions.length} extractions to cluster.`);
 
             // TODO: 2. Run clustering algorithm on embeddings.
-            // This is a complex step that would involve a library like 'skmeans' or a custom algorithm.
-            // For now, we will log a placeholder.
-            
-            // TODO: 3. For each cluster, call LLM to generate summary/name.
-            
-            // TODO: 4. Upsert sales_persona_segment nodes.
+            // This is a complex step. For now, we will simulate one big cluster.
+            const clusters = [extractions]; // Simulate one cluster with all extractions
 
-            console.log('Persona clustering logic (steps 2-4) not yet implemented.');
+            console.log(`Simulated ${clusters.length} cluster(s).`);
+            
+            // 3. For each cluster, call LLM to generate summary/name.
+            for (const cluster of clusters) {
+                if (cluster.length === 0) continue;
+
+                const aggregatedPains = cluster.flatMap(e => e.pains || []);
+                const aggregatedObjections = cluster.flatMap(e => e.objections || []);
+                const aggregatedBuyingSignals = cluster.flatMap(e => e.buyingSignals || []);
+                const examplePersonas = cluster.map(e => e.recommendedPersonaClusterText).slice(0, 10); // Limit examples
+
+                const summary = await summarizeSalesCluster({
+                    aggregatedPains,
+                    aggregatedObjections,
+                    aggregatedBuyingSignals,
+                    examplePersonas,
+                });
+
+                // 4. Upsert sales_persona_segment nodes.
+                const segmentQuery = admin.firestore().collection('memory_nodes')
+                    .where('type', '==', 'sales_persona_segment')
+                    .where('spaceId', '==', job.params.spaceId)
+                    .where('segmentKey', '==', summary.segmentKey)
+                    .limit(1);
+                
+                const segmentSnapshot = await segmentQuery.get();
+                
+                const learnedFromNodeIds = cluster.map(e => e.sourceNodeId);
+
+                if (segmentSnapshot.empty) {
+                    const newSegmentNode: Omit<SalesPersonaSegmentNode, 'id'> = {
+                        type: 'sales_persona_segment',
+                        spaceId: job.params.spaceId,
+                        segmentKey: summary.segmentKey,
+                        summary: summary.summary,
+                        commonPains: summary.commonPains,
+                        commonObjections: summary.commonObjections,
+                        winningAngles: summary.winningAngles,
+                        exampleLines: { openers: [], proofPoints: [], ctas: [] }, // Placeholder
+                        learnedFromNodeIds: learnedFromNodeIds,
+                        confidence: 0.75,
+                        freshnessHalfLifeDays: 120,
+                        visibility: 'sales_only',
+                    };
+                    await admin.firestore().collection('memory_nodes').add(newSegmentNode);
+                    console.log(`Created new persona segment: ${summary.segmentKey}`);
+                } else {
+                    const existingDoc = segmentSnapshot.docs[0];
+                    await existingDoc.ref.update({
+                        summary: summary.summary, // Overwrite with latest summary
+                        commonPains: summary.commonPains,
+                        commonObjections: summary.commonObjections,
+                        winningAngles: summary.winningAngles,
+                        learnedFromNodeIds: admin.firestore.FieldValue.arrayUnion(...learnedFromNodeIds),
+                    });
+                    console.log(`Updated existing persona segment: ${summary.segmentKey}`);
+                }
+            }
           }
           break;
         // ... other job types will be added here
