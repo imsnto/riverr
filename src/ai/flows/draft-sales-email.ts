@@ -10,7 +10,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-export const DraftSalesEmailInputSchema = z.object({
+const DraftSalesEmailInputSchema = z.object({
   lead: z.object({
     name: z.string().optional(),
     company: z.string().optional(),
@@ -30,7 +30,7 @@ export const DraftSalesEmailInputSchema = z.object({
 export type DraftSalesEmailInput = z.infer<typeof DraftSalesEmailInputSchema>;
 
 
-export const DraftSalesEmailOutputSchema = z.object({
+const DraftSalesEmailOutputSchema = z.object({
     subject: z.string().describe("A compelling, concise email subject line."),
     body: z.string().describe("The full, personalized email body. Use markdown for formatting."),
 });
