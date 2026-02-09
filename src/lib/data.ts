@@ -654,7 +654,7 @@ export type { Contact, ContactEvent, ContactEventType, ContactSource, VisitorTyp
 
 export interface BrainJob {
     id: string;
-    type: 'ingest_conversations' | 'distill_support' | 'distill_sales' | 'update_lead_states' | 'embed_node' | 'distill_support_intents';
+    type: 'ingest_conversations' | 'distill_support' | 'distill_sales' | 'update_lead_states' | 'embed_node' | 'distill_support_intents' | 'distill_sales_intelligence';
     status: 'pending' | 'running' | 'completed' | 'failed';
     params: Record<string, any>;
     createdAt: string;

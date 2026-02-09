@@ -7,6 +7,7 @@ import { RawConversationNode, SupportIntentNode } from '../../src/lib/data';
 import { genkit, type GenkitError } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { distillSupportIntent } from '../../src/ai/flows/distill-support-intent';
+import { extractSalesConversation } from '../../src/ai/flows/distill-sales-intelligence';
 
 admin.initializeApp();
 
@@ -233,6 +234,53 @@ export const processBrainJob = functions.firestore
                     }
                     // Mark as failed to avoid retrying problematic conversations
                     await rawDoc.ref.update({ processedForIntent: 'failed' });
+                }
+            }
+          }
+          break;
+        case 'distill_sales_intelligence':
+          {
+            console.log('Starting sales intelligence distillation...');
+            const rawNodesSnapshot = await admin.firestore().collection('memory_nodes')
+                .where('type', '==', 'raw_conversation')
+                .where('channel', '==', 'sales')
+                .where('processedForSales', '==', null)
+                .limit(10) // Process in batches
+                .get();
+
+            if (rawNodesSnapshot.empty) {
+                console.log('No new sales conversations to distill.');
+                break;
+            }
+
+            console.log(`Found ${rawNodesSnapshot.docs.length} sales conversations to process.`);
+
+            for (const rawDoc of rawNodesSnapshot.docs) {
+                const node = rawDoc.data() as RawConversationNode;
+                
+                try {
+                    const extraction = await extractSalesConversation({
+                        conversationText: node.normalized.cleanedText,
+                        participants: node.participants,
+                    });
+
+                    // Save extraction to a separate collection
+                    const extractionRef = admin.firestore().collection('sales_extractions').doc(rawDoc.id);
+                    await extractionRef.set(extraction);
+                    
+                    console.log(`Saved sales extraction for node ${rawDoc.id}.`);
+
+                    // Mark raw node as processed
+                    await rawDoc.ref.update({ processedForSales: true });
+
+                } catch (e: any) {
+                    console.error(`Failed to distill sales intelligence for node ${rawDoc.id}:`, e.message || e);
+                    const error = e as GenkitError;
+                    if (error.data?.llmResponse) {
+                        console.error("LLM Response:", JSON.stringify(error.data.llmResponse, null, 2));
+                    }
+                    // Mark as failed to avoid retrying problematic conversations
+                    await rawDoc.ref.update({ processedForSales: 'failed' });
                 }
             }
           }
