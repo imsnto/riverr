@@ -1,6 +1,9 @@
+
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as postmark from 'postmark';
+import { gmailAdapter } from '../../lib/brain/adapters/gmail';
+import { RawConversationNode } from '../../lib/data';
 
 admin.initializeApp();
 
@@ -70,11 +73,35 @@ export const processBrainJob = functions.firestore
       // Future logic will go here based on job.type
       switch (job.type) {
         case 'ingest_conversations':
-          // This is where STEP 2 (Ingest historical conversations) will be triggered.
-          // For now, we'll just log it.
-          console.log(`Starting conversation ingestion for source: ${job.params.source}`);
-          // Placeholder for actual ingestion logic
-          // await ingestConversations(job.params);
+          {
+            console.log(`Starting conversation ingestion for source: ${job.params.source}`);
+            if (job.params.source !== 'gmail') {
+                throw new Error(`Unsupported ingestion source: ${job.params.source}`);
+            }
+
+            const rawThreads = await gmailAdapter.fetchBatch({ query: job.params.query, maxResults: 50 });
+            const batch = admin.firestore().batch();
+            let processedCount = 0;
+
+            for (const rawThread of rawThreads) {
+                const normalizedThread = gmailAdapter.normalize(rawThread);
+                const rawNode = gmailAdapter.toRawNode(normalizedThread);
+
+                // Add space and hub IDs from the job parameters
+                const finalNode: Omit<RawConversationNode, 'id'> = {
+                    ...(rawNode as Omit<RawConversationNode, 'id'>),
+                    spaceId: job.params.spaceId,
+                    hubId: job.params.hubId,
+                };
+                
+                const nodeRef = admin.firestore().collection('memory_nodes').doc();
+                batch.set(nodeRef, finalNode);
+                processedCount++;
+            }
+            
+            await batch.commit();
+            console.log(`Ingested ${processedCount} conversation(s).`);
+          }
           break;
         // ... other job types will be added here
         default:
