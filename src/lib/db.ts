@@ -1581,6 +1581,13 @@ export const updateHelpCenterContent = async (
 
 
 // --- Business Brain ---
+export const getMemoryNodes = async (type: string): Promise<any[]> => {
+  const q = query(collection(db, "memory_nodes"), where("type", "==", type));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(
+    (doc) => ({ id: doc.id, ...doc.data() } as any)
+  );
+};
 
 export const startBrainJob = async (type: BrainJob['type'], params: Record<string, any>): Promise<string> => {
     const jobData: Omit<BrainJob, 'id'> = {
