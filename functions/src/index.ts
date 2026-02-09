@@ -326,12 +326,27 @@ export const processBrainJob = functions.firestore
         case 'cluster_sales_personas':
           {
             console.log(`Starting sales persona clustering for space: ${job.params.spaceId}`);
-            // TODO:
             // 1. Fetch all sales_extractions for the spaceId.
-            // 2. Run clustering algorithm on embeddings.
-            // 3. For each cluster, call LLM to generate summary/name.
-            // 4. Upsert sales_persona_segment nodes.
-            console.log('Persona clustering logic not yet implemented.');
+            const extractionsSnapshot = await admin.firestore().collection('sales_extractions')
+                .where('spaceId', '==', job.params.spaceId)
+                .get();
+
+            if (extractionsSnapshot.empty) {
+                console.log('No sales extractions found to cluster for this space.');
+                break;
+            }
+            const extractions = extractionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            console.log(`Found ${extractions.length} extractions to cluster.`);
+
+            // TODO: 2. Run clustering algorithm on embeddings.
+            // This is a complex step that would involve a library like 'skmeans' or a custom algorithm.
+            // For now, we will log a placeholder.
+            
+            // TODO: 3. For each cluster, call LLM to generate summary/name.
+            
+            // TODO: 4. Upsert sales_persona_segment nodes.
+
+            console.log('Persona clustering logic (steps 2-4) not yet implemented.');
           }
           break;
         // ... other job types will be added here
