@@ -10,7 +10,7 @@
  * - No "I am designed to..." garbage, no "no matching article" statements
  */
 
-import type { Conversation as ImportedConversation } from "./data";
+import type { Conversation as ImportedConversation, SupportIntentNode } from "./data";
 
 /**
  * IMPORTANT:
@@ -112,9 +112,23 @@ export interface SearchHelpCenterResult {
   chunks: HelpChunk[];
 }
 
+export interface SearchSupportParams {
+  hubId: string;
+  userId?: string | null;
+  query: string;
+  topK?: number;
+}
+
+export type SearchableSupportIntentNode = SupportIntentNode & { _searchScore?: number };
+
+export interface SearchSupportResult {
+  intents: SearchableSupportIntentNode[];
+}
+
+
 export interface AgentAdapters {
   searchHelpCenter: (params: SearchHelpCenterParams) => Promise<SearchHelpCenterResult>;
-
+  searchSupport: (params: SearchSupportParams) => Promise<SearchSupportResult>;
   escalateToHuman: (args: {
     conversationId: string;
     hubId: string;
@@ -453,6 +467,33 @@ export async function handleIncomingMessage(args: {
   if (intent === "billing" && isHardBilling(text)) {
     await offerHuman(adapters, conversation, botName, "Sensitive billing issue");
     return;
+  }
+
+  // ---- NEW: SUPPORT INTENT SEARCH ----
+  // Try to find a structured answer first.
+  if (['how_to', 'troubleshooting', 'billing', 'account_specific', 'unknown'].includes(intent)) {
+      const supportSearchResults = await adapters.searchSupport({
+          hubId: bot.hubId,
+          userId: conversation.userId ?? null,
+          query: text,
+          topK: 1
+      });
+
+      if (supportSearchResults.intents && supportSearchResults.intents.length > 0) {
+          const topIntent = supportSearchResults.intents[0];
+          
+          if (topIntent._searchScore && topIntent._searchScore > 0.5) {
+              const answer = topIntent.answerVariants[0]?.template || "I found some information that might help.";
+              
+              await adapters.persistAssistantMessage({
+                  conversationId: conversation.id,
+                  hubId: conversation.hubId,
+                  text: answer,
+                  meta: { intent: topIntent.intentKey, from: 'SupportIntentNode' },
+              });
+              return; // Handled by Support Intent, so we stop here.
+          }
+      }
   }
 
 

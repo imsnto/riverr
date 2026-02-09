@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -39,7 +40,7 @@ import { Checkbox } from '../ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { marked } from 'marked';
 import { handleIncomingMessage, AgentAdapters, BotConfig, Conversation as AgentConversation, IncomingMessage } from '@/lib/agent';
-import { searchHelpCenterAction } from '@/app/actions/chat';
+import { searchHelpCenterAction, searchSupportAction } from '@/app/actions/chat';
 
 
 function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
@@ -307,6 +308,7 @@ export default function BotSettingsDialog({
         
         const mockAdapters: AgentAdapters = {
             searchHelpCenter: searchHelpCenterAction,
+            searchSupport: searchSupportAction,
             escalateToHuman: async (args) => {
                 setPreviewConversation(prev => prev ? { ...prev, state: 'human_assigned', escalated: true, escalationReason: args.reason } : prev);
             },

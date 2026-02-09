@@ -2,7 +2,7 @@
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
-import { handleIncomingMessage, AgentAdapters, BotConfig, Conversation, IncomingMessage, SearchHelpCenterParams, SearchHelpCenterResult, HelpChunk } from '@/lib/agent';
+import { handleIncomingMessage, AgentAdapters, BotConfig, Conversation, IncomingMessage, SearchHelpCenterParams, SearchHelpCenterResult, HelpChunk, SearchSupportParams, SearchSupportResult, SupportIntentNode } from '@/lib/agent';
 import * as db from '@/lib/db';
 import type { Firestore } from "firebase-admin/firestore";
 import { getTypesenseAdmin, getTypesenseSearch } from '@/lib/typesense';
@@ -74,6 +74,34 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
     return { chunks };
 }
 
+async function searchSupport(params: SearchSupportParams): Promise<SearchSupportResult> {
+    const { hubId, userId, query, topK = 5 } = params;
+
+    if (!hubId) return { intents: [] };
+
+    // For now, simple text search. Later, this will be a vector search.
+    const searchParameters = {
+        'q': query,
+        'query_by': 'textForEmbedding,title,description',
+        'query_by_weights': '4,2,1',
+        'per_page': topK,
+        'sort_by': '_text_match:desc'
+    };
+    
+    const filter = `type:='support_intent' && hubId:=${hubId}`;
+
+    const results = await typesense.collections('memory_nodes').documents().search(searchParameters);
+    
+    const intents: any[] = (results.hits || []).map(hit => {
+        return {
+            ...(hit.document as SupportIntentNode),
+            _searchScore: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
+        };
+    });
+
+    return { intents };
+}
+
 
 export async function invokeAgent(args: {
     bot: BotConfig;
@@ -82,6 +110,7 @@ export async function invokeAgent(args: {
 }) {
     const adapters: AgentAdapters = {
         searchHelpCenter,
+        searchSupport,
         escalateToHuman: async ({ conversationId, hubId, reason }) => {
             await db.updateConversation(conversationId, {
                 status: 'human',
@@ -110,6 +139,10 @@ export async function invokeAgent(args: {
 
 export async function searchHelpCenterAction(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
   return searchHelpCenter(params);
+}
+
+export async function searchSupportAction(params: SearchSupportParams): Promise<SearchSupportResult> {
+  return searchSupport(params);
 }
 
 const PUBLIC_HELP_BASE_URL = process.env.PUBLIC_HELP_BASE_URL || "https://6000-firebase-studio-1753688090358.cluster-ys234awlzbhwoxmkkse6qo3fz6.cloudworkstations.dev";
