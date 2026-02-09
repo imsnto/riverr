@@ -91,7 +91,6 @@ export const processBrainJob = functions.firestore
                 const finalNode: Omit<RawConversationNode, 'id'> = {
                     ...(rawNode as Omit<RawConversationNode, 'id'>),
                     spaceId: job.params.spaceId,
-                    hubId: job.params.hubId,
                 };
                 
                 const nodeRef = admin.firestore().collection('memory_nodes').doc();

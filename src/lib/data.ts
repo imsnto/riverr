@@ -1,3 +1,4 @@
+
 // src/lib/data.ts
 
 // --- Core Entities ---
@@ -669,7 +670,7 @@ export interface BrainJob {
 export interface RawConversationNode {
   id: string;
   spaceId: string;
-  hubId: string;
+  hubId?: string;
   type: 'raw_conversation';
   sourceType: 'gmail'|'m365'|'intercom'|'zendesk'|'slack'|'hubspot'|string;
   channel: 'support'|'sales'|'success'|'ops';

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -49,29 +50,29 @@ function RawConversationNodeCard({ node }: { node: RawConversationNode }) {
 
 export default function BrainSettings() {
     const { toast } = useToast();
-    const { activeHub, activeSpace } = useAuth();
+    const { activeSpace } = useAuth();
     const [isLoadingJob, setIsLoadingJob] = useState(false);
     const [isLoadingNodes, setIsLoadingNodes] = useState(true);
     const [rawConversations, setRawConversations] = useState<RawConversationNode[]>([]);
 
     useEffect(() => {
         const fetchNodes = async () => {
-            if (!activeHub) return;
+            if (!activeSpace) return;
             setIsLoadingNodes(true);
             const nodes = await db.getMemoryNodes('raw_conversation');
-            const hubNodes = nodes.filter(n => n.hubId === activeHub.id);
-            setRawConversations(hubNodes);
+            const spaceNodes = nodes.filter(n => n.spaceId === activeSpace.id);
+            setRawConversations(spaceNodes);
             setIsLoadingNodes(false);
         };
         fetchNodes();
-    }, [activeHub]);
+    }, [activeSpace]);
 
 
     const handleIngestConversations = async () => {
-        if (!activeSpace || !activeHub) {
+        if (!activeSpace) {
             toast({
                 variant: 'destructive',
-                title: 'No active space or hub',
+                title: 'No active space',
                 description: 'Please ensure you are in a valid workspace context.',
             });
             return;
@@ -81,7 +82,6 @@ export default function BrainSettings() {
             const jobId = await db.startBrainJob('ingest_conversations', { 
                 source: 'gmail',
                 spaceId: activeSpace.id,
-                hubId: activeHub.id,
             });
             toast({
                 title: 'Job Started',
