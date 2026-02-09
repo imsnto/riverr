@@ -749,15 +749,31 @@ export interface SalesMessagePatternNode {
   id: string;
   spaceId: string;
   type: 'sales_message_pattern';
-  patternKey: string;
-  purpose: 'cold_outreach'|'followup_1'|'followup_2'|'breakup';
-  pattern: { subjectStyle: string; openerStyle: string; bodyStructure: string; ctaStyle: string; lengthBucket: string; toneTags: string[]; exampleSnippet: string };
-  performance: { sampleSize: number; replyRate?: number; meetingRate?: number; bySegment?: Record<string, any> };
+  patternKey: string; // The hash
+  pattern: { // The signature
+    purpose: 'cold_outreach'|'followup_1'|'followup_2'|'breakup';
+    bodyStructure: 'pain->proof->cta'|'proof->pain->cta'|'value_drop->cta'|'question_only'|'other';
+    ctaStyle: 'question'|'calendar_link'|'value_offer'|'soft_close'|'other';
+    openerStyle: 'personal'|'pain'|'compliment'|'reference'|'straight_ask'|'other';
+    toneTags: string[];
+    lengthBucket: 'short'|'medium'|'long';
+  };
+  performance: {
+    sampleSize: number;
+    replyRate?: number;
+    meetingRate?: number;
+    bySegment?: Record<string, { // key is segmentKey
+        sampleSize: number;
+        replyRate?: number;
+        meetingRate?: number;
+    }>;
+  };
   learnedFromNodeIds: string[];
   confidence: number;
   freshnessHalfLifeDays: number;
   visibility: 'sales_only';
 }
+
 
 export interface LeadStateNode {
   id: string; // Corresponds to leadId
