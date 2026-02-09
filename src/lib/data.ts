@@ -691,6 +691,7 @@ export interface RawConversationNode {
   embeddingModel?: string;
   embeddedAt?: string;
   processedForIntent?: boolean | 'failed' | null;
+  processedForSales?: boolean | 'failed' | null;
 }
 
 export interface RawInteractionNode {
@@ -775,4 +776,5 @@ export interface LeadStateNode {
   visibility: 'sales_only';
 }
 
-export type MemoryNode = RawConversationNode | RawInteractionNode | SupportIntentNode | SalesPersonaSegmentNode | LeadStateNode;
+
+export type MemoryNode = RawConversationNode | RawInteractionNode | SupportIntentNode | SalesPersonaSegmentNode | SalesMessagePatternNode | LeadStateNode;
