@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -158,6 +159,7 @@ export default function BrainSettings() {
     const [isLoadingJob, setIsLoadingJob] = useState(false);
     const [isLoadingDistill, setIsLoadingDistill] = useState(false);
     const [isLoadingNodes, setIsLoadingNodes] = useState(true);
+    const [isClustering, setIsLoadingClustering] = useState(false);
     const [rawConversations, setRawConversations] = useState<RawConversationNode[]>([]);
     const [supportIntents, setSupportIntents] = useState<SupportIntentNode[]>([]);
     const [salesExtractions, setSalesExtractions] = useState<SalesExtractionResultWithScore[]>([]);
@@ -264,6 +266,28 @@ export default function BrainSettings() {
         setSalesExtractions(results.extractions as SalesExtractionResultWithScore[]);
         setIsSearching(false);
     }
+    
+    const handleClusterPersonas = async () => {
+        if (!activeSpace) return;
+        setIsLoadingClustering(true);
+        try {
+            const jobId = await db.startBrainJob('cluster_sales_personas', { 
+                spaceId: activeSpace.id,
+            });
+            toast({
+                title: 'Job Started',
+                description: `Started persona clustering job. This may take a few minutes.`,
+            });
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Failed to start job',
+            });
+        } finally {
+            setIsLoadingClustering(false);
+        }
+    }
+
 
     return (
         <Tabs defaultValue="support" className="space-y-6">
@@ -367,6 +391,18 @@ export default function BrainSettings() {
                             <Button onClick={() => handleDistillIntents('sales_intelligence')} disabled={isLoadingDistill}>
                                 {isLoadingDistill && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Start Distillation
+                            </Button>
+                        </div>
+                         <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div>
+                                <h3 className="font-semibold">3. Cluster Personas</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Group sales extractions into persona segments.
+                                </p>
+                            </div>
+                            <Button onClick={handleClusterPersonas} disabled={isClustering}>
+                                {isClustering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Cluster Personas
                             </Button>
                         </div>
                     </CardContent>

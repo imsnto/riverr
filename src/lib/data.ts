@@ -654,7 +654,7 @@ export type { Contact, ContactEvent, ContactEventType, ContactSource, VisitorTyp
 
 export interface BrainJob {
     id: string;
-    type: 'ingest_conversations' | 'distill_support' | 'distill_sales' | 'update_lead_states' | 'embed_node' | 'distill_support_intents' | 'distill_sales_intelligence';
+    type: 'ingest_conversations' | 'distill_support' | 'distill_sales' | 'update_lead_states' | 'embed_node' | 'distill_support_intents' | 'distill_sales_intelligence' | 'cluster_sales_personas';
     status: 'pending' | 'running' | 'completed' | 'failed';
     params: Record<string, any>;
     createdAt: string;
@@ -738,7 +738,6 @@ export interface SalesPersonaSegmentNode {
   commonPains: string[];
   commonObjections: string[];
   winningAngles: string[];
-  bestCtaTypes: string[];
   exampleLines: { openers: string[]; proofPoints: string[]; ctas: string[] };
   learnedFromNodeIds: string[];
   confidence: number;

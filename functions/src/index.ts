@@ -1,4 +1,5 @@
 
+
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as postmark from 'postmark';
@@ -320,6 +321,17 @@ export const processBrainJob = functions.firestore
                     await rawDoc.ref.update({ processedForSales: 'failed' });
                 }
             }
+          }
+          break;
+        case 'cluster_sales_personas':
+          {
+            console.log(`Starting sales persona clustering for space: ${job.params.spaceId}`);
+            // TODO:
+            // 1. Fetch all sales_extractions for the spaceId.
+            // 2. Run clustering algorithm on embeddings.
+            // 3. For each cluster, call LLM to generate summary/name.
+            // 4. Upsert sales_persona_segment nodes.
+            console.log('Persona clustering logic not yet implemented.');
           }
           break;
         // ... other job types will be added here
