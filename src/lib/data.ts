@@ -690,6 +690,7 @@ export interface RawConversationNode {
   embedding?: number[];
   embeddingModel?: string;
   embeddedAt?: string;
+  processedForIntent?: boolean | 'failed' | null;
 }
 
 export interface RawInteractionNode {
@@ -700,7 +701,6 @@ export interface RawInteractionNode {
   channel: 'sales'|'support';
   subjectId: 'lead:{id}'|'customer:{id}';
   eventType: string; // 'pricing_page_view', 'demo_request'
-  occurredAt: string;
   payload: Record<string, any>;
   visibility: 'internal_only' | 'public';
 }

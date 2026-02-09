@@ -3,7 +3,7 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as postmark from 'postmark';
 import { gmailAdapter } from '../../src/lib/brain/adapters/gmail';
-import { RawConversationNode } from '../../src/lib/data';
+import { RawConversationNode, SupportIntentNode } from '../../src/lib/data';
 import { genkit, type GenkitError } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { distillSupportIntent } from '../../src/ai/flows/distill-support-intent';
@@ -127,7 +127,7 @@ export const processBrainJob = functions.firestore
             const rawNodesSnapshot = await admin.firestore().collection('memory_nodes')
                 .where('type', '==', 'raw_conversation')
                 .where('channel', '==', 'support')
-                // TODO: Add a flag to prevent re-processing
+                .where('processedForIntent', '==', null) // Only get unprocessed nodes
                 .limit(10) // Process in batches
                 .get();
 
@@ -138,10 +138,8 @@ export const processBrainJob = functions.firestore
 
             console.log(`Found ${rawNodesSnapshot.docs.length} conversations to process.`);
             
-            for (const doc of rawNodesSnapshot.docs) {
-                const node = doc.data() as RawConversationNode;
-                
-                // TODO: Here we would check if node has been processed
+            for (const rawDoc of rawNodesSnapshot.docs) {
+                const node = rawDoc.data() as RawConversationNode;
                 
                 try {
                     const result = await distillSupportIntent({
@@ -149,20 +147,46 @@ export const processBrainJob = functions.firestore
                         lastAgentMessage: node.normalized.lastAgentOrRepMessage,
                     });
 
-                    console.log(`Distilled Intent: ${result.intentKey}`, result);
-                    // TODO: Here we would upsert the SupportIntentNode
+                    // For now, create one SupportIntentNode per conversation.
+                    // A future step will aggregate these by intentKey.
+                    const newIntentNode: Omit<SupportIntentNode, 'id'> = {
+                        type: 'support_intent',
+                        spaceId: node.spaceId,
+                        hubId: node.hubId || '',
+                        intentKey: result.intentKey,
+                        title: result.customerQuestion,
+                        description: result.resolution,
+                        requiredContext: result.requiredContext,
+                        safeAnswerPolicy: result.safetyCriteria,
+                        answerVariants: [{
+                            variantId: 'default',
+                            style: 'professional',
+                            template: result.resolution,
+                            whenToUse: 'All situations',
+                        }],
+                        escalationRule: { maxAttempts: 2 },
+                        learnedFromNodeIds: [rawDoc.id],
+                        confidence: 0.75, // Starting confidence
+                        freshnessHalfLifeDays: 365,
+                        visibility: 'support_only',
+                    };
                     
-                    // Mark as processed
-                    // await doc.ref.update({ processedForIntent: true });
+                    // Save the new derived node
+                    await admin.firestore().collection('memory_nodes').add(newIntentNode);
+
+                    // Mark raw node as processed
+                    await rawDoc.ref.update({ processedForIntent: true });
+
+                    console.log(`Distilled and saved intent '${result.intentKey}' from node ${rawDoc.id}.`);
 
                 } catch (e: any) {
-                    console.error(`Failed to distill intent for node ${doc.id}:`, e.message || e);
+                    console.error(`Failed to distill intent for node ${rawDoc.id}:`, e.message || e);
                     const error = e as GenkitError;
                     if (error.data?.llmResponse) {
                         console.error("LLM Response:", JSON.stringify(error.data.llmResponse, null, 2));
                     }
-                    // Optionally mark as failed
-                    // await doc.ref.update({ processedForIntent: 'failed' });
+                    // Mark as failed to avoid retrying problematic conversations
+                    await rawDoc.ref.update({ processedForIntent: 'failed' });
                 }
             }
           }
