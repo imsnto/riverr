@@ -1,12 +1,20 @@
 
-
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as postmark from 'postmark';
 import { gmailAdapter } from '../../lib/brain/adapters/gmail';
-import { RawConversationNode } from '../../lib/data';
+import { RawConversationNode, SupportIntentNode } from '../../lib/data';
+import { genkit, type GenkitError } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
+import { distillSupportIntent } from '../../ai/flows/distill-support-intent';
+import { extractSalesConversation } from '../../ai/flows/distill-sales-intelligence';
 
 admin.initializeApp();
+
+// Initialize genkit for use in this cloud function
+const ai = genkit({
+  plugins: [googleAI()],
+});
 
 // ✅ Use your verified Postmark info
 const POSTMARK_API_KEY = 'eed163d1-398a-40f8-b555-8ec1c5a53ae5';
@@ -88,17 +96,19 @@ export const processBrainJob = functions.firestore
                 const normalizedThread = gmailAdapter.normalize(rawThread);
                 const rawNode = gmailAdapter.toRawNode(normalizedThread);
 
-                // --- MOCK EMBEDDING STEP ---
-                // In a real system, this would call an embedding service (e.g., Vertex AI).
-                const mockEmbedding = Array.from({ length: 768 }, () => Math.random() * 2 - 1);
+                // --- REAL EMBEDDING STEP ---
+                const { embedding } = await ai.embed({
+                    model: 'googleai/embedding-004',
+                    content: rawNode.textForEmbedding,
+                });
                 const embeddedAt = new Date().toISOString();
-                const embeddingModel = "mock-model-v1";
-                // --- END MOCK ---
+                const embeddingModel = "embedding-004";
+                // --- END REAL EMBEDDING ---
 
                 const finalNode: Omit<RawConversationNode, 'id'> = {
                     ...(rawNode as Omit<RawConversationNode, 'id'>),
                     spaceId: job.params.spaceId,
-                    embedding: mockEmbedding,
+                    embedding: embedding,
                     embeddingModel: embeddingModel,
                     embeddedAt: embeddedAt,
                 };
@@ -110,6 +120,187 @@ export const processBrainJob = functions.firestore
             
             await batch.commit();
             console.log(`Ingested and embedded ${processedCount} conversation(s).`);
+          }
+          break;
+        case 'distill_support_intents':
+          {
+            console.log('Starting support intent distillation...');
+            const rawNodesSnapshot = await admin.firestore().collection('memory_nodes')
+                .where('type', '==', 'raw_conversation')
+                .where('channel', '==', 'support')
+                .where('processedForIntent', '==', null) // Only get unprocessed nodes
+                .limit(10) // Process in batches
+                .get();
+
+            if (rawNodesSnapshot.empty) {
+                console.log('No new support conversations to distill.');
+                break;
+            }
+
+            console.log(`Found ${rawNodesSnapshot.docs.length} conversations to process.`);
+            
+            for (const rawDoc of rawNodesSnapshot.docs) {
+                const node = rawDoc.data() as RawConversationNode;
+                
+                try {
+                    const result = await distillSupportIntent({
+                        conversationText: node.normalized.cleanedText,
+                        lastAgentMessage: node.normalized.lastAgentOrRepMessage,
+                    });
+
+                    // Check if an intent with this key already exists for the space
+                    const intentQuery = admin.firestore().collection('memory_nodes')
+                        .where('type', '==', 'support_intent')
+                        .where('spaceId', '==', node.spaceId)
+                        .where('intentKey', '==', result.intentKey)
+                        .limit(1);
+
+                    const intentSnapshot = await intentQuery.get();
+
+                    if (intentSnapshot.empty) {
+                        // --- EMBEDDING STEP ---
+                        const textForEmbedding = `${result.customerQuestion}\n${result.resolution}`;
+                        const { embedding } = await ai.embed({
+                            model: 'googleai/embedding-004',
+                            content: textForEmbedding,
+                        });
+                        const embeddedAt = new Date().toISOString();
+                        const embeddingModel = "embedding-004";
+                        // --- END EMBEDDING ---
+
+                        // --- CREATE NEW INTENT NODE ---
+                        const newIntentNode: Omit<SupportIntentNode, 'id'> = {
+                            type: 'support_intent',
+                            spaceId: node.spaceId,
+                            hubId: node.hubId || '',
+                            intentKey: result.intentKey,
+                            title: result.customerQuestion,
+                            description: result.resolution,
+                            requiredContext: result.requiredContext,
+                            safeAnswerPolicy: result.safetyCriteria,
+                            answerVariants: [{
+                                variantId: 'default',
+                                style: 'professional',
+                                template: result.resolution,
+                                whenToUse: 'All situations',
+                            }],
+                            escalationRule: { maxAttempts: 2 },
+                            learnedFromNodeIds: [rawDoc.id],
+                            confidence: 0.75, // Starting confidence
+                            freshnessHalfLifeDays: 365,
+                            visibility: 'support_only',
+                            embedding,
+                            embeddingModel,
+                            embeddedAt,
+                            textForEmbedding,
+                        };
+                        
+                        await admin.firestore().collection('memory_nodes').add(newIntentNode);
+                        console.log(`Created and embedded new intent '${result.intentKey}' from node ${rawDoc.id}.`);
+
+                    } else {
+                        // --- UPDATE EXISTING INTENT NODE ---
+                        const existingDoc = intentSnapshot.docs[0];
+                        const existingIntent = existingDoc.data() as SupportIntentNode;
+
+                        const updates: { [key: string]: any } = {
+                            learnedFromNodeIds: admin.firestore.FieldValue.arrayUnion(rawDoc.id),
+                        };
+
+                        const resolutionExists = existingIntent.answerVariants.some(v => v.template === result.resolution);
+                        
+                        if (!resolutionExists) {
+                            const newVariant = {
+                                variantId: `variant-${Date.now()}`,
+                                style: 'professional',
+                                template: result.resolution,
+                                whenToUse: 'Learned from new example',
+                            };
+                            updates.answerVariants = admin.firestore.FieldValue.arrayUnion(newVariant);
+                        }
+
+                        await existingDoc.ref.update(updates);
+                        console.log(`Updated existing intent '${result.intentKey}' with data from node ${rawDoc.id}.`);
+                    }
+
+                    // Mark raw node as processed
+                    await rawDoc.ref.update({ processedForIntent: true });
+
+                } catch (e: any) {
+                    console.error(`Failed to distill intent for node ${rawDoc.id}:`, e.message || e);
+                    const error = e as GenkitError;
+                    if (error.data?.llmResponse) {
+                        console.error("LLM Response:", JSON.stringify(error.data.llmResponse, null, 2));
+                    }
+                    // Mark as failed to avoid retrying problematic conversations
+                    await rawDoc.ref.update({ processedForIntent: 'failed' });
+                }
+            }
+          }
+          break;
+        case 'distill_sales_intelligence':
+          {
+            console.log('Starting sales intelligence distillation...');
+            const rawNodesSnapshot = await admin.firestore().collection('memory_nodes')
+                .where('type', '==', 'raw_conversation')
+                .where('channel', '==', 'sales')
+                .where('processedForSales', '==', null)
+                .limit(10) // Process in batches
+                .get();
+
+            if (rawNodesSnapshot.empty) {
+                console.log('No new sales conversations to distill.');
+                break;
+            }
+
+            console.log(`Found ${rawNodesSnapshot.docs.length} sales conversations to process.`);
+
+            for (const rawDoc of rawNodesSnapshot.docs) {
+                const node = rawDoc.data() as RawConversationNode;
+                
+                try {
+                    const extraction = await extractSalesConversation({
+                        conversationText: node.normalized.cleanedText,
+                        participants: node.participants,
+                    });
+                    
+                    // --- EMBED PERSONA TEXT ---
+                    const { embedding } = await ai.embed({
+                        model: 'googleai/embedding-004',
+                        content: extraction.recommendedPersonaClusterText,
+                    });
+                    const embeddedAt = new Date().toISOString();
+                    const embeddingModel = "embedding-004";
+                    // --- END EMBEDDING ---
+
+                    const finalExtraction = {
+                        ...extraction,
+                        spaceId: node.spaceId,
+                        sourceNodeId: rawDoc.id,
+                        embedding,
+                        embeddingModel,
+                        embeddedAt
+                    };
+
+                    // Save extraction to a separate collection
+                    const extractionRef = admin.firestore().collection('sales_extractions').doc();
+                    await extractionRef.set(finalExtraction);
+                    
+                    console.log(`Saved and embedded sales extraction for node ${rawDoc.id}.`);
+
+                    // Mark raw node as processed
+                    await rawDoc.ref.update({ processedForSales: true });
+
+                } catch (e: any) {
+                    console.error(`Failed to distill sales intelligence for node ${rawDoc.id}:`, e.message || e);
+                    const error = e as GenkitError;
+                    if (error.data?.llmResponse) {
+                        console.error("LLM Response:", JSON.stringify(error.data.llmResponse, null, 2));
+                    }
+                    // Mark as failed to avoid retrying problematic conversations
+                    await rawDoc.ref.update({ processedForSales: 'failed' });
+                }
+            }
           }
           break;
         // ... other job types will be added here
