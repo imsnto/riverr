@@ -1,3 +1,4 @@
+
 'use client'
 // src/lib/db.ts
 
@@ -1583,6 +1584,14 @@ export const updateHelpCenterContent = async (
 // --- Business Brain ---
 export const getMemoryNodes = async (type: string): Promise<any[]> => {
   const q = query(collection(db, "memory_nodes"), where("type", "==", type));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(
+    (doc) => ({ id: doc.id, ...doc.data() } as any)
+  );
+};
+
+export const getSalesExtractions = async (spaceId: string): Promise<any[]> => {
+  const q = query(collection(db, "sales_extractions"), where("spaceId", "==", spaceId), limit(50));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(
     (doc) => ({ id: doc.id, ...doc.data() } as any)

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -5,13 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import * as db from '@/lib/db';
-import { Loader2, Bot, Users, BrainCircuit, Lightbulb } from 'lucide-react';
+import { Loader2, Bot, Users, BrainCircuit, Lightbulb, Search } from 'lucide-react';
 import { RawConversationNode, SupportIntentNode } from '@/lib/data';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/use-auth';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Input } from '../ui/input';
+import { SalesConversationExtraction } from '@/ai/flows/distill-sales-intelligence';
+import { searchSalesExtractionsAction, type SearchSalesExtractionsResult } from '@/app/actions/chat';
 
 function RawConversationNodeCard({ node }: { node: RawConversationNode }) {
     const participants = node.participants || [];
@@ -87,6 +92,66 @@ function SupportIntentNodeCard({ node }: { node: SupportIntentNode }) {
     )
 }
 
+type SalesExtractionResultWithScore = SalesConversationExtraction & { id: string; _searchScore?: number };
+
+function SalesExtractionNodeCard({ node }: { node: SalesExtractionResultWithScore }) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-base font-semibold">
+                    Extraction from Node <code className="text-xs bg-muted p-1 rounded">{node.sourceNodeId.substring(0, 8)}</code>
+                </CardTitle>
+                 <CardDescription>Outcome: <Badge variant={node.outcome === 'replied_positive' ? 'default' : 'secondary'}>{node.outcome}</Badge></CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="item-1">
+                        <AccordionTrigger>View Details</AccordionTrigger>
+                        <AccordionContent>
+                           <div className="space-y-4 text-sm">
+                                {node.leadPersonaHints && (
+                                    <div>
+                                        <h4 className="font-semibold">Persona Hints</h4>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {node.leadPersonaHints.industry && <Badge variant="outline">Industry: {node.leadPersonaHints.industry}</Badge>}
+                                            {node.leadPersonaHints.role && <Badge variant="outline">Role: {node.leadPersonaHints.role}</Badge>}
+                                            {node.leadPersonaHints.orgSize && <Badge variant="outline">Size: {node.leadPersonaHints.orgSize}</Badge>}
+                                        </div>
+                                    </div>
+                                )}
+                                {node.pains && node.pains.length > 0 && (
+                                    <div>
+                                        <h4 className="font-semibold">Pains</h4>
+                                        <ul className="list-disc pl-5 mt-1 space-y-1 text-muted-foreground">
+                                            {node.pains.map((pain, i) => <li key={i}>{pain}</li>)}
+                                        </ul>
+                                    </div>
+                                )}
+                                 {node.objections && node.objections.length > 0 && (
+                                    <div>
+                                        <h4 className="font-semibold">Objections</h4>
+                                        <ul className="list-disc pl-5 mt-1 space-y-1 text-muted-foreground">
+                                            {node.objections.map((o, i) => <li key={i}>{o}</li>)}
+                                        </ul>
+                                    </div>
+                                )}
+                                {node.buyingSignals && node.buyingSignals.length > 0 && (
+                                    <div>
+                                        <h4 className="font-semibold">Buying Signals</h4>
+                                        <ul className="list-disc pl-5 mt-1 space-y-1 text-green-600">
+                                            {node.buyingSignals.map((s, i) => <li key={i}>{s}</li>)}
+                                        </ul>
+                                    </div>
+                                )}
+                           </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function BrainSettings() {
     const { toast } = useToast();
     const { activeSpace } = useAuth();
@@ -95,26 +160,31 @@ export default function BrainSettings() {
     const [isLoadingNodes, setIsLoadingNodes] = useState(true);
     const [rawConversations, setRawConversations] = useState<RawConversationNode[]>([]);
     const [supportIntents, setSupportIntents] = useState<SupportIntentNode[]>([]);
+    const [salesExtractions, setSalesExtractions] = useState<SalesExtractionResultWithScore[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+
 
     useEffect(() => {
         const fetchNodes = async () => {
             if (!activeSpace) return;
             setIsLoadingNodes(true);
-            const [rawNodes, intentNodes] = await Promise.all([
+            const [rawNodes, intentNodes, initialSalesExtractions] = await Promise.all([
                 db.getMemoryNodes('raw_conversation'),
-                db.getMemoryNodes('support_intent')
+                db.getMemoryNodes('support_intent'),
+                db.getSalesExtractions(activeSpace.id)
             ]);
             const spaceRawNodes = rawNodes.filter(n => n.spaceId === activeSpace.id);
             const spaceIntentNodes = intentNodes.filter(n => n.spaceId === activeSpace.id);
             setRawConversations(spaceRawNodes);
             setSupportIntents(spaceIntentNodes);
+            setSalesExtractions(initialSalesExtractions as SalesExtractionResultWithScore[]);
             setIsLoadingNodes(false);
         };
         fetchNodes();
     }, [activeSpace]);
 
 
-    const handleIngestConversations = async () => {
+    const handleIngestConversations = async (channel: 'support' | 'sales') => {
         if (!activeSpace) {
             toast({
                 variant: 'destructive',
@@ -127,6 +197,7 @@ export default function BrainSettings() {
         try {
             const jobId = await db.startBrainJob('ingest_conversations', { 
                 source: 'gmail',
+                channel: channel,
                 spaceId: activeSpace.id,
             });
             toast({
@@ -145,7 +216,7 @@ export default function BrainSettings() {
         }
     };
 
-    const handleDistillIntents = async () => {
+    const handleDistillIntents = async (type: 'support_intent' | 'sales_intelligence') => {
         if (!activeSpace) {
             toast({
                 variant: 'destructive',
@@ -156,12 +227,13 @@ export default function BrainSettings() {
         }
         setIsLoadingDistill(true);
         try {
-            const jobId = await db.startBrainJob('distill_support_intents', { 
+            const jobType = type === 'support_intent' ? 'distill_support_intents' : 'distill_sales_intelligence';
+            const jobId = await db.startBrainJob(jobType, { 
                 spaceId: activeSpace.id,
             });
             toast({
                 title: 'Job Started',
-                description: `Started support intent distillation job with ID: ${jobId}`,
+                description: `Started distillation job with ID: ${jobId}`,
             });
         } catch (error) {
             toast({
@@ -174,98 +246,163 @@ export default function BrainSettings() {
             setIsLoadingDistill(false);
         }
     };
+    
+    const handleSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const query = e.target.value;
+        if (!activeSpace) return;
+
+        if (query.length < 2) {
+            if(query.length === 0) {
+                 const initialSalesExtractions = await db.getSalesExtractions(activeSpace.id);
+                 setSalesExtractions(initialSalesExtractions as SalesExtractionResultWithScore[]);
+            }
+            return;
+        }
+
+        setIsSearching(true);
+        const results = await searchSalesExtractionsAction({ query, spaceId: activeSpace.id });
+        setSalesExtractions(results.extractions as SalesExtractionResultWithScore[]);
+        setIsSearching(false);
+    }
 
     return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Business Brain Jobs</CardTitle>
-                    <CardDescription>
-                        Manually trigger jobs to process data and build the business brain.
-                        In a production system, this would be automated.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div>
-                            <h3 className="font-semibold">1. Ingest Historical Conversations</h3>
-                            <p className="text-sm text-muted-foreground">
-                                Import and process conversations from connected sources (e.g., email).
-                            </p>
-                        </div>
-                        <Button onClick={handleIngestConversations} disabled={isLoadingJob}>
-                            {isLoadingJob && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Start Ingestion
-                        </Button>
-                    </div>
-                     <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div>
-                            <h3 className="font-semibold">2. Distill Support Intents</h3>
-                            <p className="text-sm text-muted-foreground">
-                                Analyze conversations to create a structured answer library.
-                            </p>
-                        </div>
-                        <Button onClick={handleDistillIntents} disabled={isLoadingDistill}>
-                            {isLoadingDistill && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Start Distillation
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+        <Tabs defaultValue="support" className="space-y-6">
+            <TabsList>
+                <TabsTrigger value="support">Support Intelligence</TabsTrigger>
+                <TabsTrigger value="sales">Sales Intelligence</TabsTrigger>
+            </TabsList>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Distilled Support Intents ({supportIntents.length})</CardTitle>
-                    <CardDescription>
-                        The structured knowledge the agent uses to answer support questions.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                     {isLoadingNodes ? (
-                         <div className="flex items-center justify-center gap-2 py-8">
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            <span className="text-muted-foreground">Loading distilled knowledge...</span>
+            <TabsContent value="support" className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Business Brain Jobs (Support)</CardTitle>
+                        <CardDescription>
+                            Manually trigger jobs to process data for the support brain.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div>
+                                <h3 className="font-semibold">1. Ingest Support Conversations</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Import and process support tickets from connected sources (e.g., email).
+                                </p>
+                            </div>
+                            <Button onClick={() => handleIngestConversations('support')} disabled={isLoadingJob}>
+                                {isLoadingJob && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Start Ingestion
+                            </Button>
                         </div>
-                    ) : supportIntents.length > 0 ? (
-                        <div className="space-y-4">
-                            {supportIntents.map(node => <SupportIntentNodeCard key={node.id} node={node} />)}
+                         <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div>
+                                <h3 className="font-semibold">2. Distill Support Intents</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Analyze conversations to create a structured answer library.
+                                </p>
+                            </div>
+                            <Button onClick={() => handleDistillIntents('support_intent')} disabled={isLoadingDistill}>
+                                {isLoadingDistill && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Start Distillation
+                            </Button>
                         </div>
-                    ) : (
-                        <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                            <BrainCircuit className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <h3 className="mt-2 text-sm font-semibold text-foreground">No Distilled Knowledge</h3>
-                            <p className="mt-1 text-sm text-muted-foreground">Run a distillation job to build the answer library.</p>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Raw Memory Nodes ({rawConversations.length})</CardTitle>
-                    <CardDescription>
-                        Audit the raw, normalized conversations ingested into the brain.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {isLoadingNodes ? (
-                         <div className="flex items-center justify-center gap-2 py-8">
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            <span className="text-muted-foreground">Loading memory nodes...</span>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Distilled Support Intents ({supportIntents.length})</CardTitle>
+                        <CardDescription>
+                            The structured knowledge the agent uses to answer support questions.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                         {isLoadingNodes ? (
+                             <div className="flex items-center justify-center gap-2 py-8">
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <span className="text-muted-foreground">Loading distilled knowledge...</span>
+                            </div>
+                        ) : supportIntents.length > 0 ? (
+                            <div className="space-y-4">
+                                {supportIntents.map(node => <SupportIntentNodeCard key={node.id} node={node} />)}
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                                <BrainCircuit className="mx-auto h-12 w-12 text-muted-foreground" />
+                                <h3 className="mt-2 text-sm font-semibold text-foreground">No Distilled Knowledge</h3>
+                                <p className="mt-1 text-sm text-muted-foreground">Run a distillation job to build the answer library.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+             <TabsContent value="sales" className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Business Brain Jobs (Sales)</CardTitle>
+                        <CardDescription>
+                            Manually trigger jobs to process data for the sales brain.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div>
+                                <h3 className="font-semibold">1. Ingest Sales Conversations</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Import and process sales conversations from connected sources.
+                                </p>
+                            </div>
+                            <Button onClick={() => handleIngestConversations('sales')} disabled={isLoadingJob}>
+                                {isLoadingJob && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Start Ingestion
+                            </Button>
                         </div>
-                    ) : rawConversations.length > 0 ? (
-                        <div className="space-y-4">
-                            {rawConversations.map(node => <RawConversationNodeCard key={node.id} node={node} />)}
+                         <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div>
+                                <h3 className="font-semibold">2. Distill Sales Intelligence</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Analyze sales conversations to extract personas, pains, and signals.
+                                </p>
+                            </div>
+                            <Button onClick={() => handleDistillIntents('sales_intelligence')} disabled={isLoadingDistill}>
+                                {isLoadingDistill && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Start Distillation
+                            </Button>
                         </div>
-                    ) : (
-                        <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                            <Bot className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <h3 className="mt-2 text-sm font-semibold text-foreground">No Memory Nodes Found</h3>
-                            <p className="mt-1 text-sm text-muted-foreground">Run an ingestion job to populate the brain's memory.</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Sales Intelligence Extractions ({salesExtractions.length})</CardTitle>
+                        <CardDescription>
+                            Search and audit the structured data extracted from sales conversations.
+                        </CardDescription>
+                         <div className="relative pt-4">
+                            <Search className="absolute left-2.5 top-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="Search pains, objections, signals..." className="pl-8" onChange={handleSearch} />
                         </div>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {isSearching ? (
+                            <div className="flex items-center justify-center gap-2 py-8">
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <span className="text-muted-foreground">Searching...</span>
+                            </div>
+                        ) : salesExtractions.length > 0 ? (
+                            <div className="space-y-4">
+                                {salesExtractions.map(node => <SalesExtractionNodeCard key={node.id} node={node} />)}
+                            </div>
+                        ) : (
+                             <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                                <BrainCircuit className="mx-auto h-12 w-12 text-muted-foreground" />
+                                <h3 className="mt-2 text-sm font-semibold text-foreground">No Sales Extractions Found</h3>
+                                <p className="mt-1 text-sm text-muted-foreground">Run a sales distillation job to build this library.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+        </Tabs>
     );
 }

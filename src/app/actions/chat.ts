@@ -102,6 +102,43 @@ async function searchSupport(params: SearchSupportParams): Promise<SearchSupport
     return { intents };
 }
 
+export interface SearchSalesExtractionsParams {
+    query: string;
+    spaceId: string;
+    topK?: number;
+}
+export interface SalesExtractionResult {
+    id: string;
+    [key: string]: any;
+}
+export interface SearchSalesExtractionsResult {
+    extractions: SalesExtractionResult[];
+}
+
+async function searchSalesExtractions(params: SearchSalesExtractionsParams): Promise<SearchSalesExtractionsResult> {
+    const { query, spaceId, topK = 25 } = params;
+
+    const searchParameters = {
+        'q': query,
+        'query_by': 'recommendedPersonaClusterText,pains,objections,buyingSignals',
+        'filter_by': `spaceId:=${spaceId}`,
+        'per_page': topK,
+        'sort_by': '_text_match:desc',
+    };
+
+    const results = await typesense.collections('sales_extractions').documents().search(searchParameters);
+
+    const extractions: SalesExtractionResult[] = (results.hits || []).map(hit => {
+        return {
+            id: hit.document.id,
+            ...(hit.document as any),
+            _searchScore: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
+        };
+    });
+
+    return { extractions };
+}
+
 
 export async function invokeAgent(args: {
     bot: BotConfig;
@@ -111,6 +148,7 @@ export async function invokeAgent(args: {
     const adapters: AgentAdapters = {
         searchHelpCenter,
         searchSupport,
+        searchSalesExtractions,
         escalateToHuman: async ({ conversationId, hubId, reason }) => {
             await db.updateConversation(conversationId, {
                 status: 'human',
@@ -143,6 +181,10 @@ export async function searchHelpCenterAction(params: SearchHelpCenterParams): Pr
 
 export async function searchSupportAction(params: SearchSupportParams): Promise<SearchSupportResult> {
   return searchSupport(params);
+}
+
+export async function searchSalesExtractionsAction(params: SearchSalesExtractionsParams): Promise<SearchSalesExtractionsResult> {
+  return searchSalesExtractions(params);
 }
 
 const PUBLIC_HELP_BASE_URL = process.env.PUBLIC_HELP_BASE_URL || "https://6000-firebase-studio-1753688090358.cluster-ys234awlzbhwoxmkkse6qo3fz6.cloudworkstations.dev";
