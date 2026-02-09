@@ -654,7 +654,7 @@ export type { Contact, ContactEvent, ContactEventType, ContactSource, VisitorTyp
 
 export interface BrainJob {
     id: string;
-    type: 'ingest_conversations' | 'distill_support' | 'distill_sales' | 'update_lead_states' | 'embed_node';
+    type: 'ingest_conversations' | 'distill_support' | 'distill_sales' | 'update_lead_states' | 'embed_node' | 'distill_support_intents';
     status: 'pending' | 'running' | 'completed' | 'failed';
     params: Record<string, any>;
     createdAt: string;
@@ -721,6 +721,11 @@ export interface SupportIntentNode {
   confidence: number;
   freshnessHalfLifeDays: number;
   visibility: 'support_only';
+  // Embedding fields
+  embedding?: number[];
+  embeddingModel?: string;
+  embeddedAt?: string;
+  textForEmbedding?: string;
 }
 
 export interface SalesPersonaSegmentNode {
@@ -770,4 +775,4 @@ export interface LeadStateNode {
   visibility: 'sales_only';
 }
 
-export type MemoryNode = RawConversationNode | RawInteractionNode | SupportIntentNode | SalesPersonaSegmentNode | SalesMessagePatternNode | LeadStateNode;
+export type MemoryNode = RawConversationNode | RawInteractionNode | SupportIntentNode | SalesPersonaSegmentNode | LeadStateNode;

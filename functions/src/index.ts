@@ -157,6 +157,16 @@ export const processBrainJob = functions.firestore
                     const intentSnapshot = await intentQuery.get();
 
                     if (intentSnapshot.empty) {
+                        // --- EMBEDDING STEP ---
+                        const textForEmbedding = `${result.customerQuestion}\n${result.resolution}`;
+                        const { embedding } = await ai.embed({
+                            model: 'googleai/embedding-004',
+                            content: textForEmbedding,
+                        });
+                        const embeddedAt = new Date().toISOString();
+                        const embeddingModel = "embedding-004";
+                        // --- END EMBEDDING ---
+
                         // --- CREATE NEW INTENT NODE ---
                         const newIntentNode: Omit<SupportIntentNode, 'id'> = {
                             type: 'support_intent',
@@ -178,10 +188,14 @@ export const processBrainJob = functions.firestore
                             confidence: 0.75, // Starting confidence
                             freshnessHalfLifeDays: 365,
                             visibility: 'support_only',
+                            embedding,
+                            embeddingModel,
+                            embeddedAt,
+                            textForEmbedding,
                         };
                         
                         await admin.firestore().collection('memory_nodes').add(newIntentNode);
-                        console.log(`Created new intent '${result.intentKey}' from node ${rawDoc.id}.`);
+                        console.log(`Created and embedded new intent '${result.intentKey}' from node ${rawDoc.id}.`);
 
                     } else {
                         // --- UPDATE EXISTING INTENT NODE ---
