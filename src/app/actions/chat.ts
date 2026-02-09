@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -7,6 +6,8 @@ import * as db from '@/lib/db';
 import type { Firestore } from "firebase-admin/firestore";
 import { getTypesenseAdmin, getTypesenseSearch } from '@/lib/typesense';
 import { indexHelpCenterArticleToChunks } from '@/lib/knowledge/indexer';
+import { LeadStateNode, Contact, SalesPersonaSegmentNode } from '@/lib/data';
+import { draftSalesEmail, type DraftSalesEmailInput, type DraftSalesEmailOutput } from '@/ai/flows/draft-sales-email';
 
 const typesense = getTypesenseSearch();
 
@@ -254,4 +255,84 @@ export async function reindexArticleAction(articleId: string) {
         // Re-throw to let the client-side know something went wrong.
         throw new Error(error.message || 'Unknown error occurred during re-indexing.');
     }
+}
+
+
+export interface SuggestedLead {
+  contact: Contact;
+  leadState: LeadStateNode;
+  persona?: SalesPersonaSegmentNode | null;
+}
+
+export interface GetSuggestedLeadsParams {
+    spaceId: string;
+    topK?: number;
+}
+
+export async function getSuggestedLeadsAction(params: GetSuggestedLeadsParams): Promise<SuggestedLead[]> {
+    const { spaceId, topK = 10 } = params;
+
+    // 1. Fetch top lead states
+    const leadStatesQuery = adminDB.collection('lead_states')
+        .where('spaceId', '==', spaceId)
+        .orderBy('warmScore', 'desc')
+        .limit(topK);
+    const leadStatesSnapshot = await leadStatesQuery.get();
+    if (leadStatesSnapshot.empty) {
+        return [];
+    }
+    const leadStates = leadStatesSnapshot.docs.map(doc => doc.data() as LeadStateNode);
+
+    // 2. Batch fetch contacts and personas
+    const contactIds = [...new Set(leadStates.map(ls => ls.leadId))];
+    const personaKeys = [...new Set(leadStates.map(ls => ls.matchedPersonaSegmentKey).filter(Boolean))] as string[];
+
+    const contactPromises = contactIds.map(id => adminDB.collection('contacts').doc(id).get());
+    
+    let personaPromises: Promise<FirebaseFirestore.QuerySnapshot<FirebaseFirestore.DocumentData>>[] = [];
+    if (personaKeys.length > 0) {
+      // Firestore 'in' query is limited to 30 items
+      for (let i = 0; i < personaKeys.length; i += 30) {
+        const chunk = personaKeys.slice(i, i + 30);
+        const personasQuery = adminDB.collection('memory_nodes')
+            .where('spaceId', '==', spaceId)
+            .where('type', '==', 'sales_persona_segment')
+            .where('segmentKey', 'in', chunk);
+        personaPromises.push(personasQuery.get());
+      }
+    }
+    
+    const [contactDocs, ...personaSnapshots] = await Promise.all([
+        Promise.all(contactPromises),
+        ...personaPromises
+    ]);
+
+    const contactsMap = new Map<string, Contact>();
+    contactDocs.forEach(doc => {
+        if (doc.exists) {
+            contactsMap.set(doc.id, { id: doc.id, ...doc.data() } as Contact);
+        }
+    });
+
+    const personasMap = new Map<string, SalesPersonaSegmentNode>();
+    personaSnapshots.flat().forEach(snapshot => {
+      snapshot.docs.forEach(doc => {
+        const persona = doc.data() as SalesPersonaSegmentNode;
+        personasMap.set(persona.segmentKey, persona);
+      })
+    });
+
+    // 3. Combine data
+    const suggestedLeads: SuggestedLead[] = leadStates.map(ls => {
+        const contact = contactsMap.get(ls.leadId);
+        const persona = ls.matchedPersonaSegmentKey ? personasMap.get(ls.matchedPersonaSegmentKey) : null;
+        if (!contact) return null; // Should not happen if data is consistent
+        return { contact, leadState: ls, persona };
+    }).filter((l): l is SuggestedLead => l !== null);
+
+    return suggestedLeads;
+}
+
+export async function draftSalesEmailAction(input: DraftSalesEmailInput): Promise<DraftSalesEmailOutput> {
+    return draftSalesEmail(input);
 }
