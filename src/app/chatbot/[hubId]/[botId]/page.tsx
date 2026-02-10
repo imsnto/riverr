@@ -105,7 +105,7 @@ export default function ChatbotWidgetPage() {
       let visitorId = localStorage.getItem('riverr_chat_visitor_id');
       const fetchedVisitor = visitorId ? await db.getOrCreateVisitor(visitorId) : null;
       
-      if (!appUser && combinedBotData?.identityCapture.enabled && (!fetchedVisitor || (!fetchedVisitor.name && !fetchedVisitor.email))) {
+      if (!appUser && combinedBotData?.identityCapture && combinedBotData?.identityCapture.enabled && (!fetchedVisitor || (!fetchedVisitor.name && !fetchedVisitor.email))) {
         setIsCapturingIdentity(true);
       } else {
         setIsCapturingIdentity(false);
