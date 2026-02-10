@@ -825,12 +825,12 @@ export default function Dashboard({ view }: { view: string }) {
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           tasks={tasks}
-          onUpdateTasks={onUpdateTasks}
+          onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
-          onUpdateActiveHub={onUpdateActiveHub}
+          onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
-          onNewTaskRequest={onNewTaskRequest}
+          onNewTaskRequest={handleNewTaskRequest}
           onTaskClick={setSelectedTask}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}

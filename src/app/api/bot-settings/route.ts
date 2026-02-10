@@ -2,19 +2,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDB } from '@/lib/firebase-admin';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-requested-with',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { 
+    status: 204, // No content is standard for OPTIONS
+    headers: corsHeaders 
+  });
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const botId = searchParams.get('botId');
 
   if (!botId) {
-    return NextResponse.json({ error: 'Bot ID is required' }, { status: 400 });
+    return NextResponse.json({ error: 'Bot ID is required' }, { status: 400, headers: corsHeaders });
   }
 
   try {
     const botDoc = await adminDB.collection('bots').doc(botId).get();
 
     if (!botDoc.exists) {
-      return NextResponse.json({ error: 'Bot not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Bot not found' }, { status: 404, headers: corsHeaders });
     }
 
     const botData = botDoc.data();
@@ -43,9 +56,9 @@ export async function GET(request: NextRequest) {
         agents: agents,
     };
 
-    return NextResponse.json(safeSettings);
+    return NextResponse.json(safeSettings, { headers: corsHeaders});
   } catch (error) {
     console.error('Error fetching bot settings:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500, headers: corsHeaders });
   }
 }

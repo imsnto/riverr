@@ -143,7 +143,7 @@ export default function ChatbotWidgetPage() {
       const existingConvo = convos.find(c => c.visitorId === visitorId);
 
       if (existingConvo) {
-        convoUnsubRef.current = db.getConversation(existingConvo.id, setConversation);
+        // convoUnsubRef.current = db.getConversation(existingConvo.id, setConversation);
         unsubRef.current = db.getMessagesForConversations(
           [existingConvo.id],
           (msgs) => setMessages(msgs),
@@ -207,7 +207,7 @@ export default function ChatbotWidgetPage() {
       const newConvo = await db.addConversation(newConvoData);
       currentConversation = newConvo;
 
-      convoUnsubRef.current = db.getConversation(newConvo.id, setConversation);
+      // convoUnsubRef.current = db.getConversation(newConvo.id, setConversation);
       unsubRef.current = db.getMessagesForConversations(
         [newConvo.id],
         (msgs) => setMessages(msgs),
@@ -415,7 +415,7 @@ export default function ChatbotWidgetPage() {
 
       {/* Footer */}
       <div className="p-2 border-t shrink-0 flex items-end gap-2" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-        <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" multiple />
+        {/* <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" multiple />
         <Popover>
             <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0">
@@ -428,7 +428,7 @@ export default function ChatbotWidgetPage() {
                     Attachment
                 </Button>
             </PopoverContent>
-        </Popover>
+        </Popover> */}
 
         <div className="relative flex-1">
             {attachments.length > 0 && (

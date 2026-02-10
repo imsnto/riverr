@@ -109,6 +109,7 @@ const botSettingsSchema = z.object({
   backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.'),
   headerTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
   customerTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
+  chatbotIconsColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
   logoUrl: z.string().url().optional().or(z.literal('')),
   agentIds: z.array(z.string()).min(1, 'Please select at least one agent.'),
   allowedHelpCenterIds: z.array(z.string()).optional(),
@@ -161,6 +162,7 @@ export default function BotSettingsDialog({
       backgroundColor: '#111827',
       headerTextColor: '#ffffff',
       customerTextColor: '#ffffff',
+      chatbotIconsColor: '#ffffff',
       logoUrl: '',
       agentIds: [],
       allowedHelpCenterIds: [],
@@ -192,6 +194,7 @@ export default function BotSettingsDialog({
         backgroundColor: bot.styleSettings?.backgroundColor || '#111827',
         headerTextColor: bot.styleSettings?.headerTextColor || '#ffffff',
         customerTextColor: bot.styleSettings?.customerTextColor || '#ffffff',
+        chatbotIconsColor: bot.styleSettings?.chatbotIconsColor || '#ffffff',
         logoUrl: bot.styleSettings?.logoUrl || '',
         agentIds: bot.agentIds || [],
         allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
@@ -207,6 +210,7 @@ export default function BotSettingsDialog({
             backgroundColor: '#111827',
             headerTextColor: '#ffffff',
             customerTextColor: '#ffffff',
+            chatbotIconsColor: '#ffffff',
             logoUrl: '',
             agentIds: [],
             allowedHelpCenterIds: [],
@@ -249,6 +253,7 @@ export default function BotSettingsDialog({
             backgroundColor: values.backgroundColor,
             headerTextColor: values.headerTextColor || '#ffffff',
             customerTextColor: values.customerTextColor || '#ffffff',
+            chatbotIconsColor: values.chatbotIconsColor || '#ffffff',
             logoUrl: values.logoUrl || '',
         },
         agentIds: values.agentIds,
@@ -645,6 +650,33 @@ export default function BotSettingsDialog({
                                 </FormItem>
                                 )}
                             />
+                            <FormField
+                                control={form.control}
+                                name="chatbotIconsColor"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Chatbot Icons Background Color</FormLabel>
+                                    <FormControl>
+                                    <div className="flex items-center gap-2">
+                                        <Input placeholder="#ffffff" {...field} value={field.value || ''} />
+                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer">
+                                            <div
+                                                className="w-full h-full"
+                                                style={{ backgroundColor: field.value || '#ffffff' }}
+                                            ></div>
+                                            <input
+                                                type="color"
+                                                value={field.value || '#ffffff'}
+                                                onChange={field.onChange}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            />
+                                        </div>
+                                    </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
                         </AccordionContent>
                     </AccordionItem>
                      <AccordionItem value="installation">
@@ -696,7 +728,7 @@ export default function BotSettingsDialog({
             {isPreviewMinimized ? (
                 <div 
                     className="absolute bottom-6 right-6 h-14 w-14 rounded-full flex items-center justify-center shadow-lg cursor-pointer"
-                    style={{ backgroundColor: watchedValues.primaryColor }}
+                    style={{ backgroundColor: watchedValues.chatbotIconsColor }}
                     onClick={() => setIsPreviewMinimized(false)}
                 >
                     <MessageSquare className="h-7 w-7 text-white" />
@@ -803,8 +835,8 @@ export default function BotSettingsDialog({
                         </div>
                     </div>
                 </div>
-                <div className="absolute bottom-6 right-6 h-14 w-14 rounded-full flex items-center justify-center shadow-lg cursor-pointer bg-white" onClick={() => setIsPreviewMinimized(true)}>
-                    <ChevronDown className="h-7 w-7 text-zinc-900" />
+                <div className="absolute bottom-6 right-6 h-14 w-14 rounded-full flex items-center justify-center shadow-lg cursor-pointer text-white" style={{ backgroundColor: watchedValues.chatbotIconsColor }} onClick={() => setIsPreviewMinimized(true)}>
+                    <ChevronDown className="h-7 w-7 text-zinc-900 !text-white" />
                 </div>
              </>
             )}

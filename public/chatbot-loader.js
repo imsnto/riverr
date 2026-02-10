@@ -27,7 +27,7 @@
     let isOpen = false;
 
     // --- Function to apply styles ---
-    function applyStyles() {
+    function applyStyles(primaryColor) {
         // Launcher styles
         Object.assign(launcher.style, {
             position: 'fixed',
@@ -36,7 +36,7 @@
             width: '60px',
             height: '60px',
             borderRadius: '50%',
-            backgroundColor: '#3b82f6', // Default color
+            backgroundColor: primaryColor, // Default color
             color: 'white',
             border: 'none',
             cursor: 'pointer',
@@ -86,11 +86,20 @@
         isOpen = !isOpen;
         if (isOpen) {
             iframeContainer.style.display = 'block';
+            const isMobile = window.innerWidth < 640;
             setTimeout(() => {
                 iframeContainer.style.transform = 'translateY(0)';
                 iframeContainer.style.opacity = '1';
-                launcher.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-            }, 10); // Short delay to allow display:block to take effect
+                if(isMobile){
+                    iframeContainer.style.width = '100vw';
+                    iframeContainer.style.height = '100vh';
+                    iframeContainer.style.bottom = '0';
+                    iframeContainer.style.right = '0';
+                    launcher.innerHTML = ``;
+                } else {
+                    launcher.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white lucide lucide-chevron-down h-7 w-7 text-zinc-900"><path d="m6 9 6 6 6-6"></path></svg>`;
+                }
+                }, 10); // Short delay to allow display:block to take effect
         } else {
             iframeContainer.style.transform = 'translateY(20px)';
             iframeContainer.style.opacity = '0';
@@ -101,46 +110,42 @@
         }
     }
 
-    function fetchBotSettings() {
-        fetch(`${origin}/api/bot-settings?botId=${botId}`)
-            .then(response => {
-                if (!response.ok) throw new Error('Bot not found');
-                return response.json();
-            })
-            .then(data => {
-                if (data.styleSettings?.primaryColor) {
-                    launcher.style.backgroundColor = data.styleSettings.primaryColor;
-                }
-            })
-            .catch(error => {
-                console.error("Riverr Chat: Could not fetch bot settings:", error);
-            });
-    }
-
     // --- Initialization ---
-    function init() {
-        if (document.getElementById('riverr-chat-launcher')) {
-            console.warn("Riverr Chat: Launcher script already initialized.");
-            return;
+    async function init() {
+        // 1. Safety Guards (Iframe & Duplication)
+        if (window.self !== window.top) return; 
+        if (window.__RIVERR_CHAT_INITIALIZED__ || document.getElementById('riverr-chat-launcher')) return;
+        window.__RIVERR_CHAT_INITIALIZED__ = true;
+    
+        try {
+            // 2. Fetch Settings FIRST
+            const response = await fetch(`${origin}/api/bot-settings?botId=${botId}`, {
+                method: "GET",
+                mode: "cors",
+            });
+            if (!response.ok) throw new Error('Settings fetch failed');
+            const data = await response.json();
+    
+            // 3. Extract Dynamic Color
+            const primaryColor = data.styleSettings?.chatbotIconsColor || '#ffffff';
+    
+            // 4. Apply styles AND THEN append to DOM
+            applyStyles(primaryColor); 
+            
+            iframeContainer.appendChild(iframe);
+            document.body.appendChild(launcher);
+            document.body.appendChild(iframeContainer);
+    
+            // 5. Attach Events
+            launcher.addEventListener('click', toggleChat);
+            window.addEventListener('message', (event) => {
+                if (event.origin !== origin) return;
+                if (event.data === 'close-riverr-chat' && isOpen) toggleChat();
+            });
+    
+        } catch (error) {
+            console.error("Riverr Chat failed to load:", error);
         }
-
-        applyStyles();
-
-        iframeContainer.appendChild(iframe);
-        document.body.appendChild(launcher);
-        document.body.appendChild(iframeContainer);
-
-        launcher.addEventListener('click', toggleChat);
-        
-        // Listen for close message from iframe
-        window.addEventListener('message', (event) => {
-            if (event.origin !== origin) return;
-            if (event.data === 'close-riverr-chat') {
-                if(isOpen) toggleChat();
-            }
-        });
-
-        fetchBotSettings();
     }
     
     // Wait for DOM to be ready

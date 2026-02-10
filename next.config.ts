@@ -24,18 +24,13 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  async headers() {
+  async rewrites() {
     return [
       {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'Cross-Origin-Opener-Policy',
-            value: 'same-origin-allow-popups',
-          },
-        ],
+        source: '/api/:path*',
+        destination: 'https://api.example.com/:path*',
       },
-    ];
+    ]
   },
 };
 
