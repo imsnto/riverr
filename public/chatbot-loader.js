@@ -27,7 +27,7 @@
     let isOpen = false;
 
     // --- Function to apply styles ---
-    function applyStyles(primaryColor) {
+    function applyStyles(chatBotColors) {
         // Launcher styles
         Object.assign(launcher.style, {
             position: 'fixed',
@@ -36,8 +36,8 @@
             width: '60px',
             height: '60px',
             borderRadius: '50%',
-            backgroundColor: primaryColor, // Default color
-            color: 'white',
+            backgroundColor: chatBotColors.chatbotIconsColor, // Default color
+            color: chatBotColors.chatbotIconsTextColor,
             border: 'none',
             cursor: 'pointer',
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
@@ -97,6 +97,10 @@
                     iframeContainer.style.right = '0';
                     launcher.innerHTML = ``;
                 } else {
+                    iframeContainer.style.width = 'min(400px, calc(100vw - 40px))';
+                    iframeContainer.style.height = 'min(70vh, 640px)';
+                    iframeContainer.style.bottom = '90px';
+                    iframeContainer.style.right = '20px';
                     launcher.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white lucide lucide-chevron-down h-7 w-7 text-zinc-900"><path d="m6 9 6 6 6-6"></path></svg>`;
                 }
                 }, 10); // Short delay to allow display:block to take effect
@@ -127,10 +131,15 @@
             const data = await response.json();
     
             // 3. Extract Dynamic Color
-            const primaryColor = data.styleSettings?.chatbotIconsColor || '#ffffff';
+            const chatbotIconsColor = data.styleSettings?.chatbotIconsColor || '#ffffff';
+            const chatbotIconsTextColor = data.styleSettings?.chatbotIconsTextColor || '#000000';
+            const chatBotColors = {
+                chatbotIconsColor,
+                chatbotIconsTextColor
+            }
     
             // 4. Apply styles AND THEN append to DOM
-            applyStyles(primaryColor); 
+            applyStyles(chatBotColors); 
             
             iframeContainer.appendChild(iframe);
             document.body.appendChild(launcher);

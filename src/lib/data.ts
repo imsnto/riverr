@@ -425,6 +425,7 @@ export interface Bot {
     backgroundColor: string;
     logoUrl: string;
     chatbotIconsColor: string;
+    chatbotIconsTextColor: string;
     headerTextColor?: string;
     customerTextColor?: string;
   };
