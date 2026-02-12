@@ -1,33 +1,36 @@
 'use client';
 import React, { useState } from 'react';
-import { HelpCenterCollection } from '@/lib/data';
+import { HelpCenter, HelpCenterCollection } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
-import { ChevronRight, Folder } from 'lucide-react';
+import { ChevronRight, Folder, Inbox, Library } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FolderTreeItemProps {
   collection: HelpCenterCollection;
   allCollections: HelpCenterCollection[];
   level: number;
-  selectedFolderId: string | null;
-  onSelectFolder: (id: string | null) => void;
+  selectedDestination: { libraryId: string | null; folderId: string | null };
+  onSelectDestination: (dest: { libraryId: string | null; folderId: string | null }) => void;
+  libraryId: string;
 }
 
-const FolderTreeItem: React.FC<FolderTreeItemProps> = ({ collection, allCollections, level, selectedFolderId, onSelectFolder }) => {
+const FolderTreeItem: React.FC<FolderTreeItemProps> = ({ collection, allCollections, level, selectedDestination, onSelectDestination, libraryId }) => {
   const children = allCollections.filter(c => c.parentId === collection.id);
   const [isOpen, setIsOpen] = useState(true);
+
+  const isSelected = selectedDestination.libraryId === libraryId && selectedDestination.folderId === collection.id;
 
   return (
     <div>
       <div
         className={cn(
           "flex items-center gap-2 p-1 rounded-md cursor-pointer",
-          selectedFolderId === collection.id ? 'bg-accent' : 'hover:bg-accent/50'
+          isSelected ? 'bg-accent' : 'hover:bg-accent/50'
         )}
-        style={{ paddingLeft: `${level * 1.5}rem` }}
-        onClick={() => onSelectFolder(collection.id)}
+        style={{ paddingLeft: `${(level + 1) * 1.5}rem` }}
+        onClick={() => onSelectDestination({ libraryId, folderId: collection.id })}
       >
         {children.length > 0 ? (
           <ChevronRight
@@ -49,8 +52,9 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({ collection, allCollecti
               collection={child}
               allCollections={allCollections}
               level={level + 1}
-              selectedFolderId={selectedFolderId}
-              onSelectFolder={onSelectFolder}
+              selectedDestination={selectedDestination}
+              onSelectDestination={onSelectDestination}
+              libraryId={libraryId}
             />
           ))}
         </div>
@@ -64,16 +68,15 @@ interface MoveToFolderDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   collections: HelpCenterCollection[];
-  onMove: (folderId: string | null) => void;
+  helpCenters: HelpCenter[];
+  onMove: (destination: { libraryId: string | null; folderId: string | null }) => void;
 }
 
-export default function MoveToFolderDialog({ isOpen, onOpenChange, collections, onMove }: MoveToFolderDialogProps) {
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-
-  const rootCollections = collections.filter(c => c.parentId === null);
+export default function MoveToFolderDialog({ isOpen, onOpenChange, collections, helpCenters, onMove }: MoveToFolderDialogProps) {
+  const [selectedDestination, setSelectedDestination] = useState<{ libraryId: string | null; folderId: string | null }>({ libraryId: null, folderId: null });
 
   const handleMove = () => {
-    onMove(selectedFolderId);
+    onMove(selectedDestination);
     onOpenChange(false);
   };
 
@@ -82,31 +85,51 @@ export default function MoveToFolderDialog({ isOpen, onOpenChange, collections, 
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Move items</DialogTitle>
-          <DialogDescription>Select a destination folder.</DialogDescription>
+          <DialogDescription>Select a destination library or folder.</DialogDescription>
         </DialogHeader>
         <div className="py-4">
           <ScrollArea className="h-72 border rounded-md">
-            <div className="p-2">
+            <div className="p-2 space-y-1">
                  <div
                     className={cn(
-                        "flex items-center gap-2 p-1 rounded-md cursor-pointer",
-                        selectedFolderId === null ? 'bg-accent' : 'hover:bg-accent/50'
+                        "flex items-center gap-2 p-2 rounded-md cursor-pointer",
+                        selectedDestination.libraryId === null ? 'bg-accent' : 'hover:bg-accent/50'
                     )}
-                    onClick={() => setSelectedFolderId(null)}
+                    onClick={() => setSelectedDestination({ libraryId: null, folderId: null })}
                 >
-                    <Folder className="h-4 w-4 ml-4" />
-                    <span>Content Library (root)</span>
+                    <Inbox className="h-4 w-4 ml-1" />
+                    <span>Inbox (Unassigned)</span>
                 </div>
-              {rootCollections.map(collection => (
-                <FolderTreeItem
-                  key={collection.id}
-                  collection={collection}
-                  allCollections={collections}
-                  level={0}
-                  selectedFolderId={selectedFolderId}
-                  onSelectFolder={setSelectedFolderId}
-                />
-              ))}
+              {helpCenters.map(hc => {
+                  const rootCollectionsForHc = collections.filter(c => c.helpCenterId === hc.id && !c.parentId);
+                  const isLibrarySelected = selectedDestination.libraryId === hc.id && selectedDestination.folderId === null;
+                  
+                  return (
+                    <div key={hc.id}>
+                        <div
+                            className={cn(
+                                "flex items-center gap-2 p-2 rounded-md cursor-pointer",
+                                isLibrarySelected ? 'bg-accent' : 'hover:bg-accent/50'
+                            )}
+                            onClick={() => setSelectedDestination({ libraryId: hc.id, folderId: null })}
+                        >
+                            <Library className="h-4 w-4 ml-1"/>
+                            <span className="font-semibold">{hc.name}</span>
+                        </div>
+                        {rootCollectionsForHc.map(collection => (
+                             <FolderTreeItem
+                                key={collection.id}
+                                collection={collection}
+                                allCollections={collections}
+                                level={0}
+                                selectedDestination={selectedDestination}
+                                onSelectDestination={setSelectedDestination}
+                                libraryId={hc.id}
+                            />
+                        ))}
+                    </div>
+                  )
+              })}
             </div>
           </ScrollArea>
         </div>

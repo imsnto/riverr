@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -294,22 +293,36 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
         }
     }
 
-    const handleMoveSelected = async (folderId: string | null) => {
-        const promises = selectedItems.map(itemId => {
-            const article = articles.find(a => a.id === itemId);
-            if (article) {
-                return db.updateHelpCenterArticle(itemId, { folderId });
-            }
-            const collection = collections.find(c => c.id === itemId);
-            if (collection) {
-                return db.updateHelpCenterCollection(itemId, { parentId: folderId });
-            }
-            return Promise.resolve();
+    const handleMoveSelected = async (destination: { libraryId: string | null; folderId: string | null }) => {
+        const { libraryId, folderId } = destination;
+    
+        const articlesToMove = selectedItems.filter(id => articles.some(a => a.id === id));
+        const collectionsToMove = selectedItems.filter(id => collections.some(c => c.id === id));
+    
+        if (collectionsToMove.length > 0 && libraryId) {
+            toast({ variant: "destructive", title: "Cannot move folders between libraries yet." });
+            return;
+        }
+    
+        const promises: Promise<any>[] = [];
+    
+        articlesToMove.forEach(articleId => {
+            const updateData: Partial<HelpCenterArticle> = {
+                helpCenterId: libraryId || '',
+                folderId: folderId
+            };
+            promises.push(db.updateHelpCenterArticle(articleId, updateData));
         });
+    
+        collectionsToMove.forEach(collectionId => {
+            promises.push(db.updateHelpCenterCollection(collectionId, { parentId: folderId }));
+        });
+    
         await Promise.all(promises);
         toast({ title: `${selectedItems.length} item(s) moved.` });
         refreshData();
         setSelectedItems([]);
+        setIsMoveToFolderOpen(false);
     };
     
     const handleDeleteSelectedItems = async () => {
@@ -463,6 +476,7 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
             isOpen={isMoveToFolderOpen}
             onOpenChange={setIsMoveToFolderOpen}
             collections={collections}
+            helpCenters={helpCenters}
             onMove={handleMoveSelected}
         />
         
