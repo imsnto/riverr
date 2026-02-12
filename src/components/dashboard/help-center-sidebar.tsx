@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
@@ -162,8 +161,7 @@ const LibraryList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: str
                 <Button
                     variant='ghost'
                     className={cn(
-                        "w-full justify-start text-left text-sm h-9 px-2 min-w-0 text-foreground",
-                        activeHelpCenterId === hc.id && "text-primary-foreground"
+                        "w-full justify-start text-left text-sm h-9 px-2 min-w-0 text-foreground"
                     )}
                     onClick={() => onSelect(hc.id)}
                 >
@@ -270,7 +268,7 @@ export default function HelpCenterSidebar({
                             <div className="flex items-center gap-2">
                                 <Inbox className="h-4 w-4"/> Unassigned
                             </div>
-                            {unassignedContentCount > 0 && <Badge variant={sidebarView === 'inbox' ? 'default' : 'secondary'} className="bg-amber-500/10 text-amber-300 border border-amber-500/20">{unassignedContentCount}</Badge>}
+                            {unassignedContentCount > 0 && <Badge variant={sidebarView === 'inbox' ? 'default' : 'secondary'}>{unassignedContentCount}</Badge>}
                         </Button>
                     </div>
 
