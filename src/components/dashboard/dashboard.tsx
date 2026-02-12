@@ -738,13 +738,18 @@ export default function Dashboard({ view }: { view: string }) {
     toast({ title: "Bot Deleted" });
   };
   
-  const handleSaveArticle = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle> => {
+  const handleSaveArticle = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle | void> => {
+    if (!activeHub || !activeSpace) return;
     let savedArticle: HelpCenterArticle;
     if ('id' in article && article.id) {
         await db.updateHelpCenterArticle(article.id, article);
         savedArticle = article as HelpCenterArticle;
     } else {
-        savedArticle = await db.addHelpCenterArticle(article as Omit<HelpCenterArticle, 'id'>);
+        savedArticle = await db.addHelpCenterArticle({ 
+            ...(article as Omit<HelpCenterArticle, 'id'>),
+            hubId: activeHub.id,
+            spaceId: activeSpace.id
+        });
     }
     
     // After saving, update the parent folder's timestamp
@@ -873,7 +878,7 @@ export default function Dashboard({ view }: { view: string }) {
           onNavigateToSettings={() => handleViewChange('settings')}
       />;
       case 'help-center': return <HelpCenterLayout
-        onSaveArticle={handleSaveAndRefresh}
+        onSaveArticle={handleSaveArticle}
         />;
       case 'contacts': return <ContactsLayout activeSpace={activeSpace} />;
       case 'settings': return <SettingsLayout {...settingsProps} />;
