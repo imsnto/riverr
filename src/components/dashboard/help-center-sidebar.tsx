@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
@@ -154,7 +155,7 @@ const HelpCenterList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: 
             >
                 <Button
                     variant='ghost'
-                    className="flex-1 justify-start text-sm h-9 px-2 min-w-0 overflow-hidden"
+                    className="flex-1 justify-start text-sm h-9 px-2 min-w-0"
                     onClick={() => onSelect(hc.id)}
                 >
                     <LibraryIcon name={hc.icon} />
