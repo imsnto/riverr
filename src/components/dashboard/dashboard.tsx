@@ -1,3 +1,4 @@
+
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -754,11 +755,11 @@ export default function Dashboard({ view }: { view: string }) {
     const overviewProps = {
       projects,
       tasks,
+      timeEntries,
       activeSpace,
       activeHub,
       allUsers,
       appUser,
-      timeEntries,
       unreadMentions,
       onTaskSelect: setSelectedTask,
       jobs,
@@ -825,7 +826,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeHub={activeHub!}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={onUpdateActiveHub}
+          onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
           allHubs={spaceHubs}
           escalationRules={escalationRules}
@@ -846,7 +847,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeHub={activeHub!}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={onUpdateActiveHub}
+          onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
       />;
       case 'help-center': return <HelpCenterLayout bots={bots} />;
