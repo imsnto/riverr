@@ -62,9 +62,9 @@ import TeamTimesheets from './team-timesheets';
 import { DashboardSkeleton } from './dashboard-skeleton';
 import ContactsLayout from './contacts/contacts-layout';
 import DealsBoard from './deals-board';
-import TicketsBoard from './tickets-board';
 import { DealFormValues } from './create-deal-dialog';
 import { reindexArticleAction } from '@/app/actions/chat';
+import TicketsBoard from './tickets-board';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -829,7 +829,7 @@ export default function Dashboard({ view }: { view: string }) {
           onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
-          onUpdateActiveHub={onUpdateActiveHub}
+          onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
           onNewTaskRequest={handleNewTaskRequest}
           onTaskClick={setSelectedTask}
@@ -848,7 +848,7 @@ export default function Dashboard({ view }: { view: string }) {
           allUsers={allUsers}
           onUpdateActiveHub={onUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
-          allHubs={spaceHubs}
+          allHubs={allHubs}
           escalationRules={escalationRules}
           projects={projects}
           contacts={contacts}
@@ -893,7 +893,7 @@ export default function Dashboard({ view }: { view: string }) {
                             setHideMobileBottomNav={setHideMobileBottomNav}
                             activeHub={activeHub!}
                             activeSpace={activeSpace}
-                            allHubs={spaceHubs}
+                            allHubs={allHubs}
                             escalationRules={escalationRules}
                             projects={projects}
                             contacts={contacts}
