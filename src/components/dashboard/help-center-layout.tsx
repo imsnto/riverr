@@ -76,6 +76,13 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
             refreshData();
         }
     }, [activeHub]);
+
+    // Auto-select the first library if none is selected
+    useEffect(() => {
+        if (sidebarView === 'knowledge-bases' && !activeHelpCenterId && helpCenters.length > 0) {
+            setActiveHelpCenterId(helpCenters[0].id);
+        }
+    }, [helpCenters, activeHelpCenterId, sidebarView]);
     
 
     const showContentOnMobile = () => {
@@ -246,14 +253,14 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
         let foldersToShow: HelpCenterCollection[] = [];
         let articlesToShow: HelpCenterArticle[] = [];
         let breadcrumbs: HelpCenterCollection[] = [];
-        let viewTitle = 'Knowledge Base';
+        let viewTitle = 'Knowledge';
 
         if (sidebarView === 'all-articles') {
             viewTitle = 'All Articles';
             articlesToShow = articles;
         } else if (sidebarView === 'knowledge-bases' && activeHelpCenterId) {
             const hc = helpCenters.find(h => h.id === activeHelpCenterId);
-            viewTitle = hc?.name || 'Knowledge Base';
+            viewTitle = hc?.name || 'Library';
 
             if (selectedCollectionId) {
                 const collection = collections.find(c => c.id === selectedCollectionId);
