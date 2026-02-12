@@ -252,7 +252,7 @@ export default function Dashboard({ view }: { view: string }) {
 
     const calculateMentions = () => {
         const allMentions: any[] = [];
-        const userMention = `@${appUser.name}`;
+        const userMention = `@${'appUser.name'}`;
 
         // Mentions from task activities/comments
         tasks.forEach(task => {
@@ -826,7 +826,7 @@ export default function Dashboard({ view }: { view: string }) {
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           tasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
+          onUpdateTasks={onUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
@@ -846,7 +846,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeHub={activeHub!}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={onUpdateActiveHub}
+          onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
           allHubs={allHubs}
           escalationRules={escalationRules}
@@ -867,7 +867,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeHub={activeHub!}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={onUpdateActiveHub}
+          onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
       />;
       case 'help-center': return <HelpCenterLayout
