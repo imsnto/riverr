@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
@@ -118,11 +117,11 @@ const HelpCenterList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: 
             >
                 <Button
                     variant='ghost'
-                    className="w-full justify-start text-sm h-9 px-2 min-w-0"
+                    className="w-full justify-start text-sm h-9 px-2 min-w-0 overflow-hidden"
                     onClick={() => onSelect(hc.id)}
                 >
                     <Book className="mr-2 h-4 w-4 shrink-0" />
-                    <span className="block truncate flex-1 min-w-0">{hc.name}</span>
+                    <span className="block flex-1 min-w-0 truncate">{hc.name}</span>
                 </Button>
 
                 <DropdownMenu>
@@ -179,7 +178,7 @@ export default function HelpCenterSidebar({
                 <div className="p-2 space-y-2">
                     <div>
                         <div className="px-2 mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-                            Knowledge Bases
+                            Libraries
                         </div>
                         <HelpCenterList 
                             helpCenters={helpCenters} 
@@ -189,7 +188,7 @@ export default function HelpCenterSidebar({
                         />
                          <Button variant="ghost" className="w-full justify-start text-sm h-9 mt-1" onClick={onNewHelpCenter}>
                             <Plus className="mr-2 h-4 w-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">New Knowledge Base</span>
+                            <span className="text-muted-foreground">New Library</span>
                         </Button>
                     </div>
                 
@@ -215,7 +214,7 @@ export default function HelpCenterSidebar({
                     
                      <div>
                         <div className="px-2 mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-                            Inbox
+                            INBOX
                         </div>
                         <Button variant={sidebarView === 'library' ? 'secondary' : 'ghost'} className="w-full justify-between text-sm h-9" onClick={() => onViewChange('library')}>
                             <div className="flex items-center gap-2">

@@ -79,8 +79,8 @@ export default function KnowledgeBaseSettings({ activeHub }: KnowledgeBaseSettin
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>No Knowledge Bases Found</CardTitle>
-                    <CardDescription>Create a knowledge base in the 'Help Center' section first.</CardDescription>
+                    <CardTitle>No Libraries Found</CardTitle>
+                    <CardDescription>Create a library in the 'Knowledge' section first.</CardDescription>
                 </CardHeader>
             </Card>
         );
@@ -90,11 +90,11 @@ export default function KnowledgeBaseSettings({ activeHub }: KnowledgeBaseSettin
         <div className="space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>Knowledge Base Settings</CardTitle>
-                    <CardDescription>Manage general settings for your knowledge bases.</CardDescription>
+                    <CardTitle>Library Settings</CardTitle>
+                    <CardDescription>Manage general settings for your libraries.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Label htmlFor="hc-select">Select Knowledge Base</Label>
+                    <Label htmlFor="hc-select">Select Library</Label>
                     <Select value={selectedHelpCenter?.id || ''} onValueChange={(id) => setSelectedHelpCenter(helpCenters.find(hc => hc.id === id) || null)}>
                         <SelectTrigger id="hc-select"><SelectValue placeholder="Select..." /></SelectTrigger>
                         <SelectContent>

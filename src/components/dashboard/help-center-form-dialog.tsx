@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
@@ -26,7 +25,7 @@ import { Input } from '@/components/ui/input';
 import { HelpCenter } from '@/lib/data';
 
 const helpCenterSchema = z.object({
-  name: z.string().min(2, 'Knowledge Base name is required.'),
+  name: z.string().min(2, 'Library name is required.'),
 });
 
 type HelpCenterFormValues = z.infer<typeof helpCenterSchema>;
@@ -68,12 +67,12 @@ export default function HelpCenterFormDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {helpCenter ? 'Edit Knowledge Base' : 'Create Knowledge Base'}
+            {helpCenter ? 'Edit Library' : 'Create Library'}
           </DialogTitle>
           <DialogDescription>
             {helpCenter
-              ? 'Update the name of your knowledge base.'
-              : 'Give your new knowledge base a name.'}
+              ? 'Update the name of your library.'
+              : 'Give your new library a name.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

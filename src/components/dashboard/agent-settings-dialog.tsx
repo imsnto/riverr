@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -503,9 +502,9 @@ export default function AgentSettingsDialog({
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
                                 <FormLabel>Knowledge Sources</FormLabel>
-                                <p className="text-sm text-muted-foreground">Select which knowledge bases this agent can use to answer questions.</p>
+                                <p className="text-sm text-muted-foreground">Select which libraries this agent can use to answer questions.</p>
                                 <MultiSelectPopover 
-                                    title="Knowledge Bases"
+                                    title="Libraries"
                                     options={helpCenters.map(hc => ({ value: hc.id, label: hc.name }))}
                                     selected={field.value || []}
                                     onChange={field.onChange}

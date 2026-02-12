@@ -1,4 +1,3 @@
-
 'use client';
 
 import { HelpCenter, HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
@@ -99,7 +98,7 @@ export default function HelpCenterArticleList({
             <Checkbox checked={isAllSelected} onCheckedChange={onToggleAll} />
           </TableHead>
           <TableHead>Title</TableHead>
-          <TableHead>Knowledge Base</TableHead>
+          <TableHead>Library</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Visibility</TableHead>
           <TableHead>AI Indexed</TableHead>
