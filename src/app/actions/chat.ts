@@ -6,7 +6,7 @@ import * as db from '@/lib/db';
 import type { Firestore } from "firebase-admin/firestore";
 import { getTypesenseAdmin, getTypesenseSearch } from '@/lib/typesense';
 import { indexHelpCenterArticleToChunks } from '@/lib/knowledge/indexer';
-import { LeadStateNode, Contact, SalesPersonaSegmentNode } from '@/lib/data';
+import { LeadStateNode, Contact, SalesPersonaSegmentNode, ChatMessage } from '@/lib/data';
 import { draftSalesEmail, type DraftSalesEmailInput, type DraftSalesEmailOutput } from '@/ai/flows/draft-sales-email';
 
 const typesense = getTypesenseSearch();
@@ -140,41 +140,116 @@ async function searchSalesExtractions(params: SearchSalesExtractionsParams): Pro
     return { extractions };
 }
 
+/**
+ * SERVER-SIDE DATABASE CALLS
+ * Uses firebase-admin (adminDB) to bypass client-side restrictions.
+ */
 
-export async function invokeAgent(args: {
-    bot: BotConfig;
-    conversation: Conversation;
-    message: IncomingMessage;
-}) {
-    const adapters: AgentAdapters = {
-        searchHelpCenter,
-        searchSupport,
-        searchSalesExtractions,
-        escalateToHuman: async ({ conversationId, hubId, reason }) => {
-            await db.updateConversation(conversationId, {
-                status: 'human',
-                escalated: true,
-                escalationReason: reason,
-                state: 'human_assigned',
-            });
-        },
-        persistAssistantMessage: async ({ conversationId, hubId, text, sources, meta }) => {
-            await db.addChatMessage({
-                conversationId,
-                authorId: 'ai_agent',
-                type: 'message',
-                senderType: 'agent',
-                content: text,
-                timestamp: new Date().toISOString(),
-            });
-        },
-        updateConversation: async ({ conversationId, hubId, patch }) => {
-            await db.updateConversation(conversationId, patch);
-        },
-    };
-
-    await handleIncomingMessage({ ...args, adapters });
-}
+export async function updateConversation(conversationId: string, data: Partial<Conversation>) {
+    const convRef = adminDB.collection('conversations').doc(conversationId);
+    
+    // 1. Direct Server Update
+    await convRef.update(data as any);
+  
+    // 2. Server-side side effects (Sync contactId to tickets)
+    if (data.contactId) {
+      const ticketsSnapshot = await adminDB.collection("tickets")
+        .where("conversationId", "==", conversationId)
+        .limit(1)
+        .get();
+  
+      if (!ticketsSnapshot.empty) {
+        await ticketsSnapshot.docs[0].ref.update({ contactId: data.contactId });
+      }
+    }
+  }
+  
+  export async function addChatMessage(message: Omit<ChatMessage, "id">) {
+    // 1. Create the message in the server collection
+    const messageRef = await adminDB.collection("chat_messages").add(message);
+    
+    // 2. Process metadata updates (Last message preview, author name, etc.)
+    if (message.conversationId && message.type === 'message') {
+      let authorName = "System";
+  
+      // Direct server-to-server fetch for author names
+      if (message.senderType === 'agent') {
+        const userDoc = await adminDB.collection('users').doc(message.authorId).get();
+        if (userDoc.exists) authorName = userDoc.data()?.name;
+      } else {
+        const visitorDoc = await adminDB.collection('visitors').doc(message.authorId).get();
+        if (visitorDoc.exists) authorName = visitorDoc.data()?.name;
+      }
+  
+      const preview = (message.content || "").slice(0, 140);
+      const timestamp = new Date().toISOString();
+  
+      // 3. Batch/Parallel update for Conversation and Tickets
+      await Promise.all([
+        updateConversation(message.conversationId, {
+          lastMessageAt: message.timestamp,
+          lastMessage: preview,
+          lastMessageAuthor: authorName,
+          updatedAt: timestamp as any,
+        }),
+        adminDB.collection("tickets")
+          .where("conversationId", "==", message.conversationId)
+          .limit(1)
+          .get()
+          .then(async (snap) => {
+            if (!snap.empty) {
+              await snap.docs[0].ref.update({
+                lastMessagePreview: preview,
+                lastMessageAt: message.timestamp,
+                lastMessageAuthor: authorName,
+                updatedAt: timestamp,
+              });
+            }
+          })
+      ]);
+    }
+  
+    return { ...message, id: messageRef.id };
+  }
+  
+  /**
+   * REFACTORED AGENT INVOCATION
+   */
+  export async function invokeAgent(args: {
+      bot: BotConfig;
+      conversation: Conversation;
+      message: IncomingMessage;
+  }) {
+      const adapters: AgentAdapters = {
+          searchHelpCenter,
+          searchSupport,
+          searchSalesExtractions,
+          escalateToHuman: async ({ conversationId, reason }) => {
+              // These calls now trigger the adminDB functions above
+              await updateConversation(conversationId, {
+                  status: 'human',
+                  escalated: true,
+                  escalationReason: reason,
+                  state: 'human_assigned',
+              });
+          },
+          persistAssistantMessage: async ({ conversationId, text }) => {
+              await addChatMessage({
+                  conversationId,
+                  authorId: 'ai_agent',
+                  type: 'message',
+                  senderType: 'agent',
+                  content: text,
+                  timestamp: new Date().toISOString(),
+              });
+          },
+          updateConversation: async ({ conversationId, patch }) => {
+              await updateConversation(conversationId, patch);
+          },
+      };
+  
+      await handleIncomingMessage({ ...args, adapters });
+  }
 
 export async function searchHelpCenterAction(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
   return searchHelpCenter(params);

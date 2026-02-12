@@ -143,7 +143,7 @@ export default function ChatbotWidgetPage() {
       const existingConvo = convos.find(c => c.visitorId === visitorId);
 
       if (existingConvo) {
-        // convoUnsubRef.current = db.getConversation(existingConvo.id, setConversation);
+        convoUnsubRef.current = db.getConversation(existingConvo.id, setConversation);
         unsubRef.current = db.getMessagesForConversations(
           [existingConvo.id],
           (msgs) => setMessages(msgs),
@@ -207,7 +207,7 @@ export default function ChatbotWidgetPage() {
       const newConvo = await db.addConversation(newConvoData);
       currentConversation = newConvo;
 
-      // convoUnsubRef.current = db.getConversation(newConvo.id, setConversation);
+      convoUnsubRef.current = db.getConversation(newConvo.id, setConversation);
       unsubRef.current = db.getMessagesForConversations(
         [newConvo.id],
         (msgs) => setMessages(msgs),
@@ -256,11 +256,13 @@ export default function ChatbotWidgetPage() {
     };
     
     try {
+      console.log({botConfig, currentConversation, incomingMessage})
         await invokeAgent({
             bot: botConfig,
-            conversation: currentConversation,
+            conversation: JSON.parse(JSON.stringify(currentConversation)),
             message: incomingMessage,
         });
+        setIsAiThinking(false);
     } catch (e) {
         console.error("Agent failed to answer:", e);
     } finally {

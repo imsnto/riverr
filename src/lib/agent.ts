@@ -499,7 +499,7 @@ export async function handleIncomingMessage(args: {
 
   // ---- SALES MODE DETECTION ----
   const salesMode = looksLikeSales(text);
-
+ console.log('Unknown')
   // ---- DOC SEARCH ----
   const search = await adapters.searchHelpCenter({
     hubId: bot.hubId,

@@ -62,6 +62,7 @@ import TeamTimesheets from './team-timesheets';
 import { DashboardSkeleton } from './dashboard-skeleton';
 import ContactsLayout from './contacts/contacts-layout';
 import DealsBoard from './deals-board';
+import TicketsBoard from './tickets-board';
 import { DealFormValues } from './create-deal-dialog';
 import { reindexArticleAction } from '@/app/actions/chat';
 
@@ -828,7 +829,7 @@ export default function Dashboard({ view }: { view: string }) {
           onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
+          onUpdateActiveHub={onUpdateActiveHub}
           onNewProject={handleNewProject}
           onNewTaskRequest={handleNewTaskRequest}
           onTaskClick={setSelectedTask}
@@ -853,7 +854,7 @@ export default function Dashboard({ view }: { view: string }) {
           contacts={contacts}
           onDataRefresh={fetchData}
           onCreateTicket={handleCreateTicket}
-          onEscalateTicket={handleEscalateTicket}
+          onEscalateTicket={onEscalateTicket}
           allTasks={tasks}
           onTaskSelect={setSelectedTask}
       />;

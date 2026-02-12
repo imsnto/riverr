@@ -21,6 +21,12 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <script
+  src="https://6000-firebase-studio-1753688090358.cluster-ys234awlzbhwoxmkkse6qo3fz6.cloudworkstations.dev/chatbot-loader.js"
+  data-bot-id="PW113X7lOIYqs22jvQsD"
+  data-hub-id="ezy7Dc0yrqY5XSPpl7Gv"
+  async
+></script>
       </head>
       <body className="font-body antialiased dark" suppressHydrationWarning>
         <AuthProvider>

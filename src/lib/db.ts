@@ -1355,6 +1355,19 @@ export const addConversation = async (conversation: Omit<Conversation, 'id'>): P
   }
 }
 
+export const getConversation = (
+  conversationId: string, 
+  callback: (convo: Conversation) => void
+) => {
+  const docRef = doc(db, 'conversations', conversationId);
+  
+  // onSnapshot returns the unsubscribe function
+  return onSnapshot(docRef, (docSnap) => {
+    if (docSnap.exists()) {
+      callback({ id: docSnap.id, ...docSnap.data() } as Conversation);
+    }
+  });
+};
 
 // --- Bot Management ---
 export const getBots = async (hubId: string): Promise<Bot[]> => {
