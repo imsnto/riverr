@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
@@ -64,11 +63,11 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
                   </CollapsibleTrigger>
                   <Button
                       variant="ghost"
-                      className="w-full justify-start text-sm h-9 px-2 min-w-0"
+                      className="w-full justify-start text-sm h-9 px-2 min-w-0 overflow-hidden"
                       onClick={() => onSelectCollection(collection.id)}
                   >
                       <Folder className="mr-2 h-4 w-4 shrink-0" />
-                      <span className="truncate flex-1 min-w-0">{collection.name}</span>
+                      <span className="block truncate flex-1 min-w-0">{collection.name}</span>
                   </Button>
               </div>
 
@@ -142,15 +141,15 @@ export default function HelpCenterSidebar({
 }: HelpCenterSidebarProps) {
 
     return (
-        <aside className="w-full md:w-64 border-r bg-card p-4 flex flex-col">
+        <aside className="w-full md:w-64 min-w-0 border-r bg-card p-4 flex flex-col">
             <h2 className="text-xl font-bold px-2 mb-2">Knowledge</h2>
             <div className="relative mb-4">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search..." className="pl-9 h-9" />
             </div>
 
-            <ScrollArea className="flex-1 -mx-4">
-              <div className="px-4">
+            <ScrollArea className="flex-1">
+              <div>
                 <Button variant={sidebarView === 'all-articles' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('all-articles')}>
                   <FileText className="mr-2 h-4 w-4"/> All Articles
                 </Button>
@@ -166,7 +165,7 @@ export default function HelpCenterSidebar({
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-1 py-1">
                        <FolderTree 
-                            collections={collections}
+                            collections={collections.filter(c => !c.helpCenterId)}
                             parentId={null}
                             level={0}
                             activeCollectionId={sidebarView === 'library' ? activeCollectionId : null}
