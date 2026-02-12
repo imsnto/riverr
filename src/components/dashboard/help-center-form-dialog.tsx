@@ -71,104 +71,108 @@ export default function HelpCenterFormDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {helpCenter ? 'Edit Library' : 'Create Library'}
-          </DialogTitle>
-          <DialogDescription>
-            {helpCenter
-              ? 'Update the details of your library.'
-              : 'Create a new library to organize your content.'}
-          </DialogDescription>
-        </DialogHeader>
         <Form {...form}>
           <form
             id="help-center-form"
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-6"
+            className="flex flex-col h-full"
           >
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Product Guides" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <DialogHeader>
+              <DialogTitle>
+                {helpCenter ? 'Edit Library' : 'Create Library'}
+              </DialogTitle>
+              <DialogDescription>
+                {helpCenter
+                  ? 'Update the details of your library.'
+                  : 'Create a new library to organize your content.'}
+              </DialogDescription>
+            </DialogHeader>
 
-            <FormField
-              control={form.control}
-              name="visibility"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Visibility</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="grid grid-cols-2 gap-4"
-                    >
-                      <FormItem>
-                        <RadioGroupItem
-                          value="public"
-                          id="public"
-                          className="sr-only"
-                        />
-                        <Label
-                          htmlFor="public"
-                          className="flex h-full flex-col items-center justify-center rounded-md border-2 border-muted bg-transparent p-6 text-center transition-colors hover:bg-muted/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10"
+            <div className="py-6 space-y-6">
+                <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                        <Input placeholder="e.g., Product Guides" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+
+                <FormField
+                control={form.control}
+                name="visibility"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                    <FormLabel>Visibility</FormLabel>
+                    <FormControl>
+                        <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="grid grid-cols-2 gap-4"
                         >
-                          <Globe className="mb-3 h-6 w-6" />
-                          Public
-                          <p className="mt-1 text-center text-xs text-muted-foreground">
-                            Accessible on a public URL and can be used by
-                            public-facing AI agents.
-                          </p>
-                        </Label>
-                      </FormItem>
-                      <FormItem>
-                        <RadioGroupItem
-                          value="internal"
-                          id="internal"
-                          className="sr-only"
-                        />
-                        <Label
-                          htmlFor="internal"
-                          className="flex h-full flex-col items-center justify-center rounded-md border-2 border-muted bg-transparent p-6 text-center transition-colors hover:bg-muted/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10"
-                        >
-                          <Lock className="mb-3 h-6 w-6" />
-                          Internal
-                          <p className="mt-1 text-center text-xs text-muted-foreground">
-                            Only accessible to team members and internal AI
-                            agents.
-                          </p>
-                        </Label>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                        <FormItem>
+                            <RadioGroupItem
+                            value="public"
+                            id="public"
+                            className="sr-only peer"
+                            />
+                            <Label
+                            htmlFor="public"
+                            className="flex h-full flex-col items-center justify-center rounded-md border-2 border-muted bg-transparent p-6 text-center transition-colors hover:bg-muted/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10"
+                            >
+                            <Globe className="mb-3 h-6 w-6" />
+                            Public
+                            <p className="mt-1 text-center text-xs text-muted-foreground">
+                                Accessible on a public URL and can be used by
+                                public-facing AI agents.
+                            </p>
+                            </Label>
+                        </FormItem>
+                        <FormItem>
+                            <RadioGroupItem
+                            value="internal"
+                            id="internal"
+                            className="sr-only peer"
+                            />
+                            <Label
+                            htmlFor="internal"
+                            className="flex h-full flex-col items-center justify-center rounded-md border-2 border-muted bg-transparent p-6 text-center transition-colors hover:bg-muted/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10"
+                            >
+                            <Lock className="mb-3 h-6 w-6" />
+                            Internal
+                            <p className="mt-1 text-center text-xs text-muted-foreground">
+                                Only accessible to team members and internal AI
+                                agents.
+                            </p>
+                            </Label>
+                        </FormItem>
+                        </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
+
+            <DialogFooter className="mt-auto">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">
+                Save
+              </Button>
+            </DialogFooter>
           </form>
         </Form>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" form="help-center-form">
-            Save
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
