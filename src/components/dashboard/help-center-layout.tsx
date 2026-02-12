@@ -1,4 +1,5 @@
 
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -19,6 +20,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { reindexArticleAction } from '@/app/actions/chat';
+import { suggestLibraryIcon } from '@/ai/flows/suggest-library-icon';
 
 interface HelpCenterLayoutProps {}
 
@@ -130,7 +132,9 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
                 await db.updateHelpCenter(editingHelpCenter.id, values);
                 toast({ title: "Library updated" });
             } else {
-                await db.addHelpCenter({ ...values, hubId: activeHub.id });
+                const { iconName } = await suggestLibraryIcon(values.name);
+                const dataWithIcon = { ...values, hubId: activeHub.id, icon: iconName };
+                await db.addHelpCenter(dataWithIcon);
                 toast({ title: "Library created" });
             }
             refreshData();
@@ -385,9 +389,9 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
             activeHelpCenterId={activeHelpCenterId}
             onSelectHelpCenter={handleSelectHelpCenter}
             onNewHelpCenter={handleNewHelpCenter}
+            onEditHelpCenter={handleEditHelpCenter}
             sidebarView={sidebarView}
             onViewChange={handleViewChange}
-            onEditHelpCenter={handleEditHelpCenter}
             unassignedContentCount={unassignedCount}
         />
     );

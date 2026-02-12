@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
 import { Button } from '../ui/button';
-import { Book, ChevronRight, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus, GripVertical, FileText, Settings, ExternalLink, Library, Inbox } from 'lucide-react';
+import { Book, ChevronRight, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus, GripVertical, FileText, Settings, ExternalLink, Library, Inbox, BookOpen, Users, DollarSign, Briefcase, HelpCircle, MessageSquare, Code, Database, GitBranch, Archive, Shield, Globe, Home, Rocket, Lightbulb, Server, Cloud, Component, Package, Puzzle, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '../ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -13,6 +13,43 @@ import Link from 'next/link';
 import { Badge } from '../ui/badge';
 
 export type HelpCenterSidebarView = 'knowledge-bases' | 'library' | 'all-articles';
+
+const iconMap: Record<string, React.ReactNode> = {
+    Book: <Book className="mr-2 h-4 w-4 shrink-0" />,
+    BookOpen: <BookOpen className="mr-2 h-4 w-4 shrink-0" />,
+    Folder: <Folder className="mr-2 h-4 w-4 shrink-0" />,
+    Users: <Users className="mr-2 h-4 w-4 shrink-0" />,
+    Settings: <Settings className="mr-2 h-4 w-4 shrink-0" />,
+    DollarSign: <DollarSign className="mr-2 h-4 w-4 shrink-0" />,
+    Briefcase: <Briefcase className="mr-2 h-4 w-4 shrink-0" />,
+    HelpCircle: <HelpCircle className="mr-2 h-4 w-4 shrink-0" />,
+    MessageSquare: <MessageSquare className="mr-2 h-4 w-4 shrink-0" />,
+    Code: <Code className="mr-2 h-4 w-4 shrink-0" />,
+    Database: <Database className="mr-2 h-4 w-4 shrink-0" />,
+    GitBranch: <GitBranch className="mr-2 h-4 w-4 shrink-0" />,
+    FileText: <FileText className="mr-2 h-4 w-4 shrink-0" />,
+    Archive: <Archive className="mr-2 h-4 w-4 shrink-0" />,
+    Inbox: <Inbox className="mr-2 h-4 w-4 shrink-0" />,
+    Shield: <Shield className="mr-2 h-4 w-4 shrink-0" />,
+    Globe: <Globe className="mr-2 h-4 w-4 shrink-0" />,
+    Home: <Home className="mr-2 h-4 w-4 shrink-0" />,
+    Rocket: <Rocket className="mr-2 h-4 w-4 shrink-0" />,
+    Lightbulb: <Lightbulb className="mr-2 h-4 w-4 shrink-0" />,
+    Server: <Server className="mr-2 h-4 w-4 shrink-0" />,
+    Cloud: <Cloud className="mr-2 h-4 w-4 shrink-0" />,
+    Component: <Component className="mr-2 h-4 w-4 shrink-0" />,
+    Package: <Package className="mr-2 h-4 w-4 shrink-0" />,
+    Puzzle: <Puzzle className="mr-2 h-4 w-4 shrink-0" />,
+    Heart: <Heart className="mr-2 h-4 w-4 shrink-0" />,
+    default: <Book className="mr-2 h-4 w-4 shrink-0" />
+};
+
+const LibraryIcon = ({ name }: { name?: string | null }) => {
+    if (name && iconMap[name]) {
+        return iconMap[name];
+    }
+    return iconMap.default;
+};
 
 interface HelpCenterSidebarProps {
   collections: HelpCenterCollection[];
@@ -117,10 +154,10 @@ const HelpCenterList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: 
             >
                 <Button
                     variant='ghost'
-                    className="w-full justify-start text-sm h-9 px-2 min-w-0 overflow-hidden"
+                    className="flex-1 justify-start text-sm h-9 px-2 min-w-0 overflow-hidden"
                     onClick={() => onSelect(hc.id)}
                 >
-                    <Book className="mr-2 h-4 w-4 shrink-0" />
+                    <LibraryIcon name={hc.icon} />
                     <span className="block flex-1 min-w-0 truncate">{hc.name}</span>
                 </Button>
 

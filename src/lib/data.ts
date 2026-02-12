@@ -503,6 +503,7 @@ export interface HelpCenter {
   id: string;
   name: string;
   hubId: string;
+  icon?: string;
   coverImageUrl?: string;
   visibility?: 'public' | 'internal';
 }
