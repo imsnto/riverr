@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect, useMemo } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -171,10 +172,10 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
 
         if (collectionId) {
             await db.updateHelpCenterCollection(collectionId, data);
-            toast({ title: 'Folder updated.' });
+            toast({ title: 'Collection updated.' });
         } else {
             await db.addHelpCenterCollection(data);
-            toast({ title: 'Folder created.' });
+            toast({ title: 'Collection created.' });
         }
         refreshData();
         setIsCollectionDialogOpen(false);
@@ -251,21 +252,22 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     }
     
     const { combinedItems, title, breadcrumbs } = React.useMemo(() => {
-        let foldersToShow: HelpCenterCollection[] = [];
+        let collectionsToShow: HelpCenterCollection[] = [];
         let articlesToShow: HelpCenterArticle[] = [];
         let breadcrumbs: HelpCenterCollection[] = [];
         let viewTitle = 'Knowledge';
 
         if (sidebarView === 'all-articles') {
-            viewTitle = 'All Articles';
+            viewTitle = 'All Content';
             articlesToShow = articles;
+            collectionsToShow = collections;
         } else if (sidebarView === 'knowledge-bases' && activeHelpCenterId) {
             const hc = helpCenters.find(h => h.id === activeHelpCenterId);
             viewTitle = hc?.name || 'Library';
 
             if (selectedCollectionId) {
                 const collection = collections.find(c => c.id === selectedCollectionId);
-                viewTitle = collection?.name || 'Folder';
+                viewTitle = collection?.name || 'Collection';
                 
                 let currentCollection = collection;
                 while (currentCollection) {
@@ -273,22 +275,24 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                     currentCollection = collections.find(c => c.id === currentCollection!.parentId);
                 }
 
-                foldersToShow = collections.filter(c => c.parentId === selectedCollectionId);
+                collectionsToShow = collections.filter(c => c.parentId === selectedCollectionId);
                 articlesToShow = articles.filter(a => a.folderId === selectedCollectionId);
             } else {
-                 foldersToShow = collections.filter(c => c.helpCenterId === activeHelpCenterId && !c.parentId);
+                 collectionsToShow = collections.filter(c => c.helpCenterId === activeHelpCenterId && !c.parentId);
                  articlesToShow = articles.filter(a => a.helpCenterId === activeHelpCenterId && !a.folderId);
             }
         } else if (sidebarView === 'inbox') {
             viewTitle = "Unassigned";
             articlesToShow = articles.filter(a => !a.helpCenterId);
-            foldersToShow = []; // No folders in this view
+            collectionsToShow = []; // No collections in this view
             breadcrumbs = [];
         }
         
-        return { combinedItems: [...foldersToShow, ...articlesToShow].sort((a,b) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt)), title: viewTitle, breadcrumbs };
+        return { combinedItems: [...collectionsToShow, ...articlesToShow].sort((a,b) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt)), title: viewTitle, breadcrumbs };
 
     }, [sidebarView, selectedCollectionId, activeHelpCenterId, articles, collections, helpCenters]);
+
+    const unassignedCount = useMemo(() => articles.filter(a => !a.helpCenterId).length, [articles]);
 
     const handleToggleAll = () => {
         if (selectedItems.length === combinedItems.length) {
@@ -305,7 +309,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         const collectionsToMove = selectedItems.filter(id => collections.some(c => c.id === id));
     
         if (collectionsToMove.length > 0 && libraryId) {
-            toast({ variant: "destructive", title: "Cannot move folders between libraries yet." });
+            toast({ variant: "destructive", title: "Cannot move collections between libraries yet." });
             return;
         }
     
@@ -374,7 +378,6 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     }
     
     const activeHelpCenter = helpCenters.find(hc => hc.id === activeHelpCenterId);
-    const unassignedCount = articles.filter(a => !a.helpCenterId).length;
     
     const connectedAgents = useMemo(() => {
         if (!activeHelpCenterId) return [];
@@ -476,9 +479,11 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                     )}
                 </div>
                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Button variant="outline" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
-                        <FolderPlus className="mr-2 h-4 w-4" /> New Folder
-                    </Button>
+                    {sidebarView === 'knowledge-bases' && (
+                        <Button variant="outline" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
+                            <FolderPlus className="mr-2 h-4 w-4" /> New Collection
+                        </Button>
+                    )}
                     <Button onClick={handleCreateArticle}>
                         <Plus className="mr-2 h-4 w-4" /> New Article
                     </Button>

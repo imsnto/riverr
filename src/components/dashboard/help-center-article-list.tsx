@@ -38,7 +38,7 @@ export default function HelpCenterArticleList({
   const renderType = (item: HelpCenterArticle | HelpCenterCollection) => {
     const type = getItemType(item);
     if (type === 'collection') {
-        return <div className="flex items-center gap-2"><Folder className="h-4 w-4 text-muted-foreground" /> Folder</div>;
+        return <div className="flex items-center gap-2"><Folder className="h-4 w-4 text-muted-foreground" /> Collection</div>;
     }
     
     const article = item as HelpCenterArticle;

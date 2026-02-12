@@ -119,7 +119,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                       <DropdownMenuItem onClick={() => onNewCollection(collection.id)}>
-                          <Plus className="mr-2 h-4 w-4" /> Add subfolder
+                          <Plus className="mr-2 h-4 w-4" /> Add sub-collection
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onEditCollection(collection)}>
                           <Edit className="mr-2 h-4 w-4" /> Rename
@@ -155,13 +155,14 @@ const LibraryList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: str
                 key={hc.id}
                 className={cn(
                     "group flex items-center justify-between rounded-md pr-1 transition-colors", 
-                    activeHelpCenterId === hc.id && "bg-primary/10"
+                    activeHelpCenterId === hc.id && "bg-indigo-500/10 border border-indigo-500/20"
                 )}
             >
                 <Button
                     variant='ghost'
                     className={cn(
-                        "w-full justify-start text-left text-sm h-9 px-2 min-w-0 text-foreground"
+                        "w-full justify-start text-left text-sm h-9 px-2 min-w-0",
+                        activeHelpCenterId === hc.id ? "text-foreground" : "text-foreground"
                     )}
                     onClick={() => onSelect(hc.id)}
                 >
@@ -230,7 +231,7 @@ export default function HelpCenterSidebar({
                         </div>
                         <LibraryList 
                             helpCenters={helpCenters} 
-                            activeHelpCenterId={sidebarView === 'knowledge-bases' ? activeHelpCenterId : null}
+                            activeHelpCenterId={activeHelpCenterId}
                             onSelect={onSelectHelpCenter}
                             onEdit={onEditHelpCenter}
                         />
@@ -268,7 +269,7 @@ export default function HelpCenterSidebar({
                             <div className="flex items-center gap-2">
                                 <Inbox className="h-4 w-4"/> Unassigned
                             </div>
-                            {unassignedContentCount > 0 && <Badge variant={sidebarView === 'inbox' ? 'default' : 'secondary'}>{unassignedContentCount}</Badge>}
+                            {unassignedContentCount > 0 && <Badge variant="secondary" className="bg-amber-500/10 text-amber-300 border border-amber-500/20">{unassignedContentCount}</Badge>}
                         </Button>
                     </div>
 

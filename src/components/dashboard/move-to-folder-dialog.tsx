@@ -85,7 +85,7 @@ export default function MoveToFolderDialog({ isOpen, onOpenChange, collections, 
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Move items</DialogTitle>
-          <DialogDescription>Select a destination library or folder.</DialogDescription>
+          <DialogDescription>Select a destination library or collection.</DialogDescription>
         </DialogHeader>
         <div className="py-4">
           <ScrollArea className="h-72 border rounded-md">

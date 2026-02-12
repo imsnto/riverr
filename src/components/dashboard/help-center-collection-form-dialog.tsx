@@ -64,8 +64,8 @@ export default function HelpCenterCollectionFormDialog({
     onSave(values, collection?.id);
   };
   
-  const title = collection ? 'Edit Folder' : (parentId ? 'New Subfolder' : 'New Folder');
-  const description = collection ? 'Update the folder details.' : 'Create a new folder to organize your articles.';
+  const title = collection ? 'Edit Collection' : (parentId ? 'New Sub-collection' : 'New Collection');
+  const description = collection ? 'Update the collection details.' : 'Create a new collection to organize your articles.';
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -81,7 +81,7 @@ export default function HelpCenterCollectionFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Folder Name</FormLabel>
+                  <FormLabel>Collection Name</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Getting Started" {...field} />
                   </FormControl>
