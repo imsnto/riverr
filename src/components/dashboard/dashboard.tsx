@@ -773,7 +773,7 @@ export default function Dashboard({ view }: { view: string }) {
       appUser,
       onInvite: fetchData,
       handleInvite: async (invite: any) => {
-          const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+          const token = Math.random().toString(36).substring(2) + Math.random().toString(36).slice(2);
           await db.addInvite({ ...invite, token, invitedBy: appUser.id, status: 'pending' });
           fetchData();
       },
@@ -800,7 +800,7 @@ export default function Dashboard({ view }: { view: string }) {
           projects={projects}
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
-          allTasks={tasks}
+          tasks={tasks}
           onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
