@@ -1,5 +1,4 @@
 
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -233,18 +232,12 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
         showContentOnMobile();
     }
     
-    const handleSelectCollection = (id: string | null) => {
-        setSelectedCollectionId(id);
-        setSelectedArticleId(null);
-        showContentOnMobile();
-    }
-
     const handleSelectHelpCenter = (id: string | null) => {
         setActiveHelpCenterId(id);
         setSelectedCollectionId(null);
         setSelectedArticleId(null);
         if (id) {
-            onViewChange('knowledge-bases');
+            handleViewChange('knowledge-bases');
         }
         showContentOnMobile();
     }
@@ -282,8 +275,8 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
                  foldersToShow = collections.filter(c => c.helpCenterId === activeHelpCenterId && !c.parentId);
                  articlesToShow = articles.filter(a => a.helpCenterId === activeHelpCenterId && !a.folderId);
             }
-        } else if (sidebarView === 'library') {
-            viewTitle = "Unassigned Content";
+        } else if (sidebarView === 'inbox') {
+            viewTitle = "Inbox";
             articlesToShow = articles.filter(a => !a.helpCenterId);
             foldersToShow = []; // No folders in this view
             breadcrumbs = [];
@@ -369,7 +362,11 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
         <HelpCenterSidebar
             collections={collections}
             activeCollectionId={selectedCollectionId}
-            onSelectCollection={handleSelectCollection}
+            onSelectCollection={(id) => {
+                setSelectedCollectionId(id);
+                setSelectedArticleId(null);
+                showContentOnMobile();
+            }}
             onNewCollection={handleNewCollection}
             onEditCollection={handleEditCollection}
             helpCenters={helpCenters}
@@ -395,7 +392,7 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
             )}
             {sidebarView === 'knowledge-bases' && breadcrumbs.length > 0 && !isMobile && (
                 <Breadcrumbs crumbs={breadcrumbs} onCrumbClick={(id) => {
-                    handleSelectCollection(id);
+                    setSelectedCollectionId(id);
                 }} />
             )}
             <div className="flex flex-wrap justify-between items-start mb-4 gap-x-4 gap-y-2">
