@@ -848,7 +848,7 @@ export default function Dashboard({ view }: { view: string }) {
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
-          allHubs={allHubs}
+          allHubs={spaceHubs}
           escalationRules={escalationRules}
           projects={projects}
           contacts={contacts}
@@ -893,7 +893,7 @@ export default function Dashboard({ view }: { view: string }) {
                             setHideMobileBottomNav={setHideMobileBottomNav}
                             activeHub={activeHub!}
                             activeSpace={activeSpace}
-                            allHubs={allHubs}
+                            allHubs={spaceHubs}
                             escalationRules={escalationRules}
                             projects={projects}
                             contacts={contacts}
