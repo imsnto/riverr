@@ -815,6 +815,8 @@ export default function Dashboard({ view }: { view: string }) {
       onBotDelete: handleBotDelete,
       escalationRules,
       helpCenters,
+      tickets,
+      conversations: chatConversations,
     }
 
 
@@ -871,7 +873,7 @@ export default function Dashboard({ view }: { view: string }) {
           onNavigateToSettings={() => handleViewChange('settings')}
       />;
       case 'help-center': return <HelpCenterLayout
-        onSaveArticle={handleSaveArticle}
+        onSaveArticle={handleSaveAndRefresh}
         />;
       case 'contacts': return <ContactsLayout activeSpace={activeSpace} />;
       case 'settings': return <SettingsLayout {...settingsProps} />;

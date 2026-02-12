@@ -1,4 +1,5 @@
 
+
 // src/components/dashboard/settings-layout.tsx
 'use client';
 
@@ -20,6 +21,8 @@ import {
   Bot,
   EscalationIntakeRule,
   HelpCenter,
+  Ticket,
+  Conversation,
 } from '@/lib/data';
 import InboxSettings from './inbox-settings';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -54,6 +57,8 @@ interface SettingsLayoutProps {
   onBotDelete: (botId: string) => void;
   escalationRules: EscalationIntakeRule[];
   helpCenters: HelpCenter[];
+  tickets: Ticket[];
+  conversations: Conversation[];
 }
 
 export default function SettingsLayout(props: SettingsLayoutProps) {
@@ -124,6 +129,9 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             onBotAdd={props.onBotAdd}
             onBotDelete={props.onBotDelete}
             helpCenters={props.helpCenters}
+            tickets={props.tickets}
+            conversations={props.conversations}
+            activeHub={props.activeHub}
          />;
       case 'deal-automation':
         return <DealAutomationSettings 

@@ -17,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Bot as BotData, User, HelpCenter } from '@/lib/data';
+import { Bot as BotData, User, HelpCenter, Conversation, Ticket, Hub } from '@/lib/data';
 import AgentSettingsDialog from './agent-settings-dialog';
 import {
   AlertDialog,
@@ -40,6 +40,9 @@ interface InboxSettingsProps {
   onBotAdd: (bot: Omit<BotData, 'id'>) => void;
   onBotDelete: (botId: string) => void;
   helpCenters: HelpCenter[];
+  tickets: Ticket[];
+  conversations: Conversation[];
+  activeHub: Hub | null;
 }
 
 export default function InboxSettings({
@@ -50,10 +53,12 @@ export default function InboxSettings({
   onBotAdd,
   onBotDelete,
   helpCenters,
+  tickets,
+  conversations,
+  activeHub,
 }: InboxSettingsProps) {
   const [selectedAgent, setSelectedAgent] = useState<BotData | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { activeHub } = useAuth();
   const [agentToDelete, setAgentToDelete] = useState<BotData | null>(null);
   const { toast } = useToast();
 
@@ -107,45 +112,83 @@ export default function InboxSettings({
         </div>
 
         <div className="space-y-4">
-          {bots.map((bot) => (
-            <Card key={bot.id}>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle className="flex items-center gap-3">
-                    <span className="relative flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                    </span>
-                    {bot.name}
-                  </CardTitle>
-                  <div className="flex items-center gap-1">
-                    <Button variant="outline" size="sm" onClick={() => handleEditAgent(bot)}>
-                      Configure
-                    </Button>
-                    <Button variant="ghost" size="sm" disabled>
-                      Analytics
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem disabled>Disable</DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={(e) => { e.preventDefault(); handleDeleteClick(bot); }}
-                          className="text-destructive"
-                        >
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+          {bots.map((bot) => {
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+            const conversationsForBot = conversations.filter(c => c.hubId === bot.hubId);
+            
+            const conversationsToday = conversationsForBot.filter(c => {
+                const lastMessageDate = new Date(c.lastMessageAt);
+                return lastMessageDate >= todayStart;
+            }).length;
+
+            const ticketsForBotHub = tickets.filter(t => t.hubId === bot.hubId);
+            const totalTicketsForBot = ticketsForBotHub.length;
+            
+            const closingStatusName = activeHub?.ticketClosingStatusName || 'Closed';
+            
+            const resolvedTicketsForBot = ticketsForBotHub.filter(t => t.status === closingStatusName).length;
+            
+            const resolutionRate = totalTicketsForBot > 0
+                ? Math.round((resolvedTicketsForBot / totalTicketsForBot) * 100)
+                : 0;
+
+            return (
+              <Card key={bot.id}>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="flex items-center gap-3">
+                      <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                      </span>
+                      {bot.name}
+                    </CardTitle>
+                    <div className="flex items-center gap-1">
+                      <Button variant="outline" size="sm" onClick={() => handleEditAgent(bot)}>
+                        Configure
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem disabled>Disable</DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={(e) => { e.preventDefault(); handleDeleteClick(bot); }}
+                            className="text-destructive"
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-            </Card>
-          ))}
+                </CardHeader>
+                 <CardContent className="grid grid-cols-2 text-sm md:grid-cols-4 gap-x-4 gap-y-2">
+                    <div>
+                        <dt className="text-muted-foreground">Channels</dt>
+                        <dd className="font-medium">Web</dd>
+                    </div>
+                    <div>
+                        <dt className="text-muted-foreground">Knowledge</dt>
+                        <dd className="font-medium">Connected</dd>
+                    </div>
+                    <div>
+                        <dt className="text-muted-foreground">Conversations Today</dt>
+                        <dd className="font-medium">{conversationsToday}</dd>
+                    </div>
+                    <div>
+                        <dt className="text-muted-foreground">Resolution Rate</dt>
+                        <dd className="font-medium">{resolutionRate}%</dd>
+                    </div>
+                </CardContent>
+              </Card>
+            )
+          })}
 
           {bots.length === 0 && (
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
