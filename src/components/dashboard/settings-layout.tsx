@@ -1,3 +1,4 @@
+
 // src/components/dashboard/settings-layout.tsx
 'use client';
 
@@ -77,7 +78,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
     { key: 'users', label: 'Users & Permissions' },
     { key: 'spaces', label: 'Spaces' },
     { key: 'hub', label: 'Hub Settings', disabled: !props.activeHub },
-    { key: 'inbox', label: 'Inbox', disabled: !hubHasInbox },
+    { key: 'inbox', label: 'Agents', disabled: !hubHasInbox },
     { key: 'deal-automation', label: 'Deal Automation', disabled: !hubHasDeals },
     { key: 'escalation-intake', label: 'Escalation Intake', disabled: !(hubHasTickets && hubHasTasks) },
     { key: 'knowledge-base', label: 'Knowledge Base', disabled: !hubHasHelpCenter },
