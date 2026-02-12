@@ -745,6 +745,10 @@ export default function Dashboard({ view }: { view: string }) {
     const newTimeEntry = await db.addTimeEntry({...timeData, spaceId: activeSpace.id});
     setTimeEntries(prev => [...prev, newTimeEntry]);
   };
+  
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+  }
 
   const renderView = () => {
     const overviewProps = {
@@ -801,13 +805,13 @@ export default function Dashboard({ view }: { view: string }) {
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           tasks={tasks}
-          onUpdateTasks={onUpdateTasks}
+          onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
-          onUpdateActiveHub={onUpdateActiveHub}
+          onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
           onNewTaskRequest={handleNewTaskRequest}
-          onTaskClick={setSelectedTask}
+          onTaskClick={handleTaskClick}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
           onEditProject={handleEditProject}
@@ -816,7 +820,7 @@ export default function Dashboard({ view }: { view: string }) {
       );
       case 'tickets': return <TicketsBoard 
           tickets={tickets} 
-          onUpdateTickets={onUpdateTickets}
+          onUpdateTickets={handleUpdateTickets}
           conversations={chatConversations}
           activeHub={activeHub!}
           activeSpace={activeSpace}
