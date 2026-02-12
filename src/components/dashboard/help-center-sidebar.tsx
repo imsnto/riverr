@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
 import { Button } from '../ui/button';
-import { Book, ChevronRight, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus, GripVertical, FileText, Settings, ExternalLink, Library, Inbox, BookOpen, Users, DollarSign, Briefcase, HelpCircle, MessageSquare, Code, Database, GitBranch, Archive, Shield, Globe, Home, Rocket, Lightbulb, Server, Cloud, Component, Package, Puzzle, Heart } from 'lucide-react';
+import { Book, ChevronRight, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus, GripVertical, FileText, Settings, ExternalLink, Library, Inbox, BookOpen, Users, DollarSign, Briefcase, HelpCircle, MessageSquare, Code, Database, GitBranch, Archive, Shield, Globe, Home, Rocket, Lightbulb, Server, Cloud, Component, Package, Puzzle, Heart, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '../ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -158,11 +158,12 @@ const LibraryList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: str
             >
                 <Button
                     variant='ghost'
-                    className="w-full justify-start text-left text-sm h-9 px-2 min-w-0"
+                    className="flex-1 justify-start text-left text-sm h-9 px-2 min-w-0"
                     onClick={() => onSelect(hc.id)}
                 >
                     <LibraryIcon name={hc.icon} />
                     <span className="block flex-1 min-w-0 truncate text-left">{hc.name}</span>
+                    {hc.visibility === 'internal' && <Lock className="ml-2 h-3 w-3 text-muted-foreground" />}
                 </Button>
 
                 <DropdownMenu>
@@ -175,12 +176,14 @@ const LibraryList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: str
                         <DropdownMenuItem onSelect={() => onEdit(hc)}>
                             <Edit className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
-                         <DropdownMenuItem asChild>
-                            <Link href={`/hc/${hc.id}`} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="mr-2 h-4 w-4" />
-                                <span>View Live</span>
-                            </Link>
-                        </DropdownMenuItem>
+                        {hc.visibility !== 'internal' && (
+                            <DropdownMenuItem asChild>
+                                <Link href={`/hc/${hc.id}`} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                    <span>View Live</span>
+                                </Link>
+                            </DropdownMenuItem>
+                        )}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -261,7 +264,7 @@ export default function HelpCenterSidebar({
                             <div className="flex items-center gap-2">
                                 <Inbox className="h-4 w-4"/> Unassigned Content
                             </div>
-                            <Badge variant={sidebarView === 'inbox' ? "default" : "secondary"}>{unassignedContentCount}</Badge>
+                            {unassignedContentCount > 0 && <Badge variant={sidebarView === 'inbox' ? "default" : "secondary"}>{unassignedContentCount}</Badge>}
                         </Button>
                     </div>
 
