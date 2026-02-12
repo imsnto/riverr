@@ -21,7 +21,7 @@ interface TaskBoardProps {
   activeHub: Hub;
   allUsers: User[];
   onUpdateActiveHub: (updatedHub: Partial<Hub>) => void;
-  onTaskSelect: (task: Task) => void;
+  onTaskClick: (task: Task) => void;
   onUpdateTask: (task: Task, tempId?: string) => void;
   onAddTask: (task: Omit<Task, 'id'>) => void;
   onNewProject: () => void;
@@ -39,7 +39,7 @@ export default function TaskBoard({
     activeHub, 
     allUsers, 
     onUpdateActiveHub,
-    onTaskSelect,
+    onTaskClick,
     onUpdateTask,
     onAddTask,
     onNewProject,
@@ -102,7 +102,7 @@ export default function TaskBoard({
                         allUsers={allUsers}
                         onUpdateActiveHub={onUpdateActiveHub}
                         onNewTaskRequest={onNewTaskRequest}
-                        onTaskClick={onTaskSelect}
+                        onTaskClick={onTaskClick}
                         onUpdateTask={onUpdateTask}
                         onBack={() => handleSelectProject(null)}
                         onEditProject={onEditProject}
@@ -129,7 +129,7 @@ export default function TaskBoard({
                   allUsers={allUsers}
                   onUpdateActiveHub={onUpdateActiveHub}
                   onNewTaskRequest={onNewTaskRequest}
-                  onTaskClick={onTaskSelect}
+                  onTaskClick={onTaskClick}
                   onUpdateTask={onUpdateTask}
                   onBack={() => handleSelectProject(null)}
                   onEditProject={onEditProject}
