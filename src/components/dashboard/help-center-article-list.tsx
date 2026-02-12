@@ -1,9 +1,10 @@
+
 'use client';
 
 import { HelpCenter, HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Checkbox } from '../ui/checkbox';
-import { Folder, FileText, Lock, Globe, GitBranch } from 'lucide-react';
+import { Folder, FileText, Lock, Globe, GitBranch, Bot } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '../ui/button';
@@ -98,16 +99,19 @@ export default function HelpCenterArticleList({
             <Checkbox checked={isAllSelected} onCheckedChange={onToggleAll} />
           </TableHead>
           <TableHead>Title</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead>Audience</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Visibility</TableHead>
+          <TableHead>AI Indexed</TableHead>
           <TableHead>Last updated</TableHead>
-          <TableHead>Help Center</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {items.map(item => {
           const type = getItemType(item);
           const name = type === 'collection' ? item.name : ((item as HelpCenterArticle).title || "Untitled Article");
+          const status = 'status' in item ? item.status : 'N/A';
+          const isPublic = 'isPublic' in item ? item.isPublic : false;
+
           return (
             <TableRow key={item.id}>
               <TableCell>
@@ -118,35 +122,32 @@ export default function HelpCenterArticleList({
                   {name}
                 </Button>
               </TableCell>
-              <TableCell>{renderType(item)}</TableCell>
+              <TableCell>
+                {status !== 'N/A' && (
+                    <Badge variant={status === 'published' ? 'default' : 'secondary'}>{status}</Badge>
+                )}
+              </TableCell>
               <TableCell>
                 {type === 'article' ? (
-                    (item as HelpCenterArticle).isPublic === false ? (
-                        <Badge variant="secondary" className="flex items-center gap-1.5"><Lock className="h-3 w-3" />Private</Badge>
+                    isPublic ? (
+                        <div className="flex items-center gap-1.5"><Globe className="h-3 w-3 text-muted-foreground" />Public</div>
                     ) : (
-                        <Badge variant="outline" className="flex items-center gap-1.5"><Globe className="h-3 w-3" />Public</Badge>
+                        <div className="flex items-center gap-1.5"><Lock className="h-3 w-3 text-muted-foreground" />Private</div>
                     )
                 ) : (
                     '—'
                 )}
               </TableCell>
               <TableCell>
+                  <div className="flex items-center gap-1.5">
+                    {status === 'published' ? <Bot className="h-3 w-3 text-green-500" /> : <Bot className="h-3 w-3 text-muted-foreground/50" />}
+                  </div>
+              </TableCell>
+              <TableCell>
                 {('updatedAt' in item && item.updatedAt) ? 
                   formatDistanceToNow(new Date(item.updatedAt), { addSuffix: true }) : 
                   '—'
                 }
-              </TableCell>
-              <TableCell>
-                {item.helpCenterIds && item.helpCenterIds.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                        {item.helpCenterIds.map(hcId => {
-                            const hc = helpCenters.find(h => h.id === hcId);
-                            return hc ? <Badge key={hc.id} variant="secondary">{hc.name}</Badge> : null;
-                        })}
-                    </div>
-                ) : (
-                    '—'
-                )}
               </TableCell>
             </TableRow>
           )
@@ -155,3 +156,5 @@ export default function HelpCenterArticleList({
     </Table>
   );
 }
+
+    

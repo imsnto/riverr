@@ -1,4 +1,5 @@
 
+
 import type { Firestore } from "firebase-admin/firestore";
 import { chunkArticleHtml, estimateTokens } from "./chunking";
 import { getTypesenseAdmin } from '@/lib/typesense';
@@ -25,8 +26,8 @@ export async function indexHelpCenterArticleToChunks(args: {
   if (status !== "published") return { chunkCount: 0 };
 
   const hubId = article.hubId;
-  const helpCenterIds: string[] = Array.isArray(article.helpCenterIds) ? article.helpCenterIds : [];
-  if (!hubId || helpCenterIds.length === 0) return { chunkCount: 0 };
+  const helpCenterId: string = article.helpCenterId;
+  if (!hubId || !helpCenterId) return { chunkCount: 0 };
 
   const articleId = article.id;
   const articleTitle = article.title ?? "Untitled";
@@ -36,7 +37,7 @@ export async function indexHelpCenterArticleToChunks(args: {
   const language = article.language || 'en';
 
   const slug = article.slug ?? safeSlug(articleTitle);
-  const hc = helpCenterIds[0];
+  const hc = helpCenterId;
   const url =
     article.publicUrl
       ? (article.publicUrl.startsWith("http") ? article.publicUrl : `${publicHelpBaseUrl}${article.publicUrl}`)
@@ -84,7 +85,7 @@ export async function indexHelpCenterArticleToChunks(args: {
       indexedAt: nowEpoch,
 
       // Doc-specific context
-      helpCenterIds,
+      helpCenterId,
       headingPath: c.headingPath,
       content: article.type === 'playbook' ? article.content : undefined,
       articleType: article.type,
@@ -113,3 +114,5 @@ export async function indexHelpCenterArticleToChunks(args: {
 
   return { chunkCount: chunks.length };
 }
+
+    

@@ -1,4 +1,5 @@
 
+
 'use client'
 // src/lib/db.ts
 
@@ -1567,44 +1568,6 @@ export const deleteHelpCenterArticle = async (articleId: string): Promise<void> 
     await deleteDoc(articleRef);
 };
 
-export const updateHelpCenterContent = async (
-  helpCenterId: string,
-  selectedIds: { articles: string[], collections: string[] },
-  allArticles: HelpCenterArticle[],
-  allCollections: HelpCenterCollection[]
-) => {
-  const batch = writeBatch(db);
-
-  // Process articles
-  allArticles.forEach(article => {
-    const articleRef = doc(db, 'help_center_articles', article.id);
-    const shouldBeInHC = selectedIds.articles.includes(article.id);
-    const isInHC = article.helpCenterIds?.includes(helpCenterId);
-
-    if (shouldBeInHC && !isInHC) {
-      batch.update(articleRef, { helpCenterIds: arrayUnion(helpCenterId) });
-    } else if (!shouldBeInHC && isInHC) {
-      batch.update(articleRef, { helpCenterIds: arrayRemove(helpCenterId) });
-    }
-  });
-
-  // Process collections
-  allCollections.forEach(collection => {
-    const collectionRef = doc(db, 'help_center_collections', collection.id);
-    const shouldBeInHC = selectedIds.collections.includes(collection.id);
-    const isInHC = collection.helpCenterIds?.includes(helpCenterId);
-
-    if (shouldBeInHC && !isInHC) {
-      batch.update(collectionRef, { helpCenterIds: arrayUnion(helpCenterId) });
-    } else if (!shouldBeInHC && isInHC) {
-      batch.update(collectionRef, { helpCenterIds: arrayRemove(helpCenterId) });
-    }
-  });
-
-  await batch.commit();
-}
-
-
 // --- Business Brain ---
 export const getMemoryNodes = async (type: string): Promise<any[]> => {
   const q = query(collection(db, "memory_nodes"), where("type", "==", type));
@@ -1632,3 +1595,5 @@ export const startBrainJob = async (type: BrainJob['type'], params: Record<strin
     const docRef = await addDoc(collection(db, 'brain_jobs'), jobData);
     return docRef.id;
 };
+
+    

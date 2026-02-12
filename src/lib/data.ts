@@ -512,7 +512,7 @@ export interface HelpCenterCollection {
   description: string;
   hubId: string;
   parentId: string | null;
-  helpCenterIds?: string[];
+  helpCenterId: string;
   updatedAt?: string;
 }
 
@@ -523,7 +523,7 @@ export interface HelpCenterArticle {
   content: string;
   status: 'draft' | 'published';
   folderId: string | null;
-  helpCenterIds?: string[];
+  helpCenterId: string;
   type: 'article' | 'snippet' | 'pdf' | 'playbook';
   authorId: string;
   createdAt: string; // ISO String
@@ -781,6 +781,10 @@ export interface SalesMessagePatternNode {
   confidence: number;
   freshnessHalfLifeDays: number;
   visibility: 'sales_only';
+  embedding?: number[];
+  embeddingModel?: string;
+  embeddedAt?: string;
+  textForEmbedding?: string;
 }
 
 
@@ -805,3 +809,6 @@ export type MemoryNode = RawConversationNode | RawInteractionNode | SupportInten
 
 
 
+
+
+    

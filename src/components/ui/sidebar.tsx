@@ -1,3 +1,4 @@
+
 // Refreshed layout to remove sidebar logo and let top bar span full width
 
 "use client"
@@ -192,3 +193,5 @@ export {
   useSidebar,
   SidebarTrigger,
 }
+
+    

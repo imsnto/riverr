@@ -1,3 +1,4 @@
+
 {
   "helpCenters": [
     {
@@ -13,7 +14,7 @@
       "description": "Guides for new users.",
       "hubId": "hub-1",
       "parentId": null,
-      "helpCenterIds": ["hc_riverr_en"]
+      "helpCenterId": "hc_riverr_en"
     },
     {
       "id": "folder_2",
@@ -21,7 +22,7 @@
       "description": "In-depth guides for power users.",
       "hubId": "hub-1",
       "parentId": "folder_1",
-      "helpCenterIds": ["hc_riverr_en"]
+      "helpCenterId": "hc_riverr_en"
     }
   ],
   "articles": [
@@ -31,7 +32,7 @@
       "content": "<h1>Hello World!</h1><p>This is your first article. You can use any <strong>HTML</strong> tags you need to format your content.</p>",
       "status": "published",
       "folderId": "folder_1",
-      "helpCenterIds": ["hc_riverr_en"],
+      "helpCenterId": "hc_riverr_en",
       "hubId": "hub-1",
       "authorId": "user-1",
       "createdAt": "2023-10-27T10:00:00Z",
@@ -46,7 +47,7 @@
       "content": "<h2>Feature X Explained</h2><p>Here is how it works in detail...</p>",
       "status": "published",
       "folderId": "folder_2",
-      "helpCenterIds": ["hc_riverr_en"],
+      "helpCenterId": "hc_riverr_en",
       "hubId": "hub-1",
       "authorId": "user-1",
       "createdAt": "2023-10-27T11:00:00Z",
@@ -61,7 +62,7 @@
       "content": "{\"intent\":\"user.invite\",\"description\":\"A playbook for inviting a new user to a space.\",\"preconditions\":[\"user_is_space_admin\"],\"steps\":[{\"step\":\"open_settings\",\"description\":\"Navigate to the Settings page.\"},{\"step\":\"go_to_users_tab\",\"description\":\"Select the 'Users & Permissions' tab.\"},{\"step\":\"click_invite_user\",\"description\":\"Click the 'Invite User' button.\"},{\"step\":\"fill_invite_form\",\"description\":\"Fill out the user's email, select their role and spaces.\"},{\"step\":\"send_invite\",\"description\":\"Click 'Invite User' to send the invitation.\"}],\"fallbacks\":[{\"case\":\"user_not_admin\",\"response\":\"It looks like you don't have admin permissions to invite users. You should ask a space administrator to invite them for you.\"}],\"escalation_after\":1}",
       "status": "published",
       "folderId": "folder_1",
-      "helpCenterIds": ["hc_riverr_en"],
+      "helpCenterId": "hc_riverr_en",
       "hubId": "hub-1",
       "authorId": "user-1",
       "createdAt": "2023-10-28T12:00:00Z",
@@ -72,3 +73,5 @@
     }
   ]
 }
+
+    

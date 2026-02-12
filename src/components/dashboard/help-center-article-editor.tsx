@@ -1,4 +1,5 @@
 
+
 'use client';
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { HelpCenterArticle, User } from '@/lib/data';
@@ -193,9 +194,9 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                                     <Share2 className="mr-2 h-4 w-4" />
                                     Share
                                 </DropdownMenuItem>
-                                {article.helpCenterIds && article.helpCenterIds.length > 0 && (
+                                {article.helpCenterId && (
                                     <DropdownMenuItem asChild>
-                                        <Link href={`/hc/${article.helpCenterIds[0]}/articles/${article.id}`} target="_blank" rel="noopener noreferrer">
+                                        <Link href={`/hc/${article.helpCenterId}/articles/${article.id}`} target="_blank" rel="noopener noreferrer">
                                             <ExternalLink className="mr-2 h-4 w-4" />
                                             <span>Preview Live Page</span>
                                         </Link>
@@ -260,9 +261,9 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        {article.helpCenterIds && article.helpCenterIds.length > 0 && (
+                                        {article.helpCenterId && (
                                             <DropdownMenuItem asChild>
-                                                <Link href={`/hc/${article.helpCenterIds[0]}/articles/${article.id}`} target="_blank" rel="noopener noreferrer">
+                                                <Link href={`/hc/${article.helpCenterId}/articles/${article.id}`} target="_blank" rel="noopener noreferrer">
                                                     <ExternalLink className="mr-2 h-4 w-4" />
                                                     <span>Preview Live Page</span>
                                                 </Link>
@@ -305,8 +306,8 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                             minRows={1}
                         />
                         <TiptapEditor 
-                            content={article.content}
-                            onChange={handleContentChange}
+                            content={article.content} 
+                            onChange={handleContentChange} 
                             onEditorInstance={onEditorInstance}
                             uploadImage={uploadImage}
                         />
@@ -343,3 +344,5 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
         </>
     );
 }
+
+    

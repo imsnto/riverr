@@ -1,10 +1,11 @@
 
+
 export type HelpCenterChunk = {
   id: string;
 
   spaceId: string;
   hubId: string;
-  helpCenterIds: string[];
+  helpCenterId: string;
 
   articleId: string;
   articleTitle: string;
@@ -36,3 +37,5 @@ export type HelpCenterChunk = {
   // for later citations
   url: string;
 };
+
+    

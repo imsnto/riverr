@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -33,7 +34,7 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
     };
     
     // Filter by type: 'doc' to only search knowledge base articles for now
-    const baseFilter = `type:='doc' && hubId:=${hubId} && helpCenterIds:=[${allowedHelpCenterIds.join(',')}] && status:='published'`;
+    const baseFilter = `type:='doc' && hubId:=${hubId} && helpCenterId:=[${allowedHelpCenterIds.join(',')}] && status:='published'`;
 
     // Build search for public chunks
     const publicFilter = `${baseFilter} && isPublic:=true`;
@@ -65,7 +66,7 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
             articleId: doc.sourceId,
             title: doc.title,
             url: doc.url,
-            helpCenterIds: doc.helpCenterIds,
+            helpCenterId: doc.helpCenterId,
             updatedAt: new Date(doc.sourceUpdatedAt).toISOString(),
             articleType: doc.articleType,
             articleContent: doc.content || null,
@@ -411,3 +412,5 @@ export async function getSuggestedLeadsAction(params: GetSuggestedLeadsParams): 
 export async function draftSalesEmailAction(input: DraftSalesEmailInput): Promise<DraftSalesEmailOutput> {
     return draftSalesEmail(input);
 }
+
+    
