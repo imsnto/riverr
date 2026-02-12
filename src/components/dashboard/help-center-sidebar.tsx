@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
 import { Button } from '../ui/button';
-import { Book, ChevronRight, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus, GripVertical, FileText, Settings, ExternalLink, Library } from 'lucide-react';
+import { Book, ChevronRight, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus, GripVertical, FileText, Settings, ExternalLink, Library, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '../ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -11,25 +11,25 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import Link from 'next/link';
+import { Badge } from '../ui/badge';
 
 export type HelpCenterSidebarView = 'knowledge-bases' | 'library' | 'all-articles';
 
 interface HelpCenterSidebarProps {
-  // Collections (Folders)
   collections: HelpCenterCollection[];
   activeCollectionId: string | null;
   onSelectCollection: (id: string | null) => void;
   onNewCollection: (parentId?: string) => void;
   onEditCollection: (collection: HelpCenterCollection) => void;
   
-  // Help Centers
   helpCenters: HelpCenter[];
   activeHelpCenterId: string | null;
   onSelectHelpCenter: (id: string | null) => void;
   onNewHelpCenter: () => void;
   onEditHelpCenter: (hc: HelpCenter) => void;
   
-  // View Control
+  unassignedContentCount: number;
+
   sidebarView: HelpCenterSidebarView;
   onViewChange: (view: HelpCenterSidebarView) => void;
 }
@@ -162,78 +162,40 @@ export default function HelpCenterSidebar({
     onEditHelpCenter,
     sidebarView,
     onViewChange,
+    unassignedContentCount,
 }: HelpCenterSidebarProps) {
 
-    const handleSelectKB = (id: string | null) => {
-        onSelectHelpCenter(id);
-        if(id) { // Only switch view if a KB is selected
-            onViewChange('knowledge-bases');
-        }
-    }
-
-    const handleSelectLibraryCollection = (id: string | null) => {
-        onSelectCollection(id);
-        onViewChange('library');
-    }
-
     return (
-        <aside className="w-full md:w-72 min-w-0 border-r bg-card p-4 flex flex-col">
-            <h2 className="text-xl font-bold px-2 mb-2">Knowledge</h2>
-            <div className="relative mb-4">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search all content..." className="pl-9 h-9" />
+        <aside className="w-full md:w-72 min-w-0 border-r bg-card p-2 flex flex-col">
+            <div className="p-2 shrink-0">
+                <h2 className="text-xl font-bold px-2 mb-2">Knowledge</h2>
+                <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Search all content..." className="pl-9 h-9" />
+                </div>
             </div>
 
             <ScrollArea className="flex-1">
-              <div>
-                <Button variant={sidebarView === 'all-articles' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('all-articles')}>
-                  <FileText className="mr-2 h-4 w-4"/> All Articles
-                </Button>
-                
-                <Separator className="my-2" />
-
-                <Collapsible defaultOpen>
-                    <CollapsibleTrigger className="flex w-full cursor-pointer items-center justify-between p-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        <span>Unassigned Content</span>
-                        <ChevronRight className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-90" />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-1 py-1">
-                       <FolderTree 
-                            collections={collections.filter(c => !c.helpCenterId)}
-                            parentId={null}
-                            level={0}
-                            activeCollectionId={sidebarView === 'library' ? activeCollectionId : null}
-                            onSelectCollection={handleSelectLibraryCollection}
-                            onNewCollection={onNewCollection}
-                            onEditCollection={onEditCollection}
-                        />
-                        <Button variant="ghost" className="w-full justify-start text-sm h-9 mt-1" onClick={() => onNewCollection()}>
-                            <Plus className="mr-2 h-4 w-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">New folder</span>
-                        </Button>
-                    </CollapsibleContent>
-                </Collapsible>
-                
-                 <Collapsible defaultOpen>
-                    <div className="flex w-full items-center justify-between p-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        <CollapsibleTrigger asChild>
-                            <div className="flex flex-1 cursor-pointer items-center justify-between">
-                                <span>Knowledge Bases</span>
-                                <ChevronRight className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-90" />
-                            </div>
-                        </CollapsibleTrigger>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2" onClick={onNewHelpCenter}>
-                            <Plus className="h-4 w-4" />
-                        </Button>
-                    </div>
-                    <CollapsibleContent className="space-y-1 py-1">
+                <div className="p-2 space-y-2">
+                    <div>
+                        <div className="px-2 mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                            Knowledge Bases
+                        </div>
                         <HelpCenterList 
                             helpCenters={helpCenters} 
                             activeHelpCenterId={sidebarView === 'knowledge-bases' ? activeHelpCenterId : null}
-                            onSelect={handleSelectKB}
+                            onSelect={onSelectHelpCenter}
                             onEdit={onEditHelpCenter}
                         />
-                         {sidebarView === 'knowledge-bases' && activeHelpCenterId && (
+                         <Button variant="ghost" className="w-full justify-start text-sm h-9 mt-1" onClick={onNewHelpCenter}>
+                            <Plus className="mr-2 h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">New Knowledge Base</span>
+                        </Button>
+                    </div>
+                
+                    {sidebarView === 'knowledge-bases' && activeHelpCenterId && (
+                        <>
+                            <Separator />
                             <FolderTree
                                 collections={collections.filter(c => c.helpCenterId === activeHelpCenterId)}
                                 parentId={null}
@@ -245,11 +207,49 @@ export default function HelpCenterSidebar({
                                 }}
                                 onNewCollection={onNewCollection}
                                 onEditCollection={onEditCollection}
-                             />
-                         )}
-                    </CollapsibleContent>
-                 </Collapsible>
-              </div>
+                            />
+                        </>
+                    )}
+
+                    <Separator />
+                    
+                     <div>
+                        <div className="px-2 mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                            Inbox
+                        </div>
+                        <Button variant={sidebarView === 'library' ? 'secondary' : 'ghost'} className="w-full justify-between text-sm h-9" onClick={() => onViewChange('library')}>
+                            <div className="flex items-center gap-2">
+                                <Inbox className="h-4 w-4"/> Unassigned Content
+                            </div>
+                            <Badge variant={sidebarView === 'library' ? "default" : "secondary"}>{unassignedContentCount}</Badge>
+                        </Button>
+                    </div>
+                    {sidebarView === 'library' && (
+                        <>
+                            <Separator />
+                            <FolderTree
+                                collections={collections.filter(c => !c.helpCenterId)}
+                                parentId={null}
+                                level={0}
+                                activeCollectionId={activeCollectionId}
+                                onSelectCollection={onSelectCollection}
+                                onNewCollection={onNewCollection}
+                                onEditCollection={onEditCollection}
+                            />
+                        </>
+                    )}
+
+                    <Separator />
+
+                    <div>
+                        <div className="px-2 mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                            Views
+                        </div>
+                        <Button variant={sidebarView === 'all-articles' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('all-articles')}>
+                            <FileText className="mr-2 h-4 w-4"/> All Content
+                        </Button>
+                    </div>
+                </div>
             </ScrollArea>
         </aside>
     );

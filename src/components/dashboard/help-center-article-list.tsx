@@ -99,6 +99,7 @@ export default function HelpCenterArticleList({
             <Checkbox checked={isAllSelected} onCheckedChange={onToggleAll} />
           </TableHead>
           <TableHead>Title</TableHead>
+          <TableHead>Knowledge Base</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Visibility</TableHead>
           <TableHead>AI Indexed</TableHead>
@@ -111,6 +112,8 @@ export default function HelpCenterArticleList({
           const name = type === 'collection' ? item.name : ((item as HelpCenterArticle).title || "Untitled Article");
           const status = 'status' in item ? item.status : 'N/A';
           const isPublic = 'isPublic' in item ? item.isPublic : false;
+          const kb = 'helpCenterId' in item ? helpCenters.find(hc => hc.id === item.helpCenterId) : null;
+
 
           return (
             <TableRow key={item.id}>
@@ -121,6 +124,9 @@ export default function HelpCenterArticleList({
                 <Button variant="link" className="p-0 h-auto font-semibold" onClick={() => onSelectItem(item.id, type)}>
                   {name}
                 </Button>
+              </TableCell>
+              <TableCell>
+                {kb ? <Badge variant="secondary">{kb.name}</Badge> : <span className="text-muted-foreground">—</span>}
               </TableCell>
               <TableCell>
                 {status !== 'N/A' && (
@@ -156,5 +162,3 @@ export default function HelpCenterArticleList({
     </Table>
   );
 }
-
-    

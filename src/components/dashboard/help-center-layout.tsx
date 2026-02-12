@@ -20,9 +20,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { cn } from '@/lib/utils';
 import { reindexArticleAction } from '@/app/actions/chat';
 
-interface HelpCenterLayoutProps {
-    onSaveArticle: (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => Promise<HelpCenterArticle | void>;
-}
+interface HelpCenterLayoutProps {}
 
 const Breadcrumbs = ({ crumbs, onCrumbClick }: { crumbs: HelpCenterCollection[], onCrumbClick: (id: string | null) => void }) => {
     return (
@@ -38,10 +36,8 @@ const Breadcrumbs = ({ crumbs, onCrumbClick }: { crumbs: HelpCenterCollection[],
     );
 }
 
-export default function HelpCenterLayout({ 
-    onSaveArticle, 
-}: HelpCenterLayoutProps) {
-    const [sidebarView, setSidebarView] = useState<HelpCenterSidebarView>('library');
+export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
+    const [sidebarView, setSidebarView] = useState<HelpCenterSidebarView>('knowledge-bases');
     const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
     const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
     const [activeHelpCenterId, setActiveHelpCenterId] = useState<string | null>(null);
@@ -88,9 +84,12 @@ export default function HelpCenterLayout({
         }
     };
     
-    const handleSaveAndRefresh = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => {
-        await onSaveArticle(article as HelpCenterArticle);
+    const handleSaveArticle = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>) => {
+        if ('id' in article) {
+          await db.updateHelpCenterArticle(article.id, article);
+        }
         refreshData();
+        reindexArticleAction(article.id).catch(console.error);
     };
 
     const handleNewCollection = (parentId?: string) => {
@@ -138,16 +137,21 @@ export default function HelpCenterLayout({
     };
 
     const handleSaveCollection = async (values: { name: string; description?: string }, collectionId?: string) => {
-        if (!activeHub || !activeHelpCenterId) {
+        if (!activeHub) {
             toast({ variant: 'destructive', title: 'Please select a knowledge base first.' });
             return;
         }
+    
+        const parentId = editingCollection ? editingCollection.parentId : selectedCollectionId;
+    
+        // Determine the helpCenterId. If we are in an active KB context, use it. Otherwise, it's unassigned.
+        const helpCenterId = sidebarView === 'knowledge-bases' && activeHelpCenterId ? activeHelpCenterId : '';
 
         const data = {
             ...values,
             hubId: activeHub.id,
-            parentId: editingCollection ? editingCollection.parentId : (sidebarView === 'library' ? selectedCollectionId : null),
-            helpCenterId: activeHelpCenterId,
+            parentId: parentId,
+            helpCenterId: helpCenterId,
             updatedAt: new Date().toISOString(),
         };
 
@@ -163,8 +167,8 @@ export default function HelpCenterLayout({
     }
     
     const handleCreateArticle = async () => {
-      if (!appUser || !activeHub || !activeSpace || !activeHelpCenterId) {
-          toast({ variant: 'destructive', title: 'Please select a Knowledge Base first.'});
+      if (!appUser || !activeHub || !activeSpace) {
+          toast({ variant: 'destructive', title: 'Cannot create article without an active hub.'});
           return;
       };
 
@@ -173,16 +177,18 @@ export default function HelpCenterLayout({
         subtitle: '',
         content: '<p></p>',
         status: 'draft',
-        folderId: sidebarView === 'knowledge-bases' ? selectedCollectionId : null,
-        helpCenterId: activeHelpCenterId,
+        folderId: selectedCollectionId,
+        helpCenterId: sidebarView === 'knowledge-bases' ? activeHelpCenterId || '' : '',
         authorId: appUser.id,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         hubId: activeHub.id,
         spaceId: activeSpace.id,
         type: 'article',
-        isPublic: true,
-        allowedUserIds: [],
+        isPublic: false,
+        allowedUserIds: [appUser.id],
+        isAiIndexed: true,
+        isSeoIndexed: false,
       };
       
       const newArticle = await db.addHelpCenterArticle(newArticleData);
@@ -208,10 +214,7 @@ export default function HelpCenterLayout({
 
     const handleViewChange = (view: HelpCenterSidebarView) => {
         setSidebarView(view);
-        // Only reset selections if the view type is changing
-        if (view !== 'library') {
-            setSelectedCollectionId(null);
-        }
+        setSelectedCollectionId(null);
         if (view !== 'knowledge-bases') {
             setActiveHelpCenterId(null);
         }
@@ -229,6 +232,9 @@ export default function HelpCenterLayout({
         setActiveHelpCenterId(id);
         setSelectedCollectionId(null);
         setSelectedArticleId(null);
+        if (id) {
+            onViewChange('knowledge-bases');
+        }
         showContentOnMobile();
     }
 
@@ -266,8 +272,7 @@ export default function HelpCenterLayout({
                  articlesToShow = articles.filter(a => a.helpCenterId === activeHelpCenterId && !a.folderId);
             }
         } else if (sidebarView === 'library') {
-            // Library now means "unassigned" content.
-            viewTitle = "Content Library";
+            viewTitle = "Unassigned Content";
             foldersToShow = collections.filter(c => !c.helpCenterId && !c.parentId);
             articlesToShow = articles.filter(a => !a.helpCenterId && !a.folderId);
             
@@ -349,7 +354,7 @@ export default function HelpCenterLayout({
                 <HelpCenterArticleEditor 
                    key={articleToEdit.id}
                    article={articleToEdit} 
-                   onSave={handleSaveAndRefresh}
+                   onSave={handleSaveArticle}
                    allUsers={[]}
                    appUser={appUser}
                    onBack={() => setSelectedArticleId(null)}
@@ -360,6 +365,7 @@ export default function HelpCenterLayout({
     }
     
     const activeHelpCenter = helpCenters.find(hc => hc.id === activeHelpCenterId);
+    const unassignedCount = articles.filter(a => !a.helpCenterId).length + collections.filter(c => !c.helpCenterId).length;
 
     const sidebarComponent = (
         <HelpCenterSidebar
@@ -375,6 +381,7 @@ export default function HelpCenterLayout({
             sidebarView={sidebarView}
             onViewChange={handleViewChange}
             onEditHelpCenter={handleEditHelpCenter}
+            unassignedContentCount={unassignedCount}
         />
     );
 
