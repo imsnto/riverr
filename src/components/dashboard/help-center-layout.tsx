@@ -109,26 +109,34 @@ export default function HelpCenterLayout({
         setIsCollectionDialogOpen(true);
     }
     
+    const handleNewHelpCenter = () => {
+        setEditingHelpCenter(null);
+        setIsHCDialogOpen(true);
+    };
+
     const handleEditHelpCenter = (hc: HelpCenter) => {
         setEditingHelpCenter(hc);
         setIsHCDialogOpen(true);
     };
 
     const handleSaveHelpCenter = async (name: string) => {
-        if (!editingHelpCenter || !activeHub) {
+        if (!activeHub) {
             toast({ variant: "destructive", title: "Something went wrong." });
             return;
         }
 
         try {
-            await db.updateHelpCenter(editingHelpCenter.id, { name });
-            toast({ title: "Knowledge Base updated" });
-            refreshData();
-            if (activeHelpCenterId === editingHelpCenter.id) {
-                setActiveHelpCenterId(editingHelpCenter.id);
+            if (editingHelpCenter) {
+                await db.updateHelpCenter(editingHelpCenter.id, { name });
+                toast({ title: "Knowledge Base updated" });
+            } else {
+                await db.addHelpCenter({ name, hubId: activeHub.id });
+                toast({ title: "Knowledge Base created" });
             }
+            refreshData();
         } catch (e) {
-            toast({ variant: "destructive", title: "Failed to update Knowledge Base" });
+            toast({ variant: "destructive", title: "Failed to save Knowledge Base" });
+            console.error(e);
         } finally {
             setIsHCDialogOpen(false);
             setEditingHelpCenter(null);
@@ -423,6 +431,7 @@ export default function HelpCenterLayout({
             helpCenters={helpCenters}
             activeHelpCenterId={activeHelpCenterId}
             onSelectHelpCenter={handleSelectHelpCenter}
+            onNewHelpCenter={handleNewHelpCenter}
             sidebarView={sidebarView}
             onViewChange={handleViewChange}
             onEditHelpCenter={handleEditHelpCenter}

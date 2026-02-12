@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
@@ -25,6 +26,7 @@ interface HelpCenterSidebarProps {
   helpCenters: HelpCenter[];
   activeHelpCenterId: string | null;
   onSelectHelpCenter: (id: string | null) => void;
+  onNewHelpCenter: () => void;
   onEditHelpCenter: (hc: HelpCenter) => void;
   
   // View Control
@@ -133,6 +135,7 @@ export default function HelpCenterSidebar({
     helpCenters,
     activeHelpCenterId,
     onSelectHelpCenter,
+    onNewHelpCenter,
     onEditHelpCenter,
     sidebarView,
     onViewChange,
@@ -183,10 +186,15 @@ export default function HelpCenterSidebar({
                 
                  <Collapsible defaultOpen>
                     <CollapsibleTrigger className="w-full">
-                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider p-2 text-left w-full flex justify-between items-center">
-                            Knowledge Bases
-                            <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                        </h3>
+                         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider p-2 text-left w-full flex justify-between items-center">
+                            <span>Knowledge Bases</span>
+                            <div className="flex items-center">
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); onNewHelpCenter(); }}>
+                                    <Plus className="h-4 w-4" />
+                                </Button>
+                                <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                            </div>
+                        </div>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-1 py-1">
                         <HelpCenterList 
@@ -210,7 +218,7 @@ export default function HelpCenterSidebar({
                                         <DropdownMenuItem asChild>
                                             <Link href={`/hc/${activeHelpCenterId}`} target="_blank" rel="noopener noreferrer">
                                                 <ExternalLink className="mr-2 h-4 w-4" />
-                                                View Public Page
+                                                <span>View Public Page</span>
                                             </Link>
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onSelect={() => {
