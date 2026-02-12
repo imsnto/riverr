@@ -1,8 +1,9 @@
+
 'use client';
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
 import { Button } from '../ui/button';
-import { Book, ChevronRight, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus, GripVertical, FileText, Settings, ExternalLink } from 'lucide-react';
+import { Book, ChevronRight, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus, GripVertical, FileText, Settings, ExternalLink, Library } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '../ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -67,7 +68,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
                       onClick={() => onSelectCollection(collection.id)}
                   >
                       <Folder className="mr-2 h-4 w-4 shrink-0" />
-                      <span className="block truncate flex-1 min-w-0">{collection.name}</span>
+                      <span className="block flex-1 min-w-0 truncate">{collection.name}</span>
                   </Button>
               </div>
 
@@ -108,18 +109,41 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
 };
 
 
-const HelpCenterList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: string | null, onSelect: (id: string | null) => void }> = ({ helpCenters, activeHelpCenterId, onSelect }) => (
+const HelpCenterList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: string | null, onSelect: (id: string | null) => void, onEdit: (hc: HelpCenter) => void }> = ({ helpCenters, activeHelpCenterId, onSelect, onEdit }) => (
     <div className="space-y-1">
         {helpCenters.map(hc => (
-            <Button
+            <div
                 key={hc.id}
-                variant={activeHelpCenterId === hc.id ? 'secondary' : 'ghost'}
-                className="w-full justify-start text-sm h-9"
-                onClick={() => onSelect(hc.id)}
+                className={cn("group flex items-center justify-between rounded-md pr-1", activeHelpCenterId === hc.id && "bg-accent")}
             >
-                <Book className="mr-2 h-4 w-4" />
-                <span className="truncate">{hc.name}</span>
-            </Button>
+                <Button
+                    variant='ghost'
+                    className="w-full justify-start text-sm h-9 px-2 min-w-0"
+                    onClick={() => onSelect(hc.id)}
+                >
+                    <Book className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="block truncate flex-1 min-w-0">{hc.name}</span>
+                </Button>
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                         <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 md:opacity-0 md:group-hover:opacity-100">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onSelect={() => onEdit(hc)}>
+                            <Edit className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                         <DropdownMenuItem asChild>
+                            <Link href={`/hc/${hc.id}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                <span>View Live</span>
+                            </Link>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         ))}
     </div>
 );
@@ -140,12 +164,24 @@ export default function HelpCenterSidebar({
     onViewChange,
 }: HelpCenterSidebarProps) {
 
+    const handleSelectKB = (id: string | null) => {
+        onSelectHelpCenter(id);
+        if(id) { // Only switch view if a KB is selected
+            onViewChange('knowledge-bases');
+        }
+    }
+
+    const handleSelectLibraryCollection = (id: string | null) => {
+        onSelectCollection(id);
+        onViewChange('library');
+    }
+
     return (
-        <aside className="w-full md:w-64 min-w-0 border-r bg-card p-4 flex flex-col">
+        <aside className="w-full md:w-72 min-w-0 border-r bg-card p-4 flex flex-col">
             <h2 className="text-xl font-bold px-2 mb-2">Knowledge</h2>
             <div className="relative mb-4">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search..." className="pl-9 h-9" />
+                <Input placeholder="Search all content..." className="pl-9 h-9" />
             </div>
 
             <ScrollArea className="flex-1">
@@ -157,11 +193,9 @@ export default function HelpCenterSidebar({
                 <Separator className="my-2" />
 
                 <Collapsible defaultOpen>
-                    <CollapsibleTrigger asChild>
-                         <div className="flex w-full cursor-pointer items-center justify-between p-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                            <span>Content Library</span>
-                            <ChevronRight className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-90" />
-                        </div>
+                    <CollapsibleTrigger className="flex w-full cursor-pointer items-center justify-between p-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <span>Unassigned Content</span>
+                        <ChevronRight className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-90" />
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-1 py-1">
                        <FolderTree 
@@ -169,10 +203,7 @@ export default function HelpCenterSidebar({
                             parentId={null}
                             level={0}
                             activeCollectionId={sidebarView === 'library' ? activeCollectionId : null}
-                            onSelectCollection={(id) => {
-                                onSelectCollection(id);
-                                onViewChange('library');
-                            }}
+                            onSelectCollection={handleSelectLibraryCollection}
                             onNewCollection={onNewCollection}
                             onEditCollection={onEditCollection}
                         />
@@ -199,38 +230,23 @@ export default function HelpCenterSidebar({
                         <HelpCenterList 
                             helpCenters={helpCenters} 
                             activeHelpCenterId={sidebarView === 'knowledge-bases' ? activeHelpCenterId : null}
-                            onSelect={(id) => {
-                                onSelectHelpCenter(id);
-                                onViewChange('knowledge-bases');
-                            }}
+                            onSelect={handleSelectKB}
+                            onEdit={onEditHelpCenter}
                         />
-                        {activeHelpCenterId && sidebarView === 'knowledge-bases' && (
-                            <div className="mt-2 px-1">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" size="sm" className="w-full justify-start">
-                                            <Settings className="mr-2 h-4 w-4" />
-                                            Settings
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                        <DropdownMenuItem asChild>
-                                            <Link href={`/hc/${activeHelpCenterId}`} target="_blank" rel="noopener noreferrer">
-                                                <ExternalLink className="mr-2 h-4 w-4" />
-                                                <span>View Public Page</span>
-                                            </Link>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => {
-                                            const hc = helpCenters.find(h => h.id === activeHelpCenterId);
-                                            if (hc) onEditHelpCenter(hc);
-                                        }}>
-                                            <Edit className="mr-2 h-4 w-4" />
-                                            Edit Name
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                        )}
+                         {sidebarView === 'knowledge-bases' && activeHelpCenterId && (
+                            <FolderTree
+                                collections={collections.filter(c => c.helpCenterId === activeHelpCenterId)}
+                                parentId={null}
+                                level={0}
+                                activeCollectionId={activeCollectionId}
+                                onSelectCollection={(id) => {
+                                    onSelectCollection(id);
+                                    onViewChange('knowledge-bases');
+                                }}
+                                onNewCollection={onNewCollection}
+                                onEditCollection={onEditCollection}
+                             />
+                         )}
                     </CollapsibleContent>
                  </Collapsible>
               </div>

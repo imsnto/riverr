@@ -38,8 +38,10 @@
       "createdAt": "2023-10-27T10:00:00Z",
       "updatedAt": "2023-10-27T10:00:00Z",
       "type": "article",
-      "isPublic": true,
-      "allowedUserIds": []
+      "visibility": "public",
+      "allowedUserIds": [],
+      "isAiIndexed": true,
+      "isSeoIndexed": true
     },
     {
       "id": "article_2",
@@ -53,8 +55,10 @@
       "createdAt": "2023-10-27T11:00:00Z",
       "updatedAt": "2023-10-27T11:00:00Z",
       "type": "article",
-      "isPublic": true,
-      "allowedUserIds": []
+      "visibility": "public",
+      "allowedUserIds": [],
+      "isAiIndexed": true,
+      "isSeoIndexed": true
     },
     {
       "id": "article_3_playbook",
@@ -68,10 +72,10 @@
       "createdAt": "2023-10-28T12:00:00Z",
       "updatedAt": "2023-10-28T12:00:00Z",
       "type": "playbook",
-      "isPublic": true,
-      "allowedUserIds": []
+      "visibility": "public",
+      "allowedUserIds": [],
+      "isAiIndexed": true,
+      "isSeoIndexed": true
     }
   ]
 }
-
-    

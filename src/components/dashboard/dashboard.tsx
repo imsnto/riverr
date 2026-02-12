@@ -737,38 +737,8 @@ export default function Dashboard({ view }: { view: string }) {
   };
   
   const handleSaveArticle = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle | void> => {
-    if (!activeHub || !activeSpace) return;
-    let savedArticle: HelpCenterArticle;
-    if ('id' in article && article.id) {
-        await db.updateHelpCenterArticle(article.id, article);
-        savedArticle = article as HelpCenterArticle;
-    } else {
-        savedArticle = await db.addHelpCenterArticle({ 
-            ...(article as Omit<HelpCenterArticle, 'id'>),
-            hubId: activeHub.id,
-            spaceId: activeSpace.id
-        });
-    }
-    
-    // After saving, update the parent folder's timestamp
-    if (savedArticle.folderId) {
-        try {
-            await db.updateHelpCenterCollection(savedArticle.folderId, { updatedAt: new Date().toISOString() });
-        } catch (e) {
-            console.error("Could not update parent folder timestamp", e);
-        }
-    }
-    
-    // Trigger re-indexing in the background
-    if (savedArticle.id && savedArticle.hubId) {
-        reindexArticleAction(savedArticle.id).catch(err => {
-            console.error("Background re-indexing failed:", err);
-            // Optionally show a toast, but maybe not since it's a background task.
-        });
-    }
-
-    fetchData(); // Refresh all data to ensure consistency
-    return savedArticle;
+    // This function will be handled entirely within the HelpCenterLayout now
+    fetchData(); 
   };
   
   const handleLogTime = async (timeData: Omit<TimeEntry, 'id'>) => {
@@ -830,14 +800,14 @@ export default function Dashboard({ view }: { view: string }) {
           projects={projects}
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
-          tasks={tasks}
+          allTasks={tasks}
           onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
           onNewTaskRequest={handleNewTaskRequest}
-          onTaskSelect={setSelectedTask}
+          onTaskClick={setSelectedTask}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
           onEditProject={handleEditProject}
@@ -875,9 +845,7 @@ export default function Dashboard({ view }: { view: string }) {
           onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
       />;
-      case 'help-center': return <HelpCenterLayout
-        onSaveArticle={handleSaveArticle}
-        />;
+      case 'help-center': return <HelpCenterLayout />;
       case 'contacts': return <ContactsLayout activeSpace={activeSpace} />;
       case 'settings': return <SettingsLayout {...settingsProps} />;
       case 'team-timesheets': return <TeamTimesheets 
@@ -955,7 +923,7 @@ export default function Dashboard({ view }: { view: string }) {
               currentView === 'deals' ||
               currentView === 'settings' ||
               currentView === 'contacts' ||
-              (currentView === 'help-center' && !isMobile)
+              currentView === 'help-center'
                 ? "overflow-hidden"
                 : "overflow-y-auto",
               isMobile && !hideMobileBottomNav && "pb-20"

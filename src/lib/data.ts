@@ -530,8 +530,10 @@ export interface HelpCenterArticle {
   updatedAt: string; // ISO String
   hubId: string;
   spaceId: string;
-  isPublic?: boolean;
-  allowedUserIds?: string[];
+  visibility: 'public' | 'internal' | 'private';
+  allowedUserIds: string[];
+  isAiIndexed: boolean;
+  isSeoIndexed: boolean;
   slug?: string;
   publicUrl?: string;
   language?: string;
