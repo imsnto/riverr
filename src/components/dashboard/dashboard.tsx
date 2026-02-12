@@ -1,5 +1,3 @@
-
-
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -414,7 +412,7 @@ export default function Dashboard({ view }: { view: string }) {
         timestamp: now,
         type: 'task_creation',
     };
-    const taskWithHub = { ...task, hubId: activeHub.id, spaceId: activeSpace.id, createdBy: appUser!.id, createdAt: now, activities: [creationActivity, ...(task.activities || [])] };
+    const taskWithHub = { ...task, hubId: activeHub.id, spaceId: activeSpace.id, createdBy: appUser!.id, createdAt: now, activities: [...(task.activities || []), creationActivity] };
     const newTask = await db.addTask(taskWithHub);
     setTasks(prev => [...prev, newTask]);
     return newTask;
@@ -833,7 +831,7 @@ export default function Dashboard({ view }: { view: string }) {
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           tasks={tasks}
-          onUpdateTasks={onUpdateTasks}
+          onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
