@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
@@ -83,7 +82,11 @@ export default function HelpCenterFormDialog({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4">
+          <form
+            id="help-center-form"
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-6"
+          >
             <FormField
               control={form.control}
               name="name"
@@ -111,25 +114,39 @@ export default function HelpCenterFormDialog({
                       className="grid grid-cols-2 gap-4"
                     >
                       <FormItem>
-                        <RadioGroupItem value="public" id="public" className="sr-only" />
+                        <RadioGroupItem
+                          value="public"
+                          id="public"
+                          className="sr-only"
+                        />
                         <Label
                           htmlFor="public"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          className="flex h-full flex-col items-center justify-center rounded-md border-2 border-muted bg-transparent p-6 text-center transition-colors hover:bg-muted/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10"
                         >
                           <Globe className="mb-3 h-6 w-6" />
                           Public
-                          <p className="text-xs text-center text-muted-foreground mt-1">Accessible on a public URL and can be used by public-facing AI agents.</p>
+                          <p className="mt-1 text-center text-xs text-muted-foreground">
+                            Accessible on a public URL and can be used by
+                            public-facing AI agents.
+                          </p>
                         </Label>
                       </FormItem>
                       <FormItem>
-                        <RadioGroupItem value="internal" id="internal" className="sr-only" />
-                         <Label
+                        <RadioGroupItem
+                          value="internal"
+                          id="internal"
+                          className="sr-only"
+                        />
+                        <Label
                           htmlFor="internal"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          className="flex h-full flex-col items-center justify-center rounded-md border-2 border-muted bg-transparent p-6 text-center transition-colors hover:bg-muted/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10"
                         >
                           <Lock className="mb-3 h-6 w-6" />
                           Internal
-                           <p className="text-xs text-center text-muted-foreground mt-1">Only accessible to team members and internal AI agents.</p>
+                          <p className="mt-1 text-center text-xs text-muted-foreground">
+                            Only accessible to team members and internal AI
+                            agents.
+                          </p>
                         </Label>
                       </FormItem>
                     </RadioGroup>
@@ -138,19 +155,20 @@ export default function HelpCenterFormDialog({
                 </FormItem>
               )}
             />
-            
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit">Save</Button>
-            </DialogFooter>
           </form>
         </Form>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" form="help-center-form">
+            Save
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
