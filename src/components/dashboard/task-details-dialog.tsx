@@ -73,6 +73,7 @@ const formatDuration = (hours: number | null) => {
             } else if (unit === 'm') {
                 totalHours += value / 60;
             } else if (!unit) {
+                // If no unit, assume hours if it's the only number, otherwise minutes
                 if (matches.length === 1) {
                     totalHours += value;
                 } else {
@@ -414,7 +415,7 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
     const sortedActivities = [
         ...(task.activities || []), 
         ...(timeEntries || []).map(t => ({
-            id: t.id,
+            id: `time-${t.id}`,
             user_id: t.user_id,
             timestamp: t.end_time,
             type: 'comment',
