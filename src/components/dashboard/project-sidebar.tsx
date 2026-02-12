@@ -72,12 +72,6 @@ export default function ProjectSidebar({ projects, tasks, selectedProjectId, onS
       </ScrollArea>
        <div className="mt-auto p-2">
           <Separator className="my-2" />
-          <Button variant="ghost" className="w-full justify-start text-zinc-400 hover:text-white">
-             <Archive className="h-4 w-4 mr-2" /> Archive
-          </Button>
-          <Button variant="ghost" className="w-full justify-start text-zinc-400 hover:text-white">
-             <LayoutTemplate className="h-4 w-4 mr-2" /> Templates
-          </Button>
            <Button variant="ghost" className="w-full justify-start text-zinc-400 hover:text-white">
              <Settings className="h-4 w-4 mr-2" /> Settings
           </Button>
