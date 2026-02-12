@@ -54,21 +54,21 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
         const hasChildren = collections.some(c => c.parentId === collection.id);
         return (
           <Collapsible key={collection.id} defaultOpen={true}>
-            <div className={cn("group flex items-center justify-between rounded-md pr-1", activeCollectionId === collection.id && "bg-accent")}>
+            <div className={cn("group flex items-center justify-between rounded-md px-2", activeCollectionId === collection.id && "bg-accent")}>
               
               <div className="flex items-center flex-1 min-w-0">
                   <CollapsibleTrigger asChild>
                       <Button variant="ghost" size="icon" className={cn("h-8 w-8 shrink-0", !hasChildren && "invisible")}>
-                          <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                          <ChevronRight className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-90" />
                       </Button>
                   </CollapsibleTrigger>
                   <Button
                       variant="ghost"
-                      className="w-full justify-start text-sm h-9 px-1 truncate"
+                      className="w-full justify-start text-sm h-9 px-2 min-w-0"
                       onClick={() => onSelectCollection(collection.id)}
                   >
                       <Folder className="mr-2 h-4 w-4 shrink-0" />
-                      <span className="truncate">{collection.name}</span>
+                      <span className="truncate flex-1 min-w-0">{collection.name}</span>
                   </Button>
               </div>
 
@@ -161,7 +161,7 @@ export default function HelpCenterSidebar({
                     <CollapsibleTrigger asChild>
                          <div className="flex w-full cursor-pointer items-center justify-between p-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             <span>Content Library</span>
-                            <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                            <ChevronRight className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-90" />
                         </div>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-1 py-1">
@@ -189,7 +189,7 @@ export default function HelpCenterSidebar({
                         <CollapsibleTrigger asChild>
                             <div className="flex flex-1 cursor-pointer items-center justify-between">
                                 <span>Knowledge Bases</span>
-                                <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                                <ChevronRight className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-90" />
                             </div>
                         </CollapsibleTrigger>
                         <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2" onClick={onNewHelpCenter}>
