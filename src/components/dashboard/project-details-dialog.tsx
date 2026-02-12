@@ -2,7 +2,7 @@
 'use client';
 
 import React from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Project, Task, User } from '@/lib/data';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
@@ -26,17 +26,17 @@ export default function ProjectDetailsDialog({ project, tasks, allUsers, isOpen,
     const createdBy = allUsers.find(u => u.id === project.created_by);
 
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-3xl">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-4">
+        <Sheet open={isOpen} onOpenChange={onOpenChange}>
+            <SheetContent className="sm:max-w-3xl">
+                <SheetHeader>
+                    <SheetTitle className="flex items-center gap-4">
                         {project.name}
                         <Badge>{project.status}</Badge>
-                    </DialogTitle>
-                    <DialogDescription>
+                    </SheetTitle>
+                    <SheetDescription>
                         Created by {createdBy?.name || 'Unknown'}
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
                 <div className="grid md:grid-cols-3 gap-6 py-4">
                     <div className="md:col-span-2">
                         <h3 className="font-semibold mb-2">Tasks ({projectTasks.length})</h3>
@@ -86,7 +86,7 @@ export default function ProjectDetailsDialog({ project, tasks, allUsers, isOpen,
                         </div>
                     </div>
                 </div>
-            </DialogContent>
-        </Dialog>
+            </SheetContent>
+        </Sheet>
     );
 }

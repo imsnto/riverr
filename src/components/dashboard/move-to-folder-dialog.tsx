@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '../ui/scroll-area';
 import { ChevronRight, Folder, Inbox, Library } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -81,12 +81,12 @@ export default function MoveToFolderDialog({ isOpen, onOpenChange, collections, 
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Move items</DialogTitle>
-          <DialogDescription>Select a destination library or collection.</DialogDescription>
-        </DialogHeader>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Move items</SheetTitle>
+          <SheetDescription>Select a destination library or collection.</SheetDescription>
+        </SheetHeader>
         <div className="py-4">
           <ScrollArea className="h-72 border rounded-md">
             <div className="p-2 space-y-1">
@@ -133,11 +133,11 @@ export default function MoveToFolderDialog({ isOpen, onOpenChange, collections, 
             </div>
           </ScrollArea>
         </div>
-        <DialogFooter>
+        <SheetFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleMove}>Move</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

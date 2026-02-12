@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -144,21 +144,21 @@ export default function CreateTaskFromThreadDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] flex flex-col max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle>Create Task from Thread</DialogTitle>
-          <DialogDescription>AI has drafted a task from the conversation. Review and edit before creating.</DialogDescription>
-        </DialogHeader>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent className="sm:max-w-[480px] flex flex-col">
+        <SheetHeader>
+          <SheetTitle>Create Task from Thread</SheetTitle>
+          <SheetDescription>AI has drafted a task from the conversation. Review and edit before creating.</SheetDescription>
+        </SheetHeader>
         {isPending ? (
-          <div className="flex items-center justify-center gap-2 py-8">
+          <div className="flex items-center justify-center gap-2 py-8 flex-1">
             <Bot className="h-5 w-5 animate-pulse" />
             <span className="text-muted-foreground">AI is drafting your task...</span>
           </div>
         ) : (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col overflow-hidden">
-                <ScrollArea className="flex-1 pr-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col overflow-hidden flex-1">
+                <ScrollArea className="flex-1 pr-6 -mr-6">
                     <div className="space-y-4 py-4">
                         <FormField
                             control={form.control}
@@ -289,16 +289,14 @@ export default function CreateTaskFromThreadDialog({
                         </div>
                     </div>
               </ScrollArea>
-              <DialogFooter className="pt-4 border-t">
+              <SheetFooter className="pt-4 border-t">
                  <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
                  <Button type="submit">Create Task</Button>
-              </DialogFooter>
+              </SheetFooter>
             </form>
           </Form>
         )}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
-
-    

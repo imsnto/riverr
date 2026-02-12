@@ -3,13 +3,13 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import {
   Form,
   FormControl,
@@ -90,14 +90,14 @@ export default function EscalateTicketDialog({
   const noRoutesAvailable = !intraHubEscalationProject && availableRules.length === 0;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Escalate Ticket to Developers</DialogTitle>
-          <DialogDescription>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Escalate Ticket to Developers</SheetTitle>
+          <SheetDescription>
             This will create a linked task for the development team. Please choose the destination.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         {noRoutesAvailable ? (
             <div className="text-center py-8 text-muted-foreground">
                 <p>No available escalation routes for this ticket type.</p>
@@ -140,16 +140,16 @@ export default function EscalateTicketDialog({
                     )}
                   />
                 )}
-              <DialogFooter>
+              <SheetFooter>
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">Confirm Escalation</Button>
-              </DialogFooter>
+              </SheetFooter>
             </form>
           </Form>
         )}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

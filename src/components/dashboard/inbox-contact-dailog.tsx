@@ -3,12 +3,12 @@
 
 import React from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"; // Adjust path based on your setup
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"; // Adjust path based on your setup
 import { Visitor } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -41,19 +41,19 @@ export default function ContactDetailDialog({ visitor: contact, children, open, 
   if (!contact) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      {children && <SheetTrigger asChild>{children}</SheetTrigger>}
       
-      <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-2 flex flex-col items-center border-b">
+      <SheetContent className="sm:max-w-[425px] p-0 overflow-hidden">
+        <SheetHeader className="p-6 pb-2 flex flex-col items-center border-b">
           <Avatar className="h-20 w-20 mb-3">
             <AvatarImage src={contact.avatarUrl} alt={contact.name} />
             <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
           </Avatar>
-          <DialogTitle className="text-xl font-bold">{contact.name}</DialogTitle>
-        </DialogHeader>
+          <SheetTitle className="text-xl font-bold">{contact.name}</SheetTitle>
+        </SheetHeader>
 
-        <ScrollArea className="max-h-[60vh]">
+        <ScrollArea className="max-h-[calc(100vh_-_80px)]">
           <div className="p-6 space-y-6">
             {/* Account Details */}
             <section>
@@ -82,7 +82,7 @@ export default function ContactDetailDialog({ visitor: contact, children, open, 
           </div>
         </ScrollArea>
         
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
