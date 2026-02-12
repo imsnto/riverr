@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -25,6 +26,7 @@ import { Input } from '@/components/ui/input';
 import { HelpCenter } from '@/lib/data';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Globe, Lock } from 'lucide-react';
+import { Label } from '../ui/label';
 
 const helpCenterSchema = z.object({
   name: z.string().min(2, 'Library name is required.'),
