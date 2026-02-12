@@ -23,6 +23,7 @@ import { suggestLibraryIcon } from '@/ai/flows/suggest-library-icon';
 import { Separator } from '../ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import AddArticlesToLibraryDialog from './add-articles-to-collection-dialog';
 
 interface HelpCenterLayoutProps {
     bots: Bot[];
@@ -62,6 +63,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [isMoveToFolderOpen, setIsMoveToFolderOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isAddArticlesOpen, setIsAddArticlesOpen] = useState(false);
 
 
     const isMobile = useIsMobile();
@@ -293,6 +295,8 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     }, [sidebarView, selectedCollectionId, activeHelpCenterId, articles, collections, helpCenters]);
 
     const unassignedCount = useMemo(() => articles.filter(a => !a.helpCenterId).length, [articles]);
+    const unassignedArticles = useMemo(() => articles.filter(a => !a.helpCenterId), [articles]);
+
 
     const handleToggleAll = () => {
         if (selectedItems.length === combinedItems.length) {
@@ -358,6 +362,18 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         toast({ title: "Article deleted" });
         refreshData();
         setSelectedArticleId(null);
+    };
+    
+    const handleAddArticlesToLibrary = async (articleIds: string[]) => {
+        if (!activeHelpCenterId) return;
+
+        const promises = articleIds.map(id => 
+            db.updateHelpCenterArticle(id, { helpCenterId: activeHelpCenterId })
+        );
+
+        await Promise.all(promises);
+        toast({ title: `${articleIds.length} article(s) added to the library.` });
+        refreshData();
     };
     
     const articleToEdit = articles.find(a => a.id === selectedArticleId);
@@ -479,6 +495,11 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                     )}
                 </div>
                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {sidebarView === 'knowledge-bases' && activeHelpCenterId && !selectedCollectionId && (
+                        <Button variant="outline" onClick={() => setIsAddArticlesOpen(true)}>
+                            Add Articles
+                        </Button>
+                    )}
                     {sidebarView === 'knowledge-bases' && (
                         <Button variant="outline" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
                             <FolderPlus className="mr-2 h-4 w-4" /> New Collection
@@ -548,6 +569,16 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
             onMove={handleMoveSelected}
         />
         
+        {activeHelpCenter && (
+            <AddArticlesToLibraryDialog
+                isOpen={isAddArticlesOpen}
+                onOpenChange={setIsAddArticlesOpen}
+                library={activeHelpCenter}
+                unassignedArticles={unassignedArticles}
+                onSave={handleAddArticlesToLibrary}
+            />
+        )}
+
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <AlertDialogContent>
                 <AlertDialogHeader>

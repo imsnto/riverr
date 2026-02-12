@@ -1,6 +1,6 @@
 'use client';
-import React, { useState, useEffect, useMemo } from 'react';
-import { HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
+import React, { useState, useEffect } from 'react';
+import { HelpCenterArticle, HelpCenter } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,38 +15,30 @@ import { Checkbox } from '../ui/checkbox';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 
-interface AddArticlesToCollectionDialogProps {
+interface AddArticlesToLibraryDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  collection: HelpCenterCollection;
-  allArticles: HelpCenterArticle[];
+  library: HelpCenter;
+  unassignedArticles: HelpCenterArticle[];
   onSave: (articleIds: string[]) => void;
 }
 
-export default function AddArticlesToCollectionDialog({
+export default function AddArticlesToLibraryDialog({
   isOpen,
   onOpenChange,
-  collection,
-  allArticles,
+  library,
+  unassignedArticles,
   onSave,
-}: AddArticlesToCollectionDialogProps) {
+}: AddArticlesToLibraryDialogProps) {
   const [selectedArticleIds, setSelectedArticleIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const articlesForThisDialog = useMemo(() => {
-    // Show articles in this folder OR articles with no folder
-    return allArticles.filter(article => article.folderId === collection.id || !article.folderId);
-  }, [allArticles, collection.id]);
-
   useEffect(() => {
     if (isOpen) {
-      // Pre-select articles already in the collection
-      const articlesInCollection = allArticles
-        .filter(article => article.folderId === collection.id)
-        .map(article => article.id);
-      setSelectedArticleIds(articlesInCollection);
+      setSelectedArticleIds([]);
+      setSearchTerm('');
     }
-  }, [isOpen, allArticles, collection]);
+  }, [isOpen]);
 
   const handleToggleArticle = (articleId: string) => {
     setSelectedArticleIds(prev =>
@@ -61,7 +53,7 @@ export default function AddArticlesToCollectionDialog({
     onOpenChange(false);
   };
 
-  const filteredArticles = articlesForThisDialog.filter(article => 
+  const filteredArticles = unassignedArticles.filter(article => 
     article.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -69,9 +61,9 @@ export default function AddArticlesToCollectionDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add articles to "{collection.name}"</DialogTitle>
+          <DialogTitle>Add articles to "{library.name}"</DialogTitle>
           <DialogDescription>
-            Select articles to include in this folder. Unchecking an article will remove it.
+            Select unassigned articles to add to this library.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
@@ -85,23 +77,23 @@ export default function AddArticlesToCollectionDialog({
               {filteredArticles.length > 0 ? filteredArticles.map(article => (
                 <div key={article.id} className="flex items-center space-x-2">
                   <Checkbox
-                    id={`article-${article.id}`}
+                    id={`add-article-${article.id}`}
                     checked={selectedArticleIds.includes(article.id)}
                     onCheckedChange={() => handleToggleArticle(article.id)}
                   />
-                  <Label htmlFor={`article-${article.id}`} className="font-normal cursor-pointer">
+                  <Label htmlFor={`add-article-${article.id}`} className="font-normal cursor-pointer">
                     {article.title}
                   </Label>
                 </div>
               )) : (
-                <p className="text-sm text-muted-foreground text-center">No available articles found.</p>
+                <p className="text-sm text-muted-foreground text-center">No unassigned articles found.</p>
               )}
             </div>
           </ScrollArea>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave}>Save Changes</Button>
+          <Button onClick={handleSave} disabled={selectedArticleIds.length === 0}>Add Selected Articles</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
