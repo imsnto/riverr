@@ -17,6 +17,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -103,6 +104,7 @@ function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[],
 
 const agentSettingsSchema = z.object({
   name: z.string().min(1, 'Agent name is required.'),
+  isEnabled: z.boolean().default(true),
   welcomeMessage: z.string().optional(),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.'),
   backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.'),
@@ -157,6 +159,7 @@ export default function AgentSettingsDialog({
     resolver: zodResolver(agentSettingsSchema),
     defaultValues: {
       name: '',
+      isEnabled: true,
       welcomeMessage: 'Hi there',
       primaryColor: '#3b82f6',
       backgroundColor: '#111827',
@@ -190,6 +193,7 @@ export default function AgentSettingsDialog({
     if (agent) {
       form.reset({
         name: agent.name,
+        isEnabled: agent.isEnabled ?? true,
         welcomeMessage: agent.welcomeMessage || 'Hi there',
         primaryColor: agent.styleSettings?.primaryColor || '#3b82f6',
         backgroundColor: agent.styleSettings?.backgroundColor || '#111827',
@@ -207,6 +211,7 @@ export default function AgentSettingsDialog({
     } else {
         form.reset({
             name: 'New AI Agent',
+            isEnabled: true,
             welcomeMessage: 'Hi there! How can we help you today?',
             primaryColor: '#3b82f6',
             backgroundColor: '#111827',
@@ -249,6 +254,7 @@ export default function AgentSettingsDialog({
   const onSubmit = (values: AgentSettingsFormValues) => {
     const commonData = {
         name: values.name,
+        isEnabled: values.isEnabled,
         welcomeMessage: values.welcomeMessage,
         layout: 'default' as const,
         styleSettings: {
@@ -387,6 +393,19 @@ export default function AgentSettingsDialog({
             <form onSubmit={form.handleSubmit(onSubmit)} id="agent-settings-form" className="flex flex-col flex-1 overflow-hidden">
                 <div className="flex-1 overflow-y-auto px-6 py-4">
                   <div className="space-y-6">
+                    <FormField
+                        control={form.control}
+                        name="isEnabled"
+                        render={({ field }) => (
+                            <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                                <div className="space-y-0.5">
+                                    <FormLabel>Agent Enabled</FormLabel>
+                                    <FormDescription>If disabled, this agent will not respond.</FormDescription>
+                                </div>
+                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            </FormItem>
+                        )}
+                    />
                     <FormField
                         control={form.control}
                         name="name"

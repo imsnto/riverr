@@ -97,6 +97,14 @@ export default function InboxSettings({
     }
   };
 
+  const handleToggleAgentStatus = (bot: BotData) => {
+    onBotUpdate(bot.id, { isEnabled: !(bot.isEnabled ?? true) });
+    toast({
+        title: `Agent ${!(bot.isEnabled ?? true) ? 'Enabled' : 'Disabled'}`,
+        description: `${bot.name} has been ${!(bot.isEnabled ?? true) ? 'enabled' : 'disabled'}.`,
+    });
+  };
+
   return (
     <>
       <div className="space-y-6">
@@ -139,9 +147,12 @@ export default function InboxSettings({
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <CardTitle className="flex items-center gap-3">
-                      <span className="relative flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                       <span className="relative flex h-3 w-3">
+                        {(bot.isEnabled ?? true) && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
+                        <span className={cn(
+                          "relative inline-flex rounded-full h-3 w-3",
+                          (bot.isEnabled ?? true) ? 'bg-green-500' : 'bg-gray-400'
+                        )}></span>
                       </span>
                       {bot.name}
                     </CardTitle>
@@ -156,11 +167,14 @@ export default function InboxSettings({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuItem disabled>Disable</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleToggleAgentStatus(bot)}>
+                            {(bot.isEnabled ?? true) ? 'Disable' : 'Enable'}
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onSelect={(e) => { e.preventDefault(); handleDeleteClick(bot); }}
                             className="text-destructive"
                           >
+                            <Trash2 className="mr-2 h-4 w-4" />
                             Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>

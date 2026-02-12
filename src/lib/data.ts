@@ -418,6 +418,7 @@ export interface Bot {
   id: string;
   hubId: string;
   name: string;
+  isEnabled?: boolean;
   welcomeMessage?: string;
   layout: 'default' | 'compact';
   styleSettings?: {
@@ -801,5 +802,6 @@ export interface LeadStateNode {
 
 
 export type MemoryNode = RawConversationNode | RawInteractionNode | SupportIntentNode | SalesPersonaSegmentNode | SalesMessagePatternNode | LeadStateNode;
+
 
 
