@@ -16,34 +16,34 @@ import { Badge } from '../ui/badge';
 export type HelpCenterSidebarView = 'knowledge-bases' | 'inbox' | 'all-articles';
 
 const iconMap: Record<string, React.ReactNode> = {
-    Library: <Library className="mr-2 h-4 w-4 shrink-0" />,
-    Book: <Book className="mr-2 h-4 w-4 shrink-0" />,
-    BookOpen: <BookOpen className="mr-2 h-4 w-4 shrink-0" />,
-    Folder: <Folder className="mr-2 h-4 w-4 shrink-0" />,
-    Users: <Users className="mr-2 h-4 w-4 shrink-0" />,
-    Settings: <Settings className="mr-2 h-4 w-4 shrink-0" />,
-    DollarSign: <DollarSign className="mr-2 h-4 w-4 shrink-0" />,
-    Briefcase: <Briefcase className="mr-2 h-4 w-4 shrink-0" />,
-    HelpCircle: <HelpCircle className="mr-2 h-4 w-4 shrink-0" />,
-    MessageSquare: <MessageSquare className="mr-2 h-4 w-4 shrink-0" />,
-    Code: <Code className="mr-2 h-4 w-4 shrink-0" />,
-    Database: <Database className="mr-2 h-4 w-4 shrink-0" />,
-    GitBranch: <GitBranch className="mr-2 h-4 w-4 shrink-0" />,
-    FileText: <FileText className="mr-2 h-4 w-4 shrink-0" />,
-    Archive: <Archive className="mr-2 h-4 w-4 shrink-0" />,
-    Inbox: <Inbox className="mr-2 h-4 w-4 shrink-0" />,
-    Shield: <Shield className="mr-2 h-4 w-4 shrink-0" />,
-    Globe: <Globe className="mr-2 h-4 w-4 shrink-0" />,
-    Home: <Home className="mr-2 h-4 w-4 shrink-0" />,
-    Rocket: <Rocket className="mr-2 h-4 w-4 shrink-0" />,
-    Lightbulb: <Lightbulb className="mr-2 h-4 w-4 shrink-0" />,
-    Server: <Server className="mr-2 h-4 w-4 shrink-0" />,
-    Cloud: <Cloud className="mr-2 h-4 w-4 shrink-0" />,
-    Component: <Component className="mr-2 h-4 w-4 shrink-0" />,
-    Package: <Package className="mr-2 h-4 w-4 shrink-0" />,
-    Puzzle: <Puzzle className="mr-2 h-4 w-4 shrink-0" />,
-    Heart: <Heart className="mr-2 h-4 w-4 shrink-0" />,
-    default: <Book className="mr-2 h-4 w-4 shrink-0" />
+  Library: <Library className="mr-2 h-4 w-4 shrink-0" />,
+  Book: <Book className="mr-2 h-4 w-4 shrink-0" />,
+  BookOpen: <BookOpen className="mr-2 h-4 w-4 shrink-0" />,
+  Folder: <Folder className="mr-2 h-4 w-4 shrink-0" />,
+  Users: <Users className="mr-2 h-4 w-4 shrink-0" />,
+  Settings: <Settings className="mr-2 h-4 w-4 shrink-0" />,
+  DollarSign: <DollarSign className="mr-2 h-4 w-4 shrink-0" />,
+  Briefcase: <Briefcase className="mr-2 h-4 w-4 shrink-0" />,
+  HelpCircle: <HelpCircle className="mr-2 h-4 w-4 shrink-0" />,
+  MessageSquare: <MessageSquare className="mr-2 h-4 w-4 shrink-0" />,
+  Code: <Code className="mr-2 h-4 w-4 shrink-0" />,
+  Database: <Database className="mr-2 h-4 w-4 shrink-0" />,
+  GitBranch: <GitBranch className="mr-2 h-4 w-4 shrink-0" />,
+  FileText: <FileText className="mr-2 h-4 w-4 shrink-0" />,
+  Archive: <Archive className="mr-2 h-4 w-4 shrink-0" />,
+  Inbox: <Inbox className="mr-2 h-4 w-4 shrink-0" />,
+  Shield: <Shield className="mr-2 h-4 w-4 shrink-0" />,
+  Globe: <Globe className="mr-2 h-4 w-4 shrink-0" />,
+  Home: <Home className="mr-2 h-4 w-4 shrink-0" />,
+  Rocket: <Rocket className="mr-2 h-4 w-4 shrink-0" />,
+  Lightbulb: <Lightbulb className="mr-2 h-4 w-4 shrink-0" />,
+  Server: <Server className="mr-2 h-4 w-4 shrink-0" />,
+  Cloud: <Cloud className="mr-2 h-4 w-4 shrink-0" />,
+  Component: <Component className="mr-2 h-4 w-4 shrink-0" />,
+  Package: <Package className="mr-2 h-4 w-4 shrink-0" />,
+  Puzzle: <Puzzle className="mr-2 h-4 w-4 shrink-0" />,
+  Heart: <Heart className="mr-2 h-4 w-4 shrink-0" />,
+  default: <Book className="mr-2 h-4 w-4 shrink-0" />
 };
 
 const normalizeIconKey = (s?: string | null) =>
@@ -51,9 +51,9 @@ const normalizeIconKey = (s?: string | null) =>
 
 const LibraryIcon = ({ name }: { name?: string | null }) => {
   const key = normalizeIconKey(name);
-  const icons: { [key: string]: React.ReactNode } = iconMap;
-  return icons[key] ?? iconMap.default;
+  return (iconMap as any)[key] ?? iconMap.default;
 };
+
 
 interface HelpCenterSidebarProps {
   collections: HelpCenterCollection[];
@@ -94,7 +94,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
         const hasChildren = collections.some(c => c.parentId === collection.id);
         return (
           <Collapsible key={collection.id} defaultOpen={true}>
-            <div className={cn("group flex items-center justify-between rounded-md px-2", activeCollectionId === collection.id && "bg-accent")}>
+            <div className={cn("group flex items-center justify-between rounded-md pr-1", activeCollectionId === collection.id && "bg-primary/10")}>
               
               <div className="flex items-center flex-1 min-w-0">
                   <CollapsibleTrigger asChild>
@@ -154,11 +154,17 @@ const LibraryList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: str
         {helpCenters.map(hc => (
             <div
                 key={hc.id}
-                className={cn("group flex items-center justify-between rounded-md pr-1", activeHelpCenterId === hc.id && "bg-accent")}
+                className={cn(
+                    "group flex items-center justify-between rounded-md pr-1 transition-colors", 
+                    activeHelpCenterId === hc.id && "bg-primary/10"
+                )}
             >
                 <Button
                     variant='ghost'
-                    className="flex-1 justify-start text-left text-sm h-9 px-2 min-w-0"
+                    className={cn(
+                        "w-full justify-start text-left text-sm h-9 px-2 min-w-0 text-foreground",
+                        activeHelpCenterId === hc.id && "text-primary-foreground"
+                    )}
                     onClick={() => onSelect(hc.id)}
                 >
                     <LibraryIcon name={hc.icon} />
@@ -262,9 +268,9 @@ export default function HelpCenterSidebar({
                         </div>
                         <Button variant={sidebarView === 'inbox' ? 'secondary' : 'ghost'} className="w-full justify-between text-sm h-9" onClick={() => onViewChange('inbox')}>
                             <div className="flex items-center gap-2">
-                                <Inbox className="h-4 w-4"/> Unassigned Content
+                                <Inbox className="h-4 w-4"/> Unassigned
                             </div>
-                            {unassignedContentCount > 0 && <Badge variant={sidebarView === 'inbox' ? "default" : "secondary"}>{unassignedContentCount}</Badge>}
+                            {unassignedContentCount > 0 && <Badge variant={sidebarView === 'inbox' ? 'default' : 'secondary'} className="bg-amber-500/10 text-amber-300 border border-amber-500/20">{unassignedContentCount}</Badge>}
                         </Button>
                     </div>
 

@@ -1,9 +1,10 @@
+
 'use client';
 
 import { HelpCenter, HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Checkbox } from '../ui/checkbox';
-import { Folder, FileText, Lock, Globe, GitBranch, Bot } from 'lucide-react';
+import { Folder, FileText, Lock, Globe, GitBranch, Bot, Circle } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '../ui/button';
@@ -120,7 +121,7 @@ export default function HelpCenterArticleList({
                 <Checkbox checked={selectedItems.includes(item.id)} onCheckedChange={() => onToggleSelectItem(item.id)} />
               </TableCell>
               <TableCell>
-                <Button variant="link" className="p-0 h-auto font-semibold" onClick={() => onSelectItem(item.id, type)}>
+                <Button variant="link" className="p-0 h-auto font-semibold text-foreground hover:text-primary" onClick={() => onSelectItem(item.id, type)}>
                   {name}
                 </Button>
               </TableCell>
@@ -129,15 +130,25 @@ export default function HelpCenterArticleList({
               </TableCell>
               <TableCell>
                 {status !== 'N/A' && (
-                    <Badge variant={status === 'published' ? 'default' : 'secondary'}>{status}</Badge>
+                  status === 'published' ? (
+                    <Badge className="bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20">
+                      <Circle className="mr-2 h-2 w-2 fill-current text-emerald-400" />
+                      Published
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-zinc-500/10 text-zinc-300 border border-zinc-500/20 hover:bg-zinc-500/20">
+                      <Circle className="mr-2 h-2 w-2 fill-current text-zinc-400" />
+                      Draft
+                    </Badge>
+                  )
                 )}
               </TableCell>
               <TableCell>
                 {type === 'article' ? (
                     isPublic ? (
-                        <div className="flex items-center gap-1.5"><Globe className="h-3 w-3 text-muted-foreground" />Public</div>
+                        <div className="flex items-center gap-1.5 text-muted-foreground"><Globe className="h-3 w-3" />Public</div>
                     ) : (
-                        <div className="flex items-center gap-1.5"><Lock className="h-3 w-3 text-muted-foreground" />Private</div>
+                        <div className="flex items-center gap-1.5 text-muted-foreground"><Lock className="h-3 w-3" />Private</div>
                     )
                 ) : (
                     '—'
