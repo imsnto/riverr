@@ -839,7 +839,7 @@ export default function Dashboard({ view }: { view: string }) {
           onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
           onNewTaskRequest={handleNewTaskRequest}
-          onTaskClick={setSelectedTask}
+          onTaskSelect={setSelectedTask}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
           onEditProject={handleEditProject}

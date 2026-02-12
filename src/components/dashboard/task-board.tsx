@@ -102,7 +102,7 @@ export default function TaskBoard({
                         allUsers={allUsers}
                         onUpdateActiveHub={onUpdateActiveHub}
                         onNewTaskRequest={onNewTaskRequest}
-                        onTaskClick={(task) => onTaskSelect(task)}
+                        onTaskClick={onTaskSelect}
                         onUpdateTask={onUpdateTask}
                         onBack={() => handleSelectProject(null)}
                         onEditProject={onEditProject}
@@ -129,7 +129,7 @@ export default function TaskBoard({
                   allUsers={allUsers}
                   onUpdateActiveHub={onUpdateActiveHub}
                   onNewTaskRequest={onNewTaskRequest}
-                  onTaskClick={(task) => onTaskSelect(task)}
+                  onTaskClick={onTaskSelect}
                   onUpdateTask={onUpdateTask}
                   onBack={() => handleSelectProject(null)}
                   onEditProject={onEditProject}
