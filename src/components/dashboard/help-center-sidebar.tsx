@@ -1,5 +1,4 @@
 
-
 'use client';
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
@@ -14,9 +13,10 @@ import { Separator } from '../ui/separator';
 import Link from 'next/link';
 import { Badge } from '../ui/badge';
 
-export type HelpCenterSidebarView = 'knowledge-bases' | 'library' | 'all-articles';
+export type HelpCenterSidebarView = 'knowledge-bases' | 'inbox' | 'all-articles';
 
 const iconMap: Record<string, React.ReactNode> = {
+    Library: <Library className="mr-2 h-4 w-4 shrink-0" />,
     Book: <Book className="mr-2 h-4 w-4 shrink-0" />,
     BookOpen: <BookOpen className="mr-2 h-4 w-4 shrink-0" />,
     Folder: <Folder className="mr-2 h-4 w-4 shrink-0" />,
@@ -46,11 +46,13 @@ const iconMap: Record<string, React.ReactNode> = {
     default: <Book className="mr-2 h-4 w-4 shrink-0" />
 };
 
+const normalizeIconKey = (s?: string | null) =>
+  (s ?? "").trim().replace(/\s+/g, "").replace(/[-_]/g, "");
+
 const LibraryIcon = ({ name }: { name?: string | null }) => {
-    if (name && iconMap[name]) {
-        return iconMap[name];
-    }
-    return iconMap.default;
+  const key = normalizeIconKey(name);
+  const icons: { [key: string]: React.ReactNode } = iconMap;
+  return icons[key] ?? iconMap.default;
 };
 
 interface HelpCenterSidebarProps {
@@ -102,7 +104,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
                   </CollapsibleTrigger>
                   <Button
                       variant="ghost"
-                      className="w-full justify-start text-sm h-9 px-2 min-w-0 overflow-hidden"
+                      className="w-full justify-start text-left text-sm h-9 px-2 min-w-0"
                       onClick={() => onSelectCollection(collection.id)}
                   >
                       <Folder className="mr-2 h-4 w-4 shrink-0" />
@@ -156,11 +158,11 @@ const LibraryList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: str
             >
                 <Button
                     variant='ghost'
-                    className="flex-1 justify-start text-sm h-9 px-2 min-w-0"
+                    className="w-full justify-start text-left text-sm h-9 px-2 min-w-0"
                     onClick={() => onSelect(hc.id)}
                 >
                     <LibraryIcon name={hc.icon} />
-                    <span className="block flex-1 min-w-0 truncate">{hc.name}</span>
+                    <span className="block flex-1 min-w-0 truncate text-left">{hc.name}</span>
                 </Button>
 
                 <DropdownMenu>
@@ -216,8 +218,8 @@ export default function HelpCenterSidebar({
             <ScrollArea className="flex-1">
                 <div className="p-2 space-y-2">
                     <div>
-                        <div className="px-2 mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-                            Libraries
+                        <div className="px-2 mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider text-left">
+                            LIBRARIES
                         </div>
                         <LibraryList 
                             helpCenters={helpCenters} 
@@ -252,21 +254,21 @@ export default function HelpCenterSidebar({
                     <Separator />
                     
                      <div>
-                        <div className="px-2 mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                        <div className="px-2 mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider text-left">
                             INBOX
                         </div>
-                        <Button variant={sidebarView === 'library' ? 'secondary' : 'ghost'} className="w-full justify-between text-sm h-9" onClick={() => onViewChange('library')}>
+                        <Button variant={sidebarView === 'inbox' ? 'secondary' : 'ghost'} className="w-full justify-between text-sm h-9" onClick={() => onViewChange('inbox')}>
                             <div className="flex items-center gap-2">
                                 <Inbox className="h-4 w-4"/> Unassigned Content
                             </div>
-                            <Badge variant={sidebarView === 'library' ? "default" : "secondary"}>{unassignedContentCount}</Badge>
+                            <Badge variant={sidebarView === 'inbox' ? "default" : "secondary"}>{unassignedContentCount}</Badge>
                         </Button>
                     </div>
 
                     <Separator />
 
                     <div>
-                        <div className="px-2 mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                        <div className="px-2 mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider text-left">
                             Views
                         </div>
                         <Button variant={sidebarView === 'all-articles' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('all-articles')}>
