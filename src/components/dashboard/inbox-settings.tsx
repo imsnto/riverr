@@ -144,24 +144,6 @@ export default function InboxSettings({
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 text-sm md:grid-cols-4 gap-x-4 gap-y-2">
-                  <div>
-                      <dt className="text-muted-foreground">Channels</dt>
-                      <dd className="font-medium">Web</dd>
-                  </div>
-                  <div>
-                      <dt className="text-muted-foreground">Knowledge</dt>
-                      <dd className="font-medium">Connected</dd>
-                  </div>
-                  <div>
-                      <dt className="text-muted-foreground">Conversations Today</dt>
-                      <dd className="font-medium">34</dd>
-                  </div>
-                  <div>
-                      <dt className="text-muted-foreground">Resolution Rate</dt>
-                      <dd className="font-medium">72%</dd>
-                  </div>
-              </CardContent>
             </Card>
           ))}
 
