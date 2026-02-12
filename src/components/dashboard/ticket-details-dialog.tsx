@@ -151,18 +151,18 @@ export default function TicketDetailsDialog({
     };
 
     const intraHubEscalationProject = useMemo(() => {
-      if (!activeHub.settings?.intraHubEscalationProjectId) return null;
+      if (!activeHub || !activeHub.settings?.intraHubEscalationProjectId) return null;
       return projects.find(p => p.id === activeHub.settings.intraHubEscalationProjectId);
     }, [activeHub, projects]);
 
     const availableRules = useMemo(() => {
-      if (intraHubEscalationProject || !ticket?.type) return [];
+      if (!activeHub || intraHubEscalationProject || !ticket?.type) return [];
       return escalationRules.filter(rule => 
           rule.enabled &&
           rule.allowedSourceHubIds.includes(activeHub.id) &&
           rule.allowedTypes.includes(ticket.type)
       );
-    }, [intraHubEscalationProject, escalationRules, activeHub.id, ticket?.type]);
+    }, [intraHubEscalationProject, escalationRules, activeHub, ticket?.type]);
     
     const canEscalate = !!intraHubEscalationProject || availableRules.length > 0;
 
@@ -418,3 +418,5 @@ export default function TicketDetailsDialog({
         </Dialog>
     );
 }
+
+    
