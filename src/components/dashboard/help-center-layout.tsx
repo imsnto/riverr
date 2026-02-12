@@ -284,22 +284,9 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
             }
         } else if (sidebarView === 'library') {
             viewTitle = "Unassigned Content";
-            foldersToShow = collections.filter(c => !c.helpCenterId && !c.parentId);
-            articlesToShow = articles.filter(a => !a.helpCenterId && !a.folderId);
-            
-            if (selectedCollectionId) {
-                const collection = collections.find(c => c.id === selectedCollectionId);
-                viewTitle = collection?.name || 'Folder';
-                
-                let currentCollection = collection;
-                while (currentCollection) {
-                    breadcrumbs.unshift(currentCollection);
-                    currentCollection = collections.find(c => c.id === currentCollection!.parentId);
-                }
-
-                foldersToShow = collections.filter(c => c.parentId === selectedCollectionId);
-                articlesToShow = articles.filter(a => a.folderId === selectedCollectionId);
-            }
+            articlesToShow = articles.filter(a => !a.helpCenterId);
+            foldersToShow = []; // No folders in this view
+            breadcrumbs = [];
         }
         
         return { combinedItems: [...foldersToShow, ...articlesToShow].sort((a,b) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt)), title: viewTitle, breadcrumbs };
@@ -376,7 +363,7 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
     }
     
     const activeHelpCenter = helpCenters.find(hc => hc.id === activeHelpCenterId);
-    const unassignedCount = articles.filter(a => !a.helpCenterId).length + collections.filter(c => !c.helpCenterId).length;
+    const unassignedCount = articles.filter(a => !a.helpCenterId).length;
 
     const sidebarComponent = (
         <HelpCenterSidebar

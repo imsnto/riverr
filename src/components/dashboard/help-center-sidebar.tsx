@@ -1,4 +1,5 @@
 
+
 'use client';
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
@@ -146,7 +147,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
 };
 
 
-const HelpCenterList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: string | null, onSelect: (id: string | null) => void, onEdit: (hc: HelpCenter) => void }> = ({ helpCenters, activeHelpCenterId, onSelect, onEdit }) => (
+const LibraryList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: string | null, onSelect: (id: string | null) => void, onEdit: (hc: HelpCenter) => void }> = ({ helpCenters, activeHelpCenterId, onSelect, onEdit }) => (
     <div className="space-y-1">
         {helpCenters.map(hc => (
             <div
@@ -218,7 +219,7 @@ export default function HelpCenterSidebar({
                         <div className="px-2 mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
                             Libraries
                         </div>
-                        <HelpCenterList 
+                        <LibraryList 
                             helpCenters={helpCenters} 
                             activeHelpCenterId={sidebarView === 'knowledge-bases' ? activeHelpCenterId : null}
                             onSelect={onSelectHelpCenter}
@@ -261,20 +262,6 @@ export default function HelpCenterSidebar({
                             <Badge variant={sidebarView === 'library' ? "default" : "secondary"}>{unassignedContentCount}</Badge>
                         </Button>
                     </div>
-                    {sidebarView === 'library' && (
-                        <>
-                            <Separator />
-                            <FolderTree
-                                collections={collections.filter(c => !c.helpCenterId)}
-                                parentId={null}
-                                level={0}
-                                activeCollectionId={activeCollectionId}
-                                onSelectCollection={onSelectCollection}
-                                onNewCollection={onNewCollection}
-                                onEditCollection={onEditCollection}
-                            />
-                        </>
-                    )}
 
                     <Separator />
 
