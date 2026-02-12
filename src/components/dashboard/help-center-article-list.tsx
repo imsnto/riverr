@@ -1,4 +1,3 @@
-
 'use client';
 
 import { HelpCenter, HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
@@ -101,8 +100,6 @@ export default function HelpCenterArticleList({
           <TableHead>Title</TableHead>
           <TableHead>Library</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead>Visibility</TableHead>
-          <TableHead>AI Indexed</TableHead>
           <TableHead>Last updated</TableHead>
         </TableRow>
       </TableHeader>
@@ -111,7 +108,6 @@ export default function HelpCenterArticleList({
           const type = getItemType(item);
           const name = type === 'collection' ? item.name : ((item as HelpCenterArticle).title || "Untitled Article");
           const status = 'status' in item ? item.status : 'N/A';
-          const isPublic = 'isPublic' in item ? item.isPublic : false;
           const kb = 'helpCenterId' in item ? helpCenters.find(hc => hc.id === item.helpCenterId) : null;
 
 
@@ -142,22 +138,6 @@ export default function HelpCenterArticleList({
                     </Badge>
                   )
                 )}
-              </TableCell>
-              <TableCell>
-                {type === 'article' ? (
-                    isPublic ? (
-                        <div className="flex items-center gap-1.5 text-muted-foreground"><Globe className="h-3 w-3" />Public</div>
-                    ) : (
-                        <div className="flex items-center gap-1.5 text-muted-foreground"><Lock className="h-3 w-3" />Private</div>
-                    )
-                ) : (
-                    '—'
-                )}
-              </TableCell>
-              <TableCell>
-                  <div className="flex items-center gap-1.5">
-                    {status === 'published' ? <Bot className="h-3 w-3 text-green-500" /> : <Bot className="h-3 w-3 text-muted-foreground/50" />}
-                  </div>
               </TableCell>
               <TableCell>
                 {('updatedAt' in item && item.updatedAt) ? 

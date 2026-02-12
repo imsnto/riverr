@@ -845,7 +845,7 @@ export default function Dashboard({ view }: { view: string }) {
           onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
       />;
-      case 'help-center': return <HelpCenterLayout />;
+      case 'help-center': return <HelpCenterLayout bots={bots} />;
       case 'contacts': return <ContactsLayout activeSpace={activeSpace} />;
       case 'settings': return <SettingsLayout {...settingsProps} />;
       case 'team-timesheets': return <TeamTimesheets 

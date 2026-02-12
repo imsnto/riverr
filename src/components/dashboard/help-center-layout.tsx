@@ -1,14 +1,14 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
-import { HelpCenter, HelpCenterCollection, HelpCenterArticle, User } from '@/lib/data';
+import { HelpCenter, HelpCenterCollection, HelpCenterArticle, User, Bot } from '@/lib/data';
 import HelpCenterArticleEditor from './help-center-article-editor';
 import { useAuth } from '@/hooks/use-auth';
 import { Button, buttonVariants } from '../ui/button';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
-import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2 } from 'lucide-react';
+import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2, Bot as BotIcon, Lock, Globe } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import HelpCenterFormDialog, { HelpCenterFormValues } from './help-center-form-dialog';
 import { Input } from '../ui/input';
@@ -19,8 +19,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { cn } from '@/lib/utils';
 import { reindexArticleAction } from '@/app/actions/chat';
 import { suggestLibraryIcon } from '@/ai/flows/suggest-library-icon';
+import { Separator } from '../ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
-interface HelpCenterLayoutProps {}
+interface HelpCenterLayoutProps {
+    bots: Bot[];
+}
 
 const Breadcrumbs = ({ crumbs, onCrumbClick }: { crumbs: HelpCenterCollection[], onCrumbClick: (id: string | null) => void }) => {
     return (
@@ -36,7 +41,7 @@ const Breadcrumbs = ({ crumbs, onCrumbClick }: { crumbs: HelpCenterCollection[],
     );
 }
 
-export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
+export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     const [sidebarView, setSidebarView] = useState<HelpCenterSidebarView>('knowledge-bases');
     const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
     const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
@@ -275,7 +280,7 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
                  articlesToShow = articles.filter(a => a.helpCenterId === activeHelpCenterId && !a.folderId);
             }
         } else if (sidebarView === 'inbox') {
-            viewTitle = "Inbox";
+            viewTitle = "Unassigned";
             articlesToShow = articles.filter(a => !a.helpCenterId);
             foldersToShow = []; // No folders in this view
             breadcrumbs = [];
@@ -370,6 +375,11 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
     
     const activeHelpCenter = helpCenters.find(hc => hc.id === activeHelpCenterId);
     const unassignedCount = articles.filter(a => !a.helpCenterId).length;
+    
+    const connectedAgents = useMemo(() => {
+        if (!activeHelpCenterId) return [];
+        return bots.filter(bot => bot.allowedHelpCenterIds?.includes(activeHelpCenterId));
+    }, [bots, activeHelpCenterId]);
 
     const sidebarComponent = (
         <HelpCenterSidebar
@@ -409,9 +419,62 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
                 }} />
             )}
             <div className="flex flex-wrap justify-between items-start mb-4 gap-x-4 gap-y-2">
-                <h1 className="text-3xl font-bold leading-tight">
-                    {title}
-                </h1>
+                <div>
+                    <h1 className="text-3xl font-bold leading-tight">
+                        {title}
+                    </h1>
+
+                    {sidebarView === 'knowledge-bases' && activeHelpCenter && (
+                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                            {activeHelpCenter.visibility === 'internal' ? (
+                                <div className="flex items-center gap-1.5">
+                                    <Lock className="h-4 w-4" />
+                                    <span>Internal</span>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-1.5">
+                                    <Globe className="h-4 w-4" />
+                                    <span>Public</span>
+                                </div>
+                            )}
+
+                            <Separator orientation="vertical" className="h-4" />
+
+                            <div className="flex items-center gap-2">
+                                <BotIcon className="h-4 w-4" />
+                                <span>Connected Agents:</span>
+                                {connectedAgents.length > 0 ? (
+                                    <div className="flex items-center -space-x-2">
+                                        <TooltipProvider>
+                                            {connectedAgents.slice(0, 3).map(agent => (
+                                                <Tooltip key={agent.id}>
+                                                    <TooltipTrigger asChild>
+                                                        <Avatar className="h-6 w-6 border-2 border-background">
+                                                            <AvatarImage src={agent.styleSettings?.logoUrl} />
+                                                            <AvatarFallback>
+                                                                <BotIcon className="h-3 w-3"/>
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{agent.name}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            ))}
+                                        </TooltipProvider>
+                                        {connectedAgents.length > 3 && (
+                                            <Avatar className="h-6 w-6 border-2 border-background">
+                                                <AvatarFallback>+{connectedAgents.length - 3}</AvatarFallback>
+                                            </Avatar>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <span>None</span>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
                  <div className="flex items-center gap-2 flex-shrink-0">
                     <Button variant="outline" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
                         <FolderPlus className="mr-2 h-4 w-4" /> New Folder
@@ -444,7 +507,7 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
                     <HelpCenterArticleList
                         items={combinedItems}
                         helpCenters={helpCenters}
-                        onSelectItem={(id, type) => type === 'article' ? handleSelectArticle(id) : handleSelectCollection(id)}
+                        onSelectItem={(id, type) => type === 'article' ? handleSelectArticle(id) : setSelectedCollectionId(id)}
                         selectedItems={selectedItems}
                         onToggleSelectItem={handleToggleSelectItem}
                         onToggleAll={handleToggleAll}
