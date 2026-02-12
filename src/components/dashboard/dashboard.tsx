@@ -409,7 +409,7 @@ export default function Dashboard({ view }: { view: string }) {
     }
     const now = new Date().toISOString();
     const creationActivity: Activity = {
-        id: `act-creation-${Date.now()}`,
+        id: `act-creation-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         user_id: appUser!.id,
         timestamp: now,
         type: 'task_creation',
@@ -447,7 +447,7 @@ export default function Dashboard({ view }: { view: string }) {
     
     const now = new Date().toISOString();
     const creationActivity: Activity = {
-        id: `act-creation-${Date.now()}`,
+        id: `act-creation-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         user_id: appUser.id,
         timestamp: now,
         type: 'ticket_creation',
@@ -833,7 +833,7 @@ export default function Dashboard({ view }: { view: string }) {
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           tasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
+          onUpdateTasks={onUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}

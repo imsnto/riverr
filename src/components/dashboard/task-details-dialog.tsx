@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -224,22 +225,14 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
             return;
         }
 
-        const now = new Date().toISOString();
-        const creationActivity: Activity = {
-            id: `act-creation-${Date.now()}`,
-            user_id: appUser.id,
-            timestamp: now,
-            type: 'task_creation',
-        };
-
         // @ts-ignore - isNew is a temp property
         const { id, isNew, ...taskData } = task; 
 
         const newTaskData = {
             ...taskData,
-            createdAt: now,
+            createdAt: new Date().toISOString(),
             createdBy: appUser.id,
-            activities: [creationActivity, ...(taskData.activities || [])],
+            activities: [...(taskData.activities || [])],
         };
         
         const createdTask = await onAddTask(newTaskData, id);
@@ -275,7 +268,7 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
             attachments: newAttachments,
         };
         const newActivity: Activity = {
-            id: `act-${Date.now()}`,
+            id: `act-${Date.now()}-${Math.random().toString(36).slice(2)}`,
             user_id: appUser.id,
             timestamp: new Date().toISOString(),
             type: 'comment',
@@ -304,7 +297,7 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
         let newActivity: Activity | undefined = undefined;
         if (field === 'status' && task.status !== value) {
             newActivity = {
-                id: `act-${Date.now()}`,
+                id: `act-${Date.now()}-${Math.random().toString(36).slice(2)}`,
                 user_id: appUser.id,
                 timestamp: new Date().toISOString(),
                 type: 'status_change',
@@ -317,7 +310,7 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
             const fromUser = allUsers.find(u => u.id === task.assigned_to)?.name || 'Unassigned';
             const toUser = allUsers.find(u => u.id === value)?.name || 'Unassigned';
             newActivity = {
-                id: `act-${Date.now()}`,
+                id: `act-${Date.now()}-${Math.random().toString(36).slice(2)}`,
                 user_id: appUser.id,
                 timestamp: new Date().toISOString(),
                 type: 'assignee_change',
@@ -394,7 +387,7 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
 
         if (newStatus === 'Done') {
             const newActivity: Activity = {
-                id: `act-${Date.now()}`,
+                id: `act-${Date.now()}-${Math.random().toString(36).slice(2)}`,
                 user_id: appUser.id,
                 timestamp: new Date().toISOString(),
                 type: 'subtask_completion',
