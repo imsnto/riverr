@@ -58,18 +58,18 @@ export default function EscalateTicketDialog({
   });
 
   const intraHubEscalationProject = useMemo(() => {
-    if (!activeHub.settings?.intraHubEscalationProjectId) return null;
-    return projects.find(p => p.id === activeHub.settings.intraHubEscalationProjectId);
+    if (!activeHub?.settings?.intraHubEscalationProjectId) return null;
+    return projects.find(p => p.id === activeHub?.settings.intraHubEscalationProjectId);
   }, [activeHub, projects]);
 
   const availableRules = useMemo(() => {
     if (intraHubEscalationProject || !ticket.type) return [];
-    return escalationRules.filter(rule => 
+    return escalationRules?.length > 0 && escalationRules.filter(rule => 
         rule.enabled &&
-        rule.allowedSourceHubIds.includes(activeHub.id) &&
+        rule.allowedSourceHubIds.includes(activeHub?.id) &&
         rule.allowedTypes.includes(ticket.type)
     );
-  }, [intraHubEscalationProject, escalationRules, activeHub.id, ticket.type]);
+  }, [intraHubEscalationProject, escalationRules, activeHub?.id, ticket.type]);
   
   React.useEffect(() => {
     if(isOpen) {

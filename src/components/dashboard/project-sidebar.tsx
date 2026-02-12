@@ -26,7 +26,7 @@ export default function ProjectSidebar({ projects, tasks, selectedProjectId, onS
       const lastUpdatedTask = projectTasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
       if (!lastUpdatedTask) return null;
 
-      return formatDistanceToNow(new Date(lastUpdatedTask.createdAt), { addSuffix: true });
+      return lastUpdatedTask.createdAt ? formatDistanceToNow(new Date(lastUpdatedTask.createdAt), { addSuffix: true }) : '';
   }
 
   return (
