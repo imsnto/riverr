@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
 import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2 } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
-import HelpCenterFormDialog from './help-center-form-dialog';
+import HelpCenterFormDialog, { HelpCenterFormValues } from './help-center-form-dialog';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import MoveToFolderDialog from './move-to-folder-dialog';
@@ -112,7 +112,7 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
         setIsHCDialogOpen(true);
     };
 
-    const handleSaveHelpCenter = async (name: string) => {
+    const handleSaveHelpCenter = async (values: HelpCenterFormValues) => {
         if (!activeHub) {
             toast({ variant: "destructive", title: "Something went wrong." });
             return;
@@ -120,15 +120,15 @@ export default function HelpCenterLayout({}: HelpCenterLayoutProps) {
 
         try {
             if (editingHelpCenter) {
-                await db.updateHelpCenter(editingHelpCenter.id, { name });
-                toast({ title: "Knowledge Base updated" });
+                await db.updateHelpCenter(editingHelpCenter.id, values);
+                toast({ title: "Library updated" });
             } else {
-                await db.addHelpCenter({ name, hubId: activeHub.id });
-                toast({ title: "Knowledge Base created" });
+                await db.addHelpCenter({ ...values, hubId: activeHub.id });
+                toast({ title: "Library created" });
             }
             refreshData();
         } catch (e) {
-            toast({ variant: "destructive", title: "Failed to save Knowledge Base" });
+            toast({ variant: "destructive", title: "Failed to save Library" });
             console.error(e);
         } finally {
             setIsHCDialogOpen(false);

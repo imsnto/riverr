@@ -103,7 +103,7 @@ export default function KnowledgeBaseSettings({ activeHub }: KnowledgeBaseSettin
                     </Select>
                 </CardContent>
             </Card>
-            {selectedHelpCenter && (
+            {selectedHelpCenter && selectedHelpCenter.visibility !== 'internal' && (
                 <Card>
                     <CardHeader>
                         <CardTitle>Cover Image</CardTitle>

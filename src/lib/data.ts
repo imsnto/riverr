@@ -504,6 +504,7 @@ export interface HelpCenter {
   name: string;
   hubId: string;
   coverImageUrl?: string;
+  visibility?: 'public' | 'internal';
 }
 
 export interface HelpCenterCollection {
