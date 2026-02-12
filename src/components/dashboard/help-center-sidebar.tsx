@@ -185,7 +185,7 @@ export default function HelpCenterSidebar({
                 </Collapsible>
                 
                  <Collapsible defaultOpen>
-                    <div className="flex w-full items-center justify-between px-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <div className="flex w-full items-center justify-between p-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         <CollapsibleTrigger asChild>
                             <div className="flex flex-1 cursor-pointer items-center justify-between">
                                 <span>Knowledge Bases</span>
