@@ -826,7 +826,7 @@ export default function Dashboard({ view }: { view: string }) {
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           tasks={tasks}
-          onUpdateTasks={onUpdateTasks}
+          onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
@@ -854,7 +854,7 @@ export default function Dashboard({ view }: { view: string }) {
           contacts={contacts}
           onDataRefresh={fetchData}
           onCreateTicket={handleCreateTicket}
-          onEscalateTicket={onEscalateTicket}
+          onEscalateTicket={handleEscalateTicket}
           allTasks={tasks}
           onTaskSelect={setSelectedTask}
       />;
