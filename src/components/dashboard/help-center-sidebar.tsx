@@ -158,11 +158,11 @@ export default function HelpCenterSidebar({
                 <Separator className="my-2" />
 
                 <Collapsible defaultOpen>
-                    <CollapsibleTrigger className="w-full">
-                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider p-2 text-left w-full flex justify-between items-center">
-                            Content Library
+                    <CollapsibleTrigger asChild>
+                         <div className="flex w-full cursor-pointer items-center justify-between p-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            <span>Content Library</span>
                             <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                        </h3>
+                        </div>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-1 py-1">
                        <FolderTree 
@@ -185,17 +185,17 @@ export default function HelpCenterSidebar({
                 </Collapsible>
                 
                  <Collapsible defaultOpen>
-                    <CollapsibleTrigger className="w-full">
-                         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider p-2 text-left w-full flex justify-between items-center">
-                            <span>Knowledge Bases</span>
-                            <div className="flex items-center">
-                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); onNewHelpCenter(); }}>
-                                    <Plus className="h-4 w-4" />
-                                </Button>
+                    <div className="flex w-full items-center justify-between px-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <CollapsibleTrigger asChild>
+                            <div className="flex flex-1 cursor-pointer items-center justify-between">
+                                <span>Knowledge Bases</span>
                                 <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                             </div>
-                        </div>
-                    </CollapsibleTrigger>
+                        </CollapsibleTrigger>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2" onClick={onNewHelpCenter}>
+                            <Plus className="h-4 w-4" />
+                        </Button>
+                    </div>
                     <CollapsibleContent className="space-y-1 py-1">
                         <HelpCenterList 
                             helpCenters={helpCenters} 
