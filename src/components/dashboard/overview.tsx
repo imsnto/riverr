@@ -70,13 +70,17 @@ export default function Overview({
 
   if (!appUser) return null;
   
-  const myTasks = useMemo(() => {
+  const myOpenTasks = useMemo(() => {
     const closingStatus = activeHub?.closingStatusName || 'Done';
     return tasks
       .filter((task) => task.assigned_to === appUser.id && task.status !== closingStatus)
+  }, [tasks, appUser.id, activeHub]);
+  
+  const myTasks = useMemo(() => {
+    return [...myOpenTasks]
       .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
       .slice(0, 5); // Limit to 5 tasks for the overview
-  }, [tasks, appUser.id, activeHub]);
+  }, [myOpenTasks]);
 
 
   const handleAdvancePhase = async (job: Job) => {
@@ -216,7 +220,7 @@ export default function Overview({
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{tasks.filter((t) => t.assigned_to === appUser.id).length}</div>
+              <div className="text-2xl font-bold">{myOpenTasks.length}</div>
               <p className="text-xs text-muted-foreground">Total assigned tasks</p>
             </CardContent>
           </Card>
