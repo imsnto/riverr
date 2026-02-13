@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -184,7 +185,11 @@ export default function ChatbotWidgetPage() {
     setLoading(true);
 
     if (!currentConversation) {
-        const contact = await db.findOrCreateContact(spaceId, { email: visitor.email || undefined, name: visitor.name || undefined });
+        const contact = await db.findOrCreateContact(spaceId, { 
+            email: visitor.email || undefined, 
+            name: visitor.name || undefined,
+            visitorId: visitor.id 
+        });
 
         await db.updateVisitor(visitor.id, { contactId: contact.id });
         setVisitor(v => v ? {...v, contactId: contact.id} : null);
@@ -256,11 +261,13 @@ export default function ChatbotWidgetPage() {
     };
     
     try {
+      console.log({botConfig, currentConversation, incomingMessage})
         await invokeAgent({
             bot: botConfig,
-            conversation: currentConversation,
+            conversation: JSON.parse(JSON.stringify(currentConversation)),
             message: incomingMessage,
         });
+        setIsAiThinking(false);
     } catch (e) {
         console.error("Agent failed to answer:", e);
     } finally {

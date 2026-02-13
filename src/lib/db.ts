@@ -1130,11 +1130,9 @@ export const deleteDocument = async (docId: string): Promise<void> => {
 
 export async function uploadImageToFirebase(file: File, hubId: string, docId: string): Promise<string> {
   const safeName = file.name.replace(/[^\w.-]+/g, "_");
-  const path = `hubs/${hubId}/docs/${docId}/images/${crypto.randomUUID()}-${safeName}`;
-
+  const path = `hubs/${hubId}/docs/${docId}/images/${Date.now()}-${safeName}`;
   const storageRef = ref(storage, path);
   await uploadBytes(storageRef, file, { contentType: file.type });
-
   return await getDownloadURL(storageRef);
 }
 
@@ -1142,9 +1140,17 @@ export async function uploadImageToFirebase(file: File, hubId: string, docId: st
 // --- Contact, Visitor, and Conversation Management ---
 const isBlank = (v?: string | null) => !v || v.trim().length === 0;
 
-export const findOrCreateContact = async (spaceId: string, details: { email?: string, name?: string }): Promise<Contact> => {
+export const findOrCreateContact = async (spaceId: string, details: { email?: string; name?: string, visitorId?: string }): Promise<Contact> => {
     if (details.email) {
       const q = query(collection(db, "contacts"), where("primaryEmail", "==", details.email.toLowerCase()), where("spaceId", "==", spaceId), limit(1));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Contact;
+      }
+    }
+    
+    if (details.visitorId) {
+      const q = query(collection(db, "contacts"), where(`externalIds.chatVisitorId`, "==", details.visitorId), where("spaceId", "==", spaceId), limit(1));
       const snapshot = await getDocs(q);
       if (!snapshot.empty) {
         return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Contact;
@@ -1157,24 +1163,24 @@ export const findOrCreateContact = async (spaceId: string, details: { email?: st
     // Create new if not found
     const now = new Date();
     const newContactData: Omit<Contact, 'id'> = {
-      spaceId: spaceId,
-      name: providedName || fallbackName,
-      company: null,
-      emails: details.email ? [details.email.toLowerCase()] : [],
-      primaryEmail: details.email?.toLowerCase() || null,
-      phones: [],
-      primaryPhone: null,
-      source: 'chat',
-      externalIds: {},
-      tags: [],
-      createdAt: now,
-      updatedAt: now,
-      lastSeenAt: now,
-      lastMessageAt: null,
-      lastOrderAt: null,
-      lastCallAt: null,
-      isMerged: false,
-      mergeParentId: null,
+        spaceId: spaceId,
+        name: providedName || fallbackName,
+        company: null,
+        emails: details.email ? [details.email.toLowerCase()] : [],
+        phones: [],
+        primaryEmail: details.email ? details.email.toLowerCase() : null,
+        primaryPhone: null,
+        source: 'chat',
+        externalIds: details.visitorId ? { chatVisitorId: details.visitorId } : {},
+        tags: [],
+        createdAt: now,
+        updatedAt: now,
+        lastSeenAt: now,
+        lastMessageAt: null,
+        lastOrderAt: null,
+        lastCallAt: null,
+        mergeParentId: null,
+        isMerged: false,
     };
     return addContact(newContactData);
 };
@@ -1610,3 +1616,4 @@ export const startBrainJob = async (type: BrainJob['type'], params: Record<strin
     
 
     
+
