@@ -1,5 +1,4 @@
 
-
 'use client'
 // src/lib/db.ts
 
@@ -762,7 +761,7 @@ export const getJobFlowTemplates = async (
 
 export const addJobFlowTemplate = async (
   template: Omit<JobFlowTemplate, "id">
-): Promise<JobFlowTemplate> => {
+):Promise<JobFlowTemplate> => {
   const docRef = await addDoc(collection(db, "job_flow_templates"), template);
   return { ...template, id: docRef.id };
 };
@@ -1256,6 +1255,24 @@ export const upsertChatContactFromVisitor = async (spaceId: string, visitor: Vis
   return { ...contact, ...patch } as Contact;
 };
 
+async function syncContactFromVisitor(contactId: string, visitor: Visitor) {
+  const name = normalizeName(visitor.name) ?? null;
+  const email = normalizeEmail(visitor.email);
+
+  const patch: any = { updatedAt: serverTimestamp(), lastSeenAt: serverTimestamp() };
+
+  // Only upgrade contact name if it's blank/anonymous
+  if (name) patch.name = name;
+
+  // Only set primaryEmail if it's valid
+  if (email) {
+    patch.primaryEmail = email;
+    patch.emails = arrayUnion(email);
+  }
+
+  await updateDoc(doc(db, "contacts", contactId), patch);
+}
+
 async function ensureCrmLinkedForConversation(conversationId: string): Promise<string | null> {
   const convoRef = doc(db, "conversations", conversationId);
   const convoSnap = await getDoc(convoRef);
@@ -1562,7 +1579,7 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
       if (!cleanName) {
         const newName = generateWhimsicalName();
         updatePatch.name = newName;
-        existingVisitor.name = newName;
+        existingVisitor.name = newName; // Update local copy immediately
       } else if (cleanName !== existingVisitor.name) {
         updatePatch.name = cleanName;
         existingVisitor.name = cleanName;
@@ -1575,13 +1592,18 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
       }
 
       const cleanCompany = normalizeCompany(existingVisitor.companyName);
-       if (cleanCompany !== existingVisitor.companyName) {
+      if (cleanCompany !== existingVisitor.companyName) {
         updatePatch.companyName = cleanCompany;
         existingVisitor.companyName = cleanCompany;
       }
 
       if (Object.keys(updatePatch).length > 0) {
         await updateDoc(visitorRef, updatePatch as any);
+      }
+      
+      // Sync to contact if it exists
+      if (existingVisitor.contactId) {
+        await syncContactFromVisitor(existingVisitor.contactId, existingVisitor);
       }
 
       return existingVisitor;
@@ -1645,19 +1667,8 @@ export const updateVisitor = async (visitorId: string, updates: Partial<Visitor>
         const freshSnap = await getDoc(visitorRef);
         if (freshSnap.exists()) {
           const v = { id: freshSnap.id, ...freshSnap.data() } as Visitor;
-      
           if (v.contactId) {
-            const patch: any = { updatedAt: new Date(), lastSeenAt: new Date() };
-      
-            if (!isBlank(v.name)) patch.name = v.name!.trim();
-            const email = normalizeEmail(v.email);
-            if (email) {
-              patch.primaryEmail = email;
-              patch.emails = arrayUnion(email);
-            }
-            if (!isBlank(v.companyName)) patch.company = v.companyName!.trim();
-      
-            await updateDoc(doc(db, "contacts", v.contactId), patch);
+            await syncContactFromVisitor(v.contactId, v);
           }
         }
       } catch (e) {
@@ -1787,5 +1798,7 @@ export const startBrainJob = async (type: BrainJob['type'], params: Record<strin
 
 
 
+
+    
 
     
