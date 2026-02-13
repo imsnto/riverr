@@ -185,21 +185,12 @@ export default function ChatbotWidgetPage() {
     setLoading(true);
 
     if (!currentConversation) {
-        const contact = await db.findOrCreateContact(spaceId, { 
-            email: visitor.email || undefined, 
-            name: visitor.name || undefined,
-            visitorId: visitor.id 
-        });
-
-        await db.updateVisitor(visitor.id, { contactId: contact.id });
-        setVisitor(v => v ? {...v, contactId: contact.id} : null);
-
         const agentIds = bot.agentIds || [];
         const assigneeId = agentIds.length > 0 ? agentIds[Math.floor(Math.random() * agentIds.length)] : null;
         
         const newConvoData: Omit<Conversation, 'id'> = {
             hubId,
-            contactId: contact.id,
+            contactId: null, // This will be backfilled by the backend logic
             visitorId: visitor.id,
             assigneeId,
             status: 'bot', // Start with bot

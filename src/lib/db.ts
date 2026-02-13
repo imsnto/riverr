@@ -102,6 +102,13 @@ const generateWhimsicalName = () => {
   return `${adj} ${noun}`;
 };
 
+const isBlank = (v?: string | null) => !v || v.trim().length === 0;
+
+const normalizeEmail = (email?: string | null) => {
+  const e = (email || "").trim().toLowerCase();
+  return e.length ? e : null;
+};
+
 
 // --- Seeding ---
 export const seedDatabase = async () => {
@@ -1138,53 +1145,139 @@ export async function uploadImageToFirebase(file: File, hubId: string, docId: st
 
 
 // --- Contact, Visitor, and Conversation Management ---
-const isBlank = (v?: string | null) => !v || v.trim().length === 0;
-
-export const findOrCreateContact = async (spaceId: string, details: { email?: string; name?: string, visitorId?: string }): Promise<Contact> => {
-    if (details.email) {
-      const q = query(collection(db, "contacts"), where("primaryEmail", "==", details.email.toLowerCase()), where("spaceId", "==", spaceId), limit(1));
-      const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Contact;
-      }
-    }
-    
-    if (details.visitorId) {
-      const q = query(collection(db, "contacts"), where(`externalIds.chatVisitorId`, "==", details.visitorId), where("spaceId", "==", spaceId), limit(1));
-      const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Contact;
-      }
-    }
-
-    const providedName = isBlank(details.name) ? null : details.name!.trim();
-    const fallbackName = generateWhimsicalName();
-  
-    // Create new if not found
-    const now = new Date();
-    const newContactData: Omit<Contact, 'id'> = {
-        spaceId: spaceId,
-        name: providedName || fallbackName,
-        company: null,
-        emails: details.email ? [details.email.toLowerCase()] : [],
-        phones: [],
-        primaryEmail: details.email ? details.email.toLowerCase() : null,
-        primaryPhone: null,
-        source: 'chat',
-        externalIds: details.visitorId ? { chatVisitorId: details.visitorId } : {},
-        tags: [],
-        createdAt: now,
-        updatedAt: now,
-        lastSeenAt: now,
-        lastMessageAt: null,
-        lastOrderAt: null,
-        lastCallAt: null,
-        mergeParentId: null,
-        isMerged: false,
-    };
-    return addContact(newContactData);
+export const getContactByVisitorId = async (spaceId: string, visitorId: string): Promise<Contact | null> => {
+  const q = query(
+    collection(db, "contacts"),
+    where("spaceId", "==", spaceId),
+    where("externalIds.chatVisitorId", "==", visitorId),
+    limit(1)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return { id: snap.docs[0].id, ...snap.docs[0].data() } as Contact;
 };
 
+export const getContactByEmail = async (spaceId: string, email: string): Promise<Contact | null> => {
+  const q = query(
+    collection(db, "contacts"),
+    where("spaceId", "==", spaceId),
+    where("primaryEmail", "==", email.toLowerCase()),
+    limit(1)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return { id: snap.docs[0].id, ...snap.docs[0].data() } as Contact;
+};
+
+export const upsertChatContactFromVisitor = async (spaceId: string, visitor: Visitor): Promise<Contact> => {
+  const email = normalizeEmail(visitor.email);
+  const name = !isBlank(visitor.name) ? visitor.name!.trim() : generateWhimsicalName();
+  const company = !isBlank(visitor.companyName) ? visitor.companyName!.trim() : null;
+
+  // 1) Prefer email match
+  let contact: Contact | null = null;
+  if (email) contact = await getContactByEmail(spaceId, email);
+
+  // 2) Else match by externalIds.chatVisitorId
+  if (!contact) contact = await getContactByVisitorId(spaceId, visitor.id);
+
+  // 3) Create if missing
+  if (!contact) {
+    const now = new Date();
+    const newContactData: Omit<Contact, "id"> = {
+      spaceId,
+      name,
+      company,
+      emails: email ? [email] : [],
+      phones: [],
+      primaryEmail: email,
+      primaryPhone: null,
+      source: "chat",
+      externalIds: { chatVisitorId: visitor.id },
+      tags: [],
+      createdAt: now,
+      updatedAt: now,
+      lastSeenAt: now,
+      lastMessageAt: null,
+      lastOrderAt: null,
+      lastCallAt: null,
+      mergeParentId: null,
+      isMerged: false,
+    };
+
+    return await addContact(newContactData);
+  }
+
+  // 4) Update existing with improved info (don’t clobber good data)
+  const patch: Partial<Contact> = {
+    updatedAt: new Date(),
+    lastSeenAt: new Date(),
+    externalIds: {
+      ...(contact.externalIds || {}),
+      chatVisitorId: visitor.id,
+    },
+  };
+
+  // Name: only set if missing
+  if (isBlank(contact.name) && !isBlank(name)) patch.name = name;
+
+  // Company: only set if missing
+  if (isBlank(contact.company) && !isBlank(company)) patch.company = company;
+
+  // Email: add if present
+  if (email) {
+    const existing = new Set((contact.emails || []).map(e => e.toLowerCase()));
+    existing.add(email);
+
+    patch.emails = Array.from(existing);
+    if (isBlank(contact.primaryEmail)) patch.primaryEmail = email;
+  }
+
+  await updateDoc(doc(db, "contacts", contact.id), patch as any);
+  return { ...contact, ...patch } as Contact;
+};
+
+async function ensureCrmLinkedForConversation(conversationId: string): Promise<string | null> {
+  const convoRef = doc(db, "conversations", conversationId);
+  const convoSnap = await getDoc(convoRef);
+  if (!convoSnap.exists()) return null;
+
+  const convo = { id: convoSnap.id, ...convoSnap.data() } as Conversation;
+  if (convo.contactId) return convo.contactId;
+
+  if (!convo.visitorId) return null;
+
+  const hub = await getHub(convo.hubId);
+  if (!hub) return null;
+
+  const visitorRef = doc(db, "visitors", convo.visitorId);
+  const visitorSnap = await getDoc(visitorRef);
+  if (!visitorSnap.exists()) return null;
+
+  const visitor = { id: visitorSnap.id, ...visitorSnap.data() } as Visitor;
+
+  // Ensure visitor has a name (whimsical if missing)
+  if (isBlank(visitor.name)) {
+    const whimsical = generateWhimsicalName();
+    await updateDoc(visitorRef, { name: whimsical });
+    visitor.name = whimsical;
+  }
+
+  const contact = await upsertChatContactFromVisitor(hub.spaceId, visitor);
+
+  // Link visitor -> contact
+  await updateDoc(visitorRef, { contactId: contact.id });
+
+  // Link convo -> contact + cache
+  await updateDoc(convoRef, {
+    contactId: contact.id,
+    visitorName: visitor.name,
+    visitorEmail: visitor.email || null,
+    updatedAt: new Date().toISOString(),
+  } as any);
+
+  return contact.id;
+}
 
 export const getContacts = async (spaceId: string): Promise<Contact[]> => {
   const q = query(collection(db, 'contacts'), where('spaceId', '==', spaceId));
@@ -1295,13 +1388,19 @@ export const addChatMessage = async (message: Omit<ChatMessage, "id">): Promise<
   
     // Only update summaries for actual messages, not system events or notes
     if (message.conversationId && message.type === 'message') {
+      if (message.senderType === "contact") {
+        await ensureCrmLinkedForConversation(message.conversationId);
+      }
+
       let authorName = "System";
       if (message.senderType === 'agent') {
         const userDoc = await getDoc(doc(db, 'users', message.authorId));
         if (userDoc.exists()) authorName = userDoc.data().name;
       } else { // 'contact'
-        const visitorDoc = await getDoc(doc(db, 'visitors', message.authorId));
-        if (visitorDoc.exists()) authorName = visitorDoc.data().name;
+        const convoSnap = await getDoc(doc(db, 'conversations', message.conversationId));
+        if (convoSnap.exists()) {
+             authorName = convoSnap.data().visitorName || 'Unknown';
+        }
       }
   
       const conversationUpdateData = {
@@ -1495,6 +1594,30 @@ export const updateVisitor = async (visitorId: string, updates: Partial<Visitor>
         ...updates,
         lastSeen: new Date().toISOString()
       });
+
+      // Keep CRM contact synced when identity improves
+      try {
+        const freshSnap = await getDoc(visitorRef);
+        if (freshSnap.exists()) {
+          const v = { id: freshSnap.id, ...freshSnap.data() } as Visitor;
+      
+          if (v.contactId) {
+            const patch: any = { updatedAt: new Date(), lastSeenAt: new Date() };
+      
+            if (!isBlank(v.name)) patch.name = v.name!.trim();
+            const email = normalizeEmail(v.email);
+            if (email) {
+              patch.primaryEmail = email;
+              patch.emails = arrayUnion(email);
+            }
+            if (!isBlank(v.companyName)) patch.company = v.companyName!.trim();
+      
+            await updateDoc(doc(db, "contacts", v.contactId), patch);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to sync visitor -> contact:", e);
+      }
     }
   } catch (error) {
     console.error("Failed to update visitor:", error);
@@ -1616,4 +1739,5 @@ export const startBrainJob = async (type: BrainJob['type'], params: Record<strin
     
 
     
+
 
