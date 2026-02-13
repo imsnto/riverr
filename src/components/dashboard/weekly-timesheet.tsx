@@ -122,79 +122,75 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
           </div>
         </div>
         
-        <div className="overflow-x-auto">
-          <div className="min-w-[700px] inline-block align-middle w-full">
-            <div className="border rounded-lg overflow-hidden">
-              <table className="min-w-full divide-y divide-border">
-                <thead className="bg-card">
-                  <tr>
-                    <th scope="col" className="w-1/3 px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Task / Location</th>
-                    {daysOfWeek.map((day, i) => (
-                      <th key={day.toISOString()} scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                        <div className="flex justify-between items-end">
-                          <span className="sm:hidden">{format(day, 'E')}</span>
-                          <span className="hidden sm:inline">{format(day, 'E, MMM d')}</span>
-                          <span className="font-bold text-foreground">{dailyTotals[i].toFixed(1)}h</span>
-                        </div>
-                         <Progress value={(dailyTotals[i] / 8) * 100} className="h-1 mt-1 bg-primary/20" />
-                      </th>
-                    ))}
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                       <div className="flex justify-between items-end">
-                          <span>Total</span>
-                          <span className="font-bold text-foreground">{totalWeekHours.toFixed(1)}h</span>
-                        </div>
-                         <Progress value={(totalWeekHours / 40) * 100} className="h-1 mt-1 bg-primary/20" />
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {Object.values(entriesByTask).map((entry, index) => {
-                      const taskStatus = entry.task ? statuses.find(s => s.name === entry.task!.status) : null;
-                      return (
-                      <tr key={index}>
-                          <td className="px-4 py-3 align-top">
-                              <button 
-                                onClick={() => handleTaskClick(entry.task)} 
-                                className={`font-medium text-sm text-left ${entry.task ? 'hover:underline text-primary' : ''}`}
-                                disabled={!entry.task}
-                              >
-                                {entry.name}
-                              </button>
-                              <div className="flex items-center text-xs text-muted-foreground">
-                                  {entry.task ? (
-                                    <>
-                                      {taskStatus ? (
-                                        <Dot className="w-5 h-5 -ml-1.5" style={{ color: taskStatus.color }} />
-                                      ) : (
-                                        <Dot className="w-5 h-5 -ml-1.5" />
-                                      )}
-                                      <span>{entry.task.status}</span>
-                                      <Dot />
-                                      <span>{entry.project}</span>
-                                    </>
+        <div className="border rounded-lg overflow-x-auto">
+          <table className="w-full divide-y divide-border min-w-[800px]">
+            <thead className="bg-card">
+              <tr>
+                <th scope="col" className="w-1/3 px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Task / Location</th>
+                {daysOfWeek.map((day, i) => (
+                  <th key={day.toISOString()} scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                    <div className="flex justify-between items-end">
+                      <span className="sm:hidden">{format(day, 'E')}</span>
+                      <span className="hidden sm:inline">{format(day, 'E, MMM d')}</span>
+                      <span className="font-bold text-foreground">{dailyTotals[i].toFixed(1)}h</span>
+                    </div>
+                      <Progress value={(dailyTotals[i] / 8) * 100} className="h-1 mt-1 bg-primary/20" />
+                  </th>
+                ))}
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                    <div className="flex justify-between items-end">
+                      <span>Total</span>
+                      <span className="font-bold text-foreground">{totalWeekHours.toFixed(1)}h</span>
+                    </div>
+                      <Progress value={(totalWeekHours / 40) * 100} className="h-1 mt-1 bg-primary/20" />
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {Object.values(entriesByTask).map((entry, index) => {
+                  const taskStatus = entry.task ? statuses.find(s => s.name === entry.task!.status) : null;
+                  return (
+                  <tr key={index}>
+                      <td className="px-4 py-3 align-top">
+                          <button 
+                            onClick={() => handleTaskClick(entry.task)} 
+                            className={`font-medium text-sm text-left ${entry.task ? 'hover:underline text-primary' : ''}`}
+                            disabled={!entry.task}
+                          >
+                            {entry.name}
+                          </button>
+                          <div className="flex items-center text-xs text-muted-foreground">
+                              {entry.task ? (
+                                <>
+                                  {taskStatus ? (
+                                    <Dot className="w-5 h-5 -ml-1.5" style={{ color: taskStatus.color }} />
                                   ) : (
-                                    <span>{entry.project}</span>
+                                    <Dot className="w-5 h-5 -ml-1.5" />
                                   )}
-                              </div>
+                                  <span>{entry.task.status}</span>
+                                  <Dot />
+                                  <span>{entry.project}</span>
+                                </>
+                              ) : (
+                                <span>{entry.project}</span>
+                              )}
+                          </div>
+                      </td>
+                      {entry.dailyHours.map((hours, i) => (
+                          <td key={i} className="px-4 py-3 text-sm font-mono text-center">
+                              {hours > 0 ? `${hours.toFixed(1)}h` : '-'}
                           </td>
-                          {entry.dailyHours.map((hours, i) => (
-                              <td key={i} className="px-4 py-3 text-sm font-mono text-center">
-                                  {hours > 0 ? `${hours.toFixed(1)}h` : '-'}
-                              </td>
-                          ))}
-                          <td className="px-4 py-3 text-center">
-                             <div className="flex items-center justify-center gap-2">
-                              <span className="text-sm font-mono">{entry.dailyHours.reduce((a, b) => a + b, 0).toFixed(1)}h</span>
-                              <Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal className="h-4 w-4"/></Button>
-                             </div>
-                          </td>
-                      </tr>
-                  )})}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                      ))}
+                      <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                          <span className="text-sm font-mono">{entry.dailyHours.reduce((a, b) => a + b, 0).toFixed(1)}h</span>
+                          <Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal className="h-4 w-4"/></Button>
+                          </div>
+                      </td>
+                  </tr>
+              )})}
+            </tbody>
+          </table>
         </div>
       </div>
 

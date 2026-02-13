@@ -54,7 +54,7 @@ export default function AllUsersTimesheet({ onUserSelect, users, timeEntries, we
   });
 
   return (
-    <div className="p-6 rounded-lg bg-card text-card-foreground">
+    <div className="p-4 sm:p-6 rounded-lg bg-card text-card-foreground">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={onPrevWeek} className="hidden sm:flex">Previous week</Button>
@@ -81,11 +81,11 @@ export default function AllUsersTimesheet({ onUserSelect, users, timeEntries, we
           <Button variant="outline" size="sm"><Clock className="mr-2 h-4 w-4"/>Tracked time</Button>
       </div>
       
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-border">
+      <div className="overflow-x-auto border rounded-lg">
+        <table className="min-w-[900px] w-full divide-y divide-border">
           <thead>
             <tr>
-              <th scope="col" className="w-1/4 sm:w-1/3 px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">People ({users.length})</th>
+              <th scope="col" className="w-1/3 px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">People ({users.length})</th>
               {daysOfWeek.map((day) => (
                 <th key={day.toISOString()} scope="col" className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
                   <div>{format(day, 'E, MMM d')}</div>
