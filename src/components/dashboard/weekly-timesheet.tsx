@@ -1,9 +1,8 @@
 
-
 'use client'
 
 import React, { useState } from 'react';
-import { TimeEntry, Project, Task, users as allUsers, User } from '@/lib/data';
+import { TimeEntry, Project, Task, User, Status } from '@/lib/data';
 import { ChevronLeft, ChevronRight, MoreHorizontal, Dot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -20,7 +19,7 @@ interface WeeklyTimesheetProps {
   onNextWeek: () => void;
   onThisWeek: () => void;
   allUsers: User[];
-  statuses: string[];
+  statuses: Status[];
 }
 
 export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: initialTasks, weekStart, onPrevWeek, onNextWeek, onThisWeek, allUsers, statuses }: WeeklyTimesheetProps) {
@@ -150,7 +149,9 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {Object.values(entriesByTask).map((entry, index) => (
+                  {Object.values(entriesByTask).map((entry, index) => {
+                      const taskStatus = entry.task ? statuses.find(s => s.name === entry.task!.status) : null;
+                      return (
                       <tr key={index}>
                           <td className="px-4 py-3 align-top">
                               <button 
@@ -161,7 +162,20 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
                                 {entry.name}
                               </button>
                               <div className="flex items-center text-xs text-muted-foreground">
-                                  <Dot className="text-red-500" /> In Review <Dot /> {entry.project}
+                                  {entry.task ? (
+                                    <>
+                                      {taskStatus ? (
+                                        <Dot className="w-5 h-5 -ml-1.5" style={{ color: taskStatus.color }} />
+                                      ) : (
+                                        <Dot className="w-5 h-5 -ml-1.5" />
+                                      )}
+                                      <span>{entry.task.status}</span>
+                                      <Dot />
+                                      <span>{entry.project}</span>
+                                    </>
+                                  ) : (
+                                    <span>{entry.project}</span>
+                                  )}
                               </div>
                           </td>
                           {entry.dailyHours.map((hours, i) => (
@@ -176,7 +190,7 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
                              </div>
                           </td>
                       </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
@@ -200,7 +214,7 @@ export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: 
           onRemoveTask={handleRemoveTask}
           onTaskSelect={setSelectedTask}
           onLogTime={handleLogTime}
-          statuses={statuses}
+          statuses={statuses.map(s => s.name)}
           projects={projects}
         />
       )}

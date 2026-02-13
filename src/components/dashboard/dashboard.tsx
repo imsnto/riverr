@@ -477,13 +477,12 @@ export default function Dashboard({ view }: { view: string }) {
     toast({ title: "Ticket created" });
 
     if (newTicket.conversationId) {
-        const messageContent = `Ticket created: "${newTicket.title}"`;
         await db.addChatMessage({
             conversationId: newTicket.conversationId,
             authorId: appUser.id,
             type: 'event',
             senderType: 'agent',
-            content: messageContent,
+            content: `Ticket created: "${newTicket.title}"`,
             timestamp: new Date().toISOString(),
             linked_ticket_id: newTicket.id,
         });
@@ -806,12 +805,12 @@ export default function Dashboard({ view }: { view: string }) {
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           tasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
+          onUpdateTasks={onUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
-          onNewTaskRequest={handleNewTaskRequest}
+          onNewTaskRequest={onNewTaskRequest}
           onTaskClick={handleTaskClick}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
@@ -826,7 +825,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeHub={activeHub!}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
+          onUpdateActiveHub={onUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
           allHubs={spaceHubs}
           escalationRules={escalationRules}
@@ -847,7 +846,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeHub={activeHub!}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
+          onUpdateActiveHub={onUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
       />;
       case 'help-center': return <HelpCenterLayout bots={bots} />;
@@ -859,7 +858,9 @@ export default function Dashboard({ view }: { view: string }) {
                                         projects={projects}
                                         tasks={tasks}
                                         timeEntries={timeEntries}
-                                        appUser={appUser} />;
+                                        appUser={appUser} 
+                                        activeHub={activeHub}
+                                      />;
       case 'inbox': return <InboxLayout
                             users={allUsers}
                             appUser={appUser}

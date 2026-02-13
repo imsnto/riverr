@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Project, Task, TimeEntry, Space, User, Hub } from '@/lib/data';
+import { Project, Task, TimeEntry, Space, User, Hub, Status } from '@/lib/data';
 import WeeklyTimesheet from './weekly-timesheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -25,9 +25,10 @@ interface TeamTimesheetsProps {
   tasks: Task[];
   timeEntries: TimeEntry[];
   appUser: User;
+  activeHub: Hub | null;
 }
 
-export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, timeEntries, appUser }: TeamTimesheetsProps) {
+export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, timeEntries, appUser, activeHub }: TeamTimesheetsProps) {
   
   const usersInAccessibleSpaces = useMemo(() => {
     const allMemberIds = new Set<string>();
@@ -73,8 +74,7 @@ export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, t
     return <div className="text-center p-8">No users found in your spaces.</div>;
   }
   
-  const allStatuses = projects.map(p => p.status);
-  const uniqueStatuses = [...new Set(allStatuses)];
+  const statuses: Status[] = activeHub?.statuses || [];
 
 
   if (viewMode === 'single-user' && selectedUser) {
@@ -125,7 +125,7 @@ export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, t
               onNextWeek={handleNextWeek}
               onThisWeek={handleThisWeek}
               allUsers={usersInAccessibleSpaces}
-              statuses={uniqueStatuses}
+              statuses={statuses}
              />
           </CardContent>
         </Card>
