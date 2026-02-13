@@ -11,6 +11,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import * as db from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import { useSearchParams } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ContactsLayoutProps {
     activeSpace: Space | null;
@@ -98,6 +99,45 @@ export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
         description: `${values.name || 'New contact'} has been added.`,
     });
   };
+
+  if (isLoading) {
+    return (
+        <div className="grid h-full grid-cols-1 md:grid-cols-[380px_1fr]">
+            <div className="flex flex-col h-full border-r bg-card p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                    <Skeleton className="h-8 w-32" />
+                    <Skeleton className="h-8 w-8" />
+                </div>
+                <Skeleton className="h-9 w-full" />
+                <div className="space-y-2">
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                </div>
+            </div>
+            <div className="hidden md:flex flex-col h-full bg-background p-8 space-y-4">
+                <div className="flex items-center gap-4">
+                    <Skeleton className="h-16 w-16 rounded-full" />
+                    <div className="space-y-2">
+                        <Skeleton className="h-8 w-48" />
+                        <Skeleton className="h-4 w-32" />
+                    </div>
+                </div>
+                <div className="flex gap-2">
+                    <Skeleton className="h-7 w-24" />
+                    <Skeleton className="h-7 w-24" />
+                    <Skeleton className="h-7 w-24" />
+                </div>
+                <div className="pt-6 space-y-4">
+                    <Skeleton className="h-8 w-32" />
+                    <Skeleton className="h-48 w-full" />
+                </div>
+            </div>
+        </div>
+    );
+  }
 
   if (isMobile) {
     return (

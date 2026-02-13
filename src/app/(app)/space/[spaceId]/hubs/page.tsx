@@ -9,6 +9,7 @@ import { Building2, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import CreateHubDialog, { HubFormValues } from '@/components/dashboard/create-hub-dialog';
+import { ContentSkeleton } from '@/components/dashboard/content-skeleton';
 
 const defaultStatuses: Status[] = [
     { name: 'Backlog', color: '#6b7280' },
@@ -80,11 +81,7 @@ export default function HubSelectionPage() {
 
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <p>Loading hubs...</p>
-      </div>
-    );
+    return <ContentSkeleton />;
   }
   
   if (hubs.length === 0) {

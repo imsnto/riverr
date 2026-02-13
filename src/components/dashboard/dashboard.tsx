@@ -1,4 +1,3 @@
-
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -81,6 +80,7 @@ export default function Dashboard({ view }: { view: string }) {
   const messageUnsubscribeRef = useRef<(() => void) | null>(null);
   const isMobile = useIsMobile();
   const [hideMobileBottomNav, setHideMobileBottomNav] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [currentView, setCurrentView] = useState<AppView>(view as AppView || 'overview');
   
@@ -128,7 +128,12 @@ export default function Dashboard({ view }: { view: string }) {
 
 
   const fetchData = async () => {
-    if (!appUser || !activeSpace) return;
+    if (!appUser || !activeSpace) {
+        setIsLoading(false);
+        return;
+    }
+    setIsLoading(true);
+
     if (messageUnsubscribeRef.current) {
         messageUnsubscribeRef.current();
         messageUnsubscribeRef.current = null;
@@ -231,12 +236,15 @@ export default function Dashboard({ view }: { view: string }) {
             setVisitors([]);
         }
     }
+    setIsLoading(false);
   };
 
 
   useEffect(() => {
     if (activeSpace) {
       fetchData();
+    } else if (appUser) {
+        setIsLoading(false);
     }
     return () => {
       // Final cleanup when component dies
@@ -334,7 +342,7 @@ export default function Dashboard({ view }: { view: string }) {
     }
   }, [view, currentView]);
 
-  if (!appUser || !activeSpace || (view !== 'contacts' && !activeHub)) {
+  if (isLoading || !appUser || !activeSpace || (view !== 'contacts' && !activeHub)) {
     return <DashboardSkeleton />;
   }
   
@@ -805,7 +813,7 @@ export default function Dashboard({ view }: { view: string }) {
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           tasks={tasks}
-          onUpdateTasks={onUpdateTasks}
+          onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
@@ -918,7 +926,7 @@ export default function Dashboard({ view }: { view: string }) {
               tasks={tasks}
               selectedProjectId={selectedProjectId}
               onSelectProject={handleSelectProject}
-              onNewProject={handleNewProject}
+              onNewProject={onNewProject}
             />
           )}
           <main
@@ -982,5 +990,4 @@ export default function Dashboard({ view }: { view: string }) {
     </SidebarProvider>
   );
 }
-
 

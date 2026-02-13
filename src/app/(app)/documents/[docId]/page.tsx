@@ -1,4 +1,3 @@
-
 // src/app/(app)/documents/[docId]/page.tsx
 'use client';
 import { useAuth } from '@/hooks/use-auth';
@@ -7,12 +6,7 @@ import { Document, User } from '@/lib/data';
 import React, { useState, useEffect } from 'react';
 import DocumentEditor from '@/components/dashboard/document-editor';
 import { useRouter, useParams } from 'next/navigation';
-
-const LoadingState = () => (
-    <div className="flex h-screen items-center justify-center">
-        <p>Loading document...</p>
-    </div>
-);
+import { ContentSkeleton } from '@/components/dashboard/content-skeleton';
 
 export default function DocumentPage() {
     const params = useParams() as { docId: string };
@@ -77,7 +71,7 @@ export default function DocumentPage() {
     };
 
     if (isLoading) {
-        return <LoadingState />;
+        return <ContentSkeleton />;
     }
 
     if (error) {
