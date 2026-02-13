@@ -47,33 +47,42 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
         privateSearchRequest = { ...searchParameters, filter_by: privateFilter };
     }
     
-    // Execute searches in parallel
-    const [publicResults, privateResults] = await Promise.all([
-        typesense.collections('memory_nodes').documents().search(publicSearchRequest),
-        privateSearchRequest ? typesense.collections('memory_nodes').documents().search(privateSearchRequest) : Promise.resolve(null)
-    ]);
-    
-    // Merge and de-duplicate results
-    const hits = [...(publicResults.hits || []), ...(privateResults?.hits || [])];
-    const uniqueHits = Array.from(new Map(hits.map(item => [item.document.id, item])).values());
-    
-    // Map to the HelpChunk type expected by the agent
-    const chunks: HelpChunk[] = uniqueHits.map(hit => {
-        const doc = hit.document as any;
-        return {
-            chunkText: doc.text,
-            score: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
-            articleId: doc.sourceId,
-            title: doc.title,
-            url: doc.url,
-            helpCenterId: doc.helpCenterId,
-            updatedAt: new Date(doc.sourceUpdatedAt).toISOString(),
-            articleType: doc.articleType,
-            articleContent: doc.content || null,
-        };
-    }).sort((a, b) => b.score - a.score).slice(0, topK);
+    try {
+        // Execute searches in parallel
+        const [publicResults, privateResults] = await Promise.all([
+            typesense.collections('memory_nodes').documents().search(publicSearchRequest),
+            privateSearchRequest ? typesense.collections('memory_nodes').documents().search(privateSearchRequest) : Promise.resolve(null)
+        ]);
+        
+        // Merge and de-duplicate results
+        const hits = [...(publicResults.hits || []), ...(privateResults?.hits || [])];
+        const uniqueHits = Array.from(new Map(hits.map(item => [item.document.id, item])).values());
+        
+        // Map to the HelpChunk type expected by the agent
+        const chunks: HelpChunk[] = uniqueHits.map(hit => {
+            const doc = hit.document as any;
+            return {
+                chunkText: doc.text,
+                score: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
+                articleId: doc.sourceId,
+                title: doc.title,
+                url: doc.url,
+                helpCenterId: doc.helpCenterId,
+                updatedAt: new Date(doc.sourceUpdatedAt).toISOString(),
+                articleType: doc.articleType,
+                articleContent: doc.content || null,
+            };
+        }).sort((a, b) => b.score - a.score).slice(0, topK);
 
-    return { chunks };
+        return { chunks };
+    } catch (error: any) {
+        if (error.httpStatus === 404) {
+            console.warn("Typesense search failed: 'memory_nodes' collection not found. Returning empty results.");
+            return { chunks: [] };
+        }
+        console.error("Typesense search failed in searchHelpCenter:", error);
+        throw error; // Re-throw other errors
+    }
 }
 
 async function searchSupport(params: SearchSupportParams): Promise<SearchSupportResult> {
@@ -90,16 +99,25 @@ async function searchSupport(params: SearchSupportParams): Promise<SearchSupport
         'filter_by': `type:='support_intent' && hubId:=${hubId}`
     };
 
-    const results = await typesense.collections('memory_nodes').documents().search(searchParameters);
-    
-    const intents: any[] = (results.hits || []).map(hit => {
-        return {
-            ...(hit.document as SupportIntentNode),
-            _searchScore: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
-        };
-    });
+    try {
+        const results = await typesense.collections('memory_nodes').documents().search(searchParameters);
+        
+        const intents: any[] = (results.hits || []).map(hit => {
+            return {
+                ...(hit.document as SupportIntentNode),
+                _searchScore: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
+            };
+        });
 
-    return { intents };
+        return { intents };
+    } catch (error: any) {
+        if (error.httpStatus === 404) {
+            console.warn("Typesense search failed: 'memory_nodes' collection not found. Returning empty results.");
+            return { intents: [] };
+        }
+        console.error("Typesense search failed in searchSupport:", error);
+        throw error;
+    }
 }
 
 export interface SearchSalesExtractionsParams {
@@ -125,18 +143,27 @@ async function searchSalesExtractions(params: SearchSalesExtractionsParams): Pro
         'per_page': topK,
         'sort_by': '_text_match:desc',
     };
+    
+    try {
+        const results = await typesense.collections('sales_extractions').documents().search(searchParameters);
 
-    const results = await typesense.collections('sales_extractions').documents().search(searchParameters);
+        const extractions: SalesExtractionResult[] = (results.hits || []).map(hit => {
+            return {
+                id: hit.document.id,
+                ...(hit.document as any),
+                _searchScore: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
+            };
+        });
 
-    const extractions: SalesExtractionResult[] = (results.hits || []).map(hit => {
-        return {
-            id: hit.document.id,
-            ...(hit.document as any),
-            _searchScore: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
-        };
-    });
-
-    return { extractions };
+        return { extractions };
+    } catch (error: any) {
+        if (error.httpStatus === 404) {
+            console.warn("Typesense search failed: 'sales_extractions' collection not found. Returning empty results.");
+            return { extractions: [] };
+        }
+        console.error("Typesense search failed in searchSalesExtractions:", error);
+        throw error;
+    }
 }
 
 /**
@@ -273,9 +300,13 @@ async function deleteChunksForArticle(articleId: string) {
       filter_by: `sourceId:=${articleId}`,
     });
   } catch (error: any) {
-    if (error.httpStatus !== 404) {
+    if (error.httpStatus === 404) {
+      // This is okay. It means either the collection doesn't exist or no documents matched the filter.
+      // In either case, the documents are gone, which was the goal.
+      console.log(`No chunks found to delete for article ${articleId} (or collection doesn't exist).`);
+    } else {
       console.error(`Error deleting chunks for article ${articleId}:`, error);
-      throw error;
+      throw error; // Re-throw other errors
     }
   }
 }

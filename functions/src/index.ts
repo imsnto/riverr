@@ -570,20 +570,29 @@ export const processBrainJob = functions.runWith({ memory: '1GB', timeoutSeconds
                     });
 
                     // c. Find matching persona via vector search in Typesense
-                    const searchRequest = {
-                        'searches': [{
-                            'collection': 'memory_nodes',
-                            'q': '*',
-                            'vector_query': 'embedding:({embedding}, k:1)'.replace('{embedding}', JSON.stringify(leadEmbedding)),
-                            'filter_by': `spaceId:=${spaceId} && type:='sales_persona_segment'`
-                        }]
-                    };
-                    const searchResult = await typesenseClient.multiSearch.perform(searchRequest, {});
-                    const hits = searchResult.results[0]?.hits;
-
                     let matchedPersona: SalesPersonaSegmentNode | null = null;
-                    if (hits && hits.length > 0) {
-                        matchedPersona = hits[0].document as SalesPersonaSegmentNode;
+                    try {
+                        const searchRequest = {
+                            'searches': [{
+                                'collection': 'memory_nodes',
+                                'q': '*',
+                                'vector_query': `embedding:(${JSON.stringify(leadEmbedding)}, k:1)`,
+                                'filter_by': `spaceId:=${spaceId} && type:='sales_persona_segment'`
+                            }]
+                        };
+                        const searchResult = await typesenseClient.multiSearch.perform(searchRequest, {});
+                        const hits = searchResult.results[0]?.hits;
+
+                        if (hits && hits.length > 0) {
+                            matchedPersona = hits[0].document as SalesPersonaSegmentNode;
+                        }
+                    } catch (e: any) {
+                        if (e.httpStatus === 404) {
+                            console.warn(`Typesense search failed for lead ${lead.id}: collection not found. Skipping persona match.`);
+                        } else {
+                            // Don't fail the whole job, just log the error for this lead.
+                            console.error(`Error during Typesense search for lead ${lead.id}:`, e.message || e);
+                        }
                     }
                     
                     // d. Recommend next best action and message pattern.
@@ -659,6 +668,7 @@ export const processBrainJob = functions.runWith({ memory: '1GB', timeoutSeconds
       });
     }
   });
+
 
 
 
