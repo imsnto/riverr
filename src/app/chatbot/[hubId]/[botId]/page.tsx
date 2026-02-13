@@ -252,7 +252,6 @@ export default function ChatbotWidgetPage() {
     };
     
     try {
-      console.log({botConfig, currentConversation, incomingMessage})
         await invokeAgent({
             bot: botConfig,
             conversation: JSON.parse(JSON.stringify(currentConversation)),
@@ -300,7 +299,7 @@ export default function ChatbotWidgetPage() {
                   <Input type="text" placeholder="Your name" value={capturedName} onChange={(e) => setCapturedName(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white" />
                   <Input type="email" placeholder="Your email" value={capturedEmail} onChange={(e) => setCapturedEmail(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white" />
                   <Button onClick={handleIdentitySubmit} className="w-full" style={{ backgroundColor: primary }}>Start Chat</Button>
-                  {!bot.identityCapture.required && <Button variant="link" className="w-full text-zinc-400" onClick={() => setIsCapturingIdentity(false)}>Skip for now</Button>}
+                  {!bot.identityCapture?.required && <Button variant="link" className="w-full text-zinc-400" onClick={() => setIsCapturingIdentity(false)}>Skip for now</Button>}
               </div>
           </div>
       )
@@ -380,12 +379,12 @@ export default function ChatbotWidgetPage() {
                 return (
                 <div
                     key={msg.id}
-                    className={cn('flex items-end gap-2', isAgent ? 'justify-start' : 'justify-end')}
+                    className={cn('flex items-end gap-2 min-w-0', isAgent ? 'justify-start' : 'justify-end')}
                 >
                     {isAgent ? (
-                    <div>
+                    <div className="min-w-0">
                         <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
-                        {msg.content && <div className="text-sm prose prose-sm prose-invert max-w-none break-all" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
+                        {msg.content && <div className="text-sm prose prose-sm prose-invert max-w-none break-words overflow-hidden [&_a]:break-all [&_a]:whitespace-normal [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:overflow-x-auto [&_code]:break-words" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
                         {renderAttachments(msg)}
                         </div>
                         <p className="text-xs text-zinc-500 mt-2">{agent?.name || 'AI Agent'}</p>
@@ -413,7 +412,7 @@ export default function ChatbotWidgetPage() {
 
       {/* Footer */}
       <div className="p-2 border-t shrink-0 flex items-end gap-2" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-        {/* <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" multiple />
+        <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" multiple />
         <Popover>
             <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0">
@@ -426,7 +425,7 @@ export default function ChatbotWidgetPage() {
                     Attachment
                 </Button>
             </PopoverContent>
-        </Popover> */}
+        </Popover>
 
         <div className="relative flex-1">
             {attachments.length > 0 && (

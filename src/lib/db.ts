@@ -1590,28 +1590,28 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
       
       const updatePatch: {[key: string]: any} = {};
 
-      const normalizedName = normalizeName(existingVisitor.name);
-      if (!normalizedName) {
-        const whimsicalName = generateWhimsicalName();
-        updatePatch.name = whimsicalName;
-        existingVisitor.name = whimsicalName;
-      } else if (normalizedName !== existingVisitor.name) {
-        updatePatch.name = normalizedName;
-        existingVisitor.name = normalizedName;
+      const cleanName = normalizeName(existingVisitor.name);
+      if (!cleanName) {
+        const newName = generateWhimsicalName();
+        updatePatch.name = newName;
+        existingVisitor.name = newName;
+      } else if (cleanName !== existingVisitor.name) {
+        updatePatch.name = cleanName;
+        existingVisitor.name = cleanName;
       }
 
-      const normalizedEmail = normalizeEmail(existingVisitor.email);
-      if (normalizedEmail !== existingVisitor.email) {
-        updatePatch.email = normalizedEmail;
-        existingVisitor.email = normalizedEmail;
+      const cleanEmail = normalizeEmail(existingVisitor.email);
+      if (cleanEmail !== existingVisitor.email) {
+          updatePatch.email = cleanEmail;
+          existingVisitor.email = cleanEmail;
       }
 
-      const normalizedCompany = normalizeCompany(existingVisitor.companyName);
-      if (normalizedCompany !== existingVisitor.companyName) {
-        updatePatch.companyName = normalizedCompany;
-        existingVisitor.companyName = normalizedCompany;
+      const cleanCompany = normalizeCompany(existingVisitor.companyName);
+      if (cleanCompany !== existingVisitor.companyName) {
+          updatePatch.companyName = cleanCompany;
+          existingVisitor.companyName = cleanCompany;
       }
-
+      
       if (Object.keys(updatePatch).length > 0) {
         await updateDoc(visitorRef, updatePatch);
       }
@@ -1622,15 +1622,16 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
 
       return existingVisitor;
     } else {
-      const name = normalizeName(details?.name) ?? generateWhimsicalName();
+      const rawName = normalizeName(details?.name ?? null);
+      const name = rawName ?? generateWhimsicalName();
 
       const newVisitor: Omit<Visitor, 'id'> = {
         name: name,
-        email: normalizeEmail(details?.email),
+        email: normalizeEmail(details?.email ?? null),
+        companyName: normalizeCompany(details?.companyName ?? null),
         avatarUrl: details?.avatarUrl || `https://placehold.co/100x100.png?text=${(name?.[0] || 'U')}`,
         location: {pathname: details?.location?.pathname || '', domain: details?.location?.domain || ''},
         lastSeen: new Date().toISOString(),
-        companyName: normalizeCompany(details?.companyName),
         sessions: 1,
         companyId: null,
         companyUsers: 0,
@@ -1639,7 +1640,18 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
         contactId: null,
       };
 
-      await setDoc(visitorRef, newVisitor);
+      try {
+        await setDoc(visitorRef, newVisitor);
+      } catch (serverError) {
+        const permissionError = new FirestorePermissionError({
+          path: visitorRef.path,
+          operation: 'create',
+          requestResourceData: newVisitor,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw serverError;
+      }
+      
       return { id: visitorId, ...newVisitor };
     }
   } catch (serverError: any) {
@@ -1790,18 +1802,3 @@ export const startBrainJob = async (type: BrainJob['type'], params: Record<strin
     const docRef = await addDoc(collection(db, 'brain_jobs'), jobData);
     return docRef.id;
 };
-
-    
-
-    
-
-    
-
-
-
-
-    
-
-    
-
-    
