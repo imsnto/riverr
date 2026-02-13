@@ -63,17 +63,6 @@ export default function AllUsersTimesheet({ onUserSelect, users, timeEntries, we
           <h3 className="text-lg font-semibold whitespace-nowrap">{format(weekInterval.start, 'MMM d')} - {format(weekInterval.end, 'MMM d')}</h3>
           <Button variant="outline" onClick={onThisWeek}>This week</Button>
         </div>
-        <div className="flex items-center gap-2">
-          <Select defaultValue="all-members">
-            <SelectTrigger className="w-full sm:w-[150px]">
-              <SelectValue placeholder="All members" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all-members">All members</SelectItem>
-              {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
       
       <div className="overflow-x-auto border rounded-lg">
