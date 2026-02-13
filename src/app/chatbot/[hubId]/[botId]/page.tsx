@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { marked } from 'marked';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { invokeAgent, createConversationAndLinkCrm } from '@/app/actions/chat';
+import { invokeAgent, createConversationAndLinkCrm, ensureConversationCrmLinkedAction } from '@/app/actions/chat';
 
 
 interface BotDataWithAgents extends BotData {
@@ -144,6 +144,7 @@ export default function ChatbotWidgetPage() {
       const existingConvo = convos.find(c => c.visitorId === visitorId);
 
       if (existingConvo) {
+        await ensureConversationCrmLinkedAction(existingConvo.id);
         convoUnsubRef.current = db.getConversation(existingConvo.id, setConversation);
         unsubRef.current = db.getMessagesForConversations(
           [existingConvo.id],

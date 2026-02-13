@@ -81,16 +81,14 @@ async function searchSupport(params: SearchSupportParams): Promise<SearchSupport
 
     if (!hubId) return { intents: [] };
 
-    // For now, simple text search. Later, this will be a vector search.
     const searchParameters = {
         'q': query,
         'query_by': 'textForEmbedding,title,description',
         'query_by_weights': '4,2,1',
         'per_page': topK,
-        'sort_by': '_text_match:desc'
+        'sort_by': '_text_match:desc',
+        'filter_by': `type:='support_intent' && hubId:=${hubId}`
     };
-    
-    const filter = `type:='support_intent' && hubId:=${hubId}`;
 
     const results = await typesense.collections('memory_nodes').documents().search(searchParameters);
     
@@ -552,5 +550,9 @@ export async function createConversationAndLinkCrm(args: {
 
   const snap = await convoRef.get();
   return { id: convoRef.id, ...(snap.data() as any) };
+}
+
+export async function ensureConversationCrmLinkedAction(conversationId: string) {
+  return await ensureCrmLinkedForConversationAdmin(conversationId);
 }
     
