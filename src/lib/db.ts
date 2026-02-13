@@ -1256,21 +1256,36 @@ export const upsertChatContactFromVisitor = async (spaceId: string, visitor: Vis
 };
 
 async function syncContactFromVisitor(contactId: string, visitor: Visitor) {
-  const name = normalizeName(visitor.name) ?? null;
-  const email = normalizeEmail(visitor.email);
+  const contactRef = doc(db, "contacts", contactId);
+  const contactSnap = await getDoc(contactRef);
+  if (!contactSnap.exists()) return; // Contact doesn't exist, nothing to sync
+
+  const contact = contactSnap.data() as Contact;
+  
+  const visitorName = normalizeName(visitor.name);
+  const visitorEmail = normalizeEmail(visitor.email);
 
   const patch: any = { updatedAt: serverTimestamp(), lastSeenAt: serverTimestamp() };
+  let needsUpdate = false;
 
-  // Only upgrade contact name if it's blank/anonymous
-  if (name) patch.name = name;
-
-  // Only set primaryEmail if it's valid
-  if (email) {
-    patch.primaryEmail = email;
-    patch.emails = arrayUnion(email);
+  // Only update name if contact's name is blank and visitor's is not
+  if (isBlank(contact.name) && visitorName) {
+    patch.name = visitorName;
+    needsUpdate = true;
   }
 
-  await updateDoc(doc(db, "contacts", contactId), patch);
+  // Add email if it's new
+  if (visitorEmail && !(contact.emails || []).includes(visitorEmail)) {
+    patch.emails = arrayUnion(visitorEmail);
+    if (isBlank(contact.primaryEmail)) {
+      patch.primaryEmail = visitorEmail;
+    }
+    needsUpdate = true;
+  }
+
+  if (needsUpdate) {
+    await updateDoc(contactRef, patch);
+  }
 }
 
 async function ensureCrmLinkedForConversation(conversationId: string): Promise<string | null> {
@@ -1573,51 +1588,49 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
     if (visitorSnap.exists()) {
       const existingVisitor = { id: visitorSnap.id, ...visitorSnap.data() } as Visitor;
       
-      const updatePatch: Partial<Visitor> = {};
-      const cleanName = normalizeName(existingVisitor.name);
-      
-      if (!cleanName) {
-        const newName = generateWhimsicalName();
-        updatePatch.name = newName;
-        existingVisitor.name = newName; // Update local copy immediately
-      } else if (cleanName !== existingVisitor.name) {
-        updatePatch.name = cleanName;
-        existingVisitor.name = cleanName;
+      const updatePatch: {[key: string]: any} = {};
+
+      const normalizedName = normalizeName(existingVisitor.name);
+      if (!normalizedName) {
+        const whimsicalName = generateWhimsicalName();
+        updatePatch.name = whimsicalName;
+        existingVisitor.name = whimsicalName;
+      } else if (normalizedName !== existingVisitor.name) {
+        updatePatch.name = normalizedName;
+        existingVisitor.name = normalizedName;
       }
 
-      const cleanEmail = normalizeEmail(existingVisitor.email);
-      if (cleanEmail !== existingVisitor.email) {
-        updatePatch.email = cleanEmail;
-        existingVisitor.email = cleanEmail;
+      const normalizedEmail = normalizeEmail(existingVisitor.email);
+      if (normalizedEmail !== existingVisitor.email) {
+        updatePatch.email = normalizedEmail;
+        existingVisitor.email = normalizedEmail;
       }
 
-      const cleanCompany = normalizeCompany(existingVisitor.companyName);
-      if (cleanCompany !== existingVisitor.companyName) {
-        updatePatch.companyName = cleanCompany;
-        existingVisitor.companyName = cleanCompany;
+      const normalizedCompany = normalizeCompany(existingVisitor.companyName);
+      if (normalizedCompany !== existingVisitor.companyName) {
+        updatePatch.companyName = normalizedCompany;
+        existingVisitor.companyName = normalizedCompany;
       }
 
       if (Object.keys(updatePatch).length > 0) {
-        await updateDoc(visitorRef, updatePatch as any);
+        await updateDoc(visitorRef, updatePatch);
       }
       
-      // Sync to contact if it exists
       if (existingVisitor.contactId) {
         await syncContactFromVisitor(existingVisitor.contactId, existingVisitor);
       }
 
       return existingVisitor;
     } else {
-      const rawName = normalizeName(details?.name ?? null);
-      const name = rawName ?? generateWhimsicalName();
+      const name = normalizeName(details?.name) ?? generateWhimsicalName();
 
       const newVisitor: Omit<Visitor, 'id'> = {
         name: name,
-        email: normalizeEmail(details?.email ?? null),
+        email: normalizeEmail(details?.email),
         avatarUrl: details?.avatarUrl || `https://placehold.co/100x100.png?text=${(name?.[0] || 'U')}`,
         location: {pathname: details?.location?.pathname || '', domain: details?.location?.domain || ''},
         lastSeen: new Date().toISOString(),
-        companyName: normalizeCompany(details?.companyName ?? null),
+        companyName: normalizeCompany(details?.companyName),
         sessions: 1,
         companyId: null,
         companyUsers: 0,
@@ -1626,18 +1639,7 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
         contactId: null,
       };
 
-      try {
-        await setDoc(visitorRef, newVisitor);
-      } catch(serverError) {
-        const permissionError = new FirestorePermissionError({
-          path: visitorRef.path,
-          operation: 'create',
-          requestResourceData: newVisitor,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        throw serverError;
-      }
-
+      await setDoc(visitorRef, newVisitor);
       return { id: visitorId, ...newVisitor };
     }
   } catch (serverError: any) {
@@ -1662,7 +1664,6 @@ export const updateVisitor = async (visitorId: string, updates: Partial<Visitor>
         lastSeen: new Date().toISOString()
       });
 
-      // Keep CRM contact synced when identity improves
       try {
         const freshSnap = await getDoc(visitorRef);
         if (freshSnap.exists()) {
@@ -1798,6 +1799,8 @@ export const startBrainJob = async (type: BrainJob['type'], params: Record<strin
 
 
 
+
+    
 
     
 
