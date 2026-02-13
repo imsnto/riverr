@@ -11,7 +11,7 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
-import { Bot, Calendar, CircleDot, Clock, Flag, Folder, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight, Paperclip, File, Image as ImageIcon, Plus, Trash2, CheckCircle2, X, ArrowLeft, ThumbsUp, MoreHorizontal, Edit, AtSign, Star } from 'lucide-react';
+import { Bot, Calendar, CircleDot, Clock, Flag, Folder, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight, Paperclip, File, Image as ImageIcon, Plus, Trash2, CheckCircle2, X, ArrowLeft, ThumbsUp, MoreHorizontal, Edit, AtSign, Star, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
@@ -725,12 +725,42 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
                     </DialogFooter>
                 ) : isMobile && (
                     <div className="p-2 border-t bg-card shrink-0">
-                        <form onSubmit={handleAddComment} className="relative">
-                            <Input name="comment" placeholder="Ask a question or post an update..." className="pr-32" />
-                            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
-                                <Button type="button" variant="ghost" size="icon"><Paperclip className="h-5 w-5" /></Button>
-                                <Button type="button" variant="ghost" size="icon"><Star className="h-5 w-5" /></Button>
-                                <Button type="button" variant="ghost" size="icon"><AtSign className="h-5 w-5" /></Button>
+                        {attachments.length > 0 && (
+                            <div className="mb-2 space-y-1">
+                                {attachments.map((file, i) => (
+                                <div key={i} className="flex items-center justify-between gap-2 text-sm bg-muted p-2 rounded-md">
+                                    <div className="flex items-center gap-2 overflow-hidden">
+                                        {file.type.startsWith("image/") ? <ImageIcon className="h-4 w-4 flex-shrink-0" /> : <File className="h-4 w-4 flex-shrink-0" />}
+                                        <span className="truncate">{file.name}</span>
+                                    </div>
+                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                ))}
+                            </div>
+                        )}
+                        <form onSubmit={handleAddComment} className="relative flex items-center gap-2">
+                            <input
+                                type="file"
+                                multiple
+                                ref={fileInputRef}
+                                className="hidden"
+                                onChange={handleFileSelect}
+                            />
+                            <Textarea 
+                                name="comment" 
+                                placeholder="Ask a question or post an update..." 
+                                className="pr-10"
+                                minRows={1}
+                            />
+                            <div className="flex flex-col">
+                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
+                                    <Paperclip className="h-4 w-4" />
+                                </Button>
+                                <Button type="submit" variant="ghost" size="icon" className="h-8 w-8">
+                                    <Send className="h-4 w-4" />
+                                </Button>
                             </div>
                         </form>
                     </div>
