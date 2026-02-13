@@ -1,3 +1,4 @@
+
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -813,7 +814,7 @@ export default function Dashboard({ view }: { view: string }) {
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           tasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
+          onUpdateTasks={onUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
@@ -828,7 +829,7 @@ export default function Dashboard({ view }: { view: string }) {
       );
       case 'tickets': return <TicketsBoard 
           tickets={tickets} 
-          onUpdateTickets={handleUpdateTickets}
+          onUpdateTickets={onUpdateTickets}
           conversations={chatConversations}
           activeHub={activeHub!}
           activeSpace={activeSpace}
@@ -847,7 +848,7 @@ export default function Dashboard({ view }: { view: string }) {
       />;
       case 'deals': return <DealsBoard
           deals={deals}
-          onUpdateDeals={handleUpdateDeals}
+          onUpdateDeals={onUpdateDeals}
           onAddDeal={handleAddDeal}
           onDataRefresh={fetchData}
           contacts={contacts}
@@ -926,7 +927,7 @@ export default function Dashboard({ view }: { view: string }) {
               tasks={tasks}
               selectedProjectId={selectedProjectId}
               onSelectProject={handleSelectProject}
-              onNewProject={onNewProject}
+              onNewProject={handleNewProject}
             />
           )}
           <main
@@ -990,4 +991,3 @@ export default function Dashboard({ view }: { view: string }) {
     </SidebarProvider>
   );
 }
-
