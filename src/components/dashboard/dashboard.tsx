@@ -102,7 +102,7 @@ export default function Dashboard({ view }: { view: string }) {
   const [chatConversations, setChatConversations] = useState<Conversation[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [bots, setBots] = useState<Bot[]>([]);
-  const [escalationRules, setEscalationRules] = useState<EscalationIntakeRule[]>([]);
+  const [escalationRules, setEscalationIntakeRules] = useState<EscalationIntakeRule[]>([]);
 
   // Help Center states
   const [helpCenters, setHelpCenters] = useState<HelpCenter[]>([]);
@@ -209,7 +209,7 @@ export default function Dashboard({ view }: { view: string }) {
         setJobFlowTasks(fetchedJobFlowTasks);
         setSpaceHubs(fetchedHubs);
         setBots(fetchedBots);
-        setEscalationRules(fetchedEscalationRules);
+        setEscalationIntakeRules(fetchedEscalationRules);
         setContacts(fetchedContacts);
         setHelpCenters(fetchedHelpCenters);
   
@@ -805,12 +805,12 @@ export default function Dashboard({ view }: { view: string }) {
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           tasks={tasks}
-          onUpdateTasks={onUpdateTasks}
+          onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
-          onNewTaskRequest={onNewTaskRequest}
+          onNewTaskRequest={handleNewTaskRequest}
           onTaskClick={handleTaskClick}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
@@ -982,3 +982,4 @@ export default function Dashboard({ view }: { view: string }) {
     </SidebarProvider>
   );
 }
+
