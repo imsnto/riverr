@@ -1288,48 +1288,6 @@ async function syncContactFromVisitor(contactId: string, visitor: Visitor) {
   }
 }
 
-async function ensureCrmLinkedForConversation(conversationId: string): Promise<string | null> {
-  const convoRef = doc(db, "conversations", conversationId);
-  const convoSnap = await getDoc(convoRef);
-  if (!convoSnap.exists()) return null;
-
-  const convo = { id: convoSnap.id, ...convoSnap.data() } as Conversation;
-  if (convo.contactId) return convo.contactId;
-
-  if (!convo.visitorId) return null;
-
-  const hub = await getHub(convo.hubId);
-  if (!hub) return null;
-
-  const visitorRef = doc(db, "visitors", convo.visitorId);
-  const visitorSnap = await getDoc(visitorRef);
-  if (!visitorSnap.exists()) return null;
-
-  const visitor = { id: visitorSnap.id, ...visitorSnap.data() } as Visitor;
-
-  // Ensure visitor has a name (whimsical if missing)
-  if (isBlank(visitor.name)) {
-    const whimsical = generateWhimsicalName();
-    await updateDoc(visitorRef, { name: whimsical });
-    visitor.name = whimsical;
-  }
-
-  const contact = await upsertChatContactFromVisitor(hub.spaceId, visitor);
-
-  // Link visitor -> contact
-  await updateDoc(visitorRef, { contactId: contact.id });
-
-  // Link convo -> contact + cache
-  await updateDoc(convoRef, {
-    contactId: contact.id,
-    visitorName: visitor.name,
-    visitorEmail: visitor.email || null,
-    updatedAt: new Date().toISOString(),
-  } as any);
-
-  return contact.id;
-}
-
 export const getContacts = async (spaceId: string): Promise<Contact[]> => {
   const q = query(collection(db, 'contacts'), where('spaceId', '==', spaceId));
   const snapshot = await getDocs(q);
@@ -1439,9 +1397,6 @@ export const addChatMessage = async (message: Omit<ChatMessage, "id">): Promise<
   
     // Only update summaries for actual messages, not system events or notes
     if (message.conversationId && message.type === 'message') {
-      if (message.senderType === "contact") {
-        await ensureCrmLinkedForConversation(message.conversationId);
-      }
 
       let authorName = "System";
       if (message.senderType === 'agent') {

@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { marked } from 'marked';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { invokeAgent } from '@/app/actions/chat';
+import { invokeAgent, createConversationAndLinkCrm } from '@/app/actions/chat';
 
 
 interface BotDataWithAgents extends BotData {
@@ -106,7 +106,7 @@ export default function ChatbotWidgetPage() {
       let visitorId = localStorage.getItem('riverr_chat_visitor_id');
       const fetchedVisitor = visitorId ? await db.getOrCreateVisitor(visitorId) : null;
       
-      if (!appUser && combinedBotData?.identityCapture && combinedBotData?.identityCapture.enabled && (!fetchedVisitor || (!fetchedVisitor.name && !fetchedVisitor.email))) {
+      if (!appUser && combinedBotData?.identityCapture.enabled && (!fetchedVisitor || (!fetchedVisitor.name && !fetchedVisitor.email))) {
         setIsCapturingIdentity(true);
       } else {
         setIsCapturingIdentity(false);
@@ -188,19 +188,13 @@ export default function ChatbotWidgetPage() {
         const agentIds = bot.agentIds || [];
         const assigneeId = agentIds.length > 0 ? agentIds[Math.floor(Math.random() * agentIds.length)] : null;
         
-        const newConvoData: Omit<Conversation, 'id'> = {
-            hubId,
-            contactId: null, // This will be backfilled by the backend logic
-            visitorId: visitor.id,
-            assigneeId,
-            status: 'bot', // Start with bot
-            state: 'ai_active',
-            lastMessage: messageText || "Sent an attachment",
-            lastMessageAt: new Date().toISOString(),
-            lastMessageAuthor: visitor.name,
-        };
-
-      const newConvo = await db.addConversation(newConvoData);
+      const newConvo = await createConversationAndLinkCrm({
+          hubId,
+          visitorId: visitor.id,
+          assigneeId,
+          lastMessage: messageText || "Sent an attachment",
+          lastMessageAuthor: visitor.name || null,
+      });
       currentConversation = newConvo;
 
       convoUnsubRef.current = db.getConversation(newConvo.id, setConversation);
@@ -299,7 +293,7 @@ export default function ChatbotWidgetPage() {
                   <Input type="text" placeholder="Your name" value={capturedName} onChange={(e) => setCapturedName(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white" />
                   <Input type="email" placeholder="Your email" value={capturedEmail} onChange={(e) => setCapturedEmail(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white" />
                   <Button onClick={handleIdentitySubmit} className="w-full" style={{ backgroundColor: primary }}>Start Chat</Button>
-                  {!bot.identityCapture?.required && <Button variant="link" className="w-full text-zinc-400" onClick={() => setIsCapturingIdentity(false)}>Skip for now</Button>}
+                  {!bot.identityCapture.required && <Button variant="link" className="w-full text-zinc-400" onClick={() => setIsCapturingIdentity(false)}>Skip for now</Button>}
               </div>
           </div>
       )

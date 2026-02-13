@@ -7,7 +7,7 @@ import * as db from '@/lib/db';
 import type { Firestore } from "firebase-admin/firestore";
 import { getTypesenseAdmin, getTypesenseSearch } from '@/lib/typesense';
 import { indexHelpCenterArticleToChunks } from '@/lib/knowledge/indexer';
-import { LeadStateNode, Contact, SalesPersonaSegmentNode, ChatMessage } from '@/lib/data';
+import { LeadStateNode, Contact, SalesPersonaSegmentNode, ChatMessage, Visitor } from '@/lib/data';
 import { draftSalesEmail, type DraftSalesEmailInput, type DraftSalesEmailOutput } from '@/ai/flows/draft-sales-email';
 
 const typesense = getTypesenseSearch();
@@ -172,10 +172,6 @@ export async function updateConversation(conversationId: string, data: Partial<C
     // 2. Process metadata updates (Last message preview, author name, etc.)
     if (message.conversationId && message.type === 'message') {
       let authorName = "System";
-
-      if (message.senderType === "contact") {
-        await db.ensureCrmLinkedForConversation(message.conversationId);
-      }
   
       // Direct server-to-server fetch for author names
       if (message.senderType === 'agent') {
@@ -419,4 +415,142 @@ export async function draftSalesEmailAction(input: DraftSalesEmailInput): Promis
     return draftSalesEmail(input);
 }
 
+
+function normalizeEmail(email?: string | null) {
+  const e = (email || "").trim().toLowerCase();
+  if (!e || !e.includes("@")) return null;
+  if (["n/a","na","none","null"].includes(e)) return null;
+  return e;
+}
+
+function normalizeName(name?: string | null) {
+  const n = (name || "").trim();
+  if (!n) return null;
+  const lower = n.toLowerCase();
+  if (["anonymous user","anonymous","n/a"].includes(lower)) return null;
+  return n;
+}
+
+const whimsicalAdjectives = ["Clever", "Silly", "Witty", "Happy", "Brave", "Curious", "Dapper", "Eager", "Fancy", "Gentle", "Jolly", "Kindly", "Lucky", "Merry", "Nifty", "Plucky", "Quirky", "Sunny", "Thrifty", "Zippy", "Agile", "Blissful", "Calm", "Dandy", "Elated", "Fearless"];
+const whimsicalNouns = ["Alpaca", "Badger", "Capybara", "Dingo", "Echidna", "Fossa", "Gecko", "Hedgehog", "Impala", "Jerboa", "Koala", "Loris", "Mongoose", "Narwhal", "Okapi", "Pangolin", "Quokka", "Serval", "Tarsier", "Urial", "Wallaby", "Xerus", "Zebra", "Aardvark"];
+
+function generateWhimsicalName() {
+  return `${whimsicalAdjectives[Math.floor(Math.random()*whimsicalAdjectives.length)]} ${whimsicalNouns[Math.floor(Math.random()*whimsicalNouns.length)]}`;
+}
+
+async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
+  const convoRef = adminDB.collection("conversations").doc(conversationId);
+  const convoSnap = await convoRef.get();
+  if (!convoSnap.exists) return null;
+
+  const convo = convoSnap.data() as any;
+  if (convo.contactId) return convo.contactId;
+  if (!convo.visitorId) return null;
+
+  const hubSnap = await adminDB.collection("hubs").doc(convo.hubId).get();
+  if (!hubSnap.exists) return null;
+  const spaceId = hubSnap.data()?.spaceId;
+  if (!spaceId) return null;
+
+  const visitorRef = adminDB.collection("visitors").doc(convo.visitorId);
+  const visitorSnap = await visitorRef.get();
+  if (!visitorSnap.exists) return null;
+  const visitor = { id: visitorSnap.id, ...(visitorSnap.data() as any) }; // Visitor type needs to be available
+
+  // guarantee visitor has a name
+  const vName = normalizeName(visitor.name) ?? generateWhimsicalName();
+  const vEmail = normalizeEmail(visitor.email);
+
+  if (!normalizeName(visitor.name)) {
+    await visitorRef.update({ name: vName });
+    visitor.name = vName;
+  }
+
+  // 1) find existing contact by email
+  let contactId: string | null = null;
+
+  if (vEmail) {
+    const byEmail = await adminDB.collection("contacts")
+      .where("spaceId", "==", spaceId)
+      .where("primaryEmail", "==", vEmail)
+      .limit(1)
+      .get();
+    if (!byEmail.empty) contactId = byEmail.docs[0].id;
+  }
+
+  // 2) else find by externalIds.chatVisitorId
+  if (!contactId) {
+    const byVisitor = await adminDB.collection("contacts")
+      .where("spaceId", "==", spaceId)
+      .where("externalIds.chatVisitorId", "==", visitor.id)
+      .limit(1)
+      .get();
+    if (!byVisitor.empty) contactId = byVisitor.docs[0].id;
+  }
+
+  // 3) create if missing
+  if (!contactId) {
+    const now = new Date();
+    const newContactRef = await adminDB.collection("contacts").add({
+      spaceId,
+      name: vName,
+      company: visitor.companyName || null,
+      emails: vEmail ? [vEmail] : [],
+      phones: [],
+      primaryEmail: vEmail,
+      primaryPhone: null,
+      source: "chat",
+      externalIds: { chatVisitorId: visitor.id },
+      tags: [],
+      createdAt: now,
+      updatedAt: now,
+      lastSeenAt: now,
+      lastMessageAt: null,
+      lastOrderAt: null,
+      lastCallAt: null,
+      mergeParentId: null,
+      isMerged: false,
+    });
+    contactId = newContactRef.id;
+  }
+
+  // 4) link visitor + conversation
+  await Promise.all([
+    visitorRef.update({ contactId }),
+    convoRef.update({
+      contactId,
+      visitorName: visitor.name || vName,
+      visitorEmail: visitor.email || null,
+      updatedAt: new Date().toISOString(),
+    }),
+  ]);
+
+  return contactId;
+}
+
+export async function createConversationAndLinkCrm(args: {
+  hubId: string;
+  visitorId: string;
+  assigneeId: string | null;
+  lastMessage: string;
+  lastMessageAuthor: string | null;
+}) {
+  const convoRef = await adminDB.collection("conversations").add({
+    hubId: args.hubId,
+    contactId: null,
+    visitorId: args.visitorId,
+    assigneeId: args.assigneeId,
+    status: "bot",
+    state: "ai_active",
+    lastMessage: args.lastMessage,
+    lastMessageAt: new Date().toISOString(),
+    lastMessageAuthor: args.lastMessageAuthor,
+    updatedAt: new Date().toISOString(),
+  });
+
+  await ensureCrmLinkedForConversationAdmin(convoRef.id);
+
+  const snap = await convoRef.get();
+  return { id: convoRef.id, ...(snap.data() as any) };
+}
     
