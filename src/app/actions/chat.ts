@@ -172,14 +172,20 @@ export async function updateConversation(conversationId: string, data: Partial<C
     // 2. Process metadata updates (Last message preview, author name, etc.)
     if (message.conversationId && message.type === 'message') {
       let authorName = "System";
+
+      if (message.senderType === "contact") {
+        await db.ensureCrmLinkedForConversation(message.conversationId);
+      }
   
       // Direct server-to-server fetch for author names
       if (message.senderType === 'agent') {
         const userDoc = await adminDB.collection('users').doc(message.authorId).get();
-        if (userDoc.exists) authorName = userDoc.data()?.name;
-      } else {
-        const visitorDoc = await adminDB.collection('visitors').doc(message.authorId).get();
-        if (visitorDoc.exists) authorName = visitorDoc.data()?.name;
+        if (userDoc.exists) authorName = userDoc.data()?.name || 'Agent';
+      } else { // 'contact'
+        const convoSnap = await adminDB.collection('conversations').doc(message.conversationId).get();
+        if (convoSnap.exists()) {
+             authorName = convoSnap.data()?.visitorName || 'Unknown';
+        }
       }
   
       const preview = (message.content || "").slice(0, 140);
