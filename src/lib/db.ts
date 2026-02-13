@@ -104,9 +104,28 @@ const generateWhimsicalName = () => {
 
 const isBlank = (v?: string | null) => !v || v.trim().length === 0;
 
+const normalizeName = (name?: string | null) => {
+  const n = (name || "").trim();
+  if (!n) return null;
+  const lower = n.toLowerCase();
+  if (lower === "anonymous user" || lower === "anonymous" || lower === "n/a") return null;
+  return n;
+};
+
 const normalizeEmail = (email?: string | null) => {
   const e = (email || "").trim().toLowerCase();
-  return e.length ? e : null;
+  if (!e) return null;
+  if (e === "n/a" || e === "na" || e === "none" || e === "null") return null;
+  if (!e.includes("@")) return null;
+  return e;
+};
+
+const normalizeCompany = (company?: string | null) => {
+  const c = (company || "").trim();
+  if (!c) return null;
+  const lower = c.toLowerCase();
+  if (lower === "n/a" || lower === "na") return null;
+  return c;
 };
 
 
@@ -1536,26 +1555,52 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
     const visitorSnap = await getDoc(visitorRef);
     if (visitorSnap.exists()) {
       const existingVisitor = { id: visitorSnap.id, ...visitorSnap.data() } as Visitor;
-      if (!existingVisitor.name) {
+      
+      const updatePatch: Partial<Visitor> = {};
+      const cleanName = normalizeName(existingVisitor.name);
+      
+      if (!cleanName) {
         const newName = generateWhimsicalName();
-        await updateDoc(visitorRef, { name: newName });
+        updatePatch.name = newName;
         existingVisitor.name = newName;
+      } else if (cleanName !== existingVisitor.name) {
+        updatePatch.name = cleanName;
+        existingVisitor.name = cleanName;
       }
+
+      const cleanEmail = normalizeEmail(existingVisitor.email);
+      if (cleanEmail !== existingVisitor.email) {
+        updatePatch.email = cleanEmail;
+        existingVisitor.email = cleanEmail;
+      }
+
+      const cleanCompany = normalizeCompany(existingVisitor.companyName);
+       if (cleanCompany !== existingVisitor.companyName) {
+        updatePatch.companyName = cleanCompany;
+        existingVisitor.companyName = cleanCompany;
+      }
+
+      if (Object.keys(updatePatch).length > 0) {
+        await updateDoc(visitorRef, updatePatch as any);
+      }
+
       return existingVisitor;
     } else {
-      const name = details?.name || generateWhimsicalName();
+      const rawName = normalizeName(details?.name ?? null);
+      const name = rawName ?? generateWhimsicalName();
+
       const newVisitor: Omit<Visitor, 'id'> = {
         name: name,
-        email: details?.email || null,
+        email: normalizeEmail(details?.email ?? null),
         avatarUrl: details?.avatarUrl || `https://placehold.co/100x100.png?text=${(name?.[0] || 'U')}`,
         location: {pathname: details?.location?.pathname || '', domain: details?.location?.domain || ''},
         lastSeen: new Date().toISOString(),
-        companyName: 'N/A',
+        companyName: normalizeCompany(details?.companyName ?? null),
         sessions: 1,
-        companyId: 'N/A',
-        companyUsers: 1,
-        companyPlan: 'N/A',
-        companySpend: '$0.00',
+        companyId: null,
+        companyUsers: 0,
+        companyPlan: null,
+        companySpend: null,
         contactId: null,
       };
 
@@ -1741,3 +1786,6 @@ export const startBrainJob = async (type: BrainJob['type'], params: Record<strin
     
 
 
+
+
+    
