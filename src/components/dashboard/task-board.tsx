@@ -13,7 +13,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { ContentSkeleton } from './content-skeleton';
 
 interface TaskBoardProps {
-  tasks: Task[];
+  allTasks: Task[];
   onUpdateTasks: (tasks: Task[]) => void;
   projects: Project[];
   selectedProjectId: string | null;
@@ -31,7 +31,7 @@ interface TaskBoardProps {
 }
 
 export default function TaskBoard({ 
-    tasks, 
+    allTasks, 
     onUpdateTasks, 
     projects, 
     selectedProjectId,
@@ -96,7 +96,7 @@ export default function TaskBoard({
                         project={selectedProject}
                         projects={projects}
                         onSelectProject={handleSelectProject}
-                        allTasks={tasks}
+                        allTasks={allTasks}
                         onUpdateTasks={onUpdateTasks}
                         activeHub={activeHub}
                         allUsers={allUsers}
@@ -123,7 +123,7 @@ export default function TaskBoard({
                   project={selectedProject}
                   projects={projects}
                   onSelectProject={handleSelectProject}
-                  allTasks={tasks}
+                  allTasks={allTasks}
                   onUpdateTasks={onUpdateTasks}
                   activeHub={activeHub}
                   allUsers={allUsers}
