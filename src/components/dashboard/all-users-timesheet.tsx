@@ -54,7 +54,7 @@ export default function AllUsersTimesheet({ onUserSelect, users, timeEntries, we
   });
 
   return (
-    <div className="p-4 sm:p-6 rounded-lg bg-card text-card-foreground">
+    <div className="space-y-4 p-6">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={onPrevWeek} className="hidden sm:flex">Previous week</Button>
@@ -74,11 +74,6 @@ export default function AllUsersTimesheet({ onUserSelect, users, timeEntries, we
             </SelectContent>
           </Select>
         </div>
-      </div>
-      <div className="flex items-center gap-2 mb-4">
-          <Button variant="outline" size="sm"><DollarSign className="mr-2 h-4 w-4"/>Billable status</Button>
-          <Button variant="outline" size="sm"><Tag className="mr-2 h-4 w-4"/>Tag</Button>
-          <Button variant="outline" size="sm"><Clock className="mr-2 h-4 w-4"/>Tracked time</Button>
       </div>
       
       <div className="overflow-x-auto border rounded-lg">
