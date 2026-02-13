@@ -817,7 +817,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
-          onNewTaskRequest={onNewTaskRequest}
+          onNewTaskRequest={handleNewTaskRequest}
           onTaskClick={handleTaskClick}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
