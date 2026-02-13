@@ -805,12 +805,12 @@ export default function Dashboard({ view }: { view: string }) {
           selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           tasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
+          onUpdateTasks={onUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNewProject={handleNewProject}
-          onNewTaskRequest={handleNewTaskRequest}
+          onNewTaskRequest={onNewTaskRequest}
           onTaskClick={handleTaskClick}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
@@ -825,7 +825,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeHub={activeHub!}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={onUpdateActiveHub}
+          onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
           allHubs={spaceHubs}
           escalationRules={escalationRules}
@@ -846,7 +846,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeHub={activeHub!}
           activeSpace={activeSpace}
           allUsers={allUsers}
-          onUpdateActiveHub={onUpdateActiveHub}
+          onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => handleViewChange('settings')}
       />;
       case 'help-center': return <HelpCenterLayout bots={bots} />;
@@ -982,4 +982,5 @@ export default function Dashboard({ view }: { view: string }) {
     </SidebarProvider>
   );
 }
+
 
