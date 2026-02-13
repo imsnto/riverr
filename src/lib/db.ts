@@ -1436,7 +1436,7 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
       const name = details?.name || generateWhimsicalName();
       const newVisitor: Omit<Visitor, 'id'> = {
         name: name,
-        email: details?.email || 'N/A',
+        email: details?.email || null,
         avatarUrl: details?.avatarUrl || `https://placehold.co/100x100.png?text=${(name?.[0] || 'U')}`,
         location: {pathname: details?.location?.pathname || '', domain: details?.location?.domain || ''},
         lastSeen: new Date().toISOString(),
@@ -1446,6 +1446,7 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
         companyUsers: 1,
         companyPlan: 'N/A',
         companySpend: '$0.00',
+        contactId: null,
       };
 
       setDoc(visitorRef, newVisitor)
@@ -1595,5 +1596,9 @@ export const startBrainJob = async (type: BrainJob['type'], params: Record<strin
     const docRef = await addDoc(collection(db, 'brain_jobs'), jobData);
     return docRef.id;
 };
+
+    
+
+    
 
     
