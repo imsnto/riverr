@@ -1140,6 +1140,8 @@ export async function uploadImageToFirebase(file: File, hubId: string, docId: st
 
 
 // --- Contact, Visitor, and Conversation Management ---
+const isBlank = (v?: string | null) => !v || v.trim().length === 0;
+
 export const findOrCreateContact = async (spaceId: string, details: { email?: string, name?: string }): Promise<Contact> => {
     if (details.email) {
       const q = query(collection(db, "contacts"), where("primaryEmail", "==", details.email.toLowerCase()), where("spaceId", "==", spaceId), limit(1));
@@ -1148,17 +1150,20 @@ export const findOrCreateContact = async (spaceId: string, details: { email?: st
         return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Contact;
       }
     }
+
+    const providedName = isBlank(details.name) ? null : details.name!.trim();
+    const fallbackName = generateWhimsicalName();
   
     // Create new if not found
     const now = new Date();
     const newContactData: Omit<Contact, 'id'> = {
       spaceId: spaceId,
-      name: details.name || null,
+      name: providedName || fallbackName,
+      company: null,
       emails: details.email ? [details.email.toLowerCase()] : [],
       primaryEmail: details.email?.toLowerCase() || null,
       phones: [],
       primaryPhone: null,
-      company: null,
       source: 'chat',
       externalIds: {},
       tags: [],
@@ -1449,15 +1454,17 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
         contactId: null,
       };
 
-      setDoc(visitorRef, newVisitor)
-        .catch(async (serverError) => {
-          const permissionError = new FirestorePermissionError({
-            path: visitorRef.path,
-            operation: 'create',
-            requestResourceData: newVisitor,
-          });
-          errorEmitter.emit('permission-error', permissionError);
+      try {
+        await setDoc(visitorRef, newVisitor);
+      } catch(serverError) {
+        const permissionError = new FirestorePermissionError({
+          path: visitorRef.path,
+          operation: 'create',
+          requestResourceData: newVisitor,
         });
+        errorEmitter.emit('permission-error', permissionError);
+        throw serverError;
+      }
 
       return { id: visitorId, ...newVisitor };
     }
@@ -1568,6 +1575,7 @@ export const deleteHelpCenterArticle = async (articleId: string): Promise<void> 
     const articleRef = doc(db, "help_center_articles", articleId);
     await deleteDoc(articleRef);
 };
+
 
 // --- Business Brain ---
 export const getMemoryNodes = async (type: string): Promise<any[]> => {
