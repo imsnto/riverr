@@ -1,7 +1,6 @@
-
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TimeEntry, Project, Task, User, Status } from '@/lib/data';
 import { ChevronLeft, ChevronRight, MoreHorizontal, Dot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,6 +24,10 @@ interface WeeklyTimesheetProps {
 export default function WeeklyTimesheet({ userId, timeEntries, projects, tasks: initialTasks, weekStart, onPrevWeek, onNextWeek, onThisWeek, allUsers, statuses }: WeeklyTimesheetProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
 
   const weekStartsOn = 0; // Sunday
   const weekInterval = {
