@@ -49,7 +49,7 @@ import TaskDetailsDialog from './task-details-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { SidebarProvider } from '../ui/sidebar';
 import ProjectFormDialog from './project-form-dialog';
-import { ContentSkeleton } from './content-skeleton';
+import { DashboardSkeleton } from './dashboard-skeleton';
 import InboxLayout from './inbox-layout';
 import { cn } from '@/lib/utils';
 import { AppView } from '@/lib/routes';
@@ -58,7 +58,6 @@ import HelpCenterLayout from './help-center-layout';
 import { useIsMobile } from '@/hooks/use-mobile';
 import MobileBottomNav from './mobile-bottom-nav';
 import TeamTimesheets from './team-timesheets';
-import { DashboardSkeleton } from './dashboard-skeleton';
 import ContactsLayout from './contacts/contacts-layout';
 import DealsBoard from './deals-board';
 import { DealFormValues } from './create-deal-dialog';
@@ -810,26 +809,26 @@ export default function Dashboard({ view }: { view: string }) {
       case 'overview': return <div className="p-8"><Overview {...overviewProps} /></div>;
       case 'tasks': return (
         <TaskBoard
+          project={projects.find(p => p.id === selectedProjectId)!}
           projects={projects}
-          selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
-          tasks={tasks}
-          onUpdateTasks={onUpdateTasks}
+          allTasks={tasks}
+          onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
-          onNewProject={handleNewProject}
           onNewTaskRequest={onNewTaskRequest}
           onTaskClick={handleTaskClick}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
           onEditProject={handleEditProject}
           onDeleteProject={handleDeleteProject}
+          onBack={() => {}}
         />
       );
       case 'tickets': return <TicketsBoard 
           tickets={tickets} 
-          onUpdateTickets={onUpdateTickets}
+          onUpdateTickets={handleUpdateTickets}
           conversations={chatConversations}
           activeHub={activeHub!}
           activeSpace={activeSpace}
@@ -848,7 +847,7 @@ export default function Dashboard({ view }: { view: string }) {
       />;
       case 'deals': return <DealsBoard
           deals={deals}
-          onUpdateDeals={onUpdateDeals}
+          onUpdateDeals={handleUpdateDeals}
           onAddDeal={handleAddDeal}
           onDataRefresh={fetchData}
           contacts={contacts}
