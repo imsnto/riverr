@@ -342,7 +342,12 @@ export default function Dashboard({ view }: { view: string }) {
     }
   }, [view, currentView]);
 
-  if (isLoading || !appUser || !activeSpace || (view !== 'contacts' && !activeHub)) {
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  if (!appUser || !activeSpace || (view !== 'contacts' && !activeHub)) {
+    // We handle the loading state or redirect in page.tsx now, but as a safeguard:
     return <DashboardSkeleton />;
   }
   
@@ -809,7 +814,7 @@ export default function Dashboard({ view }: { view: string }) {
       case 'overview': return <div className="p-8"><Overview {...overviewProps} /></div>;
       case 'tasks': return (
         <TaskBoard
-          project={projects.find(p => p.id === selectedProjectId)!}
+          selectedProjectId={selectedProjectId}
           projects={projects}
           onSelectProject={handleSelectProject}
           allTasks={tasks}
@@ -821,9 +826,9 @@ export default function Dashboard({ view }: { view: string }) {
           onTaskClick={handleTaskClick}
           onUpdateTask={handleUpdateTask}
           onAddTask={handleAddTask}
+          onNewProject={handleNewProject}
           onEditProject={handleEditProject}
           onDeleteProject={handleDeleteProject}
-          onBack={() => {}}
         />
       );
       case 'tickets': return <TicketsBoard 
