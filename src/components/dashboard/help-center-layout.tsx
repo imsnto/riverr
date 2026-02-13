@@ -92,6 +92,56 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         }
     }, [helpCenters, activeHelpCenterId, sidebarView]);
     
+    const { combinedItems, title, breadcrumbs } = React.useMemo(() => {
+        let collectionsToShow: HelpCenterCollection[] = [];
+        let articlesToShow: HelpCenterArticle[] = [];
+        let breadcrumbs: HelpCenterCollection[] = [];
+        let viewTitle = 'Knowledge';
+
+        if (sidebarView === 'all-articles') {
+            viewTitle = 'All Content';
+            articlesToShow = articles;
+            collectionsToShow = collections;
+        } else if (sidebarView === 'knowledge-bases' && activeHelpCenterId) {
+            const hc = helpCenters.find(h => h.id === activeHelpCenterId);
+            viewTitle = hc?.name || 'Library';
+
+            if (selectedCollectionId) {
+                const collection = collections.find(c => c.id === selectedCollectionId);
+                viewTitle = collection?.name || 'Collection';
+                
+                let currentCollection = collection;
+                while (currentCollection) {
+                    breadcrumbs.unshift(currentCollection);
+                    currentCollection = collections.find(c => c.id === currentCollection!.parentId);
+                }
+
+                collectionsToShow = collections.filter(c => c.parentId === selectedCollectionId);
+                articlesToShow = articles.filter(a => a.folderId === selectedCollectionId);
+            } else {
+                 collectionsToShow = collections.filter(c => c.helpCenterId === activeHelpCenterId && !c.parentId);
+                 articlesToShow = articles.filter(a => a.helpCenterId === activeHelpCenterId && !a.folderId);
+            }
+        } else if (sidebarView === 'inbox') {
+            viewTitle = "Unassigned";
+            articlesToShow = articles.filter(a => !a.helpCenterId);
+            collectionsToShow = []; // No collections in this view
+            breadcrumbs = [];
+        }
+        
+        return { combinedItems: [...collectionsToShow, ...articlesToShow].sort((a,b) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt)), title: viewTitle, breadcrumbs };
+
+    }, [sidebarView, selectedCollectionId, activeHelpCenterId, articles, collections, helpCenters]);
+
+    const unassignedCount = useMemo(() => articles.filter(a => !a.helpCenterId).length, [articles]);
+    const unassignedArticles = useMemo(() => articles.filter(a => !a.helpCenterId), [articles]);
+    
+    const activeHelpCenter = helpCenters.find(hc => hc.id === activeHelpCenterId);
+    
+    const connectedAgents = useMemo(() => {
+        if (!activeHelpCenterId) return [];
+        return bots.filter(bot => bot.allowedHelpCenterIds?.includes(activeHelpCenterId));
+    }, [bots, activeHelpCenterId]);
 
     const showContentOnMobile = () => {
         if (isMobile) {
@@ -252,51 +302,6 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     const handleToggleSelectItem = (id: string) => {
         setSelectedItems(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     }
-    
-    const { combinedItems, title, breadcrumbs } = React.useMemo(() => {
-        let collectionsToShow: HelpCenterCollection[] = [];
-        let articlesToShow: HelpCenterArticle[] = [];
-        let breadcrumbs: HelpCenterCollection[] = [];
-        let viewTitle = 'Knowledge';
-
-        if (sidebarView === 'all-articles') {
-            viewTitle = 'All Content';
-            articlesToShow = articles;
-            collectionsToShow = collections;
-        } else if (sidebarView === 'knowledge-bases' && activeHelpCenterId) {
-            const hc = helpCenters.find(h => h.id === activeHelpCenterId);
-            viewTitle = hc?.name || 'Library';
-
-            if (selectedCollectionId) {
-                const collection = collections.find(c => c.id === selectedCollectionId);
-                viewTitle = collection?.name || 'Collection';
-                
-                let currentCollection = collection;
-                while (currentCollection) {
-                    breadcrumbs.unshift(currentCollection);
-                    currentCollection = collections.find(c => c.id === currentCollection!.parentId);
-                }
-
-                collectionsToShow = collections.filter(c => c.parentId === selectedCollectionId);
-                articlesToShow = articles.filter(a => a.folderId === selectedCollectionId);
-            } else {
-                 collectionsToShow = collections.filter(c => c.helpCenterId === activeHelpCenterId && !c.parentId);
-                 articlesToShow = articles.filter(a => a.helpCenterId === activeHelpCenterId && !a.folderId);
-            }
-        } else if (sidebarView === 'inbox') {
-            viewTitle = "Unassigned";
-            articlesToShow = articles.filter(a => !a.helpCenterId);
-            collectionsToShow = []; // No collections in this view
-            breadcrumbs = [];
-        }
-        
-        return { combinedItems: [...collectionsToShow, ...articlesToShow].sort((a,b) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt)), title: viewTitle, breadcrumbs };
-
-    }, [sidebarView, selectedCollectionId, activeHelpCenterId, articles, collections, helpCenters]);
-
-    const unassignedCount = useMemo(() => articles.filter(a => !a.helpCenterId).length, [articles]);
-    const unassignedArticles = useMemo(() => articles.filter(a => !a.helpCenterId), [articles]);
-
 
     const handleToggleAll = () => {
         if (selectedItems.length === combinedItems.length) {
@@ -393,13 +398,6 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         );
     }
     
-    const activeHelpCenter = helpCenters.find(hc => hc.id === activeHelpCenterId);
-    
-    const connectedAgents = useMemo(() => {
-        if (!activeHelpCenterId) return [];
-        return bots.filter(bot => bot.allowedHelpCenterIds?.includes(activeHelpCenterId));
-    }, [bots, activeHelpCenterId]);
-
     const sidebarComponent = (
         <HelpCenterSidebar
             collections={collections}
