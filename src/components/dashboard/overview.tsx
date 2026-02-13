@@ -4,7 +4,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Project, Task, TimeEntry, User, Job, JobFlowTemplate, JobFlowTask, Activity, DocumentComment } from '@/lib/data';
+import { Project, Task, TimeEntry, User, Job, JobFlowTemplate, JobFlowTask, Activity, DocumentComment, Hub } from '@/lib/data';
 import { CheckCircle, Clock, FolderKanban, GitBranch, UserCheck, MessageSquare, CheckSquare, FileText, AtSign } from 'lucide-react';
 import ProjectDetailsDialog from './project-details-dialog';
 import { Button } from '../ui/button';
@@ -37,6 +37,7 @@ interface OverviewProps {
   onTaskSelect: (task: Task) => void;
   onDataRefresh: () => void;
   unreadMentions: Mention[];
+  activeHub: Hub | null;
 }
 
 const getInitials = (name: string) => {
@@ -59,7 +60,8 @@ export default function Overview({
   onUpdateTask,
   onTaskSelect,
   onDataRefresh,
-  unreadMentions
+  unreadMentions,
+  activeHub
 }: OverviewProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -69,11 +71,12 @@ export default function Overview({
   if (!appUser) return null;
   
   const myTasks = useMemo(() => {
+    const closingStatus = activeHub?.closingStatusName || 'Done';
     return tasks
-      .filter((task) => task.assigned_to === appUser.id && task.status !== 'Done')
+      .filter((task) => task.assigned_to === appUser.id && task.status !== closingStatus)
       .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
       .slice(0, 5); // Limit to 5 tasks for the overview
-  }, [tasks, appUser.id]);
+  }, [tasks, appUser.id, activeHub]);
 
 
   const handleAdvancePhase = async (job: Job) => {
