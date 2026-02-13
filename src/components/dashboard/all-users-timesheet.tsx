@@ -54,7 +54,7 @@ export default function AllUsersTimesheet({ onUserSelect, users, timeEntries, we
   });
 
   return (
-    <div className="p-1 sm:p-4 rounded-lg bg-card text-card-foreground">
+    <div className="p-6 rounded-lg bg-card text-card-foreground">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={onPrevWeek} className="hidden sm:flex">Previous week</Button>

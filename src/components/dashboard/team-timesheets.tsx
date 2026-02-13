@@ -79,7 +79,7 @@ export default function TeamTimesheets({ allSpaces, allUsers, projects, tasks, t
 
   if (viewMode === 'single-user' && selectedUser) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 p-6">
         <div className="flex items-center gap-4">
            {canSeeAllTimesheets && (
             <Button variant="outline" onClick={() => setViewMode('all-users')}>
