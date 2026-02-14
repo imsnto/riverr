@@ -91,8 +91,8 @@
                 iframeContainer.style.transform = 'translateY(0)';
                 iframeContainer.style.opacity = '1';
                 if(isMobile){
-                    iframeContainer.style.width = '100vw';
-                    iframeContainer.style.height = '100vh';
+                    iframeContainer.style.width = '100dvw';
+                    iframeContainer.style.height = '100dvh';
                     iframeContainer.style.bottom = '0';
                     iframeContainer.style.right = '0';
                     launcher.innerHTML = ``;
