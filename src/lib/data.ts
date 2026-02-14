@@ -429,6 +429,8 @@ export interface Bot {
     chatbotIconsTextColor: string;
     headerTextColor?: string;
     customerTextColor?: string;
+    agentMessageBackgroundColor?: string;
+    agentMessageTextColor?: string;
   };
   agentIds: string[];
   allowedHelpCenterIds?: string[];

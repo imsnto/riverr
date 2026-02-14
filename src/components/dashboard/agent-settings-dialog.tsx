@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -109,6 +110,8 @@ const agentSettingsSchema = z.object({
   backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.'),
   headerTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
   customerTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
+  agentMessageBackgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
+  agentMessageTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
   chatbotIconsTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
   chatbotIconsColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
   logoUrl: z.string().url().optional().or(z.literal('')),
@@ -163,6 +166,8 @@ export default function AgentSettingsDialog({
       primaryColor: '#3b82f6',
       backgroundColor: '#111827',
       headerTextColor: '#ffffff',
+      agentMessageBackgroundColor: '#374151',
+      agentMessageTextColor: '#ffffff',
       customerTextColor: '#ffffff',
       chatbotIconsColor: '#ffffff',
       chatbotIconsTextColor: '#000000',
@@ -197,6 +202,8 @@ export default function AgentSettingsDialog({
         primaryColor: agent.styleSettings?.primaryColor || '#3b82f6',
         backgroundColor: agent.styleSettings?.backgroundColor || '#111827',
         headerTextColor: agent.styleSettings?.headerTextColor || '#ffffff',
+        agentMessageBackgroundColor: agent.styleSettings?.agentMessageBackgroundColor || '#374151',
+        agentMessageTextColor: agent.styleSettings?.agentMessageTextColor || '#ffffff',
         customerTextColor: agent.styleSettings?.customerTextColor || '#ffffff',
         chatbotIconsColor: agent.styleSettings?.chatbotIconsColor || '#ffffff',
         chatbotIconsTextColor: agent.styleSettings?.chatbotIconsTextColor || '#000000',
@@ -215,6 +222,8 @@ export default function AgentSettingsDialog({
             primaryColor: '#3b82f6',
             backgroundColor: '#111827',
             headerTextColor: '#ffffff',
+            agentMessageBackgroundColor: '#374151',
+            agentMessageTextColor: '#ffffff',
             customerTextColor: '#ffffff',
             chatbotIconsColor: '#ffffff',
             chatbotIconsTextColor: '#000000',
@@ -260,6 +269,8 @@ export default function AgentSettingsDialog({
             primaryColor: values.primaryColor,
             backgroundColor: values.backgroundColor,
             headerTextColor: values.headerTextColor || '#ffffff',
+            agentMessageBackgroundColor: values.agentMessageBackgroundColor || '#374151',
+            agentMessageTextColor: values.agentMessageTextColor || '#ffffff',
             customerTextColor: values.customerTextColor || '#ffffff',
             chatbotIconsTextColor: values.chatbotIconsTextColor || '#000000',
             chatbotIconsColor: values.chatbotIconsColor || '#ffffff',
@@ -669,6 +680,60 @@ export default function AgentSettingsDialog({
                             </FormItem>
                             )}
                         />
+                        <FormField
+                            control={form.control}
+                            name="agentMessageBackgroundColor"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Agent Message Background</FormLabel>
+                                <FormControl>
+                                <div className="flex items-center gap-2">
+                                    <Input placeholder="#374151" {...field} value={field.value || ''} />
+                                    <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer">
+                                        <div
+                                            className="w-full h-full"
+                                            style={{ backgroundColor: field.value || '#374151' }}
+                                        ></div>
+                                        <input
+                                            type="color"
+                                            value={field.value || '#374151'}
+                                            onChange={field.onChange}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="agentMessageTextColor"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Agent Message Text Color</FormLabel>
+                                <FormControl>
+                                <div className="flex items-center gap-2">
+                                    <Input placeholder="#ffffff" {...field} value={field.value || ''} />
+                                    <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer">
+                                        <div
+                                            className="w-full h-full"
+                                            style={{ backgroundColor: field.value || '#ffffff' }}
+                                        ></div>
+                                        <input
+                                            type="color"
+                                            value={field.value || '#ffffff'}
+                                            onChange={field.onChange}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
                       </TabsContent>
                       
                       <TabsContent value="installation" className="pt-6">
@@ -737,7 +802,7 @@ export default function AgentSettingsDialog({
                       </div>
                        <div className="flex items-center">
                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700"
-                         style={{color: watchedValues.chatbotIconsTextColor }}
+                         style={{color: watchedValues.primaryColor }}
                          onClick={() => onOpenChange(false)}>
                             <X className="h-5 w-5" />
                         </Button>
@@ -747,8 +812,8 @@ export default function AgentSettingsDialog({
                     {/* Body */}
                     <ScrollArea className="flex-1" ref={scrollAreaRef}>
                         <div className="p-4 space-y-4 max-w-full text-wrap">
-                             <div className="flex items-end gap-2">
-                                <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
+                             <div className="flex items-end gap-2" style={{ color: watchedValues.agentMessageTextColor }}>
+                                <div className="p-3 rounded-xl rounded-bl-sm max-w-xs break-words" style={{ backgroundColor: watchedValues.agentMessageBackgroundColor, color: watchedValues.agentMessageTextColor }}>
                                     <p className="text-sm whitespace-pre-wrap">{watchedValues.welcomeMessage}</p>
                                 </div>
                             </div>
@@ -764,8 +829,8 @@ export default function AgentSettingsDialog({
                                     className={cn('flex items-end gap-2', isAgent ? 'justify-start' : 'justify-end')}
                                 >
                                     {isAgent ? (
-                                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
-                                        {msg.content && <div className="text-sm prose prose-sm prose-invert break-words" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
+                                        <div className="p-3 rounded-xl rounded-bl-sm max-w-xs break-words" style={{ backgroundColor: watchedValues.agentMessageBackgroundColor, color: watchedValues.agentMessageTextColor }}>
+                                        {msg.content && <div className="text-sm prose prose-sm prose-invert break-words" style={{ color: watchedValues.agentMessageTextColor }} dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
                                         </div>
                                     ) : (
                                         <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-words" style={{ backgroundColor: watchedValues.primaryColor, color: watchedValues.customerTextColor || '#ffffff' }}>
@@ -777,7 +842,7 @@ export default function AgentSettingsDialog({
                             })}
                             {isAiThinking && (
                                 <div className="flex items-end gap-2">
-                                    <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs flex items-center gap-2">
+                                    <div className="p-3 rounded-xl rounded-bl-sm max-w-xs flex items-center gap-2" style={{ backgroundColor: watchedValues.agentMessageBackgroundColor, color: watchedValues.agentMessageTextColor }}>
                                     <BotIcon className="h-4 w-4 animate-pulse" />
                                     <p className="text-sm">Thinking...</p>
                                     </div>
@@ -867,3 +932,4 @@ function MultiSelectPopover({ title, options, selected, onChange }: { title: str
         </Popover>
     );
 }
+

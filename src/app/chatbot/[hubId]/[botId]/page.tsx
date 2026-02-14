@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -461,7 +462,7 @@ export default function ChatbotWidgetPage() {
         </div>
 
         <div className="flex items-center">
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={handleClose}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-700" onClick={handleClose} style={{ color: primary }}>
             <X className="h-5 w-5" />
           </Button>
         </div>
@@ -472,7 +473,7 @@ export default function ChatbotWidgetPage() {
         <div className="p-4 space-y-4">
           {/* Welcome bubble (always visible) */}
           <div className="flex items-end gap-2">
-            <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
+            <div className="p-3 rounded-xl rounded-bl-sm max-w-xs break-words" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
               <p className="text-sm whitespace-pre-wrap">{bot.welcomeMessage}</p>
             </div>
           </div>
@@ -491,8 +492,8 @@ export default function ChatbotWidgetPage() {
               >
                 {isAgent ? (
                   <div className="min-w-0">
-                    <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
-                      {msg.content && <div className="text-sm prose prose-sm prose-invert max-w-none break-words overflow-hidden [&_a]:break-all [&_a]:whitespace-normal [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:overflow-x-auto [&_code]:break-words" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
+                    <div className="p-3 rounded-xl rounded-bl-sm max-w-xs" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
+                      {msg.content && <div className="text-sm prose prose-sm prose-invert max-w-none break-words overflow-hidden [&_a]:break-all [&_a]:whitespace-normal [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:overflow-x-auto [&_code]:break-words" style={{ color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }} dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
                       {renderAttachments(msg)}
                     </div>
                     <p className="text-xs text-zinc-500 mt-2">{agent?.name || 'AI Agent'}</p>
@@ -506,14 +507,14 @@ export default function ChatbotWidgetPage() {
               </div>
             );
           })}
-          {/* {isAiThinking && (
+          {isAiThinking && (
               <div className="flex items-end gap-2">
-                <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs flex items-center gap-2">
+                <div className="p-3 rounded-xl rounded-bl-sm max-w-xs flex items-center gap-2" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
                   <Bot className="h-4 w-4 animate-pulse" />
                   <p className="text-sm">Thinking...</p>
                 </div>
               </div>
-            )} */}
+            )}
         </div>
         <div ref={messagesEndRef} />
       </ScrollArea>
@@ -582,3 +583,4 @@ export default function ChatbotWidgetPage() {
     </div>
   );
 }
+
