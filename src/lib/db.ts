@@ -1189,7 +1189,7 @@ export const getContactByEmail = async (spaceId: string, email: string): Promise
 
 export const upsertChatContactFromVisitor = async (spaceId: string, visitor: Visitor): Promise<Contact> => {
   const email = normalizeEmail(visitor.email);
-  const name = !isBlank(visitor.name) ? visitor.name!.trim() : generateWhimsicalName();
+  const name = !isBlank(visitor.name) ? visitor.name!.trim() : '';
   const company = !isBlank(visitor.companyName) ? visitor.companyName!.trim() : null;
 
   // 1) Prefer email match
@@ -1547,7 +1547,7 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
 
       const cleanName = normalizeName(existingVisitor.name);
       if (!cleanName) {
-        const newName = generateWhimsicalName();
+        const newName = '';
         updatePatch.name = newName;
         existingVisitor.name = newName;
       } else if (cleanName !== existingVisitor.name) {
@@ -1578,7 +1578,7 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
       return existingVisitor;
     } else {
       const rawName = normalizeName(details?.name ?? null);
-      const name = rawName ?? generateWhimsicalName();
+      const name = rawName ?? '';
 
       const newVisitor: Omit<Visitor, 'id'> = {
         name: name,

@@ -487,7 +487,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
   const visitor = { id: visitorSnap.id, ...(visitorSnap.data() as any) }; // Visitor type needs to be available
 
   // guarantee visitor has a name
-  const vName = normalizeName(visitor.name) ?? generateWhimsicalName();
+  const vName = normalizeName(visitor.name) ?? '';
   const vEmail = normalizeEmail(visitor.email);
 
   if (!normalizeName(visitor.name)) {

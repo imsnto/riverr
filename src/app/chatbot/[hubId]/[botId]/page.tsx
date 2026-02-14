@@ -16,6 +16,7 @@ import { marked } from 'marked';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { invokeAgent, createConversationAndLinkCrm, ensureConversationCrmLinkedAction } from '@/app/actions/chat';
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 
 interface BotDataWithAgents extends BotData {
@@ -37,6 +38,7 @@ const isPublicForVisitor = (msg: ChatMessage) => {
 
 export default function ChatbotWidgetPage() {
   const params = useParams();
+  const storage = getStorage();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { hubId, botId } = params as { hubId: string; botId: string };
   const { appUser } = useAuth();
@@ -55,7 +57,7 @@ export default function ChatbotWidgetPage() {
   const [isCapturingIdentity, setIsCapturingIdentity] = useState(false);
   const [capturedName, setCapturedName] = useState('');
   const [capturedEmail, setCapturedEmail] = useState('');
-  
+
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -70,9 +72,9 @@ export default function ChatbotWidgetPage() {
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }, [messages]);
 
-    useEffect(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, isAiThinking]);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isAiThinking]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -90,32 +92,28 @@ export default function ChatbotWidgetPage() {
         db.getBot(botId),
         db.getHub(hubId)
       ]);
-      
+
       if (!fullBotDoc) {
-          setIsLoading(false);
-          return;
+        setIsLoading(false);
+        return;
       }
 
       const combinedBotData = { ...fullBotDoc, ...botSettings };
       setBot(combinedBotData);
-      
-      if(hub) {
+
+      if (hub) {
         setSpaceId(hub.spaceId);
       }
 
       let visitorId = localStorage.getItem('riverr_chat_visitor_id');
       const fetchedVisitor = visitorId ? await db.getOrCreateVisitor(visitorId) : null;
-      
-      if (!appUser && combinedBotData?.identityCapture.enabled && (!fetchedVisitor || (!fetchedVisitor.name && !fetchedVisitor.email))) {
-        setIsCapturingIdentity(true);
-      } else {
-        setIsCapturingIdentity(false);
-        if (!visitorId) {
-            visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-            localStorage.setItem('riverr_chat_visitor_id', visitorId);
-        }
-        await loadVisitorAndConversation(visitorId);
+
+
+      if (!visitorId) {
+        visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+        localStorage.setItem('riverr_chat_visitor_id', visitorId);
       }
+      await loadVisitorAndConversation(visitorId);
       setIsLoading(false);
     };
 
@@ -128,55 +126,65 @@ export default function ChatbotWidgetPage() {
   }, [botId, hubId, appUser]);
 
   const loadVisitorAndConversation = async (visitorId: string) => {
-      const referrer = document.referrer || window.location.href;
-      let domain = '';
-      let pathname = '';
-      try {
-        const url = new URL(referrer);
-        domain = url.hostname;
-        pathname = url.pathname;
-      } catch {}
+    const referrer = document.referrer || window.location.href;
+    let domain = '';
+    let pathname = '';
+    try {
+      const url = new URL(referrer);
+      domain = url.hostname;
+      pathname = url.pathname;
+    } catch { }
 
-      const fetchedVisitor = await db.getOrCreateVisitor(visitorId, { location: { domain, pathname }});
-      setVisitor(fetchedVisitor);
+    const fetchedVisitor = await db.getOrCreateVisitor(visitorId, { location: { domain, pathname } });
+    setVisitor(fetchedVisitor);
 
-      const convos = await db.getConversationsForHub(hubId);
-      const existingConvo = convos.find(c => c.visitorId === visitorId);
+    const convos = await db.getConversationsForHub(hubId);
+    const existingConvo = convos.find(c => c.visitorId === visitorId);
 
-      if (existingConvo) {
-        await ensureConversationCrmLinkedAction(existingConvo.id);
-        convoUnsubRef.current = db.getConversation(existingConvo.id, setConversation);
-        unsubRef.current = db.getMessagesForConversations(
-          [existingConvo.id],
-          (msgs) => setMessages(msgs),
-          true
-        );
-      }
+    if (existingConvo) {
+      await ensureConversationCrmLinkedAction(existingConvo.id);
+      convoUnsubRef.current = db.getConversation(existingConvo.id, setConversation);
+      unsubRef.current = db.getMessagesForConversations(
+        [existingConvo.id],
+        (msgs) => setMessages(msgs),
+        true
+      );
+    }
 
-      if (appUser && fetchedVisitor) {
-        await db.updateVisitor(visitorId, {
-          name: appUser.name,
-          email: appUser.email,
-          avatarUrl: appUser.avatarUrl,
-        });
-      }
+    if (appUser && fetchedVisitor) {
+      await db.updateVisitor(visitorId, {
+        name: appUser.name,
+        email: appUser.email,
+        avatarUrl: appUser.avatarUrl,
+      });
+    }
   }
-  
+
   const handleIdentitySubmit = async () => {
-      if (!capturedName.trim() || !capturedEmail.trim()) {
-          // You might want to show an error message
-          return;
-      }
-      let visitorId = localStorage.getItem('riverr_chat_visitor_id');
-      if (!visitorId) {
-          visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-          localStorage.setItem('riverr_chat_visitor_id', visitorId);
-      }
-      
-      await db.updateVisitor(visitorId, { name: capturedName, email: capturedEmail });
-      setIsCapturingIdentity(false);
-      await loadVisitorAndConversation(visitorId);
+    if (!capturedName.trim() || !capturedEmail.trim()) {
+      // You might want to show an error message
+      return;
+    }
+    let visitorId = localStorage.getItem('riverr_chat_visitor_id');
+    if (!visitorId) {
+      visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+      localStorage.setItem('riverr_chat_visitor_id', visitorId);
+    }
+
+    await db.updateVisitor(visitorId, { name: capturedName, email: capturedEmail });
+    setIsCapturingIdentity(false);
+    await loadVisitorAndConversation(visitorId);
   }
+
+  const uploadFileAndGetUrl = async (file: File, conversationId: string) => {
+    const filePath = `chat_uploads/${conversationId}/${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, filePath);
+
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+
+    return downloadURL;
+  };
 
   const handleSendMessage = async () => {
     if (!messageText.trim() && attachments.length === 0) return;
@@ -186,15 +194,15 @@ export default function ChatbotWidgetPage() {
     setLoading(true);
 
     if (!currentConversation) {
-        const agentIds = bot.agentIds || [];
-        const assigneeId = agentIds.length > 0 ? agentIds[Math.floor(Math.random() * agentIds.length)] : null;
-        
+      const agentIds = bot.agentIds || [];
+      const assigneeId = agentIds.length > 0 ? agentIds[Math.floor(Math.random() * agentIds.length)] : null;
+
       const newConvo = await createConversationAndLinkCrm({
-          hubId,
-          visitorId: visitor.id,
-          assigneeId,
-          lastMessage: messageText || "Sent an attachment",
-          lastMessageAuthor: visitor.name || null,
+        hubId,
+        visitorId: visitor.id,
+        assigneeId,
+        lastMessage: messageText || "Sent an attachment",
+        lastMessageAuthor: visitor.name || null,
       });
       currentConversation = newConvo;
 
@@ -205,13 +213,25 @@ export default function ChatbotWidgetPage() {
         true
       );
     }
-    
-    const messageAttachments: Attachment[] = attachments.map(file => ({
-      id: `att_${Date.now()}_${file.name}`,
-      name: file.name,
-      url: URL.createObjectURL(file), // Temporary URL
-      type: file.type.startsWith('image/') ? 'image' : 'file',
-    }));
+
+    const messageAttachments: Attachment[] = [];
+
+    for (const file of attachments) {
+      try {
+        const url = await uploadFileAndGetUrl(file, currentConversation.id);
+
+        messageAttachments.push({
+          id: `att_${Date.now()}_${file.name}`,
+          name: file.name,
+          url, // ✅ permanent firebase URL
+          type: file.type.startsWith('image/') ? 'image' : 'file',
+        });
+
+      } catch (err) {
+        console.error("File upload failed:", err);
+      }
+    }
+
 
     const userMessageContent = messageText;
     const newMessageData: Omit<ChatMessage, 'id'> = {
@@ -223,43 +243,136 @@ export default function ChatbotWidgetPage() {
       timestamp: new Date().toISOString(),
       attachments: messageAttachments,
     };
-    
+
     const incomingMessage: any = {
-        id: `msg-${Date.now()}`,
-        role: 'user',
-        text: userMessageContent,
-        createdAt: newMessageData.timestamp
+      id: `msg-${Date.now()}`,
+      role: 'user',
+      text: userMessageContent,
+      createdAt: newMessageData.timestamp
     }
-    
-    setMessageText('');
-    setAttachments([]);
-    setLoading(false);
 
     await db.addChatMessage(newMessageData);
 
+    setMessageText('');
+    setAttachments([]);
+
     setIsAiThinking(true);
-    
+
     const botConfig = {
       id: bot.id,
       hubId: bot.hubId,
       name: bot.name,
       allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
     };
-    
-    try {
-        await invokeAgent({
-            bot: botConfig,
-            conversation: JSON.parse(JSON.stringify(currentConversation)),
-            message: incomingMessage,
+
+    let visitorId = localStorage.getItem('riverr_chat_visitor_id');
+    const fetchedVisitor = visitorId ? await db.getOrCreateVisitor(visitorId) : null;
+
+    if (isCapturingIdentity && bot?.identityCapture.enabled && fetchedVisitor) {
+      const isEmailRequired = bot?.identityCapture.required ?? false;
+      // Check if user provided name and email in one message, e.g., "John Doe, john@example.com"
+      const match = userMessageContent.match(
+        isEmailRequired
+          ? /^([^,]+),\s*(.+@.+\..+)$/
+          : /^([^,]+)(?:,\s*(.+@.+\..+))?$/
+      );
+      if (!match) {
+        // User input invalid, ask again
+        await db.addChatMessage({
+          conversationId: currentConversation.id,
+          authorId: 'ai_agent',
+          type: 'message',
+          senderType: 'agent',
+          content: isEmailRequired
+            ? "Please provide your name and email separated by a comma. Example: John Doe, john@example.com"
+            : "Please provide your name (email optional). Example: John Doe or John Doe, john@example.com",
+          timestamp: new Date().toISOString(),
         });
         setIsAiThinking(false);
-    } catch (e) {
-        console.error("Agent failed to answer:", e);
-    } finally {
+        setLoading(false);
+        return; // Wait for correct input
+      }
+
+      const name = match[1]?.trim();
+      const email = match[2]?.trim() || null;
+
+      if (!name) {
         setIsAiThinking(false);
+        setLoading(false);
+        return;
+      }
+
+      if (isEmailRequired && !email) {
+        await db.addChatMessage({
+          conversationId: currentConversation.id,
+          authorId: 'ai_agent',
+          type: 'message',
+          senderType: 'agent',
+          content: "Email is required. Please provide both name and email. Example: John Doe, john@example.com",
+          timestamp: new Date().toISOString(),
+        });
+
+        setIsAiThinking(false);
+        setLoading(false);
+        return;
+      }
+      // Save visitor info
+      await db.updateVisitor(visitor.id, { name: name.trim(), email: email ? email?.trim() : null });
+
+      // Update local visitor state
+      await loadVisitorAndConversation(visitor.id);
+
+      // Stop identity capture
+      setIsCapturingIdentity(false);
+
+      // Optional: send a confirmation message
+      await db.addChatMessage({
+        conversationId: currentConversation.id,
+        authorId: 'ai_agent',
+        type: 'message',
+        senderType: 'agent',
+        content: `Thanks ${name}! How can I help you?`,
+        timestamp: new Date().toISOString(),
+      });
+
+      setIsAiThinking(false);
+      setLoading(false);
+      return;
+      // Continue with normal AI flow using this message
+    } else {
+      if (!appUser && bot?.identityCapture.enabled && (!fetchedVisitor || !fetchedVisitor.name || (bot?.identityCapture.required && !fetchedVisitor.email))) {
+        console.log("Capturing identity before invoking agent");
+        await db.addChatMessage({
+          conversationId: currentConversation.id,
+          authorId: 'ai_agent',  // or bot id
+          type: 'message',
+          senderType: 'agent',
+          content: bot.identityCapture?.captureMessage || 'Before we continue, could you please provide your name and email? Example: John Doe, john@example.com',
+          timestamp: new Date().toISOString(),
+        });
+        setIsCapturingIdentity(true);
+        setIsAiThinking(false);
+        setLoading(false);
+        return;
+      }
+    }
+
+    setLoading(false);
+
+    try {
+      await invokeAgent({
+        bot: botConfig,
+        conversation: JSON.parse(JSON.stringify(currentConversation)),
+        message: incomingMessage,
+      });
+      setIsAiThinking(false);
+    } catch (e) {
+      console.error("Agent failed to answer:", e);
+    } finally {
+      setIsAiThinking(false);
     }
   };
-  
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       setAttachments(prev => [...prev, ...Array.from(event.target.files!)]);
@@ -285,26 +398,26 @@ export default function ChatbotWidgetPage() {
 
   const bg = bot.styleSettings?.backgroundColor;
   const primary = bot.styleSettings?.primaryColor;
-  
-  if (isCapturingIdentity) {
-      return (
-          <div className="w-full h-screen text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden p-4 justify-center items-center" style={{ backgroundColor: bg }}>
-              <div className="w-full max-w-sm space-y-4">
-                  <p className="text-center">{bot.identityCapture?.captureMessage || 'Before we start, could I get your name and email?'}</p>
-                  <Input type="text" placeholder="Your name" value={capturedName} onChange={(e) => setCapturedName(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white" />
-                  <Input type="email" placeholder="Your email" value={capturedEmail} onChange={(e) => setCapturedEmail(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white" />
-                  <Button onClick={handleIdentitySubmit} className="w-full" style={{ backgroundColor: primary }}>Start Chat</Button>
-                  {!bot.identityCapture.required && <Button variant="link" className="w-full text-zinc-400" onClick={() => setIsCapturingIdentity(false)}>Skip for now</Button>}
-              </div>
-          </div>
-      )
-  }
+
+  // if (isCapturingIdentity) {
+  //     return (
+  //         <div className="w-full h-screen text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden p-4 justify-center items-center" style={{ backgroundColor: bg }}>
+  //             <div className="w-full max-w-sm space-y-4">
+  //                 <p className="text-center">{bot.identityCapture?.captureMessage || 'Before we start, could I get your name and email?'}</p>
+  //                 <Input type="text" placeholder="Your name" value={capturedName} onChange={(e) => setCapturedName(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white" />
+  //                 <Input type="email" placeholder="Your email" value={capturedEmail} onChange={(e) => setCapturedEmail(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white" />
+  //                 <Button onClick={handleIdentitySubmit} className="w-full" style={{ backgroundColor: primary }}>Start Chat</Button>
+  //                 {!bot.identityCapture.required && <Button variant="link" className="w-full text-zinc-400" onClick={() => setIsCapturingIdentity(false)}>Skip for now</Button>}
+  //             </div>
+  //         </div>
+  //     )
+  // }
 
   const renderAttachments = (msg: ChatMessage) => {
     if (!msg.attachments || msg.attachments.length === 0) return null;
-    
+
     return (
-      <div className="mt-2 space-y-2">
+      <div className="mt-2 space-y-2 overflow-hidden">
         {msg.attachments.map(att => (
           <div key={att.id}>
             {att.type === 'image' ? (
@@ -338,8 +451,8 @@ export default function ChatbotWidgetPage() {
               <div className="flex -space-x-2 overflow-hidden ml-2">
                 {bot.agents.map(agent => (
                   <Avatar key={agent.id} className="h-5 w-5 border-2" style={{ borderColor: bot.styleSettings?.backgroundColor }}>
-                      <AvatarImage src={agent.avatarUrl} alt={agent.name} />
-                      <AvatarFallback>{getInitials(agent.name)}</AvatarFallback>
+                    <AvatarImage src={agent.avatarUrl} alt={agent.name} />
+                    <AvatarFallback>{getInitials(agent.name)}</AvatarFallback>
                   </Avatar>
                 ))}
               </div>
@@ -357,50 +470,50 @@ export default function ChatbotWidgetPage() {
       {/* Body */}
       <ScrollArea className="flex-1" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
-            {/* Welcome bubble (always visible) */}
-            <div className="flex items-end gap-2">
+          {/* Welcome bubble (always visible) */}
+          <div className="flex items-end gap-2">
             <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs break-words">
-                <p className="text-sm whitespace-pre-wrap">{bot.welcomeMessage}</p>
+              <p className="text-sm whitespace-pre-wrap">{bot.welcomeMessage}</p>
             </div>
-            </div>
-            <p className="text-xs text-zinc-500">AI Agent</p>
+          </div>
+          <p className="text-xs text-zinc-500">AI Agent</p>
 
-            {(visibleMessages.length > 0) && visibleMessages.map(msg => {
-                const isAgent = msg.senderType === 'agent';
-                const agent = isAgent ? bot.agents?.find(u => u.id === msg.authorId) : null;
-                const isAI = isAgent && msg.authorId === 'ai_agent';
-                const contentHtml = isAI ? marked.parse(msg.content) : msg.content;
-                
-                return (
-                <div
-                    key={msg.id}
-                    className={cn('flex items-end gap-2 min-w-0', isAgent ? 'justify-start' : 'justify-end')}
-                >
-                    {isAgent ? (
-                    <div className="min-w-0">
-                        <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
-                        {msg.content && <div className="text-sm prose prose-sm prose-invert max-w-none break-words overflow-hidden [&_a]:break-all [&_a]:whitespace-normal [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:overflow-x-auto [&_code]:break-words" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
-                        {renderAttachments(msg)}
-                        </div>
-                        <p className="text-xs text-zinc-500 mt-2">{agent?.name || 'AI Agent'}</p>
+          {(visibleMessages.length > 0) && visibleMessages.map(msg => {
+            const isAgent = msg.senderType === 'agent';
+            const agent = isAgent ? bot.agents?.find(u => u.id === msg.authorId) : null;
+            const isAI = isAgent && msg.authorId === 'ai_agent';
+            const contentHtml = isAI ? marked.parse(msg.content) : msg.content;
+
+            return (
+              <div
+                key={msg.id}
+                className={cn('flex items-end gap-2 min-w-0', isAgent ? 'justify-start' : 'justify-end')}
+              >
+                {isAgent ? (
+                  <div className="min-w-0">
+                    <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs">
+                      {msg.content && <div className="text-sm prose prose-sm prose-invert max-w-none break-words overflow-hidden [&_a]:break-all [&_a]:whitespace-normal [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:overflow-x-auto [&_code]:break-words" dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
+                      {renderAttachments(msg)}
                     </div>
-                    ) : (
-                    <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-all" style={{ backgroundColor: primary, color: bot.styleSettings?.customerTextColor || '#ffffff' }}>
-                        {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
-                        {renderAttachments(msg)}
-                    </div>
-                    )}
-                </div>
-                );
-            })}
-            {isAiThinking && (
+                    <p className="text-xs text-zinc-500 mt-2">{agent?.name || 'AI Agent'}</p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-all" style={{ backgroundColor: primary, color: bot.styleSettings?.customerTextColor || '#ffffff' }}>
+                    {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+                    {renderAttachments(msg)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {/* {isAiThinking && (
               <div className="flex items-end gap-2">
                 <div className="bg-zinc-800 p-3 rounded-xl rounded-bl-sm max-w-xs flex items-center gap-2">
                   <Bot className="h-4 w-4 animate-pulse" />
                   <p className="text-sm">Thinking...</p>
                 </div>
               </div>
-            )}
+            )} */}
         </div>
         <div ref={messagesEndRef} />
       </ScrollArea>
@@ -409,61 +522,61 @@ export default function ChatbotWidgetPage() {
       <div className="p-2 border-t shrink-0 flex items-end gap-2" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
         <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" multiple />
         <Popover>
-            <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0">
-                    <Plus className="h-5 w-5"/>
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent side="top" align="start" className="w-auto p-1">
-                <Button variant="ghost" className="w-full justify-start" onClick={() => fileInputRef.current?.click()}>
-                    <Paperclip className="mr-2 h-4 w-4" />
-                    Attachment
-                </Button>
-            </PopoverContent>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0">
+              <Plus className="h-5 w-5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent side="top" align="start" className="w-auto p-1">
+            <Button variant="ghost" className="w-full justify-start" onClick={() => fileInputRef.current?.click()}>
+              <Paperclip className="mr-2 h-4 w-4" />
+              Attachment
+            </Button>
+          </PopoverContent>
         </Popover>
 
         <div className="relative flex-1">
-            {attachments.length > 0 && (
-                <div className="p-2 space-y-1">
-                {attachments.map((file, i) => (
-                    <div key={i} className="flex items-center justify-between gap-2 text-sm bg-zinc-800 p-2 rounded-md">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                        {file.type.startsWith('image/') ? (
-                        <ImageIcon className="h-4 w-4 flex-shrink-0" />
-                        ) : (
-                        <FileIcon className="h-4 w-4 flex-shrink-0" />
-                        )}
-                        <span className="truncate">{file.name}</span>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                    </div>
-                ))}
+          {attachments.length > 0 && (
+            <div className="p-2 space-y-1">
+              {attachments.map((file, i) => (
+                <div key={i} className="flex items-center justify-between gap-2 text-sm bg-zinc-800 p-2 rounded-md">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    {file.type.startsWith('image/') ? (
+                      <ImageIcon className="h-4 w-4 flex-shrink-0" />
+                    ) : (
+                      <FileIcon className="h-4 w-4 flex-shrink-0" />
+                    )}
+                    <span className="truncate">{file.name}</span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-            )}
-            <Textarea
-                placeholder={'Message...'}
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                    }
-                }}
-                minRows={1}
-                className="bg-zinc-800 border-zinc-700 text-white pr-10 resize-none text-[16px]"
-            />
-            <Button
-                size="icon"
-                variant="ghost"
-                onClick={handleSendMessage}
-                disabled={(!messageText.trim() && attachments.length === 0) || loading}
-                className="absolute right-1 bottom-1 h-8 w-8 hover:bg-zinc-700"
-            >
-                {loading ? <Loader2 className='h-4 w-4 animate-spin' /> : <Send className="h-4 w-4" />}
-            </Button>
+              ))}
+            </div>
+          )}
+          <Textarea
+            placeholder={'Message...'}
+            value={messageText}
+            onChange={(e) => setMessageText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            minRows={1}
+            className="bg-zinc-800 border-zinc-700 text-white pr-10 resize-none text-[16px]"
+          />
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={handleSendMessage}
+            disabled={(!messageText.trim() && attachments.length === 0) || loading}
+            className="absolute right-1 bottom-1 h-8 w-8 hover:bg-zinc-700"
+          >
+            {loading ? <Loader2 className='h-4 w-4 animate-spin' /> : <Send className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
     </div>

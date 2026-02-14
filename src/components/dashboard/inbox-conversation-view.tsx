@@ -8,7 +8,7 @@ import { Textarea } from '../ui/textarea';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
-import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight } from 'lucide-react';
+import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card } from '../ui/card';
@@ -134,6 +134,27 @@ export default function InboxConversationView({
   const conversationMessages = messages.filter(m => m.conversationId === conversation.id);
   const ticketPillAssignee = activeTicket ? users.find(u => u.id === activeTicket.assignedTo) : null;
 
+   const renderAttachments = (msg: ChatMessage) => {
+      if (!msg.attachments || msg.attachments.length === 0) return null;
+      
+      return (
+        <div className="mt-2 space-y-2 overflow-hidden">
+          {msg.attachments.map(att => (
+            <div key={att.id}>
+              {att.type === 'image' ? (
+                <img src={att.url} alt={att.name} className="rounded-lg max-w-xs max-h-64 object-cover" />
+              ) : (
+                <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-white hover:underline bg-zinc-700/50 p-2 rounded-md max-w-xs">
+                  <FileIcon className="h-4 w-4" />
+                  <span className="truncate">{att.name}</span>
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      )
+    }
+
 
   const renderMessageBubble = (msg: ChatMessage) => {
     const isCustomer = msg.senderType === 'contact';
@@ -189,7 +210,10 @@ export default function InboxConversationView({
              {isAI ? (
                 <div className="text-sm prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden [&_a]:break-all [&_a]:whitespace-normal [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:overflow-x-auto [&_code]:break-words" dangerouslySetInnerHTML={{ __html: contentHtml as string }}/>
             ) : (
-                <p className="text-sm whitespace-pre-wrap break-all">{msg.content}</p>
+                <div className="text-sm whitespace-pre-wrap break-all">
+                  {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+                {renderAttachments(msg)}
+                </div>
             )}
           </div>
           <p className={cn("text-[11px] mt-1 opacity-70", isCustomer ? "" : "text-right")}>
