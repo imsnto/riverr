@@ -734,6 +734,60 @@ export default function AgentSettingsDialog({
                             </FormItem>
                             )}
                         />
+                        <FormField
+                            control={form.control}
+                            name="chatbotIconsColor"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Chat Button Background</FormLabel>
+                                <FormControl>
+                                <div className="flex items-center gap-2">
+                                    <Input placeholder="#ffffff" {...field} value={field.value || ''} />
+                                    <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer">
+                                        <div
+                                            className="w-full h-full"
+                                            style={{ backgroundColor: field.value || '#ffffff' }}
+                                        ></div>
+                                        <input
+                                            type="color"
+                                            value={field.value || '#ffffff'}
+                                            onChange={field.onChange}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="chatbotIconsTextColor"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Chat Button Icon Color</FormLabel>
+                                <FormControl>
+                                <div className="flex items-center gap-2">
+                                    <Input placeholder="#000000" {...field} value={field.value || ''} />
+                                    <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer">
+                                        <div
+                                            className="w-full h-full"
+                                            style={{ backgroundColor: field.value || '#000000' }}
+                                        ></div>
+                                        <input
+                                            type="color"
+                                            value={field.value || '#000000'}
+                                            onChange={field.onChange}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
                       </TabsContent>
                       
                       <TabsContent value="installation" className="pt-6">
