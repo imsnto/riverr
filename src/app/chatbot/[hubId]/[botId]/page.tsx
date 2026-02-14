@@ -323,7 +323,7 @@ export default function ChatbotWidgetPage() {
     }
     
     setLoading(false);
-    setIsAiThinking(true);
+    // setIsAiThinking(true);
 
     const incomingMessage: any = {
       id: `msg-${Date.now()}`,
