@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
@@ -10,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 const GoogleIcon = () => (
     <svg className="mr-2 h-4 w-4" viewBox="0 0 48 48">
@@ -63,31 +63,38 @@ export default function LoginPage() {
 
 
     return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 relative overflow-hidden">
-            <div className="absolute inset-0 z-0 opacity-20">
-                 <div className="absolute inset-0 bg-gradient-to-tr from-background via-transparent to-primary/30"></div>
-                 <div className="absolute inset-0 bg-gradient-to-bl from-background via-transparent to-accent/30"></div>
-            </div>
-            
-            <div className="z-10 flex flex-col items-center text-center mb-12">
-                <Image 
-                    src="/manowar.png"
-                    width={100}
-                    height={100}
-                    alt="Manowar Logo"
-                    data-ai-hint="logo"
-                    className="mb-4"
-                />
-                <h1 className="text-4xl font-bold tracking-tighter text-foreground">Welcome to Manowar</h1>
-                <p className="text-muted-foreground mt-2">The collective brain for your business.</p>
-            </div>
+        <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+            <div className="w-full max-w-sm">
+                <div className="mb-8 flex justify-center">
+                    <Image 
+                        src="/manowar.png"
+                        width={48}
+                        height={48}
+                        alt="Manowar Logo"
+                        data-ai-hint="logo"
+                    />
+                </div>
 
-            <Card className="w-full max-w-sm z-10 bg-card/80 backdrop-blur-sm">
-                <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">{isSignUp ? 'Create Account' : 'Sign In'}</CardTitle>
-                    <CardDescription>Enter your details to continue.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                <div className="text-center mb-8">
+                    <h1 className="text-2xl font-bold tracking-tight">Log in or sign up</h1>
+                    <p className="text-muted-foreground mt-2">The collective brain for your business.</p>
+                </div>
+                
+                <div className="space-y-4">
+                     <Button variant="outline" className="w-full h-12 text-base" onClick={signInWithGoogle}>
+                        <GoogleIcon />
+                        Continue with Google
+                    </Button>
+                    
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-background px-2 text-muted-foreground">or</span>
+                        </div>
+                    </div>
+                    
                      <form onSubmit={handleSubmit} className="space-y-4">
                         {isSignUp && (
                             <div className="space-y-1">
@@ -103,35 +110,22 @@ export default function LoginPage() {
                             <Label htmlFor="password">Password</Label>
                             <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
                         </div>
-                        <Button type="submit" className="w-full" disabled={loading}>
+                        <Button type="submit" className="w-full h-12 text-base" disabled={loading}>
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
+                            {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Continue with Email')}
                         </Button>
                     </form>
 
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
-                        </div>
+                     <div className="text-center text-sm">
+                        <p className="text-muted-foreground">
+                            {isSignUp ? "Already have an account?" : "Don't have an account?"}{' '}
+                            <Button variant="link" className="p-0" onClick={() => setIsSignUp(!isSignUp)}>
+                                {isSignUp ? "Log In" : "Sign Up"}
+                            </Button>
+                        </p>
                     </div>
-
-                    <Button variant="outline" className="w-full" onClick={signInWithGoogle}>
-                        <GoogleIcon />
-                        Sign in with Google
-                    </Button>
-                </CardContent>
-                 <CardFooter className="justify-center">
-                    <p className="text-sm text-muted-foreground">
-                        {isSignUp ? "Already have an account?" : "Don't have an account?"}{' '}
-                        <Button variant="link" className="p-0" onClick={() => setIsSignUp(!isSignUp)}>
-                            {isSignUp ? "Sign In" : "Sign Up"}
-                        </Button>
-                    </p>
-                </CardFooter>
-            </Card>
+                </div>
+            </div>
         </div>
     );
 }
