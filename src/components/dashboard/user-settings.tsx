@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -83,63 +82,73 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
                     <TableHeader>
                         <TableRow>
                         <TableHead>User</TableHead>
-                        <TableHead>Spaces & Roles</TableHead>
+                        <TableHead>Space</TableHead>
+                        <TableHead>Role</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {usersInMySpaces.map(user => (
-                            <TableRow key={user.id}>
-                                <TableCell>
-                                    <div className="flex items-center gap-3">
-                                        <Avatar>
-                                            <AvatarImage src={user.avatarUrl} alt={user.name} />
-                                            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <p className="font-medium">{user.name}</p>
-                                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                        {usersInMySpaces.map(user => {
+                            const userMemberships = userSpaces
+                                .map(space => ({ space, membership: getRoleInSpace(user, space) }))
+                                .filter(item => item.membership);
+
+                            return (
+                                <TableRow key={user.id}>
+                                    <TableCell className="align-top">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar>
+                                                <AvatarImage src={user.avatarUrl} alt={user.name} />
+                                                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-medium">{user.name}</p>
+                                                <p className="text-sm text-muted-foreground">{user.email}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex flex-wrap gap-2">
-                                        {userSpaces.map(space => {
-                                            const membership = getRoleInSpace(user, space);
-                                            if (membership) {
-                                                return (
-                                                    <Badge key={space.id} variant={membership.role === 'Admin' ? 'default' : 'secondary'}>
-                                                        {space.name}: {membership.role}
+                                    </TableCell>
+                                    <TableCell className="align-top">
+                                         <div className="flex flex-col gap-2 items-start">
+                                            {userMemberships.map(({ space }) => (
+                                                <div key={space.id} className="flex items-center h-6">{space.name}</div>
+                                            ))}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="align-top">
+                                        <div className="flex flex-col gap-2 items-start">
+                                            {userMemberships.map(({ space, membership }) => (
+                                                <div key={space.id} className="flex items-center h-6">
+                                                    <Badge variant={membership!.role === 'Admin' ? 'default' : 'secondary'}>
+                                                        {membership!.role}
                                                     </Badge>
-                                                )
-                                            }
-                                            return null;
-                                        })}
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    {user.id !== appUser?.id && (
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem disabled>
-                                                    <Edit className="mr-2 h-4 w-4" />
-                                                    Edit Permissions
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleRemoveUser(user.id)} className="text-destructive">
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    Remove User
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    )}
-                                </TableCell>
-                            </TableRow>
-                        ))}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right align-top">
+                                        {user.id !== appUser?.id && (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem disabled>
+                                                        <Edit className="mr-2 h-4 w-4" />
+                                                        Edit Permissions
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleRemoveUser(user.id)} className="text-destructive">
+                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                        Remove User
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        )}
+                                    </TableCell>
+                                </TableRow>
+                            )
+                        })}
                     </TableBody>
                 </Table>
                 </CardContent>
