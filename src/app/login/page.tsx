@@ -4,7 +4,7 @@
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter, useSearchParams } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,7 @@ const GoogleIcon = () => (
     </svg>
 )
 
-export default function LoginPage() {
+function LoginContent() {
     const { signInWithGoogle, status, signUpWithEmailAndPassword, signInWithEmailAndPassword } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -133,4 +133,16 @@ export default function LoginPage() {
             </div>
         </div>
     );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
+  );
 }
