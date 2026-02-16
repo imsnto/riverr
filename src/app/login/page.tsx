@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -63,21 +64,23 @@ export default function LoginPage() {
 
 
     return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+        <div className="relative flex min-h-screen flex-col items-center justify-center bg-background p-4">
+             <div className="absolute top-6 left-6">
+                <Image 
+                    src="/manowar.png"
+                    width={32}
+                    height={32}
+                    alt="Manowar Logo"
+                    data-ai-hint="logo"
+                />
+            </div>
             <div className="w-full max-w-sm">
-                <div className="mb-8 flex justify-center">
-                    <Image 
-                        src="/manowar.png"
-                        width={48}
-                        height={48}
-                        alt="Manowar Logo"
-                        data-ai-hint="logo"
-                    />
-                </div>
-
                 <div className="text-center mb-8">
-                    <h1 className="text-2xl font-bold tracking-tight">Log in or sign up</h1>
-                    <p className="text-muted-foreground mt-2">The collective brain for your business.</p>
+                    {isSignUp ? (
+                        <h1 className="text-2xl font-bold tracking-tight">Manowar: The AI command center for your business.</h1>
+                    ) : (
+                        <h1 className="text-2xl font-bold tracking-tight">Log in to Manowar</h1>
+                    )}
                 </div>
                 
                 <div className="space-y-4">
