@@ -68,8 +68,8 @@ export default function LoginPage() {
              <div className="absolute top-6 left-6">
                 <Image 
                     src="/manowar.png"
-                    width={32}
-                    height={32}
+                    width={48}
+                    height={48}
                     alt="Manowar Logo"
                     data-ai-hint="logo"
                 />
