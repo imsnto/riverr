@@ -1,4 +1,5 @@
 
+
 'use client'
 // src/lib/db.ts
 
@@ -1726,4 +1727,17 @@ export const startBrainJob = async (type: BrainJob['type'], params: Record<strin
     };
     const docRef = await addDoc(collection(db, 'brain_jobs'), jobData);
     return docRef.id;
+};
+
+export const getPendingInvites = async (spaceIds: string[]): Promise<Invite[]> => {
+  if (spaceIds.length === 0) return [];
+  const q = query(
+    collection(db, "invites"),
+    where("spaceId", "in", spaceIds),
+    where("status", "==", "pending")
+  );
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(
+    (doc) => ({ id: doc.id, ...doc.data() } as Invite)
+  );
 };

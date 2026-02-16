@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { User, Space, Invite, SpaceMember, Hub } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,8 +13,7 @@ import { MoreHorizontal, Edit, Trash2, Plus } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import InviteUserDialog from './invite-user-dialog';
-import { addInvite } from '@/lib/db';
-import { randomBytes } from 'crypto';
+import * as db from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import { getInitials } from '@/lib/utils';
 
@@ -23,13 +23,22 @@ interface UserSettingsProps {
     allHubs: Hub[];
     appUser: User | null;
     onInvite: () => void;
-    handleInvite: (values: Omit<Invite, 'id' | 'tokenHash' | 'sentAt' | 'expiresAt' | 'createdAt' | 'status'>) => void;
+    handleInvite: (values: Omit<Invite, 'id' | 'token' | 'status'>) => void;
 }
 
-export default function UserSettings({ allUsers: initialUsers, allHubs, handleInvite }: UserSettingsProps) {
+export default function UserSettings({ allUsers: initialUsers, allHubs, handleInvite, onInvite }: UserSettingsProps) {
   const { toast } = useToast();
   const { appUser, userSpaces, activeSpace } = useAuth();
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
+
+  useEffect(() => {
+    if (userSpaces.length > 0) {
+      const spaceIds = userSpaces.map(s => s.id);
+      db.getPendingInvites(spaceIds).then(setPendingInvites);
+    }
+  }, [userSpaces]);
+
 
   const usersInMySpaces = useMemo(() => {
     if (!userSpaces.length) return [];
@@ -45,8 +54,6 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
   }
 
   const handleRemoveUser = (userId: string) => {
-    // This would be a more complex operation, removing user from all spaces, etc.
-    // For now, we just toast.
     const userToRemove = initialUsers.find(u => u.id === userId);
     toast({
         variant: 'destructive',
@@ -55,9 +62,18 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
     })
   }
 
-  const handleInviteAndClose = (values: Omit<Invite, 'id' | 'tokenHash' | 'sentAt' | 'expiresAt' | 'createdAt' | 'status'>) => {
+  const handleInviteAndClose = async (values: Omit<Invite, 'id' | 'tokenHash' | 'sentAt' | 'expiresAt' | 'createdAt' | 'status'>) => {
     handleInvite(values);
+    
+    // Refetch pending invites after sending a new one
+    const spaceIds = userSpaces.map(s => s.id);
+    db.getPendingInvites(spaceIds).then(setPendingInvites);
+
     setIsInviteOpen(false);
+    toast({
+      title: "Invitation Sent",
+      description: `An invitation has been sent to ${values.email}.`,
+    });
   }
 
 
@@ -91,7 +107,7 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
                         {usersInMySpaces.map(user => {
                             const userMemberships = userSpaces
                                 .map(space => ({ space, membership: getRoleInSpace(user, space) }))
-                                .filter(item => item.membership);
+                                .filter(item => item.membership && !item.space.isSystem);
 
                             return (
                                 <TableRow key={user.id}>
@@ -151,6 +167,55 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
                         })}
                     </TableBody>
                 </Table>
+                </CardContent>
+            </Card>
+
+             <Card>
+                <CardHeader>
+                    <CardTitle>Pending Invitations</CardTitle>
+                    <CardDescription>These users have been invited but have not yet joined.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Space</TableHead>
+                                <TableHead>Role</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {pendingInvites.length > 0 ? (
+                                pendingInvites.map(invite => (
+                                    <TableRow key={invite.id}>
+                                        <TableCell className="font-medium">{invite.email}</TableCell>
+                                        <TableCell>{invite.spaceName}</TableCell>
+                                        <TableCell><Badge variant="secondary">{invite.spaceRole}</Badge></TableCell>
+                                        <TableCell className="text-right">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem disabled>Resend Invitation</DropdownMenuItem>
+                                                    <DropdownMenuItem disabled className="text-destructive">Revoke Invitation</DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                        No pending invitations.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
                 </CardContent>
             </Card>
         </div>
