@@ -35,14 +35,14 @@ export default function LoginPage() {
             
             <div className="z-10 flex flex-col items-center text-center mb-12">
                 <Image 
-                    src="/mannowar-logo.png"
-                    width={200}
-                    height={50}
-                    alt="Mannowar Logo"
+                    src="/manowar.png"
+                    width={100}
+                    height={100}
+                    alt="Manowar Logo"
                     data-ai-hint="logo"
                     className="mb-4"
                 />
-                <h1 className="text-4xl font-bold tracking-tighter text-foreground">Welcome to Mannowar</h1>
+                <h1 className="text-4xl font-bold tracking-tighter text-foreground">Welcome to Manowar</h1>
                 <p className="text-muted-foreground mt-2">The collective brain for your business.</p>
             </div>
 

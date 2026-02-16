@@ -83,11 +83,11 @@ export const sendInviteEmail = functions.firestore
       await postmarkClient.sendEmail({
         From: FROM_EMAIL,
         To: invite.email,
-        Subject: `You've been invited to join Mannowar`,
+        Subject: `You've been invited to join Manowar`,
         HtmlBody: `
-          <h2>You’ve been invited to join Mannowar Project Management</h2>
+          <h2>You’ve been invited to join Manowar Project Management</h2>
           <p>Hello!</p>
-          <p>You’ve been invited to join the Mannowar workspace. Click the button below to accept your invite and sign in using your Google account:</p>
+          <p>You’ve been invited to join the Manowar workspace. Click the button below to accept your invite and sign in using your Google account:</p>
           <p><a href="${inviteLink}" style="background-color:#2563eb;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;">Accept Invite</a></p>
           <p>If you did not expect this invite, you can safely ignore this email.</p>
         `,
@@ -668,6 +668,7 @@ export const processBrainJob = functions.runWith({ memory: '1GB', timeoutSeconds
       });
     }
   });
+
 
 
 
