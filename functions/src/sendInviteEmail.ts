@@ -5,7 +5,6 @@ import * as admin from "firebase-admin";
 import crypto from "crypto";
 import postmark from "postmark";
 
-const POSTMARK_SERVER_TOKEN = defineSecret("POSTMARK_SERVER_TOKEN");
 const APP_BASE_URL = defineSecret("APP_BASE_URL");
 
 if (!admin.apps.length) admin.initializeApp();
@@ -17,7 +16,7 @@ function sha256Hex(input: string) {
 export const sendInviteEmail = onDocumentCreated(
   {
     document: "invites/{inviteId}",
-    secrets: [POSTMARK_SERVER_TOKEN, APP_BASE_URL],
+    secrets: [APP_BASE_URL],
   },
   async (event) => {
     const snap = event.data;
@@ -41,9 +40,13 @@ export const sendInviteEmail = onDocumentCreated(
     });
 
     const baseUrl = APP_BASE_URL.value(); // https://manowar.cloud
-    const joinUrl = `${baseUrl}/join?invite=${encodeURIComponent(inviteId)}&token=${encodeURIComponent(rawToken)}`;
+    const joinUrl = `${baseUrl}/join?invite=${encodeURIComponent(
+      inviteId
+    )}&token=${encodeURIComponent(rawToken)}`;
 
-    const client = new postmark.ServerClient(POSTMARK_SERVER_TOKEN.value());
+    const client = new postmark.ServerClient(
+      "21180ba5-2837-4d89-bc27-a8e0498642c7"
+    );
     const spaceName = invite.spaceName ?? "a workspace";
 
     await client.sendEmail({
