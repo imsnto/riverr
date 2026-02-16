@@ -270,15 +270,15 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     <Sidebar collapsible="icon">
       <div className="flex flex-col h-full p-2">
          {activeSpace && activeHub && (
-           <div className="p-2">
+           <div className="flex justify-center p-2">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-center h-12">
+                <Button variant="outline" className="w-14 h-14 justify-center">
                   <Image
                     src="/manowar-icon.png"
                     alt="Manowar Icon"
-                    width={24}
-                    height={24}
+                    width={36}
+                    height={36}
                     className="rounded-sm"
                     data-ai-hint="logo icon"
                   />

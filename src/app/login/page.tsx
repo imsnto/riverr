@@ -71,8 +71,8 @@ export default function LoginPage() {
             
             <div className="z-10 flex flex-col items-center text-center mb-12">
                 <Image 
-                    src="/manowar-logo.png"
-                    width={200}
+                    src="/manowar.png"
+                    width={100}
                     height={100}
                     alt="Manowar Logo"
                     data-ai-hint="logo"
