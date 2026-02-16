@@ -789,9 +789,8 @@ export default function Dashboard({ view }: { view: string }) {
       onDelete: db.deleteSpace,
       appUser,
       onInvite: fetchData,
-      handleInvite: async (invite: any) => {
-          const token = Math.random().toString(36).substring(2) + Math.random().toString(36).slice(2);
-          await db.addInvite({ ...invite, token, invitedBy: appUser.id, status: 'pending' });
+      handleInvite: async (invite: Omit<Invite, 'id'>) => {
+          await db.addInvite(invite);
           fetchData();
       },
       projects,
@@ -818,7 +817,7 @@ export default function Dashboard({ view }: { view: string }) {
           projects={projects}
           onSelectProject={handleSelectProject}
           allTasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
+          onUpdateTasks={onUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
