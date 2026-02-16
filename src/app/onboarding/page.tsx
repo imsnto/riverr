@@ -31,12 +31,13 @@ const hubTemplates: Record<string, { name: string, components: string[] }> = {
 };
 
 export default function OnboardingPage() {
-    const { appUser, userSpaces, setUserSpaces, setActiveSpace, setActiveHub, status, activeSpace } = useAuth();
+    const { appUser, userSpaces, setUserSpaces, setActiveSpace, setActiveHub, status, activeHub } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
     
     const [step, setStep] = useState(1);
     const [allUsers, setAllUsers] = useState<User[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Form states
     const [intent, setIntent] = useState('');
@@ -45,18 +46,25 @@ export default function OnboardingPage() {
     const [hubComponents, setHubComponents] = useState<string[]>([]);
 
     useEffect(() => {
-        if (status === 'authenticated' && appUser?.onboardingComplete) {
-          router.push('/space-selection');
-        } else if (status === 'authenticated' && !appUser?.onboardingComplete) {
-            const systemSpace = userSpaces.find(s => s.isOnboarding);
-            if (!systemSpace) {
-                // User is not fully onboarded but is missing the system space.
-                // This is an inconsistent state, likely from a previous error.
-                // Send them to space selection to recover.
+        if (status === 'authenticated') {
+            if (appUser?.onboardingComplete) {
                 router.push('/space-selection');
+                return;
             }
+            
+            // Check for inconsistent state only at the start of the flow
+            const systemSpace = userSpaces.find(s => s.isOnboarding);
+            if (step === 1 && !systemSpace) {
+                router.push('/space-selection');
+                return;
+            }
+
+            setIsLoading(false);
+        } else if (status === 'unauthenticated') {
+            router.push('/login');
         }
-    }, [status, appUser, userSpaces, router]);
+    }, [status, appUser, userSpaces, router, step]);
+
 
     useEffect(() => {
         if (appUser) {
@@ -65,7 +73,9 @@ export default function OnboardingPage() {
         }
     }, [appUser]);
 
-    if (status === 'loading' || !appUser) {
+    const activeSpace = useAuth().activeSpace;
+
+    if (isLoading) {
         return <div>Loading...</div>;
     }
 
@@ -87,11 +97,11 @@ export default function OnboardingPage() {
     
     const handleCreateSpace = async (e: React.FormEvent) => {
         e.preventDefault();
-        const systemSpace = userSpaces.find(s => s.isOnboarding);
-        if (!systemSpace || !spaceName.trim() || !appUser) return;
+        const currentSystemSpace = userSpaces.find(s => s.isOnboarding);
+        if (!currentSystemSpace || !spaceName.trim() || !appUser) return;
 
         const membersMap: Record<string, SpaceMember> = { [appUser.id]: { role: 'Admin' } };
-        await db.updateSpace(systemSpace.id, {
+        await db.updateSpace(currentSystemSpace.id, {
             name: spaceName,
             isSystem: false,
             isOnboarding: false,
@@ -99,7 +109,7 @@ export default function OnboardingPage() {
         });
         const updatedSpaces = await db.getSpacesForUser(appUser.id);
         setUserSpaces(updatedSpaces);
-        const newSpace = updatedSpaces.find(s => s.id === systemSpace.id);
+        const newSpace = updatedSpaces.find(s => s.id === currentSystemSpace.id);
         if (newSpace) setActiveSpace(newSpace);
 
         setStep(3);
@@ -130,11 +140,21 @@ export default function OnboardingPage() {
     const handleLaunch = async () => {
         if (!activeSpace || !appUser) return;
         await db.updateUser(appUser.id, { onboardingComplete: true });
-        const hub = await db.getHubsForSpace(activeSpace.id).then(hubs => hubs[0]);
-        if (hub) {
-            router.push(`/space/${activeSpace.id}/hub/${hub.id}/${hub.settings.defaultView || 'overview'}`);
+        
+        // Use the hub from context first, as it was just created.
+        const hubToLaunch = activeHub;
+        
+        if (hubToLaunch) {
+            router.push(`/space/${activeSpace.id}/hub/${hubToLaunch.id}/${hubToLaunch.settings.defaultView || 'overview'}`);
         } else {
-            router.push('/space-selection');
+             // Fallback just in case context is not updated yet
+            const fetchedHub = await db.getHubsForSpace(activeSpace.id).then(hubs => hubs[0]);
+             if (fetchedHub) {
+                 setActiveHub(fetchedHub);
+                 router.push(`/space/${activeSpace.id}/hub/${fetchedHub.id}/${fetchedHub.settings.defaultView || 'overview'}`);
+             } else {
+                router.push('/space-selection');
+             }
         }
     };
 
