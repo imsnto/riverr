@@ -268,10 +268,10 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
            <div className="flex justify-center p-2">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-14 h-14 justify-center p-0 rounded-lg">
+                <Button variant="outline" className="w-10 h-10 justify-center p-0 rounded-lg">
                     <Avatar className="h-full w-full rounded-lg">
                       <AvatarImage src={activeSpace.logoUrl} className="object-cover" />
-                      <AvatarFallback className="rounded-lg text-xl font-bold">
+                      <AvatarFallback className="rounded-lg text-sm font-bold">
                         {getInitials(activeSpace.name)}
                       </AvatarFallback>
                     </Avatar>
