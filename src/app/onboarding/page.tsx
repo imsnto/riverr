@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import HubComponentEditor from '@/components/dashboard/hub-component-editor';
 import { SpaceMember } from '@/lib/data';
+import { Badge } from '@/components/ui/badge';
 
 const intents = [
     { id: 'project-management', label: 'Project Management', icon: <FolderKanban className="h-8 w-8" /> },
@@ -50,21 +51,29 @@ export default function OnboardingPage() {
         }
     }, [appUser]);
 
-    if (status === 'loading' || !appUser || userSpaces.length === 0) {
-        return <div>Loading...</div>;
-    }
+    useEffect(() => {
+        // This effect will handle the redirection.
+        if (status === 'authenticated') {
+            const systemSpace = userSpaces.find(s => s.isOnboarding);
+            if (!systemSpace) {
+                router.push('/space-selection');
+            }
+        }
+    }, [status, userSpaces, router]);
+
 
     const systemSpace = userSpaces.find(s => s.isOnboarding);
 
-    if (!systemSpace && status === 'authenticated') {
-        router.push('/space-selection');
-        return null;
+    if (status === 'loading' || !appUser || !systemSpace) {
+        return <div>Loading...</div>;
     }
+
 
     const totalSteps = 4;
     const progress = ((step - 1) / (totalSteps - 1)) * 100;
 
     const handleIntentSelect = async (selectedIntent: string) => {
+        if (!appUser) return;
         setIntent(selectedIntent);
         await db.updateUser(appUser.id, { onboardingIntent: selectedIntent });
         const template = hubTemplates[selectedIntent];
@@ -77,7 +86,7 @@ export default function OnboardingPage() {
     
     const handleCreateSpace = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!systemSpace || !spaceName.trim()) return;
+        if (!systemSpace || !spaceName.trim() || !appUser) return;
 
         const membersMap: Record<string, SpaceMember> = { [appUser.id]: { role: 'Admin' } };
         await db.updateSpace(systemSpace.id, {
@@ -96,7 +105,7 @@ export default function OnboardingPage() {
     
     const handleCreateHub = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!systemSpace || !hubName.trim()) return;
+        if (!systemSpace || !hubName.trim() || !appUser) return;
 
         const newHubData: Omit<Hub, 'id'> = {
             name: hubName,
@@ -117,6 +126,7 @@ export default function OnboardingPage() {
     };
 
     const handleLaunch = async () => {
+        if (!systemSpace || !appUser) return;
         await db.updateUser(appUser.id, { onboardingComplete: true });
         const hub = await db.getHubsForSpace(systemSpace!.id).then(hubs => hubs[0]);
         if (hub) {
