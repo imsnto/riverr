@@ -1,4 +1,5 @@
 
+
 'use client'
 // src/lib/db.ts
 
@@ -43,8 +44,6 @@ import {
   messages,
   Invite,
   SpaceMember,
-  Permissions,
-  jobFlowTemplates,
   JobFlowTemplate,
   Job,
   JobFlowTask,
@@ -250,24 +249,14 @@ export const getInvitesForEmail = async (email: string): Promise<Invite[]> => {
 export const acceptInvite = async (invite: Invite, userId: string) => {
   const batch = writeBatch(db);
 
-  const defaultMemberPermissions: Permissions = {
-    canViewTasks: true,
-    canEditTasks: false,
-    canLogTime: true,
-    canSeeAllTimesheets: false,
-    canViewReports: false,
-    canInviteMembers: false,
-  };
-
   // Add user to each space
   for (const spaceId of invite.spaces) {
     const spaceRef = doc(db, "spaces", spaceId);
 
-    const member: SpaceMember = { role: invite.role };
-
-    if (invite.role === "Member") {
-      member.permissions = invite.permissions || defaultMemberPermissions;
-    }
+    const member: SpaceMember = { 
+      role: invite.role,
+      hubAccess: invite.hubAccess || {}
+    };
 
     batch.update(spaceRef, {
       [`members.${userId}`]: member,
@@ -342,11 +331,13 @@ export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Hub));
 };
 
-export const addHub = (hub: Omit<Hub, 'id'>) => {
+export const addHub = async (hub: Omit<Hub, 'id'>): Promise<Hub> => {
   const collectionRef = collection(db, 'hubs');
 
-  addDoc(collectionRef, hub)
-    .catch(async (serverError) => {
+  try {
+    const docRef = await addDoc(collectionRef, hub);
+    return { ...hub, id: docRef.id };
+  } catch (serverError) {
       const permissionError = new FirestorePermissionError({
         path: collectionRef.path,
         operation: 'create',
@@ -354,7 +345,8 @@ export const addHub = (hub: Omit<Hub, 'id'>) => {
       });
 
       errorEmitter.emit('permission-error', permissionError);
-    });
+      throw serverError;
+  }
 };
 
 

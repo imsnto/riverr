@@ -14,20 +14,42 @@ service cloud.firestore {
     
     function isSpaceAdmin(spaceId) {
       return exists(/databases/$(database)/documents/spaces/$(spaceId)) &&
-      get(/databases/$(database)/documents/spaces/$(spaceId)).data.members[request.auth.uid].role == 'Admin';
+        get(/databases/$(database)/documents/spaces/$(spaceId)).data.members[request.auth.uid].role == 'Admin';
     }
     
     function isExistInSpace(spaceId) {
       return exists(/databases/$(database)/documents/spaces/$(spaceId)) &&
-      get(/databases/$(database)/documents/spaces/$(spaceId)).data.members[request.auth.uid] != null ;
+        get(/databases/$(database)/documents/spaces/$(spaceId)).data.members[request.auth.uid] != null;
+    }
+
+    function getHubRole(spaceId, hubId) {
+      let space = get(/databases/$(database)/documents/spaces/$(spaceId));
+      let member = space.data.members[request.auth.uid];
+      if (member == null) {
+        return null;
+      }
+      if (member.role == 'Admin') {
+        return 'Hub Admin';
+      }
+      return member.hubAccess[hubId];
+    }
+    
+    function isHubMember(spaceId, hubId) {
+      let role = getHubRole(spaceId, hubId);
+      return role == 'Member' || role == 'Hub Admin';
+    }
+
+    function isHubAdmin(spaceId, hubId) {
+      let role = getHubRole(spaceId, hubId);
+      return role == 'Hub Admin';
     }
 
     function hasAccessToConversation(conversationId) {
-      // A user has access to a conversation if they have access to the space the conversation's hub is in.
       let conversationDoc = get(/databases/$(database)/documents/conversations/$(conversationId));
-      let hubDoc = get(/databases/$(database)/documents/hubs/$(conversationDoc.data.hubId));
+      let hubId = conversationDoc.data.hubId;
+      let hubDoc = get(/databases/$(database)/documents/hubs/$(hubId));
       let spaceId = hubDoc.data.spaceId;
-      return isExistInSpace(spaceId);
+      return isHubMember(spaceId, hubId);
     }
   
     
@@ -44,37 +66,37 @@ service cloud.firestore {
     }
     
     match /hubs/{hubId} {
-      allow read, update, list, delete: if isAuthenticated() && isExistInSpace(resource.data.spaceId);
+      allow read, update, list, delete: if isAuthenticated() && isHubMember(resource.data.spaceId, hubId);
       allow create: if isAuthenticated() && isSpaceAdmin(request.resource.data.spaceId);
     }
     
     match /projects/{projectId} {
-      allow read, update, delete: if isAuthenticated() && isExistInSpace(resource.data.space_id);
-      allow create: if isAuthenticated() && isExistInSpace(request.resource.data.space_id);
+      allow read, update, delete: if isAuthenticated() && isHubMember(resource.data.space_id, resource.data.hubId);
+      allow create: if isAuthenticated() && isHubMember(request.resource.data.space_id, request.resource.data.hubId);
       allow list: if isAuthenticated();
     }
     
     match /tasks/{taskId} {
-      allow read, update, delete: if isAuthenticated() && isExistInSpace(resource.data.spaceId);
-      allow create: if isAuthenticated() && isExistInSpace(request.resource.data.spaceId);
+      allow read, update, delete: if isAuthenticated() && isHubMember(resource.data.spaceId, resource.data.hubId);
+      allow create: if isAuthenticated() && isHubMember(request.resource.data.spaceId, request.resource.data.hubId);
       allow list: if isAuthenticated();
     }
     
     match /time_entries/{entryId} {
-      allow read, update, delete: if isAuthenticated() && isExistInSpace(resource.data.spaceId);
-      allow create: if isAuthenticated() && isExistInSpace(request.resource.data.spaceId);
+      allow read, update, delete: if isAuthenticated() && isHubMember(resource.data.spaceId, resource.data.hubId);
+      allow create: if isAuthenticated() && isHubMember(request.resource.data.spaceId, request.resource.data.hubId);
       allow list: if isAuthenticated();
     }
     
     match /documents/{documentId} {
-      allow read, update, delete: if isAuthenticated() && isExistInSpace(resource.data.spaceId);
-      allow create: if isAuthenticated() && isExistInSpace(request.resource.data.spaceId);
+      allow read, update, delete: if isAuthenticated() && isHubMember(resource.data.spaceId, resource.data.hubId);
+      allow create: if isAuthenticated() && isHubMember(request.resource.data.spaceId, request.resource.data.hubId);
       allow list: if isAuthenticated();
     }
     
     match /channels/{entryId} {
-      allow read, update, delete: if isAuthenticated() && isExistInSpace(resource.data.space_id);
-      allow create: if isAuthenticated() && isExistInSpace(request.resource.data.space_id);
+      allow read, update, delete: if isAuthenticated() && isHubMember(resource.data.space_id, resource.data.hubId);
+      allow create: if isAuthenticated() && isHubMember(request.resource.data.space_id, request.resource.data.hubId);
       allow list: if isAuthenticated();
     }
     
@@ -115,19 +137,9 @@ service cloud.firestore {
     }
     
     match /bots/{botId} {
-      // Read access is public so the widget can fetch its config.
-      // In a production app with sensitive bot data, this should be a server-side read.
       allow read: if true;
-      allow create: if isAuthenticated() && (
-          let hubId = request.resource.data.hubId;
-          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
-          isExistInSpace(spaceId)
-      );
-      allow update, delete: if isAuthenticated() && (
-          let hubId = resource.data.hubId;
-          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
-          isExistInSpace(spaceId)
-      );
+      allow create: if isAuthenticated() && isHubAdmin(get(/databases/$(database)/documents/hubs/$(request.resource.data.hubId)).data.spaceId, request.resource.data.hubId);
+      allow update, delete: if isAuthenticated() && isHubAdmin(get(/databases/$(database)/documents/hubs/$(resource.data.hubId)).data.spaceId, resource.data.hubId);
     }
     
     match /contacts/{contactId} {
@@ -141,51 +153,25 @@ service cloud.firestore {
     
     match /conversations/{conversationId} {
       allow read, update, delete: if isAuthenticated() && hasAccessToConversation(conversationId);
-      allow create: if true; // Allow anonymous creation via widget
+      allow create: if true;
     }
     
     match /chat_messages/{messageId} {
       allow read, update, delete: if isAuthenticated() && hasAccessToConversation(resource.data.conversationId);
-      allow create: if true; // Allow anonymous creation via widget
+      allow create: if true;
     }
 
     match /help_centers/{hcId} {
-      allow create: if isAuthenticated() && (
-          let hubId = request.resource.data.hubId;
-          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
-          isExistInSpace(spaceId)
-      );
-      allow read, update, delete: if isAuthenticated() && (
-          let hubId = resource.data.hubId;
-          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
-          isExistInSpace(spaceId)
-      );
+      allow create: if isAuthenticated() && isHubAdmin(get(/databases/$(database)/documents/hubs/$(request.resource.data.hubId)).data.spaceId, request.resource.data.hubId);
+      allow read, update, delete: if isAuthenticated() && isHubMember(get(/databases/$(database)/documents/hubs/$(resource.data.hubId)).data.spaceId, resource.data.hubId);
     }
     match /help_center_collections/{hccId} {
-       allow create: if isAuthenticated() && (
-          let helpCenter = get(/databases/$(database)/documents/help_centers/$(request.resource.data.helpCenterId));
-          let hubId = helpCenter.data.hubId;
-          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
-          isExistInSpace(spaceId)
-      );
-       allow read, update, delete: if isAuthenticated() && (
-          let helpCenter = get(/databases/$(database)/documents/help_centers/$(resource.data.helpCenterId));
-          let hubId = helpCenter.data.hubId;
-          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
-          isExistInSpace(spaceId)
-      );
+       allow create: if isAuthenticated() && isHubAdmin(get(/databases/$(database)/documents/hubs/$(request.resource.data.hubId)).data.spaceId, request.resource.data.hubId);
+       allow read, update, delete: if isAuthenticated() && isHubMember(get(/databases/$(database)/documents/hubs/$(resource.data.hubId)).data.spaceId, resource.data.hubId);
     }
     match /help_center_articles/{hcaId} {
-      allow create: if isAuthenticated() && (
-          let hubId = request.resource.data.hubId;
-          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
-          isExistInSpace(spaceId)
-      );
-       allow read, update, delete: if isAuthenticated() && (
-          let hubId = resource.data.hubId;
-          let spaceId = get(/databases/$(database)/documents/hubs/$(hubId)).data.spaceId;
-          isExistInSpace(spaceId)
-      );
+      allow create: if isAuthenticated() && isHubAdmin(get(/databases/$(database)/documents/hubs/$(request.resource.data.hubId)).data.spaceId, request.resource.data.hubId);
+       allow read, update, delete: if isAuthenticated() && isHubMember(get(/databases/$(database)/documents/hubs/$(resource.data.hubId)).data.spaceId, resource.data.hubId);
     }
   }
 }

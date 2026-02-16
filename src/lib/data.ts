@@ -13,7 +13,9 @@ export interface User {
 
 export interface SpaceMember {
   role: 'Admin' | 'Member';
-  permissions?: Permissions;
+  hubAccess?: {
+    [hubId: string]: 'Hub Admin' | 'Member' | 'Viewer';
+  }
 }
 
 export interface Space {
@@ -244,15 +246,6 @@ export interface Status {
   color: string;
 }
 
-export interface Permissions {
-  canViewTasks: boolean;
-  canEditTasks: boolean;
-  canLogTime: boolean;
-  canSeeAllTimesheets: boolean;
-  canViewReports: boolean;
-  canInviteMembers: boolean;
-}
-
 export interface TaskRelationship {
   id: string;
   type: 'blocks' | 'blocked_by' | 'related_to';
@@ -325,11 +318,13 @@ export interface Invite {
     id: string;
     email: string;
     role: 'Admin' | 'Member';
-    spaces: string[];
+    spaces: string[]; // space IDs
     invitedBy: string;
     token: string;
     status: 'pending' | 'accepted' | 'declined';
-    permissions?: Permissions;
+    hubAccess?: {
+      [hubId: string]: 'Hub Admin' | 'Member' | 'Viewer';
+    };
 }
 
 // --- Job Flow Interfaces ---

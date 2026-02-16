@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { User, Space, Invite, SpaceMember } from '@/lib/data';
+import { User, Space, Invite, SpaceMember, Hub } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -21,14 +21,15 @@ import { getInitials } from '@/lib/utils';
 interface UserSettingsProps {
     allUsers: User[];
     allSpaces: Space[];
+    allHubs: Hub[];
     appUser: User | null;
     onInvite: () => void;
     handleInvite: (values: Omit<Invite, 'id' | 'token' | 'status'>) => void;
 }
 
-export default function UserSettings({ allUsers: initialUsers, allSpaces, handleInvite }: UserSettingsProps) {
+export default function UserSettings({ allUsers: initialUsers, allHubs, handleInvite }: UserSettingsProps) {
   const { toast } = useToast();
-  const { appUser, userSpaces } = useAuth();
+  const { appUser, userSpaces, activeSpace } = useAuth();
   const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   const usersInMySpaces = useMemo(() => {
@@ -144,12 +145,13 @@ export default function UserSettings({ allUsers: initialUsers, allSpaces, handle
                 </CardContent>
             </Card>
         </div>
-        <InviteUserDialog 
+        {activeSpace && <InviteUserDialog 
             isOpen={isInviteOpen}
             onOpenChange={setIsInviteOpen}
             onInvite={handleInviteAndClose}
-            allSpaces={userSpaces}
-        />
+            activeSpace={activeSpace}
+            allHubs={allHubs.filter(h => h.spaceId === activeSpace.id)}
+        />}
     </>
   );
 }
