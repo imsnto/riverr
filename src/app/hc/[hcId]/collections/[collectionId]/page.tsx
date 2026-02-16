@@ -69,7 +69,7 @@ export default async function CollectionPage({ params }: { params: { hcId: strin
              {/* Hero Section */}
             <div className="relative h-48 bg-zinc-100 dark:bg-zinc-800 flex items-end p-8 text-left">
                 <Image
-                    src={helpCenter.coverImageUrl || "/librarybackground.jpg"}
+                    src={helpCenter.coverImageUrl || "/defaultimage.png"}
                     alt="Help Center background"
                     fill
                     className="object-cover opacity-20"

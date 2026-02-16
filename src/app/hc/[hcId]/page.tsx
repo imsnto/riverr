@@ -82,7 +82,7 @@ export default async function HelpCenterPage({ params }: { params: { hcId: strin
             {/* Hero Section */}
             <div className="relative h-64 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-center p-4">
                 <Image
-                    src={helpCenter.coverImageUrl || "/librarybackground.jpg"}
+                    src={helpCenter.coverImageUrl || "/defaultimage.png"}
                     alt="Help Center background"
                     fill
                     className="object-cover opacity-20"

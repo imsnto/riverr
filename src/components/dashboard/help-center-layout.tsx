@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -720,7 +719,7 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave }: { helpCenter: HelpC
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="relative aspect-video w-full rounded-lg border overflow-hidden bg-muted">
-                                    <Image src={coverImageUrl || '/librarybackground.jpg'} alt="Cover image preview" fill className="object-cover" />
+                                    <Image src={coverImageUrl || '/defaultimage.png'} alt="Cover image preview" fill className="object-cover" />
                                 </div>
                                 <div>
                                     <input
