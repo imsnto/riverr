@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import type { Editor } from '@tiptap/react';
-import { Bold, Italic, Underline, Link as LinkIcon, Check, Trash2, ChevronDown, Strikethrough, Code } from 'lucide-react';
+import { Bold, Italic, Underline, Link as LinkIcon, Check, Trash2, ChevronDown, Strikethrough, Code, Quote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
@@ -115,7 +115,7 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
     <div className="flex items-center gap-1 rounded-xl border bg-card/95 backdrop-blur px-2 py-1 shadow">
         <NodeSelector />
 
-      <Separator orientation="vertical" className="h-6 mx-1" />
+      <Separator orientation="vertical" className="h-6" />
 
        <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -149,7 +149,7 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
             </DropdownMenuContent>
         </DropdownMenu>
 
-      <Separator orientation="vertical" className="h-6 mx-1" />
+      <Separator orientation="vertical" className="h-6" />
 
       <Button
         type="button"
@@ -206,6 +206,19 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
         <Code className="h-4 w-4" />
       </Button>
       
+      <Button
+        type="button"
+        variant={editor.isActive('blockquote') ? 'secondary' : 'ghost'}
+        size="sm"
+        title="Blockquote"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+      >
+        <Quote className="h-4 w-4" />
+      </Button>
+      
+      <Separator orientation="vertical" className="h-6" />
+
       <Popover open={isLinkPopoverOpen} onOpenChange={setIsLinkPopoverOpen}>
         <PopoverTrigger asChild>
           <Button
