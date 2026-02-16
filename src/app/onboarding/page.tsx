@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -60,27 +61,30 @@ export default function OnboardingPage() {
     const [hubComponents, setHubComponents] = useState<string[]>([]);
 
     useEffect(() => {
-        if (status === 'loading') return;
-        
-        // If the user has completed onboarding, they shouldn't be here.
-        if (appUser?.onboardingComplete) {
-            router.push('/space-selection');
-            return;
+        if (status === 'loading') {
+            return; // Wait until auth status is resolved
         }
 
-        // If the user is authenticated but doesn't have the temporary onboarding space,
-        // it means something went wrong or they navigated here directly. Send them back.
-        const systemSpace = userSpaces.find(s => s.isOnboarding);
-        if (!systemSpace && status === 'authenticated') {
-            router.push('/space-selection');
-            return;
-        }
-
-        // Only show the page if the user is authenticated and has an onboarding space.
-        if(status === 'authenticated' && systemSpace) {
-            setIsLoading(false);
-        } else if (status === 'unauthenticated') {
+        if (status === 'unauthenticated') {
             router.push('/login');
+            return;
+        }
+
+        if (status === 'authenticated') {
+            // If onboarding is already marked as complete, they shouldn't be here.
+            if (appUser?.onboardingComplete) {
+                router.push('/space-selection');
+                return;
+            }
+
+            // If they are authenticated but have no spaces at all (edge case recovery)
+            if (userSpaces.length === 0) {
+                 router.push('/space-selection');
+                 return;
+            }
+            
+            // Otherwise, they are in the correct place. Show the onboarding content.
+            setIsLoading(false);
         }
 
     }, [status, appUser, userSpaces, router]);
