@@ -11,8 +11,8 @@ import React from 'react';
 
 async function getHelpCenterData(hcId: string) {
     const hcRef = adminDB.collection('help_centers').doc(hcId);
-    const collectionsRef = adminDB.collection('help_center_collections').where('helpCenterIds', 'array-contains', hcId);
-    const articlesRef = adminDB.collection('help_center_articles').where('helpCenterIds', 'array-contains', hcId);
+    const collectionsRef = adminDB.collection('help_center_collections').where('helpCenterId', '==', hcId);
+    const articlesRef = adminDB.collection('help_center_articles').where('helpCenterId', '==', hcId);
     
     const [hcSnap, collectionsSnap, articlesSnap] = await Promise.all([
         hcRef.get(),
@@ -160,4 +160,3 @@ export default async function HelpCenterPage({ params }: { params: { hcId: strin
         </div>
     );
 }
-

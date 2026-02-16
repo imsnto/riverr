@@ -14,15 +14,9 @@ async function getCollectionData(hcId: string, collectionId: string) {
     const hcRef = adminDB.collection('help_centers').doc(hcId);
     const collectionRef = adminDB.collection('help_center_collections').doc(collectionId);
     
-    // Get all collections and articles for breadcrumbs and listing
-    const allCollectionsRef = adminDB.collection('help_center_collections').where('hubId', '==', 'hub-1'); // Assuming a hubId for now
-    const articlesRef = adminDB.collection('help_center_articles').where('folderId', '==', collectionId);
-
-    const [hcSnap, collectionSnap, allCollectionsSnap, articlesSnap] = await Promise.all([
+    const [hcSnap, collectionSnap] = await Promise.all([
         hcRef.get(),
         collectionRef.get(),
-        allCollectionsRef.get(),
-        articlesRef.get(),
     ]);
 
     if (!hcSnap.exists || !collectionSnap.exists) {
@@ -31,8 +25,21 @@ async function getCollectionData(hcId: string, collectionId: string) {
 
     const helpCenter = { id: hcSnap.id, ...hcSnap.data() } as HelpCenter;
     const collection = { id: collectionSnap.id, ...collectionSnap.data() } as HelpCenterCollection;
+
+    if (!helpCenter.hubId) {
+        return null; // Or handle error
+    }
+
+    // Now fetch related data based on the hubId
+    const allCollectionsRef = adminDB.collection('help_center_collections').where('hubId', '==', helpCenter.hubId);
+    const articlesRef = adminDB.collection('help_center_articles').where('folderId', '==', collectionId);
+
+    const [allCollectionsSnap, articlesSnap] = await Promise.all([
+        allCollectionsRef.get(),
+        articlesRef.get(),
+    ]);
+
     const articles = articlesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenterArticle));
-    
     const allCollections = allCollectionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenterCollection));
     
     const breadcrumbs: HelpCenterCollection[] = [];
