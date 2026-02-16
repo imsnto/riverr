@@ -1152,6 +1152,14 @@ export async function uploadSpaceLogo(file: File, spaceId: string): Promise<stri
   return await getDownloadURL(storageRef);
 }
 
+export async function uploadHelpCenterCoverImage(file: File, helpCenterId: string): Promise<string> {
+  const safeName = file.name.replace(/[^\w.-]+/g, "_");
+  const path = `help_centers/${helpCenterId}/cover/${Date.now()}-${safeName}`;
+  const storageRef = ref(storage, path);
+  await uploadBytes(storageRef, file, { contentType: file.type });
+  return await getDownloadURL(storageRef);
+}
+
 
 // --- Contact, Visitor, and Conversation Management ---
 export const getContactByVisitorId = async (spaceId: string, visitorId: string): Promise<Contact | null> => {
