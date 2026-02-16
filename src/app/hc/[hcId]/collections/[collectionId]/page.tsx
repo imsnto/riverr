@@ -69,11 +69,10 @@ export default async function CollectionPage({ params }: { params: { hcId: strin
              {/* Hero Section */}
             <div className="relative h-48 bg-zinc-100 dark:bg-zinc-800 flex items-end p-8 text-left">
                 <Image
-                    src="https://picsum.photos/seed/hchero/1600/400"
+                    src={helpCenter.coverImageUrl || "/librarybackground.jpg"}
                     alt="Help Center background"
                     fill
                     className="object-cover opacity-20"
-                    data-ai-hint="landscape painting"
                 />
                 <div className="relative z-10 w-full max-w-5xl mx-auto">
                     <nav className="flex items-center text-sm text-muted-foreground mb-4">

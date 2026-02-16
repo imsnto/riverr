@@ -82,11 +82,10 @@ export default async function HelpCenterPage({ params }: { params: { hcId: strin
             {/* Hero Section */}
             <div className="relative h-64 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-center p-4">
                 <Image
-                    src={helpCenter.coverImageUrl || "https://picsum.photos/seed/hchero/1600/400"}
+                    src={helpCenter.coverImageUrl || "/librarybackground.jpg"}
                     alt="Help Center background"
                     fill
                     className="object-cover opacity-20"
-                    data-ai-hint="landscape painting"
                 />
                 <div className="relative z-10 w-full max-w-2xl">
                     <h1 className="text-4xl font-bold mb-4">Search for articles...</h1>
