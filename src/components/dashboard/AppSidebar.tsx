@@ -268,10 +268,10 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
            <div className="flex justify-center p-2">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-10 h-10 justify-center p-0 rounded-lg">
+                <Button variant="outline" className="w-12 h-12 justify-center p-0 rounded-lg">
                     <Avatar className="h-full w-full rounded-lg">
                       <AvatarImage src={activeSpace.logoUrl} className="object-cover" />
-                      <AvatarFallback className="rounded-lg text-sm font-bold">
+                      <AvatarFallback className="rounded-lg text-lg font-bold">
                         {getInitials(activeSpace.name)}
                       </AvatarFallback>
                     </Avatar>
@@ -316,8 +316,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className={cn("h-14 justify-start rounded-md px-4 w-full", !showLabels && "px-0 justify-center h-10 w-10 mx-auto")}>
-                        <Avatar className="h-9 w-9">
+                    <Button variant="ghost" className={cn("h-14 justify-start rounded-md px-4 w-full", !showLabels && "px-0 justify-center h-12 w-12 mx-auto")}>
+                        <Avatar className="h-10 w-10">
                           <AvatarImage src={appUser.avatarUrl} alt={appUser.name} />
                           <AvatarFallback>{getInitials(appUser.name)}</AvatarFallback>
                         </Avatar>
