@@ -263,7 +263,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   
   return (
     <Sidebar collapsible="icon">
-      <div className="flex flex-col h-full p-2">
+      <div className={cn("flex flex-col h-full", showLabels ? "p-2" : "p-1")}>
          {activeSpace && activeHub && (
            <div className="flex justify-center p-2">
             <Popover>
@@ -316,7 +316,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className={cn("h-14 justify-start rounded-md px-4 w-full", !showLabels && "px-0 justify-center w-14 mx-auto")}>
+                    <Button variant="ghost" className={cn("h-14 justify-start rounded-md px-4 w-full", !showLabels && "px-0 justify-center h-10 w-10 mx-auto")}>
                         <Avatar className="h-9 w-9">
                           <AvatarImage src={appUser.avatarUrl} alt={appUser.name} />
                           <AvatarFallback>{getInitials(appUser.name)}</AvatarFallback>
