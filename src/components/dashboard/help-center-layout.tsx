@@ -1,4 +1,5 @@
 
+
 'use client';
 import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -648,6 +649,7 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave }: { helpCenter: HelpC
     const [coverImageUrl, setCoverImageUrl] = useState(helpCenter.coverImageUrl || '');
     const [prompt, setPrompt] = useState('');
     const [isGenerating, startTransition] = useTransition();
+    const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
     
@@ -660,24 +662,44 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave }: { helpCenter: HelpC
 
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (!file) return;
-        
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-            const dataUrl = reader.result as string;
-            setCoverImageUrl(dataUrl);
-        };
-        reader.readAsDataURL(file);
+        if (!file || !helpCenter) return;
+
+        setIsUploading(true);
+        try {
+            const imageUrl = await db.uploadHelpCenterCoverImage(file, helpCenter.id);
+            setCoverImageUrl(imageUrl);
+        } catch (error) {
+            console.error("Cover image upload failed:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Upload Failed',
+                description: 'Could not upload the cover image.'
+            });
+        } finally {
+            setIsUploading(false);
+        }
     };
 
      const handleGenerateImage = () => {
-        if (!prompt.trim()) return;
+        if (!prompt.trim() || !helpCenter) return;
         startTransition(async () => {
             try {
                 const result = await generateCoverImage(prompt);
-                setCoverImageUrl(result.imageUrl);
+                
+                // Convert data URL to blob
+                const res = await fetch(result.imageUrl);
+                const blob = await res.blob();
+                
+                // Create a file object
+                const file = new File([blob], `generated-cover-${Date.now()}.png`, { type: blob.type });
+
+                // Upload to Firebase Storage
+                const imageUrl = await db.uploadHelpCenterCoverImage(file, helpCenter.id);
+                
+                setCoverImageUrl(imageUrl);
                 toast({ title: 'New cover image generated!' });
             } catch (e) {
+                console.error('Image generation failed', e);
                 toast({ variant: 'destructive', title: 'Image generation failed.' });
             }
         });
@@ -735,8 +757,8 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave }: { helpCenter: HelpC
                                         accept="image/*"
                                         onChange={handleImageUpload}
                                     />
-                                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isGenerating}>
-                                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                    <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                                        {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                                         Upload Image
                                     </Button>
                                 </div>
