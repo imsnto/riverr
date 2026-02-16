@@ -1,3 +1,4 @@
+
 // src/lib/data.ts
 
 // --- Core Entities ---
@@ -12,7 +13,7 @@ export interface User {
 }
 
 export interface SpaceMember {
-  role: 'Admin' | 'Member';
+  role: 'Admin' | 'Member' | 'Viewer';
   hubAccess?: {
     [hubId: string]: 'Hub Admin' | 'Member' | 'Viewer';
   }
@@ -315,17 +316,20 @@ export interface SlackMeetingLog {
 }
 
 export interface Invite {
-    id: string;
-    email: string;
-    role: 'Admin' | 'Member';
-    spaces: string[]; // space IDs
-    invitedBy: string;
-    token: string;
-    status: 'pending' | 'accepted' | 'declined';
-    hubAccess?: {
-      [hubId: string]: 'Hub Admin' | 'Member' | 'Viewer';
-    };
+  id: string;
+  spaceId: string;
+  spaceName: string;
+  email: string;
+  spaceRole: 'member' | 'admin' | 'viewer';
+  hubAccess?: { [hubId: string]: 'viewer' | 'member' | 'hub_admin' };
+  status: 'pending' | 'accepted' | 'expired';
+  expiresAt?: any; // Firestore Timestamp
+  createdBy: string;
+  createdAt: any; // Firestore Timestamp
+  tokenHash?: string;
+  sentAt?: any; // Firestore Timestamp
 }
+
 
 // --- Job Flow Interfaces ---
 export interface JobFlowTemplate {
@@ -810,9 +814,3 @@ export interface LeadStateNode {
 
 
 export type MemoryNode = RawConversationNode | RawInteractionNode | SupportIntentNode | SalesPersonaSegmentNode | SalesMessagePatternNode | LeadStateNode;
-
-
-
-
-
-    

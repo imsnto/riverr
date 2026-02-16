@@ -1,12 +1,11 @@
 
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User as AppUser, Space, SpaceMember, Invite, Hub } from '@/lib/data';
 import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword as firebaseSignIn, updateProfile } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { getUser, addUser, addSpace, getSpacesForUser, getInvitesForEmail, acceptInvite, declineInvite, seedDatabase, updateUser } from '@/lib/db';
+import { getUser, addUser, addSpace, getSpacesForUser, seedDatabase, updateUser } from '@/lib/db';
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -33,9 +32,6 @@ interface AuthContextType {
   setActiveSpace: (space: Space | null) => void;
   activeHub: Hub | null;
   setActiveHub: (hub: Hub | null) => void;
-  pendingInvites: Invite[];
-  acceptInvite: (invite: Invite) => Promise<void>;
-  declineInvite: (inviteId: string) => Promise<void>;
   getUserPermissions: (spaceId: string) => SpaceMember | null;
   isUserAdmin: boolean;
 }
@@ -49,7 +45,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userSpaces, setUserSpaces] = useState<Space[]>([]);
   const [activeSpace, _setActiveSpace] = useState<Space | null>(null);
   const [activeHub, _setActiveHub] = useState<Hub | null>(null);
-  const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
   const [isUserAdmin, setIsUserAdmin] = useState(false);
 
   const setActiveSpace = (space: Space | null) => {
@@ -128,10 +123,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
            spaces = await getSpacesForUser(userProfile.id);
         }
         
-        const invites = await getInvitesForEmail(userProfile.email);
         setAppUser(userProfile);
         setUserSpaces(spaces);
-        setPendingInvites(invites);
         localStorage.setItem(LOCAL_STORAGE_KEY_USER, JSON.stringify({ appUser: userProfile, firebaseUser: user, userSpaces: spaces }));
         
         if (activeSpace) {
@@ -154,7 +147,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUserSpaces([]);
         setActiveSpace(null);
         setActiveHub(null);
-        setPendingInvites([]);
         setIsUserAdmin(false);
         localStorage.removeItem(LOCAL_STORAGE_KEY_USER);
         localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_SPACE);
@@ -206,21 +198,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       throw error;
     }
   };
-
-  const handleAcceptInvite = async (invite: Invite) => {
-    if (!appUser) return;
-    await acceptInvite(invite, appUser.id);
-    await updateUser(appUser.id, { onboardingComplete: true });
-    setPendingInvites(prev => prev.filter(i => i.id !== invite.id));
-    const updatedSpaces = await getSpacesForUser(appUser.id);
-    setUserSpaces(updatedSpaces);
-    localStorage.setItem(LOCAL_STORAGE_KEY_USER, JSON.stringify({ appUser, firebaseUser, userSpaces: updatedSpaces }));
-  };
-
-  const handleDeclineInvite = async (inviteId: string) => {
-      await declineInvite(inviteId);
-      setPendingInvites(prev => prev.filter(i => i.id !== inviteId));
-  };
   
   const getUserPermissions = (spaceId: string) => {
     const space = userSpaces.find(s => s.id === spaceId);
@@ -243,9 +220,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setActiveSpace,
     activeHub,
     setActiveHub,
-    pendingInvites,
-    acceptInvite: handleAcceptInvite,
-    declineInvite: handleDeclineInvite,
     getUserPermissions,
     isUserAdmin,
   };

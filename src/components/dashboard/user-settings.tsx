@@ -23,7 +23,7 @@ interface UserSettingsProps {
     allHubs: Hub[];
     appUser: User | null;
     onInvite: () => void;
-    handleInvite: (values: Omit<Invite, 'id' | 'token' | 'status'>) => void;
+    handleInvite: (values: Omit<Invite, 'id' | 'tokenHash' | 'sentAt' | 'expiresAt' | 'createdAt' | 'status'>) => void;
 }
 
 export default function UserSettings({ allUsers: initialUsers, allHubs, handleInvite }: UserSettingsProps) {
@@ -55,7 +55,7 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
     })
   }
 
-  const handleInviteAndClose = (values: Omit<Invite, 'id' | 'token' | 'status'>) => {
+  const handleInviteAndClose = (values: Omit<Invite, 'id' | 'tokenHash' | 'sentAt' | 'expiresAt' | 'createdAt' | 'status'>) => {
     handleInvite(values);
     setIsInviteOpen(false);
   }

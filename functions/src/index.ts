@@ -1,8 +1,6 @@
 
-
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import * as postmark from 'postmark';
 import { gmailAdapter } from '../../src/lib/brain/adapters/gmail';
 import { RawConversationNode, SalesMessagePatternNode, SalesPersonaSegmentNode, SupportIntentNode, Contact, LeadStateNode } from '../../src/lib/data';
 import { genkit, type GenkitError } from 'genkit';
@@ -14,6 +12,8 @@ import { summarizeSalesCluster } from '../../src/ai/flows/summarize-sales-cluste
 import { createHash } from 'crypto';
 import { recommendNextSalesAction } from '../../src/ai/flows/recommend-next-sales-action';
 
+export { sendInviteEmail } from "./sendInviteEmail";
+export { acceptInvite } from "./acceptInvite";
 
 admin.initializeApp();
 
@@ -56,49 +56,6 @@ function generatePatternKey(message: any): string {
     hash.update(JSON.stringify(signature));
     return hash.digest('hex').substring(0, 16);
 }
-
-
-// ✅ Use your verified Postmark info
-const POSTMARK_API_KEY = 'eed163d1-398a-40f8-b555-8ec1c5a53ae5';
-const FROM_EMAIL = 'brad@riverr.app';
-const POSTMARK_STREAM = 'defaultTransactional'; // from your "Invite Users (Riverr Project Management)" server
-const DOMAIN = 'app.riverr.app'; // your actual frontend domain (must be verified in Postmark)
-
-const postmarkClient = new postmark.ServerClient(POSTMARK_API_KEY);
-
-// Cloud Function to send invite email when a new invite is created in Firestore
-export const sendInviteEmail = functions.firestore
-  .document('invites/{inviteId}')
-  .onCreate(async (snap, context) => {
-    const invite = snap.data();
-
-    if (!invite?.email || !invite?.token) {
-      console.error('Missing email or token in invite document');
-      return;
-    }
-
-    const inviteLink = `https://${DOMAIN}/invite?token=${invite.token}`;
-
-    try {
-      await postmarkClient.sendEmail({
-        From: FROM_EMAIL,
-        To: invite.email,
-        Subject: `You've been invited to join Manowar`,
-        HtmlBody: `
-          <h2>You’ve been invited to join Manowar Project Management</h2>
-          <p>Hello!</p>
-          <p>You’ve been invited to join the Manowar workspace. Click the button below to accept your invite and sign in using your Google account:</p>
-          <p><a href="${inviteLink}" style="background-color:#2563eb;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;">Accept Invite</a></p>
-          <p>If you did not expect this invite, you can safely ignore this email.</p>
-        `,
-        MessageStream: POSTMARK_STREAM,
-      });
-
-      console.log(`✅ Invite email sent to ${invite.email}`);
-    } catch (error) {
-      console.error(`❌ Error sending invite to ${invite.email}:`, error);
-    }
-  });
 
 // Cloud Function to process jobs from the Business Brain queue
 export const processBrainJob = functions.runWith({ memory: '1GB', timeoutSeconds: 300 }).firestore
@@ -668,13 +625,3 @@ export const processBrainJob = functions.runWith({ memory: '1GB', timeoutSeconds
       });
     }
   });
-
-
-
-
-
-
-
-
-
-

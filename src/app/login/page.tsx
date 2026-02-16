@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Label } from '@/components/ui/label';
@@ -24,6 +24,8 @@ const GoogleIcon = () => (
 export default function LoginPage() {
     const { signInWithGoogle, status, signUpWithEmailAndPassword, signInWithEmailAndPassword } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectUrl = searchParams.get('redirect');
     const { toast } = useToast();
     const [isSignUp, setIsSignUp] = useState(false);
     const [name, setName] = useState('');
@@ -33,9 +35,9 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (status === 'authenticated') {
-            router.push('/');
+            router.push(redirectUrl || '/');
         }
-    }, [status, router]);
+    }, [status, router, redirectUrl]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

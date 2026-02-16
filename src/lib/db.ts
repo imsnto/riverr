@@ -1,5 +1,4 @@
 
-
 'use client'
 // src/lib/db.ts
 
@@ -244,35 +243,6 @@ export const getInvitesForEmail = async (email: string): Promise<Invite[]> => {
   return querySnapshot.docs.map(
     (doc) => ({ id: doc.id, ...doc.data() } as Invite)
   );
-};
-
-export const acceptInvite = async (invite: Invite, userId: string) => {
-  const batch = writeBatch(db);
-
-  // Add user to each space
-  for (const spaceId of invite.spaces) {
-    const spaceRef = doc(db, "spaces", spaceId);
-
-    const member: SpaceMember = { 
-      role: invite.role,
-      hubAccess: invite.hubAccess || {}
-    };
-
-    batch.update(spaceRef, {
-      [`members.${userId}`]: member,
-    });
-  }
-
-  // Mark invite as accepted
-  const inviteRef = doc(db, "invites", invite.id);
-  batch.update(inviteRef, { status: "accepted" });
-
-  await batch.commit();
-};
-
-export const declineInvite = async (inviteId: string) => {
-  const inviteRef = doc(db, "invites", inviteId);
-  await updateDoc(inviteRef, { status: "declined" });
 };
 
 // --- Space Management ---

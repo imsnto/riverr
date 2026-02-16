@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState } from 'react';
@@ -14,10 +13,11 @@ import { Mail, Check, ChevronsUpDown } from 'lucide-react';
 import { Space, Invite, Hub } from '@/lib/data';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ScrollArea } from '../ui/scroll-area';
+import { useAuth } from '@/hooks/use-auth';
 
 const inviteSchema = z.object({
   email: z.string().email('Please enter a valid email address.'),
-  role: z.enum(['Admin', 'Member']),
+  spaceRole: z.enum(['Admin', 'Member', 'Viewer']),
   hubAccess: z.record(z.string()).optional(),
 });
 
@@ -26,17 +26,19 @@ type InviteFormValues = z.infer<typeof inviteSchema>;
 interface InviteUserDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onInvite: (values: Omit<Invite, 'id' | 'token' | 'status'>) => void;
+  onInvite: (values: Omit<Invite, 'id' | 'tokenHash' | 'sentAt' | 'expiresAt' | 'createdAt' | 'status'>) => void;
   activeSpace: Space;
   allHubs: Hub[];
 }
 
 export default function InviteUserDialog({ isOpen, onOpenChange, onInvite, activeSpace, allHubs }: InviteUserDialogProps) {
+  const { appUser } = useAuth();
+  
   const form = useForm<InviteFormValues>({
     resolver: zodResolver(inviteSchema),
     defaultValues: {
       email: '',
-      role: 'Member',
+      spaceRole: 'Member',
       hubAccess: {},
     },
   });
@@ -51,20 +53,23 @@ export default function InviteUserDialog({ isOpen, onOpenChange, onInvite, activ
 
       form.reset({
         email: '',
-        role: 'Member',
+        spaceRole: 'Member',
         hubAccess: defaultHubAccess,
       });
     }
   }, [isOpen, allHubs, form]);
 
-  const role = form.watch('role');
+  const role = form.watch('spaceRole');
 
   const onSubmit = (values: InviteFormValues) => {
-    const inviteData: Omit<Invite, 'id'|'token'|'status'|'invitedBy'> = {
+    if (!appUser) return;
+    const inviteData = {
         email: values.email,
-        role: values.role,
-        spaces: [activeSpace.id], // Invite to the current active space
-        hubAccess: values.role === 'Admin' ? undefined : values.hubAccess, // Admins get access to all hubs by default
+        spaceRole: values.spaceRole,
+        spaceId: activeSpace.id,
+        spaceName: activeSpace.name,
+        hubAccess: values.spaceRole === 'Admin' ? undefined : values.hubAccess,
+        createdBy: appUser.id,
     };
 
     onInvite(inviteData);
@@ -100,7 +105,7 @@ export default function InviteUserDialog({ isOpen, onOpenChange, onInvite, activ
               />
               <FormField
                 control={form.control}
-                name="role"
+                name="spaceRole"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Space Role</FormLabel>
@@ -113,6 +118,7 @@ export default function InviteUserDialog({ isOpen, onOpenChange, onInvite, activ
                       <SelectContent>
                           <SelectItem value="Member">Member</SelectItem>
                           <SelectItem value="Admin">Admin</SelectItem>
+                          <SelectItem value="Viewer">Viewer</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
