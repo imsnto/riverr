@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import SpaceFormDialog, { HubFormValues } from '@/components/dashboard/space-form-dialog';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
+import OnboardingGuide from '@/components/dashboard/OnboardingGuide';
 
 export default function SpaceSelectionPage() {
   const router = useRouter();
@@ -17,12 +18,16 @@ export default function SpaceSelectionPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const { toast } = useToast();
+  const [isOnboarding, setIsOnboarding] = useState(false);
 
   useEffect(() => {
+    if (appUser && userSpaces.length === 0) {
+      setIsOnboarding(true);
+    }
     if (appUser) {
         db.getAllUsers().then(setAllUsers);
     }
-  }, [appUser]);
+  }, [appUser, userSpaces]);
 
   const handleSpaceSelect = (space: Space) => {
     setActiveSpace(space);
@@ -70,7 +75,16 @@ export default function SpaceSelectionPage() {
     }
   };
 
-  if (userSpaces.length === 0) {
+  if (isOnboarding) {
+    return (
+      <OnboardingGuide onComplete={() => {
+        setIsOnboarding(false);
+        handleCreateNewSpace();
+      }}/>
+    );
+  }
+
+  if (userSpaces.length === 0 && !isOnboarding) {
     return (
       <div className="container mx-auto p-4 md:p-8 text-center">
         <h1 className="text-3xl font-bold">Welcome!</h1>
