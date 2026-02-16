@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User as AppUser, Space, SpaceMember, Invite, Hub } from '@/lib/data';
 import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { getUser, addUser, addSpace, getSpacesForUser, getInvitesForEmail, acceptInvite, declineInvite, seedDatabase } from '@/lib/db';
+import { getUser, addUser, addSpace, getSpacesForUser, getInvitesForEmail, acceptInvite, declineInvite, seedDatabase, updateUser } from '@/lib/db';
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -111,20 +112,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             email: user.email!,
             avatarUrl: user.photoURL || `https://placehold.co/100x100.png?text=${user.displayName?.[0] || 'U'}`,
             role: 'Admin', // Default global role
+            onboardingComplete: false,
           };
           userProfile = await addUser(newUser, user.uid);
           
-          const personalSpace: Omit<Space, 'id'> = {
-            name: `${userProfile.name}'s Space`,
-            members: { [userProfile.id]: { role: 'Admin' as const } },
-            statuses: [
-              { name: 'Backlog', color: '#6b7280' },
-              { name: 'In Progress', color: '#3b82f6' },
-              { name: 'In Review', color: '#f59e0b' },
-              { name: 'Done', color: '#22c55e' },
-            ]
+          const systemSpace: Omit<Space, 'id'> = {
+            name: "Getting Started",
+            members: { [userProfile.id]: { role: 'Admin' } },
+            isSystem: true,
+            isOnboarding: true,
           };
-          await addSpace(personalSpace);
+          await addSpace(systemSpace);
           spaces = await getSpacesForUser(userProfile.id);
         } else {
            spaces = await getSpacesForUser(userProfile.id);
@@ -144,7 +142,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
         }
         
-        const isAdminInAnySpace = spaces.some(s => s.members[userProfile!.id]?.role === 'Admin');
+        const realSpaces = spaces.filter(s => !s.isSystem);
+        const isAdminInAnySpace = realSpaces.some(s => s.members[userProfile!.id]?.role === 'Admin');
         setIsUserAdmin(isAdminInAnySpace);
 
         setStatus('authenticated');
@@ -211,6 +210,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const handleAcceptInvite = async (invite: Invite) => {
     if (!appUser) return;
     await acceptInvite(invite, appUser.id);
+    await updateUser(appUser.id, { onboardingComplete: true });
     setPendingInvites(prev => prev.filter(i => i.id !== invite.id));
     const updatedSpaces = await getSpacesForUser(appUser.id);
     setUserSpaces(updatedSpaces);

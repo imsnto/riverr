@@ -9,6 +9,8 @@ export interface User {
   email: string;
   avatarUrl: string;
   role: 'Admin' | 'Member'; // Global role
+  onboardingComplete?: boolean;
+  onboardingIntent?: string;
 }
 
 export interface SpaceMember {
@@ -20,6 +22,8 @@ export interface Space {
   id: string;
   name: string;
   members: Record<string, SpaceMember>; // Map of user IDs to their roles/permissions
+  isSystem?: boolean;
+  isOnboarding?: boolean;
 }
 
 export type ConversationState =

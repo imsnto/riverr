@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -6,13 +7,20 @@ import { useRouter } from 'next/navigation';
 import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
 
 export default function RootPage() {
-    const { status, activeSpace, activeHub } = useAuth();
+    const { status, activeSpace, activeHub, userSpaces } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
         if (status === 'unauthenticated') {
             router.push('/login');
         } else if (status === 'authenticated') {
+            const onboardingSpace = userSpaces.find(s => s.isOnboarding);
+
+            if (onboardingSpace) {
+                router.push('/onboarding');
+                return;
+            }
+
             const lastSpace = localStorage.getItem('timeflow_active_space_v2');
             const lastHub = localStorage.getItem('timeflow_active_hub_v2');
 
@@ -32,7 +40,7 @@ export default function RootPage() {
                 router.push('/space-selection');
             }
         }
-    }, [status, router, activeSpace, activeHub]);
+    }, [status, router, activeSpace, activeHub, userSpaces]);
 
     return <DashboardSkeleton />;
 }
