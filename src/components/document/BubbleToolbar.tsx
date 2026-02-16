@@ -2,11 +2,18 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import type { Editor } from '@tiptap/react';
-import { Bold, Italic, Underline, Link as LinkIcon, Check, Trash2, ChevronDown } from 'lucide-react';
+import { Bold, Italic, Underline, Link as LinkIcon, Check, Trash2, ChevronDown, Strikethrough, Code } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const getActiveNodeLabel = (editor: Editor) => {
     if (editor.isActive('heading', { level: 1 })) return 'Heading 1';
@@ -17,6 +24,9 @@ const getActiveNodeLabel = (editor: Editor) => {
     if (editor.isActive('blockquote')) return 'Blockquote';
     return 'Paragraph';
 };
+
+const FONT_SIZES = ['12px', '14px', '16px', '18px', '24px', '30px', '36px', '48px'];
+const FONT_FAMILIES = ['Inter', 'serif', 'monospace', 'cursive'];
 
 
 export function BubbleToolbar({ editor }: { editor: Editor | null }) {
@@ -65,6 +75,8 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
   }
 
   const activeNodeLabel = getActiveNodeLabel(editor);
+  const activeFontSize = editor.getAttributes('textStyle').fontSize || '16px';
+  const activeFontFamily = editor.getAttributes('textStyle').fontFamily || 'Inter';
   
   const NodeSelector = () => (
     <Popover>
@@ -105,10 +117,45 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
+       <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-sm font-medium w-28 justify-start">
+                    <span className="truncate">{activeFontFamily}</span>
+                    <ChevronDown className="h-4 w-4 ml-auto" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+                <DropdownMenuRadioGroup value={activeFontFamily} onValueChange={(font) => editor.chain().focus().setFontFamily(font).run()}>
+                    {FONT_FAMILIES.map(font => (
+                        <DropdownMenuRadioItem key={font} value={font} style={{fontFamily: font}}>{font}</DropdownMenuRadioItem>
+                    ))}
+                </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-sm font-medium w-20 justify-start">
+                     <span className="truncate">{activeFontSize}</span>
+                    <ChevronDown className="h-4 w-4 ml-auto" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+                <DropdownMenuRadioGroup value={activeFontSize} onValueChange={(size) => editor.chain().focus().setFontSize(size).run()}>
+                    {FONT_SIZES.map(size => (
+                        <DropdownMenuRadioItem key={size} value={size}>{size}</DropdownMenuRadioItem>
+                    ))}
+                </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+        </DropdownMenu>
+
+      <Separator orientation="vertical" className="h-6 mx-1" />
+
       <Button
         type="button"
         variant={editor.isActive('bold') ? 'secondary' : 'ghost'}
         size="sm"
+        title="Bold"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => editor.chain().focus().toggleBold().run()}
       >
@@ -119,6 +166,7 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
         type="button"
         variant={editor.isActive('italic') ? 'secondary' : 'ghost'}
         size="sm"
+        title="Italic"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => editor.chain().focus().toggleItalic().run()}
       >
@@ -129,10 +177,33 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
         type="button"
         variant={editor.isActive('underline') ? 'secondary' : 'ghost'}
         size="sm"
+        title="Underline"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => editor.chain().focus().toggleUnderline().run()}
       >
         <Underline className="h-4 w-4" />
+      </Button>
+
+      <Button
+        type="button"
+        variant={editor.isActive('strike') ? 'secondary' : 'ghost'}
+        size="sm"
+        title="Strikethrough"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => editor.chain().focus().toggleStrike().run()}
+      >
+        <Strikethrough className="h-4 w-4" />
+      </Button>
+
+      <Button
+        type="button"
+        variant={editor.isActive('code') ? 'secondary' : 'ghost'}
+        size="sm"
+        title="Code"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => editor.chain().focus().toggleCode().run()}
+      >
+        <Code className="h-4 w-4" />
       </Button>
       
       <Popover open={isLinkPopoverOpen} onOpenChange={setIsLinkPopoverOpen}>
@@ -141,6 +212,7 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
             type="button"
             variant={editor.isActive('link') ? 'secondary' : 'ghost'}
             size="sm"
+            title="Link"
             onMouseDown={(e) => e.preventDefault()}
           >
             <LinkIcon className="h-4 w-4" />
