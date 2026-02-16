@@ -1,11 +1,15 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 const GoogleIcon = () => (
     <svg className="mr-2 h-4 w-4" viewBox="0 0 48 48">
@@ -17,14 +21,46 @@ const GoogleIcon = () => (
 )
 
 export default function LoginPage() {
-    const { signInWithGoogle, status } = useAuth();
+    const { signInWithGoogle, status, signUpWithEmailAndPassword, signInWithEmailAndPassword } = useAuth();
     const router = useRouter();
+    const { toast } = useToast();
+    const [isSignUp, setIsSignUp] = useState(false);
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (status === 'authenticated') {
             router.push('/');
         }
     }, [status, router]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            if (isSignUp) {
+                if (!name) {
+                    toast({ variant: 'destructive', title: 'Name is required' });
+                    setLoading(false);
+                    return;
+                }
+                await signUpWithEmailAndPassword(name, email, password);
+            } else {
+                await signInWithEmailAndPassword(email, password);
+            }
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Authentication Failed',
+                description: 'Please check your credentials and try again.',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
 
     return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 relative overflow-hidden">
@@ -35,8 +71,8 @@ export default function LoginPage() {
             
             <div className="z-10 flex flex-col items-center text-center mb-12">
                 <Image 
-                    src="/manowar.png"
-                    width={100}
+                    src="/manowar-logo.png"
+                    width={200}
                     height={100}
                     alt="Manowar Logo"
                     data-ai-hint="logo"
@@ -48,15 +84,53 @@ export default function LoginPage() {
 
             <Card className="w-full max-w-sm z-10 bg-card/80 backdrop-blur-sm">
                 <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">Sign In</CardTitle>
-                    <CardDescription>Use your Google account to continue.</CardDescription>
+                    <CardTitle className="text-2xl">{isSignUp ? 'Create Account' : 'Sign In'}</CardTitle>
+                    <CardDescription>Enter your details to continue.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                     <form onSubmit={handleSubmit} className="space-y-4">
+                        {isSignUp && (
+                            <div className="space-y-1">
+                                <Label htmlFor="name">Name</Label>
+                                <Input id="name" value={name} onChange={e => setName(e.target.value)} required />
+                            </div>
+                        )}
+                        <div className="space-y-1">
+                            <Label htmlFor="email">Email</Label>
+                            <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="password">Password</Label>
+                            <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+                        </div>
+                        <Button type="submit" className="w-full" disabled={loading}>
+                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
+                        </Button>
+                    </form>
+
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                        </div>
+                    </div>
+
                     <Button variant="outline" className="w-full" onClick={signInWithGoogle}>
                         <GoogleIcon />
                         Sign in with Google
                     </Button>
                 </CardContent>
+                 <CardFooter className="justify-center">
+                    <p className="text-sm text-muted-foreground">
+                        {isSignUp ? "Already have an account?" : "Don't have an account?"}{' '}
+                        <Button variant="link" className="p-0" onClick={() => setIsSignUp(!isSignUp)}>
+                            {isSignUp ? "Sign In" : "Sign Up"}
+                        </Button>
+                    </p>
+                </CardFooter>
             </Card>
         </div>
     );

@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User as AppUser, Space, SpaceMember, Invite, Hub } from '@/lib/data';
-import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut, signInWithPopup } from 'firebase/auth';
+import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
 import { getUser, addUser, addSpace, getSpacesForUser, getInvitesForEmail, acceptInvite, declineInvite, seedDatabase } from '@/lib/db';
 import { writeBatch, doc } from 'firebase/firestore';
@@ -24,6 +24,8 @@ interface AuthContextType {
   setAppUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  signUpWithEmailAndPassword: (name: string, email: string, password: string) => Promise<void>;
+  signInWithEmailAndPassword: (email: string, password: string) => Promise<void>;
   userSpaces: Space[];
   setUserSpaces: React.Dispatch<React.SetStateAction<Space[]>>;
   activeSpace: Space | null;
@@ -181,6 +183,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const signUpWithEmailAndPassword = async (name: string, email: string, password: string) => {
+    setStatus('loading');
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Immediately update the Firebase Auth user's profile
+      await updateProfile(userCredential.user, { displayName: name });
+      // The onAuthStateChanged listener will now pick up the user with the correct displayName
+    } catch (error) {
+      console.error("Error during Email/Password Sign-Up:", error);
+      setStatus('unauthenticated');
+      throw error;
+    }
+  };
+
+  const signInWithEmailAndPassword = async (email: string, password: string) => {
+    setStatus('loading');
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      console.error("Error during Email/Password Sign-In:", error);
+      setStatus('unauthenticated');
+      throw error;
+    }
+  };
+
   const handleAcceptInvite = async (invite: Invite) => {
     if (!appUser) return;
     await acceptInvite(invite, appUser.id);
@@ -208,6 +235,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setAppUser,
     signOut: handleSignOut,
     signInWithGoogle,
+    signUpWithEmailAndPassword,
+    signInWithEmailAndPassword,
     userSpaces,
     setUserSpaces,
     activeSpace,
