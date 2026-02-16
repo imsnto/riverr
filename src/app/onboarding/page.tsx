@@ -31,7 +31,7 @@ const hubTemplates: Record<string, { name: string, components: string[] }> = {
 };
 
 export default function OnboardingPage() {
-    const { appUser, userSpaces, setUserSpaces, setActiveSpace, setActiveHub, status } = useAuth();
+    const { appUser, userSpaces, setUserSpaces, setActiveSpace, setActiveHub, status, activeSpace } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
     
@@ -45,26 +45,27 @@ export default function OnboardingPage() {
     const [hubComponents, setHubComponents] = useState<string[]>([]);
 
     useEffect(() => {
+        if (status === 'authenticated' && appUser?.onboardingComplete) {
+          router.push('/space-selection');
+        } else if (status === 'authenticated' && !appUser?.onboardingComplete) {
+            const systemSpace = userSpaces.find(s => s.isOnboarding);
+            if (!systemSpace) {
+                // User is not fully onboarded but is missing the system space.
+                // This is an inconsistent state, likely from a previous error.
+                // Send them to space selection to recover.
+                router.push('/space-selection');
+            }
+        }
+    }, [status, appUser, userSpaces, router]);
+
+    useEffect(() => {
         if (appUser) {
             db.getAllUsers().then(setAllUsers);
             setSpaceName(`${appUser.name}'s Workspace`);
         }
     }, [appUser]);
 
-    useEffect(() => {
-        // This effect will handle the redirection.
-        if (status === 'authenticated') {
-            const systemSpace = userSpaces.find(s => s.isOnboarding);
-            if (!systemSpace) {
-                router.push('/space-selection');
-            }
-        }
-    }, [status, userSpaces, router]);
-
-
-    const systemSpace = userSpaces.find(s => s.isOnboarding);
-
-    if (status === 'loading' || !appUser || !systemSpace) {
+    if (status === 'loading' || !appUser) {
         return <div>Loading...</div>;
     }
 
@@ -86,6 +87,7 @@ export default function OnboardingPage() {
     
     const handleCreateSpace = async (e: React.FormEvent) => {
         e.preventDefault();
+        const systemSpace = userSpaces.find(s => s.isOnboarding);
         if (!systemSpace || !spaceName.trim() || !appUser) return;
 
         const membersMap: Record<string, SpaceMember> = { [appUser.id]: { role: 'Admin' } };
@@ -105,11 +107,11 @@ export default function OnboardingPage() {
     
     const handleCreateHub = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!systemSpace || !hubName.trim() || !appUser) return;
+        if (!activeSpace || !hubName.trim() || !appUser) return;
 
         const newHubData: Omit<Hub, 'id'> = {
             name: hubName,
-            spaceId: systemSpace.id,
+            spaceId: activeSpace.id,
             type: intent || 'custom',
             createdAt: new Date().toISOString(),
             createdBy: appUser.id,
@@ -126,11 +128,11 @@ export default function OnboardingPage() {
     };
 
     const handleLaunch = async () => {
-        if (!systemSpace || !appUser) return;
+        if (!activeSpace || !appUser) return;
         await db.updateUser(appUser.id, { onboardingComplete: true });
-        const hub = await db.getHubsForSpace(systemSpace!.id).then(hubs => hubs[0]);
+        const hub = await db.getHubsForSpace(activeSpace.id).then(hubs => hubs[0]);
         if (hub) {
-            router.push(`/space/${systemSpace!.id}/hub/${hub.id}/${hub.settings.defaultView || 'overview'}`);
+            router.push(`/space/${activeSpace.id}/hub/${hub.id}/${hub.settings.defaultView || 'overview'}`);
         } else {
             router.push('/space-selection');
         }
