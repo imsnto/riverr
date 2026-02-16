@@ -35,7 +35,7 @@ export default function LoginPage() {
             
             <div className="z-10 flex flex-col items-center text-center mb-12">
                 <Image 
-                    src="https://picsum.photos/seed/mannowar-logo/200/50"
+                    src="/mannowar-logo.png"
                     width={200}
                     height={50}
                     alt="Mannowar Logo"
@@ -43,7 +43,7 @@ export default function LoginPage() {
                     className="mb-4"
                 />
                 <h1 className="text-4xl font-bold tracking-tighter text-foreground">Welcome to Mannowar</h1>
-                <p className="text-muted-foreground mt-2">The future of project management is here.</p>
+                <p className="text-muted-foreground mt-2">The collective brain for your business.</p>
             </div>
 
             <Card className="w-full max-w-sm z-10 bg-card/80 backdrop-blur-sm">

@@ -275,7 +275,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full justify-center h-12">
                   <Image
-                    src="https://picsum.photos/seed/mannowar-icon/40/40"
+                    src="/mannowar-icon.png"
                     alt="Mannowar Icon"
                     width={24}
                     height={24}
