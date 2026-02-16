@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -645,7 +646,7 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave }: { helpCenter: HelpC
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
     
-    const hasChanges = name !== helpCenter.name || visibility !== helpCenter.visibility || coverImageUrl !== helpCenter.coverImageUrl;
+    const hasChanges = name !== helpCenter.name || visibility !== helpCenter.visibility || coverImageUrl !== (helpCenter.coverImageUrl || '');
 
     const handleSave = () => {
         onSave({ name, visibility, coverImageUrl });
@@ -679,78 +680,81 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave }: { helpCenter: HelpC
 
     return (
         <div className="p-6 h-full flex flex-col">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-6 shrink-0">
                 <Button variant="ghost" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" /> Back to Library</Button>
                 <Button onClick={handleSave} disabled={!hasChanges}>Save Changes</Button>
             </div>
             
-            <div className="space-y-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Library Details</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="hc-name">Library Name</Label>
-                            <Input id="hc-name" value={name} onChange={(e) => setName(e.target.value)} />
-                        </div>
-                         <div className="space-y-2">
-                            <Label>Visibility</Label>
-                            <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as 'public' | 'internal')}>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="public" id="r1" />
-                                    <Label htmlFor="r1">Public</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="internal" id="r2" />
-                                    <Label htmlFor="r2">Internal</Label>
-                                </div>
-                            </RadioGroup>
-                        </div>
-                    </CardContent>
-                </Card>
-                
-                {visibility === 'public' && (
+            <ScrollArea className="-mx-6 flex-1">
+                <div className="px-6 space-y-6">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Cover Image</CardTitle>
-                            <CardDescription>Set the background image for the header of your public help center.</CardDescription>
+                            <CardTitle>Library Details</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="relative aspect-video w-full rounded-lg border overflow-hidden bg-muted">
-                                {coverImageUrl && <Image src={coverImageUrl} alt="Cover image preview" fill className="object-cover" />}
-                            </div>
-                            <div>
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    className="hidden"
-                                    accept="image/*"
-                                    onChange={handleImageUpload}
-                                />
-                                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                                    <Upload className="mr-2 h-4 w-4" /> Upload Image
-                                </Button>
+                            <div className="space-y-2">
+                                <Label htmlFor="hc-name">Library Name</Label>
+                                <Input id="hc-name" value={name} onChange={(e) => setName(e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="ai-prompt">Or generate with AI</Label>
-                                <div className="flex gap-2">
-                                    <Input 
-                                        id="ai-prompt"
-                                        placeholder="e.g., abstract blue waves, minimalist landscape"
-                                        value={prompt}
-                                        onChange={(e) => setPrompt(e.target.value)}
-                                    />
-                                    <Button onClick={handleGenerateImage} disabled={isGenerating || !prompt.trim()}>
-                                        {isGenerating ? <Loader2 className="animate-spin" /> : <Wand2 />}
-                                        <span className="sr-only">Generate</span>
-                                    </Button>
-                                </div>
+                                <Label>Visibility</Label>
+                                <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as 'public' | 'internal')}>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="public" id="r1" />
+                                        <Label htmlFor="r1">Public</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="internal" id="r2" />
+                                        <Label htmlFor="r2">Internal</Label>
+                                    </div>
+                                </RadioGroup>
                             </div>
                         </CardContent>
                     </Card>
-                )}
-            </div>
+                    
+                    {visibility === 'public' && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Cover Image</CardTitle>
+                                <CardDescription>Set the background image for the header of your public help center.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="relative aspect-video w-full rounded-lg border overflow-hidden bg-muted">
+                                    {coverImageUrl && <Image src={coverImageUrl} alt="Cover image preview" fill className="object-cover" />}
+                                </div>
+                                <div>
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        className="hidden"
+                                        accept="image/*"
+                                        onChange={handleImageUpload}
+                                    />
+                                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isGenerating}>
+                                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                        Upload Image
+                                    </Button>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="ai-prompt">Or generate with AI</Label>
+                                    <div className="flex gap-2">
+                                        <Input 
+                                            id="ai-prompt"
+                                            placeholder="e.g., abstract blue waves, minimalist landscape"
+                                            value={prompt}
+                                            onChange={(e) => setPrompt(e.target.value)}
+                                        />
+                                        <Button onClick={handleGenerateImage} disabled={isGenerating || !prompt.trim()}>
+                                            {isGenerating ? <Loader2 className="animate-spin" /> : <Wand2 />}
+                                            <span className="sr-only">Generate</span>
+                                        </Button>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
+            </ScrollArea>
         </div>
     );
 };
