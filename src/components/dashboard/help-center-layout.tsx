@@ -359,6 +359,11 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         const articlesToDelete = selectedItems.filter(id => articles.some(a => a.id === id));
         const collectionsToDelete = selectedItems.filter(id => collections.some(c => c.id === id));
     
+        if (selectedCollectionId && collectionsToDelete.includes(selectedCollectionId)) {
+            const currentCollection = collections.find(c => c.id === selectedCollectionId);
+            setSelectedCollectionId(currentCollection?.parentId || null);
+        }
+
         const promises: Promise<void>[] = [];
         articlesToDelete.forEach(id => {
             promises.push(db.deleteHelpCenterArticle(id));
@@ -413,8 +418,8 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     if (editingHelpCenter) {
       return <LibrarySettingsPage
                 helpCenter={editingHelpCenter}
-                onSave={handleSaveHelpCenter}
                 onBack={() => setEditingHelpCenter(null)}
+                onSave={handleSaveHelpCenter}
              />
     }
     
