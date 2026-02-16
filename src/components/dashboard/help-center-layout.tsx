@@ -720,7 +720,7 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave }: { helpCenter: HelpC
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="relative aspect-video w-full rounded-lg border overflow-hidden bg-muted">
-                                    {coverImageUrl && <Image src={coverImageUrl} alt="Cover image preview" fill className="object-cover" />}
+                                    <Image src={coverImageUrl || '/librarybackground.jpg'} alt="Cover image preview" fill className="object-cover" />
                                 </div>
                                 <div>
                                     <input
