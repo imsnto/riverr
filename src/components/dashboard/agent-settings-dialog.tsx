@@ -375,7 +375,7 @@ export default function AgentSettingsDialog({
   
   const embedScript = agent ? `
   <script
-  src="https://studio--timeflow-6i3eo.us-central1.hosted.app/chatbot-loader.js"
+  src="https://manowar.cloud/chatbot-loader.js"
   data-bot-id="${agent.id}"
   data-hub-id="${agent.hubId}"
   async
