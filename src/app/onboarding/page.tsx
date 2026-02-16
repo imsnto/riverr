@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -16,6 +15,7 @@ import HubComponentEditor from '@/components/dashboard/hub-component-editor';
 import { SpaceMember } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Separator } from '@/components/ui/separator';
 
 const intents = [
     { id: 'project-management', label: 'Project Management', icon: <FolderKanban className="h-8 w-8" /> },
@@ -51,7 +51,6 @@ export default function OnboardingPage() {
     const { toast } = useToast();
     
     const [step, setStep] = useState(1);
-    const [allUsers, setAllUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     // Form states
@@ -61,28 +60,34 @@ export default function OnboardingPage() {
     const [hubComponents, setHubComponents] = useState<string[]>([]);
 
     useEffect(() => {
-        if (status === 'authenticated') {
-            if (appUser?.onboardingComplete) {
-                router.push('/space-selection');
-                return;
-            }
+        if (status === 'loading') return;
+        
+        // If the user has completed onboarding, they shouldn't be here.
+        if (appUser?.onboardingComplete) {
+            router.push('/space-selection');
+            return;
+        }
 
-            const systemSpace = userSpaces.find(s => s.isOnboarding);
-            if (!systemSpace && !appUser?.onboardingComplete) {
-                router.push('/space-selection');
-                return;
-            }
+        // If the user is authenticated but doesn't have the temporary onboarding space,
+        // it means something went wrong or they navigated here directly. Send them back.
+        const systemSpace = userSpaces.find(s => s.isOnboarding);
+        if (!systemSpace && status === 'authenticated') {
+            router.push('/space-selection');
+            return;
+        }
 
+        // Only show the page if the user is authenticated and has an onboarding space.
+        if(status === 'authenticated' && systemSpace) {
             setIsLoading(false);
         } else if (status === 'unauthenticated') {
             router.push('/login');
         }
+
     }, [status, appUser, userSpaces, router]);
 
 
     useEffect(() => {
         if (appUser) {
-            db.getAllUsers().then(setAllUsers);
             setSpaceName(`${appUser.name}'s Workspace`);
         }
     }, [appUser]);
@@ -142,7 +147,7 @@ export default function OnboardingPage() {
             createdAt: new Date().toISOString(),
             createdBy: appUser.id,
             isDefault: true,
-            settings: { components: hubComponents, defaultView: hubComponents[0] || 'overview' },
+            settings: { components: hubComponents, defaultView: 'overview' },
             isPrivate: false,
             memberIds: [appUser.id],
             statuses: [],
@@ -157,13 +162,11 @@ export default function OnboardingPage() {
         if (!activeSpace || !appUser) return;
         await db.updateUser(appUser.id, { onboardingComplete: true });
         
-        // Use the hub from context first, as it was just created.
         const hubToLaunch = activeHub;
         
         if (hubToLaunch) {
             router.push(`/space/${activeSpace.id}/hub/${hubToLaunch.id}/${hubToLaunch.settings.defaultView || 'overview'}`);
         } else {
-             // Fallback just in case context is not updated yet
             const fetchedHub = await db.getHubsForSpace(activeSpace.id).then(hubs => hubs[0]);
              if (fetchedHub) {
                  setActiveHub(fetchedHub);
