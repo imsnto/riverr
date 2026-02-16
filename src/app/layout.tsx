@@ -6,7 +6,7 @@ import { AuthProvider } from '@/hooks/use-auth';
 import FirebaseErrorListener from '@/components/FirebaseErrorListener';
 
 export const metadata: Metadata = {
-  title: 'TimeFlow',
+  title: 'Mannowar',
   description: 'Project + Task + Time Tracking System',
 };
 
