@@ -1,4 +1,3 @@
-
 // src/components/dashboard/dashboard.tsx
 'use client';
 
@@ -789,9 +788,10 @@ export default function Dashboard({ view }: { view: string }) {
       onDelete: db.deleteSpace,
       appUser,
       onInvite: fetchData,
-      handleInvite: async (invite: Omit<Invite, 'id'>) => {
-          await db.addInvite(invite);
-          fetchData();
+      handleInvite: async (invite: Omit<Invite, 'id' | 'token' | 'status'>) => {
+        const { token: _, ...rest } = invite; // Legacy token removal
+        await db.addInvite(rest as any);
+        fetchData();
       },
       projects,
       tasks,
@@ -803,7 +803,6 @@ export default function Dashboard({ view }: { view: string }) {
       onBotAdd: handleBotAdd,
       onBotDelete: handleBotDelete,
       escalationRules,
-      helpCenters,
       tickets,
       conversations: chatConversations,
     }
@@ -846,7 +845,7 @@ export default function Dashboard({ view }: { view: string }) {
           onDataRefresh={fetchData}
           onCreateTicket={handleCreateTicket}
           onEscalateTicket={handleEscalateTicket}
-          allTasks={allTasks}
+          allTasks={tasks}
           onTaskSelect={setSelectedTask}
       />;
       case 'deals': return <DealsBoard

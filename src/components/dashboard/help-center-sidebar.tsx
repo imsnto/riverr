@@ -179,7 +179,7 @@ const LibraryList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: str
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                         <DropdownMenuItem onSelect={() => onEdit(hc)}>
-                            <Edit className="mr-2 h-4 w-4" /> Edit
+                            <Settings className="mr-2 h-4 w-4" /> Settings
                         </DropdownMenuItem>
                         {hc.visibility !== 'internal' && (
                             <DropdownMenuItem asChild>

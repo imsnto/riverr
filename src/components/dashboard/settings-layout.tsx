@@ -1,5 +1,3 @@
-
-
 // src/components/dashboard/settings-layout.tsx
 'use client';
 
@@ -20,7 +18,6 @@ import {
   Hub,
   Bot,
   EscalationIntakeRule,
-  HelpCenter,
   Ticket,
   Conversation,
 } from '@/lib/data';
@@ -32,10 +29,9 @@ import EscalationIntakeSettings from './escalation-intake-settings';
 import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import KnowledgeBaseSettings from './knowledge-base-settings';
 import BrainSettings from './brain-settings';
 
-type SettingsView = 'users' | 'spaces' | 'hub' | 'inbox' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'knowledge-base' | 'brain';
+type SettingsView = 'users' | 'spaces' | 'hub' | 'inbox' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'brain';
 
 interface SettingsLayoutProps {
   allUsers: User[];
@@ -56,7 +52,6 @@ interface SettingsLayoutProps {
   onBotAdd: (bot: Omit<Bot, 'id'>) => void;
   onBotDelete: (botId: string) => void;
   escalationRules: EscalationIntakeRule[];
-  helpCenters: HelpCenter[];
   tickets: Ticket[];
   conversations: Conversation[];
 }
@@ -74,7 +69,6 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
 
   const hubHasInbox = props.activeHub?.settings?.components?.includes('inbox');
   const hubHasDeals = props.activeHub?.settings?.components?.includes('deals');
-  const hubHasHelpCenter = props.activeHub?.settings?.components?.includes('help-center');
   const hubHasTickets = props.activeHub?.settings?.components?.includes('tickets');
   const hubHasTasks = props.activeHub?.settings?.components?.includes('tasks');
 
@@ -86,7 +80,6 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
     { key: 'inbox', label: 'Agents', disabled: !hubHasInbox },
     { key: 'deal-automation', label: 'Deal Automation', disabled: !hubHasDeals },
     { key: 'escalation-intake', label: 'Escalation Intake', disabled: !(hubHasTickets && hubHasTasks) },
-    { key: 'knowledge-base', label: 'Knowledge Base', disabled: !hubHasHelpCenter },
     { key: 'timesheets', label: 'Timesheets' },
     { key: 'brain', label: 'Business Brain' },
   ];
@@ -129,7 +122,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             onBotUpdate={props.onBotUpdate}
             onBotAdd={props.onBotAdd}
             onBotDelete={props.onBotDelete}
-            helpCenters={props.helpCenters}
+            helpCenters={[]}
             tickets={props.tickets}
             conversations={props.conversations}
             activeHub={props.activeHub}
@@ -150,8 +143,6 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
           rules={props.escalationRules}
           onUpdateActiveHub={props.onUpdateActiveHub}
         />;
-      case 'knowledge-base':
-        return <KnowledgeBaseSettings activeHub={props.activeHub} />;
       case 'timesheets':
         return (
           <TeamTimesheets

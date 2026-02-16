@@ -1,6 +1,5 @@
-
 'use client';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
 import { HelpCenter, HelpCenterCollection, HelpCenterArticle, User, Bot } from '@/lib/data';
 import HelpCenterArticleEditor from './help-center-article-editor';
@@ -9,7 +8,7 @@ import { Button, buttonVariants } from '../ui/button';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
-import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2, Bot as BotIcon, Lock, Globe } from 'lucide-react';
+import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2, Bot as BotIcon, Lock, Globe, Wand2, Upload, Loader2, Image as ImageIcon } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import HelpCenterFormDialog, { HelpCenterFormValues } from './help-center-form-dialog';
 import { Input } from '../ui/input';
@@ -24,6 +23,11 @@ import { Separator } from '../ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import AddArticlesToLibraryDialog from './add-articles-to-collection-dialog';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
+import { Label } from '../ui/label';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import Image from 'next/image';
+import { generateCoverImage } from '@/ai/flows/generate-cover-image';
 
 interface HelpCenterLayoutProps {
     bots: Bot[];
@@ -48,6 +52,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
     const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
     const [activeHelpCenterId, setActiveHelpCenterId] = useState<string | null>(null);
+    const [editingHelpCenter, setEditingHelpCenter] = useState<HelpCenter | null>(null);
     const { appUser, activeHub, activeSpace } = useAuth();
     
     const [helpCenters, setHelpCenters] = useState<HelpCenter[]>([]);
@@ -58,8 +63,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     const [editingCollection, setEditingCollection] = useState<HelpCenterCollection | null>(null);
     
     const [isHCDialogOpen, setIsHCDialogOpen] = useState(false);
-    const [editingHelpCenter, setEditingHelpCenter] = useState<HelpCenter | null>(null);
-
+    
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [isMoveToFolderOpen, setIsMoveToFolderOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -85,7 +89,6 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         }
     }, [activeHub]);
 
-    // Auto-select the first library if none is selected
     useEffect(() => {
         if (sidebarView === 'knowledge-bases' && !activeHelpCenterId && helpCenters.length > 0) {
             setActiveHelpCenterId(helpCenters[0].id);
@@ -168,38 +171,44 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     }
     
     const handleNewHelpCenter = () => {
-        setEditingHelpCenter(null);
         setIsHCDialogOpen(true);
     };
 
     const handleEditHelpCenter = (hc: HelpCenter) => {
         setEditingHelpCenter(hc);
-        setIsHCDialogOpen(true);
     };
 
-    const handleSaveHelpCenter = async (values: HelpCenterFormValues) => {
+    const handleSaveHelpCenter = async (values: Partial<HelpCenter>) => {
+        if (!editingHelpCenter) return;
+        try {
+            await db.updateHelpCenter(editingHelpCenter.id, values);
+            toast({ title: "Library updated" });
+            refreshData();
+            // Optimistically update the editing state
+            setEditingHelpCenter(prev => prev ? { ...prev, ...values } : null);
+        } catch (e) {
+            toast({ variant: "destructive", title: "Failed to save Library" });
+            console.error(e);
+        }
+    };
+    
+    const handleCreateHelpCenter = async (values: HelpCenterFormValues) => {
         if (!activeHub) {
             toast({ variant: "destructive", title: "Something went wrong." });
             return;
         }
 
         try {
-            if (editingHelpCenter) {
-                await db.updateHelpCenter(editingHelpCenter.id, values);
-                toast({ title: "Library updated" });
-            } else {
-                const { iconName } = await suggestLibraryIcon(values.name);
-                const dataWithIcon = { ...values, hubId: activeHub.id, icon: iconName };
-                await db.addHelpCenter(dataWithIcon);
-                toast({ title: "Library created" });
-            }
+            const { iconName } = await suggestLibraryIcon(values.name);
+            const dataWithIcon = { ...values, hubId: activeHub.id, icon: iconName };
+            await db.addHelpCenter(dataWithIcon);
+            toast({ title: "Library created" });
             refreshData();
         } catch (e) {
-            toast({ variant: "destructive", title: "Failed to save Library" });
+            toast({ variant: "destructive", title: "Failed to create Library" });
             console.error(e);
         } finally {
             setIsHCDialogOpen(false);
-            setEditingHelpCenter(null);
         }
     };
 
@@ -211,7 +220,6 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     
         const parentId = editingCollection ? editingCollection.parentId : selectedCollectionId;
     
-        // Determine the helpCenterId. If we are in an active KB context, use it. Otherwise, it's unassigned.
         const helpCenterId = sidebarView === 'knowledge-bases' && activeHelpCenterId ? activeHelpCenterId : '';
 
         const data = {
@@ -286,6 +294,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
             setActiveHelpCenterId(null);
         }
         setSelectedArticleId(null);
+        setEditingHelpCenter(null);
         showContentOnMobile();
     }
     
@@ -293,6 +302,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         setActiveHelpCenterId(id);
         setSelectedCollectionId(null);
         setSelectedArticleId(null);
+        setEditingHelpCenter(null);
         if (id) {
             handleViewChange('knowledge-bases');
         }
@@ -398,6 +408,14 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         );
     }
     
+    if (editingHelpCenter) {
+      return <LibrarySettingsPage
+                helpCenter={editingHelpCenter}
+                onSave={handleSaveHelpCenter}
+                onBack={() => setEditingHelpCenter(null)}
+             />
+    }
+    
     const sidebarComponent = (
         <HelpCenterSidebar
             collections={collections}
@@ -405,6 +423,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
             onSelectCollection={(id) => {
                 setSelectedCollectionId(id);
                 setSelectedArticleId(null);
+                setEditingHelpCenter(null);
                 showContentOnMobile();
             }}
             onNewCollection={handleNewCollection}
@@ -556,8 +575,8 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
          <HelpCenterFormDialog
             isOpen={isHCDialogOpen}
             onOpenChange={setIsHCDialogOpen}
-            helpCenter={editingHelpCenter}
-            onSave={handleSaveHelpCenter}
+            helpCenter={null}
+            onSave={handleCreateHelpCenter}
         />
         <MoveToFolderDialog
             isOpen={isMoveToFolderOpen}
@@ -616,3 +635,122 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         </div>
     );
 }
+
+const LibrarySettingsPage = ({ helpCenter, onBack, onSave }: { helpCenter: HelpCenter, onBack: () => void, onSave: (data: Partial<HelpCenter>) => void}) => {
+    const [name, setName] = useState(helpCenter.name);
+    const [visibility, setVisibility] = useState(helpCenter.visibility || 'public');
+    const [coverImageUrl, setCoverImageUrl] = useState(helpCenter.coverImageUrl || '');
+    const [prompt, setPrompt] = useState('');
+    const [isGenerating, startTransition] = useTransition();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
+    
+    const hasChanges = name !== helpCenter.name || visibility !== helpCenter.visibility || coverImageUrl !== helpCenter.coverImageUrl;
+
+    const handleSave = () => {
+        onSave({ name, visibility, coverImageUrl });
+        toast({ title: "Library settings saved." });
+    }
+
+    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            const dataUrl = reader.result as string;
+            setCoverImageUrl(dataUrl);
+        };
+        reader.readAsDataURL(file);
+    };
+
+     const handleGenerateImage = () => {
+        if (!prompt.trim()) return;
+        startTransition(async () => {
+            try {
+                const result = await generateCoverImage(prompt);
+                setCoverImageUrl(result.imageUrl);
+                toast({ title: 'New cover image generated!' });
+            } catch (e) {
+                toast({ variant: 'destructive', title: 'Image generation failed.' });
+            }
+        });
+    };
+
+    return (
+        <div className="p-6 h-full flex flex-col">
+            <div className="flex justify-between items-center mb-6">
+                <Button variant="ghost" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" /> Back to Library</Button>
+                <Button onClick={handleSave} disabled={!hasChanges}>Save Changes</Button>
+            </div>
+            
+            <div className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Library Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="hc-name">Library Name</Label>
+                            <Input id="hc-name" value={name} onChange={(e) => setName(e.target.value)} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label>Visibility</Label>
+                            <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as 'public' | 'internal')}>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="public" id="r1" />
+                                    <Label htmlFor="r1">Public</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="internal" id="r2" />
+                                    <Label htmlFor="r2">Internal</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+                    </CardContent>
+                </Card>
+                
+                {visibility === 'public' && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Cover Image</CardTitle>
+                            <CardDescription>Set the background image for the header of your public help center.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="relative aspect-video w-full rounded-lg border overflow-hidden bg-muted">
+                                {coverImageUrl && <Image src={coverImageUrl} alt="Cover image preview" fill className="object-cover" />}
+                            </div>
+                            <div>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handleImageUpload}
+                                />
+                                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                    <Upload className="mr-2 h-4 w-4" /> Upload Image
+                                </Button>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="ai-prompt">Or generate with AI</Label>
+                                <div className="flex gap-2">
+                                    <Input 
+                                        id="ai-prompt"
+                                        placeholder="e.g., abstract blue waves, minimalist landscape"
+                                        value={prompt}
+                                        onChange={(e) => setPrompt(e.target.value)}
+                                    />
+                                    <Button onClick={handleGenerateImage} disabled={isGenerating || !prompt.trim()}>
+                                        {isGenerating ? <Loader2 className="animate-spin" /> : <Wand2 />}
+                                        <span className="sr-only">Generate</span>
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
+        </div>
+    );
+};
