@@ -14,6 +14,7 @@ import { recommendNextSalesAction } from '../../src/ai/flows/recommend-next-sale
 
 export { sendInviteEmail } from "./sendInviteEmail";
 export { acceptInvite } from "./acceptInvite";
+export { resendInvite } from "./resendInvite";
 
 admin.initializeApp();
 

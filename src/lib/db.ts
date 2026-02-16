@@ -23,6 +23,8 @@ import {
   orderBy,
   onSnapshot,
 } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { getApp } from "firebase/app";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "./firebase";
 import {
@@ -230,8 +232,15 @@ export const updateUser = async (
 };
 
 // --- Invite Management ---
-export const addInvite = async (invite: Omit<Invite, "id">): Promise<void> => {
-  await addDoc(collection(db, "invites"), invite);
+export const addInvite = async (invite: Omit<Invite, 'id' | 'status'>): Promise<void> => {
+    // This function now only creates the invite document.
+    // The Cloud Function `sendInviteEmail` will handle token generation and sending.
+    const inviteWithStatus = {
+        ...invite,
+        status: 'pending', // Explicitly set status on creation
+        createdAt: serverTimestamp(),
+    };
+    await addDoc(collection(db, "invites"), inviteWithStatus);
 };
 
 export const getInvitesForEmail = async (email: string): Promise<Invite[]> => {
@@ -245,6 +254,17 @@ export const getInvitesForEmail = async (email: string): Promise<Invite[]> => {
     (doc) => ({ id: doc.id, ...doc.data() } as Invite)
   );
 };
+
+export const revokeInvite = async (inviteId: string): Promise<void> => {
+  await deleteDoc(doc(db, "invites", inviteId));
+};
+
+export const resendInvite = async (inviteId: string): Promise<void> => {
+  const functions = getFunctions(getApp());
+  const resendInviteFn = httpsCallable(functions, 'resendInvite');
+  await resendInviteFn({ inviteId });
+};
+
 
 // --- Space Management ---
 export const getSpacesForUser = async (userId: string): Promise<Space[]> => {

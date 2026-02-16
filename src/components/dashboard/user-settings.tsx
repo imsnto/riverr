@@ -4,7 +4,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Space, Invite, SpaceMember, Hub } from '@/lib/data';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -16,6 +16,17 @@ import InviteUserDialog from './invite-user-dialog';
 import * as db from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import { getInitials } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { cn } from '@/lib/utils';
 
 interface UserSettingsProps {
     allUsers: User[];
@@ -31,6 +42,7 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
   const { appUser, userSpaces, activeSpace } = useAuth();
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
+  const [inviteToRevoke, setInviteToRevoke] = useState<Invite | null>(null);
 
   useEffect(() => {
     if (userSpaces.length > 0) {
@@ -65,9 +77,11 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
   const handleInviteAndClose = async (values: Omit<Invite, 'id' | 'tokenHash' | 'sentAt' | 'expiresAt' | 'createdAt' | 'status'>) => {
     handleInvite(values);
     
-    // Refetch pending invites after sending a new one
-    const spaceIds = userSpaces.map(s => s.id);
-    db.getPendingInvites(spaceIds).then(setPendingInvites);
+    // Give Firestore a moment to process the creation and trigger the function
+    setTimeout(() => {
+        const spaceIds = userSpaces.map(s => s.id);
+        db.getPendingInvites(spaceIds).then(setPendingInvites);
+    }, 2000);
 
     setIsInviteOpen(false);
     toast({
@@ -75,6 +89,45 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
       description: `An invitation has been sent to ${values.email}.`,
     });
   }
+
+  const handleResend = async (inviteId: string, email: string) => {
+    try {
+      await db.resendInvite(inviteId);
+      toast({
+        title: "Invitation Resent",
+        description: `A new invitation has been sent to ${email}.`,
+      });
+      // Optionally refetch invites to update `sentAt` if you display it
+      const spaceIds = userSpaces.map(s => s.id);
+      db.getPendingInvites(spaceIds).then(setPendingInvites);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Failed to Resend",
+        description: error.message || "There was a problem resending the invitation.",
+      });
+    }
+  };
+
+  const handleRevoke = async () => {
+    if (!inviteToRevoke) return;
+    try {
+      await db.revokeInvite(inviteToRevoke.id);
+      toast({
+        title: "Invitation Revoked",
+        description: `The invitation for ${inviteToRevoke.email} has been revoked.`,
+      });
+      setPendingInvites(prev => prev.filter(inv => inv.id !== inviteToRevoke.id));
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Failed to Revoke",
+        description: "There was a problem revoking the invitation.",
+      });
+    } finally {
+        setInviteToRevoke(null);
+    }
+  };
 
 
   return (
@@ -200,8 +253,19 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem disabled>Resend Invitation</DropdownMenuItem>
-                                                    <DropdownMenuItem disabled className="text-destructive">Revoke Invitation</DropdownMenuItem>
+                                                     <DropdownMenuItem onSelect={() => handleResend(invite.id, invite.email)}>
+                                                        Resend Invitation
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onSelect={(e) => {
+                                                            e.preventDefault();
+                                                            setInviteToRevoke(invite);
+                                                        }}
+                                                        className="text-destructive focus:text-destructive"
+                                                    >
+                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                        Revoke Invitation
+                                                    </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </TableCell>
@@ -226,6 +290,23 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
             activeSpace={activeSpace}
             allHubs={allHubs.filter(h => h.spaceId === activeSpace.id)}
         />}
+
+        <AlertDialog open={!!inviteToRevoke} onOpenChange={setInviteToRevoke}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will permanently revoke the invitation for <span className="font-semibold">{inviteToRevoke?.email}</span>. This action cannot be undone.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleRevoke} className={cn(buttonVariants({ variant: "destructive" }))}>
+                        Revoke
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
