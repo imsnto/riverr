@@ -817,7 +817,7 @@ export default function Dashboard({ view }: { view: string }) {
           projects={projects}
           onSelectProject={handleSelectProject}
           allTasks={tasks}
-          onUpdateTasks={onUpdateTasks}
+          onUpdateTasks={handleUpdateTasks}
           activeHub={activeHub!}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
@@ -846,7 +846,7 @@ export default function Dashboard({ view }: { view: string }) {
           onDataRefresh={fetchData}
           onCreateTicket={handleCreateTicket}
           onEscalateTicket={handleEscalateTicket}
-          allTasks={tasks}
+          allTasks={allTasks}
           onTaskSelect={setSelectedTask}
       />;
       case 'deals': return <DealsBoard
