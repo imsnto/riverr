@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User as AppUser, Space, SpaceMember, Invite, Hub } from '@/lib/data';
-import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword as firebaseSignIn, updateProfile } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
 import { getUser, addUser, addSpace, getSpacesForUser, getInvitesForEmail, acceptInvite, declineInvite, seedDatabase, updateUser } from '@/lib/db';
 import { writeBatch, doc } from 'firebase/firestore';
@@ -199,7 +199,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signInWithEmailAndPassword = async (email: string, password: string) => {
     setStatus('loading');
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await firebaseSignIn(auth, email, password);
     } catch (error) {
       console.error("Error during Email/Password Sign-In:", error);
       setStatus('unauthenticated');
