@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, ArrowRight, Building2, Check, FolderKanban, Plus, Rocket, Star, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building2, Check, FolderKanban, Plus, Rocket, Star, Users, Headset } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Hub, Space, User } from '@/lib/data';
 import * as db from '@/lib/db';
@@ -15,20 +15,35 @@ import { Input } from '@/components/ui/input';
 import HubComponentEditor from '@/components/dashboard/hub-component-editor';
 import { SpaceMember } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const intents = [
     { id: 'project-management', label: 'Project Management', icon: <FolderKanban className="h-8 w-8" /> },
     { id: 'sales-crm', label: 'Sales / CRM', icon: <Star className="h-8 w-8" /> },
+    { id: 'support', label: 'Support', icon: <Headset className="h-8 w-8" /> },
     { id: 'internal-ops', label: 'Internal Team Ops', icon: <Users className="h-8 w-8" /> },
     { id: 'client-delivery', label: 'Client Delivery', icon: <Building2 className="h-8 w-8" /> },
 ];
 
 const hubTemplates: Record<string, { name: string, components: string[] }> = {
-    'project-management': { name: 'Project Hub', components: ['tasks', 'documents'] },
-    'sales-crm': { name: 'Sales Hub', components: ['deals', 'contacts'] },
-    'internal-ops': { name: 'Team Hub', components: ['tasks', 'documents'] },
+    'project-management': { name: 'Project Hub', components: ['tasks', 'help-center'] },
+    'sales-crm': { name: 'Sales Hub', components: ['deals', 'contacts', 'inbox'] },
+    'support': { name: 'Support Hub', components: ['tickets', 'help-center', 'inbox'] },
+    'internal-ops': { name: 'Team Hub', components: ['tasks', 'help-center'] },
     'client-delivery': { name: 'Client Hub', components: ['tasks', 'inbox'] }
 };
+
+const knowledgeFeatureSummary = (
+    <div className="text-sm space-y-1">
+        <p>Knowledge will allow you to:</p>
+        <ul className="list-disc list-inside text-muted-foreground text-xs">
+            <li>Create internal documentation</li>
+            <li>Publish public help articles</li>
+            <li>Build a shared brain for your team</li>
+        </ul>
+    </div>
+);
+
 
 export default function OnboardingPage() {
     const { appUser, userSpaces, setUserSpaces, setActiveSpace, setActiveHub, status, activeHub } = useAuth();
@@ -51,10 +66,9 @@ export default function OnboardingPage() {
                 router.push('/space-selection');
                 return;
             }
-            
-            // Check for inconsistent state only at the start of the flow
+
             const systemSpace = userSpaces.find(s => s.isOnboarding);
-            if (step === 1 && !systemSpace) {
+            if (!systemSpace && !appUser?.onboardingComplete) {
                 router.push('/space-selection');
                 return;
             }
@@ -63,7 +77,7 @@ export default function OnboardingPage() {
         } else if (status === 'unauthenticated') {
             router.push('/login');
         }
-    }, [status, appUser, userSpaces, router, step]);
+    }, [status, appUser, userSpaces, router]);
 
 
     useEffect(() => {
@@ -74,6 +88,8 @@ export default function OnboardingPage() {
     }, [appUser]);
 
     const activeSpace = useAuth().activeSpace;
+    const hubFormValues = { name: hubName, components: hubComponents };
+
 
     if (isLoading) {
         return <div>Loading...</div>;
@@ -126,7 +142,7 @@ export default function OnboardingPage() {
             createdAt: new Date().toISOString(),
             createdBy: appUser.id,
             isDefault: true,
-            settings: { components: hubComponents, defaultView: hubComponents[0] || 'tasks' },
+            settings: { components: hubComponents, defaultView: hubComponents[0] || 'overview' },
             isPrivate: false,
             memberIds: [appUser.id],
             statuses: [],
@@ -200,8 +216,24 @@ export default function OnboardingPage() {
 
                 {step === 3 && (
                     <form onSubmit={handleCreateHub}>
-                        <h1 className="text-3xl font-bold text-center mb-2">Create your first Hub.</h1>
-                        <p className="text-muted-foreground text-center mb-8">Hubs are workspaces within your Space. Let's customize it.</p>
+                         <div className="text-center">
+                            <h1 className="text-3xl font-bold mb-2">Create your first Hub</h1>
+                            <p className="text-muted-foreground text-center mb-6">A Hub is a focused workspace inside your Space. Use Hubs to organize teams, workflows, or business functions.</p>
+                         </div>
+
+                        <Accordion type="single" collapsible className="w-full mb-6">
+                            <AccordionItem value="item-1">
+                                <AccordionTrigger>What’s the difference between a Space and a Hub?</AccordionTrigger>
+                                <AccordionContent>
+                                    <div className="text-sm text-muted-foreground space-y-2">
+                                        <p><strong className="text-foreground">Space</strong> = Your company or organization.</p>
+                                        <p><strong className="text-foreground">Hub</strong> = A focused environment for a team or function.</p>
+                                        <p><strong className="text-foreground">Features</strong> = The tools available inside that Hub.</p>
+                                        <p className="pt-2 text-xs">Example:<br/>Space: Acme Inc.<br/>Hub 1: Sales (Deals, Contacts, Inbox)<br/>Hub 2: Support (Tickets, Knowledge)</p>
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
                         
                         <div className="space-y-4">
                             <div>
@@ -209,9 +241,24 @@ export default function OnboardingPage() {
                                 <Input value={hubName} onChange={e => setHubName(e.target.value)} placeholder="e.g. Project Hub" />
                             </div>
                             <div>
-                                <label className="text-sm font-medium">Features</label>
+                                <label className="text-sm font-medium">Tools</label>
                                 <HubComponentEditor selected={hubComponents} setSelected={setHubComponents} />
                             </div>
+                             <Card className="bg-muted/50">
+                                <CardContent className="p-4 space-y-2">
+                                    <h4 className="font-semibold text-sm">This Hub will include:</h4>
+                                    <ul className="list-disc list-inside text-sm text-muted-foreground">
+                                        {hubFormValues.components.map(c => <li key={c} className="capitalize">{c.replace('-', ' ')}</li>)}
+                                    </ul>
+                                    {hubFormValues.components.includes('help-center') && (
+                                        <>
+                                            <Separator className="my-3"/>
+                                            {knowledgeFeatureSummary}
+                                        </>
+                                    )}
+                                    <p className="text-xs text-muted-foreground pt-2">You can change features anytime in settings.</p>
+                                </CardContent>
+                            </Card>
                         </div>
 
                          <div className="flex justify-between mt-8">
@@ -245,7 +292,7 @@ export default function OnboardingPage() {
                                     <div>
                                         <span className="font-semibold">Features:</span>
                                         <div className="flex flex-wrap gap-2 mt-1">
-                                            {hubComponents.map(comp => <Badge key={comp} variant="secondary">{comp}</Badge>)}
+                                            {hubComponents.map(comp => <Badge key={comp} variant="secondary">{comp.replace('-', ' ')}</Badge>)}
                                         </div>
                                     </div>
                                 </li>
