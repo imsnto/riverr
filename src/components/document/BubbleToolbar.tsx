@@ -112,163 +112,172 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
 
 
   return (
-    <div className="flex items-center gap-1 rounded-xl border bg-card/95 backdrop-blur px-2 py-1 shadow">
-        <NodeSelector />
+    <div className="flex items-center rounded-xl border bg-card/95 backdrop-blur px-1 py-1 shadow">
+        <div className="flex items-center">
+            <NodeSelector />
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-sm font-medium w-28 justify-start">
+                        <span className="truncate" style={{fontFamily: activeFontFamily}}>{activeFontFamily}</span>
+                        <ChevronDown className="h-4 w-4 ml-auto" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    <DropdownMenuRadioGroup value={activeFontFamily} onValueChange={(font) => editor.chain().focus().setFontFamily(font).run()}>
+                        {FONT_FAMILIES.map(font => (
+                            <DropdownMenuRadioItem key={font} value={font} style={{fontFamily: font}}>{font}</DropdownMenuRadioItem>
+                        ))}
+                    </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-sm font-medium w-20 justify-start">
+                        <span className="truncate">{activeFontSize}</span>
+                        <ChevronDown className="h-4 w-4 ml-auto" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    <DropdownMenuRadioGroup value={activeFontSize} onValueChange={(size) => editor.chain().focus().setFontSize(size).run()}>
+                        {FONT_SIZES.map(size => (
+                            <DropdownMenuRadioItem key={size} value={size}>{size}</DropdownMenuRadioItem>
+                        ))}
+                    </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
 
-      <Separator orientation="vertical" className="h-6" />
+        <Separator orientation="vertical" className="h-6 mx-1" />
 
-       <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-sm font-medium w-28 justify-start">
-                    <span className="truncate">{activeFontFamily}</span>
-                    <ChevronDown className="h-4 w-4 ml-auto" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-                <DropdownMenuRadioGroup value={activeFontFamily} onValueChange={(font) => editor.chain().focus().setFontFamily(font).run()}>
-                    {FONT_FAMILIES.map(font => (
-                        <DropdownMenuRadioItem key={font} value={font} style={{fontFamily: font}}>{font}</DropdownMenuRadioItem>
-                    ))}
-                </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-sm font-medium w-20 justify-start">
-                     <span className="truncate">{activeFontSize}</span>
-                    <ChevronDown className="h-4 w-4 ml-auto" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-                <DropdownMenuRadioGroup value={activeFontSize} onValueChange={(size) => editor.chain().focus().setFontSize(size).run()}>
-                    {FONT_SIZES.map(size => (
-                        <DropdownMenuRadioItem key={size} value={size}>{size}</DropdownMenuRadioItem>
-                    ))}
-                </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-        </DropdownMenu>
-
-      <Separator orientation="vertical" className="h-6" />
-
-      <Button
-        type="button"
-        variant={editor.isActive('bold') ? 'secondary' : 'ghost'}
-        size="sm"
-        title="Bold"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => editor.chain().focus().toggleBold().run()}
-      >
-        <Bold className="h-4 w-4" />
-      </Button>
-
-      <Button
-        type="button"
-        variant={editor.isActive('italic') ? 'secondary' : 'ghost'}
-        size="sm"
-        title="Italic"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => editor.chain().focus().toggleItalic().run()}
-      >
-        <Italic className="h-4 w-4" />
-      </Button>
-
-      <Button
-        type="button"
-        variant={editor.isActive('underline') ? 'secondary' : 'ghost'}
-        size="sm"
-        title="Underline"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => editor.chain().focus().toggleUnderline().run()}
-      >
-        <Underline className="h-4 w-4" />
-      </Button>
-
-      <Button
-        type="button"
-        variant={editor.isActive('strike') ? 'secondary' : 'ghost'}
-        size="sm"
-        title="Strikethrough"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => editor.chain().focus().toggleStrike().run()}
-      >
-        <Strikethrough className="h-4 w-4" />
-      </Button>
-
-      <Button
-        type="button"
-        variant={editor.isActive('code') ? 'secondary' : 'ghost'}
-        size="sm"
-        title="Code"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => editor.chain().focus().toggleCode().run()}
-      >
-        <Code className="h-4 w-4" />
-      </Button>
-      
-      <Button
-        type="button"
-        variant={editor.isActive('blockquote') ? 'secondary' : 'ghost'}
-        size="sm"
-        title="Blockquote"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-      >
-        <Quote className="h-4 w-4" />
-      </Button>
-      
-      <Separator orientation="vertical" className="h-6" />
-
-      <Popover open={isLinkPopoverOpen} onOpenChange={setIsLinkPopoverOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant={editor.isActive('link') ? 'secondary' : 'ghost'}
-            size="sm"
-            title="Link"
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            <LinkIcon className="h-4 w-4" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-64 p-2" sideOffset={10}>
-          <form onSubmit={handleLinkSubmit} className="flex items-center gap-2">
-            <Input
-              type="text"
-              placeholder="Paste link..."
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  setLink();
-                }
-              }}
-              className="h-8"
-            />
+        <div className="flex items-center">
             <Button
-              type="submit"
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 flex-shrink-0"
-            >
-              <Check className="h-4 w-4" />
-            </Button>
-            {hasLink && (
-              <Button
                 type="button"
-                variant="destructive"
+                variant={editor.isActive('bold') ? 'secondary' : 'ghost'}
                 size="icon"
-                className="h-8 w-8 flex-shrink-0"
+                className="h-8 w-8"
+                title="Bold"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={handleUnlink}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </form>
-        </PopoverContent>
-      </Popover>
+                onClick={() => editor.chain().focus().toggleBold().run()}
+            >
+                <Bold className="h-4 w-4" />
+            </Button>
+
+            <Button
+                type="button"
+                variant={editor.isActive('italic') ? 'secondary' : 'ghost'}
+                size="icon"
+                className="h-8 w-8"
+                title="Italic"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editor.chain().focus().toggleItalic().run()}
+            >
+                <Italic className="h-4 w-4" />
+            </Button>
+
+            <Button
+                type="button"
+                variant={editor.isActive('underline') ? 'secondary' : 'ghost'}
+                size="icon"
+                className="h-8 w-8"
+                title="Underline"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editor.chain().focus().toggleUnderline().run()}
+            >
+                <Underline className="h-4 w-4" />
+            </Button>
+
+            <Button
+                type="button"
+                variant={editor.isActive('strike') ? 'secondary' : 'ghost'}
+                size="icon"
+                className="h-8 w-8"
+                title="Strikethrough"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editor.chain().focus().toggleStrike().run()}
+            >
+                <Strikethrough className="h-4 w-4" />
+            </Button>
+
+            <Button
+                type="button"
+                variant={editor.isActive('code') ? 'secondary' : 'ghost'}
+                size="icon"
+                className="h-8 w-8"
+                title="Code"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editor.chain().focus().toggleCode().run()}
+            >
+                <Code className="h-4 w-4" />
+            </Button>
+            
+            <Button
+                type="button"
+                variant={editor.isActive('blockquote') ? 'secondary' : 'ghost'}
+                size="icon"
+                className="h-8 w-8"
+                title="Blockquote"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editor.chain().focus().toggleBlockquote().run()}
+            >
+                <Quote className="h-4 w-4" />
+            </Button>
+        </div>
+      
+        <Separator orientation="vertical" className="h-6 mx-1" />
+
+        <div className="flex items-center">
+            <Popover open={isLinkPopoverOpen} onOpenChange={setIsLinkPopoverOpen}>
+                <PopoverTrigger asChild>
+                <Button
+                    type="button"
+                    variant={editor.isActive('link') ? 'secondary' : 'ghost'}
+                    size="icon"
+                    className="h-8 w-8"
+                    title="Link"
+                    onMouseDown={(e) => e.preventDefault()}
+                >
+                    <LinkIcon className="h-4 w-4" />
+                </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-2" sideOffset={10}>
+                <form onSubmit={handleLinkSubmit} className="flex items-center gap-2">
+                    <Input
+                    type="text"
+                    placeholder="Paste link..."
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                        e.preventDefault();
+                        setLink();
+                        }
+                    }}
+                    className="h-8"
+                    />
+                    <Button
+                    type="submit"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 flex-shrink-0"
+                    >
+                    <Check className="h-4 w-4" />
+                    </Button>
+                    {hasLink && (
+                    <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="h-8 w-8 flex-shrink-0"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={handleUnlink}
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                    )}
+                </form>
+                </PopoverContent>
+            </Popover>
+        </div>
     </div>
   );
 }
