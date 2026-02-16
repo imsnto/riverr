@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { TimeEntry, Project, Task, User, Status } from '@/lib/data';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import TaskDetailsDialog from './task-details-dialog';
 import { eachDayOfInterval, format, isWithinInterval } from 'date-fns';
+import { getInitials } from '@/lib/utils';
 
 interface WeeklyTimesheetProps {
   userId: string;

@@ -41,7 +41,7 @@ import { marked } from 'marked';
 import { handleIncomingMessage, AgentAdapters, BotConfig as AgentConfig, Conversation as AgentConversation, IncomingMessage } from '@/lib/agent';
 import { searchHelpCenterAction, searchSupportAction } from '@/app/actions/chat';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
+import { getInitials } from '@/lib/utils';
 
 function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
     const [open, setOpen] = React.useState(false);
@@ -133,11 +133,6 @@ interface AgentSettingsDialogProps {
   allUsers: User[];
   helpCenters: HelpCenter[];
 }
-
-const getInitials = (name?: string) => {
-    if (!name) return '';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-};
 
 export default function AgentSettingsDialog({
   isOpen,
@@ -986,4 +981,3 @@ function MultiSelectPopover({ title, options, selected, onChange }: { title: str
         </Popover>
     );
 }
-

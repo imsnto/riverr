@@ -8,10 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { eachDayOfInterval, format, isWithinInterval } from 'date-fns';
-
-const getInitials = (name: string) => {
-  return name.split(' ').map(n => n[0]).join('');
-};
+import { getInitials } from '@/lib/utils';
 
 interface AllUsersTimesheetProps {
   onUserSelect: (userId: string) => void;

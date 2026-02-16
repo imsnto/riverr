@@ -10,15 +10,11 @@ import { Separator } from '../ui/separator';
 import { AtSign, Calendar, Briefcase, Clock, Compass, DollarSign, HardDrive, MapPin, Milestone, Users, PanelRightClose } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
+import { getInitials } from '@/lib/utils';
 
 interface InboxContactPanelProps {
   visitor: Visitor | null;
   onToggle: () => void;
-}
-
-const getInitials = (name: string) => {
-    if (!name) return '?';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
 const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: React.ReactNode }) => (

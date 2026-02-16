@@ -14,10 +14,7 @@ import { Input } from '../ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar as CalendarPicker } from '../ui/calendar';
 import { Button } from '../ui/button';
-
-const getInitials = (name: string) => {
-    return name ? name.split(' ').map(n => n[0]).join('') : '';
-}
+import { getInitials } from '@/lib/utils';
 
 interface DetailRowProps {
     icon: React.ElementType;

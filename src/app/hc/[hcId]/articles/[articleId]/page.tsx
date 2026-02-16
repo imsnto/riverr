@@ -6,8 +6,7 @@ import { ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import React from 'react';
-
-const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
+import { getInitials } from '@/lib/utils';
 
 async function getArticleData(articleId: string) {
     const articleRef = adminDB.collection('help_center_articles').doc(articleId);

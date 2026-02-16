@@ -16,17 +16,13 @@ import { Separator } from '../ui/separator';
 import { AtSign, Calendar, MapPin, Milestone, Users } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
+import { getInitials } from '@/lib/utils';
 
 interface ContactDetailDialogProps {
   visitor: Visitor | null;
   children?: React.ReactNode; // For the trigger button
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-}
-
-const getInitials = (name: string) => {
-  if (!name) return '?';
-  return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
 const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: React.ReactNode }) => (

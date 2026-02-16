@@ -11,11 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { updateUser } from '@/lib/db';
-
-const getInitials = (name: string) => {
-    if (!name) return '';
-    return name.split(' ').map(n => n[0]).join('');
-};
+import { getInitials } from '@/lib/utils';
 
 export default function ProfilePage() {
     const { appUser, setAppUser, firebaseUser } = useAuth();

@@ -10,12 +10,7 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-
-
-const getInitials = (name: string | null) => {
-    if (!name) return '?';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-}
+import { getInitials } from '@/lib/utils';
 
 const getDateFromTimestamp = (timestamp: any): Date => {
   if (!timestamp) {

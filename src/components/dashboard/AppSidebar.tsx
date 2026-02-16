@@ -40,6 +40,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Label } from "../ui/label";
 import { AppView } from "@/lib/routes";
 import Image from 'next/image';
+import { getInitials } from "@/lib/utils";
 
 interface SpaceSwitcherProps {
   spaces: Space[];
@@ -150,12 +151,6 @@ function HubSwitcher({ hubs, activeHub, onHubChange }: HubSwitcherProps) {
     </Popover>
   )
 }
-
-const getInitials = (name: string) => {
-    if (!name) return '';
-    return name.split(' ').map(n => n[0]).join('');
-}
-
 
 interface AppSidebarProps {
   view: AppView;

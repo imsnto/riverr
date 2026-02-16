@@ -16,12 +16,7 @@ import InviteUserDialog from './invite-user-dialog';
 import { addInvite } from '@/lib/db';
 import { randomBytes } from 'crypto';
 import { useAuth } from '@/hooks/use-auth';
-
-
-const getInitials = (name: string) => {
-  if (!name) return '';
-  return name.split(' ').map(n => n[0]).join('');
-};
+import { getInitials } from '@/lib/utils';
 
 interface UserSettingsProps {
     allUsers: User[];

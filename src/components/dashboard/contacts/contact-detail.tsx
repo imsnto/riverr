@@ -14,11 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import * as db from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-
-const getInitials = (name: string | null) => {
-    if (!name) return '?';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-}
+import { getInitials } from '@/lib/utils';
 
 interface ContactDetailProps {
   contact: Contact | null;

@@ -13,6 +13,7 @@ import { Search, Menu, MapPin } from 'lucide-react';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { SidebarTrigger } from '../ui/sidebar';
+import { getInitials } from '@/lib/utils';
 
 interface InboxSidebarProps {
   conversations: Conversation[];
@@ -21,12 +22,6 @@ interface InboxSidebarProps {
   onSelectConversation: (id: string) => void;
   appUser: User;
 }
-
-const getInitials = (name: string) => {
-  if (!name) return '?';
-  return name.split(' ').map(n => n[0]).join('').toUpperCase();
-}
-
 
 export default function InboxConversationList({
   conversations,

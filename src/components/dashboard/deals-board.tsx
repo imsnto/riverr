@@ -15,11 +15,7 @@ import DealDetailsDialog from './deal-details-dialog';
 import BoardSettingsDialog from './board-settings-dialog';
 import CreateDealDialog, { DealFormValues } from './create-deal-dialog';
 import { format, parseISO } from 'date-fns';
-
-const getInitials = (name: string) => {
-    if (!name) return '';
-    return name.split(' ').map(n => n[0]).join('');
-}
+import { getInitials } from '@/lib/utils';
 
 const DealCard = ({ deal, onClick, isDragging, allUsers, contacts }: { deal: Deal, onClick: () => void, isDragging: boolean, allUsers: User[], contacts: Contact[] }) => {
   const assignee = allUsers.find(u => u.id === deal.assignedTo);
