@@ -11,6 +11,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ScrollArea } from '../ui/scroll-area';
 import { ContentSkeleton } from './content-skeleton';
+import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface TaskBoardProps {
   allTasks: Task[];
@@ -56,6 +58,16 @@ export default function TaskBoard({
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   
+  const getProjectLastUpdate = (projectId: string) => {
+      const projectTasks = allTasks.filter(t => t.project_id === projectId);
+      if (projectTasks.length === 0) return null;
+      
+      const lastUpdatedTask = projectTasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      if (!lastUpdatedTask) return null;
+
+      return lastUpdatedTask.createdAt ? formatDistanceToNow(new Date(lastUpdatedTask.createdAt), { addSuffix: true }) : '';
+  }
+  
   if (isMobile) {
     if (!selectedProject) {
         return (
@@ -65,19 +77,23 @@ export default function TaskBoard({
                 </div>
                 <ScrollArea className="flex-1">
                     <div className="p-2 space-y-1">
-                        {projects.map(project => (
-                            <Button
-                                key={project.id}
-                                variant="ghost"
-                                className="w-full justify-start p-2 h-auto"
-                                onClick={() => handleSelectProject(project.id)}
-                            >
-                                <div className="flex items-center gap-2 truncate">
-                                    <Folder className="h-4 w-4" />
-                                    <span className="truncate font-normal">{project.name}</span>
-                                </div>
-                            </Button>
-                        ))}
+                        {projects.map(project => {
+                            const projectTasks = allTasks.filter(t => t.project_id === project.id);
+                            const lastUpdate = getProjectLastUpdate(project.id);
+                            return (
+                                <Button
+                                    key={project.id}
+                                    variant="ghost"
+                                    className="w-full h-auto justify-start p-2 text-left flex-col items-start hover:bg-white/5 text-zinc-300"
+                                    onClick={() => handleSelectProject(project.id)}
+                                >
+                                    <div className="font-medium text-white">{project.name}</div>
+                                    <div className="text-xs text-zinc-500">
+                                        {projectTasks.length} tasks {lastUpdate && `• ${lastUpdate}`}
+                                    </div>
+                                </Button>
+                            )
+                        })}
                     </div>
                 </ScrollArea>
                 <div className="p-2 border-t">
