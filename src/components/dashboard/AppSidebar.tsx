@@ -39,6 +39,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Label } from "../ui/label";
 import { AppView } from "@/lib/routes";
+import Image from 'next/image';
 
 interface SpaceSwitcherProps {
   spaces: Space[];
@@ -273,7 +274,14 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full justify-center h-12">
-                    <Building2 className="h-6 w-6 text-primary" />
+                  <Image
+                    src="https://picsum.photos/seed/mannowar-icon/40/40"
+                    alt="Mannowar Icon"
+                    width={24}
+                    height={24}
+                    className="rounded-sm"
+                    data-ai-hint="logo icon"
+                  />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 ml-2" side="right" align="start">

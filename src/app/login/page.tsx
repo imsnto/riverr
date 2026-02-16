@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import React, { useEffect } from 'react';
+import Image from 'next/image';
 
 const GoogleIcon = () => (
     <svg className="mr-2 h-4 w-4" viewBox="0 0 48 48">
@@ -26,11 +27,29 @@ export default function LoginPage() {
     }, [status, router]);
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-background p-4">
-            <Card className="w-full max-w-sm">
+        <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 relative overflow-hidden">
+            <div className="absolute inset-0 z-0 opacity-20">
+                 <div className="absolute inset-0 bg-gradient-to-tr from-background via-transparent to-primary/30"></div>
+                 <div className="absolute inset-0 bg-gradient-to-bl from-background via-transparent to-accent/30"></div>
+            </div>
+            
+            <div className="z-10 flex flex-col items-center text-center mb-12">
+                <Image 
+                    src="https://picsum.photos/seed/mannowar-logo/200/50"
+                    width={200}
+                    height={50}
+                    alt="Mannowar Logo"
+                    data-ai-hint="logo"
+                    className="mb-4"
+                />
+                <h1 className="text-4xl font-bold tracking-tighter text-foreground">Welcome to Mannowar</h1>
+                <p className="text-muted-foreground mt-2">The future of project management is here.</p>
+            </div>
+
+            <Card className="w-full max-w-sm z-10 bg-card/80 backdrop-blur-sm">
                 <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">Welcome Back</CardTitle>
-                    <CardDescription>Sign in to continue to your workspace.</CardDescription>
+                    <CardTitle className="text-2xl">Sign In</CardTitle>
+                    <CardDescription>Use your Google account to continue.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Button variant="outline" className="w-full" onClick={signInWithGoogle}>
