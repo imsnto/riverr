@@ -273,15 +273,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
            <div className="flex justify-center p-2">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-14 h-14 justify-center">
-                  <Image
-                    src="/manowar.png"
-                    alt="Manowar Icon"
-                    width={36}
-                    height={36}
-                    className="rounded-sm"
-                    data-ai-hint="logo icon"
-                  />
+                <Button variant="outline" className="w-14 h-14 justify-center p-0 rounded-lg">
+                    <Avatar className="h-full w-full rounded-lg">
+                      <AvatarImage src={activeSpace.logoUrl} className="object-cover" />
+                      <AvatarFallback className="rounded-lg text-xl font-bold">
+                        {getInitials(activeSpace.name)}
+                      </AvatarFallback>
+                    </Avatar>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 ml-2" side="right" align="start">

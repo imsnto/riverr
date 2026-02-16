@@ -1,5 +1,3 @@
-
-
 // src/lib/data.ts
 
 // --- Core Entities ---
@@ -21,6 +19,7 @@ export interface SpaceMember {
 export interface Space {
   id: string;
   name: string;
+  logoUrl?: string;
   members: Record<string, SpaceMember>; // Map of user IDs to their roles/permissions
   isSystem?: boolean;
   isOnboarding?: boolean;
