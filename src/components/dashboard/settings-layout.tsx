@@ -101,6 +101,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             appUser={props.appUser}
             handleInvite={props.handleInvite}
             onInvite={() => {}}
+            allHubs={props.allHubs}
           />
         );
       case 'spaces':
