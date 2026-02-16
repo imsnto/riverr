@@ -1,3 +1,4 @@
+
 'use client';
 
 import { HelpCenter, HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
@@ -8,6 +9,7 @@ import { Badge } from '../ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
+import { Label } from '../ui/label';
 
 interface HelpCenterArticleListProps {
   items: (HelpCenterArticle | HelpCenterCollection)[];
@@ -54,13 +56,10 @@ export default function HelpCenterArticleList({
 
   if (isMobile) {
     return (
-      <div>
-        <div className="flex items-center justify-between px-2 py-2 text-sm font-medium text-muted-foreground">
-          <div className="flex items-center gap-3">
-            <Checkbox checked={isAllSelected} onCheckedChange={onToggleAll} />
-            <span>Title</span>
-          </div>
-          <span>Type</span>
+      <div className="space-y-2">
+        <div className="flex items-center px-2 py-2">
+          <Checkbox checked={isAllSelected} onCheckedChange={onToggleAll} id="select-all-mobile"/>
+          <Label htmlFor="select-all-mobile" className="ml-3 text-sm font-medium text-muted-foreground">Select All</Label>
         </div>
         <Separator />
         <div className="divide-y divide-border">
@@ -68,19 +67,20 @@ export default function HelpCenterArticleList({
             const type = getItemType(item);
             const name = type === 'collection' ? item.name : (item as HelpCenterArticle).title;
             return (
-              <div key={item.id} className="flex items-center justify-between p-2 rounded-md hover:bg-accent/50" onClick={() => onSelectItem(item.id, type)}>
-                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <Checkbox
-                        checked={selectedItems.includes(item.id)}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleSelectItem(item.id);
-                        }}
-                    />
-                    <span className="font-medium truncate">{name || "Untitled Article"}</span>
-                </div>
-                <div className="flex-shrink-0 w-24 text-right flex justify-end">
-                    {renderType(item)}
+              <div key={item.id} className="flex items-start gap-3 p-2 rounded-md hover:bg-accent/50" onClick={() => onSelectItem(item.id, type)}>
+                 <Checkbox
+                    className="mt-1 flex-shrink-0"
+                    checked={selectedItems.includes(item.id)}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleSelectItem(item.id);
+                    }}
+                 />
+                <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{name || "Untitled Article"}</p>
+                    <div className="text-sm text-muted-foreground mt-1">
+                        {renderType(item)}
+                    </div>
                 </div>
               </div>
             )

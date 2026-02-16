@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -454,14 +455,14 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                     setSelectedCollectionId(id);
                 }} />
             )}
-            <div className="flex flex-wrap justify-between items-start mb-4 gap-x-4 gap-y-2">
-                <div>
+            <div className="flex flex-col md:flex-row md:flex-wrap justify-between md:items-start mb-4 gap-4">
+                <div className='flex-1'>
                     <h1 className="text-3xl font-bold leading-tight">
                         {title}
                     </h1>
 
                     {sidebarView === 'knowledge-bases' && activeHelpCenter && (
-                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
                             {activeHelpCenter.visibility === 'internal' ? (
                                 <div className="flex items-center gap-1.5">
                                     <Lock className="h-4 w-4" />
@@ -474,7 +475,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                                 </div>
                             )}
 
-                            <Separator orientation="vertical" className="h-4" />
+                            <Separator orientation="vertical" className="h-4 hidden md:flex" />
 
                             <div className="flex items-center gap-2">
                                 <BotIcon className="h-4 w-4" />
@@ -511,18 +512,18 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                         </div>
                     )}
                 </div>
-                 <div className="flex items-center gap-2 flex-shrink-0">
+                 <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                     {sidebarView === 'knowledge-bases' && activeHelpCenterId && !selectedCollectionId && (
-                        <Button variant="outline" onClick={() => setIsAddArticlesOpen(true)}>
+                        <Button variant="outline" size="sm" onClick={() => setIsAddArticlesOpen(true)}>
                             Add Articles
                         </Button>
                     )}
                     {sidebarView === 'knowledge-bases' && (
-                        <Button variant="outline" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
+                        <Button variant="outline" size="sm" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
                             <FolderPlus className="mr-2 h-4 w-4" /> New Collection
                         </Button>
                     )}
-                    <Button onClick={handleCreateArticle}>
+                    <Button onClick={handleCreateArticle} className="hidden md:flex">
                         <Plus className="mr-2 h-4 w-4" /> New Article
                     </Button>
                 </div>
@@ -560,6 +561,11 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                   </div>
                 </ScrollArea>
             </div>
+             {isMobile && (
+                <Button className="absolute bottom-24 right-4 h-14 w-14 rounded-full shadow-lg" onClick={handleCreateArticle}>
+                   <Plus className="h-6 w-6" />
+                </Button>
+            )}
         </main>
     );
 
