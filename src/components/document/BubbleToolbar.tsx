@@ -6,7 +6,6 @@ import { Bold, Italic, Underline, Link as LinkIcon, Check, Trash2, ChevronDown }
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 
 const getActiveNodeLabel = (editor: Editor) => {
@@ -66,43 +65,43 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
   }
 
   const activeNodeLabel = getActiveNodeLabel(editor);
+  
+  const NodeSelector = () => (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm" className="gap-1 text-sm font-medium w-32 justify-start">
+          <span className="truncate">{activeNodeLabel}</span>
+          <ChevronDown className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-48 p-1" sideOffset={10} onCloseAutoFocus={(e) => e.preventDefault()}>
+        <div className="flex flex-col">
+          {[
+            { label: 'Paragraph', action: () => editor.chain().focus().setParagraph().run(), can: () => editor.can().setParagraph() },
+            { label: 'Heading 1', action: () => editor.chain().focus().toggleHeading({ level: 1 }).run(), can: () => editor.can().toggleHeading({ level: 1 }) },
+            { label: 'Heading 2', action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), can: () => editor.can().toggleHeading({ level: 2 }) },
+            { label: 'Heading 3', action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), can: () => editor.can().toggleHeading({ level: 3 }) },
+          ].map(item => (
+            <Button
+              key={item.label}
+              variant="ghost"
+              className="justify-start"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={item.action}
+              disabled={!item.can()}
+            >
+              {item.label}
+            </Button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+
 
   return (
     <div className="flex items-center gap-1 rounded-xl border bg-card/95 backdrop-blur px-2 py-1 shadow">
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-1 text-sm font-medium w-32 justify-start">
-                    <span className="truncate">{activeNodeLabel}</span>
-                    <ChevronDown className="h-4 w-4" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent onCloseAutoFocus={(e) => e.preventDefault()}>
-                <DropdownMenuItem
-                    onSelect={() => editor.chain().focus().setParagraph().run()}
-                    disabled={!editor.can().setParagraph()}
-                >
-                    Paragraph
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                    onSelect={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                    disabled={!editor.can().toggleHeading({ level: 1 })}
-                >
-                    Heading 1
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                    onSelect={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                    disabled={!editor.can().toggleHeading({ level: 2 })}
-                >
-                    Heading 2
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                    onSelect={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-                    disabled={!editor.can().toggleHeading({ level: 3 })}
-                >
-                    Heading 3
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-      </DropdownMenu>
+        <NodeSelector />
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
