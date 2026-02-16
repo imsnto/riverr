@@ -81,7 +81,7 @@ function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[],
                   {allUsers.map((user) => (
                     <CommandItem
                       key={user.id}
-                      value={user.name}
+                      value={user.id}
                       onSelect={() => handleSelect(user.id)}
                     >
                       <Check
