@@ -2,7 +2,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AppSidebar } from './AppSidebar';
 import { useAuth } from '@/hooks/use-auth';
 import {
   Space,
@@ -35,7 +34,7 @@ import {
   Contact,
 } from '@/lib/data';
 import * as db from '@/lib/db';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 import Overview from './overview';
 import TaskBoard from './task-board';
@@ -46,22 +45,18 @@ import TaskTemplateBuilder from './task-template-builder';
 import JobFlowBoard from './job-flow-board';
 import TaskDetailsDialog from './task-details-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { SidebarProvider } from '../ui/sidebar';
 import ProjectFormDialog from './project-form-dialog';
-import { DashboardSkeleton } from './dashboard-skeleton';
 import InboxLayout from './inbox-layout';
-import { cn } from '@/lib/utils';
 import { AppView } from '@/lib/routes';
 import ProjectSidebar from './project-sidebar';
 import HelpCenterLayout from './help-center-layout';
-import { useIsMobile } from '@/hooks/use-mobile';
-import MobileBottomNav from './mobile-bottom-nav';
 import TeamTimesheets from './team-timesheets';
 import ContactsLayout from './contacts/contacts-layout';
 import DealsBoard from './deals-board';
 import { DealFormValues } from './create-deal-dialog';
 import { reindexArticleAction } from '@/app/actions/chat';
 import TicketsBoard from './tickets-board';
+import { ContentSkeleton } from './content-skeleton';
 
 // Helper to determine if a mention is unread
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -74,14 +69,10 @@ const isUnread = (mention: any, lastRead: string | null) => {
 export default function Dashboard({ view }: { view: string }) {
   const { appUser, signOut, activeSpace, userSpaces, setUserSpaces, setActiveSpace, activeHub, setActiveHub } = useAuth();
   const router = useRouter();
-  const params = useParams();
   const { toast } = useToast();
   const messageUnsubscribeRef = useRef<(() => void) | null>(null);
-  const isMobile = useIsMobile();
   const [hideMobileBottomNav, setHideMobileBottomNav] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
-  const [currentView, setCurrentView] = useState<AppView>(view as AppView || 'overview');
   
   // Data states
   const [projects, setProjects] = useState<Project[]>([]);
@@ -282,35 +273,11 @@ export default function Dashboard({ view }: { view: string }) {
     calculateMentions();
 
   }, [appUser, tasks, lastMentionsRead]);
-
-
-  // Handle view change from sidebar
-  const handleViewChange = (newView: AppView) => {
-    setCurrentView(newView);
-    if (activeHub) {
-        router.push(`/space/${activeSpace?.id}/hub/${activeHub.id}/${newView}`);
-    } else if (activeSpace) {
-      router.push(`/space/${activeSpace.id}/hubs`);
-    } else if (newView === 'contacts') {
-        router.push('/contacts');
-    } else {
-        router.push('/space-selection');
-    }
-  };
-
-  const handleHubChange = (hubId: string) => {
-    const newHub = spaceHubs.find(h => h.id === hubId);
-    if (newHub && activeSpace) {
-      setActiveHub(newHub);
-      const defaultView = newHub.settings?.defaultView || 'tasks';
-      router.push(`/space/${activeSpace.id}/hub/${newHub.id}/${defaultView}`);
-    }
-  };
   
   const handleSelectProject = (projectId: string | null) => {
     setSelectedProjectId(projectId);
     if (projectId) {
-      setCurrentView('tasks');
+      router.push(`/space/${activeSpace?.id}/hub/${activeHub?.id}/tasks`);
     }
   };
 
@@ -334,20 +301,13 @@ export default function Dashboard({ view }: { view: string }) {
       toast({ title: 'Project Deleted' });
   }
 
-  // Switch to the correct view when URL changes
-  useEffect(() => {
-    if (view && view !== currentView) {
-      setCurrentView(view as AppView);
-    }
-  }, [view, currentView]);
 
   if (isLoading) {
-    return <DashboardSkeleton />;
+    return <ContentSkeleton />;
   }
 
   if (!appUser || !activeSpace || (view !== 'contacts' && !activeHub)) {
-    // We handle the loading state or redirect in page.tsx now, but as a safeguard:
-    return <DashboardSkeleton />;
+    return <ContentSkeleton />;
   }
   
   const handleUpdateTasks = (updatedTasks: Task[]) => {
@@ -807,27 +767,39 @@ export default function Dashboard({ view }: { view: string }) {
       conversations: chatConversations,
     }
 
+    const currentView = view as AppView;
 
     switch (currentView) {
-      case 'overview': return <div className="p-8"><Overview {...overviewProps} /></div>;
+      case 'overview': return <div className="overflow-y-auto p-8"><Overview {...overviewProps} /></div>;
       case 'tasks': return (
-        <TaskBoard
-          selectedProjectId={selectedProjectId}
-          projects={projects}
-          onSelectProject={handleSelectProject}
-          allTasks={tasks}
-          onUpdateTasks={handleUpdateTasks}
-          activeHub={activeHub!}
-          allUsers={allUsers}
-          onUpdateActiveHub={handleUpdateActiveHub}
-          onNewTaskRequest={handleNewTaskRequest}
-          onTaskClick={handleTaskClick}
-          onUpdateTask={handleUpdateTask}
-          onAddTask={handleAddTask}
-          onNewProject={handleNewProject}
-          onEditProject={handleEditProject}
-          onDeleteProject={handleDeleteProject}
-        />
+        <div className="flex h-full min-h-0">
+          {(projects.length > 0) && (
+             <ProjectSidebar
+              projects={projects}
+              tasks={tasks}
+              selectedProjectId={selectedProjectId}
+              onSelectProject={handleSelectProject}
+              onNewProject={handleNewProject}
+            />
+          )}
+          <TaskBoard
+            selectedProjectId={selectedProjectId}
+            projects={projects}
+            onSelectProject={handleSelectProject}
+            allTasks={tasks}
+            onUpdateTasks={handleUpdateTasks}
+            activeHub={activeHub!}
+            allUsers={allUsers}
+            onUpdateActiveHub={handleUpdateActiveHub}
+            onNewTaskRequest={handleNewTaskRequest}
+            onTaskClick={handleTaskClick}
+            onUpdateTask={handleUpdateTask}
+            onAddTask={handleAddTask}
+            onNewProject={handleNewProject}
+            onEditProject={handleEditProject}
+            onDeleteProject={handleDeleteProject}
+          />
+        </div>
       );
       case 'tickets': return <TicketsBoard 
           tickets={tickets} 
@@ -837,7 +809,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeSpace={activeSpace}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
-          onNavigateToSettings={() => handleViewChange('settings')}
+          onNavigateToSettings={() => router.push(`/space/${activeSpace?.id}/hub/${activeHub?.id}/settings`)}
           allHubs={spaceHubs}
           escalationRules={escalationRules}
           projects={projects}
@@ -858,7 +830,7 @@ export default function Dashboard({ view }: { view: string }) {
           activeSpace={activeSpace}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
-          onNavigateToSettings={() => handleViewChange('settings')}
+          onNavigateToSettings={() => router.push(`/space/${activeSpace?.id}/hub/${activeHub?.id}/settings`)}
       />;
       case 'help-center': return <HelpCenterLayout bots={bots} />;
       case 'contacts': return <ContactsLayout activeSpace={activeSpace} />;
@@ -895,7 +867,7 @@ export default function Dashboard({ view }: { view: string }) {
       default:
         return (
           <div className="p-8">
-            <h1 className="text-2xl font-bold">Coming Soon: {currentView}</h1>
+            <h1 className="text-2xl font-bold">Coming Soon: {view}</h1>
             <p>This view is under construction.</p>
           </div>
         );
@@ -903,93 +875,40 @@ export default function Dashboard({ view }: { view: string }) {
   };
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen min-h-0 w-full bg-background text-foreground">
-        <AppSidebar
-          view={currentView}
-          onChangeView={handleViewChange}
-          activeSpace={activeSpace}
-          allSpaces={userSpaces}
-          onSpaceChange={(spaceId) => {
-            const newSpace = userSpaces.find(s => s.id === spaceId);
-            if (newSpace) {
-              setActiveSpace(newSpace);
-              setActiveHub(null);
-              router.push(`/space/${spaceId}/hubs`);
-            }
+    <>
+      {renderView()}
+
+      <ProjectFormDialog 
+        isOpen={isProjectFormOpen}
+        onOpenChange={setIsProjectFormOpen}
+        onSave={handleSaveProject}
+        project={editingProject}
+        spaceId={activeSpace?.id || ''}
+        spaceMembers={allUsers.filter(u => activeSpace?.members[u.id])}
+      />
+
+      {selectedTask && (
+        <TaskDetailsDialog
+          task={selectedTask}
+          timeEntries={timeEntries.filter(t => t.task_id === selectedTask?.id)}
+          isOpen={!!selectedTask}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setSelectedTask(null);
           }}
-          allHubs={spaceHubs}
-          activeHub={activeHub}
-          onHubChange={handleHubChange}
-        />
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          {(currentView === 'tasks' && projects.length > 0) && (
-             <ProjectSidebar
-              projects={projects}
-              tasks={tasks}
-              selectedProjectId={selectedProjectId}
-              onSelectProject={handleSelectProject}
-              onNewProject={handleNewProject}
-            />
-          )}
-          <main
-            className={cn(
-              "flex flex-col flex-1 min-h-0",
-              currentView === 'inbox' ||
-              currentView === 'tasks' ||
-              currentView === 'tickets' ||
-              currentView === 'deals' ||
-              currentView === 'settings' ||
-              currentView === 'contacts' ||
-              currentView === 'help-center'
-                ? "overflow-hidden"
-                : "overflow-y-auto",
-              isMobile && !hideMobileBottomNav && "pb-20"
-            )}
-          >
-            {renderView()}
-          </main>
-        </div>
-
-        <ProjectFormDialog 
-          isOpen={isProjectFormOpen}
-          onOpenChange={setIsProjectFormOpen}
-          onSave={handleSaveProject}
-          project={editingProject}
-          spaceId={activeSpace?.id || ''}
-          spaceMembers={allUsers.filter(u => activeSpace?.members[u.id])}
-        />
-
-        {selectedTask && (
-          <TaskDetailsDialog
-            task={selectedTask}
-            timeEntries={timeEntries.filter(t => t.task_id === selectedTask?.id)}
-            isOpen={!!selectedTask}
-            onOpenChange={(isOpen) => {
-              if (!isOpen) setSelectedTask(null);
-            }}
-            onUpdateTask={handleUpdateTask}
-            onAddTask={async (taskData, tempId) => {
-              const newTask = await handleAddTask(taskData);
-              return newTask;
-            }}
-            onRemoveTask={handleDeleteTask}
-            onTaskSelect={setSelectedTask}
-            onLogTime={handleLogTime}
-            statuses={activeHub!.statuses?.map(s => s.name) || []}
-            allUsers={allUsers}
-            allTasks={tasks}
-            projects={projects}
-          />
-        )}
-      </div>
-      {isMobile && !hideMobileBottomNav && activeHub && (
-        <MobileBottomNav
-          currentView={currentView}
-          onChangeView={handleViewChange}
-          activeHub={activeHub}
+          onUpdateTask={handleUpdateTask}
+          onAddTask={async (taskData, tempId) => {
+            const newTask = await handleAddTask(taskData);
+            return newTask;
+          }}
+          onRemoveTask={handleDeleteTask}
+          onTaskSelect={setSelectedTask}
+          onLogTime={handleLogTime}
+          statuses={activeHub!.statuses?.map(s => s.name) || []}
+          allUsers={allUsers}
+          allTasks={tasks}
+          projects={projects}
         />
       )}
-    </SidebarProvider>
+    </>
   );
 }
