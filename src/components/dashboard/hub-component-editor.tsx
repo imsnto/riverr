@@ -16,6 +16,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
+import { ScrollArea } from '../ui/scroll-area';
 
 const ALL_COMPONENTS: Record<string, { name: string; description: string; icon: React.ReactNode; foundational?: boolean }> = {
     'tasks': { name: 'Task Board', description: 'Kanban board for tasks.', icon: <FolderKanban /> },
@@ -78,64 +79,66 @@ export default function HubComponentEditor({ selected, setSelected }: HubCompone
           <DialogHeader>
             <DialogTitle>Add Tools to your Hub</DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-4">
-             <TooltipProvider>
-                {CATEGORIES.map(category => (
-                    <div key={category.name}>
-                        <h3 className="font-semibold text-sm mb-2 flex items-center gap-2 text-muted-foreground">
-                           {React.cloneElement(category.icon, { className: "h-4 w-4" })}
-                           {category.name}
-                        </h3>
-                        <div className="space-y-2">
-                            {category.components.map(id => {
-                                const comp = ALL_COMPONENTS[id];
-                                if (!comp) return null;
-                                const isSelected = selected.includes(id);
-                                return (
-                                     <button
-                                        key={id}
-                                        onClick={() => handleToggle(id)}
-                                        className={cn(
-                                            "w-full text-left p-3 rounded-lg border-2 flex justify-between items-start transition-colors",
-                                            isSelected ? "border-primary bg-primary/10" : "hover:bg-accent/50 border-transparent"
-                                        )}
-                                    >
-                                        <div className="flex gap-3">
-                                            <div className={cn(
-                                                "h-5 w-5 rounded-full border-2 mt-0.5 flex-shrink-0 flex items-center justify-center",
-                                                 isSelected ? "bg-primary border-primary" : "border-muted-foreground"
-                                            )}>
-                                                {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
-                                            </div>
-                                            <div>
-                                                <div className="font-semibold flex items-center gap-2">
-                                                    {comp.name}
-                                                     {comp.foundational && (
-                                                        <Badge variant="outline" className="border-purple-500/50 text-purple-400">Foundational</Badge>
-                                                     )}
-                                                </div>
-                                                <p className="text-sm text-muted-foreground">{comp.description}</p>
+          <ScrollArea className="max-h-[60vh] pr-6">
+            <div className="py-4 space-y-4">
+              <TooltipProvider>
+                  {CATEGORIES.map(category => (
+                      <div key={category.name}>
+                          <h3 className="font-semibold text-sm mb-2 flex items-center gap-2 text-muted-foreground">
+                            {React.cloneElement(category.icon, { className: "h-4 w-4" })}
+                            {category.name}
+                          </h3>
+                          <div className="space-y-2">
+                              {category.components.map(id => {
+                                  const comp = ALL_COMPONENTS[id];
+                                  if (!comp) return null;
+                                  const isSelected = selected.includes(id);
+                                  return (
+                                      <button
+                                          key={id}
+                                          onClick={() => handleToggle(id)}
+                                          className={cn(
+                                              "w-full text-left p-3 rounded-lg border-2 flex justify-between items-start transition-colors",
+                                              isSelected ? "border-primary bg-primary/10" : "hover:bg-accent/50 border-transparent"
+                                          )}
+                                      >
+                                          <div className="flex gap-3">
+                                              <div className={cn(
+                                                  "h-5 w-5 rounded-full border-2 mt-0.5 flex-shrink-0 flex items-center justify-center",
+                                                  isSelected ? "bg-primary border-primary" : "border-muted-foreground"
+                                              )}>
+                                                  {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                                              </div>
+                                              <div>
+                                                  <div className="font-semibold flex items-center gap-2">
+                                                      {comp.name}
+                                                      {comp.foundational && (
+                                                          <Badge variant="outline" className="border-purple-500/50 text-purple-400">Foundational</Badge>
+                                                      )}
+                                                  </div>
+                                                  <p className="text-sm text-muted-foreground">{comp.description}</p>
 
-                                                {comp.foundational && isSelected && (
-                                                    <div className="mt-3 text-xs text-muted-foreground space-y-1 bg-card p-3 rounded-md border">
-                                                        <p className="font-semibold text-foreground">This Hub will support:</p>
-                                                        <ul className="list-disc list-inside">
-                                                            <li>Internal Docs & SOPs</li>
-                                                            <li>Public Help Center</li>
-                                                            <li>Agent knowledge base</li>
-                                                        </ul>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                ))}
-             </TooltipProvider>
-          </div>
+                                                  {comp.foundational && isSelected && (
+                                                      <div className="mt-3 text-xs text-muted-foreground space-y-1 bg-card p-3 rounded-md border">
+                                                          <p className="font-semibold text-foreground">This Hub will support:</p>
+                                                          <ul className="list-disc list-inside">
+                                                              <li>Internal Docs & SOPs</li>
+                                                              <li>Public Help Center</li>
+                                                              <li>Agent knowledge base</li>
+                                                          </ul>
+                                                      </div>
+                                                  )}
+                                              </div>
+                                          </div>
+                                      </button>
+                                  );
+                              })}
+                          </div>
+                      </div>
+                  ))}
+              </TooltipProvider>
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>
