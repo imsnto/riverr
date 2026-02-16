@@ -1,4 +1,3 @@
-
 // Refreshed layout to remove sidebar logo and let top bar span full width
 
 "use client"
@@ -23,7 +22,7 @@ import {
 } from "@/components/ui/tooltip"
 
 const SIDEBAR_WIDTH = "16rem" // Expanded width
-const SIDEBAR_WIDTH_ICON = "4.5rem" // Collapsed (icon-only) width
+const SIDEBAR_WIDTH_ICON = "3.5rem" // Collapsed (icon-only) width
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
@@ -193,5 +192,3 @@ export {
   useSidebar,
   SidebarTrigger,
 }
-
-    
