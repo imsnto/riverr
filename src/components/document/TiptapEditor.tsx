@@ -156,7 +156,7 @@ export default function TiptapEditor({
       {/* Bubble toolbar for text selection */}
       <BubbleMenu
         editor={editor}
-        tippyOptions={{ duration: 100, placement: 'top' }}
+        tippyOptions={{ duration: 100, placement: 'top', maxWidth: 'none' }}
         shouldShow={({ editor }) => {
           const { from, to } = editor.state.selection;
           return from !== to && editor.isEditable;
@@ -168,7 +168,7 @@ export default function TiptapEditor({
       {/* Bubble toolbar for image resizing/alignment */}
       <BubbleMenu
         editor={editor}
-        tippyOptions={{ duration: 100, placement: 'top' }}
+        tippyOptions={{ duration: 100, placement: 'top', maxWidth: 'none' }}
         shouldShow={({ editor }) => editor.isActive('image')}
       >
         <div className="flex items-center gap-1 rounded-xl border bg-card/95 backdrop-blur px-2 py-1 shadow">

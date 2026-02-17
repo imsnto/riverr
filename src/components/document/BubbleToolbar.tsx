@@ -7,13 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 const getActiveNodeLabel = (editor: Editor) => {
     if (editor.isActive('heading', { level: 1 })) return 'Heading 1';
@@ -93,6 +86,7 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
             { label: 'Heading 1', action: () => editor.chain().focus().toggleHeading({ level: 1 }).run(), can: () => editor.can().toggleHeading({ level: 1 }) },
             { label: 'Heading 2', action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), can: () => editor.can().toggleHeading({ level: 2 }) },
             { label: 'Heading 3', action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), can: () => editor.can().toggleHeading({ level: 3 }) },
+            { label: 'Blockquote', action: () => editor.chain().focus().toggleBlockquote().run(), can: () => editor.can().toggleBlockquote() },
           ].map(item => (
             <Button
               key={item.label}
@@ -110,41 +104,66 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
     </Popover>
   );
 
+  const FontfamilySelector = () => (
+    <Popover>
+        <PopoverTrigger asChild>
+            <Button variant="ghost" size="sm" className="text-sm font-medium w-28 justify-start">
+                <span className="truncate" style={{fontFamily: activeFontFamily}}>{activeFontFamily}</span>
+                <ChevronDown className="h-4 w-4 ml-auto" />
+            </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-48 p-1" sideOffset={10} onCloseAutoFocus={(e) => e.preventDefault()}>
+            <div className="flex flex-col">
+            {FONT_FAMILIES.map(font => (
+                <Button
+                    key={font}
+                    variant={font === activeFontFamily ? 'secondary' : 'ghost'}
+                    className="justify-start"
+                    style={{fontFamily: font}}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => editor.chain().focus().setFontFamily(font).run()}
+                >
+                {font}
+                </Button>
+            ))}
+            </div>
+        </PopoverContent>
+    </Popover>
+  );
+
+   const FontSizeSelector = () => (
+    <Popover>
+        <PopoverTrigger asChild>
+            <Button variant="ghost" size="sm" className="text-sm font-medium w-20 justify-start">
+                <span className="truncate">{activeFontSize}</span>
+                <ChevronDown className="h-4 w-4 ml-auto" />
+            </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-32 p-1" sideOffset={10} onCloseAutoFocus={(e) => e.preventDefault()}>
+            <div className="flex flex-col">
+            {FONT_SIZES.map(size => (
+                <Button
+                    key={size}
+                    variant={size === activeFontSize ? 'secondary' : 'ghost'}
+                    className="justify-start"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => editor.chain().focus().setFontSize(size).run()}
+                >
+                {size}
+                </Button>
+            ))}
+            </div>
+        </PopoverContent>
+    </Popover>
+  );
+
 
   return (
-    <div className="flex items-center rounded-xl border bg-card/95 backdrop-blur px-1 py-1 shadow">
+    <div className="flex w-max whitespace-nowrap items-center rounded-xl border bg-card/95 backdrop-blur px-1 py-1 shadow">
         <div className="flex items-center">
             <NodeSelector />
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="text-sm font-medium w-28 justify-start">
-                        <span className="truncate" style={{fontFamily: activeFontFamily}}>{activeFontFamily}</span>
-                        <ChevronDown className="h-4 w-4 ml-auto" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                    <DropdownMenuRadioGroup value={activeFontFamily} onValueChange={(font) => editor.chain().focus().setFontFamily(font).run()}>
-                        {FONT_FAMILIES.map(font => (
-                            <DropdownMenuRadioItem key={font} value={font} style={{fontFamily: font}}>{font}</DropdownMenuRadioItem>
-                        ))}
-                    </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="text-sm font-medium w-20 justify-start">
-                        <span className="truncate">{activeFontSize}</span>
-                        <ChevronDown className="h-4 w-4 ml-auto" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                    <DropdownMenuRadioGroup value={activeFontSize} onValueChange={(size) => editor.chain().focus().setFontSize(size).run()}>
-                        {FONT_SIZES.map(size => (
-                            <DropdownMenuRadioItem key={size} value={size}>{size}</DropdownMenuRadioItem>
-                        ))}
-                    </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-            </DropdownMenu>
+            <FontfamilySelector />
+            <FontSizeSelector />
         </div>
 
         <Separator orientation="vertical" className="h-6 mx-1" />
