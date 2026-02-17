@@ -96,6 +96,54 @@ body {
   min-height: 1.2em;
 }
 
+/* Styles for Tiptap Tables */
+.ProseMirror .tableWrapper {
+  overflow-x: auto;
+}
+
+.ProseMirror table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5em 0;
+  border: 1px solid hsl(var(--border));
+}
+.ProseMirror th, .ProseMirror td {
+  border: 1px solid hsl(var(--border));
+  padding: 0.5rem 0.75rem;
+  min-width: 50px;
+}
+.ProseMirror th {
+  background-color: hsl(var(--muted));
+  font-weight: 600;
+  text-align: left;
+}
+.ProseMirror .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: hsla(var(--primary) / 0.1);
+  pointer-events: none;
+}
+.ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  background-color: hsl(var(--primary));
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.ProseMirror:hover .column-resize-handle {
+  opacity: 1;
+}
+
+
 .ProseMirror {
   caret-color: currentColor;
 }

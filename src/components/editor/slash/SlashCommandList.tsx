@@ -1,8 +1,9 @@
+
 'use client'
 
 import React, { useEffect, useImperativeHandle, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
-import { Image as ImageIcon, Youtube } from 'lucide-react'
+import { Image as ImageIcon, Youtube, Table as TableIcon } from 'lucide-react'
 import { TextSelection } from 'prosemirror-state'
 
 type Range = { from: number; to: number }
@@ -172,6 +173,8 @@ export const SlashCommandList = React.forwardRef(function SlashCommandList(
                 <ImageIcon className="h-4 w-4" />
               ) : item.title === 'YouTube' ? (
                 <Youtube className="h-4 w-4" />
+              ) : item.title === 'Table' ? (
+                <TableIcon className="h-4 w-4" />
               ) : (
                 'T'
               )}

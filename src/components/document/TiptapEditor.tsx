@@ -16,6 +16,10 @@ import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Youtube from '@tiptap/extension-youtube';
 import TextStyle from '@tiptap/extension-text-style';
+import Table from '@tiptap/extension-table'
+import TableCell from '@tiptap/extension-table-cell'
+import TableHeader from '@tiptap/extension-table-header'
+import TableRow from '@tiptap/extension-table-row'
 import { FontFamily } from '@tiptap/extension-font-family';
 import { FontSize } from '@/lib/tiptap-fontsize';
 import { ReactNodeViewRenderer } from '@tiptap/react';
@@ -76,6 +80,7 @@ export default function TiptapEditor({
         listItem: false,
         textStyle: false,
         image: false, // Disable default image
+        table: false, // Disable default table
       }),
       Heading.configure({ levels: [1, 2, 3] }),
       Blockquote,
@@ -90,6 +95,13 @@ export default function TiptapEditor({
       Link.configure({ openOnClick: false }),
 
       CustomImage,
+      
+      Table.configure({
+        resizable: true,
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
 
       Youtube.configure({ inline: false, width: 640, height: 360 }),
 
@@ -147,7 +159,7 @@ export default function TiptapEditor({
         tippyOptions={{ duration: 100, placement: 'top', maxWidth: 'none' }}
         shouldShow={({ editor }) => editor.isActive('image')}
       >
-        <div className="flex items-center gap-1 rounded-xl border bg-card/95 backdrop-blur px-2 py-1 shadow">
+        <div className="flex w-max whitespace-nowrap items-center rounded-xl border bg-card/95 backdrop-blur px-1 py-1 shadow">
             <Button
               type="button"
               variant={editor.getAttributes('image')['data-float'] === 'left' ? 'secondary' : 'ghost'}

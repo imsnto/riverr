@@ -65,7 +65,13 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
           run: ({ editor, range }) =>
             editor.chain().focus().deleteRange(range).toggleBlockquote().run(),
         },
-
+        {
+          title: 'Table',
+          description: 'Create a new table',
+          run: ({ editor, range }) => {
+            editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+          },
+        },
         // IMPORTANT: Image + YouTube are handled inside the list component
         // so we don’t run anything here besides “no-op”
         { title: 'Image', description: 'Upload an image', run: () => {} },
