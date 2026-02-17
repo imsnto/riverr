@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useMemo, useRef } from 'react';
@@ -106,7 +107,7 @@ export default function TiptapEditor({
     autofocus: false,
     editorProps: {
       attributes: {
-        class: 'prose dark:prose-invert max-w-none focus:outline-none min-h-[400px]',
+        class: 'prose dark:prose-invert max-w-none focus:outline-none min-h-[400px] pb-96',
       },
     },
     onUpdate: ({ editor }) => {
