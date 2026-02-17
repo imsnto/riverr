@@ -1,8 +1,9 @@
+
 'use client';
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
 import { Button } from '../ui/button';
-import { Book, ChevronRight, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus, GripVertical, FileText, Settings, ExternalLink, Library, Inbox, BookOpen, Users, DollarSign, Briefcase, HelpCircle, MessageSquare, Code, Database, GitBranch, Archive, Shield, Globe, Home, Rocket, Lightbulb, Server, Cloud, Component, Package, Puzzle, Heart, Lock } from 'lucide-react';
+import { Book, ChevronRight, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus, GripVertical, FileText, Settings, ExternalLink, Library, Inbox, BookOpen, Users, DollarSign, Briefcase, HelpCircle, MessageSquare, Code, Database, GitBranch, Archive, Shield, Globe, Home, Rocket, Lightbulb, Server, Cloud, Component, Package, Puzzle, Heart, Lock, Download, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '../ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -71,6 +72,8 @@ interface HelpCenterSidebarProps {
 
   sidebarView: HelpCenterSidebarView;
   onViewChange: (view: HelpCenterSidebarView) => void;
+  onExport: (helpCenterId: string) => void;
+  onImport: () => void;
 }
 
 interface FolderTreeProps {
@@ -148,7 +151,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
 };
 
 
-const LibraryList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: string | null, onSelect: (id: string | null) => void, onEdit: (hc: HelpCenter) => void }> = ({ helpCenters, activeHelpCenterId, onSelect, onEdit }) => (
+const LibraryList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: string | null, onSelect: (id: string | null) => void, onEdit: (hc: HelpCenter) => void, onExport: (id: string) => void }> = ({ helpCenters, activeHelpCenterId, onSelect, onEdit, onExport }) => (
     <div className="space-y-1">
         {helpCenters.map(hc => (
             <div
@@ -181,6 +184,9 @@ const LibraryList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: str
                         <DropdownMenuItem onSelect={() => onEdit(hc)}>
                             <Settings className="mr-2 h-4 w-4" /> Settings
                         </DropdownMenuItem>
+                         <DropdownMenuItem onSelect={() => onExport(hc.id)}>
+                            <Download className="mr-2 h-4 w-4" /> Export
+                        </DropdownMenuItem>
                         {hc.visibility !== 'internal' && (
                             <DropdownMenuItem asChild>
                                 <Link href={`/hc/${hc.id}`} target="_blank" rel="noopener noreferrer">
@@ -211,6 +217,8 @@ export default function HelpCenterSidebar({
     sidebarView,
     onViewChange,
     unassignedContentCount,
+    onExport,
+    onImport,
 }: HelpCenterSidebarProps) {
 
     return (
@@ -234,10 +242,15 @@ export default function HelpCenterSidebar({
                             activeHelpCenterId={activeHelpCenterId}
                             onSelect={onSelectHelpCenter}
                             onEdit={onEditHelpCenter}
+                            onExport={onExport}
                         />
                          <Button variant="ghost" className="w-full justify-start text-sm h-9 mt-1" onClick={onNewHelpCenter}>
                             <Plus className="mr-2 h-4 w-4 text-muted-foreground" />
                             <span className="text-muted-foreground">New Library</span>
+                        </Button>
+                        <Button variant="ghost" className="w-full justify-start text-sm h-9 mt-1" onClick={onImport}>
+                            <Upload className="mr-2 h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">Import Library</span>
                         </Button>
                     </div>
                 

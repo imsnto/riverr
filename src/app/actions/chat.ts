@@ -7,8 +7,9 @@ import * as db from '@/lib/db';
 import type { Firestore } from "firebase-admin/firestore";
 import { getTypesenseAdmin, getTypesenseSearch } from '@/lib/typesense';
 import { indexHelpCenterArticleToChunks } from '@/lib/knowledge/indexer';
-import { LeadStateNode, Contact, SalesPersonaSegmentNode, ChatMessage, Visitor } from '@/lib/data';
+import { LeadStateNode, Contact, SalesPersonaSegmentNode, ChatMessage, Visitor, HelpCenter, HelpCenterCollection, HelpCenterArticle } from '@/lib/data';
 import { draftSalesEmail, type DraftSalesEmailInput, type DraftSalesEmailOutput } from '@/ai/flows/draft-sales-email';
+import { serverTimestamp } from 'firebase-admin/firestore';
 
 const typesense = getTypesenseSearch();
 
@@ -585,5 +586,90 @@ export async function createConversationAndLinkCrm(args: {
 
 export async function ensureConversationCrmLinkedAction(conversationId: string) {
   return await ensureCrmLinkedForConversationAdmin(conversationId);
+}
+
+export interface LibraryData {
+  helpCenter: Omit<HelpCenter, 'id' | 'hubId'>;
+  collections: (Omit<HelpCenterCollection, 'hubId' | 'helpCenterId'> & { oldId: string })[];
+  articles: (Omit<HelpCenterArticle, 'id' | 'hubId' | 'helpCenterId' | 'folderId'> & { oldFolderId: string | null })[];
+}
+
+export async function exportLibraryAction(helpCenterId: string): Promise<LibraryData> {
+    const hcSnap = await adminDB.collection('help_centers').doc(helpCenterId).get();
+    if (!hcSnap.exists) throw new Error('Help Center not found');
+    const { id, hubId, ...helpCenter } = hcSnap.data() as HelpCenter;
+
+    const collectionsSnap = await adminDB.collection('help_center_collections').where('helpCenterId', '==', helpCenterId).get();
+    const collections = collectionsSnap.docs.map(doc => {
+        const { id, hubId, helpCenterId, ...collectionData } = doc.data() as HelpCenterCollection;
+        return { oldId: doc.id, ...collectionData };
+    });
+
+    const articlesSnap = await adminDB.collection('help_center_articles').where('helpCenterId', '==', helpCenterId).get();
+    const articles = articlesSnap.docs.map(doc => {
+        const { id, hubId, helpCenterId, folderId, ...articleData } = doc.data() as HelpCenterArticle;
+        return { oldFolderId: folderId, ...articleData };
+    });
+
+    return { helpCenter, collections, articles };
+}
+
+export async function importLibraryAction(hubId: string, spaceId: string, userId: string, data: LibraryData): Promise<{ newHelpCenterId: string }> {
+    const batch = adminDB.batch();
+    
+    // 1. Create new Help Center
+    const newHcRef = adminDB.collection('help_centers').doc();
+    batch.set(newHcRef, {
+        ...data.helpCenter,
+        name: `${data.helpCenter.name} (Imported)`,
+        hubId: hubId,
+        coverImageUrl: '',
+    });
+
+    // 2. Map old collection IDs to new ones
+    const collectionIdMap = new Map<string, string>();
+    data.collections.forEach(collection => {
+        const newId = adminDB.collection('help_center_collections').doc().id;
+        collectionIdMap.set(collection.oldId, newId);
+    });
+
+    // 3. Create new collections
+    data.collections.forEach(collection => {
+        const newId = collectionIdMap.get(collection.oldId)!;
+        const newParentId = collection.parentId ? collectionIdMap.get(collection.parentId) : null;
+        const collectionRef = adminDB.collection('help_center_collections').doc(newId);
+        
+        const { oldId, parentId, ...collectionData } = collection;
+
+        batch.set(collectionRef, {
+            ...collectionData,
+            hubId: hubId,
+            helpCenterId: newHcRef.id,
+            parentId: newParentId,
+        });
+    });
+
+    // 4. Create new articles
+    data.articles.forEach(article => {
+        const articleRef = adminDB.collection('help_center_articles').doc();
+        const newFolderId = article.oldFolderId ? collectionIdMap.get(article.oldFolderId) : null;
+
+        const { oldFolderId, ...articleData } = article;
+
+        batch.set(articleRef, {
+            ...articleData,
+            hubId: hubId,
+            spaceId: spaceId,
+            authorId: userId,
+            helpCenterId: newHcRef.id,
+            folderId: newFolderId,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        });
+    });
+
+    await batch.commit();
+
+    return { newHelpCenterId: newHcRef.id };
 }
     

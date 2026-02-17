@@ -1,5 +1,4 @@
 
-
 'use client';
 import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -19,7 +18,7 @@ import MoveToFolderDialog from './move-to-folder-dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { reindexArticleAction } from '@/app/actions/chat';
+import { reindexArticleAction, exportLibraryAction, importLibraryAction } from '@/app/actions/chat';
 import { suggestLibraryIcon } from '@/ai/flows/suggest-library-icon';
 import { Separator } from '../ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -71,7 +70,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isAddArticlesOpen, setIsAddArticlesOpen] = useState(false);
 
-
+    const importInputRef = useRef<HTMLInputElement>(null);
     const isMobile = useIsMobile();
     const [mobileContentVisible, setMobileContentVisible] = useState(false);
     
@@ -397,6 +396,68 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         toast({ title: `${articleIds.length} article(s) added to the library.` });
         refreshData();
     };
+
+    const handleImportClick = () => {
+        importInputRef.current?.click();
+    };
+
+    const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (file.type !== 'application/json') {
+            toast({ variant: 'destructive', title: 'Invalid File Type', description: 'Please select a valid JSON export file.' });
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const data = JSON.parse(e.target?.result as string);
+                
+                if (!data.helpCenter || !data.collections || !data.articles) {
+                    throw new Error("Invalid export file format.");
+                }
+                
+                if (!activeHub || !activeSpace || !appUser) {
+                    toast({ variant: 'destructive', title: 'Cannot import', description: 'No active workspace context.' });
+                    return;
+                }
+
+                toast({ title: "Importing library...", description: "This may take a moment." });
+
+                await importLibraryAction(activeHub.id, activeSpace.id, appUser.id, data);
+
+                toast({ title: "Import Successful!", description: `"${data.helpCenter.name}" has been imported.` });
+                refreshData();
+
+            } catch (error) {
+                console.error("Import failed:", error);
+                toast({ variant: 'destructive', title: 'Import Failed', description: 'The file could not be read or is corrupted.' });
+            }
+        };
+        reader.readAsText(file);
+        
+        event.target.value = '';
+    };
+    
+    const handleExport = async (helpCenterId: string) => {
+        try {
+            const data = await exportLibraryAction(helpCenterId);
+            const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+                JSON.stringify(data, null, 2)
+            )}`;
+            const link = document.createElement("a");
+            link.href = jsonString;
+            const fileName = `manowar-library-export-${data.helpCenter.name.toLowerCase().replace(/\s/g, '-')}.json`;
+            link.download = fileName;
+            link.click();
+            toast({ title: "Export Started", description: "Your download will begin shortly." });
+        } catch (error) {
+            console.error("Export failed:", error);
+            toast({ variant: 'destructive', title: 'Export Failed' });
+        }
+    };
     
     const articleToEdit = articles.find(a => a.id === selectedArticleId);
     if (articleToEdit && appUser) {
@@ -443,11 +504,20 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
             sidebarView={sidebarView}
             onViewChange={handleViewChange}
             unassignedContentCount={unassignedCount}
+            onExport={handleExport}
+            onImport={handleImportClick}
         />
     );
 
     const mainContentComponent = (
         <main className="p-4 md:p-6 flex flex-col h-full overflow-hidden">
+            <input
+                type="file"
+                ref={importInputRef}
+                className="hidden"
+                accept=".json"
+                onChange={handleFileSelected}
+            />
             {isMobile && (
                  <div className="flex-shrink-0">
                      <Button variant="ghost" onClick={() => setMobileContentVisible(false)} className="-ml-2 mb-2">
