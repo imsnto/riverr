@@ -1,4 +1,5 @@
 
+
 // src/lib/data.ts
 
 // --- Core Entities ---
@@ -67,6 +68,8 @@ export interface HubPermission {
 export interface Project {
   id: string;
   name: string;
+  key?: string;
+  taskCounter?: number;
   space_id: string;
   hubId: string; // Hub scope
   members: string[]; // array of user IDs
@@ -76,6 +79,7 @@ export interface Project {
 
 export interface Task {
   id: string;
+  taskKey?: string;
   name: string;
   description: string;
   project_id: string | null; // Can be null if it's a job flow task

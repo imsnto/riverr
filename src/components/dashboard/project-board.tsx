@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, DragEvent, useRef } from 'react';
@@ -85,12 +86,7 @@ const TaskCard = ({ task, project, onClick, isDragging, allUsers }: { task: Task
       </CardHeader>
       <CardFooter className="flex justify-between items-center p-3 pt-0">
          <div className="flex items-center gap-2 text-muted-foreground">
-            {task.comments?.length > 0 && 
-                <div className="flex items-center gap-1 text-xs">
-                    {/*<MessageSquare className="h-3 w-3" />*/}
-                    {task.comments.length}
-                </div>
-            }
+            {task.taskKey && <span className="text-xs font-semibold">{task.taskKey}</span>}
          </div>
         <Avatar className="h-6 w-6">
             <AvatarImage src={assignee?.avatarUrl} alt={assignee?.name} />
@@ -121,7 +117,7 @@ interface ProjectBoardProps {
 const defaultStatuses: Status[] = [
     { name: 'Backlog', color: '#6b7280' },
     { name: 'In Progress', color: '#3b82f6' },
-    { name: 'Review', color: '#f59e0b' },
+    { name: 'In Review', color: '#f59e0b' },
     { name: 'Done', color: '#22c55e' },
 ]
 

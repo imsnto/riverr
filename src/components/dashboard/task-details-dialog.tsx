@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -436,7 +437,12 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
                 onOpenAutoFocus={(e) => e.preventDefault()}
             >
                 <DialogHeader className="p-6 pb-4 border-b shrink-0">
-                    <DialogTitle>{isCreating ? 'Create New Task' : 'Task Details'}</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                        {isCreating ? 'Create New Task' : 'Task Details'}
+                        {!isCreating && task.taskKey && (
+                            <span className="font-mono text-lg font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-md">{task.taskKey}</span>
+                        )}
+                    </DialogTitle>
                      {!isCreating && <DialogDescription>Created by {allUsers.find(u => u.id === task.createdBy)?.name || 'Unknown'}</DialogDescription>}
                 </DialogHeader>
 

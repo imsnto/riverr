@@ -20,6 +20,7 @@ import {
   serverTimestamp,
   orderBy,
   onSnapshot,
+  runTransaction,
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getApp } from "firebase/app";
@@ -478,8 +479,46 @@ export const getAllTasks = async (hubId: string): Promise<Task[]> => {
 };
 
 export const addTask = async (task: Omit<Task, "id">): Promise<Task> => {
-  const docRef = await addDoc(collection(db, "tasks"), task);
-  return { ...task, id: docRef.id };
+  const taskRef = doc(collection(db, "tasks"));
+  
+  // If it's a subtask or a job flow task, it doesn't get a key.
+  if (task.parentId || !task.project_id) {
+      await setDoc(taskRef, task);
+      return { ...task, id: taskRef.id };
+  }
+  
+  const projectRef = doc(db, "projects", task.project_id);
+
+  try {
+      const newTaskData = await runTransaction(db, async (transaction) => {
+          const projectDoc = await transaction.get(projectRef);
+          if (!projectDoc.exists()) {
+              throw "Project not found!";
+          }
+
+          const projectData = projectDoc.data() as Project;
+          const newCounter = (projectData.taskCounter || 0) + 1;
+          const projectKey = projectData.key || 'TASK';
+
+          const taskKey = `${projectKey}-${newCounter}`;
+
+          const completeTaskData: Omit<Task, 'id'> = {
+              ...task,
+              taskKey: taskKey,
+          };
+          
+          transaction.update(projectRef, { taskCounter: newCounter });
+          transaction.set(taskRef, completeTaskData);
+
+          return completeTaskData;
+      });
+      return { ...(newTaskData as Task), id: taskRef.id };
+  } catch (e) {
+      console.error("Add task transaction failed: ", e);
+      // Fallback to creating task without a key if transaction fails
+      await setDoc(taskRef, task);
+      return { ...task, id: taskRef.id };
+  }
 };
 
 export const updateTask = async (
