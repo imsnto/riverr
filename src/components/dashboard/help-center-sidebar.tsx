@@ -72,7 +72,6 @@ interface HelpCenterSidebarProps {
 
   sidebarView: HelpCenterSidebarView;
   onViewChange: (view: HelpCenterSidebarView) => void;
-  onExport: (helpCenterId: string) => void;
   onImport: () => void;
 }
 
@@ -151,7 +150,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, a
 };
 
 
-const LibraryList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: string | null, onSelect: (id: string | null) => void, onEdit: (hc: HelpCenter) => void, onExport: (id: string) => void }> = ({ helpCenters, activeHelpCenterId, onSelect, onEdit, onExport }) => (
+const LibraryList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: string | null, onSelect: (id: string | null) => void, onEdit: (hc: HelpCenter) => void }> = ({ helpCenters, activeHelpCenterId, onSelect, onEdit }) => (
     <div className="space-y-1">
         {helpCenters.map(hc => (
             <div
@@ -184,9 +183,6 @@ const LibraryList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: str
                         <DropdownMenuItem onSelect={() => onEdit(hc)}>
                             <Settings className="mr-2 h-4 w-4" /> Settings
                         </DropdownMenuItem>
-                         <DropdownMenuItem onSelect={() => onExport(hc.id)}>
-                            <Download className="mr-2 h-4 w-4" /> Export
-                        </DropdownMenuItem>
                         {hc.visibility !== 'internal' && (
                             <DropdownMenuItem asChild>
                                 <Link href={`/hc/${hc.id}`} target="_blank" rel="noopener noreferrer">
@@ -217,7 +213,6 @@ export default function HelpCenterSidebar({
     sidebarView,
     onViewChange,
     unassignedContentCount,
-    onExport,
     onImport,
 }: HelpCenterSidebarProps) {
 
@@ -242,7 +237,6 @@ export default function HelpCenterSidebar({
                             activeHelpCenterId={activeHelpCenterId}
                             onSelect={onSelectHelpCenter}
                             onEdit={onEditHelpCenter}
-                            onExport={onExport}
                         />
                          <Button variant="ghost" className="w-full justify-start text-sm h-9 mt-1" onClick={onNewHelpCenter}>
                             <Plus className="mr-2 h-4 w-4 text-muted-foreground" />

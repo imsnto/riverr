@@ -9,7 +9,7 @@ import { Button, buttonVariants } from '../ui/button';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
-import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2, Bot as BotIcon, Lock, Globe, Wand2, Upload, Loader2, Image as ImageIcon } from 'lucide-react';
+import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2, Bot as BotIcon, Lock, Globe, Wand2, Upload, Loader2, Image as ImageIcon, Download } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import HelpCenterFormDialog, { HelpCenterFormValues } from './help-center-form-dialog';
 import { Input } from '../ui/input';
@@ -481,6 +481,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                 helpCenter={editingHelpCenter}
                 onBack={() => setEditingHelpCenter(null)}
                 onSave={handleSaveHelpCenter}
+                onExport={handleExport}
              />
     }
     
@@ -504,7 +505,6 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
             sidebarView={sidebarView}
             onViewChange={handleViewChange}
             unassignedContentCount={unassignedCount}
-            onExport={handleExport}
             onImport={handleImportClick}
         />
     );
@@ -718,7 +718,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     );
 }
 
-const LibrarySettingsPage = ({ helpCenter, onBack, onSave }: { helpCenter: HelpCenter, onBack: () => void, onSave: (data: Partial<HelpCenter>) => void}) => {
+const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport }: { helpCenter: HelpCenter, onBack: () => void, onSave: (data: Partial<HelpCenter>) => void, onExport: (helpCenterId: string) => void}) => {
     const [name, setName] = useState(helpCenter.name);
     const [visibility, setVisibility] = useState(helpCenter.visibility || 'public');
     const [coverImageUrl, setCoverImageUrl] = useState(helpCenter.coverImageUrl || '');
@@ -855,6 +855,20 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave }: { helpCenter: HelpC
                             </CardContent>
                         </Card>
                     )}
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Export Library</CardTitle>
+                            <CardDescription>
+                                Download a JSON file containing all collections and articles from this library.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Button variant="outline" onClick={() => onExport(helpCenter.id)}>
+                                <Download className="mr-2 h-4 w-4" />
+                                Export as JSON
+                            </Button>
+                        </CardContent>
+                    </Card>
                 </div>
             </ScrollArea>
         </div>
