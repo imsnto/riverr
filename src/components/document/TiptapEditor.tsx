@@ -24,7 +24,6 @@ import { AlignCenter, PanelLeft, PanelRight } from 'lucide-react';
 
 import { BubbleToolbar } from './BubbleToolbar';
 import { SlashCommand } from '../editor/extensions/SlashCommand';
-import TrailingNode from '@tiptap/extension-trailing-node';
 
 const CustomImage = Image.extend({
   addAttributes() {
@@ -100,10 +99,6 @@ export default function TiptapEditor({
       // Slash command menu on "/"
       SlashCommand.configure({
         uploadImage: (file: File) => uploadImageRef.current(file),
-      }),
-      TrailingNode.configure({
-        node: "paragraph",
-        notAfter: ["paragraph"],
       }),
     ],
     content,
