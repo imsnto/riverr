@@ -29,6 +29,7 @@ import { AlignCenter, PanelLeft, PanelRight } from 'lucide-react';
 
 import { BubbleToolbar } from './BubbleToolbar';
 import { SlashCommand } from '../editor/extensions/SlashCommand';
+import { Document } from '@/lib/data';
 
 const CustomImage = Image.extend({
   addAttributes() {
@@ -54,6 +55,8 @@ type Props = {
   onBlur?: () => void;
   onEditorInstance?: (editor: Editor) => void;
   uploadImage: (file: File) => Promise<string>;
+  docId: string;
+  allDocuments: Document[];
 };
 
 export default function TiptapEditor({
@@ -62,6 +65,8 @@ export default function TiptapEditor({
   onBlur,
   onEditorInstance,
   uploadImage,
+  docId,
+  allDocuments,
 }: Props) {
   // Keep latest uploadImage to avoid stale closure in extensions
   const uploadImageRef = useRef(uploadImage);
@@ -150,7 +155,7 @@ export default function TiptapEditor({
           return from !== to && editor.isEditable;
         }}
       >
-        <BubbleToolbar editor={editor} />
+        <BubbleToolbar editor={editor} articles={allDocuments} documentId={docId} />
       </BubbleMenu>
 
       {/* Bubble toolbar for image resizing/alignment */}

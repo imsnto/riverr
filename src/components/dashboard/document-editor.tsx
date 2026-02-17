@@ -21,7 +21,9 @@ import { uploadImageToFirebase } from '@/lib/db';
 
 interface DocumentEditorProps {
   initialDocument: Document;
+  docId: string;
   allUsers: User[];
+  allDocuments: Document[];
   onSave: (doc: Document) => Promise<void>;
   onDelete: (docId: string) => Promise<void>;
 }
@@ -44,7 +46,9 @@ const SaveStatusIndicator = ({ isSaving, lastSaved }: { isSaving: boolean, lastS
 
 export default function DocumentEditor({
   initialDocument,
+  docId,
   allUsers,
+  allDocuments,
   onSave,
   onDelete,
 }: DocumentEditorProps) {
@@ -187,6 +191,8 @@ export default function DocumentEditor({
                         onChange={handleContentChange} 
                         onEditorInstance={onEditorInstance}
                         uploadImage={uploadImage}
+                        docId={docId}
+                        allDocuments={allDocuments}
                     />
                 </div>
             </div>
@@ -294,6 +300,8 @@ export default function DocumentEditor({
                     onChange={handleContentChange} 
                     onEditorInstance={onEditorInstance}
                     uploadImage={uploadImage}
+                    docId={docId}
+                    allDocuments={allDocuments}
                 />
             </div>
         </div>

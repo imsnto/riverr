@@ -8,6 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Document } from '@/lib/data';
+import { ScrollArea } from '../ui/scroll-area';
 
 const getActiveNodeLabel = (editor: Editor) => {
     if (editor.isActive('heading', { level: 1 })) return 'Heading 1';
@@ -23,12 +27,13 @@ const FONT_SIZES = ['12px', '14px', '16px', '18px', '24px', '30px', '36px', '48p
 const FONT_FAMILIES = ['Inter', 'Arial', 'Georgia', 'Times New Roman', 'Verdana', 'serif', 'monospace', 'cursive'];
 
 
-export function BubbleToolbar({ editor }: { editor: Editor | null }) {
+export function BubbleToolbar({ editor, articles, documentId }: { editor: Editor | null, articles: Document[], documentId: string }) {
   if (!editor) return null;
 
   const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [hasLink, setHasLink] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // When popover opens, get the existing link URL
   useEffect(() => {
@@ -36,37 +41,44 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
       const existingUrl = editor.getAttributes('link').href || '';
       setLinkUrl(existingUrl);
       setHasLink(!!existingUrl);
+      setSearchQuery('');
     }
   }, [isLinkPopoverOpen, editor]);
-
-  const setLink = useCallback(() => {
-    // If user clears the input, remove the link
-    if (linkUrl.trim() === '') {
+  
+  const setLink = useCallback((url: string) => {
+    let finalUrl = url.trim();
+    if (finalUrl === '') {
       editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      setIsLinkPopoverOpen(false);
       return;
     }
-
-    // Add protocol if missing
-    let finalUrl = linkUrl.trim();
-    if (finalUrl && !/^https?:\/\//i.test(finalUrl)) {
-      finalUrl = `https://${finalUrl}`;
+    // Add protocol if missing, but not for internal links
+    if (finalUrl && !/^https?:\/\//i.test(finalUrl) && !finalUrl.startsWith('/')) {
+        finalUrl = `https://${finalUrl}`;
     }
-
-    // Set or update the link
     editor.chain().focus().extendMarkRange('link').setLink({ href: finalUrl }).run();
-    setIsLinkPopoverOpen(false);
-  }, [editor, linkUrl]);
+  }, [editor]);
 
   const handleLinkSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLink();
+    setLink(linkUrl);
+    setIsLinkPopoverOpen(false);
   };
   
   const handleUnlink = () => {
     editor.chain().focus().extendMarkRange('link').unsetLink().run();
     setIsLinkPopoverOpen(false);
   }
+
+  const handleArticleSelect = (article: Document) => {
+    const url = `/documents/${article.id}`;
+    setLink(url);
+    setIsLinkPopoverOpen(false);
+  };
+  
+  const filteredArticles = articles.filter(article =>
+    article.id !== documentId &&
+    article.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const activeNodeLabel = getActiveNodeLabel(editor);
   const activeFontSize = editor.getAttributes('textStyle').fontSize || '16px';
@@ -259,42 +271,77 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
                     <LinkIcon className="h-4 w-4" />
                 </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-64 p-2" sideOffset={10}>
-                <form onSubmit={handleLinkSubmit} className="flex items-center gap-2">
-                    <Input
-                    type="text"
-                    placeholder="Paste link..."
-                    value={linkUrl}
-                    onChange={(e) => setLinkUrl(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                        e.preventDefault();
-                        setLink();
-                        }
-                    }}
-                    className="h-8"
-                    />
-                    <Button
-                    type="submit"
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 flex-shrink-0"
-                    >
-                    <Check className="h-4 w-4" />
-                    </Button>
-                    {hasLink && (
-                    <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="h-8 w-8 flex-shrink-0"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={handleUnlink}
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                    )}
-                </form>
+                <PopoverContent className="w-80 p-0" sideOffset={10}>
+                    <Tabs defaultValue="search" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="search">Link to Article</TabsTrigger>
+                            <TabsTrigger value="url">Paste URL</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="search" className="p-1">
+                            <Command shouldFilter={false}>
+                                <CommandInput
+                                    placeholder="Search articles..."
+                                    value={searchQuery}
+                                    onValueChange={setSearchQuery}
+                                />
+                                <CommandList>
+                                    <ScrollArea className="h-48">
+                                        <CommandEmpty>No articles found.</CommandEmpty>
+                                        <CommandGroup>
+                                            {filteredArticles.map(article => (
+                                                <CommandItem
+                                                    key={article.id}
+                                                    value={article.name}
+                                                    onSelect={() => handleArticleSelect(article)}
+                                                    className="cursor-pointer"
+                                                >
+                                                    {article.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </ScrollArea>
+                                </CommandList>
+                            </Command>
+                        </TabsContent>
+                        <TabsContent value="url" className="p-2">
+                            <form onSubmit={handleLinkSubmit} className="flex items-center gap-2 pt-2">
+                                <Input
+                                type="text"
+                                placeholder="Paste link..."
+                                value={linkUrl}
+                                onChange={(e) => setLinkUrl(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    setLink(linkUrl);
+                                    setIsLinkPopoverOpen(false);
+                                    }
+                                }}
+                                className="h-8"
+                                />
+                                <Button
+                                type="submit"
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 flex-shrink-0"
+                                >
+                                <Check className="h-4 w-4" />
+                                </Button>
+                                {hasLink && (
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="icon"
+                                    className="h-8 w-8 flex-shrink-0"
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={handleUnlink}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                                )}
+                            </form>
+                        </TabsContent>
+                    </Tabs>
                 </PopoverContent>
             </Popover>
         </div>

@@ -1,7 +1,8 @@
+
 // src/app/(app)/documents/[docId]/page.tsx
 'use client';
 import { useAuth } from '@/hooks/use-auth';
-import { getDocument, getAllUsers, updateDocument, deleteDocument } from '@/lib/db';
+import { getDocument, getAllUsers, updateDocument, deleteDocument, getDocumentsInHub } from '@/lib/db';
 import { Document, User } from '@/lib/data';
 import React, { useState, useEffect } from 'react';
 import DocumentEditor from '@/components/dashboard/document-editor';
@@ -15,6 +16,7 @@ export default function DocumentPage() {
     const router = useRouter();
 
     const [document, setDocument] = useState<Document | null>(null);
+    const [allDocuments, setAllDocuments] = useState<Document[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -28,18 +30,20 @@ export default function DocumentPage() {
             setIsLoading(true);
             setError(null);
             try {
-                const [docData, usersData] = await Promise.all([
-                    getDocument(docId),
-                    getAllUsers()
-                ]);
+                const docData = await getDocument(docId);
                 
                 if (docData) {
                     const userIsInSpace = userSpaces.some(space => space.id === docData.spaceId);
                     const userHasAccess = docData.isPublic || (docData.allowedUserIds && docData.allowedUserIds.includes(appUser.id));
 
                     if (userIsInSpace && userHasAccess) {
+                        const [usersData, hubDocuments] = await Promise.all([
+                            getAllUsers(),
+                            getDocumentsInHub(docData.hubId),
+                        ]);
                         setDocument(docData);
                         setAllUsers(usersData);
+                        setAllDocuments(hubDocuments);
                     } else {
                         setError("You don't have permission to view this document.");
                     }
@@ -85,7 +89,9 @@ export default function DocumentPage() {
     return (
         <DocumentEditor
             initialDocument={document}
+            docId={docId}
             allUsers={allUsers}
+            allDocuments={allDocuments}
             onSave={handleSave}
             onDelete={handleDelete}
         />
