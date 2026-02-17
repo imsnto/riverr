@@ -75,7 +75,7 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
   const NodeSelector = () => (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-1 text-sm font-medium w-32 justify-start" onMouseDown={(e) => e.preventDefault()}>
+        <Button variant="ghost" size="sm" className="gap-1 text-sm font-medium w-32 justify-start" onMouseDown={(e) => e.stopPropagation()}>
           <span className="truncate">{activeNodeLabel}</span>
           <ChevronDown className="h-4 w-4" />
         </Button>
@@ -108,7 +108,7 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
   const FontfamilySelector = () => (
     <Popover>
         <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-sm font-medium w-28 justify-start" onMouseDown={(e) => e.preventDefault()}>
+            <Button variant="ghost" size="sm" className="text-sm font-medium w-28 justify-start" onMouseDown={(e) => e.stopPropagation()}>
                 <span className="truncate" style={{fontFamily: activeFontFamily}}>{activeFontFamily}</span>
                 <ChevronDown className="h-4 w-4 ml-auto" />
             </Button>
@@ -135,7 +135,7 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
    const FontSizeSelector = () => (
     <Popover>
         <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-sm font-medium w-20 justify-start" onMouseDown={(e) => e.preventDefault()}>
+            <Button variant="ghost" size="sm" className="text-sm font-medium w-20 justify-start" onMouseDown={(e) => e.stopPropagation()}>
                 <span className="truncate">{activeFontSize}</span>
                 <ChevronDown className="h-4 w-4 ml-auto" />
             </Button>
@@ -254,7 +254,7 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
                     size="icon"
                     className="h-8 w-8"
                     title="Link"
-                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseDown={(e) => e.stopPropagation()}
                 >
                     <LinkIcon className="h-4 w-4" />
                 </Button>
