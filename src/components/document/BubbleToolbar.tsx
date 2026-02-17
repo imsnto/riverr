@@ -19,7 +19,7 @@ const getActiveNodeLabel = (editor: Editor) => {
 };
 
 const FONT_SIZES = ['12px', '14px', '16px', '18px', '24px', '30px', '36px', '48px'];
-const FONT_FAMILIES = ['Inter', 'serif', 'monospace', 'cursive'];
+const FONT_FAMILIES = ['Inter', 'Arial', 'Georgia', 'Times New Roman', 'Verdana', 'serif', 'monospace', 'cursive'];
 
 
 export function BubbleToolbar({ editor }: { editor: Editor | null }) {
