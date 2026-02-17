@@ -1,5 +1,4 @@
 
-
 'use client';
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { HelpCenterArticle, User } from '@/lib/data';
@@ -163,7 +162,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
         <>
             <div className="flex flex-col h-screen">
                 <header className="flex justify-between items-center p-2 border-b">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+                     <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
                         <Button variant="ghost" size="sm" onClick={() => onBack()} className="text-muted-foreground hover:text-foreground">
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
@@ -171,7 +170,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                         <Input 
                             value={article.title}
                             onChange={(e) => handleTitleChange(e.target.value)}
-                            placeholder="Untitled"
+                            placeholder="Article Title"
                             className="border-none focus-visible:ring-0 p-0 h-auto text-sm font-semibold text-foreground truncate"
                         />
                     </div>
@@ -298,12 +297,11 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                             className="border-none focus-visible:ring-0 p-0 h-auto text-4xl font-bold tracking-tight mb-2"
                             placeholder="Article Title"
                         />
-                        <Textarea
+                        <Input
                             value={article.subtitle || ''}
                             onChange={(e) => setArticle(prev => ({ ...prev, subtitle: e.target.value }))}
                             placeholder="Add a subtitle..."
-                            className="border-none focus-visible:ring-0 p-0 h-auto text-lg text-muted-foreground resize-none overflow-hidden mb-6"
-                            minRows={1}
+                            className="border-none focus-visible:ring-0 p-0 h-auto text-lg text-muted-foreground mb-6"
                         />
                         <TiptapEditor 
                             content={article.content} 
@@ -344,5 +342,3 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
         </>
     );
 }
-
-    
