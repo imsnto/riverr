@@ -722,7 +722,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
             </AlertDialogContent>
         </AlertDialog>
         
-        <AlertDialog open={!!deletingHelpCenter} onOpenChange={() => setDeletingHelpCenter(null)}>
+        <AlertDialog open={!!deletingHelpCenter} onOpenChange={(open) => !open && setDeletingHelpCenter(null)}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
