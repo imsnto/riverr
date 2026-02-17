@@ -193,6 +193,7 @@ export default function DocumentEditor({
                         uploadImage={uploadImage}
                         docId={docId}
                         allDocuments={allDocuments}
+                        linkPrefix="/documents/"
                     />
                 </div>
             </div>
@@ -302,6 +303,7 @@ export default function DocumentEditor({
                     uploadImage={uploadImage}
                     docId={docId}
                     allDocuments={allDocuments}
+                    linkPrefix="/documents/"
                 />
             </div>
         </div>

@@ -1,7 +1,7 @@
 
 'use client';
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { HelpCenterArticle, User } from '@/lib/data';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { HelpCenterArticle, User, Document } from '@/lib/data';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Bot, Trash2, MessageSquare, Loader2, Share2, Star, MoreHorizontal, ArrowLeft, ExternalLink, CheckCircle2 } from 'lucide-react';
@@ -10,7 +10,7 @@ import { Editor } from '@tiptap/react';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
 import HelpCenterArticleShareDialog from './help-center-article-share-dialog';
 import Link from 'next/link';
@@ -34,6 +34,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 interface HelpCenterArticleEditorProps {
     article: HelpCenterArticle;
+    allArticles: HelpCenterArticle[];
     onSave: (article: HelpCenterArticle) => Promise<void>;
     allUsers: User[];
     appUser: User;
@@ -43,7 +44,7 @@ interface HelpCenterArticleEditorProps {
 
 const getInitials = (name: string) => {
     if (!name) return '';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+    return name.split(' ').map(n => n[0]).join('');
 };
 
 const SaveStatusIndicator = ({ isSaving, lastSaved, isMobile }: { isSaving: boolean, lastSaved: Date | null, isMobile?: boolean }) => {
@@ -69,7 +70,7 @@ const SaveStatusIndicator = ({ isSaving, lastSaved, isMobile }: { isSaving: bool
 }
 
 
-export default function HelpCenterArticleEditor({ article: initialArticle, onSave, allUsers, appUser, onBack, onDelete }: HelpCenterArticleEditorProps) {
+export default function HelpCenterArticleEditor({ article: initialArticle, allArticles, onSave, allUsers, appUser, onBack, onDelete }: HelpCenterArticleEditorProps) {
     const [article, setArticle] = useState(initialArticle);
     const [lastSavedArticle, setLastSavedArticle] = useState(initialArticle);
     const [editor, setEditor] = useState<Editor | null>(null);
@@ -83,6 +84,20 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
     const isMobile = useIsMobile();
 
     const hasUnsavedChanges = JSON.stringify(article) !== JSON.stringify(lastSavedArticle);
+    
+    const documentsForToolbar = useMemo(() => {
+        return (allArticles || []).map(art => ({
+            id: art.id,
+            name: art.title,
+        }));
+    }, [allArticles]);
+
+    const linkPrefix = useMemo(() => {
+        if (article.helpCenterId) {
+            return `/hc/${article.helpCenterId}/articles/`;
+        }
+        return '/documents/'; // Fallback
+    }, [article.helpCenterId]);
     
     const uploadImage = useCallback(
       (file: File) => {
@@ -222,6 +237,9 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                         onChange={handleContentChange} 
                         onEditorInstance={onEditorInstance}
                         uploadImage={uploadImage}
+                        docId={article.id}
+                        allDocuments={documentsForToolbar as Document[]}
+                        linkPrefix={linkPrefix}
                     />
                 </div>
             </div>
@@ -295,7 +313,7 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                             value={article.title}
                             onChange={(e) => handleTitleChange(e.target.value)}
                             className="border-none focus-visible:ring-0 p-0 h-auto text-4xl font-bold tracking-tight mb-2"
-                            placeholder="Article Title"
+                            placeholder="Untitled Article"
                         />
                         <Input
                             value={article.subtitle || ''}
@@ -308,6 +326,9 @@ export default function HelpCenterArticleEditor({ article: initialArticle, onSav
                             onChange={handleContentChange} 
                             onEditorInstance={onEditorInstance}
                             uploadImage={uploadImage}
+                            docId={article.id}
+                            allDocuments={documentsForToolbar as Document[]}
+                            linkPrefix={linkPrefix}
                         />
                     </div>
                 </div>

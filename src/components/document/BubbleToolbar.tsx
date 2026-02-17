@@ -27,7 +27,7 @@ const FONT_SIZES = ['12px', '14px', '16px', '18px', '24px', '30px', '36px', '48p
 const FONT_FAMILIES = ['Inter', 'Arial', 'Georgia', 'Times New Roman', 'Verdana', 'serif', 'monospace', 'cursive'];
 
 
-export function BubbleToolbar({ editor, articles, documentId }: { editor: Editor | null, articles: Document[], documentId: string }) {
+export function BubbleToolbar({ editor, articles = [], documentId, linkPrefix }: { editor: Editor | null, articles?: Document[], documentId: string, linkPrefix?: string }) {
   if (!editor) return null;
 
   const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState(false);
@@ -70,7 +70,7 @@ export function BubbleToolbar({ editor, articles, documentId }: { editor: Editor
   }
 
   const handleArticleSelect = (article: Document) => {
-    const url = `/documents/${article.id}`;
+    const url = `${linkPrefix || '/documents/'}${article.id}`;
     setLink(url);
     setIsLinkPopoverOpen(false);
   };

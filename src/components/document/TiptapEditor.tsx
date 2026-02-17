@@ -56,7 +56,8 @@ type Props = {
   onEditorInstance?: (editor: Editor) => void;
   uploadImage: (file: File) => Promise<string>;
   docId: string;
-  allDocuments: Document[];
+  allDocuments?: Document[];
+  linkPrefix?: string;
 };
 
 export default function TiptapEditor({
@@ -67,6 +68,7 @@ export default function TiptapEditor({
   uploadImage,
   docId,
   allDocuments,
+  linkPrefix,
 }: Props) {
   // Keep latest uploadImage to avoid stale closure in extensions
   const uploadImageRef = useRef(uploadImage);
@@ -155,7 +157,7 @@ export default function TiptapEditor({
           return from !== to && editor.isEditable;
         }}
       >
-        <BubbleToolbar editor={editor} articles={allDocuments} documentId={docId} />
+        <BubbleToolbar editor={editor} articles={allDocuments} documentId={docId} linkPrefix={linkPrefix} />
       </BubbleMenu>
 
       {/* Bubble toolbar for image resizing/alignment */}

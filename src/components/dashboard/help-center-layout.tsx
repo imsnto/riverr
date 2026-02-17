@@ -466,6 +466,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                 <HelpCenterArticleEditor 
                    key={articleToEdit.id}
                    article={articleToEdit} 
+                   allArticles={articles}
                    onSave={handleSaveArticle}
                    allUsers={[]}
                    appUser={appUser}
