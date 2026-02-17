@@ -222,7 +222,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     
         const parentId = editingCollection ? editingCollection.parentId : selectedCollectionId;
     
-        const helpCenterId = sidebarView === 'knowledge-bases' && activeHelpCenterId ? activeHelpCenterId : '';
+        const helpCenterId = sidebarView === 'knowledge-bases' ? activeHelpCenterId || '' : '';
 
         const data = {
             ...values,
@@ -250,7 +250,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
       };
 
       const newArticleData: Omit<HelpCenterArticle, 'id'> = {
-        title: 'Untitled Article',
+        title: '',
         subtitle: '',
         content: '<p></p>',
         status: 'draft',
