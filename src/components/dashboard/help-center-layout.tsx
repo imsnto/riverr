@@ -66,10 +66,11 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [isMoveToFolderOpen, setIsMoveToFolderOpen] = useState(false);
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
     const [isAddArticlesOpen, setIsAddArticlesOpen] = useState(false);
 
     const [deletingHelpCenter, setDeletingHelpCenter] = useState<HelpCenter | null>(null);
+    const [isLibraryDeleteDialogOpen, setIsLibraryDeleteDialogOpen] = useState(false);
     const importInputRef = useRef<HTMLInputElement>(null);
     const isMobile = useIsMobile();
     const [mobileContentVisible, setMobileContentVisible] = useState(false);
@@ -374,7 +375,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         toast({ title: `${selectedItems.length} item(s) deleted.` });
         refreshData();
         setSelectedItems([]);
-        setIsDeleteDialogOpen(false);
+        setIsBulkDeleteDialogOpen(false);
     };
 
     const handleDeleteArticle = async (articleId: string) => {
@@ -459,20 +460,25 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         }
     };
     
+    const handleDeleteLibraryClick = (hc: HelpCenter) => {
+        setDeletingHelpCenter(hc);
+        setIsLibraryDeleteDialogOpen(true);
+    };
+
     const handleDeleteLibrary = async () => {
         if (!deletingHelpCenter) return;
         try {
             await db.deleteHelpCenter(deletingHelpCenter.id);
             toast({ title: "Library deleted" });
             
-            // If the deleted library was the active one, reset view
             if (activeHelpCenterId === deletingHelpCenter.id) {
                 const remainingLibraries = helpCenters.filter(hc => hc.id !== deletingHelpCenter.id);
                 setActiveHelpCenterId(remainingLibraries.length > 0 ? remainingLibraries[0].id : null);
             }
             setDeletingHelpCenter(null);
-            setEditingHelpCenter(null); // Go back from settings view if we were there
-            refreshData(); // refetch after deletion
+            setIsLibraryDeleteDialogOpen(false);
+            setEditingHelpCenter(null);
+            refreshData();
             
         } catch (error) {
             toast({ variant: 'destructive', title: 'Failed to delete library' });
@@ -505,7 +511,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                 onBack={() => setEditingHelpCenter(null)}
                 onSave={handleSaveHelpCenter}
                 onExport={handleExport}
-                onDelete={setDeletingHelpCenter}
+                onDelete={handleDeleteLibraryClick}
              />
     }
     
@@ -640,7 +646,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                     <Button variant="secondary" size="sm" onClick={() => setIsMoveToFolderOpen(true)}>
                         <Move className="mr-2 h-4 w-4" /> Move...
                     </Button>
-                     <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)}>
+                     <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteDialogOpen(true)}>
                         <Trash2 className="mr-2 h-4 w-4" /> Delete
                     </Button>
                  </div>
@@ -702,7 +708,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
             />
         )}
 
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -722,7 +728,12 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
             </AlertDialogContent>
         </AlertDialog>
         
-        <AlertDialog open={!!deletingHelpCenter} onOpenChange={(open) => !open && setDeletingHelpCenter(null)}>
+        <AlertDialog open={isLibraryDeleteDialogOpen} onOpenChange={(open) => {
+                setIsLibraryDeleteDialogOpen(open)
+                if (!open) {
+                    setDeletingHelpCenter(null);
+                }
+            }}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
