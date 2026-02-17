@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -70,6 +69,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isAddArticlesOpen, setIsAddArticlesOpen] = useState(false);
 
+    const [deletingHelpCenter, setDeletingHelpCenter] = useState<HelpCenter | null>(null);
     const importInputRef = useRef<HTMLInputElement>(null);
     const isMobile = useIsMobile();
     const [mobileContentVisible, setMobileContentVisible] = useState(false);
@@ -459,6 +459,28 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         }
     };
     
+    const handleDeleteLibrary = async () => {
+        if (!deletingHelpCenter) return;
+        try {
+            await db.deleteHelpCenter(deletingHelpCenter.id);
+            toast({ title: "Library deleted" });
+            
+            // If the deleted library was the active one, reset view
+            if (activeHelpCenterId === deletingHelpCenter.id) {
+                const remainingLibraries = helpCenters.filter(hc => hc.id !== deletingHelpCenter.id);
+                setActiveHelpCenterId(remainingLibraries.length > 0 ? remainingLibraries[0].id : null);
+            }
+            setDeletingHelpCenter(null);
+            setEditingHelpCenter(null); // Go back from settings view if we were there
+            refreshData(); // refetch after deletion
+            
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Failed to delete library' });
+            console.error(error);
+        }
+    };
+
+
     const articleToEdit = articles.find(a => a.id === selectedArticleId);
     if (articleToEdit && appUser) {
          return (
@@ -483,6 +505,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                 onBack={() => setEditingHelpCenter(null)}
                 onSave={handleSaveHelpCenter}
                 onExport={handleExport}
+                onDelete={setDeletingHelpCenter}
              />
     }
     
@@ -698,6 +721,26 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+        
+        <AlertDialog open={!!deletingHelpCenter} onOpenChange={() => setDeletingHelpCenter(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will permanently delete the library "{deletingHelpCenter?.name}" and all of its collections and articles. This action cannot be undone.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        onClick={handleDeleteLibrary}
+                        className={cn(buttonVariants({ variant: "destructive" }))}
+                    >
+                        Delete Library
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
       </>
     );
 
@@ -719,7 +762,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     );
 }
 
-const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport }: { helpCenter: HelpCenter, onBack: () => void, onSave: (data: Partial<HelpCenter>) => void, onExport: (helpCenterId: string) => void}) => {
+const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }: { helpCenter: HelpCenter, onBack: () => void, onSave: (data: Partial<HelpCenter>) => void, onExport: (helpCenterId: string) => void, onDelete: (hc: HelpCenter) => void }) => {
     const [name, setName] = useState(helpCenter.name);
     const [visibility, setVisibility] = useState(helpCenter.visibility || 'public');
     const [coverImageUrl, setCoverImageUrl] = useState(helpCenter.coverImageUrl || '');
@@ -868,6 +911,20 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport }: { helpCen
                                 <Download className="mr-2 h-4 w-4" />
                                 Export as JSON
                             </Button>
+                        </CardContent>
+                    </Card>
+                    <Card className="border-destructive">
+                        <CardHeader>
+                            <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <p className="font-semibold">Delete this library</p>
+                                    <p className="text-sm text-muted-foreground">Once you delete a library, there is no going back. Please be certain.</p>
+                                </div>
+                                <Button variant="destructive" onClick={() => onDelete(helpCenter)}>Delete Library</Button>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>

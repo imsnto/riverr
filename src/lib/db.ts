@@ -1,5 +1,3 @@
-
-
 'use client'
 // src/lib/db.ts
 
@@ -1674,6 +1672,30 @@ export const updateHelpCenter = async (helpCenterId: string, data: Partial<HelpC
   const hcRef = doc(db, 'help_centers', helpCenterId);
   await updateDoc(hcRef, data);
 }
+
+export const deleteHelpCenter = async (helpCenterId: string): Promise<void> => {
+  const batch = writeBatch(db);
+
+  // 1. Delete all articles in the help center
+  const articlesQuery = query(collection(db, 'help_center_articles'), where('helpCenterId', '==', helpCenterId));
+  const articlesSnapshot = await getDocs(articlesQuery);
+  articlesSnapshot.forEach(doc => {
+    batch.delete(doc.ref);
+  });
+
+  // 2. Delete all collections in the help center
+  const collectionsQuery = query(collection(db, 'help_center_collections'), where('helpCenterId', '==', helpCenterId));
+  const collectionsSnapshot = await getDocs(collectionsQuery);
+  collectionsSnapshot.forEach(doc => {
+    batch.delete(doc.ref);
+  });
+
+  // 3. Delete the help center itself
+  const helpCenterRef = doc(db, 'help_centers', helpCenterId);
+  batch.delete(helpCenterRef);
+
+  await batch.commit();
+};
 
 export const getHelpCenterCollections = async (hubId: string): Promise<HelpCenterCollection[]> => {
   const q = query(collection(db, 'help_center_collections'), where('hubId', '==', hubId));
