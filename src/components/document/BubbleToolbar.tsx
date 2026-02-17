@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -74,7 +75,7 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
   const NodeSelector = () => (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-1 text-sm font-medium w-32 justify-start">
+        <Button variant="ghost" size="sm" className="gap-1 text-sm font-medium w-32 justify-start" onMouseDown={(e) => e.preventDefault()}>
           <span className="truncate">{activeNodeLabel}</span>
           <ChevronDown className="h-4 w-4" />
         </Button>
@@ -107,7 +108,7 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
   const FontfamilySelector = () => (
     <Popover>
         <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-sm font-medium w-28 justify-start">
+            <Button variant="ghost" size="sm" className="text-sm font-medium w-28 justify-start" onMouseDown={(e) => e.preventDefault()}>
                 <span className="truncate" style={{fontFamily: activeFontFamily}}>{activeFontFamily}</span>
                 <ChevronDown className="h-4 w-4 ml-auto" />
             </Button>
@@ -134,7 +135,7 @@ export function BubbleToolbar({ editor }: { editor: Editor | null }) {
    const FontSizeSelector = () => (
     <Popover>
         <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-sm font-medium w-20 justify-start">
+            <Button variant="ghost" size="sm" className="text-sm font-medium w-20 justify-start" onMouseDown={(e) => e.preventDefault()}>
                 <span className="truncate">{activeFontSize}</span>
                 <ChevronDown className="h-4 w-4 ml-auto" />
             </Button>
