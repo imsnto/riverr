@@ -3,7 +3,7 @@ import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import crypto from "crypto";
-import postmark from "postmark";
+import * as postmark from "postmark";
 
 const POSTMARK_SERVER_TOKEN = defineSecret("POSTMARK_SERVER_TOKEN");
 const APP_BASE_URL = defineSecret("APP_BASE_URL");
