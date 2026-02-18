@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, DragEvent, useRef, useEffect, useMemo } from 'react';
@@ -15,19 +16,12 @@ import {
   ChevronDown,
   Calendar as CalendarIcon,
   Flag,
-  Sparkles,
-  Zap,
   Share2,
-  Bot,
   LayoutList,
   LayoutGrid,
   Table as TableIcon,
   ChevronUp,
   CircleDot,
-  CheckCircle2,
-  Search,
-  EyeOff,
-  SlidersHorizontal,
   X,
 } from 'lucide-react';
 import { Button, buttonVariants } from '../ui/button';
@@ -54,13 +48,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { format, parseISO } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Calendar as CalendarPicker } from '../ui/calendar';
 
 const STATUS_COLORS = [
   { name: 'Gray', color: '#6b7280' },
@@ -182,10 +180,10 @@ export default function ProjectBoard({
   const [columnWidths, setColumnWidths] = useState<Record<string, number | string>>({
     key: 90,
     name: 'clamp(180px, 28vw, 260px)',
-    assignee: 160,
-    status: 120,
-    dueDate: 120,
-    priority: 100
+    assignee: 180,
+    status: 160,
+    dueDate: 140,
+    priority: 130
   });
 
   const [sortConfig, setSortConfig] = useState<{ key: keyof Task | 'assigneeName'; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
@@ -368,9 +366,8 @@ export default function ProjectBoard({
     e.stopPropagation();
     const startX = e.clientX;
     
-    const startWidth = typeof columnWidths[col] === 'number' 
-        ? (columnWidths[col] as number) 
-        : 260;
+    const currentWidth = columnWidths[col];
+    const startWidth = typeof currentWidth === 'number' ? currentWidth : 200;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       const delta = moveEvent.clientX - startX;

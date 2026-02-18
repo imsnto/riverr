@@ -1,4 +1,4 @@
-// src/lib/db.ts
+
 'use client'
 
 import {
@@ -13,10 +13,7 @@ import {
   where,
   deleteDoc,
   writeBatch,
-  arrayUnion,
-  arrayRemove,
   limit,
-  Timestamp,
   serverTimestamp,
   orderBy,
   onSnapshot,
@@ -33,10 +30,7 @@ import {
   Task,
   TimeEntry,
   SlackMeetingLog,
-  Channel,
-  Message,
   Invite,
-  SpaceMember,
   JobFlowTemplate,
   Job,
   JobFlowTask,
@@ -69,7 +63,7 @@ const generateRandomProjectKey = () => {
 };
 
 const whimsicalAdjectives = ["Clever", "Silly", "Witty", "Happy", "Brave", "Curious", "Dapper", "Eager", "Fancy", "Gentle", "Jolly", "Kindly", "Lucky", "Merry", "Nifty", "Plucky", "Quirky", "Sunny", "Thrifty", "Zippy", "Agile", "Blissful", "Calm", "Dandy", "Elated", "Fearless"];
-const whimsicalNouns = ["Alpaca", "Badger", "Capybara", "Dingo", "Echidna", "Fossa", "Gecko", "Hedgehog", "Impala", "Jerboa", "Koala", "Loris", "Mongoose", "Narwhal", "Okapi", "Pangolin", "Quokka", "Serval", "Tarsier", "Urial", "Wallaby", "Xerus", "Zebra", "Aardvark"];
+const whimsicalNouns = ["Alpaca", "Badger", "Capybara", "Dingo", "Echidna", "Mongoose", "Narwhal", "Okapi", "Pangolin", "Quokka", "Serval", "Tarsier", "Zebra", "Aardvark"];
 
 function generateWhimsicalName() {
   return `${whimsicalAdjectives[Math.floor(Math.random()*whimsicalAdjectives.length)]} ${whimsicalNouns[Math.floor(Math.random()*whimsicalNouns.length)]}`;
