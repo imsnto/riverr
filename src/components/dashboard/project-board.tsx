@@ -542,7 +542,8 @@ export default function ProjectBoard({
 
                         <div className="w-full overflow-hidden">
                             {/* Table Header */}
-                            <div className="grid grid-cols-[minmax(300px,_1fr)_100px_120px_100px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-wider">
+                            <div className="grid grid-cols-[80px_minmax(200px,_1fr)_80px_100px_80px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-wider">
+                                <div>Key</div>
                                 <div>Name</div>
                                 <div className="text-center">Assignee</div>
                                 <div className="text-center">Due date</div>
@@ -557,9 +558,12 @@ export default function ProjectBoard({
                                     return (
                                         <div 
                                             key={task.id} 
-                                            className="grid grid-cols-[minmax(300px,_1fr)_100px_120px_100px_40px] gap-4 px-4 py-3 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
+                                            className="grid grid-cols-[80px_minmax(200px,_1fr)_80px_100px_80px_40px] gap-4 px-4 py-3 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
                                             onClick={() => onTaskClick(task)}
                                         >
+                                            <div className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded shrink-0 w-fit">
+                                                {task.taskKey || '---'}
+                                            </div>
                                             <div className="flex items-center gap-3 min-w-0">
                                                 <div className="shrink-0">
                                                     {status.name === (activeHub.closingStatusName || 'Done') ? 
@@ -568,11 +572,6 @@ export default function ProjectBoard({
                                                     }
                                                 </div>
                                                 <span className="text-sm truncate font-medium group-hover:text-primary transition-colors">{task.name}</span>
-                                                {task.taskKey && (
-                                                    <span className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded shrink-0">
-                                                        {task.taskKey}
-                                                    </span>
-                                                )}
                                             </div>
                                             <div className="flex justify-center">
                                                 {assignee ? (

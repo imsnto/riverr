@@ -271,6 +271,20 @@ export const updateHub = async (
   await updateDoc(hubRef, data);
 };
 
+const defaultTaskStatuses: Status[] = [
+  { name: 'Backlog', color: '#6b7280' },
+  { name: 'In Progress', color: '#3b82f6' },
+  { name: 'In Review', color: '#f59e0b' },
+  { name: 'Done', color: '#22c55e' },
+];
+
+const defaultTicketStatuses: Status[] = [
+  { name: 'New', color: '#6b7280' },
+  { name: 'Open', color: '#3b82f6' },
+  { name: 'Waiting on Customer', color: '#f59e0b' },
+  { name: 'Resolved', color: '#22c55e' },
+];
+
 export const createDefaultHubForSpace = async (spaceId: string, userId: string, hubData: Partial<Omit<Hub, 'id' | 'spaceId'>>) => {
   const finalHubData: Omit<Hub, 'id'> = {
     name: hubData.name || 'Default Hub',
@@ -403,8 +417,8 @@ export const updateTicket = async (ticketId: string, data: Partial<Ticket>): Pro
 // --- Deal Management ---
 export const getDealsInHub = async (hubId: string): Promise<Deal[]> => {
   const q = query(collection(db, "deals"), where("hubId", "==", hubId));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Deal));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Deal));
 };
 
 export const addDeal = async (deal: Omit<Deal, "id">): Promise<Deal> => {
@@ -572,11 +586,24 @@ export const updateConversation = async (conversationId: string, data: Partial<C
   await updateDoc(doc(db, "conversations", conversationId), data);
 };
 
+export const getConversation = (conversationId: string, onUpdate: (convo: Conversation) => void) => {
+  return onSnapshot(doc(db, 'conversations', conversationId), (doc) => {
+    if (doc.exists()) {
+      onUpdate({ id: doc.id, ...doc.data() } as Conversation);
+    }
+  });
+};
+
 export const getConversationsForHub = async (hubId: string): Promise<Conversation[]> => {
   const q = query(collection(db, 'conversations'), where('hubId', '==', hubId));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
 };
+
+export const addConversation = async (convo: Omit<Conversation, 'id'>): Promise<Conversation> => {
+    const docRef = await addDoc(collection(db, 'conversations'), convo);
+    return { id: docRef.id, ...convo };
+}
 
 // --- Escalation & Automation Management ---
 export const getEscalationIntakeRules = async (hubId: string): Promise<EscalationIntakeRule[]> => {
@@ -622,6 +649,11 @@ export const getBots = async (hubId: string): Promise<Bot[]> => {
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bot));
 };
+
+export const getBot = async (botId: string): Promise<Bot | null> => {
+    const docSnap = await getDoc(doc(db, 'bots', botId));
+    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as Bot : null;
+}
 
 export const updateBot = async (botId: string, data: Partial<Bot>): Promise<void> => {
   await updateDoc(doc(db, "bots", botId), data);
