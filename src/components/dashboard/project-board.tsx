@@ -29,6 +29,7 @@ import {
   Search,
   EyeOff,
   SlidersHorizontal,
+  X,
 } from 'lucide-react';
 import { Button, buttonVariants } from '../ui/button';
 import { cn, getInitials } from '@/lib/utils';
@@ -181,11 +182,11 @@ export default function ProjectBoard({
 
   const [columnWidths, setColumnWidths] = useState({
     key: 100,
-    name: 800,
-    assignee: 180,
-    status: 150,
-    dueDate: 150,
-    priority: 120
+    name: 400,
+    assignee: 150,
+    status: 120,
+    dueDate: 120,
+    priority: 100
   });
 
   const [sortConfig, setSortConfig] = useState<{ key: keyof Task | 'assigneeName'; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
@@ -884,7 +885,6 @@ export default function ProjectBoard({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Action Buttons (Preserved but commented out) */}
             {/* 
             <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
               <Bot className="h-4 w-4" />
@@ -956,7 +956,6 @@ export default function ProjectBoard({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Tools Buttons (Preserved but commented out) */}
             {/* 
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
               <Search className="h-4 w-4" />
