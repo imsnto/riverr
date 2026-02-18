@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, DragEvent, useRef, useEffect, useMemo } from 'react';
@@ -180,9 +179,9 @@ export default function ProjectBoard({
   const { appUser } = useAuth();
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
 
-  const [columnWidths, setColumnWidths] = useState({
+  const [columnWidths, setColumnWidths] = useState<Record<string, number | string>>({
     key: 90,
-    name: 300,
+    name: 'clamp(180px, 28vw, 260px)',
     assignee: 160,
     status: 120,
     dueDate: 120,
@@ -364,11 +363,14 @@ export default function ProjectBoard({
     });
   };
 
-  const handleResize = (col: keyof typeof columnWidths, e: React.MouseEvent) => {
+  const handleResize = (col: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const startX = e.clientX;
-    const startWidth = columnWidths[col];
+    
+    const startWidth = typeof columnWidths[col] === 'number' 
+        ? (columnWidths[col] as number) 
+        : 260;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       const delta = moveEvent.clientX - startX;
@@ -745,7 +747,10 @@ export default function ProjectBoard({
                                     <div className="flex items-center gap-2 min-w-0">
                                         <Input 
                                             defaultValue={task.name} 
-                                            className={cn("h-7 text-sm font-medium border-transparent bg-transparent hover:bg-white/5 focus:bg-background focus:border-input transition-all w-full", isDone && "line-through text-muted-foreground")}
+                                            className={cn(
+                                                "h-7 text-sm font-medium border-transparent bg-transparent hover:bg-white/5 focus:bg-background focus:border-input transition-all w-full truncate overflow-hidden text-ellipsis whitespace-nowrap",
+                                                isDone && "line-through text-muted-foreground"
+                                            )}
                                             onBlur={(e) => {
                                                 if (e.target.value !== task.name) {
                                                     onUpdateTask({ ...task, name: e.target.value });
@@ -885,21 +890,6 @@ export default function ProjectBoard({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* 
-            <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
-              <Bot className="h-4 w-4" />
-              <span className="text-xs">Agents</span>
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
-              <Zap className="h-4 w-4" />
-              <span className="text-xs">Automate</span>
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
-              <Sparkles className="h-4 w-4" />
-              <span className="text-xs">Ask AI</span>
-            </Button>
-            */}
-
             <div className="flex -space-x-2 mr-2">
                 {projectMembers.slice(0, 5).map(member => (
                     <Avatar key={member.id} className="h-7 w-7 border-2 border-background ring-1 ring-white/5">
@@ -956,18 +946,6 @@ export default function ProjectBoard({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* 
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-              <Search className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-              <EyeOff className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-              <SlidersHorizontal className="h-4 w-4" />
-            </Button>
-            */}
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center">
