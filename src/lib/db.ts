@@ -1,5 +1,5 @@
-'use client'
 // src/lib/db.ts
+'use client'
 
 import {
   collection,
