@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -550,7 +551,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                     </h1>
 
                     {sidebarView === 'knowledge-bases' && activeHelpCenter && (
-                        <div className="flex items-center gap-3 mt-3 flex-nowrap flex-row">
+                        <div className="flex items-center gap-3 mt-3 flex-nowrap">
                             <div className="flex items-center gap-1.5 shrink-0 bg-muted/50 px-2.5 py-1 rounded-md border text-xs text-muted-foreground">
                                 {activeHelpCenter.visibility === 'internal' ? (
                                     <><Lock className="h-3.5 w-3.5" /> <span className="font-medium">Internal</span></>
