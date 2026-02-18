@@ -54,6 +54,7 @@ import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { format, parseISO } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const STATUS_COLORS = [
   { name: 'Gray', color: '#6b7280' },
@@ -658,28 +659,28 @@ export default function ProjectBoard({
             <table className="w-full text-left border-collapse">
                 <thead>
                     <tr className="bg-muted/50 border-b border-white/5">
-                        <th className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground w-10">#</th>
-                        <th className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('name')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground w-24">Key</th>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('name')}>
                             <div className="flex items-center gap-2">
                                 Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('assigneeName')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('assigneeName')}>
                             <div className="flex items-center gap-2">
                                 Assignee {sortConfig.key === 'assigneeName' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('status')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('status')}>
                             <div className="flex items-center gap-2">
                                 Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('due_date')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('due_date')}>
                             <div className="flex items-center gap-2">
                                 Due date {sortConfig.key === 'due_date' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('priority')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('priority')}>
                             <div className="flex items-center gap-2">
                                 Priority {sortConfig.key === 'priority' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
@@ -687,55 +688,127 @@ export default function ProjectBoard({
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                    {sortedTasks.map((task, idx) => {
+                    {sortedTasks.map((task) => {
                         const assignee = allUsers.find(u => u.id === task.assigned_to);
                         const statusObj = statuses.find(s => s.name === task.status);
                         const isDone = task.status === activeHub.closingStatusName;
 
                         return (
-                            <tr key={task.id} className="hover:bg-white/[0.02] cursor-pointer group" onClick={() => onTaskClick(task)}>
-                                <td className="px-2 py-1 text-muted-foreground/50 font-mono text-[10px]">{idx + 1}</td>
-                                <td className="px-2 py-1">
-                                    <div className="flex items-center gap-2">
+                            <tr key={task.id} className="hover:bg-white/[0.02] group">
+                                <td className="px-4 py-2 text-muted-foreground/50 font-mono text-[11px]">{task.taskKey || '---'}</td>
+                                <td className="px-4 py-2">
+                                    <div className="flex items-center gap-2 min-w-0">
                                         {isDone ? (
-                                            <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                                            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
                                         ) : (
-                                            <CircleDot className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                                            <CircleDot className="h-4 w-4 text-muted-foreground/40 shrink-0" />
                                         )}
-                                        <span className={cn("text-xs font-medium truncate max-w-[300px]", isDone && "line-through text-muted-foreground")}>{task.name}</span>
+                                        <Input 
+                                            defaultValue={task.name} 
+                                            className={cn("h-7 text-sm font-medium border-transparent bg-transparent hover:bg-white/5 focus:bg-background focus:border-input transition-all", isDone && "line-through text-muted-foreground")}
+                                            onBlur={(e) => {
+                                                if (e.target.value !== task.name) {
+                                                    onUpdateTask({ ...task, name: e.target.value });
+                                                }
+                                            }}
+                                        />
                                     </div>
                                 </td>
-                                <td className="px-2 py-1">
-                                    {assignee ? (
-                                        <div className="flex items-center gap-1.5">
-                                            <Avatar className="h-5 w-5 border border-white/10">
-                                                <AvatarImage src={assignee.avatarUrl} />
-                                                <AvatarFallback className="text-[8px]">{getInitials(assignee.name)}</AvatarFallback>
-                                            </Avatar>
-                                            <span className="text-[11px] truncate max-w-[100px]">{assignee.name}</span>
-                                        </div>
-                                    ) : <span className="text-muted-foreground/30 text-[10px]">—</span>}
+                                <td className="px-4 py-2">
+                                    <Select 
+                                        value={task.assigned_to || 'unassigned'} 
+                                        onValueChange={(val) => onUpdateTask({ ...task, assigned_to: val === 'unassigned' ? null : val })}
+                                    >
+                                        <SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-fit min-w-[120px] gap-2">
+                                            <SelectValue>
+                                                {assignee ? (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Avatar className="h-5 w-5 border border-white/10">
+                                                            <AvatarImage src={assignee.avatarUrl} />
+                                                            <AvatarFallback className="text-[8px]">{getInitials(assignee.name)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <span className="text-xs truncate">{assignee.name}</span>
+                                                    </div>
+                                                ) : <span className="text-muted-foreground/50 text-xs">Unassigned</span>}
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                                            {allUsers.map(u => (
+                                                <SelectItem key={u.id} value={u.id}>
+                                                    <div className="flex items-center gap-2">
+                                                        <Avatar className="h-5 w-5"><AvatarImage src={u.avatarUrl}/></Avatar>
+                                                        {u.name}
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </td>
-                                <td className="px-2 py-1">
-                                    {statusObj && (
-                                        <Badge 
-                                            style={{ backgroundColor: statusObj.color + '20', color: statusObj.color, borderColor: statusObj.color + '40' }}
-                                            className="uppercase text-[9px] font-bold px-1.5 py-0 rounded-sm tracking-tight h-4"
-                                        >
-                                            {statusObj.name}
-                                        </Badge>
-                                    )}
+                                <td className="px-4 py-2">
+                                    <Select 
+                                        value={task.status} 
+                                        onValueChange={(val) => onUpdateTask({ ...task, status: val })}
+                                    >
+                                        <SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-fit gap-2">
+                                            <SelectValue>
+                                                {statusObj && (
+                                                    <Badge 
+                                                        style={{ backgroundColor: statusObj.color + '20', color: statusObj.color, borderColor: statusObj.color + '40' }}
+                                                        className="uppercase text-[10px] font-bold px-2 py-0 rounded-sm tracking-tight h-5"
+                                                    >
+                                                        {statusObj.name}
+                                                    </Badge>
+                                                )}
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {statuses.map(s => (
+                                                <SelectItem key={s.name} value={s.name}>{s.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </td>
-                                <td className="px-2 py-1 text-[10px] text-muted-foreground">
-                                    {task.due_date ? format(parseISO(task.due_date), 'MMM d, yyyy') : '—'}
+                                <td className="px-4 py-2">
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="ghost" size="sm" className={cn("h-7 px-2 text-xs font-normal", !task.due_date && "text-muted-foreground/30")}>
+                                                {task.due_date ? format(parseISO(task.due_date), 'MMM d, yyyy') : 'Set date'}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <CalendarPicker
+                                                mode="single"
+                                                selected={task.due_date ? parseISO(task.due_date) : undefined}
+                                                onSelect={(d) => onUpdateTask({ ...task, due_date: d?.toISOString() || null })}
+                                                initialFocus
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
                                 </td>
-                                <td className="px-2 py-1">
-                                    {task.priority ? (
-                                        <div className="flex items-center gap-1.5">
-                                            <PriorityIcon priority={task.priority} />
-                                            <span className="text-[10px] capitalize">{task.priority}</span>
-                                        </div>
-                                    ) : '—'}
+                                <td className="px-4 py-2">
+                                    <Select 
+                                        value={task.priority || 'none'} 
+                                        onValueChange={(val) => onUpdateTask({ ...task, priority: val === 'none' ? null : val as any })}
+                                    >
+                                        <SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-fit gap-2">
+                                            <SelectValue>
+                                                {task.priority ? (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <PriorityIcon priority={task.priority} />
+                                                        <span className="text-[11px] capitalize">{task.priority}</span>
+                                                    </div>
+                                                ) : <span className="text-muted-foreground/30 text-[11px]">None</span>}
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">None</SelectItem>
+                                            <SelectItem value="Low">Low</SelectItem>
+                                            <SelectItem value="Medium">Medium</SelectItem>
+                                            <SelectItem value="High">High</SelectItem>
+                                            <SelectItem value="Urgent">Urgent</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </td>
                             </tr>
                         );
