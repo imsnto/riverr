@@ -85,7 +85,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               activeHub={activeHub}
               onHubChange={handleHubChange}
             />
-            {/* Added flex-1 min-w-0 to allow horizontal scrolling in children */}
+            {/* Critical: min-w-0 allows the flex child to shrink below its content's intrinsic width, triggering horizontal scroll. */}
             <main className={cn(
               "flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden",
               isMobile && activeHub && "pb-20"

@@ -550,8 +550,8 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                     </h1>
 
                     {sidebarView === 'knowledge-bases' && activeHelpCenter && (
-                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-nowrap">
-                            <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-nowrap">
+                            <div className="flex items-center gap-1.5 shrink-0 bg-muted/50 px-2 py-1 rounded-md">
                                 {activeHelpCenter.visibility === 'internal' ? (
                                     <><Lock className="h-3.5 w-3.5" /> <span className="font-medium">Internal</span></>
                                 ) : (
@@ -559,9 +559,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                                 )}
                             </div>
 
-                            <Separator orientation="vertical" className="h-3 shrink-0" />
-
-                            <div className="flex items-center gap-2 overflow-hidden">
+                            <div className="flex items-center gap-2 overflow-hidden bg-muted/50 px-2 py-1 rounded-md">
                                 <div className="flex items-center gap-1.5 shrink-0">
                                     <BotIcon className="h-3.5 w-3.5" />
                                     <span className="font-medium">Agents:</span>
@@ -572,10 +570,10 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                                             {connectedAgents.slice(0, 3).map(agent => (
                                                 <Tooltip key={agent.id}>
                                                     <TooltipTrigger asChild>
-                                                        <Avatar className="h-6 w-6 border-2 border-background ring-1 ring-border/50">
+                                                        <Avatar className="h-5 w-5 border-2 border-background ring-1 ring-border/50">
                                                             <AvatarImage src={agent.styleSettings?.logoUrl} />
                                                             <AvatarFallback className="bg-muted">
-                                                                <BotIcon className="h-3.5 w-3.5"/>
+                                                                <BotIcon className="h-3 w-3"/>
                                                             </AvatarFallback>
                                                         </Avatar>
                                                     </TooltipTrigger>
@@ -584,8 +582,8 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                                             ))}
                                         </TooltipProvider>
                                         {connectedAgents.length > 3 && (
-                                            <Avatar className="h-6 w-6 border-2 border-background ring-1 ring-border/50 bg-muted">
-                                                <AvatarFallback className="text-[9px]">+{connectedAgents.length - 3}</AvatarFallback>
+                                            <Avatar className="h-5 w-5 border-2 border-background ring-1 ring-border/50 bg-muted">
+                                                <AvatarFallback className="text-[8px]">+{connectedAgents.length - 3}</AvatarFallback>
                                             </Avatar>
                                         )}
                                     </div>

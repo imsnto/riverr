@@ -290,21 +290,6 @@ export const createDefaultHubForSpace = async (spaceId: string, userId: string, 
   return { id: hubRef.id, ...finalHubData };
 };
 
-const defaultTaskStatuses: Status[] = [
-  { name: 'Backlog', color: '#6b7280' },
-  { name: 'In Progress', color: '#3b82f6' },
-  { name: 'In Review', color: '#f59e0b' },
-  { name: 'Done', color: '#22c55e' },
-];
-
-const defaultTicketStatuses: Status[] = [
-  { name: 'New', color: '#6b7280' },
-  { name: 'Open', color: '#3b82f6' },
-  { name: 'Waiting on Customer', color: '#f59e0b' },
-  { name: 'Escalated', color: '#ef4444' },
-  { name: 'Closed', color: '#22c55e' },
-];
-
 // --- Project Management ---
 export const getProjectsInHub = async (hubId: string): Promise<Project[]> => {
   const q = query(collection(db, "projects"), where("hubId", "==", hubId));

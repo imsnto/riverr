@@ -518,7 +518,7 @@ export default function ProjectBoard({
                 return (
                     <div key={status.name} className="space-y-2">
                         {/* Group Header */}
-                        <div className="flex items-center gap-3 px-2 py-1 bg-muted/20 rounded-md shrink-0">
+                        <div className="flex items-center gap-3 px-2 py-1.5 bg-muted/20 rounded-md shrink-0">
                             <ChevronDown className="h-4 w-4 text-muted-foreground" />
                             <Badge 
                                 style={{ backgroundColor: status.color, color: 'white' }}
@@ -542,7 +542,7 @@ export default function ProjectBoard({
 
                         <div className="w-full overflow-hidden">
                             {/* Table Header */}
-                            <div className="grid grid-cols-[1fr_80px_100px_100px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-wider">
+                            <div className="grid grid-cols-[minmax(300px,_1fr)_100px_120px_100px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-wider">
                                 <div>Name</div>
                                 <div className="text-center">Assignee</div>
                                 <div className="text-center">Due date</div>
@@ -557,7 +557,7 @@ export default function ProjectBoard({
                                     return (
                                         <div 
                                             key={task.id} 
-                                            className="grid grid-cols-[1fr_80px_100px_100px_40px] gap-4 px-4 py-3 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
+                                            className="grid grid-cols-[minmax(300px,_1fr)_100px_120px_100px_40px] gap-4 px-4 py-3 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
                                             onClick={() => onTaskClick(task)}
                                         >
                                             <div className="flex items-center gap-3 min-w-0">
@@ -703,7 +703,7 @@ export default function ProjectBoard({
           <div className="flex items-center gap-2 shrink-0">
             <div className="flex items-center gap-1 bg-muted rounded-md p-1">
               <Button
-                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                variant={viewMode === 'list' ? 'secondary' : 'icon'}
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => setViewMode('list')}
@@ -711,7 +711,7 @@ export default function ProjectBoard({
                 <LayoutList className="h-4 w-4" />
               </Button>
               <Button
-                variant={viewMode === 'board' ? 'secondary' : 'ghost'}
+                variant={viewMode === 'board' ? 'secondary' : 'icon'}
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => setViewMode('board')}
