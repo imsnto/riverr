@@ -53,7 +53,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Calendar as CalendarPicker } from '@/components/ui/calendar';
+import { Calendar as CalendarPicker } from '../ui/calendar';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
@@ -611,23 +611,23 @@ export default function ProjectBoard({
                             </div>
                         </div>
 
-                        <div className="w-full overflow-hidden">
-                            <div className="grid grid-cols-[120px_1fr_100px_120px_80px_40px] gap-2 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-normal">
+                        <div className="w-full overflow-x-auto">
+                            <div className="grid grid-cols-[100px_1fr_100px_120px_100px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-normal min-w-[600px]">
                                 <div className="pl-1">Key</div>
                                 <div>Name</div>
                                 <div className="text-center">User</div>
                                 <div className="text-center">Due</div>
-                                <div className="text-center">Pri</div>
+                                <div className="text-center">Priority</div>
                                 <div />
                             </div>
 
-                            <div className="divide-y divide-white/5">
+                            <div className="divide-y divide-white/5 min-w-[600px]">
                                 {statusTasks.map(task => {
                                     const assignee = allUsers.find(u => u.id === task.assigned_to);
                                     return (
                                         <div 
                                             key={task.id} 
-                                            className="grid grid-cols-[120px_1fr_100px_120px_80px_40px] gap-2 px-4 py-3 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
+                                            className="grid grid-cols-[100px_1fr_100px_120px_100px_40px] gap-4 px-4 py-3 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
                                             onClick={() => onTaskClick(task)}
                                         >
                                             <div className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded shrink-0 w-fit whitespace-nowrap">
