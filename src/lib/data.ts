@@ -65,7 +65,7 @@ export interface Project {
   members: string[]; // array of user IDs
   status: 'Active' | 'On Hold' | 'Archived';
   createdBy?: string;
-  defaultView?: 'board' | 'list';
+  defaultView?: 'board' | 'list' | 'table';
 }
 
 export interface Task {

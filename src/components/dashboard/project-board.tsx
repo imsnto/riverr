@@ -21,6 +21,10 @@ import {
   Bot,
   LayoutList,
   LayoutGrid,
+  Table as TableIcon,
+  ChevronUp,
+  CircleDot,
+  CheckCircle2,
 } from 'lucide-react';
 import { Button, buttonVariants } from '../ui/button';
 import { cn, getInitials } from '@/lib/utils';
@@ -160,13 +164,16 @@ export default function ProjectBoard({
   onEditProject,
   onDeleteProject,
 }: ProjectBoardProps) {
-  const [viewMode, setViewMode] = useState<'board' | 'list'>(project.defaultView || 'board');
+  const [viewMode, setViewMode] = useState<'board' | 'list' | 'table'>(project.defaultView || 'board');
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState('');
   const { toast } = useToast();
   const { appUser } = useAuth();
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
+
+  // Sorting state for Table view
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Task | 'assigneeName'; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
 
   useEffect(() => {
     setViewMode(project.defaultView || 'board');
@@ -339,6 +346,34 @@ export default function ProjectBoard({
     onUpdateActiveHub({
       closingStatusName: activeHub.closingStatusName === statusName ? undefined : statusName,
     });
+  };
+
+  const sortedTasks = useMemo(() => {
+    const data = [...tasks];
+    if (sortConfig !== null) {
+      data.sort((a, b) => {
+        let aValue: any = a[sortConfig.key as keyof Task];
+        let bValue: any = b[sortConfig.key as keyof Task];
+
+        if (sortConfig.key === 'assigneeName') {
+            aValue = allUsers.find(u => u.id === a.assigned_to)?.name || '';
+            bValue = allUsers.find(u => u.id === b.assigned_to)?.name || '';
+        }
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return data;
+  }, [tasks, sortConfig, allUsers]);
+
+  const requestSort = (key: keyof Task | 'assigneeName') => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
   };
 
   const renderStatusColumn = (status: Status) => {
@@ -617,6 +652,101 @@ export default function ProjectBoard({
     );
   };
 
+  const renderTableView = () => {
+    return (
+        <div className="w-full overflow-x-auto border rounded-md bg-card">
+            <table className="w-full text-sm text-left border-collapse">
+                <thead>
+                    <tr className="bg-muted/50 border-b border-white/5">
+                        <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted-foreground w-12">#</th>
+                        <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('name')}>
+                            <div className="flex items-center gap-2">
+                                Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                            </div>
+                        </th>
+                        <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('assigneeName')}>
+                            <div className="flex items-center gap-2">
+                                Assignee {sortConfig.key === 'assigneeName' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                            </div>
+                        </th>
+                        <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('status')}>
+                            <div className="flex items-center gap-2">
+                                Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                            </div>
+                        </th>
+                        <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('due_date')}>
+                            <div className="flex items-center gap-2">
+                                Due date {sortConfig.key === 'due_date' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                            </div>
+                        </th>
+                        <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('priority')}>
+                            <div className="flex items-center gap-2">
+                                Priority {sortConfig.key === 'priority' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                    {sortedTasks.map((task, idx) => {
+                        const assignee = allUsers.find(u => u.id === task.assigned_to);
+                        const statusObj = statuses.find(s => s.name === task.status);
+                        const isDone = task.status === activeHub.closingStatusName;
+
+                        return (
+                            <tr key={task.id} className="hover:bg-white/[0.02] cursor-pointer group" onClick={() => onTaskClick(task)}>
+                                <td className="px-4 py-3 text-muted-foreground/50 font-mono text-xs">{idx + 1}</td>
+                                <td className="px-4 py-3 font-medium">
+                                    <div className="flex items-center gap-3">
+                                        {isDone ? (
+                                            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                                        ) : (
+                                            <CircleDot className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                                        )}
+                                        <span className={cn(isDone && "line-through text-muted-foreground")}>{task.name}</span>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                    {assignee ? (
+                                        <div className="flex items-center gap-2">
+                                            <Avatar className="h-6 w-6 border border-white/10">
+                                                <AvatarImage src={assignee.avatarUrl} />
+                                                <AvatarFallback className="text-[10px]">{getInitials(assignee.name)}</AvatarFallback>
+                                            </Avatar>
+                                            <span className="text-xs">{assignee.name}</span>
+                                        </div>
+                                    ) : <span className="text-muted-foreground/30">—</span>}
+                                </td>
+                                <td className="px-4 py-3">
+                                    {statusObj && (
+                                        <Badge 
+                                            style={{ backgroundColor: statusObj.color + '20', color: statusObj.color, borderColor: statusObj.color + '40' }}
+                                            className="uppercase text-[10px] font-bold px-2 py-0.5 rounded-sm tracking-wide"
+                                        >
+                                            <CircleDot className="h-2.5 w-2.5 mr-1.5" />
+                                            {statusObj.name}
+                                        </Badge>
+                                    )}
+                                </td>
+                                <td className="px-4 py-3 text-xs text-muted-foreground">
+                                    {task.due_date ? format(parseISO(task.due_date), 'MMM d, yyyy') : '—'}
+                                </td>
+                                <td className="px-4 py-3">
+                                    {task.priority ? (
+                                        <div className="flex items-center gap-2">
+                                            <PriorityIcon priority={task.priority} />
+                                            <span className="text-xs capitalize">{task.priority}</span>
+                                        </div>
+                                    ) : '—'}
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+  };
+
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
       {/* Two-Row Header */}
@@ -706,6 +836,16 @@ export default function ProjectBoard({
               <LayoutGrid className="h-4 w-4" />
               Board
             </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={cn(
+                "flex items-center gap-2 py-3 text-xs font-medium border-b-2 transition-all",
+                viewMode === 'table' ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <TableIcon className="h-4 w-4" />
+              Table
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -761,12 +901,22 @@ export default function ProjectBoard({
               </div>
             </div>
           </div>
-        ) : (
+        ) : viewMode === 'list' ? (
           <div className="h-full w-full overflow-hidden flex flex-col">
             <div className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden overscroll-x-contain">
               <div className="p-4 md:p-6 h-full flex flex-col">
                 <div className="flex-1 overflow-y-auto">
                   {renderListView()}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="h-full w-full overflow-hidden flex flex-col">
+            <div className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden overscroll-x-contain">
+              <div className="p-4 md:p-6 h-full flex flex-col">
+                <div className="flex-1 overflow-y-auto">
+                  {renderTableView()}
                 </div>
               </div>
             </div>
