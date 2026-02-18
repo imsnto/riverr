@@ -179,6 +179,15 @@ export default function ProjectBoard({
   const { appUser } = useAuth();
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
 
+  const [columnWidths, setColumnWidths] = useState({
+    key: 100,
+    name: 800,
+    assignee: 180,
+    status: 150,
+    dueDate: 150,
+    priority: 120
+  });
+
   const [sortConfig, setSortConfig] = useState<{ key: keyof Task | 'assigneeName'; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
 
   useEffect(() => {
@@ -352,6 +361,29 @@ export default function ProjectBoard({
     onUpdateActiveHub({
       closingStatusName: activeHub.closingStatusName === statusName ? undefined : statusName,
     });
+  };
+
+  const handleResize = (col: keyof typeof columnWidths, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startWidth = columnWidths[col];
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX;
+      setColumnWidths(prev => ({
+        ...prev,
+        [col]: Math.max(50, startWidth + delta)
+      }));
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   };
 
   const sortedTasks = useMemo(() => {
@@ -557,7 +589,7 @@ export default function ProjectBoard({
                 const statusTasks = tasks.filter(t => t.status === status.name);
                 return (
                     <div key={status.name} className="space-y-2">
-                        <div className="flex items-center gap-3 px-2 py-1.5 bg-muted/20 rounded-md shrink-0">
+                        <div className="flex items-center gap-3 px-2 py-1.5 bg-muted/20 rounded-md shrink-0 border-b border-white/5">
                             <ChevronDown className="h-4 w-4 text-muted-foreground" />
                             <Badge 
                                 style={{ backgroundColor: status.color, color: 'white' }}
@@ -598,7 +630,7 @@ export default function ProjectBoard({
                                             className="grid grid-cols-[90px_1fr_80px_100px_80px_40px] gap-4 px-4 py-3 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
                                             onClick={() => onTaskClick(task)}
                                         >
-                                            <div className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded shrink-0 w-fit">
+                                            <div className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded shrink-0 w-fit whitespace-nowrap">
                                                 {task.taskKey || '---'}
                                             </div>
                                             <div className="flex items-center min-w-0">
@@ -657,35 +689,43 @@ export default function ProjectBoard({
 
   const renderTableView = () => {
     return (
-        <div className="w-full overflow-x-auto border rounded-md bg-card">
+        <div className="w-full h-full overflow-auto border rounded-md bg-card">
             <table className="min-w-max w-full text-left border-collapse table-fixed">
                 <thead>
                     <tr className="bg-muted/50 border-b border-white/5">
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground w-[100px] shrink-0">Key</th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-w-[600px]" onClick={() => requestSort('name')}>
+                        <th style={{ width: columnWidths.key }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground shrink-0 group">
+                            Key
+                            <div onMouseDown={(e) => handleResize('key', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </th>
+                        <th style={{ width: columnWidths.name }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors group" onClick={() => requestSort('name')}>
                             <div className="flex items-center gap-2">
                                 Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
+                            <div onMouseDown={(e) => handleResize('name', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-[180px]" onClick={() => requestSort('assigneeName')}>
+                        <th style={{ width: columnWidths.assignee }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors group" onClick={() => requestSort('assigneeName')}>
                             <div className="flex items-center gap-2">
                                 Assignee {sortConfig.key === 'assigneeName' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
+                            <div onMouseDown={(e) => handleResize('assignee', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-[150px]" onClick={() => requestSort('status')}>
+                        <th style={{ width: columnWidths.status }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors group" onClick={() => requestSort('status')}>
                             <div className="flex items-center gap-2">
                                 Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
+                            <div onMouseDown={(e) => handleResize('status', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-[150px]" onClick={() => requestSort('due_date')}>
+                        <th style={{ width: columnWidths.dueDate }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors group" onClick={() => requestSort('due_date')}>
                             <div className="flex items-center gap-2">
                                 Due date {sortConfig.key === 'due_date' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
+                            <div onMouseDown={(e) => handleResize('dueDate', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-[120px]" onClick={() => requestSort('priority')}>
+                        <th style={{ width: columnWidths.priority }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors group" onClick={() => requestSort('priority')}>
                             <div className="flex items-center gap-2">
                                 Priority {sortConfig.key === 'priority' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
+                            <div onMouseDown={(e) => handleResize('priority', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </th>
                     </tr>
                 </thead>
@@ -844,6 +884,22 @@ export default function ProjectBoard({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Action Buttons (Preserved but commented out) */}
+            {/* 
+            <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
+              <Bot className="h-4 w-4" />
+              <span className="text-xs">Agents</span>
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
+              <Zap className="h-4 w-4" />
+              <span className="text-xs">Automate</span>
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
+              <Sparkles className="h-4 w-4" />
+              <span className="text-xs">Ask AI</span>
+            </Button>
+            */}
+
             <div className="flex -space-x-2 mr-2">
                 {projectMembers.slice(0, 5).map(member => (
                     <Avatar key={member.id} className="h-7 w-7 border-2 border-background ring-1 ring-white/5">
@@ -900,6 +956,19 @@ export default function ProjectBoard({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Tools Buttons (Preserved but commented out) */}
+            {/* 
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+              <Search className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+              <EyeOff className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+              <SlidersHorizontal className="h-4 w-4" />
+            </Button>
+            */}
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center">
