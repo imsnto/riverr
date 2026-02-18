@@ -658,7 +658,7 @@ export default function ProjectBoard({
                 <thead>
                     <tr className="bg-muted/50 border-b border-white/5">
                         <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground w-[100px] shrink-0">Key</th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-w-[250px]" onClick={() => requestSort('name')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-w-[400px]" onClick={() => requestSort('name')}>
                             <div className="flex items-center gap-2">
                                 Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
