@@ -655,31 +655,31 @@ export default function ProjectBoard({
   const renderTableView = () => {
     return (
         <div className="w-full overflow-x-auto border rounded-md bg-card">
-            <table className="w-full text-sm text-left border-collapse">
+            <table className="w-full text-left border-collapse">
                 <thead>
                     <tr className="bg-muted/50 border-b border-white/5">
-                        <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted-foreground w-12">#</th>
-                        <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('name')}>
+                        <th className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground w-10">#</th>
+                        <th className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('name')}>
                             <div className="flex items-center gap-2">
                                 Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('assigneeName')}>
+                        <th className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('assigneeName')}>
                             <div className="flex items-center gap-2">
                                 Assignee {sortConfig.key === 'assigneeName' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('status')}>
+                        <th className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('status')}>
                             <div className="flex items-center gap-2">
                                 Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('due_date')}>
+                        <th className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('due_date')}>
                             <div className="flex items-center gap-2">
                                 Due date {sortConfig.key === 'due_date' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('priority')}>
+                        <th className="px-2 py-1.5 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('priority')}>
                             <div className="flex items-center gap-2">
                                 Priority {sortConfig.key === 'priority' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
@@ -694,47 +694,46 @@ export default function ProjectBoard({
 
                         return (
                             <tr key={task.id} className="hover:bg-white/[0.02] cursor-pointer group" onClick={() => onTaskClick(task)}>
-                                <td className="px-4 py-3 text-muted-foreground/50 font-mono text-xs">{idx + 1}</td>
-                                <td className="px-4 py-3 font-medium">
-                                    <div className="flex items-center gap-3">
+                                <td className="px-2 py-1 text-muted-foreground/50 font-mono text-[10px]">{idx + 1}</td>
+                                <td className="px-2 py-1">
+                                    <div className="flex items-center gap-2">
                                         {isDone ? (
-                                            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                                            <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
                                         ) : (
-                                            <CircleDot className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                                            <CircleDot className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
                                         )}
-                                        <span className={cn(isDone && "line-through text-muted-foreground")}>{task.name}</span>
+                                        <span className={cn("text-xs font-medium truncate max-w-[300px]", isDone && "line-through text-muted-foreground")}>{task.name}</span>
                                     </div>
                                 </td>
-                                <td className="px-4 py-3">
+                                <td className="px-2 py-1">
                                     {assignee ? (
-                                        <div className="flex items-center gap-2">
-                                            <Avatar className="h-6 w-6 border border-white/10">
+                                        <div className="flex items-center gap-1.5">
+                                            <Avatar className="h-5 w-5 border border-white/10">
                                                 <AvatarImage src={assignee.avatarUrl} />
-                                                <AvatarFallback className="text-[10px]">{getInitials(assignee.name)}</AvatarFallback>
+                                                <AvatarFallback className="text-[8px]">{getInitials(assignee.name)}</AvatarFallback>
                                             </Avatar>
-                                            <span className="text-xs">{assignee.name}</span>
+                                            <span className="text-[11px] truncate max-w-[100px]">{assignee.name}</span>
                                         </div>
-                                    ) : <span className="text-muted-foreground/30">—</span>}
+                                    ) : <span className="text-muted-foreground/30 text-[10px]">—</span>}
                                 </td>
-                                <td className="px-4 py-3">
+                                <td className="px-2 py-1">
                                     {statusObj && (
                                         <Badge 
                                             style={{ backgroundColor: statusObj.color + '20', color: statusObj.color, borderColor: statusObj.color + '40' }}
-                                            className="uppercase text-[10px] font-bold px-2 py-0.5 rounded-sm tracking-wide"
+                                            className="uppercase text-[9px] font-bold px-1.5 py-0 rounded-sm tracking-tight h-4"
                                         >
-                                            <CircleDot className="h-2.5 w-2.5 mr-1.5" />
                                             {statusObj.name}
                                         </Badge>
                                     )}
                                 </td>
-                                <td className="px-4 py-3 text-xs text-muted-foreground">
+                                <td className="px-2 py-1 text-[10px] text-muted-foreground">
                                     {task.due_date ? format(parseISO(task.due_date), 'MMM d, yyyy') : '—'}
                                 </td>
-                                <td className="px-4 py-3">
+                                <td className="px-2 py-1">
                                     {task.priority ? (
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1.5">
                                             <PriorityIcon priority={task.priority} />
-                                            <span className="text-xs capitalize">{task.priority}</span>
+                                            <span className="text-[10px] capitalize">{task.priority}</span>
                                         </div>
                                     ) : '—'}
                                 </td>
