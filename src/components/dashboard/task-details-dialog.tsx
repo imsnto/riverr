@@ -11,18 +11,17 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
-import { Bot, Calendar, CircleDot, Clock, Flag, Folder, Search, Tag, Users, Zap, Link as LinkIcon, ArrowRight, Paperclip, File, Image as ImageIcon, Plus, Trash2, CheckCircle2, X, ArrowLeft, ThumbsUp, MoreHorizontal, Edit, AtSign, Star, Send } from 'lucide-react';
+import { Calendar, CircleDot, Clock, Flag, Folder, Tag, Users, X, Paperclip, MoreHorizontal, Send } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { Input } from '../ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar as CalendarPicker } from '../ui/calendar';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
 import LogTimeDialog from './log-time-dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { marked } from 'marked';
 
 const formatDuration = (hours: number | null) => {
     if (hours === null || hours === undefined || hours === 0) return '';
@@ -159,6 +158,48 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
     const subtasks = allTasks.filter(t => t.parentId === task.id);
     const totalTimeTracked = timeEntries.reduce((acc, entry) => acc + entry.duration, 0);
     
+    const handleFieldChange = (field: keyof Task, value: any) => {
+        if (!task) return;
+        if (isCreating) {
+            setTask(prev => prev ? { ...prev, [field]: value } : null);
+            return;
+        }
+        let newActivity: Activity | undefined;
+        if (field === 'status' && task.status !== value) {
+            newActivity = { id: `act-${Date.now()}`, user_id: appUser.id, timestamp: new Date().toISOString(), type: 'status_change', from: task.status, to: value };
+        }
+        if (field === 'assigned_to' && task.assigned_to !== value) {
+            const fromUser = allUsers.find(u => u.id === task.assigned_to)?.name || 'Unassigned';
+            const toUser = allUsers.find(u => u.id === value)?.name || 'Unassigned';
+            newActivity = { id: `act-${Date.now()}`, user_id: appUser.id, timestamp: new Date().toISOString(), type: 'assignee_change', from: fromUser, to: toUser };
+        }
+        onUpdateTask({ ...task, [field]: value, ...(newActivity ? { activities: [...(task.activities || []), newActivity] } : {}) });
+    };
+
+    const handleAddTag = () => {
+        if (!newTag.trim() || !task) return;
+        const currentTags = task.tags || [];
+        if (currentTags.includes(newTag.trim())) {
+            setNewTag('');
+            return;
+        }
+        const updatedTags = [...currentTags, newTag.trim()];
+        handleFieldChange('tags', updatedTags);
+        setNewTag('');
+    };
+
+    const handleRemoveTag = (tagToRemove: string) => {
+        if (!task) return;
+        const updatedTags = (task.tags || []).filter(t => t !== tagToRemove);
+        handleFieldChange('tags', updatedTags);
+    };
+
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files) {
+            setAttachments(prev => [...prev, ...Array.from(event.target.files!)]);
+        }
+    };
+
     const handleCreateTask = async () => {
         if (!task || !appUser) return;
         if (!task.name.trim()) {
@@ -207,24 +248,6 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
         setAttachments([]);
     };
 
-    const handleFieldChange = (field: keyof Task, value: any) => {
-        if (!task) return;
-        if (isCreating) {
-            setTask(prev => prev ? { ...prev, [field]: value } : null);
-            return;
-        }
-        let newActivity: Activity | undefined;
-        if (field === 'status' && task.status !== value) {
-            newActivity = { id: `act-${Date.now()}`, user_id: appUser.id, timestamp: new Date().toISOString(), type: 'status_change', from: task.status, to: value };
-        }
-        if (field === 'assigned_to' && task.assigned_to !== value) {
-            const fromUser = allUsers.find(u => u.id === task.assigned_to)?.name || 'Unassigned';
-            const toUser = allUsers.find(u => u.id === value)?.name || 'Unassigned';
-            newActivity = { id: `act-${Date.now()}`, user_id: appUser.id, timestamp: new Date().toISOString(), type: 'assignee_change', from: fromUser, to: toUser };
-        }
-        onUpdateTask({ ...task, [field]: value, ...(newActivity ? { activities: [...(task.activities || []), newActivity] } : {}) });
-    };
-
     const handleAddSubtask = async () => {
         if (!newSubtaskName.trim() || !appUser) return;
         const now = new Date().toISOString();
@@ -247,30 +270,6 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
         if (newStatus === 'Done') {
             const newActivity: Activity = { id: `act-${Date.now()}`, user_id: appUser.id, timestamp: new Date().toISOString(), type: 'subtask_completion', subtask_name: subtask.name };
             onUpdateTask({ ...task, activities: [...(task.activities || []), newActivity] });
-        }
-    };
-
-    const handleAddTag = () => {
-        if (!newTag.trim() || !task) return;
-        const currentTags = task.tags || [];
-        if (currentTags.includes(newTag.trim())) {
-            setNewTag('');
-            return;
-        }
-        const updatedTags = [...currentTags, newTag.trim()];
-        handleFieldChange('tags', updatedTags);
-        setNewTag('');
-    };
-
-    const handleRemoveTag = (tagToRemove: string) => {
-        if (!task) return;
-        const updatedTags = (task.tags || []).filter(t => t !== tagToRemove);
-        handleFieldChange('tags', updatedTags);
-    };
-
-    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files) {
-            setAttachments(prev => [...prev, ...Array.from(event.target.files!)]);
         }
     };
 
@@ -306,79 +305,83 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
                 </DialogHeader>
 
                 <div className="flex-1 overflow-hidden p-0">
-                    <div className="h-full grid grid-cols-1 lg:grid-cols-2 gap-x-12 p-6 overflow-hidden">
+                    <div className="h-full min-h-0 grid grid-cols-1 md:grid-cols-2 gap-x-12 p-6 overflow-hidden">
                         {/* LEFT COLUMN (Details) */}
-                        <div className={cn("min-h-0", isMobile && mobileTab !== "details" && "hidden")}>
-                            <ScrollArea className="h-full pr-6 -mr-6">
-                                <div className="space-y-6">
-                                    <Input value={task.name} onChange={e => setTask(t => t ? { ...t, name: e.target.value } : null)} onBlur={() => { if (!isCreating) onUpdateTask(task); }} placeholder="What needs to be done?" className="text-2xl font-bold border-none focus-visible:ring-0 p-0 h-auto" />
-                                    <div className="space-y-4">
-                                        {project && (
-                                            <DetailRow icon={Folder} label="Project">
-                                                <Select value={task.project_id || ''} onValueChange={(v) => handleFieldChange('project_id', v)}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
+                        <div className={cn("min-h-0 flex flex-col", isMobile && mobileTab !== "details" && "hidden")}>
+                            <div className="flex-1 min-h-0">
+                                <ScrollArea className="h-full pr-6 -mr-6">
+                                    <div className="space-y-6">
+                                        <Input value={task.name} onChange={e => setTask(t => t ? { ...t, name: e.target.value } : null)} onBlur={() => { if (!isCreating) onUpdateTask(task); }} placeholder="What needs to be done?" className="text-2xl font-bold border-none focus-visible:ring-0 p-0 h-auto" />
+                                        <div className="space-y-4">
+                                            {project && (
+                                                <DetailRow icon={Folder} label="Project">
+                                                    <Select value={task.project_id || ''} onValueChange={(v) => handleFieldChange('project_id', v)}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
+                                                </DetailRow>
+                                            )}
+                                            <DetailRow icon={CircleDot} label="Status">
+                                                <Select value={task.status} onValueChange={(v) => handleFieldChange('status', v)}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent>{statuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
                                             </DetailRow>
-                                        )}
-                                        <DetailRow icon={CircleDot} label="Status">
-                                            <Select value={task.status} onValueChange={(v) => handleFieldChange('status', v)}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent>{statuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
-                                        </DetailRow>
-                                        <DetailRow icon={Users} label="Assignees">
-                                            <Select value={task.assigned_to || ''} onValueChange={(v) => handleFieldChange('assigned_to', v)}><SelectTrigger className="h-8"><SelectValue>{assignee ? <div className="flex items-center gap-2"><Avatar className="h-6 w-6"><AvatarImage src={assignee.avatarUrl} /><AvatarFallback>{getInitials(assignee.name)}</AvatarFallback></Avatar>{assignee.name}</div> : 'Select user'}</SelectValue></SelectTrigger><SelectContent>{allUsers.map(u => <SelectItem key={u.id} value={u.id}><div className="flex items-center gap-2"><Avatar className="h-6 w-6"><AvatarImage src={u.avatarUrl} /><AvatarFallback>{getInitials(u.name)}</AvatarFallback></Avatar>{u.name}</div></SelectItem>)}</SelectContent></Select>
-                                        </DetailRow>
-                                        <DetailRow icon={Calendar} label="Due Date">
-                                            <Popover><PopoverTrigger asChild><Button variant="outline" className={cn("h-8 w-full justify-start text-left font-normal", !task.due_date && "text-muted-foreground")}>{task.due_date ? format(parseISO(task.due_date), "PPP") : <span>Pick a date</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><CalendarPicker mode="single" selected={task.due_date ? parseISO(task.due_date) : undefined} onSelect={(d) => handleFieldChange('due_date', d?.toISOString())} initialFocus /></PopoverContent></Popover>
-                                        </DetailRow>
-                                        <DetailRow icon={Flag} label="Priority">
-                                            <Select value={task.priority || ''} onValueChange={(v) => handleFieldChange('priority', v)}><SelectTrigger className="h-8"><SelectValue placeholder="Set priority" /></SelectTrigger><SelectContent><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem><SelectItem value="Urgent">Urgent</SelectItem></SelectContent></Select>
-                                        </DetailRow>
-                                        <DetailRow icon={Clock} label="Time Est.">
-                                            <Input className="h-8" value={estTime} onChange={(e) => setEstTime(e.target.value)} onBlur={() => { const p = parseDuration(estTime); setEstTime(formatDuration(p)); handleFieldChange('time_estimate', p); }} />
-                                        </DetailRow>
-                                        <DetailRow icon={Clock} label="Time Logged">
-                                            <div className="flex items-center justify-between h-8"><span className="text-sm">{formatDuration(totalTimeTracked)}</span><Button variant="outline" size="sm" onClick={() => setIsLogTimeOpen(true)}>Log Time</Button></div>
-                                        </DetailRow>
-                                        <DetailRow icon={Tag} label="Tags">
-                                            <div className="space-y-2"><div className="flex flex-wrap gap-1">{(task.tags || []).map(t => <Badge key={t} variant="secondary">{t}<button onClick={() => handleRemoveTag(t)} className="ml-1 rounded-full hover:bg-destructive/20 p-0.5"><X className="h-3 w-3" /></button></Badge>)}</div><div className="flex gap-2"><Input className="h-8" placeholder="Add a tag..." value={newTag} onChange={e => setNewTag(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }} /><Button variant="outline" size="sm" onClick={handleAddTag}>Add</Button></div></div>
-                                        </DetailRow>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <h3 className="font-semibold text-sm text-muted-foreground">Description</h3>
-                                        <Textarea value={task.description || ''} onChange={(e) => handleFieldChange('description', e.target.value)} placeholder="Add a more detailed description..." className="prose prose-sm dark:prose-invert max-w-none w-full min-h-[80px] p-2 border rounded-md" />
-                                    </div>
-                                    {!isCreating && (
-                                        <div className="space-y-2">
-                                            <Separator /><h3 className="font-semibold text-sm text-muted-foreground">Subtasks ({subtasks.length})</h3>
-                                            <div className="space-y-2">{subtasks.map(st => <div key={st.id} className="flex items-center gap-2 group"><Checkbox id={`st-${st.id}`} checked={st.status === 'Done'} onCheckedChange={(c) => handleUpdateSubtaskStatus(st, !!c)} /><label htmlFor={`st-${st.id}`} className={cn("flex-1 text-sm", st.status === 'Done' && 'line-through text-muted-foreground')}>{st.name}</label><Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => onRemoveTask(st.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button></div>)}</div>
-                                            <form onSubmit={(e) => { e.preventDefault(); handleAddSubtask(); }} className="flex gap-2 mt-2"><Input value={newSubtaskName} onChange={(e) => setNewSubtaskName(e.target.value)} placeholder="Add a subtask..." className="h-8" /><Button variant="outline" size="sm" type="submit">Add</Button></form>
+                                            <DetailRow icon={Users} label="Assignees">
+                                                <Select value={task.assigned_to || ''} onValueChange={(v) => handleFieldChange('assigned_to', v)}><SelectTrigger className="h-8"><SelectValue>{assignee ? <div className="flex items-center gap-2"><Avatar className="h-6 w-6"><AvatarImage src={assignee.avatarUrl} /><AvatarFallback>{getInitials(assignee.name)}</AvatarFallback></Avatar>{assignee.name}</div> : 'Select user'}</SelectValue></SelectTrigger><SelectContent>{allUsers.map(u => <SelectItem key={u.id} value={u.id}><div className="flex items-center gap-2"><Avatar className="h-6 w-6"><AvatarImage src={u.avatarUrl} /><AvatarFallback>{getInitials(u.name)}</AvatarFallback></Avatar>{u.name}</div></SelectItem>)}</SelectContent></Select>
+                                            </DetailRow>
+                                            <DetailRow icon={Calendar} label="Due Date">
+                                                <Popover><PopoverTrigger asChild><Button variant="outline" className={cn("h-8 w-full justify-start text-left font-normal", !task.due_date && "text-muted-foreground")}>{task.due_date ? format(parseISO(task.due_date), "PPP") : <span>Pick a date</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><CalendarPicker mode="single" selected={task.due_date ? parseISO(task.due_date) : undefined} onSelect={(d) => handleFieldChange('due_date', d?.toISOString())} initialFocus /></PopoverContent></Popover>
+                                            </DetailRow>
+                                            <DetailRow icon={Flag} label="Priority">
+                                                <Select value={task.priority || ''} onValueChange={(v) => handleFieldChange('priority', v)}><SelectTrigger className="h-8"><SelectValue placeholder="Set priority" /></SelectTrigger><SelectContent><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem><SelectItem value="Urgent">Urgent</SelectItem></SelectContent></Select>
+                                            </DetailRow>
+                                            <DetailRow icon={Clock} label="Time Est.">
+                                                <Input className="h-8" value={estTime} onChange={(e) => setEstTime(e.target.value)} onBlur={() => { const p = parseDuration(estTime); setEstTime(formatDuration(p)); handleFieldChange('time_estimate', p); }} />
+                                            </DetailRow>
+                                            <DetailRow icon={Clock} label="Time Logged">
+                                                <div className="flex items-center justify-between h-8"><span className="text-sm">{formatDuration(totalTimeTracked)}</span><Button variant="outline" size="sm" onClick={() => setIsLogTimeOpen(true)}>Log Time</Button></div>
+                                            </DetailRow>
+                                            <DetailRow icon={Tag} label="Tags">
+                                                <div className="space-y-2"><div className="flex flex-wrap gap-1">{(task.tags || []).map(t => <Badge key={t} variant="secondary">{t}<button onClick={() => handleRemoveTag(t)} className="ml-1 rounded-full hover:bg-destructive/20 p-0.5"><X className="h-3 w-3" /></button></Badge>)}</div><div className="flex gap-2"><Input className="h-8" placeholder="Add a tag..." value={newTag} onChange={e => setNewTag(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }} /><Button variant="outline" size="sm" onClick={handleAddTag}>Add</Button></div></div>
+                                            </DetailRow>
                                         </div>
-                                    )}
-                                </div>
-                            </ScrollArea>
+                                        <div className="space-y-2">
+                                            <h3 className="font-semibold text-sm text-muted-foreground">Description</h3>
+                                            <Textarea value={task.description || ''} onChange={(e) => handleFieldChange('description', e.target.value)} placeholder="Add a more detailed description..." className="prose prose-sm dark:prose-invert max-w-none w-full min-h-[80px] p-2 border rounded-md" />
+                                        </div>
+                                        {!isCreating && (
+                                            <div className="space-y-2">
+                                                <Separator /><h3 className="font-semibold text-sm text-muted-foreground">Subtasks ({subtasks.length})</h3>
+                                                <div className="space-y-2">{subtasks.map(st => <div key={st.id} className="flex items-center gap-2 group"><Checkbox id={`st-${st.id}`} checked={st.status === 'Done'} onCheckedChange={(c) => handleUpdateSubtaskStatus(st, !!c)} /><label htmlFor={`st-${st.id}`} className={cn("flex-1 text-sm", st.status === 'Done' && 'line-through text-muted-foreground')}>{st.name}</label><Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => onRemoveTask(st.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button></div>)}</div>
+                                                <form onSubmit={(e) => { e.preventDefault(); handleAddSubtask(); }} className="flex gap-2 mt-2"><Input value={newSubtaskName} onChange={(e) => setNewSubtaskName(e.target.value)} placeholder="Add a subtask..." className="h-8" /><Button variant="outline" size="sm" type="submit">Add</Button></form>
+                                            </div>
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                            </div>
                         </div>
 
                         {/* RIGHT COLUMN (Activity) */}
-                        <div className={cn("mt-6 lg:mt-0 flex flex-col min-h-0 overflow-hidden", isMobile && mobileTab !== "activity" && "hidden")}>
+                        <div className={cn("mt-6 md:mt-0 flex flex-col min-h-0 overflow-hidden", isMobile && mobileTab !== "activity" && "hidden")}>
                             {!isCreating && (
                                 <>
                                     <h3 className="font-semibold mb-4 shrink-0">Activity</h3>
-                                    <ScrollArea className="flex-1 min-h-0 pr-6 -mr-6">
-                                        <div className="space-y-4 pr-6">
-                                            {sortedActivities.map(activity => {
-                                                if (activity.type === 'comment' && activity.comment_id) {
-                                                    const user = allUsers.find(u => u.id === activity.user_id);
-                                                    const isTimeLog = activity.comment_id.startsWith('time-');
-                                                    const comment = isTimeLog ? null : (task.comments || []).find(c => c.id === activity.comment_id);
-                                                    if (!user || (!isTimeLog && !comment)) return null;
-                                                    return (
-                                                        <div key={activity.id} className="flex items-start gap-3">
-                                                            <Avatar className="h-6 w-6 mt-1"><AvatarImage src={user.avatarUrl} /><AvatarFallback>{getInitials(user.name)}</AvatarFallback></Avatar>
-                                                            <div className="text-sm flex-1"><div className="flex justify-between"><div><span className="font-semibold">{user.name}</span><span className="text-xs text-muted-foreground ml-2">{formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}</span></div>{!isTimeLog && <Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal className="h-4 w-4" /></Button>}</div><p className={cn("mt-1", isTimeLog && 'italic text-muted-foreground')}>{isTimeLog ? activity.comment : comment?.comment}</p></div>
-                                                        </div>
-                                                    );
-                                                }
-                                                return <ActivityItem key={activity.id} activity={activity} allUsers={allUsers} />;
-                                            })}
-                                        </div>
-                                    </ScrollArea>
+                                    <div className="flex-1 min-h-0">
+                                        <ScrollArea className="h-full pr-6 -mr-6">
+                                            <div className="space-y-4 pr-6">
+                                                {sortedActivities.map(activity => {
+                                                    if (activity.type === 'comment' && activity.comment_id) {
+                                                        const user = allUsers.find(u => u.id === activity.user_id);
+                                                        const isTimeLog = activity.comment_id.startsWith('time-');
+                                                        const comment = isTimeLog ? null : (task.comments || []).find(c => c.id === activity.comment_id);
+                                                        if (!user || (!isTimeLog && !comment)) return null;
+                                                        return (
+                                                            <div key={activity.id} className="flex items-start gap-3">
+                                                                <Avatar className="h-6 w-6 mt-1"><AvatarImage src={user.avatarUrl} /><AvatarFallback>{getInitials(user.name)}</AvatarFallback></Avatar>
+                                                                <div className="text-sm flex-1"><div className="flex justify-between"><div><span className="font-semibold">{user.name}</span><span className="text-xs text-muted-foreground ml-2">{formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}</span></div>{!isTimeLog && <Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal className="h-4 w-4" /></Button>}</div><p className={cn("mt-1", isTimeLog && 'italic text-muted-foreground')}>{isTimeLog ? activity.comment : comment?.comment}</p></div>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return <ActivityItem key={activity.id} activity={activity} allUsers={allUsers} />;
+                                                })}
+                                            </div>
+                                        </ScrollArea>
+                                    </div>
                                     {!isMobile && (
                                         <form onSubmit={handleAddComment} className="relative mt-4 shrink-0">
                                             <div className="border rounded-lg">

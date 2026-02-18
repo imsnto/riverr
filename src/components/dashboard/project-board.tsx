@@ -21,8 +21,6 @@ import {
   LayoutGrid,
   Table as TableIcon,
   ChevronUp,
-  CircleDot,
-  X,
 } from 'lucide-react';
 import { Button, buttonVariants } from '../ui/button';
 import { cn, getInitials } from '@/lib/utils';
@@ -368,8 +366,8 @@ export default function ProjectBoard({
     const currentWidth = columnWidths[col];
     const startWidth = typeof currentWidth === 'number' ? currentWidth : 200;
     const onMouseMove = (moveEvent: MouseEvent) => {
-      const delta = moveEvent.clientX - startX;
-      setColumnWidths(prev => ({ ...prev, [col]: Math.max(50, startWidth + delta) }));
+      const deltaX = moveEvent.clientX - startX;
+      setColumnWidths(prev => ({ ...prev, [col]: Math.max(50, startWidth + deltaX) }));
     };
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
@@ -499,11 +497,11 @@ export default function ProjectBoard({
 
   const renderListView = () => {
     return (
-        <div className="flex flex-col gap-8 pb-20 max-w-6xl">
+        <div className="flex flex-col gap-8 pb-20 max-w-6xl w-full overflow-x-auto">
             {statuses.map(status => {
                 const statusTasks = tasks.filter(t => t.status === status.name);
                 return (
-                    <div key={status.name} className="space-y-2">
+                    <div key={status.name} className="space-y-2 min-w-[800px]">
                         <div className="flex items-center gap-3 px-2 py-1.5 bg-muted/20 rounded-md shrink-0 border-b border-white/5">
                             <ChevronDown className="h-4 w-4 text-muted-foreground" />
                             <Badge style={{ backgroundColor: status.color, color: 'white' }} className="uppercase px-2 py-0.5 text-[10px] font-bold rounded-sm tracking-wider border-none">{status.name}</Badge>
@@ -513,8 +511,8 @@ export default function ProjectBoard({
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></Button>
                             </div>
                         </div>
-                        <div className="w-full overflow-x-auto">
-                            <div className="grid grid-cols-[100px_1fr_80px_100px_100px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-normal min-w-[600px]">
+                        <div className="w-full">
+                            <div className="grid grid-cols-[100px_1fr_80px_100px_100px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-normal">
                                 <div className="pl-1">Key</div>
                                 <div>Name</div>
                                 <div className="text-center">User</div>
@@ -522,7 +520,7 @@ export default function ProjectBoard({
                                 <div className="text-center">Pri</div>
                                 <div />
                             </div>
-                            <div className="divide-y divide-white/5 min-w-[600px]">
+                            <div className="divide-y divide-white/5">
                                 {statusTasks.map(task => {
                                     const assignee = allUsers.find(u => u.id === task.assigned_to);
                                     return (
@@ -567,7 +565,14 @@ export default function ProjectBoard({
                         const isDone = task.status === activeHub.closingStatusName;
                         return (
                             <tr key={task.id} className="hover:bg-white/[0.02] group h-11">
-                                <td className="px-4 py-2 text-muted-foreground/50 font-mono text-[11px] whitespace-nowrap overflow-hidden"><button className="hover:text-primary hover:underline transition-colors" onClick={() => onTaskClick(task)}>{task.taskKey || '---'}</button></td>
+                                <td className="px-4 py-2 text-muted-foreground/50 font-mono text-[11px] whitespace-nowrap overflow-hidden">
+                                    <button 
+                                        className="hover:text-primary hover:underline transition-colors uppercase tracking-tight"
+                                        onClick={() => onTaskClick(task)}
+                                    >
+                                        {task.taskKey || '---'}
+                                    </button>
+                                </td>
                                 <td className="px-4 py-2"><div className="flex items-center gap-2 min-w-0"><Input defaultValue={task.name} className={cn("h-7 text-sm font-medium border-transparent bg-transparent hover:bg-white/5 focus:bg-background focus:border-input transition-all w-full truncate text-ellipsis whitespace-nowrap", isDone && "line-through text-muted-foreground")} onBlur={(e) => { if (e.target.value !== task.name) { onUpdateTask({ ...task, name: e.target.value }); } }} /></div></td>
                                 <td className="px-4 py-2"><Select value={task.assigned_to || 'unassigned'} onValueChange={(val) => onUpdateTask({ ...task, assigned_to: val === 'unassigned' ? null : val })}><SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-full gap-2 px-1"><SelectValue>{assignee ? (<div className="flex items-center gap-1.5 overflow-hidden"><Avatar className="h-5 w-5 border border-white/10 shrink-0"><AvatarImage src={assignee.avatarUrl} /><AvatarFallback className="text-[8px]">{getInitials(assignee.name)}</AvatarFallback></Avatar><span className="text-xs truncate">{assignee.name}</span></div>) : <span className="text-muted-foreground/50 text-xs">Unassigned</span>}</SelectValue></SelectTrigger><SelectContent><SelectItem value="unassigned">Unassigned</SelectItem>{allUsers.map(u => (<SelectItem key={u.id} value={u.id}><div className="flex items-center gap-2"><Avatar className="h-5 w-5"><AvatarImage src={u.avatarUrl}/></Avatar>{u.name}</div></SelectItem>))}</SelectContent></Select></td>
                                 <td className="px-4 py-2"><Select value={task.status} onValueChange={(val) => onUpdateTask({ ...task, status: val })}><SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-full gap-2 px-1"><SelectValue>{statusObj && (<Badge style={{ backgroundColor: statusObj.color + '20', color: statusObj.color, borderColor: statusObj.color + '40' }} className="uppercase text-[10px] font-bold px-2 py-0 rounded-sm tracking-tight h-5 whitespace-nowrap">{statusObj.name}</Badge>)}</SelectValue></SelectTrigger><SelectContent>{statuses.map(s => (<SelectItem key={s.name} value={s.name}>{s.name}</SelectItem>))}</SelectContent></Select></td>
