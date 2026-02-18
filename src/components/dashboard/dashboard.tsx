@@ -85,7 +85,7 @@ export default function Dashboard({ view }: { view: string }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
 
   // Messaging states
-  const [spaceHubs, setSpaceHubs] = useState<Hub[]>([]);
+  const [allHubs, setAllHubs] = useState<Hub[]>([]);
   
   // Inbox state
   const [visitors, setVisitors] = useState<Visitor[]>([]);
@@ -173,7 +173,7 @@ export default function Dashboard({ view }: { view: string }) {
             db.getAllTasks(activeHub.id),
             db.getTicketsInHub(activeHub.id),
             db.getDealsInHub(activeHub.id),
-            db.getSlackMeetingLogsInSpace(activeSpace.id), // This is space-wide for now
+            db.getSlackMeetingLogsInSpace(activeSpace.id), 
             db.getJobFlowTemplates(activeHub.id),
             db.getPhaseTemplates(activeHub.id),
             db.getTaskTemplates(activeHub.id),
@@ -202,7 +202,7 @@ export default function Dashboard({ view }: { view: string }) {
         setTaskTemplates(fetchedTaskTemplates);
         setJobs(fetchedJobs);
         setJobFlowTasks(fetchedJobsTasks);
-        setSpaceHubs(fetchedHubs);
+        setAllHubs(fetchedHubs);
         setBots(fetchedBots);
         setEscalationIntakeRules(fetchedEscalationRules);
         setContacts(fetchedContacts);
@@ -573,7 +573,7 @@ export default function Dashboard({ view }: { view: string }) {
         const updatedHub = { ...activeHub, ...updatedData };
         setActiveHub(updatedHub);
         
-        setSpaceHubs(prev => prev.map(h => h.id === activeHub.id ? updatedHub : h));
+        setAllHubs(prev => prev.map(h => h.id === activeHub.id ? updatedHub : h));
         
         toast({ title: 'Hub updated successfully' });
     } catch(e) {
@@ -743,13 +743,13 @@ export default function Dashboard({ view }: { view: string }) {
     const settingsProps = {
       allUsers,
       allSpaces: userSpaces,
-      allHubs: spaceHubs,
+      allHubs: allHubs,
       onSave: handleSpaceSave,
       onDelete: db.deleteSpace,
       appUser,
       onInvite: fetchData,
       handleInvite: async (invite: Omit<Invite, 'id' | 'token' | 'status'>) => {
-        const { token: _, ...rest } = invite; // Legacy token removal
+        const { token: _, ...rest } = invite; 
         await db.addInvite(rest as any);
         fetchData();
       },
@@ -810,7 +810,7 @@ export default function Dashboard({ view }: { view: string }) {
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => router.push(`/space/${activeSpace?.id}/hub/${activeHub?.id}/settings`)}
-          allHubs={spaceHubs}
+          allHubs={allHubs}
           escalationRules={escalationRules}
           projects={projects}
           contacts={contacts}

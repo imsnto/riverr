@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, DragEvent, useRef, useEffect, useMemo } from 'react';
@@ -13,7 +14,7 @@ import {
   Palette,
   Archive,
   ChevronDown,
-  Calendar,
+  Calendar as CalendarIcon,
   Flag,
   Sparkles,
   Zap,
@@ -621,11 +622,11 @@ export default function ProjectBoard({
                                             <div className="flex justify-center">
                                                 {task.due_date ? (
                                                     <div className="text-[11px] text-muted-foreground flex items-center gap-1">
-                                                        <Calendar className="h-3.5 w-3.5 opacity-60" />
+                                                        <CalendarIcon className="h-3.5 w-3.5 opacity-60" />
                                                         {format(parseISO(task.due_date), 'MMM d')}
                                                     </div>
                                                 ) : (
-                                                    <Calendar className="h-4 w-4 text-muted-foreground/20" />
+                                                    <CalendarIcon className="h-4 w-4 text-muted-foreground/20" />
                                                 )}
                                             </div>
                                             <div className="flex justify-center">
@@ -849,7 +850,7 @@ export default function ProjectBoard({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Commented out placeholder actions */}
+            {/* Action buttons (Preserved but commented out) */}
             {/* 
             <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
               <Bot className="h-4 w-4" />
@@ -924,7 +925,7 @@ export default function ProjectBoard({
 
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 border-r border-[#2a2a2a] pr-4 mr-2">
-              {/* Commented out placeholder actions */}
+              {/* Controls (Preserved but commented out) */}
               {/*
               <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground hover:text-foreground">
                 <SearchIcon className="h-4 w-4 mr-2" />
