@@ -1,4 +1,3 @@
-
 'use client';
 
 import { HelpCenter, HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
@@ -94,14 +93,14 @@ export default function HelpCenterArticleList({
     <div className="w-full overflow-hidden">
         <Table>
         <TableHeader>
-            <TableRow className="h-8 hover:bg-transparent">
+            <TableRow className="h-10 hover:bg-transparent">
             <TableHead className="w-[40px] px-2">
                 <Checkbox checked={isAllSelected} onCheckedChange={onToggleAll} />
             </TableHead>
-            <TableHead className="text-[10px] uppercase tracking-wider h-8 font-bold text-muted-foreground/70">Title</TableHead>
-            <TableHead className="text-[10px] uppercase tracking-wider h-8 font-bold text-muted-foreground/70">Library</TableHead>
-            <TableHead className="text-[10px] uppercase tracking-wider h-8 font-bold text-muted-foreground/70">Status</TableHead>
-            <TableHead className="text-[10px] uppercase tracking-wider h-8 font-bold text-muted-foreground/70 text-right">Last updated</TableHead>
+            <TableHead className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/70">Title</TableHead>
+            <TableHead className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/70">Library</TableHead>
+            <TableHead className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/70">Status</TableHead>
+            <TableHead className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/70 text-right">Last updated</TableHead>
             </TableRow>
         </TableHeader>
         <TableBody>
@@ -112,7 +111,7 @@ export default function HelpCenterArticleList({
             const kb = 'helpCenterId' in item ? helpCenters.find(hc => hc.id === item.helpCenterId) : null;
 
             return (
-                <TableRow key={item.id} className="h-8 transition-colors group">
+                <TableRow key={item.id} className="h-11 transition-colors group">
                 <TableCell className="px-2 py-0">
                     <Checkbox checked={selectedItems.includes(item.id)} onCheckedChange={() => onToggleSelectItem(item.id)} />
                 </TableCell>

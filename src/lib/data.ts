@@ -61,12 +61,10 @@ export interface Project {
   key?: string; // e.g., "XY"
   taskCounter?: number;
   spaceId?: string;
-  space_id?: string; // Support both naming conventions for legacy data
   hubId: string; // Hub scope
   members: string[]; // array of user IDs
   status: 'Active' | 'On Hold' | 'Archived';
   createdBy?: string;
-  created_by?: string;
   defaultView?: 'board' | 'list';
 }
 
@@ -112,8 +110,8 @@ export interface Ticket {
   contactId: string | null;
   conversationId: string | null;
   channel: 'Widget' | 'OpenPhone' | 'Order' | 'Manual' | null;
-  lastMessagePreview: string | null;
   lastMessageAt: string | null;
+  lastMessagePreview: string | null;
   lastMessageAuthor: string | null;
   createdAt: string;
   createdBy: string;

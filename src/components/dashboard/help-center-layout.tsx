@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -552,7 +551,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
 
                     {sidebarView === 'knowledge-bases' && activeHelpCenter && (
                         <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 shrink-0">
                                 {activeHelpCenter.visibility === 'internal' ? (
                                     <><Lock className="h-3.5 w-3.5" /> <span className="font-medium">Internal</span></>
                                 ) : (
@@ -683,7 +682,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                 onSave={handleAddArticlesToLibrary}
             />
         )}
-        <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+        <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={isBulkDeleteDialogOpen}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
