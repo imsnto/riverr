@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -16,7 +17,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import MoveToFolderDialog from './move-to-folder-dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 import { reindexArticleAction, exportLibraryAction, importLibraryAction } from '@/app/actions/chat';
 import { suggestLibraryIcon } from '@/ai/flows/suggest-library-icon';
 import { Separator } from '../ui/separator';
@@ -550,7 +551,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                     </h1>
 
                     {sidebarView === 'knowledge-bases' && activeHelpCenter && (
-                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
+                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-nowrap">
                             <div className="flex items-center gap-1.5 shrink-0">
                                 {activeHelpCenter.visibility === 'internal' ? (
                                     <><Lock className="h-3.5 w-3.5" /> <span className="font-medium">Internal</span></>
@@ -559,15 +560,15 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                                 )}
                             </div>
 
-                            <Separator orientation="vertical" className="h-3 hidden md:block" />
+                            <Separator orientation="vertical" className="h-3 shrink-0" />
 
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                                <div className="flex items-center gap-1.5 shrink-0">
                                     <BotIcon className="h-3.5 w-3.5" />
-                                    <span className="font-medium">Connected Agents:</span>
+                                    <span className="font-medium">Agents:</span>
                                 </div>
                                 {connectedAgents.length > 0 ? (
-                                    <div className="flex items-center -space-x-1.5">
+                                    <div className="flex items-center -space-x-1.5 shrink-0">
                                         <TooltipProvider>
                                             {connectedAgents.slice(0, 3).map(agent => (
                                                 <Tooltip key={agent.id}>

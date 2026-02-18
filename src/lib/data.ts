@@ -315,8 +315,8 @@ export interface Invite {
   spaceId: string;
   spaceName: string;
   email: string;
-  spaceRole: 'member' | 'admin' | 'viewer';
-  hubAccess?: { [hubId: string]: HubRole };
+  spaceRole: 'Member' | 'Admin' | 'Viewer';
+  hubAccess?: { [hubId: string]: 'Hub Admin' | 'Member' | 'Viewer' | 'None' };
   status: 'pending' | 'accepted' | 'expired';
   expiresAt?: any; // Firestore Timestamp
   createdBy: string;
