@@ -23,7 +23,7 @@ import { Separator } from '../ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import AddArticlesToLibraryDialog from './add-articles-to-collection-dialog';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../ui/card';
 import { Label } from '../ui/label';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import Image from 'next/image';
