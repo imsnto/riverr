@@ -512,7 +512,7 @@ export default function ProjectBoard({
 
   const renderListView = () => {
     return (
-        <div className="flex flex-col gap-8 pb-20">
+        <div className="flex flex-col gap-8 pb-20 max-w-6xl">
             {statuses.map(status => {
                 const statusTasks = tasks.filter(t => t.status === status.name);
                 return (
@@ -542,7 +542,7 @@ export default function ProjectBoard({
 
                         <div className="w-full overflow-hidden">
                             {/* Table Header */}
-                            <div className="grid grid-cols-[80px_minmax(200px,_1fr)_80px_100px_80px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-wider">
+                            <div className="grid grid-cols-[90px_1fr_100px_120px_100px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-wider">
                                 <div>Key</div>
                                 <div>Name</div>
                                 <div className="text-center">Assignee</div>
@@ -558,19 +558,13 @@ export default function ProjectBoard({
                                     return (
                                         <div 
                                             key={task.id} 
-                                            className="grid grid-cols-[80px_minmax(200px,_1fr)_80px_100px_80px_40px] gap-4 px-4 py-3 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
+                                            className="grid grid-cols-[90px_1fr_100px_120px_100px_40px] gap-4 px-4 py-2.5 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
                                             onClick={() => onTaskClick(task)}
                                         >
                                             <div className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded shrink-0 w-fit">
                                                 {task.taskKey || '---'}
                                             </div>
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <div className="shrink-0">
-                                                    {status.name === (activeHub.closingStatusName || 'Done') ? 
-                                                        <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : 
-                                                        <Circle className="h-4 w-4 text-muted-foreground/40" />
-                                                    }
-                                                </div>
+                                            <div className="flex items-center min-w-0">
                                                 <span className="text-sm truncate font-medium group-hover:text-primary transition-colors">{task.name}</span>
                                             </div>
                                             <div className="flex justify-center">
@@ -612,7 +606,7 @@ export default function ProjectBoard({
                                     className="w-full text-left px-4 py-2 text-xs text-muted-foreground hover:bg-white/[0.03] flex items-center gap-3 transition-colors group"
                                     onClick={() => onNewTaskRequest(status.name)}
                                 >
-                                    <Plus className="h-4 w-4 ml-7 group-hover:text-foreground" />
+                                    <Plus className="h-4 w-4 group-hover:text-foreground" />
                                     <span className="group-hover:text-foreground font-medium">Add Task</span>
                                 </button>
                             </div>
