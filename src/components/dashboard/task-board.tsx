@@ -69,7 +69,7 @@ export default function TaskBoard({
   if (isMobile) {
     if (!selectedProject) {
         return (
-            <div className="flex h-full flex-col">
+            <div className="flex h-full flex-col flex-1 min-w-0">
                 <div className="p-4 border-b">
                     <h1 className="text-xl font-semibold">Projects</h1>
                 </div>
@@ -104,26 +104,24 @@ export default function TaskBoard({
         );
     } else {
         return (
-             <>
-                <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
-                    <ProjectBoard 
-                        project={selectedProject}
-                        projects={projects}
-                        onSelectProject={handleSelectProject}
-                        allTasks={allTasks}
-                        onUpdateTasks={onUpdateTasks}
-                        activeHub={activeHub}
-                        allUsers={allUsers}
-                        onUpdateActiveHub={onUpdateActiveHub}
-                        onNewTaskRequest={onNewTaskRequest}
-                        onTaskClick={onTaskClick}
-                        onUpdateTask={onUpdateTask}
-                        onBack={() => handleSelectProject(null)}
-                        onEditProject={onEditProject}
-                        onDeleteProject={onDeleteProject}
-                    />
-                </div>
-            </>
+             <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
+                <ProjectBoard 
+                    project={selectedProject}
+                    projects={projects}
+                    onSelectProject={handleSelectProject}
+                    allTasks={allTasks}
+                    onUpdateTasks={onUpdateTasks}
+                    activeHub={activeHub}
+                    allUsers={allUsers}
+                    onUpdateActiveHub={onUpdateActiveHub}
+                    onNewTaskRequest={onNewTaskRequest}
+                    onTaskClick={onTaskClick}
+                    onUpdateTask={onUpdateTask}
+                    onBack={() => handleSelectProject(null)}
+                    onEditProject={onEditProject}
+                    onDeleteProject={onDeleteProject}
+                />
+            </div>
         )
     }
   }

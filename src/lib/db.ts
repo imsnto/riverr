@@ -101,6 +101,12 @@ const generateWhimsicalName = () => {
   return `${adj} ${noun}`;
 };
 
+const generateRandomProjectKey = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  return chars.charAt(Math.floor(Math.random() * chars.length)) + 
+         chars.charAt(Math.floor(Math.random() * chars.length));
+};
+
 const isBlank = (v?: string | null) => !v || v.trim().length === 0;
 
 const normalizeName = (name?: string | null) => {
@@ -125,12 +131,6 @@ const normalizeCompany = (company?: string | null) => {
   const lower = c.toLowerCase();
   if (lower === "n/a" || lower === "na") return null;
   return c;
-};
-
-const generateRandomProjectKey = () => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  return chars.charAt(Math.floor(Math.random() * chars.length)) + 
-         chars.charAt(Math.floor(Math.random() * chars.length));
 };
 
 

@@ -777,7 +777,7 @@ export default function Dashboard({ view }: { view: string }) {
     switch (currentView) {
       case 'overview': return <div className="overflow-y-auto p-8"><Overview {...overviewProps} /></div>;
       case 'tasks': return (
-        <div className="flex h-full min-h-0">
+        <div className="flex h-full min-h-0 flex-1">
           {(projects.length > 0) && (
              <ProjectSidebar
               projects={projects}
@@ -880,7 +880,7 @@ export default function Dashboard({ view }: { view: string }) {
   };
 
   return (
-    <>
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       {renderView()}
 
       <ProjectFormDialog 
@@ -914,6 +914,6 @@ export default function Dashboard({ view }: { view: string }) {
           projects={projects}
         />
       )}
-    </>
+    </div>
   );
 }
