@@ -1,3 +1,4 @@
+
 'use client'
 // src/lib/db.ts
 
@@ -430,6 +431,24 @@ export const updateDeal = async (dealId: string, data: Partial<Deal>): Promise<v
   await updateDoc(doc(db, "deals", dealId), data);
 };
 
+export const getDealAutomationRules = async (hubId: string): Promise<DealAutomationRule[]> => {
+  const q = query(collection(db, "deal_automation_rules"), where("hubId", "==", hubId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DealAutomationRule));
+};
+
+export const saveDealAutomationRule = async (rule: Omit<DealAutomationRule, 'id'>, ruleId?: string): Promise<void> => {
+  if (ruleId) {
+    await updateDoc(doc(db, "deal_automation_rules", ruleId), rule);
+  } else {
+    await addDoc(collection(db, "deal_automation_rules"), rule);
+  }
+};
+
+export const deleteDealAutomationRule = async (ruleId: string): Promise<void> => {
+  await deleteDoc(doc(db, "deal_automation_rules", ruleId));
+};
+
 // --- Time & Log Management ---
 export const getTimeEntriesInHub = async (projectIds: string[]): Promise<TimeEntry[]> => {
   if (!projectIds || projectIds.length === 0) return [];
@@ -624,24 +643,6 @@ export const saveEscalationIntakeRule = async (hubId: string, rule: Omit<Escalat
 
 export const deleteEscalationIntakeRule = async (hubId: string, ruleId: string): Promise<void> => {
   await deleteDoc(doc(db, 'hubs', hubId, 'escalation_intake', ruleId));
-};
-
-export const getDealAutomationRules = async (hubId: string): Promise<DealAutomationRule[]> => {
-  const q = query(collection(db, "deal_automation_rules"), where("hubId", "==", hubId));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DealAutomationRule));
-};
-
-export const saveDealAutomationRule = async (rule: Omit<DealAutomationRule, 'id'>, ruleId?: string): Promise<void> => {
-  if (ruleId) {
-    await updateDoc(doc(db, "deal_automation_rules", ruleId), rule);
-  } else {
-    await addDoc(collection(db, "deal_automation_rules"), rule);
-  }
-};
-
-export const deleteDealAutomationRule = async (ruleId: string): Promise<void> => {
-  await deleteDoc(doc(db, "deal_automation_rules", ruleId));
 };
 
 export const getBots = async (hubId: string): Promise<Bot[]> => {

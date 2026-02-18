@@ -67,7 +67,7 @@ export default function HelpCenterArticleList({
             const type = getItemType(item);
             const name = type === 'collection' ? item.name : (item as HelpCenterArticle).title;
             return (
-              <div key={item.id} className="flex items-start gap-3 p-2 rounded-md hover:bg-accent/50" onClick={() => onSelectItem(item.id, type)}>
+              <div key={item.id} className="flex items-start gap-3 p-3 rounded-md hover:bg-accent/50" onClick={() => onSelectItem(item.id, type)}>
                  <Checkbox
                     className="mt-1 flex-shrink-0"
                     checked={selectedItems.includes(item.id)}
@@ -112,7 +112,7 @@ export default function HelpCenterArticleList({
             const kb = 'helpCenterId' in item ? helpCenters.find(hc => hc.id === item.helpCenterId) : null;
 
             return (
-                <TableRow key={item.id} className="h-11 transition-colors group">
+                <TableRow key={item.id} className="h-14 transition-colors group">
                 <TableCell className="px-2 py-0">
                     <Checkbox checked={selectedItems.includes(item.id)} onCheckedChange={() => onToggleSelectItem(item.id)} />
                 </TableCell>

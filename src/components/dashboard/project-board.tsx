@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, DragEvent, useRef, useEffect, useMemo } from 'react';
@@ -36,8 +37,6 @@ import {
   DropdownMenuPortal,
   DropdownMenuSubContent,
 } from '../ui/dropdown-menu';
-import { Input } from '../ui/input';
-import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +48,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Input } from '../ui/input';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { format, parseISO } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
@@ -542,7 +543,7 @@ export default function ProjectBoard({
 
                         <div className="w-full overflow-hidden">
                             {/* Table Header */}
-                            <div className="grid grid-cols-[90px_1fr_100px_120px_100px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-wider">
+                            <div className="grid grid-cols-[100px_minmax(200px,1fr)_100px_120px_100px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-wider">
                                 <div>Key</div>
                                 <div>Name</div>
                                 <div className="text-center">Assignee</div>
@@ -558,7 +559,7 @@ export default function ProjectBoard({
                                     return (
                                         <div 
                                             key={task.id} 
-                                            className="grid grid-cols-[90px_1fr_100px_120px_100px_40px] gap-4 px-4 py-2.5 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
+                                            className="grid grid-cols-[100px_minmax(200px,1fr)_100px_120px_100px_40px] gap-4 px-4 py-3.5 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
                                             onClick={() => onTaskClick(task)}
                                         >
                                             <div className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded shrink-0 w-fit">
@@ -603,7 +604,7 @@ export default function ProjectBoard({
                                     );
                                 })}
                                 <button 
-                                    className="w-full text-left px-4 py-2 text-xs text-muted-foreground hover:bg-white/[0.03] flex items-center gap-3 transition-colors group"
+                                    className="w-full text-left px-4 py-3 text-xs text-muted-foreground hover:bg-white/[0.03] flex items-center gap-3 transition-colors group"
                                     onClick={() => onNewTaskRequest(status.name)}
                                 >
                                     <Plus className="h-4 w-4 group-hover:text-foreground" />
