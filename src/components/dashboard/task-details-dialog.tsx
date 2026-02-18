@@ -250,6 +250,30 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
         }
     };
 
+    const handleAddTag = () => {
+        if (!newTag.trim() || !task) return;
+        const currentTags = task.tags || [];
+        if (currentTags.includes(newTag.trim())) {
+            setNewTag('');
+            return;
+        }
+        const updatedTags = [...currentTags, newTag.trim()];
+        handleFieldChange('tags', updatedTags);
+        setNewTag('');
+    };
+
+    const handleRemoveTag = (tagToRemove: string) => {
+        if (!task) return;
+        const updatedTags = (task.tags || []).filter(t => t !== tagToRemove);
+        handleFieldChange('tags', updatedTags);
+    };
+
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files) {
+            setAttachments(prev => [...prev, ...Array.from(event.target.files!)]);
+        }
+    };
+
     const sortedActivities = [
         ...(task.activities || []), 
         ...(timeEntries || []).map(t => ({
