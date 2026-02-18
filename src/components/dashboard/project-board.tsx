@@ -23,6 +23,13 @@ import {
   CheckCircle2,
   Calendar,
   Flag,
+  Sparkles,
+  Zap,
+  Share2,
+  Search as SearchIcon,
+  EyeOff,
+  Settings2,
+  Bot,
 } from 'lucide-react';
 import { Button, buttonVariants } from '../ui/button';
 import { cn, getInitials } from '@/lib/utils';
@@ -53,6 +60,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { format, parseISO } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
+import { Separator } from '../ui/separator';
 
 const STATUS_COLORS = [
   { name: 'Gray', color: '#6b7280' },
@@ -94,7 +102,7 @@ const TaskCard = ({
     <Card
       onClick={onClick}
       className={cn(
-        'mb-2 bg-card hover:shadow-md transition-shadow duration-200 cursor-pointer',
+        'mb-2 bg-card hover:shadow-md transition-shadow duration-200 cursor-pointer border-[#2a2a2a]',
         isDragging && 'opacity-50 ring-2 ring-primary'
       )}
     >
@@ -103,11 +111,11 @@ const TaskCard = ({
       </CardHeader>
       <CardFooter className="flex justify-between items-center p-3 pt-0">
         <div className="flex items-center gap-2 text-muted-foreground">
-          {task.taskKey && <span className="text-xs font-semibold font-mono">{task.taskKey}</span>}
+          {task.taskKey && <span className="text-[10px] font-semibold font-mono bg-muted/50 px-1 rounded">{task.taskKey}</span>}
         </div>
-        <Avatar className="h-6 w-6">
+        <Avatar className="h-5 w-5">
           <AvatarImage src={assignee?.avatarUrl} alt={assignee?.name} />
-          <AvatarFallback>{assignee ? getInitials(assignee.name) : 'U'}</AvatarFallback>
+          <AvatarFallback className="text-[8px]">{assignee ? getInitials(assignee.name) : 'U'}</AvatarFallback>
         </Avatar>
       </CardFooter>
     </Card>
@@ -121,7 +129,7 @@ const PriorityIcon = ({ priority }: { priority: Task['priority'] }) => {
         'High': 'text-orange-400',
         'Urgent': 'text-red-500',
     };
-    return <Flag className={cn("h-4 w-4", priority ? (styles as any)[priority] : 'text-muted-foreground/20')} />;
+    return <Flag className={cn("h-3.5 w-3.5", priority ? (styles as any)[priority] : 'text-muted-foreground/20')} />;
 }
 
 interface ProjectBoardProps {
@@ -234,7 +242,6 @@ export default function ProjectBoard({
     const projectTasks = allTasks.filter((t) => t.project_id === project.id && !t.parentId);
     const otherTasks = allTasks.filter((t) => !(t.project_id === project.id && !t.parentId));
 
-    const targetColumn = projectTasks.filter((t) => t.status === newStatus);
     const fromIndex = projectTasks.filter(t => t.status === taskToMove.status).findIndex((t) => t.id === taskId);
 
     let insertIndex = dropIndicator.index;
@@ -368,21 +375,21 @@ export default function ProjectBoard({
             />
           ) : (
             <div className="flex items-center gap-2 min-w-0">
-              <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: status.color }} />
-              <h2 className="text-lg font-semibold truncate">{status.name}</h2>
-              {closingStatusName === status.name && <CheckCircle className="h-4 w-4 text-primary shrink-0" />}
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: status.color }} />
+              <h2 className="text-sm font-semibold uppercase tracking-tight truncate text-muted-foreground">{status.name}</h2>
+              <span className="text-xs text-muted-foreground/50 font-medium ml-1">{columnTasks.length}</span>
             </div>
           )}
 
           <div className="flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onNewTaskRequest(status.name)}>
-              <Plus className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => onNewTaskRequest(status.name)}>
+              <Plus className="h-3.5 w-3.5" />
             </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <MoreHorizontal className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
+                  <MoreHorizontal className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
 
@@ -473,7 +480,7 @@ export default function ProjectBoard({
           </div>
         </div>
 
-        <div className="bg-primary/5 rounded-lg p-2 flex-1 min-h-0 overflow-y-auto">
+        <div className="bg-[#161616] border border-[#2a2a2a] rounded-lg p-2 flex-1 min-h-0 overflow-y-auto">
           <div className="space-y-0.5">
             {columnTasks.map((task, index) => {
               const showIndicator = dropIndicator?.status === status.name && dropIndicator.index === index;
@@ -559,7 +566,7 @@ export default function ProjectBoard({
                                     return (
                                         <div 
                                             key={task.id} 
-                                            className="grid grid-cols-[100px_minmax(200px,1fr)_100px_120px_100px_40px] gap-4 px-4 py-3.5 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
+                                            className="grid grid-cols-[100px_minmax(200px,1fr)_100px_120px_100px_40px] gap-4 px-4 py-3 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
                                             onClick={() => onTaskClick(task)}
                                         >
                                             <div className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded shrink-0 w-fit">
@@ -604,7 +611,7 @@ export default function ProjectBoard({
                                     );
                                 })}
                                 <button 
-                                    className="w-full text-left px-4 py-3 text-xs text-muted-foreground hover:bg-white/[0.03] flex items-center gap-3 transition-colors group"
+                                    className="w-full text-left px-4 py-2.5 text-xs text-muted-foreground hover:bg-white/[0.03] flex items-center gap-3 transition-colors group"
                                     onClick={() => onNewTaskRequest(status.name)}
                                 >
                                     <Plus className="h-4 w-4 group-hover:text-foreground" />
@@ -620,114 +627,122 @@ export default function ProjectBoard({
   };
 
   return (
-    <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-2 border-b">
-        <div className="flex items-center gap-4 min-w-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="text-2xl font-bold p-2 -ml-2 min-w-0">
-                <span className="truncate">{project.name}</span>
-                <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => onEditProject(project)}>
-                <Edit className="mr-2 h-4 w-4" />
-                <span>Edit Project</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setDeleteAlertOpen(true)} className="text-destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                <span>Delete Project</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+    <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
+      {/* Redesigned Two-Row Header */}
+      <div className="flex flex-col border-b border-[#2a2a2a] shrink-0">
+        {/* Row 1: Project Name & Global Actions */}
+        <div className="flex items-center justify-between px-6 py-2">
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 hover:bg-white/5">
+                  <span className="text-sm font-semibold">{project.name}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => onEditProject(project)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  <span>Edit Details</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDeleteAlertOpen(true)} className="text-destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  <span>Delete Project</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-          <div className="flex items-center gap-1 bg-muted rounded-md p-1">
-            <Button
-              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-              size="sm"
-              className="h-8 gap-2"
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
+              <Bot className="h-4 w-4" />
+              <span className="text-xs">Agents</span>
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
+              <Zap className="h-4 w-4" />
+              <span className="text-xs">Automate</span>
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
+              <Sparkles className="h-4 w-4" />
+              <span className="text-xs">Ask AI</span>
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
+              <Share2 className="h-4 w-4" />
+              <span className="text-xs">Share</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Row 2: Tabs & View Controls */}
+        <div className="flex items-center justify-between px-6">
+          <div className="flex items-center gap-6">
+            <button
               onClick={() => setViewMode('list')}
+              className={cn(
+                "flex items-center gap-2 py-3 text-xs font-medium border-b-2 transition-all",
+                viewMode === 'list' ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
             >
               <LayoutList className="h-4 w-4" />
               List
-            </Button>
-            <Button
-              variant={viewMode === 'board' ? 'secondary' : 'ghost'}
-              size="sm"
-              className="h-8 gap-2"
+            </button>
+            <button
               onClick={() => setViewMode('board')}
+              className={cn(
+                "flex items-center gap-2 py-3 text-xs font-medium border-b-2 transition-all",
+                viewMode === 'board' ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
             >
               <LayoutGrid className="h-4 w-4" />
               Board
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="flex -space-x-2">
-            {projectMembers.slice(0, 5).map((member) => (
-              <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
-                <AvatarImage src={member.avatarUrl} alt={member.name} />
-                <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-              </Avatar>
-            ))}
-            {projectMembers.length > 5 && (
-              <Avatar className="h-8 w-8 border-2 border-background">
-                <AvatarFallback>+{projectMembers.length - 5}</AvatarFallback>
-              </Avatar>
-            )}
-          </div>
-          <Button size="sm" onClick={() => onNewTaskRequest()}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Task
-          </Button>
-        </div>
-      </div>
-
-      <div className="md:hidden w-full min-w-0 shrink-0 mb-4 space-y-4 p-4 border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <Button variant="ghost" size="icon" className="-ml-2" onClick={onBack}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-lg font-semibold truncate">{project.name}</h1>
+            </button>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center gap-1 bg-muted rounded-md p-1">
-              <Button
-                variant={viewMode === 'list' ? 'secondary' : 'icon'}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setViewMode('list')}
-              >
-                <LayoutList className="h-4 w-4" />
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 border-r border-[#2a2a2a] pr-4 mr-2">
+              <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground hover:text-foreground">
+                <SearchIcon className="h-4 w-4 mr-2" />
+                <span className="text-xs">Search</span>
               </Button>
-              <Button
-                variant={viewMode === 'board' ? 'secondary' : 'icon'}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setViewMode('board')}
-              >
-                <LayoutGrid className="h-4 w-4" />
+              <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground hover:text-foreground">
+                <EyeOff className="h-4 w-4 mr-2" />
+                <span className="text-xs">Hide</span>
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground hover:text-foreground">
+                <Settings2 className="h-4 w-4 mr-2" />
+                <span className="text-xs">Customize</span>
               </Button>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => onNewTaskRequest()}>
-              <Plus className="h-5 w-5" />
-            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="flex items-center">
+                  <Button size="sm" className="h-8 rounded-r-none" onClick={() => onNewTaskRequest()}>
+                    Add Task
+                  </Button>
+                  <Button size="sm" className="h-8 rounded-l-none border-l border-white/10 px-2">
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onNewTaskRequest()}>New Task</DropdownMenuItem>
+                <DropdownMenuItem disabled>New Section</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
 
+      {/* Main Content Area */}
       <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
         {viewMode === 'board' ? (
           <div className="h-full w-full overflow-x-auto overflow-y-hidden overscroll-x-contain [-webkit-overflow-scrolling:touch]">
-            <div className="flex min-w-max items-start gap-4 p-4 md:p-6 md:pt-2 h-full">
+            <div className="flex min-w-max items-start gap-4 p-4 md:p-6 md:pt-4 h-full">
               {activeStatuses.map(renderStatusColumn)}
               {closingStatus && renderStatusColumn(closingStatus)}
               <div className="flex-shrink-0 w-72">
-                <Button variant="outline" className="w-full" onClick={handleAddNewColumn}>
+                <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground h-10 border border-dashed border-[#2a2a2a] hover:border-muted-foreground/50" onClick={handleAddNewColumn}>
                   <Plus className="mr-2 h-4 w-4" /> Add Status
                 </Button>
               </div>
