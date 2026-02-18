@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, DragEvent, useRef, useEffect, useMemo } from 'react';
@@ -13,14 +12,7 @@ import {
   Trash2,
   Palette,
   Archive,
-  CheckCircle,
-  ChevronsUpDown,
-  ArrowLeft,
-  LayoutList,
-  LayoutGrid,
   ChevronDown,
-  Circle,
-  CheckCircle2,
   Calendar,
   Flag,
   Sparkles,
@@ -30,6 +22,8 @@ import {
   EyeOff,
   Settings2,
   Bot,
+  LayoutList,
+  LayoutGrid,
 } from 'lucide-react';
 import { Button, buttonVariants } from '../ui/button';
 import { cn, getInitials } from '@/lib/utils';
@@ -59,8 +53,6 @@ import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { format, parseISO } from 'date-fns';
-import { Checkbox } from '../ui/checkbox';
-import { Separator } from '../ui/separator';
 
 const STATUS_COLORS = [
   { name: 'Gray', color: '#6b7280' },
@@ -192,8 +184,6 @@ export default function ProjectBoard({
 
   const [dropIndicator, setDropIndicator] = useState<{ status: string; index: number } | null>(null);
   const taskCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  const projectMembers = allUsers.filter((u) => project.members.includes(u.id));
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, taskId: string) => {
     e.dataTransfer.setData('taskId', taskId);
@@ -700,6 +690,7 @@ export default function ProjectBoard({
 
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 border-r border-[#2a2a2a] pr-4 mr-2">
+              {/* Commented out for now as features are not yet implemented
               <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground hover:text-foreground">
                 <SearchIcon className="h-4 w-4 mr-2" />
                 <span className="text-xs">Search</span>
@@ -712,6 +703,7 @@ export default function ProjectBoard({
                 <Settings2 className="h-4 w-4 mr-2" />
                 <span className="text-xs">Customize</span>
               </Button>
+              */}
             </div>
             
             <DropdownMenu>

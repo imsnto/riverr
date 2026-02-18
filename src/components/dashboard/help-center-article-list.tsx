@@ -1,4 +1,3 @@
-
 'use client';
 
 import { HelpCenter, HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
@@ -112,7 +111,7 @@ export default function HelpCenterArticleList({
             const kb = 'helpCenterId' in item ? helpCenters.find(hc => hc.id === item.helpCenterId) : null;
 
             return (
-                <TableRow key={item.id} className="h-14 transition-colors group">
+                <TableRow key={item.id} className="h-11 transition-colors group border-b border-white/5 hover:bg-white/[0.02]">
                 <TableCell className="px-2 py-0">
                     <Checkbox checked={selectedItems.includes(item.id)} onCheckedChange={() => onToggleSelectItem(item.id)} />
                 </TableCell>
