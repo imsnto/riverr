@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, DragEvent, useRef, useEffect, useMemo } from 'react';
@@ -233,16 +234,13 @@ export default function ProjectBoard({
     const projectTasks = allTasks.filter((t) => t.project_id === project.id && !t.parentId);
     const otherTasks = allTasks.filter((t) => !(t.project_id === project.id && !t.parentId));
 
-    const sourceColumn = projectTasks.filter((t) => t.status === taskToMove.status);
     const targetColumn = projectTasks.filter((t) => t.status === newStatus);
-
-    const fromIndex = sourceColumn.findIndex((t) => t.id === taskId);
+    const fromIndex = projectTasks.filter(t => t.status === taskToMove.status).findIndex((t) => t.id === taskId);
 
     let insertIndex = dropIndicator.index;
     if (sameColumn && fromIndex !== -1 && fromIndex < insertIndex) {
       insertIndex -= 1;
     }
-    insertIndex = Math.max(0, Math.min(insertIndex, targetColumn.length));
 
     const projectTasksWithoutDragged = projectTasks.filter((t) => t.id !== taskId);
     const newUpdatedTask = { ...taskToMove, status: newStatus };
@@ -271,8 +269,7 @@ export default function ProjectBoard({
         activities: [...(newUpdatedTask.activities || []), newActivity],
       };
       onUpdateTask(taskWithActivity);
-      const finalTasks = newAllTasks.map((t) => (t.id === taskId ? taskWithActivity : t));
-      onUpdateTasks(finalTasks);
+      onUpdateTasks(newAllTasks.map(t => t.id === taskId ? taskWithActivity : t));
     } else {
       onUpdateTasks(newAllTasks);
     }
@@ -631,7 +628,6 @@ export default function ProjectBoard({
 
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-      {/* Header (Stay fixed) */}
       <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-2 border-b">
         <div className="flex items-center gap-4 min-w-0">
           <DropdownMenu>
@@ -696,7 +692,6 @@ export default function ProjectBoard({
         </div>
       </div>
 
-      {/* Mobile Header (Stay fixed) */}
       <div className="md:hidden w-full min-w-0 shrink-0 mb-4 space-y-4 p-4 border-b">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
@@ -732,7 +727,6 @@ export default function ProjectBoard({
         </div>
       </div>
 
-      {/* Content area */}
       <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
         {viewMode === 'board' ? (
           <div className="h-full w-full overflow-x-auto overflow-y-hidden overscroll-x-contain [-webkit-overflow-scrolling:touch]">

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { HelpCenter, HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
@@ -93,14 +94,14 @@ export default function HelpCenterArticleList({
     <div className="w-full overflow-hidden">
         <Table>
         <TableHeader>
-            <TableRow className="h-9 hover:bg-transparent">
+            <TableRow className="h-8 hover:bg-transparent">
             <TableHead className="w-[40px] px-2">
                 <Checkbox checked={isAllSelected} onCheckedChange={onToggleAll} />
             </TableHead>
-            <TableHead className="text-xs uppercase tracking-wider h-9">Title</TableHead>
-            <TableHead className="text-xs uppercase tracking-wider h-9">Library</TableHead>
-            <TableHead className="text-xs uppercase tracking-wider h-9">Status</TableHead>
-            <TableHead className="text-xs uppercase tracking-wider h-9 text-right">Last updated</TableHead>
+            <TableHead className="text-[10px] uppercase tracking-wider h-8 font-bold text-muted-foreground/70">Title</TableHead>
+            <TableHead className="text-[10px] uppercase tracking-wider h-8 font-bold text-muted-foreground/70">Library</TableHead>
+            <TableHead className="text-[10px] uppercase tracking-wider h-8 font-bold text-muted-foreground/70">Status</TableHead>
+            <TableHead className="text-[10px] uppercase tracking-wider h-8 font-bold text-muted-foreground/70 text-right">Last updated</TableHead>
             </TableRow>
         </TableHeader>
         <TableBody>
@@ -110,39 +111,38 @@ export default function HelpCenterArticleList({
             const status = 'status' in item ? item.status : 'N/A';
             const kb = 'helpCenterId' in item ? helpCenters.find(hc => hc.id === item.helpCenterId) : null;
 
-
             return (
-                <TableRow key={item.id} className="h-10 transition-colors group">
+                <TableRow key={item.id} className="h-8 transition-colors group">
                 <TableCell className="px-2 py-0">
                     <Checkbox checked={selectedItems.includes(item.id)} onCheckedChange={() => onToggleSelectItem(item.id)} />
                 </TableCell>
                 <TableCell className="py-0">
                     <button 
-                        className="text-sm font-medium hover:text-primary transition-colors text-left" 
+                        className="text-xs font-medium hover:text-primary transition-colors text-left truncate max-w-[300px]" 
                         onClick={() => onSelectItem(item.id, type)}
                     >
                     {name}
                     </button>
                 </TableCell>
                 <TableCell className="py-0">
-                    {kb ? <Badge variant="secondary" className="text-[10px] font-medium h-5">{kb.name}</Badge> : <span className="text-muted-foreground text-xs">—</span>}
+                    {kb ? <Badge variant="secondary" className="text-[9px] font-medium h-4 px-1">{kb.name}</Badge> : <span className="text-muted-foreground text-[10px]">—</span>}
                 </TableCell>
                 <TableCell className="py-0">
                     {status !== 'N/A' && (
                     status === 'published' ? (
-                        <div className="flex items-center text-xs text-emerald-500 font-medium">
-                        <Circle className="mr-1.5 h-1.5 w-1.5 fill-current" />
+                        <div className="flex items-center text-[10px] text-emerald-500 font-semibold">
+                        <Circle className="mr-1 h-1 w-1 fill-current" />
                         Published
                         </div>
                     ) : (
-                        <div className="flex items-center text-xs text-muted-foreground font-medium">
-                        <Circle className="mr-1.5 h-1.5 w-1.5 fill-current" />
+                        <div className="flex items-center text-[10px] text-muted-foreground font-semibold">
+                        <Circle className="mr-1 h-1 w-1 fill-current" />
                         Draft
                         </div>
                     )
                     )}
                 </TableCell>
-                <TableCell className="py-0 text-right text-xs text-muted-foreground whitespace-nowrap">
+                <TableCell className="py-0 text-right text-[10px] text-muted-foreground whitespace-nowrap">
                     {('updatedAt' in item && item.updatedAt) ? 
                     formatDistanceToNow(new Date(item.updatedAt), { addSuffix: true }) : 
                     '—'

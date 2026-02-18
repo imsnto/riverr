@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -130,7 +131,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         } else if (sidebarView === 'inbox') {
             viewTitle = "Unassigned";
             articlesToShow = articles.filter(a => !a.helpCenterId);
-            collectionsToShow = []; // No collections in this view
+            collectionsToShow = []; 
             breadcrumbs = [];
         }
         
@@ -186,7 +187,6 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
             await db.updateHelpCenter(editingHelpCenter.id, values);
             toast({ title: "Library updated" });
             refreshData();
-            // Optimistically update the editing state
             setEditingHelpCenter(prev => prev ? { ...prev, ...values } : null);
         } catch (e) {
             toast({ variant: "destructive", title: "Failed to save Library" });
@@ -221,7 +221,6 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         }
     
         const parentId = editingCollection ? editingCollection.parentId : selectedCollectionId;
-    
         const helpCenterId = sidebarView === 'knowledge-bases' ? activeHelpCenterId || '' : '';
 
         const data = {
@@ -415,30 +414,23 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         reader.onload = async (e) => {
             try {
                 const data = JSON.parse(e.target?.result as string);
-                
                 if (!data.helpCenter || !data.collections || !data.articles) {
                     throw new Error("Invalid export file format.");
                 }
-                
                 if (!activeHub || !activeSpace || !appUser) {
                     toast({ variant: 'destructive', title: 'Cannot import', description: 'No active workspace context.' });
                     return;
                 }
-
                 toast({ title: "Importing library...", description: "This may take a moment." });
-
                 await importLibraryAction(activeHub.id, activeSpace.id, appUser.id, data);
-
                 toast({ title: "Import Successful!", description: `"${data.helpCenter.name}" has been imported.` });
                 refreshData();
-
             } catch (error) {
                 console.error("Import failed:", error);
                 toast({ variant: 'destructive', title: 'Import Failed', description: 'The file could not be read or is corrupted.' });
             }
         };
         reader.readAsText(file);
-        
         event.target.value = '';
     };
     
@@ -470,7 +462,6 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         try {
             await db.deleteHelpCenter(deletingHelpCenter.id);
             toast({ title: "Library deleted" });
-            
             if (activeHelpCenterId === deletingHelpCenter.id) {
                 const remainingLibraries = helpCenters.filter(hc => hc.id !== deletingHelpCenter.id);
                 setActiveHelpCenterId(remainingLibraries.length > 0 ? remainingLibraries[0].id : null);
@@ -479,13 +470,11 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
             setIsLibraryDeleteDialogOpen(false);
             setEditingHelpCenter(null);
             refreshData();
-            
         } catch (error) {
             toast({ variant: 'destructive', title: 'Failed to delete library' });
             console.error(error);
         }
     };
-
 
     const articleToEdit = articles.find(a => a.id === selectedArticleId);
     if (articleToEdit && appUser) {
@@ -541,13 +530,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
 
     const mainContentComponent = (
         <main className="p-4 md:p-6 flex flex-col h-full overflow-hidden">
-            <input
-                type="file"
-                ref={importInputRef}
-                className="hidden"
-                accept=".json"
-                onChange={handleFileSelected}
-            />
+            <input type="file" ref={importInputRef} className="hidden" accept=".json" onChange={handleFileSelected} />
             {isMobile && (
                  <div className="flex-shrink-0">
                      <Button variant="ghost" onClick={() => setMobileContentVisible(false)} className="-ml-2 mb-2">
@@ -561,55 +544,49 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                     setSelectedCollectionId(id);
                 }} />
             )}
-            <div className="flex flex-col md:flex-row md:flex-wrap justify-between md:items-start mb-4 gap-4">
-                <div className='flex-1'>
-                    <h1 className="text-3xl font-bold leading-tight">
+            <div className="flex flex-col md:flex-row justify-between md:items-start mb-4 gap-4">
+                <div className='flex-1 min-w-0'>
+                    <h1 className="text-3xl font-bold leading-tight truncate">
                         {title}
                     </h1>
 
                     {sidebarView === 'knowledge-bases' && activeHelpCenter && (
-                        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-4 text-sm text-muted-foreground">
-                            {activeHelpCenter.visibility === 'internal' ? (
-                                <div className="flex items-center gap-2">
-                                    <Lock className="h-4 w-4" />
-                                    <span className="font-medium">Internal Library</span>
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-2">
-                                    <Globe className="h-4 w-4" />
-                                    <span className="font-medium">Public Help Center</span>
-                                </div>
-                            )}
+                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
+                            <div className="flex items-center gap-1.5">
+                                {activeHelpCenter.visibility === 'internal' ? (
+                                    <><Lock className="h-3.5 w-3.5" /> <span className="font-medium">Internal</span></>
+                                ) : (
+                                    <><Globe className="h-3.5 w-3.5" /> <span className="font-medium">Public</span></>
+                                )}
+                            </div>
 
-                            <Separator orientation="vertical" className="h-4 hidden md:flex" />
+                            <Separator orientation="vertical" className="h-3 hidden md:block" />
 
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2">
-                                    <BotIcon className="h-4 w-4" />
-                                    <span className="font-medium text-foreground/80">Connected Agents:</span>
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5">
+                                    <BotIcon className="h-3.5 w-3.5" />
+                                    <span className="font-medium">Connected Agents:</span>
                                 </div>
                                 {connectedAgents.length > 0 ? (
-                                    <div className="flex items-center -space-x-2">
+                                    <div className="flex items-center -space-x-1.5">
                                         <TooltipProvider>
                                             {connectedAgents.slice(0, 3).map(agent => (
                                                 <Tooltip key={agent.id}>
                                                     <TooltipTrigger asChild>
-                                                        <Avatar className="h-7 w-7 border-2 border-background ring-1 ring-border/50">
+                                                        <Avatar className="h-6 w-6 border-2 border-background ring-1 ring-border/50">
                                                             <AvatarImage src={agent.styleSettings?.logoUrl} />
                                                             <AvatarFallback className="bg-muted">
-                                                                <BotIcon className="h-3.5 w-3.5"/>
+                                                                <BotIcon className="h-3 w-3"/>
                                                             </AvatarFallback>
                                                         </Avatar>
                                                     </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>{agent.name}</p>
-                                                    </TooltipContent>
+                                                    <TooltipContent><p>{agent.name}</p></TooltipContent>
                                                 </Tooltip>
                                             ))}
                                         </TooltipProvider>
                                         {connectedAgents.length > 3 && (
-                                            <Avatar className="h-7 w-7 border-2 border-background ring-1 ring-border/50 bg-muted">
-                                                <AvatarFallback className="text-[10px]">+{connectedAgents.length - 3}</AvatarFallback>
+                                            <Avatar className="h-6 w-6 border-2 border-background ring-1 ring-border/50 bg-muted">
+                                                <AvatarFallback className="text-[9px]">+{connectedAgents.length - 3}</AvatarFallback>
                                             </Avatar>
                                         )}
                                     </div>
@@ -622,9 +599,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                 </div>
                  <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                     {sidebarView === 'knowledge-bases' && activeHelpCenterId && !selectedCollectionId && (
-                        <Button variant="outline" size="sm" onClick={() => setIsAddArticlesOpen(true)}>
-                            Add Articles
-                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setIsAddArticlesOpen(true)}>Add Articles</Button>
                     )}
                     {sidebarView === 'knowledge-bases' && (
                         <Button variant="outline" size="sm" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
@@ -699,7 +674,6 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
             helpCenters={helpCenters}
             onMove={handleMoveSelected}
         />
-        
         {activeHelpCenter && (
             <AddArticlesToLibraryDialog
                 isOpen={isAddArticlesOpen}
@@ -709,7 +683,6 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                 onSave={handleAddArticlesToLibrary}
             />
         )}
-
         <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -720,21 +693,13 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                        onClick={handleDeleteSelectedItems}
-                        className={cn(buttonVariants({ variant: "destructive" }))}
-                    >
-                        Delete
-                    </AlertDialogAction>
+                    <AlertDialogAction onClick={handleDeleteSelectedItems} className={cn(buttonVariants({ variant: "destructive" }))}>Delete</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-        
         <AlertDialog open={isLibraryDeleteDialogOpen} onOpenChange={(open) => {
                 setIsLibraryDeleteDialogOpen(open)
-                if (!open) {
-                    setDeletingHelpCenter(null);
-                }
+                if (!open) { setDeletingHelpCenter(null); }
             }}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -745,12 +710,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                        onClick={handleDeleteLibrary}
-                        className={cn(buttonVariants({ variant: "destructive" }))}
-                    >
-                        Delete Library
-                    </AlertDialogAction>
+                    <AlertDialogAction onClick={handleDeleteLibrary} className={cn(buttonVariants({ variant: "destructive" }))}>Delete Library</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
@@ -795,18 +755,13 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file || !helpCenter) return;
-
         setIsUploading(true);
         try {
             const imageUrl = await db.uploadHelpCenterCoverImage(file, helpCenter.id);
             setCoverImageUrl(imageUrl);
         } catch (error) {
             console.error("Cover image upload failed:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Upload Failed',
-                description: 'Could not upload the cover image.'
-            });
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload the cover image.' });
         } finally {
             setIsUploading(false);
         }
@@ -817,17 +772,10 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
         startTransition(async () => {
             try {
                 const result = await generateCoverImage(prompt);
-                
-                // Convert data URL to blob
                 const res = await fetch(result.imageUrl);
                 const blob = await res.blob();
-                
-                // Create a file object
                 const file = new File([blob], `generated-cover-${Date.now()}.png`, { type: blob.type });
-
-                // Upload to Firebase Storage
                 const imageUrl = await db.uploadHelpCenterCoverImage(file, helpCenter.id);
-                
                 setCoverImageUrl(imageUrl);
                 toast({ title: 'New cover image generated!' });
             } catch (e) {
@@ -843,13 +791,10 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
                 <Button variant="ghost" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" /> Back to Library</Button>
                 <Button onClick={handleSave} disabled={!hasChanges}>Save Changes</Button>
             </div>
-            
             <ScrollArea className="-mx-6 flex-1">
                 <div className="px-6 space-y-6">
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Library Details</CardTitle>
-                        </CardHeader>
+                        <CardHeader><CardTitle>Library Details</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="hc-name">Library Name</Label>
@@ -870,7 +815,6 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
                             </div>
                         </CardContent>
                     </Card>
-                    
                     {visibility === 'public' && (
                         <Card>
                             <CardHeader>
@@ -882,13 +826,7 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
                                     <Image src={coverImageUrl || '/defaultimage.png'} alt="Cover image preview" fill className="object-cover" />
                                 </div>
                                 <div>
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        className="hidden"
-                                        accept="image/*"
-                                        onChange={handleImageUpload}
-                                    />
+                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
                                     <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
                                         {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                                         Upload Image
@@ -897,12 +835,7 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
                                 <div className="space-y-2">
                                     <Label htmlFor="ai-prompt">Or generate with AI</Label>
                                     <div className="flex gap-2">
-                                        <Input 
-                                            id="ai-prompt"
-                                            placeholder="e.g., abstract blue waves, minimalist landscape"
-                                            value={prompt}
-                                            onChange={(e) => setPrompt(e.target.value)}
-                                        />
+                                        <Input id="ai-prompt" placeholder="e.g., abstract blue waves, minimalist landscape" value={prompt} onChange={(e) => setPrompt(e.target.value)} />
                                         <Button onClick={handleGenerateImage} disabled={isGenerating || !prompt.trim()}>
                                             {isGenerating ? <Loader2 className="animate-spin" /> : <Wand2 />}
                                             <span className="sr-only">Generate</span>
@@ -915,9 +848,7 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
                      <Card>
                         <CardHeader>
                             <CardTitle>Export Library</CardTitle>
-                            <CardDescription>
-                                Download a JSON file containing all collections and articles from this library.
-                            </CardDescription>
+                            <CardDescription>Download a JSON file containing all collections and articles from this library.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <Button variant="outline" onClick={() => onExport(helpCenter.id)}>
@@ -927,9 +858,7 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
                         </CardContent>
                     </Card>
                     <Card className="border-destructive">
-                        <CardHeader>
-                            <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                        </CardHeader>
+                        <CardHeader><CardTitle className="text-destructive">Danger Zone</CardTitle></CardHeader>
                         <CardContent>
                             <div className="flex justify-between items-center">
                                 <div>
