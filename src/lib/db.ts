@@ -1264,7 +1264,7 @@ export const upsertChatContactFromVisitor = async (spaceId: string, visitor: Vis
       lastOrderAt: null,
       lastCallAt: null,
       mergeParentId: null,
-      isMerged: false,
+      isMerged: boolean = false,
     };
 
     return await addContact(newContactData);

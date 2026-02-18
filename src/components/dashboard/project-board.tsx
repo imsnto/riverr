@@ -47,10 +47,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { format, parseISO } from 'date-fns';
+import { Checkbox } from '../ui/checkbox';
 
 const STATUS_COLORS = [
   { name: 'Gray', color: '#6b7280' },
@@ -453,7 +453,7 @@ export default function ProjectBoard({
 
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                       <AlertDialogDescription>
                         This will delete the &quot;{status.name}&quot; column. All tasks in this column will be moved to the
                         first column. This action cannot be undone.
@@ -547,7 +547,7 @@ export default function ProjectBoard({
 
                         <div className="w-full overflow-hidden">
                             {/* Table Header */}
-                            <div className="grid grid-cols-[1fr_100px_100px_100px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-wider">
+                            <div className="grid grid-cols-[1fr_80px_100px_100px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-wider">
                                 <div>Name</div>
                                 <div className="text-center">Assignee</div>
                                 <div className="text-center">Due date</div>
@@ -562,7 +562,7 @@ export default function ProjectBoard({
                                     return (
                                         <div 
                                             key={task.id} 
-                                            className="grid grid-cols-[1fr_100px_100px_100px_40px] gap-4 px-4 py-2 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
+                                            className="grid grid-cols-[1fr_80px_100px_100px_40px] gap-4 px-4 py-2 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
                                             onClick={() => onTaskClick(task)}
                                         >
                                             <div className="flex items-center gap-3 min-w-0">
@@ -615,7 +615,7 @@ export default function ProjectBoard({
                                     );
                                 })}
                                 <button 
-                                    className="w-full text-left px-4 py-2.5 text-xs text-muted-foreground hover:bg-white/[0.03] flex items-center gap-3 transition-colors group"
+                                    className="w-full text-left px-4 py-2 text-xs text-muted-foreground hover:bg-white/[0.03] flex items-center gap-3 transition-colors group"
                                     onClick={() => onNewTaskRequest(status.name)}
                                 >
                                     <Plus className="h-4 w-4 ml-7 group-hover:text-foreground" />
@@ -736,7 +736,7 @@ export default function ProjectBoard({
       {/* Content area */}
       <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
         {viewMode === 'board' ? (
-          <div className="h-full w-full overflow-x-auto overflow-y-hidden overscroll-x-contain">
+          <div className="h-full w-full overflow-x-auto overflow-y-hidden overscroll-x-contain [-webkit-overflow-scrolling:touch]">
             <div className="flex min-w-max items-start gap-4 p-4 md:p-6 md:pt-2 h-full">
               {activeStatuses.map(renderStatusColumn)}
               {closingStatus && renderStatusColumn(closingStatus)}

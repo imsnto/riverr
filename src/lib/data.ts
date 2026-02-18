@@ -456,6 +456,7 @@ export interface Visitor {
   companyId?: string;
   companyUsers?: number;
   companyPlan?: string;
+  companyPlanColor?: string;
   companySpend?: string;
   contactId?: string;
 }
