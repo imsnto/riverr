@@ -658,31 +658,31 @@ export default function ProjectBoard({
   const renderTableView = () => {
     return (
         <div className="w-full overflow-x-auto border rounded-md bg-card">
-            <table className="w-full text-left border-collapse table-fixed">
+            <table className="min-w-max w-full text-left border-collapse table-auto">
                 <thead>
                     <tr className="bg-muted/50 border-b border-white/5">
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground w-32 shrink-0">Key</th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-w-[300px]" onClick={() => requestSort('name')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground w-[100px] shrink-0">Key</th>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-w-[400px]" onClick={() => requestSort('name')}>
                             <div className="flex items-center gap-2">
                                 Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-40" onClick={() => requestSort('assigneeName')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-[200px]" onClick={() => requestSort('assigneeName')}>
                             <div className="flex items-center gap-2">
                                 Assignee {sortConfig.key === 'assigneeName' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-40" onClick={() => requestSort('status')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-[160px]" onClick={() => requestSort('status')}>
                             <div className="flex items-center gap-2">
                                 Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-40" onClick={() => requestSort('due_date')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-[160px]" onClick={() => requestSort('due_date')}>
                             <div className="flex items-center gap-2">
                                 Due date {sortConfig.key === 'due_date' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-32" onClick={() => requestSort('priority')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-[120px]" onClick={() => requestSort('priority')}>
                             <div className="flex items-center gap-2">
                                 Priority {sortConfig.key === 'priority' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
@@ -721,7 +721,7 @@ export default function ProjectBoard({
                                         <SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-full gap-2 px-1">
                                             <SelectValue>
                                                 {assignee ? (
-                                                    <div className="flex items-center gap-1.5">
+                                                    <div className="flex items-center gap-1.5 overflow-hidden">
                                                         <Avatar className="h-5 w-5 border border-white/10 shrink-0">
                                                             <AvatarImage src={assignee.avatarUrl} />
                                                             <AvatarFallback className="text-[8px]">{getInitials(assignee.name)}</AvatarFallback>
@@ -950,9 +950,9 @@ export default function ProjectBoard({
           </div>
         ) : (
           <div className="h-full w-full overflow-hidden flex flex-col">
-            <div className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden overscroll-x-contain">
+            <div className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-auto overscroll-x-contain">
               <div className="p-4 md:p-6 h-full flex flex-col">
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1">
                   {renderTableView()}
                 </div>
               </div>

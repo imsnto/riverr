@@ -75,6 +75,19 @@ function generateWhimsicalName() {
   return `${whimsicalAdjectives[Math.floor(Math.random()*whimsicalAdjectives.length)]} ${whimsicalNouns[Math.floor(Math.random()*whimsicalNouns.length)]}`;
 }
 
+const defaultTaskStatuses: Status[] = [
+    { name: 'Backlog', color: '#6b7280' },
+    { name: 'In Progress', color: '#3b82f6' },
+    { name: 'In Review', color: '#f59e0b' },
+    { name: 'Done', color: '#22c55e' },
+];
+
+const defaultTicketStatuses: Status[] = [
+    { name: 'New', color: '#6b7280' }, { name: 'Open', color: '#3b82f6' }, 
+    { name: 'Waiting on Customer', color: '#f59e0b' }, { name: 'Escalated', color: '#ef4444' }, 
+    { name: 'Closed', color: '#22c55e' },
+];
+
 // --- User Management ---
 export const getUser = async (userId: string): Promise<User | null> => {
   const userDoc = await getDoc(doc(db, "users", userId));
