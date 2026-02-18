@@ -276,7 +276,7 @@ export const getSpacesForUser = async (userId: string): Promise<Space[]> => {
   if (!userId) return [];
   const q = query(
     collection(db, "spaces"),
-    where(`members.${userId}.role`, 'in', ['Admin', 'Member'])
+    where(`members.${userId}.role`, 'in', ['admin', 'member'])
   );
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(
@@ -427,7 +427,7 @@ export const addProject = async (
   project: Omit<Project, "id">
 ): Promise<Project> => {
   const projectKey = project.key || generateRandomProjectKey();
-  const projectWithKey = { ...project, key: projectKey };
+  const projectWithKey = { ...project, key: projectKey, taskCounter: 0 };
   const docRef = await addDoc(collection(db, "projects"), projectWithKey);
   return { ...projectWithKey, id: docRef.id };
 };
@@ -1264,7 +1264,7 @@ export const upsertChatContactFromVisitor = async (spaceId: string, visitor: Vis
       lastOrderAt: null,
       lastCallAt: null,
       mergeParentId: null,
-      isMerged: false,
+      isMerged: boolean,
     };
 
     return await addContact(newContactData);

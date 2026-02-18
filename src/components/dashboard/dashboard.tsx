@@ -810,7 +810,7 @@ export default function Dashboard({ view }: { view: string }) {
       );
       case 'tickets': return <TicketsBoard 
           tickets={tickets} 
-          onUpdateTickets={handleUpdateTasks} // Corrected
+          onUpdateTickets={handleUpdateTickets} 
           conversations={chatConversations}
           activeHub={activeHub!}
           activeSpace={activeSpace}

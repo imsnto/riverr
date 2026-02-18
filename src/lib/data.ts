@@ -12,9 +12,9 @@ export interface User {
 }
 
 export interface SpaceMember {
-  role: 'Admin' | 'Member' | 'Viewer';
+  role: 'admin' | 'member' | 'viewer';
   hubAccess?: {
-    [hubId: string]: 'Hub Admin' | 'Member' | 'Viewer';
+    [hubId: string]: 'admin' | 'member' | 'viewer';
   }
 }
 
@@ -22,7 +22,7 @@ export interface Space {
   id: string;
   name: string;
   logoUrl?: string;
-  members: Record<string, SpaceMember>; // Map of user IDs to their roles/permissions
+  members: Record<string, { role: string }>; // Map of user IDs to their roles
   isSystem?: boolean;
   isOnboarding?: boolean;
 }
@@ -45,7 +45,7 @@ export interface Hub {
   isDefault: boolean;
   memberIds?: string[];
   isPrivate?: boolean;
-  statuses: Status[]; // For Projects
+  statuses?: Status[]; // For Projects
   ticketStatuses?: Status[]; // For Tickets
   dealStatuses?: Status[]; // For Deals
   closingStatusName?: string;
@@ -66,7 +66,7 @@ export interface HubPermission {
 export interface Project {
   id: string;
   name: string;
-  key?: string;
+  key?: string; // e.g., "XY"
   taskCounter?: number;
   space_id: string;
   hubId: string; // Hub scope
@@ -78,26 +78,26 @@ export interface Project {
 
 export interface Task {
   id: string;
-  taskKey?: string;
+  taskKey?: string; // e.g., "XY-1"
   name: string;
-  description: string;
+  description?: string;
   project_id: string | null; // Can be null if it's a job flow task
   hubId: string; // Hub scope
   spaceId: string;
   status: string;
-  createdAt: string; // ISO String
-  createdBy: string; // user ID
-  assigned_to: string; // user ID
-  due_date: string; // ISO string
-  priority: 'Low' | 'Medium' | 'High' | 'Urgent' | null;
-  sprint_points: number | null;
-  tags: string[];
-  time_estimate: number | null; // in hours
-  parentId: string | null; // For subtasks
-  relationships: TaskRelationship[];
-  comments: Comment[];
-  activities: Activity[];
-  attachments: Attachment[];
+  createdAt?: string; // ISO String
+  createdBy?: string; // user ID
+  assigned_to?: string | null; // user ID
+  due_date?: string | null; // ISO string
+  priority?: 'Low' | 'Medium' | 'High' | 'Urgent' | null;
+  sprint_points?: number | null;
+  tags?: string[];
+  time_estimate?: number | null; // in hours
+  parentId?: string | null; // For subtasks
+  relationships?: TaskRelationship[];
+  comments?: Comment[];
+  activities?: Activity[];
+  attachments?: Attachment[];
   // Escalation fields
   linkedTicketId?: string;
   sourceHubId?: string;
@@ -324,7 +324,7 @@ export interface Invite {
   spaceName: string;
   email: string;
   spaceRole: 'member' | 'admin' | 'viewer';
-  hubAccess?: { [hubId: string]: 'viewer' | 'member' | 'hub_admin' };
+  hubAccess?: { [hubId: string]: 'viewer' | 'member' | 'admin' };
   status: 'pending' | 'accepted' | 'expired';
   expiresAt?: any; // Firestore Timestamp
   createdBy: string;
@@ -559,8 +559,8 @@ export const users: Omit<User, 'id'>[] = [
 ];
 
 export const spaces: (Omit<Space, 'id'> & { id: string })[] = [
-  { id: 'space-1', name: "Brad's Personal Space", members: { 'user-1': { role: 'Admin' } } },
-  { id: 'space-2', name: 'Client Work', members: { 'user-1': { role: 'Admin' }, 'user-2': { role: 'Member' }, 'user-3': { role: 'Member' } } },
+  { id: 'space-1', name: "Brad's Personal Space", members: { 'user-1': { role: 'admin' } } },
+  { id: 'space-2', name: 'Client Work', members: { 'user-1': { role: 'admin' }, 'user-2': { role: 'member' }, 'user-3': { role: 'member' } } },
 ];
 
 export const hubs: (Omit<Hub, 'id'> & { id: string })[] = [
