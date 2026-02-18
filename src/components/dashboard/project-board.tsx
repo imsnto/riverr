@@ -175,7 +175,6 @@ export default function ProjectBoard({
   const { appUser } = useAuth();
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
 
-  // Sorting state for Table view
   const [sortConfig, setSortConfig] = useState<{ key: keyof Task | 'assigneeName'; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
 
   useEffect(() => {
@@ -554,7 +553,6 @@ export default function ProjectBoard({
                 const statusTasks = tasks.filter(t => t.status === status.name);
                 return (
                     <div key={status.name} className="space-y-2">
-                        {/* Group Header */}
                         <div className="flex items-center gap-3 px-2 py-1.5 bg-muted/20 rounded-md shrink-0">
                             <ChevronDown className="h-4 w-4 text-muted-foreground" />
                             <Badge 
@@ -578,7 +576,6 @@ export default function ProjectBoard({
                         </div>
 
                         <div className="w-full overflow-hidden">
-                            {/* Table Header */}
                             <div className="grid grid-cols-[90px_1fr_80px_100px_80px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-wider">
                                 <div>Key</div>
                                 <div>Name</div>
@@ -588,7 +585,6 @@ export default function ProjectBoard({
                                 <div />
                             </div>
 
-                            {/* Task Rows */}
                             <div className="divide-y divide-white/5">
                                 {statusTasks.map(task => {
                                     const assignee = allUsers.find(u => u.id === task.assigned_to);
@@ -658,26 +654,26 @@ export default function ProjectBoard({
   const renderTableView = () => {
     return (
         <div className="w-full overflow-x-auto border rounded-md bg-card">
-            <table className="min-w-max w-full text-left border-collapse table-auto">
+            <table className="min-w-max w-full text-left border-collapse table-fixed">
                 <thead>
                     <tr className="bg-muted/50 border-b border-white/5">
                         <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground w-[100px] shrink-0">Key</th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-w-[400px]" onClick={() => requestSort('name')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-w-[250px]" onClick={() => requestSort('name')}>
                             <div className="flex items-center gap-2">
                                 Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-[200px]" onClick={() => requestSort('assigneeName')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-[180px]" onClick={() => requestSort('assigneeName')}>
                             <div className="flex items-center gap-2">
                                 Assignee {sortConfig.key === 'assigneeName' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-[160px]" onClick={() => requestSort('status')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-[150px]" onClick={() => requestSort('status')}>
                             <div className="flex items-center gap-2">
                                 Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-[160px]" onClick={() => requestSort('due_date')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-[150px]" onClick={() => requestSort('due_date')}>
                             <div className="flex items-center gap-2">
                                 Due date {sortConfig.key === 'due_date' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
@@ -704,7 +700,7 @@ export default function ProjectBoard({
                                     <div className="flex items-center gap-2 min-w-0">
                                         <Input 
                                             defaultValue={task.name} 
-                                            className={cn("h-7 text-sm font-medium border-transparent bg-transparent hover:bg-white/5 focus:bg-background focus:border-input transition-all", isDone && "line-through text-muted-foreground")}
+                                            className={cn("h-7 text-sm font-medium border-transparent bg-transparent hover:bg-white/5 focus:bg-background focus:border-input transition-all w-full", isDone && "line-through text-muted-foreground")}
                                             onBlur={(e) => {
                                                 if (e.target.value !== task.name) {
                                                     onUpdateTask({ ...task, name: e.target.value });
@@ -820,9 +816,7 @@ export default function ProjectBoard({
 
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
-      {/* Two-Row Header */}
       <div className="flex flex-col border-b border-[#2a2a2a] shrink-0">
-        {/* Row 1: Project Name & Actions */}
         <div className="flex items-center justify-between px-6 py-2">
           <div className="flex items-center gap-2">
             <DropdownMenu>
@@ -846,7 +840,6 @@ export default function ProjectBoard({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Member Stack */}
             <div className="flex -space-x-2 mr-2">
                 {projectMembers.slice(0, 5).map(member => (
                     <Avatar key={member.id} className="h-7 w-7 border-2 border-background ring-1 ring-white/5">
@@ -868,7 +861,6 @@ export default function ProjectBoard({
           </div>
         </div>
 
-        {/* Row 2: Tabs & View Controls */}
         <div className="flex items-center justify-between px-6">
           <div className="flex items-center gap-6">
             <button
@@ -924,7 +916,6 @@ export default function ProjectBoard({
         </div>
       </div>
 
-      {/* Main Content Area */}
       <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
         {viewMode === 'board' ? (
           <div className="h-full w-full overflow-x-auto overflow-y-hidden overscroll-x-contain [-webkit-overflow-scrolling:touch]">
