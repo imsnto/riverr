@@ -544,7 +544,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                     setSelectedCollectionId(id);
                 }} />
             )}
-            <div className="flex flex-col md:flex-row justify-between md:items-start mb-4 gap-4">
+            <div className="flex flex-col md:flex-row justify-between md:items-start mb-4 gap-4 shrink-0">
                 <div className='flex-1 min-w-0'>
                     <h1 className="text-3xl font-bold leading-tight truncate">
                         {title}
@@ -576,7 +576,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                                                         <Avatar className="h-6 w-6 border-2 border-background ring-1 ring-border/50">
                                                             <AvatarImage src={agent.styleSettings?.logoUrl} />
                                                             <AvatarFallback className="bg-muted">
-                                                                <BotIcon className="h-3 w-3"/>
+                                                                <BotIcon className="h-3.5 w-3.5"/>
                                                             </AvatarFallback>
                                                         </Avatar>
                                                     </TooltipTrigger>
@@ -611,14 +611,14 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                     </Button>
                 </div>
             </div>
-             <div className="flex justify-between items-center mb-4 gap-2">
+             <div className="flex justify-between items-center mb-4 gap-2 shrink-0">
                 <div className="relative flex-1">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input placeholder="Search..." className="pl-9 h-9" />
                 </div>
              </div>
              {selectedItems.length > 0 && (
-                 <div className="flex items-center gap-2 mb-4 p-2 border rounded-md bg-muted/50">
+                 <div className="flex items-center gap-2 mb-4 p-2 border rounded-md bg-muted/50 shrink-0">
                     <span className="text-sm font-medium">{selectedItems.length} item(s) selected</span>
                     <Button variant="secondary" size="sm" onClick={() => setIsMoveToFolderOpen(true)}>
                         <Move className="mr-2 h-4 w-4" /> Move...
@@ -727,7 +727,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-[288px_1fr] md:h-full">
+        <div className="grid grid-cols-1 md:grid-cols-[288px_1fr] md:h-full overflow-hidden">
             {sidebarComponent}
             {mainContentComponent}
             {dialogs}

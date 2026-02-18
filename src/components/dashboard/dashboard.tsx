@@ -356,16 +356,15 @@ export default function Dashboard({ view }: { view: string }) {
   };
 
   const handleUpdateTask = (task: Task, tempId?: string) => {
-    let newTasks = [];
     setTasks(prevTasks => {
         const taskIndex = prevTasks.findIndex(t => t.id === (tempId || task.id));
         if (taskIndex !== -1) {
-            newTasks = [...prevTasks];
+            const newTasks = [...prevTasks];
             newTasks[taskIndex] = task;
+            return newTasks;
         } else {
-            newTasks = [...prevTasks, task];
+            return [...prevTasks, task];
         }
-        return newTasks;
     });
 
     if (selectedTask && selectedTask.id === (tempId || task.id)) {
@@ -712,11 +711,6 @@ export default function Dashboard({ view }: { view: string }) {
     await db.deleteBot(botId);
     setBots(prev => prev.filter(b => b.id !== botId));
     toast({ title: "Bot Deleted" });
-  };
-  
-  const handleSaveArticle = async (article: HelpCenterArticle | Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle | void> => {
-    // This function will be handled entirely within the HelpCenterLayout now
-    fetchData(); 
   };
   
   const handleLogTime = async (timeData: Omit<TimeEntry, 'id'>) => {

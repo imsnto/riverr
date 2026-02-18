@@ -38,23 +38,13 @@ import {
   Message,
   users,
   spaces,
-  projects,
-  tasks,
-  timeEntries,
-  slackMeetingLogs,
-  channels,
-  messages,
   Invite,
   SpaceMember,
   JobFlowTemplate,
   Job,
   JobFlowTask,
-  jobs,
-  jobFlowTasks,
-  JobFlowTaskTemplate,
   PhaseTemplate,
   TaskTemplate,
-  JobFlowPhase,
   Document,
   Hub,
   Status,
@@ -73,34 +63,20 @@ import {
   EscalationIntakeRule,
   BrainJob,
 } from "./data";
-import { FirestorePermissionError } from "./errors";
-import { errorEmitter } from "./error-emitter";
 import seedData from './riverr-help-data.json';
-
-
-const whimsicalAdjectives = [
-  "Clever", "Silly", "Witty", "Happy", "Brave", "Curious", "Dapper", "Eager", "Fancy",
-  "Gentle", "Jolly", "Kindly", "Lucky", "Merry", "Nifty", "Plucky", "Quirky", "Sunny",
-  "Thrifty", "Zippy", "Agile", "Blissful", "Calm", "Dandy", "Elated", "Fearless"
-];
-
-const whimsicalNouns = [
-  "Alpaca", "Badger", "Capybara", "Dingo", "Echidna", "Fossa", "Gecko", "Hedgehog",
-  "Impala", "Jerboa", "Koala", "Loris", "Mongoose", "Narwhal", "Okapi", "Pangolin",
-  "Quokka", "Serval", "Tarsier", "Urial", "Wallaby", "Xerus", "Zebra", "Aardvark"
-];
-
-const generateWhimsicalName = () => {
-  const adj = whimsicalAdjectives[Math.floor(Math.random() * whimsicalAdjectives.length)];
-  const noun = whimsicalNouns[Math.floor(Math.random() * whimsicalNouns.length)];
-  return `${adj} ${noun}`;
-};
 
 const generateRandomProjectKey = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   return chars.charAt(Math.floor(Math.random() * chars.length)) + 
          chars.charAt(Math.floor(Math.random() * chars.length));
 };
+
+const whimsicalAdjectives = ["Clever", "Silly", "Witty", "Happy", "Brave", "Curious", "Dapper", "Eager", "Fancy", "Gentle", "Jolly", "Kindly", "Lucky", "Merry", "Nifty", "Plucky", "Quirky", "Sunny", "Thrifty", "Zippy", "Agile", "Blissful", "Calm", "Dandy", "Elated", "Fearless"];
+const whimsicalNouns = ["Alpaca", "Badger", "Capybara", "Dingo", "Echidna", "Fossa", "Gecko", "Hedgehog", "Impala", "Jerboa", "Koala", "Loris", "Mongoose", "Narwhal", "Okapi", "Pangolin", "Quokka", "Serval", "Tarsier", "Urial", "Wallaby", "Xerus", "Zebra", "Aardvark"];
+
+function generateWhimsicalName() {
+  return `${whimsicalAdjectives[Math.floor(Math.random()*whimsicalAdjectives.length)]} ${whimsicalNouns[Math.floor(Math.random()*whimsicalNouns.length)]}`;
+}
 
 // --- Seeding ---
 export const seedDatabase = async () => {
@@ -474,6 +450,12 @@ export const addTimeEntry = async (timeData: Omit<TimeEntry, "id">): Promise<Tim
   return { ...timeData, id: docRef.id };
 };
 
+export const getSlackMeetingLogsInSpace = async (spaceId: string): Promise<SlackMeetingLog[]> => {
+    const q = query(collection(db, "slack_meeting_logs"), where("space_id", "==", spaceId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SlackMeetingLog));
+};
+
 // --- Document Management ---
 export const getDocumentsInHub = async (hubId: string): Promise<Document[]> => {
   const q = query(collection(db, "documents"), where("hubId", "==", hubId));
@@ -578,12 +560,6 @@ export const deleteHelpCenterArticle = async (articleId: string): Promise<void> 
     await deleteDoc(doc(db, "help_center_articles", articleId));
 };
 
-export const getPendingInvitesForSpace = async (spaceId: string): Promise<Invite[]> => {
-  const q = query(collection(db, "invites"), where("spaceId", "==", spaceId), where("status", "==", "pending"));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invite));
-};
-
 // --- Inbox / Chat Management ---
 export const getConversationsForSpace = async (spaceId: string): Promise<Conversation[]> => {
   const hubsInSpace = await getHubsForSpace(spaceId);
@@ -608,6 +584,16 @@ export const addChatMessage = async (message: Omit<ChatMessage, "id">): Promise<
     return { ...message, id: docRef.id };
 };
 
+export const updateConversation = async (conversationId: string, data: Partial<Conversation>): Promise<void> => {
+  await updateDoc(doc(db, "conversations", conversationId), data);
+};
+
+export const getConversationsForHub = async (hubId: string): Promise<Conversation[]> => {
+  const q = query(collection(db, 'conversations'), where('hubId', '==', hubId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
+};
+
 // --- Escalation & Automation Management ---
 export const getEscalationIntakeRules = async (hubId: string): Promise<EscalationIntakeRule[]> => {
   const rulesRef = collection(db, 'hubs', hubId, 'escalation_intake');
@@ -623,6 +609,28 @@ export const saveEscalationIntakeRule = async (hubId: string, rule: Omit<Escalat
     const docRef = await addDoc(collection(db, 'hubs', hubId, 'escalation_intake'), rule);
     return { ...rule, id: docRef.id, hubId };
   }
+};
+
+export const deleteEscalationIntakeRule = async (hubId: string, ruleId: string): Promise<void> => {
+  await deleteDoc(doc(db, 'hubs', hubId, 'escalation_intake', ruleId));
+};
+
+export const getDealAutomationRules = async (hubId: string): Promise<DealAutomationRule[]> => {
+  const q = query(collection(db, "deal_automation_rules"), where("hubId", "==", hubId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DealAutomationRule));
+};
+
+export const saveDealAutomationRule = async (rule: Omit<DealAutomationRule, 'id'>, ruleId?: string): Promise<void> => {
+  if (ruleId) {
+    await updateDoc(doc(db, "deal_automation_rules", ruleId), rule);
+  } else {
+    await addDoc(collection(db, "deal_automation_rules"), rule);
+  }
+};
+
+export const deleteDealAutomationRule = async (ruleId: string): Promise<void> => {
+  await deleteDoc(doc(db, "deal_automation_rules", ruleId));
 };
 
 export const getBots = async (hubId: string): Promise<Bot[]> => {
@@ -644,6 +652,71 @@ export const addBot = async (bot: Omit<Bot, "id">): Promise<Bot> => {
   return { ...bot, id: docRef.id };
 };
 
+// --- Visitor Management ---
+export const getOrCreateVisitor = async (visitorId: string, data?: Partial<Visitor>): Promise<Visitor> => {
+  const visitorRef = doc(db, "visitors", visitorId);
+  const visitorSnap = await getDoc(visitorRef);
+  if (visitorSnap.exists()) {
+    return { id: visitorSnap.id, ...visitorSnap.data() } as Visitor;
+  }
+  const newVisitor = { 
+    id: visitorId, 
+    name: generateWhimsicalName(), 
+    ...data, 
+    lastSeen: new Date().toISOString() 
+  };
+  await setDoc(visitorRef, newVisitor);
+  return newVisitor as Visitor;
+};
+
+export const updateVisitor = async (visitorId: string, data: Partial<Visitor>): Promise<void> => {
+  await updateDoc(doc(db, "visitors", visitorId), data);
+};
+
+// --- Job Flow Management ---
+export const getJobFlowTemplates = async (hubId: string): Promise<JobFlowTemplate[]> => {
+  const q = query(collection(db, "job_flow_templates"), where("hubId", "==", hubId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JobFlowTemplate));
+};
+
+export const getPhaseTemplates = async (hubId: string): Promise<PhaseTemplate[]> => {
+  const q = query(collection(db, "phase_templates"), where("hubId", "==", hubId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PhaseTemplate));
+};
+
+export const getTaskTemplates = async (hubId: string): Promise<TaskTemplate[]> => {
+  const q = query(collection(db, "task_templates"), where("hubId", "==", hubId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TaskTemplate));
+};
+
+export const getAllJobs = async (hubId: string): Promise<Job[]> => {
+  const q = query(collection(db, "jobs"), where("hubId", "==", hubId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
+};
+
+export const getAllJobFlowTasks = async (hubId: string): Promise<JobFlowTask[]> => {
+  const q = query(collection(db, "job_flow_tasks"), where("hubId", "==", hubId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JobFlowTask));
+};
+
+export const launchJob = async (name: string, template: JobFlowTemplate, roleMapping: Record<string, string>, creatorId: string, spaceId: string) => {
+    // Implementation for launching a job
+};
+
+export const updateJobPhase = async (job: Job, template: JobFlowTemplate, tasks: Task[], flowTasks: JobFlowTask[]) => {
+    // Implementation for updating job phase
+};
+
+export const reviewJobPhase = async (jobId: string, phaseIndex: number, userId: string) => {
+    // Implementation for reviewing job phase
+};
+
+// --- Business Brain Management ---
 export const startBrainJob = async (type: BrainJob['type'], params: Record<string, any>): Promise<string> => {
     const jobData = { type, params, status: 'pending', createdAt: new Date().toISOString() };
     const docRef = await addDoc(collection(db, 'brain_jobs'), jobData);

@@ -519,7 +519,7 @@ export default function ProjectBoard({
                 return (
                     <div key={status.name} className="space-y-2">
                         {/* Group Header */}
-                        <div className="flex items-center gap-3 px-2 py-1 bg-muted/20 rounded-md">
+                        <div className="flex items-center gap-3 px-2 py-1 bg-muted/20 rounded-md shrink-0">
                             <ChevronDown className="h-4 w-4 text-muted-foreground" />
                             <Badge 
                                 style={{ backgroundColor: status.color, color: 'white' }}

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { HelpCenter, HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
