@@ -1,4 +1,3 @@
-
 'use client'
 // src/lib/db.ts
 
@@ -705,15 +704,35 @@ export const getAllJobFlowTasks = async (hubId: string): Promise<JobFlowTask[]> 
 };
 
 export const launchJob = async (name: string, template: JobFlowTemplate, roleMapping: Record<string, string>, creatorId: string, spaceId: string) => {
-    // Implementation for launching a job
+    const jobRef = await addDoc(collection(db, "jobs"), {
+        name,
+        workflowTemplateId: template.id,
+        space_id: spaceId,
+        hubId: template.hubId,
+        currentPhaseIndex: 0,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        createdBy: creatorId,
+        roleUserMapping: roleMapping,
+    });
+    return jobRef.id;
 };
 
 export const updateJobPhase = async (job: Job, template: JobFlowTemplate, tasks: Task[], flowTasks: JobFlowTask[]) => {
-    // Implementation for updating job phase
+    const nextPhaseIndex = job.currentPhaseIndex + 1;
+    if (nextPhaseIndex >= template.phases.length) {
+        await updateDoc(doc(db, "jobs", job.id), { status: 'completed' });
+    } else {
+        await updateDoc(doc(db, "jobs", job.id), { currentPhaseIndex: nextPhaseIndex });
+    }
 };
 
 export const reviewJobPhase = async (jobId: string, phaseIndex: number, userId: string) => {
-    // Implementation for reviewing job phase
+    const q = query(collection(db, "job_flow_tasks"), where("jobId", "==", jobId), where("phaseIndex", "==", phaseIndex));
+    const snapshot = await getDocs(q);
+    const batch = writeBatch(db);
+    snapshot.docs.forEach(d => batch.update(d.ref, { reviewedBy: userId }));
+    await batch.commit();
 };
 
 // --- Business Brain Management ---

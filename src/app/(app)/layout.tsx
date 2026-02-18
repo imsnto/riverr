@@ -85,8 +85,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               activeHub={activeHub}
               onHubChange={handleHubChange}
             />
+            {/* Added flex-1 min-w-0 to allow horizontal scrolling in children */}
             <main className={cn(
-              "flex flex-col flex-1 min-h-0",
+              "flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden",
               isMobile && activeHub && "pb-20"
             )}>
               {children}
