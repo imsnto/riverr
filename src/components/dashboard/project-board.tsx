@@ -48,7 +48,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { format, parseISO } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
-import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 
 const getInitials = (name: string) => {
   if (!name) return '';
@@ -515,7 +514,7 @@ export default function ProjectBoard({
         <Table className="min-w-[1000px]">
           {/* Sticky header inside the scrollable list container */}
           <TableHeader className="sticky top-0 z-10 bg-card">
-            <TableRow>
+            <TableRow className="h-12">
               <TableHead className="w-12">
                 <Checkbox />
               </TableHead>
@@ -537,7 +536,7 @@ export default function ProjectBoard({
               return (
                 <TableRow
                   key={task.id}
-                  className="cursor-pointer hover:bg-muted/40"
+                  className="cursor-pointer hover:bg-muted/40 h-12"
                   onClick={() => onTaskClick(task)}
                 >
                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -616,113 +615,112 @@ export default function ProjectBoard({
   return (
     <>
       <div className="flex h-full min-w-0 flex-col overflow-hidden">
-        <div className="w-full min-w-0 shrink-0 overflow-hidden">
-          {/* Desktop Header */}
-          <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-2 border-b">
-            <div className="flex items-center gap-4 min-w-0">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="text-2xl font-bold p-2 -ml-2 min-w-0">
-                    <span className="truncate">{project.name}</span>
-                    <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => onEditProject(project)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    <span>Edit Project</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDeleteAlertOpen(true)} className="text-destructive">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    <span>Delete Project</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <div className="flex items-center gap-1 bg-muted rounded-md p-1">
-                <Button
-                  variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="h-8 gap-2"
-                  onClick={() => setViewMode('list')}
-                >
-                  <LayoutList className="h-4 w-4" />
-                  List
+        {/* Desktop Header */}
+        <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-2 border-b">
+          <div className="flex items-center gap-4 min-w-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="text-2xl font-bold p-2 -ml-2 min-w-0">
+                  <span className="truncate">{project.name}</span>
+                  <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
                 </Button>
-                <Button
-                  variant={viewMode === 'board' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="h-8 gap-2"
-                  onClick={() => setViewMode('board')}
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                  Board
-                </Button>
-              </div>
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => onEditProject(project)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  <span>Edit Project</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDeleteAlertOpen(true)} className="text-destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  <span>Delete Project</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-            <div className="flex items-center gap-4">
-              <div className="flex -space-x-2">
-                {projectMembers.slice(0, 5).map((member) => (
-                  <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
-                    <AvatarImage src={member.avatarUrl} alt={member.name} />
-                    <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                  </Avatar>
-                ))}
-                {projectMembers.length > 5 && (
-                  <Avatar className="h-8 w-8 border-2 border-background">
-                    <AvatarFallback>+{projectMembers.length - 5}</AvatarFallback>
-                  </Avatar>
-                )}
-              </div>
-              <Button size="sm" onClick={() => onNewTaskRequest()}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Task
+            <div className="flex items-center gap-1 bg-muted rounded-md p-1">
+              <Button
+                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-8 gap-2"
+                onClick={() => setViewMode('list')}
+              >
+                <LayoutList className="h-4 w-4" />
+                List
+              </Button>
+              <Button
+                variant={viewMode === 'board' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-8 gap-2"
+                onClick={() => setViewMode('board')}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                Board
               </Button>
             </div>
           </div>
 
-          {/* Mobile Header */}
-          <div className="md:hidden w-full min-w-0 shrink-0 mb-4 space-y-4 p-4 border-b">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <Button variant="ghost" size="icon" className="-ml-2" onClick={onBack}>
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <h1 className="text-lg font-semibold truncate">{project.name}</h1>
-              </div>
+          <div className="flex items-center gap-4">
+            <div className="flex -space-x-2">
+              {projectMembers.slice(0, 5).map((member) => (
+                <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
+                  <AvatarImage src={member.avatarUrl} alt={member.name} />
+                  <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                </Avatar>
+              ))}
+              {projectMembers.length > 5 && (
+                <Avatar className="h-8 w-8 border-2 border-background">
+                  <AvatarFallback>+{projectMembers.length - 5}</AvatarFallback>
+                </Avatar>
+              )}
+            </div>
+            <Button size="sm" onClick={() => onNewTaskRequest()}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Task
+            </Button>
+          </div>
+        </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="flex items-center gap-1 bg-muted rounded-md p-1">
-                  <Button
-                    variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setViewMode('list')}
-                  >
-                    <LayoutList className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === 'board' ? 'secondary' : 'ghost'}
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setViewMode('board')}
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </Button>
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => onNewTaskRequest()}>
-                  <Plus className="h-5 w-5" />
+        {/* Mobile Header */}
+        <div className="md:hidden w-full min-w-0 shrink-0 mb-4 space-y-4 p-4 border-b">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <Button variant="ghost" size="icon" className="-ml-2" onClick={onBack}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <h1 className="text-lg font-semibold truncate">{project.name}</h1>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1 bg-muted rounded-md p-1">
+                <Button
+                  variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setViewMode('list')}
+                >
+                  <LayoutList className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'board' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setViewMode('board')}
+                >
+                  <LayoutGrid className="h-4 w-4" />
                 </Button>
               </div>
+              <Button variant="ghost" size="icon" onClick={() => onNewTaskRequest()}>
+                <Plus className="h-5 w-5" />
+              </Button>
             </div>
           </div>
         </div>
 
-        {/* Content region: ONLY this scrolls */}
+        {/* Content area: Handle scrolling here */}
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
-          <ScrollArea className="h-full w-full">
-            {viewMode === 'board' ? (
+          {viewMode === 'board' ? (
+            /* Board: Standard native horizontal scroll */
+            <div className="h-full w-full overflow-x-auto overflow-y-hidden">
               <div className="flex w-max items-start gap-4 p-4 md:p-6 md:pt-2 h-full">
                 {activeStatuses.map(renderStatusColumn)}
                 {closingStatus && renderStatusColumn(closingStatus)}
@@ -732,13 +730,19 @@ export default function ProjectBoard({
                   </Button>
                 </div>
               </div>
-            ) : (
-              <div className="min-w-[1000px] p-4 md:p-6 h-full">
-                <div className="h-full rounded-lg border bg-card">{renderListView()}</div>
+            </div>
+          ) : (
+            /* List: Horizontal scroll for columns + Vertical for rows */
+            <div className="h-full w-full overflow-hidden">
+              <div className="h-full w-full overflow-x-auto">
+                <div className="min-w-[1000px] p-4 md:p-6 h-full">
+                  <div className="h-full max-h-full overflow-y-auto rounded-lg border bg-card">
+                    {renderListView()}
+                  </div>
+                </div>
               </div>
-            )}
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+            </div>
+          )}
         </div>
       </div>
 

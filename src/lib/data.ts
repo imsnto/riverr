@@ -11,10 +11,12 @@ export interface User {
   onboardingIntent?: string;
 }
 
+export type HubRole = 'admin' | 'member' | 'viewer';
+
 export interface SpaceMember {
   role: 'admin' | 'member' | 'viewer';
   hubAccess?: {
-    [hubId: string]: 'admin' | 'member' | 'viewer';
+    [hubId: string]: HubRole;
   }
 }
 
@@ -53,26 +55,16 @@ export interface Hub {
   dealClosingStatusName?: string;
 }
 
-
-export interface HubPermission {
-  id: string; // Composite key like `${userId}-${hubId}`
-  userId: string;
-  hubId: string;
-  role: 'viewer' | 'editor' | 'admin';
-  allowedComponents?: string[]; // Optional override
-}
-
-
 export interface Project {
   id: string;
   name: string;
   key?: string; // e.g., "XY"
   taskCounter?: number;
-  space_id: string;
+  spaceId: string;
   hubId: string; // Hub scope
   members: string[]; // array of user IDs
   status: 'Active' | 'On Hold' | 'Archived';
-  created_by: string; // user ID
+  createdBy: string; // user ID
   defaultView?: 'board' | 'list';
 }
 
@@ -324,7 +316,7 @@ export interface Invite {
   spaceName: string;
   email: string;
   spaceRole: 'member' | 'admin' | 'viewer';
-  hubAccess?: { [hubId: string]: 'viewer' | 'member' | 'admin' };
+  hubAccess?: { [hubId: string]: HubRole };
   status: 'pending' | 'accepted' | 'expired';
   expiresAt?: any; // Firestore Timestamp
   createdBy: string;

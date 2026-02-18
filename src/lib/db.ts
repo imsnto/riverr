@@ -415,7 +415,7 @@ export const getProjectsInHub = async (
 export const getProjectsInSpace = async (
   spaceId: string
 ): Promise<Project[]> => {
-  const q = query(collection(db, "projects"), where("space_id", "==", spaceId));
+  const q = query(collection(db, "projects"), where("spaceId", "==", spaceId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(
     (doc) => ({ id: doc.id, ...doc.data() } as Project)

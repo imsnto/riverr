@@ -86,9 +86,12 @@ export default function ProjectFormDialog({ isOpen, onOpenChange, onSave, projec
     if (!appUser) return;
     
     const projectData = {
-        ...values,
-        space_id: spaceId,
-        created_by: appUser.id,
+        name: values.name,
+        members: values.members,
+        status: values.status,
+        defaultView: values.defaultView,
+        spaceId: spaceId,
+        createdBy: appUser.id,
     };
     
     onSave(projectData, project?.id);
@@ -105,7 +108,7 @@ export default function ProjectFormDialog({ isOpen, onOpenChange, onSave, projec
           </SheetDescription>
         </SheetHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
             <FormField
               control={form.control}
               name="name"
@@ -225,7 +228,7 @@ function MemberSelect({ allUsers, selectedUsers, onChange, creatorId }: { allUse
             <Command>
               <CommandInput placeholder="Search users..." />
               <CommandList>
-                <CommandEmpty>No spaces found.</CommandEmpty>
+                <CommandEmpty>No users found.</CommandEmpty>
                 <CommandGroup>
                   {allUsers.map((user) => (
                     <CommandItem
