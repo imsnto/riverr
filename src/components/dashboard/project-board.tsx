@@ -612,8 +612,8 @@ export default function ProjectBoard({
                         </div>
 
                         <div className="w-full overflow-hidden">
-                            <div className="grid grid-cols-[90px_1fr_80px_100px_80px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-wider">
-                                <div>Key</div>
+                            <div className="grid grid-cols-[120px_1fr_100px_120px_80px_40px] gap-2 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-normal">
+                                <div className="pl-1">Key</div>
                                 <div>Name</div>
                                 <div className="text-center">User</div>
                                 <div className="text-center">Due</div>
@@ -627,7 +627,7 @@ export default function ProjectBoard({
                                     return (
                                         <div 
                                             key={task.id} 
-                                            className="grid grid-cols-[90px_1fr_80px_100px_80px_40px] gap-4 px-4 py-3 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
+                                            className="grid grid-cols-[120px_1fr_100px_120px_80px_40px] gap-2 px-4 py-3 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
                                             onClick={() => onTaskClick(task)}
                                         >
                                             <div className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded shrink-0 w-fit whitespace-nowrap">
