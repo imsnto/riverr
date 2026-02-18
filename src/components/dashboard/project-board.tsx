@@ -18,9 +18,6 @@ import {
   Sparkles,
   Zap,
   Share2,
-  Search as SearchIcon,
-  EyeOff,
-  Settings2,
   Bot,
   LayoutList,
   LayoutGrid,
@@ -184,6 +181,10 @@ export default function ProjectBoard({
 
   const [dropIndicator, setDropIndicator] = useState<{ status: string; index: number } | null>(null);
   const taskCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const projectMembers = useMemo(() => {
+    return allUsers.filter(u => project.members.includes(u.id));
+  }, [allUsers, project.members]);
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, taskId: string) => {
     e.dataTransfer.setData('taskId', taskId);
@@ -540,12 +541,12 @@ export default function ProjectBoard({
 
                         <div className="w-full overflow-hidden">
                             {/* Table Header */}
-                            <div className="grid grid-cols-[100px_minmax(200px,1fr)_100px_120px_100px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-wider">
+                            <div className="grid grid-cols-[90px_1fr_80px_100px_80px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-wider">
                                 <div>Key</div>
                                 <div>Name</div>
-                                <div className="text-center">Assignee</div>
-                                <div className="text-center">Due date</div>
-                                <div className="text-center">Priority</div>
+                                <div className="text-center">User</div>
+                                <div className="text-center">Due</div>
+                                <div className="text-center">Pri</div>
                                 <div />
                             </div>
 
@@ -556,7 +557,7 @@ export default function ProjectBoard({
                                     return (
                                         <div 
                                             key={task.id} 
-                                            className="grid grid-cols-[100px_minmax(200px,1fr)_100px_120px_100px_40px] gap-4 px-4 py-3 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
+                                            className="grid grid-cols-[90px_1fr_80px_100px_80px_40px] gap-4 px-4 py-3 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
                                             onClick={() => onTaskClick(task)}
                                         >
                                             <div className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded shrink-0 w-fit">
@@ -567,7 +568,7 @@ export default function ProjectBoard({
                                             </div>
                                             <div className="flex justify-center">
                                                 {assignee ? (
-                                                    <Avatar className="h-6 w-6">
+                                                    <Avatar className="h-6 w-6 border border-white/10">
                                                         <AvatarImage src={assignee.avatarUrl} />
                                                         <AvatarFallback className="text-[10px] bg-indigo-600 text-white border-none">
                                                             {getInitials(assignee.name)}
@@ -618,9 +619,9 @@ export default function ProjectBoard({
 
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
-      {/* Redesigned Two-Row Header */}
+      {/* Two-Row Header */}
       <div className="flex flex-col border-b border-[#2a2a2a] shrink-0">
-        {/* Row 1: Project Name & Global Actions */}
+        {/* Row 1: Project Name & Actions */}
         <div className="flex items-center justify-between px-6 py-2">
           <div className="flex items-center gap-2">
             <DropdownMenu>
@@ -643,7 +644,9 @@ export default function ProjectBoard({
             </DropdownMenu>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            {/* Commented out placeholder actions */}
+            {/* 
             <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
               <Bot className="h-4 w-4" />
               <span className="text-xs">Agents</span>
@@ -655,7 +658,24 @@ export default function ProjectBoard({
             <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
               <Sparkles className="h-4 w-4" />
               <span className="text-xs">Ask AI</span>
-            </Button>
+            </Button> 
+            */}
+            
+            {/* Member Stack */}
+            <div className="flex -space-x-2 mr-2">
+                {projectMembers.slice(0, 5).map(member => (
+                    <Avatar key={member.id} className="h-7 w-7 border-2 border-background ring-1 ring-white/5">
+                        <AvatarImage src={member.avatarUrl} alt={member.name} />
+                        <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
+                    </Avatar>
+                ))}
+                {projectMembers.length > 5 && (
+                    <Avatar className="h-7 w-7 border-2 border-background bg-muted flex items-center justify-center ring-1 ring-white/5">
+                        <AvatarFallback className="text-[10px]">+{projectMembers.length - 5}</AvatarFallback>
+                    </Avatar>
+                )}
+            </div>
+
             <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
               <Share2 className="h-4 w-4" />
               <span className="text-xs">Share</span>
@@ -690,7 +710,8 @@ export default function ProjectBoard({
 
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 border-r border-[#2a2a2a] pr-4 mr-2">
-              {/* Commented out for now as features are not yet implemented
+              {/* Commented out placeholder actions */}
+              {/*
               <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground hover:text-foreground">
                 <SearchIcon className="h-4 w-4 mr-2" />
                 <span className="text-xs">Search</span>
@@ -743,7 +764,7 @@ export default function ProjectBoard({
         ) : (
           <div className="h-full w-full overflow-hidden flex flex-col">
             <div className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden overscroll-x-contain">
-              <div className="min-w-[1000px] p-4 md:p-6 h-full flex flex-col">
+              <div className="p-4 md:p-6 h-full flex flex-col">
                 <div className="flex-1 overflow-y-auto">
                   {renderListView()}
                 </div>

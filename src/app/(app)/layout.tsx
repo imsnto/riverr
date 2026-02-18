@@ -23,7 +23,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     const [spaceHubs, setSpaceHubs] = useState<Hub[]>([]);
     
-    // The current view is derived from the URL params
     const currentView = (params.view as AppView) || (params.view as AppView) || 'overview';
     
     useEffect(() => {
@@ -85,7 +84,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               activeHub={activeHub}
               onHubChange={handleHubChange}
             />
-            {/* Critical: min-w-0 allows the flex child to shrink below its content's intrinsic width, triggering horizontal scroll. */}
             <main className={cn(
               "flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden",
               isMobile && activeHub && "pb-20"
