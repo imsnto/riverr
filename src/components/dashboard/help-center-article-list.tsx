@@ -1,4 +1,3 @@
-
 'use client';
 
 import { HelpCenter, HelpCenterArticle, HelpCenterCollection } from '@/lib/data';
@@ -40,17 +39,17 @@ export default function HelpCenterArticleList({
   const renderType = (item: HelpCenterArticle | HelpCenterCollection) => {
     const type = getItemType(item);
     if (type === 'collection') {
-        return <div className="flex items-center gap-2"><Folder className="h-4 w-4 text-muted-foreground" /> Collection</div>;
+        return <div className="flex items-center gap-2"><Folder className="h-3.5 w-3.5 text-muted-foreground" /> Collection</div>;
     }
     
     const article = item as HelpCenterArticle;
     switch(article.type) {
-        case 'pdf': return <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /> PDF</div>;
-        case 'snippet': return <Badge variant="outline">Snippet</Badge>;
-        case 'playbook': return <div className="flex items-center gap-2"><GitBranch className="h-4 w-4 text-muted-foreground" /> Playbook</div>;
+        case 'pdf': return <div className="flex items-center gap-2"><FileText className="h-3.5 w-3.5 text-muted-foreground" /> PDF</div>;
+        case 'snippet': return <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">Snippet</Badge>;
+        case 'playbook': return <div className="flex items-center gap-2"><GitBranch className="h-3.5 w-3.5 text-muted-foreground" /> Playbook</div>;
         case 'article': 
         default:
-            return <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /> Article</div>
+            return <div className="flex items-center gap-2"><FileText className="h-3.5 w-3.5 text-muted-foreground" /> Article</div>
     }
   }
 
@@ -77,8 +76,8 @@ export default function HelpCenterArticleList({
                     }}
                  />
                 <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{name || "Untitled Article"}</p>
-                    <div className="text-sm text-muted-foreground mt-1">
+                    <p className="font-medium truncate text-sm">{name || "Untitled Article"}</p>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">
                         {renderType(item)}
                     </div>
                 </div>
@@ -91,64 +90,69 @@ export default function HelpCenterArticleList({
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-[40px]">
-            <Checkbox checked={isAllSelected} onCheckedChange={onToggleAll} />
-          </TableHead>
-          <TableHead>Title</TableHead>
-          <TableHead>Library</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Last updated</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {items.map(item => {
-          const type = getItemType(item);
-          const name = type === 'collection' ? item.name : ((item as HelpCenterArticle).title || "Untitled Article");
-          const status = 'status' in item ? item.status : 'N/A';
-          const kb = 'helpCenterId' in item ? helpCenters.find(hc => hc.id === item.helpCenterId) : null;
-
-
-          return (
-            <TableRow key={item.id}>
-              <TableCell>
-                <Checkbox checked={selectedItems.includes(item.id)} onCheckedChange={() => onToggleSelectItem(item.id)} />
-              </TableCell>
-              <TableCell>
-                <Button variant="link" className="p-0 h-auto font-semibold text-foreground hover:text-primary" onClick={() => onSelectItem(item.id, type)}>
-                  {name}
-                </Button>
-              </TableCell>
-              <TableCell>
-                {kb ? <Badge variant="secondary">{kb.name}</Badge> : <span className="text-muted-foreground">—</span>}
-              </TableCell>
-              <TableCell>
-                {status !== 'N/A' && (
-                  status === 'published' ? (
-                    <Badge className="bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20">
-                      <Circle className="mr-2 h-2 w-2 fill-current text-emerald-400" />
-                      Published
-                    </Badge>
-                  ) : (
-                    <Badge className="bg-zinc-500/10 text-zinc-300 border border-zinc-500/20 hover:bg-zinc-500/20">
-                      <Circle className="mr-2 h-2 w-2 fill-current text-zinc-400" />
-                      Draft
-                    </Badge>
-                  )
-                )}
-              </TableCell>
-              <TableCell>
-                {('updatedAt' in item && item.updatedAt) ? 
-                  formatDistanceToNow(new Date(item.updatedAt), { addSuffix: true }) : 
-                  '—'
-                }
-              </TableCell>
+    <div className="w-full overflow-hidden">
+        <Table>
+        <TableHeader>
+            <TableRow className="h-9 hover:bg-transparent">
+            <TableHead className="w-[40px] px-2">
+                <Checkbox checked={isAllSelected} onCheckedChange={onToggleAll} />
+            </TableHead>
+            <TableHead className="text-xs uppercase tracking-wider h-9">Title</TableHead>
+            <TableHead className="text-xs uppercase tracking-wider h-9">Library</TableHead>
+            <TableHead className="text-xs uppercase tracking-wider h-9">Status</TableHead>
+            <TableHead className="text-xs uppercase tracking-wider h-9 text-right">Last updated</TableHead>
             </TableRow>
-          )
-        })}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+            {items.map(item => {
+            const type = getItemType(item);
+            const name = type === 'collection' ? item.name : ((item as HelpCenterArticle).title || "Untitled Article");
+            const status = 'status' in item ? item.status : 'N/A';
+            const kb = 'helpCenterId' in item ? helpCenters.find(hc => hc.id === item.helpCenterId) : null;
+
+
+            return (
+                <TableRow key={item.id} className="h-10 transition-colors group">
+                <TableCell className="px-2 py-0">
+                    <Checkbox checked={selectedItems.includes(item.id)} onCheckedChange={() => onToggleSelectItem(item.id)} />
+                </TableCell>
+                <TableCell className="py-0">
+                    <button 
+                        className="text-sm font-medium hover:text-primary transition-colors text-left" 
+                        onClick={() => onSelectItem(item.id, type)}
+                    >
+                    {name}
+                    </button>
+                </TableCell>
+                <TableCell className="py-0">
+                    {kb ? <Badge variant="secondary" className="text-[10px] font-medium h-5">{kb.name}</Badge> : <span className="text-muted-foreground text-xs">—</span>}
+                </TableCell>
+                <TableCell className="py-0">
+                    {status !== 'N/A' && (
+                    status === 'published' ? (
+                        <div className="flex items-center text-xs text-emerald-500 font-medium">
+                        <Circle className="mr-1.5 h-1.5 w-1.5 fill-current" />
+                        Published
+                        </div>
+                    ) : (
+                        <div className="flex items-center text-xs text-muted-foreground font-medium">
+                        <Circle className="mr-1.5 h-1.5 w-1.5 fill-current" />
+                        Draft
+                        </div>
+                    )
+                    )}
+                </TableCell>
+                <TableCell className="py-0 text-right text-xs text-muted-foreground whitespace-nowrap">
+                    {('updatedAt' in item && item.updatedAt) ? 
+                    formatDistanceToNow(new Date(item.updatedAt), { addSuffix: true }) : 
+                    '—'
+                    }
+                </TableCell>
+                </TableRow>
+            )
+            })}
+        </TableBody>
+        </Table>
+    </div>
   );
 }

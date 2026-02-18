@@ -47,6 +47,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { format, parseISO } from 'date-fns';
@@ -531,14 +532,12 @@ export default function ProjectBoard({
                             </Badge>
                             <span className="text-xs text-muted-foreground font-medium">{statusTasks.length}</span>
                             <div className="flex items-center gap-1 ml-auto">
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                                <button 
+                                    className="h-7 px-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                                     onClick={() => onNewTaskRequest(status.name)}
                                 >
                                     <Plus className="h-3.5 w-3.5" /> Add Task
-                                </Button>
+                                </button>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>

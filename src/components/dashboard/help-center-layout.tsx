@@ -568,34 +568,36 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                     </h1>
 
                     {sidebarView === 'knowledge-bases' && activeHelpCenter && (
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-4 text-sm text-muted-foreground">
                             {activeHelpCenter.visibility === 'internal' ? (
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-2">
                                     <Lock className="h-4 w-4" />
-                                    <span>Internal</span>
+                                    <span className="font-medium">Internal Library</span>
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-2">
                                     <Globe className="h-4 w-4" />
-                                    <span>Public</span>
+                                    <span className="font-medium">Public Help Center</span>
                                 </div>
                             )}
 
                             <Separator orientation="vertical" className="h-4 hidden md:flex" />
 
-                            <div className="flex items-center gap-2">
-                                <BotIcon className="h-4 w-4" />
-                                <span>Connected Agents:</span>
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                    <BotIcon className="h-4 w-4" />
+                                    <span className="font-medium text-foreground/80">Connected Agents:</span>
+                                </div>
                                 {connectedAgents.length > 0 ? (
                                     <div className="flex items-center -space-x-2">
                                         <TooltipProvider>
                                             {connectedAgents.slice(0, 3).map(agent => (
                                                 <Tooltip key={agent.id}>
                                                     <TooltipTrigger asChild>
-                                                        <Avatar className="h-6 w-6 border-2 border-background">
+                                                        <Avatar className="h-7 w-7 border-2 border-background ring-1 ring-border/50">
                                                             <AvatarImage src={agent.styleSettings?.logoUrl} />
-                                                            <AvatarFallback>
-                                                                <BotIcon className="h-3 w-3"/>
+                                                            <AvatarFallback className="bg-muted">
+                                                                <BotIcon className="h-3.5 w-3.5"/>
                                                             </AvatarFallback>
                                                         </Avatar>
                                                     </TooltipTrigger>
@@ -606,13 +608,13 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                                             ))}
                                         </TooltipProvider>
                                         {connectedAgents.length > 3 && (
-                                            <Avatar className="h-6 w-6 border-2 border-background">
-                                                <AvatarFallback>+{connectedAgents.length - 3}</AvatarFallback>
+                                            <Avatar className="h-7 w-7 border-2 border-background ring-1 ring-border/50 bg-muted">
+                                                <AvatarFallback className="text-[10px]">+{connectedAgents.length - 3}</AvatarFallback>
                                             </Avatar>
                                         )}
                                     </div>
                                 ) : (
-                                    <span>None</span>
+                                    <span className="italic opacity-60">None</span>
                                 )}
                             </div>
                         </div>
