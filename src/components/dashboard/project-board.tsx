@@ -738,7 +738,12 @@ export default function ProjectBoard({
                         return (
                             <tr key={task.id} className="hover:bg-white/[0.02] group h-11">
                                 <td className="px-4 py-2 text-muted-foreground/50 font-mono text-[11px] whitespace-nowrap overflow-hidden">
-                                    {task.taskKey || '---'}
+                                    <button 
+                                        className="hover:text-primary hover:underline transition-colors"
+                                        onClick={() => onTaskClick(task)}
+                                    >
+                                        {task.taskKey || '---'}
+                                    </button>
                                 </td>
                                 <td className="px-4 py-2">
                                     <div className="flex items-center gap-2 min-w-0">
