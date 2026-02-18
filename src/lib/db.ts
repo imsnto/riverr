@@ -1635,6 +1635,7 @@ export const getOrCreateVisitor = async (visitorId: string, details?: Partial<Vi
         companyId: null,
         companyUsers: 0,
         companyPlan: null,
+        companyPlanColor: null,
         companySpend: null,
         contactId: null,
       };
@@ -1751,7 +1752,7 @@ export const getHelpCenterCollections = async (hubId: string): Promise<HelpCente
 }
 
 export const addHelpCenterCollection = async (collectionData: Omit<HelpCenterCollection, 'id'>): Promise<HelpCenterCollection> => {
-  const docRef = await addDoc(collection(db, 'help_center_collections'), collectionData);
+  const docRef = await addDoc(collection(db, "help_center_collections"), collectionData);
   return { id: docRef.id, ...collectionData };
 }
 

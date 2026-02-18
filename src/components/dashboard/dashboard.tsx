@@ -161,7 +161,7 @@ export default function Dashboard({ view }: { view: string }) {
             fetchedPhaseTemplates,
             fetchedTaskTemplates,
             fetchedJobs,
-            fetchedJobFlowTasks,
+            fetchedJobsTasks,
             fetchedHubs,
             fetchedBots,
             fetchedEscalationRules,
@@ -200,7 +200,7 @@ export default function Dashboard({ view }: { view: string }) {
         setPhaseTemplates(fetchedPhaseTemplates);
         setTaskTemplates(fetchedTaskTemplates);
         setJobs(fetchedJobs);
-        setJobFlowTasks(fetchedJobFlowTasks);
+        setJobFlowTasks(fetchedJobsTasks);
         setSpaceHubs(fetchedHubs);
         setBots(fetchedBots);
         setEscalationIntakeRules(fetchedEscalationRules);
