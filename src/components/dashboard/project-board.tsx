@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, DragEvent, useRef, useEffect } from 'react';
+import React, { useState, DragEvent, useRef, useEffect, useMemo } from 'react';
 import { Card, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { User, Task, Project, Hub, Status, Activity } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -17,9 +17,14 @@ import {
   ArrowLeft,
   LayoutList,
   LayoutGrid,
+  ChevronDown,
+  Circle,
+  CheckCircle2,
+  Calendar,
+  Flag,
 } from 'lucide-react';
 import { Button, buttonVariants } from '../ui/button';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,16 +50,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/use-auth';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { format, parseISO } from 'date-fns';
-import { Checkbox } from '../ui/checkbox';
-
-const getInitials = (name: string) => {
-  if (!name) return '';
-  const parts = name.split(' ').filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return name[0]?.toUpperCase() || '';
-};
 
 const STATUS_COLORS = [
   { name: 'Gray', color: '#6b7280' },
@@ -115,6 +111,16 @@ const TaskCard = ({
     </Card>
   );
 };
+
+const PriorityIcon = ({ priority }: { priority: Task['priority'] }) => {
+    const styles = {
+        'Low': 'text-slate-400',
+        'Medium': 'text-blue-400',
+        'High': 'text-orange-400',
+        'Urgent': 'text-red-500',
+    };
+    return <Flag className={cn("h-4 w-4", priority ? (styles as any)[priority] : 'text-muted-foreground/20')} />;
+}
 
 interface ProjectBoardProps {
   project: Project;
@@ -509,105 +515,118 @@ export default function ProjectBoard({
 
   const renderListView = () => {
     return (
-      <div className="w-full">
-        <Table className="min-w-[1000px]">
-          {/* Sticky header inside the scrollable list container */}
-          <TableHeader className="sticky top-0 z-10 bg-card">
-            <TableRow className="h-12">
-              <TableHead className="w-12">
-                <Checkbox />
-              </TableHead>
-              <TableHead className="w-32">Key</TableHead>
-              <TableHead>Summary</TableHead>
-              <TableHead>Reporter</TableHead>
-              <TableHead>Assignee</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created At</TableHead>
-            </TableRow>
-          </TableHeader>
+        <div className="flex flex-col gap-8 pb-20">
+            {statuses.map(status => {
+                const statusTasks = tasks.filter(t => t.status === status.name);
+                return (
+                    <div key={status.name} className="space-y-2">
+                        {/* Group Header */}
+                        <div className="flex items-center gap-3 px-2 py-1 bg-muted/20 rounded-md">
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            <Badge 
+                                style={{ backgroundColor: status.color, color: 'white' }}
+                                className="uppercase px-2 py-0.5 text-[10px] font-bold rounded-sm tracking-wider border-none"
+                            >
+                                {status.name}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground font-medium">{statusTasks.length}</span>
+                            <div className="flex items-center gap-1 ml-auto">
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                                    onClick={() => onNewTaskRequest(status.name)}
+                                >
+                                    <Plus className="h-3.5 w-3.5" /> Add Task
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
 
-          <TableBody>
-            {tasks.map((task) => {
-              const assignee = allUsers.find((u) => u.id === task.assigned_to);
-              const reporter = allUsers.find((u) => u.id === task.createdBy);
-              const statusObj = statuses.find((s) => s.name === task.status);
+                        <div className="w-full overflow-hidden">
+                            {/* Table Header */}
+                            <div className="grid grid-cols-[1fr_100px_100px_100px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-wider">
+                                <div>Name</div>
+                                <div className="text-center">Assignee</div>
+                                <div className="text-center">Due date</div>
+                                <div className="text-center">Priority</div>
+                                <div />
+                            </div>
 
-              return (
-                <TableRow
-                  key={task.id}
-                  className="cursor-pointer hover:bg-muted/40 h-12"
-                  onClick={() => onTaskClick(task)}
-                >
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Checkbox />
-                  </TableCell>
-
-                  <TableCell className="font-mono text-muted-foreground">{task.taskKey}</TableCell>
-
-                  <TableCell className="font-medium">
-                    <span className="group-hover:text-primary transition-colors">{task.name}</span>
-                  </TableCell>
-
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={reporter?.avatarUrl} />
-                        <AvatarFallback>{reporter ? getInitials(reporter.name) : '?'}</AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm truncate max-w-[140px]">{reporter?.name || 'Unknown'}</span>
+                            {/* Task Rows */}
+                            <div className="divide-y divide-white/5">
+                                {statusTasks.map(task => {
+                                    const assignee = allUsers.find(u => u.id === task.assigned_to);
+                                    return (
+                                        <div 
+                                            key={task.id} 
+                                            className="grid grid-cols-[1fr_100px_100px_100px_40px] gap-4 px-4 py-2 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
+                                            onClick={() => onTaskClick(task)}
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="shrink-0">
+                                                    {status.name === (activeHub.closingStatusName || 'Done') ? 
+                                                        <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : 
+                                                        <Circle className="h-4 w-4 text-muted-foreground/40" />
+                                                    }
+                                                </div>
+                                                <span className="text-sm truncate font-medium group-hover:text-primary transition-colors">{task.name}</span>
+                                                {task.taskKey && (
+                                                    <span className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded shrink-0">
+                                                        {task.taskKey}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex justify-center">
+                                                {assignee ? (
+                                                    <Avatar className="h-6 w-6">
+                                                        <AvatarImage src={assignee.avatarUrl} />
+                                                        <AvatarFallback className="text-[10px] bg-indigo-600 text-white border-none">
+                                                            {getInitials(assignee.name)}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                ) : (
+                                                    <div className="h-6 w-6 rounded-full border border-dashed border-muted-foreground/30 flex items-center justify-center">
+                                                        <Plus className="h-3 w-3 text-muted-foreground/30" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex justify-center">
+                                                {task.due_date ? (
+                                                    <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                                        <Calendar className="h-3.5 w-3.5 opacity-60" />
+                                                        {format(parseISO(task.due_date), 'MMM d')}
+                                                    </div>
+                                                ) : (
+                                                    <Calendar className="h-4 w-4 text-muted-foreground/20" />
+                                                )}
+                                            </div>
+                                            <div className="flex justify-center">
+                                                <PriorityIcon priority={task.priority} />
+                                            </div>
+                                            <div className="flex justify-center opacity-0 group-hover:opacity-100">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                <button 
+                                    className="w-full text-left px-4 py-2.5 text-xs text-muted-foreground hover:bg-white/[0.03] flex items-center gap-3 transition-colors group"
+                                    onClick={() => onNewTaskRequest(status.name)}
+                                >
+                                    <Plus className="h-4 w-4 ml-7 group-hover:text-foreground" />
+                                    <span className="group-hover:text-foreground font-medium">Add Task</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                  </TableCell>
-
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={assignee?.avatarUrl} />
-                        <AvatarFallback>{assignee ? getInitials(assignee.name) : '?'}</AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm truncate max-w-[140px]">{assignee?.name || 'Unassigned'}</span>
-                    </div>
-                  </TableCell>
-
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      style={{
-                        borderColor: statusObj?.color,
-                        color: statusObj?.color,
-                        backgroundColor: `${statusObj?.color ?? '#000'}10`,
-                      }}
-                    >
-                      {task.status}
-                    </Badge>
-                  </TableCell>
-
-                  <TableCell className="text-sm text-muted-foreground">
-                    {task.createdAt ? format(parseISO(task.createdAt), 'dd/MMM/yy') : '--'}
-                  </TableCell>
-                </TableRow>
-              );
+                );
             })}
-
-            {tasks.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                  No tasks found in this project.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-
-        <div className="p-3">
-          <Button
-            variant="ghost"
-            className="text-muted-foreground hover:text-primary"
-            onClick={() => onNewTaskRequest()}
-          >
-            <Plus className="h-4 w-4 mr-2" /> Add task
-          </Button>
         </div>
-      </div>
     );
   };
 
@@ -714,11 +733,10 @@ export default function ProjectBoard({
         </div>
       </div>
 
-      {/* Content area - THIS MUST SHRINK AND OVERFLOW */}
+      {/* Content area */}
       <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
         {viewMode === 'board' ? (
-          /* Board: Horizontal scroll container */
-          <div className="h-full w-full overflow-x-auto overflow-y-hidden overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+          <div className="h-full w-full overflow-x-auto overflow-y-hidden overscroll-x-contain">
             <div className="flex min-w-max items-start gap-4 p-4 md:p-6 md:pt-2 h-full">
               {activeStatuses.map(renderStatusColumn)}
               {closingStatus && renderStatusColumn(closingStatus)}
@@ -730,11 +748,10 @@ export default function ProjectBoard({
             </div>
           </div>
         ) : (
-          /* List: Horizontal scroll container wrapper */
           <div className="h-full w-full overflow-hidden flex flex-col">
-            <div className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+            <div className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden overscroll-x-contain">
               <div className="min-w-[1000px] p-4 md:p-6 h-full flex flex-col">
-                <div className="flex-1 overflow-y-auto rounded-lg border bg-card">
+                <div className="flex-1 overflow-y-auto">
                   {renderListView()}
                 </div>
               </div>

@@ -777,9 +777,9 @@ export default function Dashboard({ view }: { view: string }) {
     switch (currentView) {
       case 'overview': return <div className="overflow-y-auto p-8"><Overview {...overviewProps} /></div>;
       case 'tasks': return (
-        <div className="flex h-full min-h-0 flex-1">
+        <div className="flex h-full min-h-0 flex-1 min-w-0">
           {(projects.length > 0) && (
-             <ProjectSidebar
+            <ProjectSidebar
               projects={projects}
               tasks={tasks}
               selectedProjectId={selectedProjectId}
