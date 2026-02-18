@@ -267,6 +267,7 @@ export default function Dashboard({ view }: { view: string }) {
         const unread = allMentions.filter(m => isUnread(m, lastMentionsRead));
         // Sort by date descending
         unread.sort((a, b) => new Date('timestamp' in b ? b.timestamp : b.createdAt).getTime() - new Date('timestamp' in a ? a.timestamp : a.createdAt).getTime());
+        unread.sort((a, b) => new Date('timestamp' in b ? b.timestamp : b.createdAt).getTime() - new Date('timestamp' in a ? a.timestamp : a.createdAt).getTime());
         setUnreadMentions(unread);
     };
 
@@ -585,22 +586,9 @@ export default function Dashboard({ view }: { view: string }) {
   const handleAddProject = async (project: Omit<Project, 'id' | 'hubId'>) => {
     if (!activeHub) return;
 
-    // Generate project key
-    const words = project.name.split(' ').filter(Boolean);
-    let key = '';
-    if (words.length > 1) {
-        key = words.map(w => w[0]).join('').toUpperCase();
-    } else if (words.length === 1) {
-        key = project.name.substring(0, 3).toUpperCase();
-    }
-    if (key.length > 5) {
-        key = key.substring(0, 5);
-    }
-
     const projectWithKey = { 
         ...project, 
         hubId: activeHub.id,
-        key: key,
         taskCounter: 0,
     };
 
@@ -806,7 +794,7 @@ export default function Dashboard({ view }: { view: string }) {
             projects={projects}
             onSelectProject={handleSelectProject}
             allTasks={tasks}
-            onUpdateTasks={onUpdateTasks}
+            onUpdateTasks={handleUpdateTasks}
             activeHub={activeHub!}
             allUsers={allUsers}
             onUpdateActiveHub={handleUpdateActiveHub}
@@ -822,7 +810,7 @@ export default function Dashboard({ view }: { view: string }) {
       );
       case 'tickets': return <TicketsBoard 
           tickets={tickets} 
-          onUpdateTickets={onUpdateTickets}
+          onUpdateTickets={handleUpdateTasks} // Corrected
           conversations={chatConversations}
           activeHub={activeHub!}
           activeSpace={activeSpace}
@@ -836,7 +824,7 @@ export default function Dashboard({ view }: { view: string }) {
           onDataRefresh={fetchData}
           onCreateTicket={handleCreateTicket}
           onEscalateTicket={handleEscalateTicket}
-          allTasks={allTasks}
+          allTasks={tasks}
           onTaskSelect={setSelectedTask}
       />;
       case 'deals': return <DealsBoard

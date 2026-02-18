@@ -1,5 +1,3 @@
-
-
 // src/lib/data.ts
 
 // --- Core Entities ---
@@ -75,6 +73,7 @@ export interface Project {
   members: string[]; // array of user IDs
   status: 'Active' | 'On Hold' | 'Archived';
   created_by: string; // user ID
+  defaultView?: 'board' | 'list';
 }
 
 export interface Task {

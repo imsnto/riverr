@@ -127,6 +127,12 @@ const normalizeCompany = (company?: string | null) => {
   return c;
 };
 
+const generateRandomProjectKey = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  return chars.charAt(Math.floor(Math.random() * chars.length)) + 
+         chars.charAt(Math.floor(Math.random() * chars.length));
+};
+
 
 // --- Seeding ---
 export const seedDatabase = async () => {
@@ -420,8 +426,10 @@ export const getProjectsInSpace = async (
 export const addProject = async (
   project: Omit<Project, "id">
 ): Promise<Project> => {
-  const docRef = await addDoc(collection(db, "projects"), project);
-  return { ...project, id: docRef.id };
+  const projectKey = project.key || generateRandomProjectKey();
+  const projectWithKey = { ...project, key: projectKey };
+  const docRef = await addDoc(collection(db, "projects"), projectWithKey);
+  return { ...projectWithKey, id: docRef.id };
 };
 
 export const updateProject = async (
@@ -498,7 +506,7 @@ export const addTask = async (task: Omit<Task, "id">): Promise<Task> => {
 
           const projectData = projectDoc.data() as Project;
           const newCounter = (projectData.taskCounter || 0) + 1;
-          const projectKey = projectData.key || 'TASK';
+          const projectKey = projectData.key || generateRandomProjectKey();
 
           const taskKey = `${projectKey}-${newCounter}`;
 
@@ -507,7 +515,7 @@ export const addTask = async (task: Omit<Task, "id">): Promise<Task> => {
               taskKey: taskKey,
           };
           
-          transaction.update(projectRef, { taskCounter: newCounter });
+          transaction.update(projectRef, { taskCounter: newCounter, key: projectKey });
           transaction.set(taskRef, completeTaskData);
 
           return completeTaskData;

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -36,6 +35,7 @@ const projectSchema = z.object({
   name: z.string().min(2, 'Project name must be at least 2 characters long.'),
   members: z.array(z.string()).min(1, 'At least one member is required.'),
   status: z.enum(['Active', 'On Hold', 'Archived']),
+  defaultView: z.enum(['board', 'list']).default('board'),
 });
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
@@ -58,6 +58,7 @@ export default function ProjectFormDialog({ isOpen, onOpenChange, onSave, projec
       name: '',
       members: appUser ? [appUser.id] : [],
       status: 'Active',
+      defaultView: 'board',
     },
   });
   
@@ -68,12 +69,14 @@ export default function ProjectFormDialog({ isOpen, onOpenChange, onSave, projec
               name: project.name,
               members: project.members,
               status: project.status,
+              defaultView: project.defaultView || 'board',
           });
       } else {
           form.reset({
               name: '',
               members: [appUser.id],
-              status: 'Active'
+              status: 'Active',
+              defaultView: 'board',
           })
       }
     }
@@ -148,6 +151,27 @@ export default function ProjectFormDialog({ isOpen, onOpenChange, onSave, projec
                         <SelectItem value="Active">Active</SelectItem>
                         <SelectItem value="On Hold">On Hold</SelectItem>
                         <SelectItem value="Archived">Archived</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="defaultView"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Default View</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a view" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        <SelectItem value="board">Kanban Board</SelectItem>
+                        <SelectItem value="list">List View</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

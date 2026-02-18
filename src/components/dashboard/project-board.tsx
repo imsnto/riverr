@@ -1,13 +1,11 @@
-
-
 'use client';
 
-import React, { useState, DragEvent, useRef } from 'react';
+import React, { useState, DragEvent, useRef, useEffect } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { User, Task, Project, Hub, Status, Activity } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { MoreHorizontal, Plus, Edit, Trash2, Palette, Archive, CheckCircle, Folder, ChevronsUpDown, ArrowLeft } from 'lucide-react';
+import { MoreHorizontal, Plus, Edit, Trash2, Palette, Archive, CheckCircle, Folder, ChevronsUpDown, ArrowLeft, LayoutTemplate, List } from 'lucide-react';
 import { Button, buttonVariants } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '../ui/dropdown-menu';
@@ -25,6 +23,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useAuth } from '@/hooks/use-auth';
+import { ScrollArea, ScrollBar } from '../ui/scroll-area';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Checkbox } from '../ui/checkbox';
+import { format } from 'date-fns';
 
 const getInitials = (name: string) => {
     if (!name) return '';
@@ -32,45 +34,30 @@ const getInitials = (name: string) => {
 }
 
 const STATUS_COLORS = [
-    // Grays
     { name: 'Gray', color: '#6b7280' },
     { name: 'Stone', color: '#78716c' },
     { name: 'Zinc', color: '#71717a' },
-    
-    // Reds
     { name: 'Red', color: '#ef4444' },
     { name: 'Rose', color: '#f43f5e' },
-
-    // Oranges
     { name: 'Orange', color: '#f97316' },
     { name: 'Amber', color: '#f59e0b' },
-    
-    // Yellows
     { name: 'Yellow', color: '#eab308' },
     { name: 'Lime', color: '#84cc16' },
-
-    // Greens
     { name: 'Green', color: '#22c55e' },
     { name: 'Emerald', color: '#10b981' },
     { name: 'Teal', color: '#14b8a6' },
-
-    // Blues
     { name: 'Cyan', color: '#06b6d4' },
     { name: 'Sky', color: '#0ea5e9' },
     { name: 'Blue', color: '#3b82f6' },
     { name: 'Indigo', color: '#6366f1' },
-
-    // Purples
     { name: 'Violet', color: '#8b5cf6' },
     { name: 'Purple', color: '#a855f7' },
     { name: 'Fuchsia', color: '#d946ef' },
-
-    // Pinks
     { name: 'Pink', color: '#ec4899' },
 ];
 
 
-const TaskCard = ({ task, project, onClick, isDragging, allUsers }: { task: Task, project?: Project, onClick: () => void, isDragging: boolean, allUsers: User[] }) => {
+const TaskCard = ({ task, onClick, isDragging, allUsers }: { task: Task, onClick: () => void, isDragging: boolean, allUsers: User[] }) => {
   const assignee = allUsers.find(u => u.id === task.assigned_to);
 
   return (
@@ -86,7 +73,7 @@ const TaskCard = ({ task, project, onClick, isDragging, allUsers }: { task: Task
       </CardHeader>
       <CardFooter className="flex justify-between items-center p-3 pt-0">
          <div className="flex items-center gap-2 text-muted-foreground">
-            {task.taskKey && <span className="text-xs font-semibold">{task.taskKey}</span>}
+            {task.taskKey && <span className="text-xs font-semibold font-mono bg-muted px-1.5 py-0.5 rounded">{task.taskKey}</span>}
          </div>
         <Avatar className="h-6 w-6">
             <AvatarImage src={assignee?.avatarUrl} alt={assignee?.name} />
@@ -125,8 +112,9 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
+  const [viewMode, setViewMode] = useState<'board' | 'list'>(project.defaultView || 'board');
   const { toast } = useToast();
-  const { appUser, activeSpace } = useAuth();
+  const { appUser } = useAuth();
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   
   const tasks = allTasks.filter(t => t.project_id === project.id && !t.parentId);
@@ -141,6 +129,10 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
 
   const projectMembers = allUsers.filter(u => project.members.includes(u.id));
 
+  useEffect(() => {
+    setViewMode(project.defaultView || 'board');
+  }, [project.id, project.defaultView]);
+
   const handleDragStart = (e: DragEvent<HTMLDivElement>, taskId: string) => {
     e.dataTransfer.setData('taskId', taskId);
     setDraggedTask(taskId);
@@ -148,43 +140,35 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>, status: string) => {
     e.preventDefault();
-
-    // Full visible list for THIS PROJECT + STATUS (no filtering out the dragged card)
     const columnTasks = tasks.filter(t => t.status === status);
-
     const mouseY = e.clientY;
     let closestTaskIndex = columnTasks.length;
 
     for (let i = 0; i < columnTasks.length; i++) {
         const t = columnTasks[i];
-
-        // Skip comparing against the dragged card’s own midpoint
         if (t.id === draggedTask) continue;
-
         const el = taskCardRefs.current[t.id];
         if (!el) continue;
-
         const { top, height } = el.getBoundingClientRect();
         const mid = top + height / 2;
         if (mouseY < mid) {
-        closestTaskIndex = i;
-        break;
+            closestTaskIndex = i;
+            break;
         }
     }
 
     if (dropIndicator?.status !== status || dropIndicator?.index !== closestTaskIndex) {
         setDropIndicator({ status, index: closestTaskIndex });
     }
-    };
+  };
   
   const handleColumnDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    // Check if the relatedTarget (where the mouse entered) is outside the component
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       setDropIndicator(null);
     }
   };
 
-    const handleDrop = (e: DragEvent<HTMLDivElement>, newStatus: string) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>, newStatus: string) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
     if (!taskId || !dropIndicator) return;
@@ -193,61 +177,44 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
     if (!taskToMove) return;
 
     const sameColumn = taskToMove.status === newStatus;
-
-    // Project-scoped lists (avoid touching other projects)
     const projectTasks = allTasks.filter(t => t.project_id === project.id && !t.parentId);
     const otherTasks = allTasks.filter(t => !(t.project_id === project.id && !t.parentId));
 
-    // Build per-column lists from projectTasks
     const sourceColumn = projectTasks.filter(t => t.status === taskToMove.status);
     const targetColumn = projectTasks.filter(t => t.status === newStatus);
 
     const fromIndex = sourceColumn.findIndex(t => t.id === taskId);
 
-    // Insert index is based on the *visible list* (which includes the dragged card)
-    // If dragging within the same column *downwards*, we need to shift by -1 after removal.
     let insertIndex = dropIndicator.index;
     if (sameColumn && fromIndex !== -1 && fromIndex < insertIndex) {
         insertIndex -= 1;
     }
     insertIndex = Math.max(0, Math.min(insertIndex, targetColumn.length));
 
-    // Rebuild the new projectTasks order
     const projectTasksWithoutDragged = projectTasks.filter(t => t.id !== taskId);
     const newUpdatedTask = { ...taskToMove, status: newStatus };
 
-    // Recreate targetColumn from the filtered list to keep order coherent
-    const newTargetColumn = projectTasksWithoutDragged
-        .filter(t => t.status === newStatus);
-
+    const newTargetColumn = projectTasksWithoutDragged.filter(t => t.status === newStatus);
     newTargetColumn.splice(insertIndex, 0, newUpdatedTask);
 
-    // Reassemble projectTasks in status order: put back all non-target statuses, then new target status list
     const rebuiltProjectTasks = [
         ...projectTasksWithoutDragged.filter(t => t.status !== newStatus),
         ...newTargetColumn,
     ];
 
-    // Merge back with tasks from other projects unchanged
-    const newAllTasks = [
-        ...otherTasks,
-        ...rebuiltProjectTasks,
-    ];
+    const newAllTasks = [...otherTasks, ...rebuiltProjectTasks];
 
-    // Persist status change activity if needed
     if (!sameColumn && appUser) {
         const newActivity: Activity = {
-        id: `act-${Date.now()}`,
-        user_id: appUser.id,
-        timestamp: new Date().toISOString(),
-        type: 'status_change',
-        from: taskToMove.status,
-        to: newStatus,
+            id: `act-${Date.now()}`,
+            user_id: appUser.id,
+            timestamp: new Date().toISOString(),
+            type: 'status_change',
+            from: taskToMove.status,
+            to: newStatus,
         };
         const taskWithActivity = { ...newUpdatedTask, activities: [...(newUpdatedTask.activities || []), newActivity] };
-        onUpdateTask(taskWithActivity); // Update task with new activity
-        
-        // Update the task in the reordered list as well
+        onUpdateTask(taskWithActivity);
         const finalTasks = newAllTasks.map(t => t.id === taskId ? taskWithActivity : t);
         onUpdateTasks(finalTasks);
     } else {
@@ -256,8 +223,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
 
     setDropIndicator(null);
     setDraggedTask(null);
-    };
-
+  };
 
   const handleDragEnd = () => {
     setDraggedTask(null);
@@ -299,15 +265,11 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
         toast({ variant: 'destructive', title: 'Cannot delete the last column.'});
         return;
     }
-    
     const defaultColumn = statuses.find(s => s.name !== columnToDelete)!;
-    
     onUpdateTasks(allTasks.map(t => t.status === columnToDelete ? { ...t, status: defaultColumn.name } : t));
-
     const newHubData: Partial<Hub> = {
         statuses: statuses.filter(s => s.name !== columnToDelete)
     };
-
     if (activeHub.closingStatusName === columnToDelete) {
         newHubData.closingStatusName = undefined;
     }
@@ -324,7 +286,6 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
 
   const renderStatusColumn = (status: Status) => {
       const columnTasks = tasks.filter(task => task.status === status.name);
-      
       return (
       <div
         key={status.name}
@@ -345,10 +306,7 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                 />
             ) : (
                 <div className="flex items-center gap-2">
-                    <span 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: status.color }}
-                    />
+                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: status.color }} />
                     <h2 className="text-lg font-semibold">{status.name}</h2>
                     {closingStatusName === status.name && (
                        <CheckCircle className="h-4 w-4 text-primary" />
@@ -369,7 +327,6 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                         <DropdownMenuItem onClick={() => { setEditingColumn(status.name); setNewColumnName(status.name); }}>
                             <Edit className="mr-2 h-4 w-4" /> Rename
                         </DropdownMenuItem>
-
                         <DropdownMenuSub>
                             <DropdownMenuSubTrigger>
                                 <Palette className="mr-2 h-4 w-4" />
@@ -398,16 +355,12 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                                 </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                         </DropdownMenuSub>
-
                         <DropdownMenuSeparator />
-
                         <DropdownMenuItem onClick={() => handleSetClosingStatus(status.name)}>
                             <Archive className="mr-2 h-4 w-4" /> 
                             {closingStatusName === status.name ? "Unset as closing status" : "Set as closing status"}
                         </DropdownMenuItem>
-                        
                         <DropdownMenuSeparator />
-
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
@@ -416,25 +369,22 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This will delete the "{status.name}" column. All tasks in this column will be moved to the first column. This action cannot be undone.
-                                </AlertDialogDescription>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will delete the "{status.name}" column. All tasks in this column will be moved to the first column. This action cannot be undone.
+                                    </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteColumn(status.name)} className={cn(buttonVariants({ variant: "destructive" }))}>Continue</AlertDialogAction>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteColumn(status.name)} className={cn(buttonVariants({ variant: "destructive" }))}>Continue</AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
-
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
         </div>
-        <div 
-          className="bg-primary/5 rounded-lg p-2 flex-1 min-h-0 overflow-y-auto"
-        >
+        <div className="bg-primary/5 rounded-lg p-2 flex-1 min-h-0 overflow-y-auto">
             <div className="space-y-0.5">
             {columnTasks.map((task, index) => {
                 const showIndicator = dropIndicator?.status === status.name && dropIndicator.index === index;
@@ -456,7 +406,6 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                         >
                             <TaskCard 
                             task={task} 
-                            project={project}
                             onClick={() => onTaskClick(task)} 
                             isDragging={isTaskBeingDragged}
                             allUsers={allUsers}
@@ -473,13 +422,78 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
       </div>
   )};
 
+  const renderListView = () => (
+    <div className="border rounded-md overflow-hidden">
+        <Table>
+            <TableHeader className="bg-muted/50">
+                <TableRow>
+                    <TableHead className="w-12"></TableHead>
+                    <TableHead className="w-24">Key</TableHead>
+                    <TableHead>Summary</TableHead>
+                    <TableHead>Assignee</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Created</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {tasks.map(task => {
+                    const assignee = allUsers.find(u => u.id === task.assigned_to);
+                    const statusObj = statuses.find(s => s.name === task.status);
+                    return (
+                        <TableRow key={task.id} className="cursor-pointer hover:bg-muted/30" onClick={() => onTaskClick(task)}>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                                <Checkbox checked={task.status === closingStatusName} onCheckedChange={(checked) => {
+                                    handleFieldChange(task, 'status', checked ? closingStatusName : (statuses[0]?.name || 'Backlog'));
+                                }} />
+                            </TableCell>
+                            <TableCell className="font-mono text-xs font-semibold text-muted-foreground">{task.taskKey}</TableCell>
+                            <TableCell className="font-medium">{task.name}</TableCell>
+                            <TableCell>
+                                {assignee ? (
+                                    <div className="flex items-center gap-2">
+                                        <Avatar className="h-6 w-6">
+                                            <AvatarImage src={assignee.avatarUrl} />
+                                            <AvatarFallback>{getInitials(assignee.name)}</AvatarFallback>
+                                        </Avatar>
+                                        <span className="text-sm">{assignee.name}</span>
+                                    </div>
+                                ) : <span className="text-muted-foreground text-xs italic">Unassigned</span>}
+                            </TableCell>
+                            <TableCell>
+                                <Badge variant="outline" style={{ borderColor: statusObj?.color, color: statusObj?.color }}>
+                                    {task.status}
+                                </Badge>
+                            </TableCell>
+                            <TableCell className="text-right text-xs text-muted-foreground">
+                                {format(new Date(task.createdAt), 'MMM d, yyyy')}
+                            </TableCell>
+                        </TableRow>
+                    )
+                })}
+                {tasks.length === 0 && (
+                    <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                            No tasks found in this project.
+                        </TableCell>
+                    </TableRow>
+                )}
+            </TableBody>
+        </Table>
+    </div>
+  );
+
+  const handleFieldChange = (task: Task, field: keyof Task, value: any) => {
+    const updatedTask = { ...task, [field]: value };
+    onUpdateTask(updatedTask);
+  };
+
   return (
     <>
       <div className="flex h-full min-w-0 flex-col overflow-hidden">
         <div className="w-full min-w-0 shrink-0 overflow-hidden">
             {/* Desktop Header */}
             <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-4 border-b">
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-4 min-w-0">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="text-2xl font-bold p-2 -ml-2 min-w-0">
@@ -498,6 +512,27 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
+                    
+                    <div className="flex items-center bg-muted rounded-lg p-1">
+                        <Button 
+                            variant={viewMode === 'board' ? 'secondary' : 'ghost'} 
+                            size="sm" 
+                            className="h-8 gap-2"
+                            onClick={() => setViewMode('board')}
+                        >
+                            <LayoutTemplate className="h-4 w-4" />
+                            Board
+                        </Button>
+                        <Button 
+                            variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
+                            size="sm" 
+                            className="h-8 gap-2"
+                            onClick={() => setViewMode('list')}
+                        >
+                            <List className="h-4 w-4" />
+                            List
+                        </Button>
+                    </div>
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="flex -space-x-2">
@@ -532,31 +567,40 @@ export default function ProjectBoard({ project, projects, allTasks, onUpdateTask
                                 <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
                             </Avatar>
                         ))}
-                        {projectMembers.length > 3 && (
-                            <Avatar className="h-8 w-8 border-2 border-background">
-                                <AvatarFallback>+{projectMembers.length - 3}</AvatarFallback>
-                            </Avatar>
-                        )}
                     </div>
                 </div>
                 <div className="flex items-center justify-between">
                     <h2 className="text-2xl font-bold">{project.name}</h2>
+                    <div className="flex items-center bg-muted rounded-lg p-1">
+                        <Button variant={viewMode === 'board' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setViewMode('board')}><LayoutTemplate className="h-4 w-4" /></Button>
+                        <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setViewMode('list')}><List className="h-4 w-4" /></Button>
+                    </div>
                 </div>
             </div>
         </div>
         
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
-          <div className="h-full w-full min-w-0 overflow-x-auto overflow-y-hidden">
-            <div className="flex w-max gap-4 p-4 md:p-6 md:pt-2 h-full">
-              {activeStatuses.map(renderStatusColumn)}
-              {closingStatus && renderStatusColumn(closingStatus)}
-              <div className="flex-shrink-0 w-72">
-                <Button variant="outline" className="w-full" onClick={handleAddNewColumn}>
-                  <Plus className="mr-2 h-4 w-4" /> Add Status
-                </Button>
-              </div>
-            </div>
-          </div>
+          {viewMode === 'board' ? (
+            <ScrollArea className="h-full">
+                <div className="flex w-max gap-4 p-4 md:p-6 md:pt-2 h-full">
+                    {activeStatuses.map(renderStatusColumn)}
+                    {closingStatus && renderStatusColumn(closingStatus)}
+                    <div className="flex-shrink-0 w-72">
+                        <Button variant="outline" className="w-full" onClick={handleAddNewColumn}>
+                        <Plus className="mr-2 h-4 w-4" /> Add Status
+                        </Button>
+                    </div>
+                </div>
+                <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          ) : (
+            <ScrollArea className="h-full">
+                <div className="p-4 md:p-6 md:pt-2 min-w-[800px]">
+                    {renderListView()}
+                </div>
+                <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          )}
         </div>
       </div>
 
