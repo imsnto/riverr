@@ -181,9 +181,9 @@ export default function ProjectBoard({
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
 
   const [columnWidths, setColumnWidths] = useState({
-    key: 100,
-    name: 400,
-    assignee: 150,
+    key: 90,
+    name: 300,
+    assignee: 160,
     status: 120,
     dueDate: 120,
     priority: 100
@@ -691,7 +691,7 @@ export default function ProjectBoard({
   const renderTableView = () => {
     return (
         <div className="w-full h-full overflow-auto border rounded-md bg-card">
-            <table className="min-w-max w-full text-left border-collapse table-fixed">
+            <table className="min-w-max w-fit text-left border-collapse table-fixed">
                 <thead>
                     <tr className="bg-muted/50 border-b border-white/5">
                         <th style={{ width: columnWidths.key }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground shrink-0 group">
