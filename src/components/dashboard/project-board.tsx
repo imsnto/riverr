@@ -365,23 +365,16 @@ export default function ProjectBoard({
     e.preventDefault();
     e.stopPropagation();
     const startX = e.clientX;
-    
     const currentWidth = columnWidths[col];
     const startWidth = typeof currentWidth === 'number' ? currentWidth : 200;
-
     const onMouseMove = (moveEvent: MouseEvent) => {
       const delta = moveEvent.clientX - startX;
-      setColumnWidths(prev => ({
-        ...prev,
-        [col]: Math.max(50, startWidth + delta)
-      }));
+      setColumnWidths(prev => ({ ...prev, [col]: Math.max(50, startWidth + delta) }));
     };
-
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
-
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
   };
@@ -392,12 +385,10 @@ export default function ProjectBoard({
       data.sort((a, b) => {
         let aValue: any = a[sortConfig.key as keyof Task];
         let bValue: any = b[sortConfig.key as keyof Task];
-
         if (sortConfig.key === 'assigneeName') {
             aValue = allUsers.find(u => u.id === a.assigned_to)?.name || '';
             bValue = allUsers.find(u => u.id === b.assigned_to)?.name || '';
         }
-
         if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
@@ -458,85 +449,26 @@ export default function ProjectBoard({
               </DropdownMenuTrigger>
 
               <DropdownMenuContent>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setEditingColumn(status.name);
-                    setNewColumnName(status.name);
-                  }}
-                >
+                <DropdownMenuItem onClick={() => { setEditingColumn(status.name); setNewColumnName(status.name); }}>
                   <Edit className="mr-2 h-4 w-4" /> Rename
                 </DropdownMenuItem>
-
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <Palette className="mr-2 h-4 w-4" />
-                    <span>Change Color</span>
-                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubTrigger><Palette className="mr-2 h-4 w-4" /><span>Change Color</span></DropdownMenuSubTrigger>
                   <DropdownMenuPortal>
                     <DropdownMenuSubContent className="w-60 p-2">
-                      <div className="grid grid-cols-5 gap-2 mb-2">
-                        {STATUS_COLORS.map((color) => (
-                          <button
-                            key={color.name}
-                            onClick={() => handleChangeColor(status.name, color.color)}
-                            className={cn(
-                              'w-8 h-8 rounded-md border-2',
-                              status.color === color.color ? 'border-primary' : 'border-transparent'
-                            )}
-                            style={{ backgroundColor: color.color }}
-                            aria-label={color.name}
-                          />
-                        ))}
-                      </div>
-                      <Input
-                        type="text"
-                        defaultValue={status.color}
-                        className="h-8"
-                        onBlur={(e) => handleChangeColor(status.name, e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleChangeColor(status.name, e.currentTarget.value);
-                        }}
-                      />
+                      <div className="grid grid-cols-5 gap-2 mb-2">{STATUS_COLORS.map((color) => (<button key={color.name} onClick={() => handleChangeColor(status.name, color.color)} className={cn('w-8 h-8 rounded-md border-2', status.color === color.color ? 'border-primary' : 'border-transparent')} style={{ backgroundColor: color.color }} aria-label={color.name} />))}</div>
+                      <Input type="text" defaultValue={status.color} className="h-8" onBlur={(e) => handleChangeColor(status.name, e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleChangeColor(status.name, e.currentTarget.value); }} />
                     </DropdownMenuSubContent>
                   </DropdownMenuPortal>
                 </DropdownMenuSub>
-
                 <DropdownMenuSeparator />
-
-                <DropdownMenuItem onClick={() => handleSetClosingStatus(status.name)}>
-                  <Archive className="mr-2 h-4 w-4" />
-                  {closingStatusName === status.name ? 'Unset as closing status' : 'Set as closing status'}
-                </DropdownMenuItem>
-
+                <DropdownMenuItem onClick={() => handleSetClosingStatus(status.name)}><Archive className="mr-2 h-4 w-4" />{closingStatusName === status.name ? 'Unset as closing status' : 'Set as closing status'}</DropdownMenuItem>
                 <DropdownMenuSeparator />
-
                 <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <DropdownMenuItem
-                      onSelect={(e) => e.preventDefault()}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> <span>Delete</span>
-                    </DropdownMenuItem>
-                  </AlertDialogTrigger>
-
+                  <AlertDialogTrigger asChild><DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> <span>Delete</span></DropdownMenuItem></AlertDialogTrigger>
                   <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will delete the &quot;{status.name}&quot; column. All tasks in this column will be moved to the
-                        first column. This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDeleteColumn(status.name)}
-                        className={cn(buttonVariants({ variant: 'destructive' }))}
-                      >
-                        Continue
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
+                    <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will delete the &quot;{status.name}&quot; column. All tasks in this column will be moved to the first column. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteColumn(status.name)} className={cn(buttonVariants({ variant: 'destructive' }))}>Continue</AlertDialogAction></AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
               </DropdownMenuContent>
@@ -549,33 +481,16 @@ export default function ProjectBoard({
             {columnTasks.map((task, index) => {
               const showIndicator = dropIndicator?.status === status.name && dropIndicator.index === index;
               const isTaskBeingDragged = draggedTask === task.id;
-
               return (
                 <React.Fragment key={task.id}>
                   {showIndicator && <div className="h-10 border-2 border-dashed border-primary rounded-lg" />}
-                  <div
-                    ref={(el) => {
-                      taskCardRefs.current[task.id] = el;
-                    }}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, task.id)}
-                    onDragEnd={handleDragEnd}
-                    className={cn('transition-all duration-200', isTaskBeingDragged ? 'opacity-30' : 'opacity-100')}
-                  >
-                    <TaskCard
-                      task={task}
-                      onClick={() => onTaskClick(task)}
-                      isDragging={isTaskBeingDragged}
-                      allUsers={allUsers}
-                    />
+                  <div ref={(el) => { taskCardRefs.current[task.id] = el; }} draggable onDragStart={(e) => handleDragStart(e, task.id)} onDragEnd={handleDragEnd} className={cn('transition-all duration-200', isTaskBeingDragged ? 'opacity-30' : 'opacity-100')}>
+                    <TaskCard task={task} onClick={() => onTaskClick(task)} isDragging={isTaskBeingDragged} allUsers={allUsers} />
                   </div>
                 </React.Fragment>
               );
             })}
-
-            {dropIndicator?.status === status.name && dropIndicator.index === columnTasks.length && (
-              <div className="h-10 border-2 border-dashed border-primary rounded-lg" />
-            )}
+            {dropIndicator?.status === status.name && dropIndicator.index === columnTasks.length && (<div className="h-10 border-2 border-dashed border-primary rounded-lg" />)}
           </div>
         </div>
       </div>
@@ -591,93 +506,37 @@ export default function ProjectBoard({
                     <div key={status.name} className="space-y-2">
                         <div className="flex items-center gap-3 px-2 py-1.5 bg-muted/20 rounded-md shrink-0 border-b border-white/5">
                             <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                            <Badge 
-                                style={{ backgroundColor: status.color, color: 'white' }}
-                                className="uppercase px-2 py-0.5 text-[10px] font-bold rounded-sm tracking-wider border-none"
-                            >
-                                {status.name}
-                            </Badge>
+                            <Badge style={{ backgroundColor: status.color, color: 'white' }} className="uppercase px-2 py-0.5 text-[10px] font-bold rounded-sm tracking-wider border-none">{status.name}</Badge>
                             <span className="text-xs text-muted-foreground font-medium">{statusTasks.length}</span>
                             <div className="flex items-center gap-1 ml-auto">
-                                <button 
-                                    className="h-7 px-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                                    onClick={() => onNewTaskRequest(status.name)}
-                                >
-                                    <Plus className="h-3.5 w-3.5" /> Add Task
-                                </button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
+                                <button className="h-7 px-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors" onClick={() => onNewTaskRequest(status.name)}><Plus className="h-3.5 w-3.5" /> Add Task</button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></Button>
                             </div>
                         </div>
-
                         <div className="w-full overflow-x-auto">
-                            <div className="grid grid-cols-[100px_1fr_100px_120px_100px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-normal min-w-[600px]">
+                            <div className="grid grid-cols-[100px_1fr_80px_100px_100px_40px] gap-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground border-b border-white/5 uppercase tracking-normal min-w-[600px]">
                                 <div className="pl-1">Key</div>
                                 <div>Name</div>
                                 <div className="text-center">User</div>
                                 <div className="text-center">Due</div>
-                                <div className="text-center">Priority</div>
+                                <div className="text-center">Pri</div>
                                 <div />
                             </div>
-
                             <div className="divide-y divide-white/5 min-w-[600px]">
                                 {statusTasks.map(task => {
                                     const assignee = allUsers.find(u => u.id === task.assigned_to);
                                     return (
-                                        <div 
-                                            key={task.id} 
-                                            className="grid grid-cols-[100px_1fr_100px_120px_100px_40px] gap-4 px-4 py-3 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors"
-                                            onClick={() => onTaskClick(task)}
-                                        >
-                                            <div className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded shrink-0 w-fit whitespace-nowrap">
-                                                {task.taskKey || '---'}
-                                            </div>
-                                            <div className="flex items-center min-w-0">
-                                                <span className="text-sm truncate font-medium group-hover:text-primary transition-colors">{task.name}</span>
-                                            </div>
-                                            <div className="flex justify-center">
-                                                {assignee ? (
-                                                    <Avatar className="h-6 w-6 border border-white/10">
-                                                        <AvatarImage src={assignee.avatarUrl} />
-                                                        <AvatarFallback className="text-[10px] bg-indigo-600 text-white border-none">
-                                                            {getInitials(assignee.name)}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                ) : (
-                                                    <div className="h-6 w-6 rounded-full border border-dashed border-muted-foreground/30 flex items-center justify-center">
-                                                        <Plus className="h-3 w-3 text-muted-foreground/30" />
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="flex justify-center">
-                                                {task.due_date ? (
-                                                    <div className="text-[11px] text-muted-foreground flex items-center gap-1">
-                                                        <CalendarIcon className="h-3.5 w-3.5 opacity-60" />
-                                                        {format(parseISO(task.due_date), 'MMM d')}
-                                                    </div>
-                                                ) : (
-                                                    <CalendarIcon className="h-4 w-4 text-muted-foreground/20" />
-                                                )}
-                                            </div>
-                                            <div className="flex justify-center">
-                                                <PriorityIcon priority={task.priority} />
-                                            </div>
-                                            <div className="flex justify-center opacity-0 group-hover:opacity-100">
-                                                <Button variant="ghost" size="icon" className="h-7 w-7">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </div>
+                                        <div key={task.id} className="grid grid-cols-[100px_1fr_80px_100px_100px_40px] gap-4 px-4 py-3 hover:bg-white/[0.03] cursor-pointer items-center group transition-colors" onClick={() => onTaskClick(task)}>
+                                            <div className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded shrink-0 w-fit whitespace-nowrap">{task.taskKey || '---'}</div>
+                                            <div className="flex items-center min-w-0"><span className="text-sm truncate font-medium group-hover:text-primary transition-colors">{task.name}</span></div>
+                                            <div className="flex justify-center">{assignee ? (<Avatar className="h-6 w-6 border border-white/10"><AvatarImage src={assignee.avatarUrl} /><AvatarFallback className="text-[10px] bg-indigo-600 text-white border-none">{getInitials(assignee.name)}</AvatarFallback></Avatar>) : (<div className="h-6 w-6 rounded-full border border-dashed border-muted-foreground/30 flex items-center justify-center"><Plus className="h-3 w-3 text-muted-foreground/30" /></div>)}</div>
+                                            <div className="flex justify-center">{task.due_date ? (<div className="text-[11px] text-muted-foreground flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5 opacity-60" />{format(parseISO(task.due_date), 'MMM d')}</div>) : (<CalendarIcon className="h-4 w-4 text-muted-foreground/20" />)}</div>
+                                            <div className="flex justify-center"><PriorityIcon priority={task.priority} /></div>
+                                            <div className="flex justify-center opacity-0 group-hover:opacity-100"><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></div>
                                         </div>
                                     );
                                 })}
-                                <button 
-                                    className="w-full text-left px-4 py-2.5 text-xs text-muted-foreground hover:bg-white/[0.03] flex items-center gap-3 transition-colors group"
-                                    onClick={() => onNewTaskRequest(status.name)}
-                                >
-                                    <Plus className="h-4 w-4 group-hover:text-foreground" />
-                                    <span className="group-hover:text-foreground font-medium">Add Task</span>
-                                </button>
+                                <button className="w-full text-left px-4 py-2.5 text-xs text-muted-foreground hover:bg-white/[0.03] flex items-center gap-3 transition-colors group" onClick={() => onNewTaskRequest(status.name)}><Plus className="h-4 w-4 group-hover:text-foreground" /><span className="group-hover:text-foreground font-medium">Add Task</span></button>
                             </div>
                         </div>
                     </div>
@@ -693,40 +552,12 @@ export default function ProjectBoard({
             <table className="min-w-max w-fit text-left border-collapse table-fixed">
                 <thead>
                     <tr className="bg-muted/50 border-b border-white/5">
-                        <th style={{ width: columnWidths.key }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground shrink-0 group">
-                            Key
-                            <div onMouseDown={(e) => handleResize('key', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </th>
-                        <th style={{ width: columnWidths.name }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors group" onClick={() => requestSort('name')}>
-                            <div className="flex items-center gap-2">
-                                Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
-                            </div>
-                            <div onMouseDown={(e) => handleResize('name', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </th>
-                        <th style={{ width: columnWidths.assignee }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors group" onClick={() => requestSort('assigneeName')}>
-                            <div className="flex items-center gap-2">
-                                Assignee {sortConfig.key === 'assigneeName' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
-                            </div>
-                            <div onMouseDown={(e) => handleResize('assignee', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </th>
-                        <th style={{ width: columnWidths.status }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors group" onClick={() => requestSort('status')}>
-                            <div className="flex items-center gap-2">
-                                Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
-                            </div>
-                            <div onMouseDown={(e) => handleResize('status', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </th>
-                        <th style={{ width: columnWidths.dueDate }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors group" onClick={() => requestSort('due_date')}>
-                            <div className="flex items-center gap-2">
-                                Due date {sortConfig.key === 'due_date' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
-                            </div>
-                            <div onMouseDown={(e) => handleResize('dueDate', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </th>
-                        <th style={{ width: columnWidths.priority }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors group" onClick={() => requestSort('priority')}>
-                            <div className="flex items-center gap-2">
-                                Priority {sortConfig.key === 'priority' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
-                            </div>
-                            <div onMouseDown={(e) => handleResize('priority', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </th>
+                        <th style={{ width: columnWidths.key }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground shrink-0 group">Key<div onMouseDown={(e) => handleResize('key', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" /></th>
+                        <th style={{ width: columnWidths.name }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors group" onClick={() => requestSort('name')}><div className="flex items-center gap-2">Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}</div><div onMouseDown={(e) => handleResize('name', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" /></th>
+                        <th style={{ width: columnWidths.assignee }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors group" onClick={() => requestSort('assigneeName')}><div className="flex items-center gap-2">Assignee {sortConfig.key === 'assigneeName' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}</div><div onMouseDown={(e) => handleResize('assignee', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" /></th>
+                        <th style={{ width: columnWidths.status }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors group" onClick={() => requestSort('status')}><div className="flex items-center gap-2">Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}</div><div onMouseDown={(e) => handleResize('status', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" /></th>
+                        <th style={{ width: columnWidths.dueDate }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors group" onClick={() => requestSort('due_date')}><div className="flex items-center gap-2">Due date {sortConfig.key === 'due_date' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}</div><div onMouseDown={(e) => handleResize('dueDate', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" /></th>
+                        <th style={{ width: columnWidths.priority }} className="relative px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors group" onClick={() => requestSort('priority')}><div className="flex items-center gap-2">Priority {sortConfig.key === 'priority' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}</div><div onMouseDown={(e) => handleResize('priority', e)} className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" /></th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -734,129 +565,14 @@ export default function ProjectBoard({
                         const assignee = allUsers.find(u => u.id === task.assigned_to);
                         const statusObj = statuses.find(s => s.name === task.status);
                         const isDone = task.status === activeHub.closingStatusName;
-
                         return (
                             <tr key={task.id} className="hover:bg-white/[0.02] group h-11">
-                                <td className="px-4 py-2 text-muted-foreground/50 font-mono text-[11px] whitespace-nowrap overflow-hidden">
-                                    <button 
-                                        className="hover:text-primary hover:underline transition-colors"
-                                        onClick={() => onTaskClick(task)}
-                                    >
-                                        {task.taskKey || '---'}
-                                    </button>
-                                </td>
-                                <td className="px-4 py-2">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <Input 
-                                            defaultValue={task.name} 
-                                            className={cn(
-                                                "h-7 text-sm font-medium border-transparent bg-transparent hover:bg-white/5 focus:bg-background focus:border-input transition-all w-full truncate overflow-hidden text-ellipsis whitespace-nowrap",
-                                                isDone && "line-through text-muted-foreground"
-                                            )}
-                                            onBlur={(e) => {
-                                                if (e.target.value !== task.name) {
-                                                    onUpdateTask({ ...task, name: e.target.value });
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                </td>
-                                <td className="px-4 py-2">
-                                    <Select 
-                                        value={task.assigned_to || 'unassigned'} 
-                                        onValueChange={(val) => onUpdateTask({ ...task, assigned_to: val === 'unassigned' ? null : val })}
-                                    >
-                                        <SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-full gap-2 px-1">
-                                            <SelectValue>
-                                                {assignee ? (
-                                                    <div className="flex items-center gap-1.5 overflow-hidden">
-                                                        <Avatar className="h-5 w-5 border border-white/10 shrink-0">
-                                                            <AvatarImage src={assignee.avatarUrl} />
-                                                            <AvatarFallback className="text-[8px]">{getInitials(assignee.name)}</AvatarFallback>
-                                                        </Avatar>
-                                                        <span className="text-xs truncate">{assignee.name}</span>
-                                                    </div>
-                                                ) : <span className="text-muted-foreground/50 text-xs">Unassigned</span>}
-                                            </SelectValue>
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="unassigned">Unassigned</SelectItem>
-                                            {allUsers.map(u => (
-                                                <SelectItem key={u.id} value={u.id}>
-                                                    <div className="flex items-center gap-2">
-                                                        <Avatar className="h-5 w-5"><AvatarImage src={u.avatarUrl}/></Avatar>
-                                                        {u.name}
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </td>
-                                <td className="px-4 py-2">
-                                    <Select 
-                                        value={task.status} 
-                                        onValueChange={(val) => onUpdateTask({ ...task, status: val })}
-                                    >
-                                        <SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-full gap-2 px-1">
-                                            <SelectValue>
-                                                {statusObj && (
-                                                    <Badge 
-                                                        style={{ backgroundColor: statusObj.color + '20', color: statusObj.color, borderColor: statusObj.color + '40' }}
-                                                        className="uppercase text-[10px] font-bold px-2 py-0 rounded-sm tracking-tight h-5 whitespace-nowrap"
-                                                    >
-                                                        {statusObj.name}
-                                                    </Badge>
-                                                )}
-                                            </SelectValue>
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {statuses.map(s => (
-                                                <SelectItem key={s.name} value={s.name}>{s.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </td>
-                                <td className="px-4 py-2">
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="ghost" size="sm" className={cn("h-7 px-1 text-xs font-normal w-full justify-start", !task.due_date && "text-muted-foreground/30")}>
-                                                {task.due_date ? format(parseISO(task.due_date), 'MMM d, yyyy') : 'Set date'}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                            <CalendarPicker
-                                                mode="single"
-                                                selected={task.due_date ? parseISO(task.due_date) : undefined}
-                                                onSelect={(d) => onUpdateTask({ ...task, due_date: d?.toISOString() || null })}
-                                                initialFocus
-                                            />
-                                        </PopoverContent>
-                                    </Popover>
-                                </td>
-                                <td className="px-4 py-2">
-                                    <Select 
-                                        value={task.priority || 'none'} 
-                                        onValueChange={(val) => onUpdateTask({ ...task, priority: val === 'none' ? null : val as any })}
-                                    >
-                                        <SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-full gap-2 px-1">
-                                            <SelectValue>
-                                                {task.priority ? (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <PriorityIcon priority={task.priority} />
-                                                        <span className="text-[11px] capitalize">{task.priority}</span>
-                                                    </div>
-                                                ) : <span className="text-muted-foreground/30 text-[11px]">None</span>}
-                                            </SelectValue>
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">None</SelectItem>
-                                            <SelectItem value="Low">Low</SelectItem>
-                                            <SelectItem value="Medium">Medium</SelectItem>
-                                            <SelectItem value="High">High</SelectItem>
-                                            <SelectItem value="Urgent">Urgent</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </td>
+                                <td className="px-4 py-2 text-muted-foreground/50 font-mono text-[11px] whitespace-nowrap overflow-hidden"><button className="hover:text-primary hover:underline transition-colors" onClick={() => onTaskClick(task)}>{task.taskKey || '---'}</button></td>
+                                <td className="px-4 py-2"><div className="flex items-center gap-2 min-w-0"><Input defaultValue={task.name} className={cn("h-7 text-sm font-medium border-transparent bg-transparent hover:bg-white/5 focus:bg-background focus:border-input transition-all w-full truncate text-ellipsis whitespace-nowrap", isDone && "line-through text-muted-foreground")} onBlur={(e) => { if (e.target.value !== task.name) { onUpdateTask({ ...task, name: e.target.value }); } }} /></div></td>
+                                <td className="px-4 py-2"><Select value={task.assigned_to || 'unassigned'} onValueChange={(val) => onUpdateTask({ ...task, assigned_to: val === 'unassigned' ? null : val })}><SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-full gap-2 px-1"><SelectValue>{assignee ? (<div className="flex items-center gap-1.5 overflow-hidden"><Avatar className="h-5 w-5 border border-white/10 shrink-0"><AvatarImage src={assignee.avatarUrl} /><AvatarFallback className="text-[8px]">{getInitials(assignee.name)}</AvatarFallback></Avatar><span className="text-xs truncate">{assignee.name}</span></div>) : <span className="text-muted-foreground/50 text-xs">Unassigned</span>}</SelectValue></SelectTrigger><SelectContent><SelectItem value="unassigned">Unassigned</SelectItem>{allUsers.map(u => (<SelectItem key={u.id} value={u.id}><div className="flex items-center gap-2"><Avatar className="h-5 w-5"><AvatarImage src={u.avatarUrl}/></Avatar>{u.name}</div></SelectItem>))}</SelectContent></Select></td>
+                                <td className="px-4 py-2"><Select value={task.status} onValueChange={(val) => onUpdateTask({ ...task, status: val })}><SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-full gap-2 px-1"><SelectValue>{statusObj && (<Badge style={{ backgroundColor: statusObj.color + '20', color: statusObj.color, borderColor: statusObj.color + '40' }} className="uppercase text-[10px] font-bold px-2 py-0 rounded-sm tracking-tight h-5 whitespace-nowrap">{statusObj.name}</Badge>)}</SelectValue></SelectTrigger><SelectContent>{statuses.map(s => (<SelectItem key={s.name} value={s.name}>{s.name}</SelectItem>))}</SelectContent></Select></td>
+                                <td className="px-4 py-2"><Popover><PopoverTrigger asChild><Button variant="ghost" size="sm" className={cn("h-7 px-1 text-xs font-normal w-full justify-start", !task.due_date && "text-muted-foreground/30")}>{task.due_date ? format(parseISO(task.due_date), 'MMM d, yyyy') : 'Set date'}</Button></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><CalendarPicker mode="single" selected={task.due_date ? parseISO(task.due_date) : undefined} onSelect={(d) => onUpdateTask({ ...task, due_date: d?.toISOString() || null })} initialFocus /></PopoverContent></Popover></td>
+                                <td className="px-4 py-2"><Select value={task.priority || 'none'} onValueChange={(val) => onUpdateTask({ ...task, priority: val === 'none' ? null : val as any })}><SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-full gap-2 px-1"><SelectValue>{task.priority ? (<div className="flex items-center gap-1.5"><PriorityIcon priority={task.priority} /><span className="text-[11px] capitalize">{task.priority}</span></div>) : <span className="text-muted-foreground/30 text-[11px]">None</span>}</SelectValue></SelectTrigger><SelectContent><SelectItem value="none">None</SelectItem><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem><SelectItem value="Urgent">Urgent</SelectItem></SelectContent></Select></td>
                             </tr>
                         );
                     })}
@@ -879,149 +595,54 @@ export default function ProjectBoard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => onEditProject(project)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  <span>Edit Details</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setDeleteAlertOpen(true)} className="text-destructive">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  <span>Delete Project</span>
-                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onEditProject(project)}><Edit className="mr-2 h-4 w-4" /><span>Edit Details</span></DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDeleteAlertOpen(true)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>Delete Project</span></DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-
           <div className="flex items-center gap-2">
             <div className="flex -space-x-2 mr-2">
                 {projectMembers.slice(0, 5).map(member => (
-                    <Avatar key={member.id} className="h-7 w-7 border-2 border-background ring-1 ring-white/5">
-                        <AvatarImage src={member.avatarUrl} alt={member.name} />
-                        <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
-                    </Avatar>
+                    <Avatar key={member.id} className="h-7 w-7 border-2 border-background ring-1 ring-white/5"><AvatarImage src={member.avatarUrl} alt={member.name} /><AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback></Avatar>
                 ))}
-                {projectMembers.length > 5 && (
-                    <Avatar className="h-7 w-7 border-2 border-background bg-muted flex items-center justify-center ring-1 ring-white/5">
-                        <AvatarFallback className="text-[10px]">+{projectMembers.length - 5}</AvatarFallback>
-                    </Avatar>
-                )}
+                {projectMembers.length > 5 && (<Avatar className="h-7 w-7 border-2 border-background bg-muted flex items-center justify-center ring-1 ring-white/5"><AvatarFallback className="text-[10px]">+{projectMembers.length - 5}</AvatarFallback></Avatar>)}
             </div>
-
-            <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
-              <Share2 className="h-4 w-4" />
-              <span className="text-xs">Share</span>
-            </Button>
+            <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground"><Share2 className="h-4 w-4" /><span className="text-xs">Share</span></Button>
           </div>
         </div>
-
         <div className="flex items-center justify-between px-6">
           <div className="flex items-center gap-6">
-            <button
-              onClick={() => setViewMode('list')}
-              className={cn(
-                "flex items-center gap-2 py-3 text-xs font-medium border-b-2 transition-all",
-                viewMode === 'list' ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <LayoutList className="h-4 w-4" />
-              List
-            </button>
-            <button
-              onClick={() => setViewMode('board')}
-              className={cn(
-                "flex items-center gap-2 py-3 text-xs font-medium border-b-2 transition-all",
-                viewMode === 'board' ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <LayoutGrid className="h-4 w-4" />
-              Board
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={cn(
-                "flex items-center gap-2 py-3 text-xs font-medium border-b-2 transition-all",
-                viewMode === 'table' ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <TableIcon className="h-4 w-4" />
-              Table
-            </button>
+            <button onClick={() => setViewMode('list')} className={cn("flex items-center gap-2 py-3 text-xs font-medium border-b-2 transition-all", viewMode === 'list' ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}><LayoutList className="h-4 w-4" />List</button>
+            <button onClick={() => setViewMode('board')} className={cn("flex items-center gap-2 py-3 text-xs font-medium border-b-2 transition-all", viewMode === 'board' ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}><LayoutGrid className="h-4 w-4" />Board</button>
+            <button onClick={() => setViewMode('table')} className={cn("flex items-center gap-2 py-3 text-xs font-medium border-b-2 transition-all", viewMode === 'table' ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}><TableIcon className="h-4 w-4" />Table</button>
           </div>
-
           <div className="flex items-center gap-2">
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <div className="flex items-center">
-                  <Button size="sm" className="h-8 rounded-r-none" onClick={() => onNewTaskRequest()}>
-                    Add Task
-                  </Button>
-                  <Button size="sm" className="h-8 rounded-l-none border-l border-white/10 px-2">
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onNewTaskRequest()}>New Task</DropdownMenuItem>
-                <DropdownMenuItem disabled>New Section</DropdownMenuItem>
-              </DropdownMenuContent>
+              <DropdownMenuTrigger asChild><div className="flex items-center"><Button size="sm" className="h-8 rounded-r-none" onClick={() => onNewTaskRequest()}>Add Task</Button><Button size="sm" className="h-8 rounded-l-none border-l border-white/10 px-2"><ChevronDown className="h-4 w-4" /></Button></div></DropdownMenuTrigger>
+              <DropdownMenuContent align="end"><DropdownMenuItem onClick={() => onNewTaskRequest()}>New Task</DropdownMenuItem><DropdownMenuItem disabled>New Section</DropdownMenuItem></DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
       </div>
-
       <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
         {viewMode === 'board' ? (
-          <div className="h-full w-full overflow-x-auto overflow-y-hidden overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+          <div className="h-full w-full overflow-x-auto overflow-y-hidden overscroll-x-contain">
             <div className="flex min-w-max items-start gap-4 p-4 md:p-6 md:pt-4 h-full">
               {activeStatuses.map(renderStatusColumn)}
               {closingStatus && renderStatusColumn(closingStatus)}
-              <div className="flex-shrink-0 w-72">
-                <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground h-10 border border-dashed border-[#2a2a2a] hover:border-muted-foreground/50" onClick={handleAddNewColumn}>
-                  <Plus className="mr-2 h-4 w-4" /> Add Status
-                </Button>
-              </div>
+              <div className="flex-shrink-0 w-72"><Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground h-10 border border-dashed border-[#2a2a2a] hover:border-muted-foreground/50" onClick={handleAddNewColumn}><Plus className="mr-2 h-4 w-4" /> Add Status</Button></div>
             </div>
           </div>
         ) : viewMode === 'list' ? (
-          <div className="h-full w-full overflow-hidden flex flex-col">
-            <div className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden overscroll-x-contain">
-              <div className="p-4 md:p-6 h-full flex flex-col">
-                <div className="flex-1 overflow-y-auto">
-                  {renderListView()}
-                </div>
-              </div>
-            </div>
-          </div>
+          <div className="h-full w-full overflow-hidden flex flex-col"><div className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden overscroll-x-contain"><div className="p-4 md:p-6 h-full flex flex-col"><div className="flex-1 overflow-y-auto">{renderListView()}</div></div></div></div>
         ) : (
-          <div className="h-full w-full overflow-hidden flex flex-col">
-            <div className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-auto overscroll-x-contain">
-              <div className="p-4 md:p-6 h-full flex flex-col">
-                <div className="flex-1">
-                  {renderTableView()}
-                </div>
-              </div>
-            </div>
-          </div>
+          <div className="h-full w-full overflow-hidden flex flex-col"><div className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-auto overscroll-x-contain"><div className="p-4 md:p-6 h-full flex flex-col"><div className="flex-1">{renderTableView()}</div></div></div></div>
         )}
       </div>
-
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the &quot;{project.name}&quot; project and all of its tasks. This action cannot be
-              undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => onDeleteProject(project.id)}
-              className={cn(buttonVariants({ variant: 'destructive' }))}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the &quot;{project.name}&quot; project and all of its tasks. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => onDeleteProject(project.id)} className={cn(buttonVariants({ variant: 'destructive' }))}>Delete</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
