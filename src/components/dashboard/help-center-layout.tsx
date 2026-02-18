@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';

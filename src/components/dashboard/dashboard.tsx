@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -807,10 +806,10 @@ export default function Dashboard({ view }: { view: string }) {
           conversations={chatConversations}
           activeHub={activeHub!}
           activeSpace={activeSpace}
+          allHubs={allHubs}
           allUsers={allUsers}
           onUpdateActiveHub={handleUpdateActiveHub}
           onNavigateToSettings={() => router.push(`/space/${activeSpace?.id}/hub/${activeHub?.id}/settings`)}
-          allHubs={allHubs}
           escalationRules={escalationRules}
           projects={projects}
           contacts={contacts}

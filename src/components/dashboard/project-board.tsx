@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, DragEvent, useRef, useEffect, useMemo } from 'react';
@@ -659,31 +658,31 @@ export default function ProjectBoard({
   const renderTableView = () => {
     return (
         <div className="w-full overflow-x-auto border rounded-md bg-card">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse table-fixed">
                 <thead>
                     <tr className="bg-muted/50 border-b border-white/5">
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground w-24">Key</th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('name')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground w-32 shrink-0">Key</th>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-w-[300px]" onClick={() => requestSort('name')}>
                             <div className="flex items-center gap-2">
                                 Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('assigneeName')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-40" onClick={() => requestSort('assigneeName')}>
                             <div className="flex items-center gap-2">
                                 Assignee {sortConfig.key === 'assigneeName' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('status')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-40" onClick={() => requestSort('status')}>
                             <div className="flex items-center gap-2">
                                 Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('due_date')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-40" onClick={() => requestSort('due_date')}>
                             <div className="flex items-center gap-2">
                                 Due date {sortConfig.key === 'due_date' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
                         </th>
-                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => requestSort('priority')}>
+                        <th className="px-4 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-32" onClick={() => requestSort('priority')}>
                             <div className="flex items-center gap-2">
                                 Priority {sortConfig.key === 'priority' && (sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                             </div>
@@ -697,15 +696,12 @@ export default function ProjectBoard({
                         const isDone = task.status === activeHub.closingStatusName;
 
                         return (
-                            <tr key={task.id} className="hover:bg-white/[0.02] group">
-                                <td className="px-4 py-2 text-muted-foreground/50 font-mono text-[11px]">{task.taskKey || '---'}</td>
+                            <tr key={task.id} className="hover:bg-white/[0.02] group h-11">
+                                <td className="px-4 py-2 text-muted-foreground/50 font-mono text-[11px] whitespace-nowrap overflow-hidden">
+                                    {task.taskKey || '---'}
+                                </td>
                                 <td className="px-4 py-2">
                                     <div className="flex items-center gap-2 min-w-0">
-                                        {isDone ? (
-                                            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                                        ) : (
-                                            <CircleDot className="h-4 w-4 text-muted-foreground/40 shrink-0" />
-                                        )}
                                         <Input 
                                             defaultValue={task.name} 
                                             className={cn("h-7 text-sm font-medium border-transparent bg-transparent hover:bg-white/5 focus:bg-background focus:border-input transition-all", isDone && "line-through text-muted-foreground")}
@@ -722,11 +718,11 @@ export default function ProjectBoard({
                                         value={task.assigned_to || 'unassigned'} 
                                         onValueChange={(val) => onUpdateTask({ ...task, assigned_to: val === 'unassigned' ? null : val })}
                                     >
-                                        <SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-fit min-w-[120px] gap-2">
+                                        <SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-full gap-2 px-1">
                                             <SelectValue>
                                                 {assignee ? (
                                                     <div className="flex items-center gap-1.5">
-                                                        <Avatar className="h-5 w-5 border border-white/10">
+                                                        <Avatar className="h-5 w-5 border border-white/10 shrink-0">
                                                             <AvatarImage src={assignee.avatarUrl} />
                                                             <AvatarFallback className="text-[8px]">{getInitials(assignee.name)}</AvatarFallback>
                                                         </Avatar>
@@ -753,12 +749,12 @@ export default function ProjectBoard({
                                         value={task.status} 
                                         onValueChange={(val) => onUpdateTask({ ...task, status: val })}
                                     >
-                                        <SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-fit gap-2">
+                                        <SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-full gap-2 px-1">
                                             <SelectValue>
                                                 {statusObj && (
                                                     <Badge 
                                                         style={{ backgroundColor: statusObj.color + '20', color: statusObj.color, borderColor: statusObj.color + '40' }}
-                                                        className="uppercase text-[10px] font-bold px-2 py-0 rounded-sm tracking-tight h-5"
+                                                        className="uppercase text-[10px] font-bold px-2 py-0 rounded-sm tracking-tight h-5 whitespace-nowrap"
                                                     >
                                                         {statusObj.name}
                                                     </Badge>
@@ -775,7 +771,7 @@ export default function ProjectBoard({
                                 <td className="px-4 py-2">
                                     <Popover>
                                         <PopoverTrigger asChild>
-                                            <Button variant="ghost" size="sm" className={cn("h-7 px-2 text-xs font-normal", !task.due_date && "text-muted-foreground/30")}>
+                                            <Button variant="ghost" size="sm" className={cn("h-7 px-1 text-xs font-normal w-full justify-start", !task.due_date && "text-muted-foreground/30")}>
                                                 {task.due_date ? format(parseISO(task.due_date), 'MMM d, yyyy') : 'Set date'}
                                             </Button>
                                         </PopoverTrigger>
@@ -794,7 +790,7 @@ export default function ProjectBoard({
                                         value={task.priority || 'none'} 
                                         onValueChange={(val) => onUpdateTask({ ...task, priority: val === 'none' ? null : val as any })}
                                     >
-                                        <SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-fit gap-2">
+                                        <SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-full gap-2 px-1">
                                             <SelectValue>
                                                 {task.priority ? (
                                                     <div className="flex items-center gap-1.5">
@@ -850,22 +846,6 @@ export default function ProjectBoard({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Action buttons (Preserved but commented out) */}
-            {/* 
-            <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
-              <Bot className="h-4 w-4" />
-              <span className="text-xs">Agents</span>
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
-              <Zap className="h-4 w-4" />
-              <span className="text-xs">Automate</span>
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground hover:text-foreground">
-              <Sparkles className="h-4 w-4" />
-              <span className="text-xs">Ask AI</span>
-            </Button> 
-            */}
-            
             {/* Member Stack */}
             <div className="flex -space-x-2 mr-2">
                 {projectMembers.slice(0, 5).map(member => (
@@ -924,24 +904,6 @@ export default function ProjectBoard({
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 border-r border-[#2a2a2a] pr-4 mr-2">
-              {/* Controls (Preserved but commented out) */}
-              {/*
-              <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground hover:text-foreground">
-                <SearchIcon className="h-4 w-4 mr-2" />
-                <span className="text-xs">Search</span>
-              </Button>
-              <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground hover:text-foreground">
-                <EyeOff className="h-4 w-4 mr-2" />
-                <span className="text-xs">Hide</span>
-              </Button>
-              <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground hover:text-foreground">
-                <Settings2 className="h-4 w-4 mr-2" />
-                <span className="text-xs">Customize</span>
-              </Button>
-              */}
-            </div>
-            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center">
