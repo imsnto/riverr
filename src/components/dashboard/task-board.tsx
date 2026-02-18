@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -62,7 +60,7 @@ export default function TaskBoard({
       const projectTasks = allTasks.filter(t => t.project_id === projectId);
       if (projectTasks.length === 0) return null;
       
-      const lastUpdatedTask = projectTasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      const lastUpdatedTask = projectTasks.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())[0];
       if (!lastUpdatedTask) return null;
 
       return lastUpdatedTask.createdAt ? formatDistanceToNow(new Date(lastUpdatedTask.createdAt), { addSuffix: true }) : '';
@@ -107,7 +105,7 @@ export default function TaskBoard({
     } else {
         return (
              <>
-                <div className="flex h-full flex-col overflow-hidden">
+                <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
                     <ProjectBoard 
                         project={selectedProject}
                         projects={projects}
@@ -132,37 +130,35 @@ export default function TaskBoard({
 
   // Desktop view
   return (
-    <>
-      <div className="flex h-full flex-col overflow-hidden">
-          {selectedProject ? (
-              <ProjectBoard 
-                  project={selectedProject}
-                  projects={projects}
-                  onSelectProject={handleSelectProject}
-                  allTasks={allTasks}
-                  onUpdateTasks={onUpdateTasks}
-                  activeHub={activeHub}
-                  allUsers={allUsers}
-                  onUpdateActiveHub={onUpdateActiveHub}
-                  onNewTaskRequest={onNewTaskRequest}
-                  onTaskClick={onTaskClick}
-                  onUpdateTask={onUpdateTask}
-                  onBack={() => handleSelectProject(null)}
-                  onEditProject={onEditProject}
-                  onDeleteProject={onDeleteProject}
-              />
-          ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center bg-card rounded-lg">
-                  <Folder className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-semibold">No project selected</h3>
-                  <p className="text-muted-foreground">Select a project from the sidebar or create a new one.</p>
-                  <Button className="mt-4" onClick={onNewProject}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Your First Project
-                  </Button>
-              </div>
-          )}
-      </div>
-    </>
+    <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
+        {selectedProject ? (
+            <ProjectBoard 
+                project={selectedProject}
+                projects={projects}
+                onSelectProject={handleSelectProject}
+                allTasks={allTasks}
+                onUpdateTasks={onUpdateTasks}
+                activeHub={activeHub}
+                allUsers={allUsers}
+                onUpdateActiveHub={onUpdateActiveHub}
+                onNewTaskRequest={onNewTaskRequest}
+                onTaskClick={onTaskClick}
+                onUpdateTask={onUpdateTask}
+                onBack={() => handleSelectProject(null)}
+                onEditProject={onEditProject}
+                onDeleteProject={onDeleteProject}
+            />
+        ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center bg-card rounded-lg">
+                <Folder className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold">No project selected</h3>
+                <p className="text-muted-foreground">Select a project from the sidebar or create a new one.</p>
+                <Button className="mt-4" onClick={onNewProject}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Your First Project
+                </Button>
+            </div>
+        )}
+    </div>
   );
 }

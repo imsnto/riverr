@@ -60,11 +60,13 @@ export interface Project {
   name: string;
   key?: string; // e.g., "XY"
   taskCounter?: number;
-  spaceId: string;
+  spaceId?: string;
+  space_id?: string; // Support both naming conventions for legacy data
   hubId: string; // Hub scope
   members: string[]; // array of user IDs
   status: 'Active' | 'On Hold' | 'Archived';
-  createdBy: string; // user ID
+  createdBy?: string;
+  created_by?: string;
   defaultView?: 'board' | 'list';
 }
 
@@ -583,7 +585,7 @@ export const hubs: (Omit<Hub, 'id'> & { id: string })[] = [
         isDefault: false,
         statuses: [
               { name: 'New', color: '#6b7280' },
-              { name: 'Assigned', color: '#3b82f6' },
+              { name: 'Open', color: '#3b82f6' },
               { name: 'Resolved', color: '#22c55e' },
         ],
     },

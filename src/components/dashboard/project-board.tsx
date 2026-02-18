@@ -42,7 +42,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
@@ -614,7 +613,7 @@ export default function ProjectBoard({
 
   return (
     <>
-      <div className="flex h-full min-w-0 flex-col overflow-hidden">
+      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
         {/* Desktop Header */}
         <div className="hidden md:flex w-full min-w-0 shrink-0 justify-between items-center px-6 pt-6 pb-2 border-b">
           <div className="flex items-center gap-4 min-w-0">
@@ -716,12 +715,12 @@ export default function ProjectBoard({
           </div>
         </div>
 
-        {/* Content area: Handle scrolling here */}
+        {/* Content area */}
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
           {viewMode === 'board' ? (
-            /* Board: Standard native horizontal scroll */
-            <div className="h-full w-full overflow-x-auto overflow-y-hidden">
-              <div className="flex w-max items-start gap-4 p-4 md:p-6 md:pt-2 h-full">
+            /* Board: Native horizontal scroll */
+            <div className="h-full w-full overflow-x-auto overflow-y-hidden overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+              <div className="flex min-w-max items-start gap-4 p-4 md:p-6 md:pt-2 h-full">
                 {activeStatuses.map(renderStatusColumn)}
                 {closingStatus && renderStatusColumn(closingStatus)}
                 <div className="flex-shrink-0 w-72">
@@ -732,11 +731,11 @@ export default function ProjectBoard({
               </div>
             </div>
           ) : (
-            /* List: Horizontal scroll for columns + Vertical for rows */
-            <div className="h-full w-full overflow-hidden">
-              <div className="h-full w-full overflow-x-auto">
-                <div className="min-w-[1000px] p-4 md:p-6 h-full">
-                  <div className="h-full max-h-full overflow-y-auto rounded-lg border bg-card">
+            /* List: Dual-axis native scroll with sticky headers */
+            <div className="h-full w-full overflow-hidden flex flex-col">
+              <div className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+                <div className="min-w-[1000px] p-4 md:p-6 h-full flex flex-col">
+                  <div className="flex-1 overflow-y-auto rounded-lg border bg-card">
                     {renderListView()}
                   </div>
                 </div>

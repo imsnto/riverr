@@ -1,4 +1,3 @@
-// src/components/dashboard/dashboard.tsx
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -249,7 +248,7 @@ export default function Dashboard({ view }: { view: string }) {
 
     const calculateMentions = () => {
         const allMentions: any[] = [];
-        const userMention = `@${'appUser.name'}`;
+        const userMention = `@${appUser.name}`;
 
         // Mentions from task activities/comments
         tasks.forEach(task => {
@@ -266,7 +265,6 @@ export default function Dashboard({ view }: { view: string }) {
 
         const unread = allMentions.filter(m => isUnread(m, lastMentionsRead));
         // Sort by date descending
-        unread.sort((a, b) => new Date('timestamp' in b ? b.timestamp : b.createdAt).getTime() - new Date('timestamp' in a ? a.timestamp : a.createdAt).getTime());
         unread.sort((a, b) => new Date('timestamp' in b ? b.timestamp : b.createdAt).getTime() - new Date('timestamp' in a ? a.timestamp : a.createdAt).getTime());
         setUnreadMentions(unread);
     };
