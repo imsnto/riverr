@@ -49,7 +49,7 @@ export const sendInviteEmail = onDocumentCreated(
     const spaceName = invite.spaceName ?? "a workspace";
 
     await client.sendEmail({
-      From: "Manowar <noreply@manowar.cloud>",
+      From: "brad@riverr.app",
       To: invite.email,
       Subject: `You’ve been invited to join ${spaceName}`,
       HtmlBody: `

@@ -2,7 +2,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import crypto from "crypto";
-import postmark from "postmark";
+import * as postmark from "postmark";
 
 const POSTMARK_SERVER_TOKEN = defineSecret("POSTMARK_SERVER_TOKEN");
 const APP_BASE_URL = defineSecret("APP_BASE_URL");
@@ -46,7 +46,7 @@ export const resendInvite = onCall({ secrets: [POSTMARK_SERVER_TOKEN, APP_BASE_U
   const spaceName = invite.spaceName ?? "a workspace";
 
   await client.sendEmail({
-    From: "Manowar <noreply@manowar.cloud>",
+    From: "brad@riverr.app",
     To: invite.email,
     Subject: `Reminder: You’ve been invited to join ${spaceName}`,
     HtmlBody: `
