@@ -14,7 +14,7 @@ import {
   BookOpen,
   Ticket,
   DollarSign,
-  AtSign,
+  Users,
 } from 'lucide-react';
 import React from 'react';
 
@@ -24,7 +24,7 @@ const navItems: { key: AppView; icon: React.ReactNode; label: string }[] = [
   { key: 'tickets', icon: <Ticket />, label: 'Tickets' },
   { key: 'deals', icon: <DollarSign />, label: 'Deals' },
   { key: 'inbox', icon: <MessageCircle />, label: 'Inbox' },
-  { key: 'contacts', icon: <AtSign />, label: 'Contacts' },
+  { key: 'contacts', icon: <Users />, label: 'Contacts' },
   { key: 'help-center', icon: <BookOpen />, label: 'Knowledge' },
   { key: 'settings', icon: <Settings />, label: 'Settings' },
 ];

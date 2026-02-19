@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   BarChart,
   ClipboardCheck,
-  AtSign,
+  Users,
   FolderKanban,
   MessageSquare,
   BookOpen,
@@ -165,7 +165,7 @@ interface AppSidebarProps {
 }
 
 const allTopItems: { key: AppView; icon: React.ReactNode; label: string; fixed?: boolean }[] = [
-  { key: "overview", icon: <BarChart className="w-5 h-5" />, label: 'Overview', fixed: true },
+  { key: "overview", icon: <BarChart className="w-4 h-4" />, label: 'Overview', fixed: true },
 ];
 
 const allMiddleItems: {
@@ -174,13 +174,13 @@ const allMiddleItems: {
   label: string;
   fixed?: boolean;
 }[] = [
-  { key: "tasks", icon: <FolderKanban className="w-5 h-5" />, label: 'Projects' },
-  { key: "tickets", icon: <Ticket className="w-5 h-5" />, label: 'Tickets' },
-  { key: "deals", icon: <DollarSign className="w-5 h-5" />, label: 'Deals' },
-  { key: "inbox", icon: <MessageCircle className="w-5 h-5" />, label: 'Inbox' },
-  { key: "contacts", icon: <AtSign className="w-5 h-5" />, label: 'Contacts' },
-  { key: 'help-center', icon: <BookOpen className="w-5 h-5" />, label: 'Knowledge' },
-  { key: "flows", icon: <Workflow className="w-5 h-5" />, label: 'Flows' },
+  { key: "tasks", icon: <FolderKanban className="w-4 h-4" />, label: 'Projects' },
+  { key: "tickets", icon: <Ticket className="w-4 h-4" />, label: 'Tickets' },
+  { key: "deals", icon: <DollarSign className="w-4 h-4" />, label: 'Deals' },
+  { key: "inbox", icon: <MessageCircle className="w-4 h-4" />, label: 'Inbox' },
+  { key: "contacts", icon: <Users className="w-4 h-4" />, label: 'Contacts' },
+  { key: 'help-center', icon: <BookOpen className="w-4 h-4" />, label: 'Knowledge' },
+  { key: "flows", icon: <Workflow className="w-4 h-4" />, label: 'Flows' },
 ];
 
 const allBottomItems: {
@@ -189,8 +189,8 @@ const allBottomItems: {
   label: string;
   fixed?: boolean;
 }[] = [
-  { key: "team-timesheets", icon: <Clock className="w-5 h-5" />, label: 'Timesheets', fixed: true },
-  { key: "settings", icon: <Settings className="w-5 h-5" />, label: 'Settings', fixed: true },
+  { key: "team-timesheets", icon: <Clock className="w-4 h-4" />, label: 'Timesheets', fixed: true },
+  { key: "settings", icon: <Settings className="w-4 h-4" />, label: 'Settings', fixed: true },
 ];
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({

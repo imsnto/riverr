@@ -4,7 +4,7 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
-import { Check, GripVertical, Plus, Info, Briefcase, Star, Headset, Workflow, BookOpen, AtSign, MessageCircle, FolderKanban, DollarSign } from 'lucide-react';
+import { Check, GripVertical, Plus, Info, Briefcase, Star, Headset, Workflow, BookOpen, Users, MessageCircle, FolderKanban, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -22,7 +22,7 @@ const ALL_COMPONENTS: Record<string, { name: string; description: string; icon: 
     'tasks': { name: 'Task Board', description: 'Kanban board for tasks.', icon: <FolderKanban /> },
     'help-center': { name: 'Knowledge', description: 'Centralized documentation for internal and public use.', icon: <BookOpen />, foundational: true },
     'deals': { name: 'Deals', description: 'Manage your sales pipeline and opportunities.', icon: <DollarSign /> },
-    'contacts': { name: 'Contacts', description: 'View and manage all customer and lead profiles.', icon: <AtSign /> },
+    'contacts': { name: 'Contacts', description: 'View and manage all customer and lead profiles.', icon: <Users /> },
     'inbox': { name: 'Inbox', description: 'Live chat and messaging with visitors and customers.', icon: <MessageCircle /> },
     'tickets': { name: 'Tickets', description: 'Track and manage customer issues from open to resolved.', icon: <Headset /> },
     'flows': { name: 'Workflows', description: 'Automate processes, assignments, and job flows.', icon: <Workflow /> },
