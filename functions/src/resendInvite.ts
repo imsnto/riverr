@@ -27,7 +27,7 @@ export const resendInvite = onCall({ secrets: [POSTMARK_SERVER_TOKEN, APP_BASE_U
   const invite = inviteSnap.data() as any;
 
   if (invite.status !== "pending") {
-    throw new HttpsError("failed-precondition", "This invite is no longer pending and cannot be resent.");
+    throw new HttpsError("failed-precondition", "This invite is no longer pending and cannot be sent.");
   }
 
   // Generate a NEW token to ensure the link is fresh
@@ -60,6 +60,7 @@ export const resendInvite = onCall({ secrets: [POSTMARK_SERVER_TOKEN, APP_BASE_U
         </p>
       </div>
     `,
+    textBody: `Reminder: You've been invited to join ${spaceName}. Accept here: ${joinUrl}`,
   });
 
   return { success: true, message: "Invitation resent successfully." };

@@ -39,7 +39,7 @@ export const sendInviteEmail = onDocumentCreated(
       sentAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    const baseUrl = APP_BASE_URL.value(); // https://manowar.cloud
+    const baseUrl = APP_BASE_URL.value();
     const joinUrl = `${baseUrl}/join?invite=${encodeURIComponent(
       inviteId
     )}&token=${encodeURIComponent(rawToken)}`;
@@ -62,6 +62,7 @@ export const sendInviteEmail = onDocumentCreated(
           </p>
         </div>
       `,
+      textBody: `You've been invited to join ${spaceName}. Accept here: ${joinUrl}`,
     });
   }
 );
