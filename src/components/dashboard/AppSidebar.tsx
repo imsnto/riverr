@@ -1,36 +1,30 @@
 // src/components/dashboard/AppSidebar.tsx
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Sidebar, useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import {
   BarChart,
-  ClipboardCheck,
   Users,
   FolderKanban,
-  MessageSquare,
+  MessageCircle,
   BookOpen,
   Workflow,
   Settings,
   Clock,
-  ChevronDown,
-  Plus,
-  LifeBuoy,
   LogOut,
   User as UserIcon,
   ChevronsUpDown,
   Check,
-  MessageCircle,
-  Building2,
+  MessageCircle as MessageCircleIcon,
   Ticket,
   DollarSign,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { Project, Space, Hub, User } from "@/lib/data";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
+import { Space, Hub, User } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
@@ -38,17 +32,18 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Label } from "../ui/label";
 import { AppView } from "@/lib/routes";
-import Image from 'next/image';
 import { getInitials } from "@/lib/utils";
+import * as db from '@/lib/db';
 
 interface SpaceSwitcherProps {
   spaces: Space[];
-  activeSpace: Space | null;
+  selectedSpaceId: string | undefined;
   onSpaceChange: (spaceId: string) => void;
 }
 
-function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProps) {
-  const [open, setOpen] = React.useState(false)
+function SpaceSwitcher({ spaces, selectedSpaceId, onSpaceChange }: SpaceSwitcherProps) {
+  const [open, setOpen] = React.useState(false);
+  const selectedSpace = spaces.find(s => s.id === selectedSpaceId);
 
   return (
      <Popover open={open} onOpenChange={setOpen}>
@@ -59,7 +54,7 @@ function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProp
           aria-expanded={open}
           className="w-full justify-between"
         >
-          <span className="truncate">{activeSpace ? activeSpace.name : "Select a space"}</span>
+          <span className="truncate">{selectedSpace ? selectedSpace.name : "Select a space"}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -81,7 +76,7 @@ function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProp
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      activeSpace?.id === space.id ? "opacity-100" : "opacity-0"
+                      selectedSpaceId === space.id ? "opacity-100" : "opacity-0"
                     )}
                   />
                   {space.name}
@@ -97,13 +92,14 @@ function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProp
 
 interface HubSwitcherProps {
   hubs: Hub[];
-  activeHub: Hub | null;
+  activeHubId: string | undefined;
   onHubChange: (hubId: string) => void;
   disabled: boolean;
 }
 
-function HubSwitcher({ hubs, activeHub, onHubChange, disabled }: HubSwitcherProps) {
-  const [open, setOpen] = React.useState(false)
+function HubSwitcher({ hubs, activeHubId, onHubChange, disabled }: HubSwitcherProps) {
+  const [open, setOpen] = React.useState(false);
+  const selectedHub = hubs.find(h => h.id === activeHubId);
 
   return (
      <Popover open={open} onOpenChange={setOpen}>
@@ -115,7 +111,7 @@ function HubSwitcher({ hubs, activeHub, onHubChange, disabled }: HubSwitcherProp
           className="w-full justify-between"
           disabled={disabled}
         >
-          <span className="truncate">{activeHub ? activeHub.name : "Select a hub"}</span>
+          <span className="truncate">{selectedHub ? selectedHub.name : "Select a hub"}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -137,7 +133,7 @@ function HubSwitcher({ hubs, activeHub, onHubChange, disabled }: HubSwitcherProp
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      activeHub?.id === hub.id ? "opacity-100" : "opacity-0"
+                      activeHubId === hub.id ? "opacity-100" : "opacity-0"
                     )}
                   />
                   {hub.name}
@@ -154,42 +150,39 @@ function HubSwitcher({ hubs, activeHub, onHubChange, disabled }: HubSwitcherProp
 interface AppSidebarProps {
   view: AppView;
   onChangeView: (view: AppView) => void;
-  className?: string;
-  activeSpace: Space | null, 
-  onSpaceChange: (spaceId: string) => void; 
-  allSpaces: Space[],
-  allHubs: Hub[],
-  activeHub: Hub | null,
-  onHubChange: (hubId: string) => void;
+  activeSpace: Space | null;
+  allSpaces: Space[];
+  activeHub: Hub | null;
+  onHubChange: (hubId: string, spaceId: string) => void;
 }
 
-const allTopItems: { key: AppView; icon: React.ReactNode; label: string; fixed?: boolean }[] = [
-  { key: "overview", icon: <BarChart className="w-4 h-4" />, label: 'Overview', fixed: true },
+const allTopItems: { key: AppView; icon: React.ElementType; label: string; fixed?: boolean }[] = [
+  { key: "overview", icon: BarChart, label: 'Overview', fixed: true },
 ];
 
 const allMiddleItems: {
   key: AppView;
-  icon: React.ReactNode;
+  icon: React.ElementType;
   label: string;
   fixed?: boolean;
 }[] = [
-  { key: "tasks", icon: <FolderKanban className="w-4 h-4" />, label: 'Projects' },
-  { key: "tickets", icon: <Ticket className="w-4 h-4" />, label: 'Tickets' },
-  { key: "deals", icon: <DollarSign className="w-4 h-4" />, label: 'Deals' },
-  { key: "inbox", icon: <MessageCircle className="w-4 h-4" />, label: 'Inbox' },
-  { key: "contacts", icon: <Users className="w-4 h-4" />, label: 'Contacts' },
-  { key: 'help-center', icon: <BookOpen className="w-4 h-4" />, label: 'Knowledge' },
-  { key: "flows", icon: <Workflow className="w-4 h-4" />, label: 'Flows' },
+  { key: "tasks", icon: FolderKanban, label: 'Projects' },
+  { key: "tickets", icon: Ticket, label: 'Tickets' },
+  { key: "deals", icon: DollarSign, label: 'Deals' },
+  { key: "inbox", icon: MessageCircle, label: 'Inbox' },
+  { key: "contacts", icon: Users, label: 'Contacts' },
+  { key: 'help-center', icon: BookOpen, label: 'Knowledge' },
+  { key: "flows", icon: Workflow, label: 'Flows' },
 ];
 
 const allBottomItems: {
   key: AppView;
-  icon: React.ReactNode;
+  icon: React.ElementType;
   label: string;
   fixed?: boolean;
 }[] = [
-  { key: "team-timesheets", icon: <Clock className="w-4 h-4" />, label: 'Timesheets', fixed: true },
-  { key: "settings", icon: <Settings className="w-4 h-4" />, label: 'Settings', fixed: true },
+  { key: "team-timesheets", icon: Clock, label: 'Timesheets', fixed: true },
+  { key: "settings", icon: Settings, label: 'Settings', fixed: true },
 ];
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
@@ -197,8 +190,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   onChangeView,
   activeSpace,
   allSpaces,
-  onSpaceChange,
-  allHubs,
   activeHub,
   onHubChange,
 }) => {
@@ -206,11 +197,24 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   const { isMobile, state, setOpen, openMobile, setOpenMobile } = useSidebar();
   const router = useRouter();
 
-  React.useEffect(() => {
-    if (!isMobile) {
-      setOpen(false);
+  // Local browsing state for the popover
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [browsingSpaceId, setBrowsingSpaceId] = useState<string | undefined>(activeSpace?.id);
+  const [browsingHubs, setBrowsingHubs] = useState<Hub[]>([]);
+
+  useEffect(() => {
+    if (isPopoverOpen) {
+      setBrowsingSpaceId(activeSpace?.id);
     }
-  }, [isMobile, setOpen]);
+  }, [isPopoverOpen, activeSpace]);
+
+  useEffect(() => {
+    if (browsingSpaceId) {
+      db.getHubsForSpace(browsingSpaceId).then(setBrowsingHubs);
+    } else {
+      setBrowsingHubs([]);
+    }
+  }, [browsingSpaceId]);
 
   const handleLogout = async () => {
     await signOut();
@@ -240,12 +244,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
   const renderButton = (item: {
     key: AppView;
-    icon: React.ReactNode;
+    icon: React.ElementType;
     label: string;
     fixed?: boolean;
   }) => {
     const isActive = view === item.key;
     const variant = isActive ? "secondary" : "ghost";
+    const Icon = item.icon;
     
     return (
       <Button
@@ -254,7 +259,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         variant={variant}
         className={cn("h-12 w-full justify-start rounded-md px-4", !showLabels && "px-0 justify-center w-12 mx-auto")}
       >
-        {item.icon}
+        <Icon className="w-4 h-4" />
         {showLabels && <span className="ml-3">{item.label}</span>}
       </Button>
     );
@@ -264,7 +269,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     <Sidebar collapsible="icon">
       <div className={cn("flex flex-col h-full", showLabels ? "p-2" : "p-1")}>
          <div className="flex justify-center p-2">
-          <Popover>
+          <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-12 h-12 justify-center p-0 rounded-lg">
                   <Avatar className="h-full w-full rounded-lg">
@@ -287,15 +292,24 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 <div className="space-y-4">
                   <div className="grid grid-cols-[auto_1fr] items-center gap-x-4">
                       <Label className="w-12">Space</Label>
-                      <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />
+                      <SpaceSwitcher 
+                        spaces={allSpaces} 
+                        selectedSpaceId={browsingSpaceId} 
+                        onSpaceChange={setBrowsingSpaceId} 
+                      />
                   </div>
                    <div className="grid grid-cols-[auto_1fr] items-center gap-x-4">
                       <Label className="w-12">Hub</Label>
                       <HubSwitcher 
-                        hubs={allHubs} 
-                        activeHub={activeHub} 
-                        onHubChange={onHubChange} 
-                        disabled={!activeSpace}
+                        hubs={browsingHubs} 
+                        activeHubId={browsingSpaceId === activeSpace?.id ? activeHub?.id : undefined} 
+                        onHubChange={(hubId) => {
+                          if (browsingSpaceId) {
+                            onHubChange(hubId, browsingSpaceId);
+                            setIsPopoverOpen(false);
+                          }
+                        }} 
+                        disabled={!browsingSpaceId}
                       />
                   </div>
                 </div>
@@ -335,10 +349,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                     <DropdownMenuItem onClick={() => router.push('/profile')}>
                       <UserIcon className="mr-2 h-4 w-4" />
                       <span>Profile</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <LifeBuoy className="mr-2 h-4 w-4" />
-                      <span>Support</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>

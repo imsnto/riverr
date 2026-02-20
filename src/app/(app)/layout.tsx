@@ -41,8 +41,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         if (activeHub) {
             router.push(`/space/${activeSpace?.id}/hub/${activeHub.id}/${newView}`);
         } else if (activeSpace) {
-            // If no active hub but we have a space, we might need to pick one
-            // However, most views require a hub. We'll default to the first hub if available.
             if (spaceHubs.length > 0) {
                 const targetHub = spaceHubs[0];
                 setActiveHub(targetHub);
@@ -57,22 +55,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const handleHubChange = (hubId: string) => {
-        const newHub = spaceHubs.find(h => h.id === hubId);
-        if (newHub && activeSpace) {
-            setActiveHub(newHub);
-            const defaultView = newHub.settings?.defaultView || 'tasks';
-            router.push(`/space/${activeSpace.id}/hub/${newHub.id}/${defaultView}`);
-        }
-    };
+    const handleHubChange = async (hubId: string, spaceId: string) => {
+        // Find the target space
+        const targetSpace = userSpaces.find(s => s.id === spaceId);
+        if (!targetSpace) return;
 
-    const handleSpaceChange = (spaceId: string) => {
-        const newSpace = userSpaces.find(s => s.id === spaceId);
-        if (newSpace) {
-            setActiveSpace(newSpace);
-            setActiveHub(null);
-            // We no longer redirect to /hubs automatically. 
-            // The sidebar will update with the new space's hubs.
+        // Fetch hubs for that space to find the target hub object
+        const hubs = await db.getHubsForSpace(spaceId);
+        const targetHub = hubs.find(h => h.id === hubId);
+
+        if (targetHub) {
+            setActiveSpace(targetSpace);
+            setActiveHub(targetHub);
+            const defaultView = targetHub.settings?.defaultView || 'tasks';
+            router.push(`/space/${targetSpace.id}/hub/${targetHub.id}/${defaultView}`);
         }
     };
 
@@ -88,8 +84,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               onChangeView={handleViewChange}
               activeSpace={activeSpace}
               allSpaces={userSpaces}
-              onSpaceChange={handleSpaceChange}
-              allHubs={spaceHubs}
               activeHub={activeHub}
               onHubChange={handleHubChange}
             />
