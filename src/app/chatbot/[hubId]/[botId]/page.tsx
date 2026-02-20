@@ -142,7 +142,6 @@ export default function ChatbotWidgetPage() {
     const existingConvo = convos.find(c => c.visitorId === visitorId);
 
     if (existingConvo) {
-      await ensureConversationCrmLinkedAction(existingConvo.id);
       convoUnsubRef.current = db.getConversation(existingConvo.id, setConversation);
       unsubRef.current = db.getMessagesForConversations(
         [existingConvo.id],
@@ -174,9 +173,11 @@ export default function ChatbotWidgetPage() {
 
     await db.updateVisitor(visitorId, { name: capturedName, email: capturedEmail });
     setIdentityCaptureStep('none');
-    setCapturedName('');
-    setCapturedEmail('');
     
+    // Perform CRM sync BEFORE sending the AI message to ensure metadata is correct
+    await ensureConversationCrmLinkedAction(conversation.id);
+    await loadVisitorAndConversation(visitorId);
+
     await addChatMessageAction({
         conversationId: conversation.id,
         authorId: 'ai_agent',
@@ -186,8 +187,8 @@ export default function ChatbotWidgetPage() {
         timestamp: new Date().toISOString(),
     });
     
-    await ensureConversationCrmLinkedAction(conversation.id);
-    await loadVisitorAndConversation(visitorId);
+    setCapturedName('');
+    setCapturedEmail('');
   }
 
   const uploadFileAndGetUrl = async (file: File, conversationId: string) => {
@@ -269,6 +270,9 @@ export default function ChatbotWidgetPage() {
                 const name = messageText.replace(email, '').replace(/my name is|i'm|im|is/gi, '').trim();
                 await db.updateVisitor(visitor.id, { name: name || null, email: email });
                 
+                await ensureConversationCrmLinkedAction(currentConversation.id);
+                await loadVisitorAndConversation(visitor.id);
+
                 await addChatMessageAction({
                     conversationId: currentConversation.id,
                     authorId: 'ai_agent',
@@ -278,8 +282,6 @@ export default function ChatbotWidgetPage() {
                     timestamp: new Date().toISOString(),
                 });
                 setIdentityCaptureStep('none');
-                await ensureConversationCrmLinkedAction(currentConversation.id);
-                await loadVisitorAndConversation(visitor.id);
             } else {
                 setIdentityCaptureStep('none');
             }

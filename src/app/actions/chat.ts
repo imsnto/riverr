@@ -14,6 +14,15 @@ import admin from 'firebase-admin';
 
 const typesense = getTypesenseSearch();
 
+export const whimsicalAdjectives = ["Clever", "Silly", "Witty", "Happy", "Brave", "Curious", "Dapper", "Eager", "Fancy", "Gentle", "Jolly", "Kindly", "Lucky", "Merry", "Nifty", "Plucky", "Quirky", "Sunny", "Thrifty", "Zippy", "Agile", "Blissful", "Calm", "Dandy", "Elated", "Fearless"];
+export const whimsicalNouns = ["Alpaca", "Badger", "Capybara", "Dingo", "Echidna", "Fossa", "Gecko", "Hedgehog", "Impala", "Jerboa", "Koala", "Loris", "Mongoose", "Narwhal", "Okapi", "Pangolin", "Quokka", "Serval", "Tarsier", "Urial", "Wallaby", "Xerus", "Zebra", "Aardvark"];
+
+export function isWhimsical(name: string | null | undefined) {
+  if (!name) return true;
+  const words = name.split(' ');
+  return words.length === 2 && whimsicalAdjectives.includes(words[0]) && whimsicalNouns.includes(words[1]);
+}
+
 function normalize(s: string) {
   return (s ?? "")
     .toLowerCase()
@@ -170,24 +179,32 @@ async function searchSalesExtractions(params: SearchSalesExtractionsParams): Pro
 
 /**
  * SERVER-SIDE DATABASE CALLS
- * Uses firebase-admin (adminDB) to bypass client-side restrictions.
  */
 
 export async function updateConversation(conversationId: string, data: Partial<Conversation>) {
     const convRef = adminDB.collection('conversations').doc(conversationId);
     
+    // Sanitize data for Firestore update
+    const cleanData = Object.fromEntries(
+        Object.entries(data).filter(([_, v]) => v !== undefined)
+    );
+
     // 1. Direct Server Update
-    await convRef.update(data as any);
+    await convRef.update(cleanData as any);
   
     // 2. Server-side side effects (Sync contactId to tickets)
-    if (data.contactId) {
+    if (cleanData.contactId) {
       const ticketsSnapshot = await adminDB.collection("tickets")
         .where("conversationId", "==", conversationId)
-        .limit(1)
+        .limit(5)
         .get();
   
       if (!ticketsSnapshot.empty) {
-        await ticketsSnapshot.docs[0].ref.update({ contactId: data.contactId });
+        const batch = adminDB.batch();
+        ticketsSnapshot.docs.forEach(doc => {
+            batch.update(doc.ref, { contactId: cleanData.contactId });
+        });
+        await batch.commit();
       }
     }
   }
@@ -208,25 +225,17 @@ export async function updateConversation(conversationId: string, data: Partial<C
         const userDoc = await adminDB.collection('users').doc(message.authorId).get();
         if (userDoc.exists) authorName = userDoc.data()?.name || 'Agent';
       } else { // 'contact' (visitor)
+        // If it's a contact, we should check if they need identity sync
         const convoSnap = await adminDB.collection('conversations').doc(message.conversationId).get();
         if (convoSnap.exists) {
              const convoData = convoSnap.data() as any;
-             // Try to get latest real name from visitor record instead of cached visitorName
-             if (convoData.visitorId) {
-                 const visitorDoc = await adminDB.collection('visitors').doc(convoData.visitorId).get();
-                 if (visitorDoc.exists) {
-                     const vData = visitorDoc.data();
-                     // If visitor has a contact, prioritize contact name
-                     if (vData?.contactId) {
-                         const contactDoc = await adminDB.collection('contacts').doc(vData.contactId).get();
-                         if (contactDoc.exists) {
-                             authorName = contactDoc.data()?.name || vData.name || convoData.visitorName || 'Visitor';
-                         } else {
-                             authorName = vData.name || convoData.visitorName || 'Visitor';
-                         }
-                     } else {
-                         authorName = vData?.name || convoData.visitorName || 'Visitor';
-                     }
+             
+             // Guarantee CRM link if possible
+             if (!convoData.contactId || isWhimsical(convoData.visitorName)) {
+                 const linkedContactId = await ensureCrmLinkedForConversationAdmin(message.conversationId);
+                 if (linkedContactId) {
+                     const contactDoc = await adminDB.collection('contacts').doc(linkedContactId).get();
+                     authorName = contactDoc.data()?.name || convoData.visitorName || 'Visitor';
                  } else {
                      authorName = convoData.visitorName || 'Visitor';
                  }
@@ -236,7 +245,7 @@ export async function updateConversation(conversationId: string, data: Partial<C
         }
       }
   
-      const preview = (message.content || "").slice(0, 140);
+      const preview = (message.content || "").slice(0, 140) || (message.attachments?.length ? "Sent an attachment" : "");
       const timestamp = new Date().toISOString();
   
       // 3. Batch/Parallel update for Conversation and Tickets
@@ -328,8 +337,6 @@ async function deleteChunksForArticle(articleId: string) {
     });
   } catch (error: any) {
     if (error.httpStatus === 404) {
-      // This is okay. It means either the collection doesn't exist or no documents matched the filter.
-      // In either case, the documents are gone, which was the goal.
       console.log(`No chunks found to delete for article ${articleId} (or collection doesn't exist).`);
     } else {
       console.error(`Error deleting chunks for article ${articleId}:`, error);
@@ -386,7 +393,6 @@ export async function reindexArticleAction(articleId: string) {
 
     } catch (error: any) {
         console.error(`Failed to re-index article ${articleId}:`, error);
-        // Re-throw to let the client-side know something went wrong.
         throw new Error(error.message || 'Unknown error occurred during re-indexing.');
     }
 }
@@ -492,9 +498,6 @@ function normalizeName(name?: string | null) {
   return n;
 }
 
-const whimsicalAdjectives = ["Clever", "Silly", "Witty", "Happy", "Brave", "Curious", "Dapper", "Eager", "Fancy", "Gentle", "Jolly", "Kindly", "Lucky", "Merry", "Nifty", "Plucky", "Quirky", "Sunny", "Thrifty", "Zippy", "Agile", "Blissful", "Calm", "Dandy", "Elated", "Fearless"];
-const whimsicalNouns = ["Alpaca", "Badger", "Capybara", "Dingo", "Echidna", "Fossa", "Gecko", "Hedgehog", "Impala", "Jerboa", "Koala", "Loris", "Mongoose", "Narwhal", "Okapi", "Pangolin", "Quokka", "Serval", "Tarsier", "Urial", "Wallaby", "Xerus", "Zebra", "Aardvark"];
-
 function generateWhimsicalName() {
   return `${whimsicalAdjectives[Math.floor(Math.random()*whimsicalAdjectives.length)]} ${whimsicalNouns[Math.floor(Math.random()*whimsicalNouns.length)]}`;
 }
@@ -581,11 +584,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
           const contactData = contactSnap.data() as any;
           const updates: any = {};
           
-          const isWhimsical = (name: string) => {
-              const words = name.split(' ');
-              return words.length === 2 && whimsicalAdjectives.includes(words[0]) && whimsicalNouns.includes(words[1]);
-          }
-          
           if (vName && (!contactData.name || isWhimsical(contactData.name)) && !isWhimsical(vName)) {
               updates.name = vName;
           }
@@ -599,12 +597,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
               await contactRef.update({ ...updates, updatedAt: new Date() });
           }
       }
-  }
-
-  // 4) link visitor + conversation
-  const isWhimsical = (name: string) => {
-      const words = name.split(' ');
-      return words.length === 2 && whimsicalAdjectives.includes(words[0]) && whimsicalNouns.includes(words[1]);
   }
 
   const convoUpdates: any = {

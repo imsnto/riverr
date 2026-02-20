@@ -58,6 +58,8 @@ import { reindexArticleAction, addChatMessage as addChatMessageAction } from '@/
 import TicketsBoard from './tickets-board';
 import { ContentSkeleton } from './content-skeleton';
 import { LayoutTemplate } from 'lucide-react';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { db as firestoreDb } from '@/lib/firebase';
 
 const isUnread = (mention: any, lastRead: string | null) => {
   if (!lastRead) return true;
@@ -66,10 +68,11 @@ const isUnread = (mention: any, lastRead: string | null) => {
 };
 
 export default function Dashboard({ view }: { view: string }) {
-  const { appUser, signOut, activeSpace, userSpaces, setUserSpaces, setActiveSpace, activeHub, setActiveHub } = useAuth();
+  const { appUser, activeSpace, userSpaces, setUserSpaces, setActiveSpace, activeHub, setActiveHub } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const messageUnsubscribeRef = useRef<(() => void) | null>(null);
+  const conversationUnsubscribeRef = useRef<(() => void) | null>(null);
   const [hideMobileBottomNav, setHideMobileBottomNav] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -106,32 +109,63 @@ export default function Dashboard({ view }: { view: string }) {
         return;
     }
     setIsLoading(true);
+    
+    // Clear old listeners
     if (messageUnsubscribeRef.current) {
         messageUnsubscribeRef.current();
         messageUnsubscribeRef.current = null;
     }
-    const [fetchedUsers, fetchedConversations] = await Promise.all([
-        db.getAllUsers(),
-        db.getConversationsForSpace(activeSpace.id),
-    ]);
+    if (conversationUnsubscribeRef.current) {
+        conversationUnsubscribeRef.current();
+        conversationUnsubscribeRef.current = null;
+    }
+
+    const fetchedUsers = await db.getAllUsers();
     setAllUsers(fetchedUsers);
-    setChatConversations(fetchedConversations.sort((a,b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
+
+    // Set up conversation listener for the space
+    const hubs = await db.getHubsForSpace(activeSpace.id);
+    const hubIds = hubs.map(h => h.id);
+    setAllHubs(hubs);
+
+    if (hubIds.length > 0) {
+        const qConvos = query(
+            collection(firestoreDb, 'conversations'), 
+            where('hubId', 'in', hubIds),
+            orderBy('lastMessageAt', 'desc')
+        );
+        conversationUnsubscribeRef.current = onSnapshot(qConvos, (snapshot) => {
+            const convos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
+            setChatConversations(convos);
+            
+            // Sync visitors for these conversations
+            const visitorIds = [...new Set(convos.map(c => c.visitorId).filter(Boolean))];
+            Promise.all(visitorIds.map(id => db.getOrCreateVisitor(id!))).then(v => setVisitors(v as Visitor[]));
+
+            // Sync message listener if conversations change
+            const convoIds = convos.map(c => c.id);
+            if (messageUnsubscribeRef.current) messageUnsubscribeRef.current();
+            messageUnsubscribeRef.current = db.getMessagesForConversations(convoIds, (messages) => { setChatMessages(messages); });
+        });
+    }
+
     const allUserSpaces = await db.getSpacesForUser(appUser.id);
     const allProjectIds: string[] = [];
     for (const space of allUserSpaces) {
-        const hubs = await db.getHubsForSpace(space.id);
-        for (const hub of hubs) {
+        const hubsInSpace = await db.getHubsForSpace(space.id);
+        for (const hub of hubsInSpace) {
             const hubProjects = await db.getProjectsInHub(hub.id);
             allProjectIds.push(...hubProjects.map(p => p.id));
         }
     }
     const fetchedTimeEntries = await db.getTimeEntriesInHub(allProjectIds);
     setTimeEntries(fetchedTimeEntries);
+
     if (activeHub) {
         const [
             fetchedProjects, fetchedTasks, fetchedTickets, fetchedDeals, fetchedSlackLogs,
             fetchedJobFlowTemplates, fetchedPhaseTemplates, fetchedTaskTemplates, fetchedJobs,
-            fetchedJobsTasks, fetchedHubs, fetchedBots, fetchedEscalationRules, fetchedContacts, fetchedHelpCenters,
+            fetchedJobsTasks, fetchedBots, fetchedEscalationRules, fetchedContacts, fetchedHelpCenters,
         ] = await Promise.all([
             db.getProjectsInHub(activeHub.id),
             db.getAllTasks(activeHub.id),
@@ -143,7 +177,6 @@ export default function Dashboard({ view }: { view: string }) {
             db.getTaskTemplates(activeHub.id),
             db.getAllJobs(activeHub.id),
             db.getAllJobFlowTasks(activeHub.id),
-            db.getHubsForSpace(activeSpace.id),
             db.getBots(activeHub.id),
             db.getEscalationIntakeRules(activeHub.id),
             db.getContacts(activeSpace.id),
@@ -164,22 +197,10 @@ export default function Dashboard({ view }: { view: string }) {
         setTaskTemplates(fetchedTaskTemplates);
         setJobs(fetchedJobs);
         setJobFlowTasks(fetchedJobsTasks);
-        setAllHubs(fetchedHubs);
         setBots(fetchedBots);
         setEscalationIntakeRules(fetchedEscalationRules);
         setContacts(fetchedContacts);
         setHelpCenters(fetchedHelpCenters);
-        if (fetchedConversations.length > 0) {
-            const convoIds = fetchedConversations.map(c => c.id);
-            const visitorIds = [...new Set(fetchedConversations.map(c => c.visitorId).filter(Boolean))];
-            const fetchedVisitors = await Promise.all(visitorIds.map(id => db.getOrCreateVisitor(id!)));
-            setVisitors(fetchedVisitors as Visitor[]);
-            const unsub = db.getMessagesForConversations(convoIds, (messages) => { setChatMessages(messages); });
-            messageUnsubscribeRef.current = unsub;
-        } else {
-            setChatMessages([]);
-            setVisitors([]);
-        }
     }
     setIsLoading(false);
   };
@@ -187,7 +208,10 @@ export default function Dashboard({ view }: { view: string }) {
   useEffect(() => {
     if (activeSpace) fetchData();
     else if (appUser) setIsLoading(false);
-    return () => { if (messageUnsubscribeRef.current) messageUnsubscribeRef.current(); };
+    return () => { 
+        if (messageUnsubscribeRef.current) messageUnsubscribeRef.current(); 
+        if (conversationUnsubscribeRef.current) conversationUnsubscribeRef.current();
+    };
   }, [appUser, activeSpace, activeHub]);
 
   useEffect(() => {
@@ -393,19 +417,13 @@ export default function Dashboard({ view }: { view: string }) {
       timestamp: new Date().toISOString() 
     };
 
-    const nm = await addChatMessageAction(messageData);
-    
-    if (type === 'message') {
-        const ucs = chatConversations.map(c => (c.id === cid ? { ...c, lastMessage: content, lastMessageAt: nm.timestamp, lastMessageAuthor: appUser.name } : c)).sort((a,b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
-        setChatConversations(ucs);
-        setTickets(prev => prev.map(t => t.conversationId === cid ? { ...t, lastMessagePreview: content, lastMessageAt: nm.timestamp, lastMessageAuthor: appUser.name } : t));
-    }
+    // Metadata is now handled entirely by the server action + real-time listener
+    await addChatMessageAction(messageData);
   };
 
   const handleAssignConversation = async (cid: string, aid: string | null) => {
     const status = aid ? 'open' : 'unassigned';
     await db.updateConversation(cid, { assigneeId: aid, status });
-    setChatConversations(prev => prev.map(c => (c.id === cid ? { ...c, assigneeId: aid, status } : c)));
   };
   
   const handleBotUpdate = async (bid: string, d: Partial<Bot>) => {
@@ -464,7 +482,23 @@ export default function Dashboard({ view }: { view: string }) {
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       {renderView()}
       <ProjectFormDialog isOpen={isProjectFormOpen} onOpenChange={setIsProjectFormOpen} onSave={handleSaveProject} project={editingProject} spaceId={activeSpace?.id || ''} spaceMembers={allUsers.filter(u => activeSpace?.members[u.id])} />
-      {selectedTask && (<TaskDetailsDialog task={selectedTask} timeEntries={timeEntries.filter(t => t.task_id === selectedTask?.id)} isOpen={!!selectedTask} onOpenChange={(o) => { if (!o) setSelectedTask(null); }} onUpdateTask={handleUpdateTask} onAddTask={async (td, tid) => { const nt = await handleAddTask(td); return nt; }} onRemoveTask={handleDeleteTask} onTaskSelect={setSelectedTask} onLogTime={handleLogTime} statuses={activeHub?.statuses?.map(s => s.name) || []} allUsers={allUsers} allTasks={tasks} projects={projects} />)}
+      {selectedTask && (
+        <TaskDetailsDialog 
+            task={selectedTask} 
+            timeEntries={timeEntries.filter(t => t.task_id === selectedTask?.id)} 
+            isOpen={!!selectedTask} 
+            onOpenChange={(o) => { if (!o) setSelectedTask(null); }} 
+            onUpdateTask={handleUpdateTask} 
+            onAddTask={async (td, tid) => { const nt = await handleAddTask(td); return nt; }} 
+            onRemoveTask={handleDeleteTask} 
+            onTaskSelect={setSelectedTask} 
+            onLogTime={handleLogTime} 
+            statuses={activeHub?.statuses?.map(s => s.name) || []} 
+            allUsers={allUsers} 
+            allTasks={tasks} 
+            projects={projects} 
+        />
+      )}
     </div>
   );
 }
