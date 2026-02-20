@@ -34,6 +34,8 @@ export default function InboxContactPanel({ visitor, onToggle }: InboxContactPan
     );
   }
 
+  const displayName = visitor.name || "Unknown Visitor";
+
   return (
     <div className="flex flex-col h-full bg-card border-l">
         {/* Header */}
@@ -41,20 +43,10 @@ export default function InboxContactPanel({ visitor, onToggle }: InboxContactPan
             <div className="flex-1" />
             <div className="flex flex-col items-center text-center flex-1">
                 <Avatar className="h-16 w-16 mb-2">
-                    <AvatarImage src={visitor.avatarUrl} alt={visitor.name} />
-                    <AvatarFallback>{getInitials(visitor.name)}</AvatarFallback>
+                    <AvatarImage src={visitor.avatarUrl} alt={displayName} />
+                    <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
                 </Avatar>
-                <h3 className="font-semibold text-nowrap">{visitor.name}</h3>
-                {/* <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                    <MapPin className="h-3 w-3" />
-                    <span>{visitor.location}</span>
-                    <span className="text-xs">·</span>
-                    <span>10:11 PM GMT</span>
-                </div> */}
-                {/* <div className="flex gap-2 mt-5">
-                    <Button variant="outline" size="sm">Add tag...</Button>
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge>
-                </div> */}
+                <h3 className="font-semibold text-nowrap">{displayName}</h3>
             </div>
             <div className="flex-1 flex justify-end">
                 <Button variant="ghost" size="icon" onClick={onToggle} className="-mr-2 -mt-2">
@@ -78,12 +70,12 @@ export default function InboxContactPanel({ visitor, onToggle }: InboxContactPan
 
                 <Separator />
 
-                {/* Company Details */}
+                {/* Page Details */}
                  <div>
                     <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Page details</h4>
                     <div className="space-y-2">
-                        <DetailRow icon={Milestone} label="Domain" value={visitor.domain || '-'} />
-                        <DetailRow icon={Users} label="Pathname" value={visitor.pathname || '-'} />
+                        <DetailRow icon={Milestone} label="Domain" value={visitor.location?.domain || '-'} />
+                        <DetailRow icon={Users} label="Pathname" value={visitor.location?.pathname || '-'} />
                     </div>
                 </div>
             </div>

@@ -10,6 +10,7 @@ import { indexHelpCenterArticleToChunks } from '@/lib/knowledge/indexer';
 import { LeadStateNode, Contact, SalesPersonaSegmentNode, ChatMessage, Visitor, HelpCenter, HelpCenterCollection, HelpCenterArticle } from '@/lib/data';
 import { draftSalesEmail, type DraftSalesEmailInput, type DraftSalesEmailOutput } from '@/ai/flows/draft-sales-email';
 import { serverTimestamp } from 'firebase-admin/firestore';
+import admin from 'firebase-admin';
 
 const typesense = getTypesenseSearch();
 
@@ -205,7 +206,7 @@ export async function updateConversation(conversationId: string, data: Partial<C
         if (userDoc.exists) authorName = userDoc.data()?.name || 'Agent';
       } else { // 'contact'
         const convoSnap = await adminDB.collection('conversations').doc(message.conversationId).get();
-        if (convoSnap.exists()) {
+        if (convoSnap.exists) {
              authorName = convoSnap.data()?.visitorName || 'Unknown';
         }
       }
@@ -474,7 +475,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
   if (!convoSnap.exists) return null;
 
   const convo = convoSnap.data() as any;
-  if (convo.contactId) return convo.contactId;
   if (!convo.visitorId) return null;
 
   const hubSnap = await adminDB.collection("hubs").doc(convo.hubId).get();
@@ -485,21 +485,22 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
   const visitorRef = adminDB.collection("visitors").doc(convo.visitorId);
   const visitorSnap = await visitorRef.get();
   if (!visitorSnap.exists) return null;
-  const visitor = { id: visitorSnap.id, ...(visitorSnap.data() as any) }; // Visitor type needs to be available
+  const visitor = { id: visitorSnap.id, ...(visitorSnap.data() as any) };
 
   // guarantee visitor has a name
-  const vName = normalizeName(visitor.name) ?? '';
+  let vName = normalizeName(visitor.name);
+  if (!vName) {
+      vName = generateWhimsicalName();
+      await visitorRef.update({ name: vName });
+      visitor.name = vName;
+  }
+  
   const vEmail = normalizeEmail(visitor.email);
 
-  if (!normalizeName(visitor.name)) {
-    await visitorRef.update({ name: vName });
-    visitor.name = vName;
-  }
-
   // 1) find existing contact by email
-  let contactId: string | null = null;
+  let contactId: string | null = convo.contactId || visitor.contactId || null;
 
-  if (vEmail) {
+  if (!contactId && vEmail) {
     const byEmail = await adminDB.collection("contacts")
       .where("spaceId", "==", spaceId)
       .where("primaryEmail", "==", vEmail)
@@ -542,6 +543,32 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
       isMerged: false,
     });
     contactId = newContactRef.id;
+  } else {
+      // Update existing contact if we now have more info (like email or real name)
+      const contactRef = adminDB.collection("contacts").doc(contactId);
+      const contactSnap = await contactRef.get();
+      if (contactSnap.exists) {
+          const contactData = contactSnap.data() as any;
+          const updates: any = {};
+          
+          const isWhimsical = (name: string) => {
+              const words = name.split(' ');
+              return words.length === 2 && whimsicalAdjectives.includes(words[0]) && whimsicalNouns.includes(words[1]);
+          }
+          
+          if (vName && (!contactData.name || isWhimsical(contactData.name)) && !isWhimsical(vName)) {
+              updates.name = vName;
+          }
+          
+          if (vEmail && !contactData.primaryEmail) {
+              updates.primaryEmail = vEmail;
+              updates.emails = admin.firestore.FieldValue.arrayUnion(vEmail);
+          }
+          
+          if (Object.keys(updates).length > 0) {
+              await contactRef.update({ ...updates, updatedAt: new Date() });
+          }
+      }
   }
 
   // 4) link visitor + conversation
@@ -549,8 +576,8 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
     visitorRef.update({ contactId }),
     convoRef.update({
       contactId,
-      visitorName: visitor.name || vName,
-      visitorEmail: visitor.email || null,
+      visitorName: vName,
+      visitorEmail: vEmail,
       updatedAt: new Date().toISOString(),
     }),
   ]);
@@ -672,4 +699,3 @@ export async function importLibraryAction(hubId: string, spaceId: string, userId
 
     return { newHelpCenterId: newHcRef.id };
 }
-    

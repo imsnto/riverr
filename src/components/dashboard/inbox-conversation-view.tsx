@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -133,6 +134,7 @@ export default function InboxConversationView({
   const assignee = users.find(u => u.id === conversation.assigneeId);
   const conversationMessages = messages.filter(m => m.conversationId === conversation.id);
   const ticketPillAssignee = activeTicket ? users.find(u => u.id === activeTicket.assignedTo) : null;
+  const displayName = conversation.visitorName || contact.name || 'Visitor';
 
    const renderAttachments = (msg: ChatMessage) => {
       if (!msg.attachments || msg.attachments.length === 0) return null;
@@ -202,7 +204,7 @@ export default function InboxConversationView({
         {isCustomer && (
             <Avatar className="h-8 w-8">
               <AvatarImage src={contact.avatarUrl} />
-              <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
+              <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
             </Avatar>
         )}
         <div className="min-w-0">
@@ -246,10 +248,10 @@ export default function InboxConversationView({
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={contact.avatarUrl || undefined} alt={contact.name || ''} />
-                    <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
+                    <AvatarImage src={contact.avatarUrl || undefined} alt={displayName} />
+                    <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
                   </Avatar>
-                  <span className="font-semibold">{contact.name}</span>
+                  <span className="font-semibold">{displayName}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -385,7 +387,7 @@ export default function InboxConversationView({
                 ...ticketData,
                 conversationId: conversation.id,
                 contactId: conversation.contactId,
-                title: ticketData.title || `Ticket from conversation with ${contact.name}`,
+                title: ticketData.title || `Ticket from conversation with ${displayName}`,
                 description: ticketData.description || `Created from conversation: ${conversation.lastMessage}`,
                 lastMessagePreview: conversation.lastMessage,
                 lastMessageAt: conversation.lastMessageAt,

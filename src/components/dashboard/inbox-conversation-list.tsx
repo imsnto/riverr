@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -54,9 +53,11 @@ export default function InboxConversationList({
     <ScrollArea className="flex-1">
       {filteredConversations.map(convo => {
         const visitor = visitors.find(c => c.id === convo.visitorId);
-        if (!visitor) return null;
         const isSelected = selectedConversationId === convo.id;
         const youReplied = convo.lastMessageAuthor === appUser.name;
+        
+        // Prefer cached conversation name for UI stability
+        const displayName = convo.visitorName || visitor?.name || 'Visitor';
         
         return (
           <div
@@ -70,15 +71,15 @@ export default function InboxConversationList({
             <div className='flex items-center justify-between'>
               <div className='flex items-center space-x-2'>
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={visitor.avatarUrl} alt={visitor.name} />
-                  <AvatarFallback>{getInitials(visitor.name)}</AvatarFallback>
+                  <AvatarImage src={visitor?.avatarUrl} alt={displayName} />
+                  <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
                 </Avatar>
                 <p
                 className={cn(
                   "font-semibold truncate pl-1 text-sm",
                   isSelected ? 'text-primary' : ''
                 )}
-                >{visitor.name}</p>
+                >{displayName}</p>
               </div>
               <p
               className={cn(
@@ -113,10 +114,6 @@ export default function InboxConversationList({
                   </div>
                 </div>
               </div>
-              {/* <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-                    <MapPin className="h-3 w-3" />
-                    <span>{visitor.location}</span>
-                </div> */}
             </div>
           </div>
         );

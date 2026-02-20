@@ -186,6 +186,7 @@ export default function ChatbotWidgetPage() {
         timestamp: new Date().toISOString(),
     });
     
+    await ensureConversationCrmLinkedAction(conversation.id);
     await loadVisitorAndConversation(visitorId);
   }
 
@@ -259,6 +260,28 @@ export default function ChatbotWidgetPage() {
                 timestamp: new Date().toISOString(),
             });
             setIdentityCaptureStep('collecting');
+        } else if (userResponse.includes('@')) {
+            // Heuristic capture: user typed "My name is John john@example.com"
+            const emailMatch = messageText.match(/[\w.-]+@[\w.-]+\.[a-z]{2,}/i);
+            if (emailMatch) {
+                const email = emailMatch[0];
+                const name = messageText.replace(email, '').replace(/my name is|i'm|im|is/gi, '').trim();
+                await db.updateVisitor(visitor.id, { name: name || null, email: email });
+                
+                await db.addChatMessage({
+                    conversationId: currentConversation.id,
+                    authorId: 'ai_agent',
+                    type: 'message',
+                    senderType: 'agent',
+                    content: `Thanks${name ? ' ' + name : ''}! I've updated your contact info. How can I help?`,
+                    timestamp: new Date().toISOString(),
+                });
+                setIdentityCaptureStep('none');
+                await ensureConversationCrmLinkedAction(currentConversation.id);
+                await loadVisitorAndConversation(visitor.id);
+            } else {
+                setIdentityCaptureStep('none');
+            }
         } else {
             await db.addChatMessage({
                 conversationId: currentConversation.id,
