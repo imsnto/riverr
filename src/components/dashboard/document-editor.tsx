@@ -1,11 +1,10 @@
-
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Document, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Bot, Trash2, MessageSquare, Loader2, Share2, Star, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Bot, Trash2, MessageSquare, Loader2, Share2, Star, MoreHorizontal, Undo, Redo } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import TiptapEditor from '@/components/document/TiptapEditor';
 import { useAuth } from '@/hooks/use-auth';
@@ -18,6 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
 import { uploadImageToFirebase } from '@/lib/db';
+import { Separator } from '../ui/separator';
 
 interface DocumentEditorProps {
   initialDocument: Document;
@@ -164,6 +164,26 @@ export default function DocumentEditor({
                         />
                     </div>
                     <div className="flex items-center">
+                        <div className="flex items-center mr-1">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => editor?.chain().focus().undo().run()}
+                                disabled={!editor?.can().undo()}
+                            >
+                                <Undo className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => editor?.chain().focus().redo().run()}
+                                disabled={!editor?.can().redo()}
+                            >
+                                <Redo className="h-4 w-4" />
+                            </Button>
+                        </div>
                         <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
                         <Button variant="ghost" size="icon" onClick={() => setIsShareOpen(true)}>
                             <Share2 className="h-5 w-5" />
@@ -251,6 +271,29 @@ export default function DocumentEditor({
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => editor?.chain().focus().undo().run()}
+                                disabled={!editor?.can().undo()}
+                                title="Undo"
+                            >
+                                <Undo className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => editor?.chain().focus().redo().run()}
+                                disabled={!editor?.can().redo()}
+                                title="Redo"
+                            >
+                                <Redo className="h-4 w-4" />
+                            </Button>
+                            <Separator orientation="vertical" className="h-4 mx-1" />
+                        </div>
                         <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
                         
                         <Button variant="ghost" size="sm" onClick={() => setIsShareOpen(true)}>

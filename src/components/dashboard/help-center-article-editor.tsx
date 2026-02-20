@@ -1,10 +1,9 @@
-
 'use client';
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { HelpCenterArticle, User, Document } from '@/lib/data';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Bot, Trash2, MessageSquare, Loader2, Share2, Star, MoreHorizontal, ArrowLeft, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { Bot, Trash2, MessageSquare, Loader2, Share2, Star, MoreHorizontal, ArrowLeft, ExternalLink, CheckCircle2, Undo, Redo } from 'lucide-react';
 import TiptapEditor from '@/components/document/TiptapEditor';
 import { Editor } from '@tiptap/react';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { formatDistanceToNow } from 'date-fns';
 import HelpCenterArticleShareDialog from './help-center-article-share-dialog';
 import Link from 'next/link';
+import { Separator } from '../ui/separator';
 
 import {
   AlertDialog,
@@ -190,6 +190,26 @@ export default function HelpCenterArticleEditor({ article: initialArticle, allAr
                         />
                     </div>
                     <div className="flex items-center gap-1">
+                        <div className="flex items-center mr-1">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => editor?.chain().focus().undo().run()}
+                                disabled={!editor?.can().undo()}
+                            >
+                                <Undo className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => editor?.chain().focus().redo().run()}
+                                disabled={!editor?.can().redo()}
+                            >
+                                <Redo className="h-4 w-4" />
+                            </Button>
+                        </div>
                         <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} isMobile={true} />
                         <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={cn('hidden sm:flex', article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : '')}>
                             {article.status === 'draft' ? 'Draft' : 'Published'}
@@ -259,6 +279,29 @@ export default function HelpCenterArticleEditor({ article: initialArticle, allAr
                                 </Button>
                             </div>
                             <div className="flex items-center gap-2 md:gap-4 shrink-0">
+                                <div className="flex items-center gap-1">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => editor?.chain().focus().undo().run()}
+                                        disabled={!editor?.can().undo()}
+                                        title="Undo"
+                                    >
+                                        <Undo className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => editor?.chain().focus().redo().run()}
+                                        disabled={!editor?.can().redo()}
+                                        title="Redo"
+                                    >
+                                        <Redo className="h-4 w-4" />
+                                    </Button>
+                                    <Separator orientation="vertical" className="h-4 mx-1" />
+                                </div>
                                 <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
                                 <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
                                     {article.status === 'draft' ? 'Draft' : 'Published'}
