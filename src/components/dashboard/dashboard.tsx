@@ -58,7 +58,7 @@ import { reindexArticleAction, addChatMessage as addChatMessageAction } from '@/
 import TicketsBoard from './tickets-board';
 import { ContentSkeleton } from './content-skeleton';
 import { LayoutTemplate } from 'lucide-react';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db as firestoreDb } from '@/lib/firebase';
 
 const isUnread = (mention: any, lastRead: string | null) => {
@@ -132,13 +132,17 @@ export default function Dashboard({ view }: { view: string }) {
     const targetHubIds = activeHub ? [activeHub.id] : hubIds;
 
     if (targetHubIds.length > 0) {
+        // Simplified query: no orderBy to avoid index requirement
         const qConvos = query(
             collection(firestoreDb, 'conversations'), 
-            where('hubId', 'in', targetHubIds.slice(0, 10)),
-            orderBy('lastMessageAt', 'desc')
+            where('hubId', 'in', targetHubIds.slice(0, 10))
         );
         conversationUnsubscribeRef.current = onSnapshot(qConvos, (snapshot) => {
             const convos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
+            
+            // Sort in-memory to avoid Firestore index requirement
+            convos.sort((a, b) => new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime());
+            
             setChatConversations(convos);
             
             // Sync visitors for these conversations
@@ -151,7 +155,7 @@ export default function Dashboard({ view }: { view: string }) {
             messageUnsubscribeRef.current = db.getMessagesForConversations(convoIds, (messages) => { setChatMessages(messages); });
         }, (error) => {
             console.error("Conversation sync failed:", error);
-            // Don't show toast for every index error during dev, but log it clearly
+            toast({ variant: 'destructive', title: 'Data sync failed', description: 'Check console for Firestore errors.' });
         });
     }
 
@@ -423,7 +427,7 @@ export default function Dashboard({ view }: { view: string }) {
       timestamp: new Date().toISOString() 
     };
 
-    // Metadata is now handled entirely by the server action + real-time listener
+    // Metadata is handled by the server action
     await addChatMessageAction(messageData);
   };
 
@@ -438,6 +442,7 @@ export default function Dashboard({ view }: { view: string }) {
     toast({ title: "Bot Updated" });
   }
   const handleBotAdd = async (b: Omit<Bot, 'id'>) => { const nb = await db.addBot(b); setBots(prev => [...prev, nb]); }
+  const handleBotAddArticles = async (bid: string, docIds: string[]) => { /* Implementation handled in BotSettings */ };
   const handleBotDelete = async (bid: string) => { await db.deleteBot(bid); setBots(prev => prev.filter(b => b.id !== bid)); toast({ title: "Bot Deleted" }); };
   const handleLogTime = async (td: Omit<TimeEntry, 'id'>) => {
     const nte = await db.addTimeEntry({...td, spaceId: activeSpace!.id});

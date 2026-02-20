@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -13,14 +14,6 @@ import admin from 'firebase-admin';
 import { isWhimsical, generateWhimsicalName } from '@/lib/utils';
 
 const typesense = getTypesenseSearch();
-
-function normalize(s: string) {
-  return (s ?? "")
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
     const { hubId, allowedHelpCenterIds, userId, query, topK = 10 } = params;
@@ -199,6 +192,125 @@ export async function updateConversation(conversationId: string, data: Partial<C
       }
     }
   }
+
+async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
+  const convoRef = adminDB.collection("conversations").doc(conversationId);
+  const convoSnap = await convoRef.get();
+  if (!convoSnap.exists) return null;
+
+  const convo = convoSnap.data() as any;
+  if (!convo.visitorId) return null;
+
+  const hubSnap = await adminDB.collection("hubs").doc(convo.hubId).get();
+  if (!hubSnap.exists) return null;
+  const spaceId = hubSnap.data()?.spaceId;
+  if (!spaceId) return null;
+
+  const visitorRef = adminDB.collection("visitors").doc(convo.visitorId);
+  const visitorSnap = await visitorRef.get();
+  if (!visitorSnap.exists) return null;
+  const visitor = { id: visitorSnap.id, ...(visitorSnap.data() as any) };
+
+  // guarantee visitor has a name
+  let vName = visitor.name;
+  if (!vName || vName.trim() === "") {
+      vName = generateWhimsicalName();
+      await visitorRef.update({ name: vName });
+      visitor.name = vName;
+  }
+  
+  const vEmail = visitor.email;
+
+  // 1) find existing contact by email
+  let contactId: string | null = convo.contactId || visitor.contactId || null;
+
+  if (!contactId && vEmail) {
+    const byEmail = await adminDB.collection("contacts")
+      .where("spaceId", "==", spaceId)
+      .where("primaryEmail", "==", vEmail.toLowerCase())
+      .limit(1)
+      .get();
+    if (!byEmail.empty) contactId = byEmail.docs[0].id;
+  }
+
+  // 2) else find by externalIds.chatVisitorId
+  if (!contactId) {
+    const byVisitor = await adminDB.collection("contacts")
+      .where("spaceId", "==", spaceId)
+      .where("externalIds.chatVisitorId", "==", visitor.id)
+      .limit(1)
+      .get();
+    if (!byVisitor.empty) contactId = byVisitor.docs[0].id;
+  }
+
+  // 3) create if missing
+  if (!contactId) {
+    const now = new Date();
+    const newContactRef = await adminDB.collection("contacts").add({
+      spaceId,
+      name: vName,
+      company: visitor.companyName || null,
+      emails: vEmail ? [vEmail.toLowerCase()] : [],
+      phones: [],
+      primaryEmail: vEmail ? vEmail.toLowerCase() : null,
+      primaryPhone: null,
+      source: "chat",
+      externalIds: { chatVisitorId: visitor.id },
+      tags: [],
+      createdAt: now,
+      updatedAt: now,
+      lastSeenAt: now,
+      lastMessageAt: null,
+      lastOrderAt: null,
+      lastCallAt: null,
+      mergeParentId: null,
+      isMerged: false,
+    });
+    contactId = newContactRef.id;
+  } else {
+      // Update existing contact if we now have more info
+      const contactRef = adminDB.collection("contacts").doc(contactId);
+      const contactSnap = await contactRef.get();
+      if (contactSnap.exists) {
+          const contactData = contactSnap.data() as any;
+          const updates: any = {};
+          
+          if (vName && (!contactData.name || isWhimsical(contactData.name)) && !isWhimsical(vName)) {
+              updates.name = vName;
+          }
+          
+          if (vEmail && !contactData.primaryEmail) {
+              updates.primaryEmail = vEmail.toLowerCase();
+              updates.emails = admin.firestore.FieldValue.arrayUnion(vEmail.toLowerCase());
+          }
+          
+          if (Object.keys(updates).length > 0) {
+              await contactRef.update({ ...updates, updatedAt: new Date() });
+          }
+      }
+  }
+
+  const convoUpdates: any = {
+    contactId,
+    visitorName: vName,
+    visitorEmail: vEmail,
+    updatedAt: new Date().toISOString(),
+  };
+
+  // Sync lastMessageAuthor if it's currently a stale whimsical name and we have a real name now
+  if (convo.lastMessageAuthor && 
+      (convo.lastMessageAuthor === "Visitor" || isWhimsical(convo.lastMessageAuthor)) && 
+      !isWhimsical(vName)) {
+      convoUpdates.lastMessageAuthor = vName;
+  }
+
+  await Promise.all([
+    visitorRef.update({ contactId }),
+    convoRef.update(convoUpdates),
+  ]);
+
+  return contactId;
+}
   
   export async function addChatMessage(message: Omit<ChatMessage, "id">) {
     // 1. Create the message in the server collection
@@ -386,125 +498,6 @@ export async function reindexArticleAction(articleId: string) {
         console.error(`Failed to re-index article ${articleId}:`, error);
         throw new Error(error.message || 'Unknown error occurred during re-indexing.');
     }
-}
-
-async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
-  const convoRef = adminDB.collection("conversations").doc(conversationId);
-  const convoSnap = await convoRef.get();
-  if (!convoSnap.exists) return null;
-
-  const convo = convoSnap.data() as any;
-  if (!convo.visitorId) return null;
-
-  const hubSnap = await adminDB.collection("hubs").doc(convo.hubId).get();
-  if (!hubSnap.exists) return null;
-  const spaceId = hubSnap.data()?.spaceId;
-  if (!spaceId) return null;
-
-  const visitorRef = adminDB.collection("visitors").doc(convo.visitorId);
-  const visitorSnap = await visitorRef.get();
-  if (!visitorSnap.exists) return null;
-  const visitor = { id: visitorSnap.id, ...(visitorSnap.data() as any) };
-
-  // guarantee visitor has a name
-  let vName = visitor.name;
-  if (!vName || vName.trim() === "") {
-      vName = generateWhimsicalName();
-      await visitorRef.update({ name: vName });
-      visitor.name = vName;
-  }
-  
-  const vEmail = visitor.email;
-
-  // 1) find existing contact by email
-  let contactId: string | null = convo.contactId || visitor.contactId || null;
-
-  if (!contactId && vEmail) {
-    const byEmail = await adminDB.collection("contacts")
-      .where("spaceId", "==", spaceId)
-      .where("primaryEmail", "==", vEmail.toLowerCase())
-      .limit(1)
-      .get();
-    if (!byEmail.empty) contactId = byEmail.docs[0].id;
-  }
-
-  // 2) else find by externalIds.chatVisitorId
-  if (!contactId) {
-    const byVisitor = await adminDB.collection("contacts")
-      .where("spaceId", "==", spaceId)
-      .where("externalIds.chatVisitorId", "==", visitor.id)
-      .limit(1)
-      .get();
-    if (!byVisitor.empty) contactId = byVisitor.docs[0].id;
-  }
-
-  // 3) create if missing
-  if (!contactId) {
-    const now = new Date();
-    const newContactRef = await adminDB.collection("contacts").add({
-      spaceId,
-      name: vName,
-      company: visitor.companyName || null,
-      emails: vEmail ? [vEmail.toLowerCase()] : [],
-      phones: [],
-      primaryEmail: vEmail ? vEmail.toLowerCase() : null,
-      primaryPhone: null,
-      source: "chat",
-      externalIds: { chatVisitorId: visitor.id },
-      tags: [],
-      createdAt: now,
-      updatedAt: now,
-      lastSeenAt: now,
-      lastMessageAt: null,
-      lastOrderAt: null,
-      lastCallAt: null,
-      mergeParentId: null,
-      isMerged: false,
-    });
-    contactId = newContactRef.id;
-  } else {
-      // Update existing contact if we now have more info
-      const contactRef = adminDB.collection("contacts").doc(contactId);
-      const contactSnap = await contactRef.get();
-      if (contactSnap.exists) {
-          const contactData = contactSnap.data() as any;
-          const updates: any = {};
-          
-          if (vName && (!contactData.name || isWhimsical(contactData.name)) && !isWhimsical(vName)) {
-              updates.name = vName;
-          }
-          
-          if (vEmail && !contactData.primaryEmail) {
-              updates.primaryEmail = vEmail.toLowerCase();
-              updates.emails = admin.firestore.FieldValue.arrayUnion(vEmail.toLowerCase());
-          }
-          
-          if (Object.keys(updates).length > 0) {
-              await contactRef.update({ ...updates, updatedAt: new Date() });
-          }
-      }
-  }
-
-  const convoUpdates: any = {
-    contactId,
-    visitorName: vName,
-    visitorEmail: vEmail,
-    updatedAt: new Date().toISOString(),
-  };
-
-  // Sync lastMessageAuthor if it's currently a stale whimsical name and we have a real name now
-  if (convo.lastMessageAuthor && 
-      (convo.lastMessageAuthor === "Visitor" || isWhimsical(convo.lastMessageAuthor)) && 
-      !isWhimsical(vName)) {
-      convoUpdates.lastMessageAuthor = vName;
-  }
-
-  await Promise.all([
-    visitorRef.update({ contactId }),
-    convoRef.update(convoUpdates),
-  ]);
-
-  return contactId;
 }
 
 export async function ensureConversationCrmLinkedAction(conversationId: string) {
