@@ -67,7 +67,7 @@ export default function ContactsList({
                         key={contact.id}
                         onClick={() => onSelectContact(contact)}
                         className={cn(
-                        "w-full text-left p-3 cursor-pointer transition-colors",
+                        "w-full text-left px-3 py-2.5 cursor-pointer transition-colors",
                         selectedContact?.id === contact.id ? 'bg-primary/5' : 'hover:bg-muted/30'
                         )}
                     >

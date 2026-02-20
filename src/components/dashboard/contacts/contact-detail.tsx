@@ -100,8 +100,8 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
 
   if (!contact) {
     return (
-      <div className="hidden h-full flex-col items-center justify-center bg-background md:flex p-12 text-center">
-        <div className="max-w-sm space-y-6">
+      <div className="hidden h-full flex-col items-center bg-background md:flex p-12 text-center">
+        <div className="max-w-sm space-y-6 mt-[15vh]">
             <div className="mx-auto w-24 h-24 rounded-full bg-primary/5 border-2 border-dashed border-primary/20 flex items-center justify-center">
                 <Users2 className="h-10 w-10 text-primary/40" />
             </div>
