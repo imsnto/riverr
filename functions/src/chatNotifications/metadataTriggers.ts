@@ -17,6 +17,7 @@ function safeSnippet(text: string, maxLen = 180) {
 /**
  * Unified trigger to update conversation metadata for ALL messages.
  * This ensures O(1) performance for scheduled follow-ups and UI sorting.
+ * Using a transaction to ensure race-safe updates.
  */
 export const onChatMessageCreated = onDocumentCreated(
   {
@@ -34,35 +35,62 @@ export const onChatMessageCreated = onDocumentCreated(
     const conversationId = message.conversationId;
     const senderType = message.senderType;
     const content = message.content || "";
-    const timestamp = message.timestamp ? admin.firestore.Timestamp.fromDate(new Date(message.timestamp)) : admin.firestore.FieldValue.serverTimestamp();
+    
+    // Convert message timestamp string to Firestore Timestamp
+    let msgTs: admin.firestore.Timestamp;
+    if (message.timestamp) {
+        msgTs = admin.firestore.Timestamp.fromDate(new Date(message.timestamp));
+    } else {
+        msgTs = admin.firestore.Timestamp.now();
+    }
 
     try {
       const conversationRef = db.doc(`conversations/${conversationId}`);
       const snippet = safeSnippet(content);
 
-      const updates: any = {
-        lastMessage: snippet,
-        lastMessageAt: timestamp,
-        lastMessageFrom: senderType,
-        updatedAt: timestamp,
-      };
+      await db.runTransaction(async (tx) => {
+        const convSnap = await tx.get(conversationRef);
+        const conv = convSnap.exists ? (convSnap.data() as any) : {};
 
-      if (senderType === "visitor" || senderType === "contact") {
-        updates.lastVisitorMessageAt = timestamp;
-        
-        // Detection for starting a new session
-        const convSnap = await conversationRef.get();
-        if (convSnap.exists && !convSnap.get('startedAt')) {
-            updates.startedAt = timestamp;
+        const currentLastMessageAt: admin.firestore.Timestamp | undefined = conv?.lastMessageAt;
+        const currentLastMessageMs = currentLastMessageAt ? currentLastMessageAt.toMillis() : 0;
+        const msgMs = msgTs.toMillis();
+
+        const updates: any = {
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        // Track per-sender latest
+        if (senderType === "visitor" || senderType === "contact") {
+          const lastVisitorMs = conv?.lastVisitorMessageAt ? conv.lastVisitorMessageAt.toMillis() : 0;
+          if (msgMs >= lastVisitorMs) {
+            updates.lastVisitorMessageAt = msgTs;
+          }
+          // Detection for starting a new session
+          if (!conv?.startedAt) {
+            updates.startedAt = msgTs;
+          }
+        } else if (senderType === "agent" || senderType === "bot") {
+          const lastAgentMs = conv?.lastAgentMessageAt ? conv.lastAgentMessageAt.toMillis() : 0;
+          if (msgMs >= lastAgentMs) {
+            updates.lastAgentMessageAt = msgTs;
+            updates.lastAgentMessageSnippet = snippet;
+          }
         }
-      } else if (senderType === "agent" || senderType === "bot") {
-        updates.lastAgentMessageAt = timestamp;
-        updates.lastAgentMessageSnippet = snippet;
-      }
 
-      await conversationRef.set(updates, { merge: true });
+        // Update the global "last message" only if this is the newest message
+        if (msgMs >= currentLastMessageMs) {
+          updates.lastMessage = snippet;
+          updates.lastMessageAt = msgTs;
+          updates.lastMessageFrom = senderType;
+        }
 
-      logger.debug("Updated conversation metadata", { conversationId, senderType, messageId });
+        if (Object.keys(updates).length > 0) {
+          tx.set(conversationRef, updates, { merge: true });
+        }
+      });
+
+      logger.debug("Updated conversation metadata (race-safe)", { conversationId, senderType, messageId });
     } catch (err: any) {
       logger.error("onChatMessageCreated metadata update failed", {
         conversationId,
