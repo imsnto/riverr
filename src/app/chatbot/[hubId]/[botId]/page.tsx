@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -27,7 +26,9 @@ interface BotDataWithAgents extends BotData {
 
 const getInitials = (name?: string) => {
   if (!name) return '';
-  return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  const parts = name.trim().split(' ');
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return parts[0][0].toUpperCase();
 };
 
 // Customer widget MUST NEVER show internal-only content.
@@ -77,7 +78,7 @@ export default function ChatbotWidgetPage() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isAiThinking, identityCaptureStep]);
+  }, [visibleMessages, isAiThinking, identityCaptureStep]);
 
   // Seen Tracking Logic
   const markAsSeen = async () => {
@@ -114,38 +115,43 @@ export default function ChatbotWidgetPage() {
     const initialize = async () => {
       setIsLoading(true);
 
-      const botSettingsResponse = await fetch(`/api/bot-settings?botId=${botId}`);
-      if (!botSettingsResponse.ok) {
-        console.error("Failed to fetch bot settings");
+      try {
+        const botSettingsResponse = await fetch(`/api/bot-settings?botId=${botId}`);
+        if (!botSettingsResponse.ok) {
+          console.error("Failed to fetch bot settings");
+          setIsLoading(false);
+          return;
+        }
+        const botSettings = await botSettingsResponse.json();
+
+        const [fullBotDoc, hub] = await Promise.all([
+          db.getBot(botId),
+          db.getHub(hubId)
+        ]);
+
+        if (!fullBotDoc) {
+          setIsLoading(false);
+          return;
+        }
+
+        const combinedBotData = { ...fullBotDoc, ...botSettings };
+        setBot(combinedBotData);
+
+        if (hub) {
+          setSpaceId(hub.spaceId);
+        }
+
+        let visitorId = localStorage.getItem('riverr_chat_visitor_id');
+        if (!visitorId) {
+          visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+          localStorage.setItem('riverr_chat_visitor_id', visitorId);
+        }
+        await loadVisitorAndConversation(visitorId);
+      } catch (e) {
+        console.error("Initialization error:", e);
+      } finally {
         setIsLoading(false);
-        return;
       }
-      const botSettings = await botSettingsResponse.json();
-
-      const [fullBotDoc, hub] = await Promise.all([
-        db.getBot(botId),
-        db.getHub(hubId)
-      ]);
-
-      if (!fullBotDoc) {
-        setIsLoading(false);
-        return;
-      }
-
-      const combinedBotData = { ...fullBotDoc, ...botSettings };
-      setBot(combinedBotData);
-
-      if (hub) {
-        setSpaceId(hub.spaceId);
-      }
-
-      let visitorId = localStorage.getItem('riverr_chat_visitor_id');
-      if (!visitorId) {
-        visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-        localStorage.setItem('riverr_chat_visitor_id', visitorId);
-      }
-      await loadVisitorAndConversation(visitorId);
-      setIsLoading(false);
     };
 
     initialize();
@@ -157,7 +163,7 @@ export default function ChatbotWidgetPage() {
   }, [botId, hubId, appUser]);
 
   const loadVisitorAndConversation = async (visitorId: string) => {
-    const referrer = document.referrer || window.location.href;
+    const referrer = typeof document !== 'undefined' ? document.referrer || window.location.href : '';
     let domain = '';
     let pathname = '';
     try {
@@ -191,11 +197,12 @@ export default function ChatbotWidgetPage() {
   }
 
   const handleIdentitySubmit = async () => {
-    if (!capturedName.trim() || (bot?.identityCapture.required && !capturedEmail.trim())) {
+    const isEmailRequired = bot?.identityCapture.required;
+    if (!capturedName.trim() || (isEmailRequired && !capturedEmail.trim())) {
       toast({
           variant: 'destructive',
           title: "Incomplete Information",
-          description: "Please provide your name and, if required, your email.",
+          description: `Please provide your name${isEmailRequired ? ' and email' : ''}.`,
       });
       return;
     }
@@ -214,7 +221,7 @@ export default function ChatbotWidgetPage() {
         authorId: 'ai_agent',
         type: 'message',
         senderType: 'agent',
-        content: `Thanks ${capturedName}! How can I help you?`,
+        content: `Thanks ${capturedName}! I've updated your info. How can I help?`,
         timestamp: new Date().toISOString(),
     });
     
@@ -267,8 +274,9 @@ export default function ChatbotWidgetPage() {
         return;
     }
 
+    // IDENTITY CAPTURE LOGIC: Step 2 - Response to Prompt
     if (identityCaptureStep === 'prompting') {
-        const affirmative = ['yes', 'sure', 'ok', 'alright', 'yeah', 'yep'];
+        const affirmative = ['yes', 'sure', 'ok', 'alright', 'yeah', 'yep', 'fine', 'of course', 'no problem'];
         const userResponse = messageText.trim().toLowerCase();
 
         const userReplyMessage: Omit<ChatMessage, 'id'> = {
@@ -293,14 +301,15 @@ export default function ChatbotWidgetPage() {
                 timestamp: new Date().toISOString(),
             });
             setIdentityCaptureStep('collecting');
-        } else if (userResponse.includes('@')) {
-            // Heuristic capture: user typed "My name is John john@example.com"
-            const emailMatch = messageText.match(/[\w.-]+@[\w.-]+\.[a-z]{2,}/i);
+        } else {
+            // Heuristic check: Did they just type an email?
+            const emailMatch = messageText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
             if (emailMatch) {
                 const email = emailMatch[0];
-                const name = messageText.replace(email, '').replace(/my name is|i'm|im|is/gi, '').trim();
-                await db.updateVisitor(visitor.id, { name: name || null, email: email });
+                const namePart = messageText.replace(email, '').replace(/my name is|i am|im|i'm|is/gi, '').replace(/[.,]/g, '').trim();
+                const name = namePart || null;
                 
+                await db.updateVisitor(visitor.id, { name, email });
                 await ensureConversationCrmLinkedAction(currentConversation.id);
                 await loadVisitorAndConversation(visitor.id);
 
@@ -309,23 +318,27 @@ export default function ChatbotWidgetPage() {
                     authorId: 'ai_agent',
                     type: 'message',
                     senderType: 'agent',
-                    content: `Thanks${name ? ' ' + name : ''}! I've updated your contact info. How can I help?`,
+                    content: `Thanks${name ? ' ' + name : ''}! I've updated your info. How can I help?`,
                     timestamp: new Date().toISOString(),
                 });
                 setIdentityCaptureStep('none');
             } else {
-                setIdentityCaptureStep('none');
+                // If they said "no" or something else, don't nag if not required
+                if (!bot.identityCapture.required) {
+                    await addChatMessageAction({
+                        conversationId: currentConversation.id,
+                        authorId: 'ai_agent',
+                        type: 'message',
+                        senderType: 'agent',
+                        content: "No problem. How can I help you today?",
+                        timestamp: new Date().toISOString(),
+                    });
+                    setIdentityCaptureStep('none');
+                } else {
+                    // Re-prompt if required? Or just force form.
+                    setIdentityCaptureStep('collecting');
+                }
             }
-        } else {
-            await addChatMessageAction({
-                conversationId: currentConversation.id,
-                authorId: 'ai_agent',
-                type: 'message',
-                senderType: 'agent',
-                content: "No problem. How can I help you?",
-                timestamp: new Date().toISOString(),
-            });
-            setIdentityCaptureStep('none');
         }
         setLoading(false);
         return;
@@ -362,8 +375,8 @@ export default function ChatbotWidgetPage() {
     setMessageText('');
     setAttachments([]);
 
-    const fetchedVisitor = await db.getOrCreateVisitor(visitor.id);
-    const needsIdentityCapture = !appUser && bot?.identityCapture.enabled && (!fetchedVisitor.name || (bot?.identityCapture.required && !fetchedVisitor.email));
+    // IDENTITY CAPTURE LOGIC: Step 1 - The initial prompt
+    const needsIdentityCapture = !appUser && bot?.identityCapture.enabled && (!visitor.name || (bot?.identityCapture.required && !visitor.email));
 
     if (needsIdentityCapture && isNewConversation) {
         await addChatMessageAction({
@@ -371,7 +384,7 @@ export default function ChatbotWidgetPage() {
             authorId: 'ai_agent',
             type: 'message',
             senderType: 'agent',
-            content: "Thanks for reaching out. Would you be ok with giving us your name and email in case we need to reach out to you later?",
+            content: bot.identityCapture.captureMessage || "Before we continue, would you be ok with sharing your name and email so we can reach out if needed?",
             timestamp: new Date().toISOString(),
         });
         setIdentityCaptureStep('prompting');
@@ -381,30 +394,34 @@ export default function ChatbotWidgetPage() {
     
     setLoading(false);
 
-    const incomingMessage: any = {
-      id: `msg-${Date.now()}`,
-      role: 'user',
-      text: userMessageContent,
-      createdAt: newMessageData.timestamp
-    }
+    // Only invoke agent if we aren't mid-identity capture
+    if (identityCaptureStep === 'none') {
+        const incomingMessage: any = {
+            id: `msg-${Date.now()}`,
+            role: 'user',
+            text: userMessageContent,
+            createdAt: newMessageData.timestamp
+        }
 
-    const botConfig = {
-      id: bot.id,
-      hubId: bot.hubId,
-      name: bot.name,
-      allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
-    };
+        const botConfig = {
+            id: bot.id,
+            hubId: bot.hubId,
+            name: bot.name,
+            allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
+        };
 
-    try {
-      await invokeAgent({
-        bot: botConfig,
-        conversation: JSON.parse(JSON.stringify(currentConversation)),
-        message: incomingMessage,
-      });
-    } catch (e) {
-      console.error("Agent failed to answer:", e);
-    } finally {
-      setIsAiThinking(false);
+        try {
+            setIsAiThinking(true);
+            await invokeAgent({
+                bot: botConfig,
+                conversation: JSON.parse(JSON.stringify(currentConversation)),
+                message: incomingMessage,
+            });
+        } catch (e) {
+            console.error("Agent failed to answer:", e);
+        } finally {
+            setIsAiThinking(false);
+        }
     }
   };
 
@@ -527,18 +544,33 @@ export default function ChatbotWidgetPage() {
               </div>
             );
           })}
+
+          {/* IDENTITY CAPTURE INLINE FORM */}
           {identityCaptureStep === 'collecting' && (
               <div className="flex items-end gap-2">
-                <div className="p-3 rounded-xl rounded-bl-sm max-w-xs break-words" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
-                  <div className="space-y-2">
-                    <p className="text-sm">Please provide your details:</p>
-                    <Input type="text" placeholder="Your name" value={capturedName} onChange={(e) => setCapturedName(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white h-8 text-sm" />
-                    <Input type="email" placeholder="Your email" value={capturedEmail} onChange={(e) => setCapturedEmail(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white h-8 text-sm" />
-                    <Button onClick={handleIdentitySubmit} size="sm" className="w-full" style={{ backgroundColor: primary }}>Submit</Button>
+                <div className="p-4 rounded-xl rounded-bl-sm max-w-xs break-words shadow-lg border border-white/10" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                        <Label className="text-xs uppercase font-bold tracking-wider opacity-70">Name</Label>
+                        <Input type="text" placeholder="e.g. John Doe" value={capturedName} onChange={(e) => setCapturedName(e.target.value)} className="bg-zinc-800/50 border-white/10 text-white h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                        <Label className="text-xs uppercase font-bold tracking-wider opacity-70">Email {bot.identityCapture.required && '*'}</Label>
+                        <Input type="email" placeholder="e.g. john@example.com" value={capturedEmail} onChange={(e) => setCapturedEmail(e.target.value)} className="bg-zinc-800/50 border-white/10 text-white h-9 text-sm" />
+                    </div>
+                    <Button onClick={handleIdentitySubmit} size="sm" className="w-full mt-2 font-bold" style={{ backgroundColor: primary }}>
+                        Submit Details
+                    </Button>
+                    {!bot.identityCapture.required && (
+                        <Button variant="ghost" size="sm" className="w-full text-[10px] opacity-50 hover:bg-transparent hover:opacity-100" onClick={() => setIdentityCaptureStep('none')}>
+                            Skip for now
+                        </Button>
+                    )}
                   </div>
                 </div>
               </div>
            )}
+
           {isAiThinking && (
               <div className="flex items-end gap-2">
                 <div className="p-3 rounded-xl rounded-bl-sm max-w-xs flex items-center gap-2" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
@@ -589,8 +621,9 @@ export default function ChatbotWidgetPage() {
             </div>
           )}
           <Textarea
-            placeholder={'Message...'}
+            placeholder={identityCaptureStep === 'collecting' ? 'Please use the form above...' : 'Message...'}
             value={messageText}
+            disabled={identityCaptureStep === 'collecting'}
             onChange={(e) => setMessageText(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -605,7 +638,7 @@ export default function ChatbotWidgetPage() {
             size="icon"
             variant="ghost"
             onClick={handleSendMessage}
-            disabled={(!messageText.trim() && attachments.length === 0) || loading}
+            disabled={(!messageText.trim() && attachments.length === 0) || loading || identityCaptureStep === 'collecting'}
             className="absolute right-1 bottom-1 h-8 w-8 hover:bg-zinc-700"
           >
             {loading ? <Loader2 className='h-4 w-4 animate-spin' /> : <Send className="h-4 w-4" />}
