@@ -2,14 +2,14 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Conversation, ChatMessage, Visitor, User, Ticket, Hub, Space, EscalationIntakeRule, Project } from '@/lib/data';
+import { Conversation, ChatMessage, Visitor, User, Ticket, Hub, Space, EscalationIntakeRule, Project, Task, Contact } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
-import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check } from 'lucide-react';
+import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check, Bot } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card } from '../ui/card';
@@ -41,6 +41,9 @@ interface InboxConversationViewProps {
   onCreateTicket: (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => void;
   tickets: Ticket[];
   onUpdateTicket: (ticket: Ticket) => void;
+  onEscalate: (ticket: Ticket, intakeRuleId: string) => void;
+  allTasks: Task[];
+  onTaskSelect: (task: Task) => void;
 }
 
 const getInitials = (name: string | null) => {
@@ -76,6 +79,9 @@ export default function InboxConversationView({
     onCreateTicket,
     tickets,
     onUpdateTicket,
+    onEscalate,
+    allTasks,
+    onTaskSelect,
 }: InboxConversationViewProps) {
   const [isNote, setIsNote] = useState(false);
   const [messageText, setMessageText] = useState('');
@@ -114,6 +120,17 @@ export default function InboxConversationView({
       return () => window.removeEventListener('focus', onFocus);
     }
   }, [conversation?.id, conversation?.lastMessageAt, appUser]);
+
+  const assignedAgents = useMemo(() => {
+    if (!conversation) return [];
+    const ids = conversation.assignedAgentIds || (conversation.assigneeId ? [conversation.assigneeId] : []);
+    return users.filter(u => ids.includes(u.id));
+  }, [conversation, users]);
+
+  const ticketPillAssignee = useMemo(() => {
+    if (!activeTicket) return null;
+    return users.find(u => u.id === activeTicket.assignedTo) || null;
+  }, [activeTicket, users]);
 
   if (!conversation || !contact) {
     return (
@@ -160,13 +177,7 @@ export default function InboxConversationView({
     onAssignConversation(conversation.id, newIds);
   };
 
-  const assignedAgents = useMemo(() => {
-    const ids = conversation.assignedAgentIds || (conversation.assigneeId ? [conversation.assigneeId] : []);
-    return users.filter(u => ids.includes(u.id));
-  }, [conversation, users]);
-
   const conversationMessages = messages.filter(m => m.conversationId === conversation.id);
-  const ticketPillAssignee = activeTicket ? users.find(u => u.id === activeTicket.assignedTo) : null;
   const displayName = conversation.visitorName || contact.name || 'Visitor';
 
    const renderAttachments = (msg: ChatMessage) => {
@@ -236,7 +247,7 @@ export default function InboxConversationView({
       <div key={msg.id} className={cn("flex items-end gap-2 min-w-0", isCustomer ? "" : "justify-end")}>
         {isCustomer && (
             <Avatar className="h-8 w-8">
-              <AvatarImage src={contact.avatarUrl} />
+              <AvatarImage src={contact.avatarUrl || undefined} />
               <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
             </Avatar>
         )}
@@ -448,6 +459,7 @@ export default function InboxConversationView({
         contacts={contacts}
         onDataRefresh={onDataRefresh}
         onCreateTicket={(ticketData, escalate, ruleId) => {
+            if (!conversation) return;
             const ticketWithConvo = {
                 ...ticketData,
                 conversationId: conversation.id,
@@ -474,7 +486,7 @@ export default function InboxConversationView({
           onUpdateTicket={onUpdateTicket}
           statuses={activeHub.ticketStatuses?.map(s => s.name) || defaultTicketStatuses.map(s => s.name)}
           allUsers={users}
-          contact={contact}
+          contact={contact as any} // Cast to Contact if necessary, model is similar
           conversation={conversation}
           onEscalate={onEscalate}
           activeHub={activeHub}
