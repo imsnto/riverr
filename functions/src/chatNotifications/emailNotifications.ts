@@ -1,10 +1,10 @@
 // functions/src/chatNotifications/emailNotifications.ts
 //
 // Agent chat alert emails + cooldown logic + scheduled visitor follow-up emails.
-// Uses your existing Postmark setup through sendSystemEmail().
-// Assumes these Firestore locations:
+// Uses Postmark through sendSystemEmail().
+// Assumes flat Firestore locations:
 // - conversations/{conversationId}
-// - chat_messages/{messageId} (adjusted to match project schema)
+// - chat_messages/{messageId}
 // - users/{agentId}
 // - notificationCooldowns/{cooldownKey}
 
@@ -62,48 +62,6 @@ function safeSnippet(text: string, maxLen = 140) {
 }
 
 // -----------------------------
-// New conversation detection + book-keeping
-// -----------------------------
-
-async function ensureConversationStartedAndUpdateOnVisitorMessage(params: {
-  conversationRef: admin.firestore.DocumentReference;
-  messageCreatedAt?: admin.firestore.Timestamp;
-}): Promise<{ isNewConversation: boolean }> {
-  const { conversationRef, messageCreatedAt } = params;
-
-  return await db.runTransaction(async (tx) => {
-    const convSnap = await tx.get(conversationRef);
-    if (!convSnap.exists) {
-      tx.set(
-        conversationRef,
-        {
-          startedAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastVisitorMessageAt: messageCreatedAt ?? admin.firestore.FieldValue.serverTimestamp(),
-          lastMessageFrom: "visitor",
-        },
-        { merge: true }
-      );
-      return { isNewConversation: true };
-    }
-
-    const startedAt = convSnap.get("startedAt") as admin.firestore.Timestamp | undefined;
-    const isNewConversation = !startedAt;
-
-    tx.set(
-      conversationRef,
-      {
-        ...(isNewConversation ? { startedAt: admin.firestore.FieldValue.serverTimestamp() } : {}),
-        lastVisitorMessageAt: messageCreatedAt ?? admin.firestore.FieldValue.serverTimestamp(),
-        lastMessageFrom: "visitor",
-      },
-      { merge: true }
-    );
-
-    return { isNewConversation };
-  });
-}
-
-// -----------------------------
 // 1) Agent Chat Alert Email Trigger
 // -----------------------------
 
@@ -135,11 +93,8 @@ export const sendAgentChatAlertEmail = onDocumentCreated(
     const assignedAgentIds: string[] = Array.isArray(conv.assignedAgentIds) ? conv.assignedAgentIds : (conv.assigneeId ? [conv.assigneeId] : []);
     if (!assignedAgentIds.length) return;
 
-    const createdAt = msg.timestamp ? admin.firestore.Timestamp.fromDate(new Date(msg.timestamp)) : undefined;
-    const { isNewConversation } = await ensureConversationStartedAndUpdateOnVisitorMessage({
-      conversationRef,
-      messageCreatedAt: createdAt,
-    });
+    // Check if new conversation
+    const isNewConversation = !conv.startedAt;
 
     const baseUrl = APP_BASE_URL.value();
     const chatUrl = `${baseUrl}/space/${conv.spaceId || 'default'}/hub/${conv.hubId}/inbox?conversationId=${conversationId}`;

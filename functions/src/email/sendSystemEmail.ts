@@ -3,7 +3,7 @@
 // Shared Postmark email sender for Manowar.
 // Reuses existing working Postmark server + sender signature.
 // Sender is intentionally fixed for now: "Manowar <brad@riverr.app>"
-// Reply-To can be configured per org in Firestore (organizations/{orgId}.emailSettings.replyToEmail)
+// Reply-To can be configured per space in Firestore (spaces/{spaceId}.emailSettings.replyToEmail)
 
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
@@ -26,10 +26,10 @@ export type SendSystemEmailArgs = {
   textBody?: string;
 
   /**
-   * Optional orgId to lookup organizations/{orgId}.emailSettings.replyToEmail
+   * Optional spaceId to lookup spaces/{spaceId}.emailSettings.replyToEmail
    * If present, Reply-To will be set to that value (if valid).
    */
-  orgId?: string;
+  orgId?: string; // Kept as orgId for backward compatibility with snippets, but maps to spaceId
 
   /**
    * Optional Postmark Tag (useful for filtering in Postmark UI)
@@ -57,34 +57,23 @@ export type SendSystemEmailArgs = {
 };
 
 function isValidEmail(email: string): boolean {
-  // Simple, pragmatic validation (good enough for Reply-To)
-  // Avoid heavy regex; Postmark will also validate.
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
-async function getOrgReplyToEmail(orgId: string): Promise<string | null> {
+async function getOrgReplyToEmail(spaceId: string): Promise<string | null> {
   try {
-    // Note: Adjust collection name to 'spaces' if your schema uses 'spaces' as organizations
-    const snap = await admin.firestore().doc(`spaces/${orgId}`).get();
+    const snap = await admin.firestore().doc(`spaces/${spaceId}`).get();
     if (!snap.exists) return null;
     const data = snap.data() as any;
     const replyTo = data?.emailSettings?.replyToEmail;
     if (typeof replyTo === "string" && isValidEmail(replyTo)) return replyTo.trim();
     return null;
   } catch (err) {
-    logger.warn("sendSystemEmail: failed to load org reply-to email", { orgId, err });
+    logger.warn("sendSystemEmail: failed to load space reply-to email", { spaceId, err });
     return null;
   }
 }
 
-/**
- * Send an email via Postmark using the existing configured server.
- *
- * Notes:
- * - Uses fixed "From" for now: Manowar <brad@riverr.app>
- * - Sets Reply-To from org settings when orgId is provided
- * - Supports Postmark tag + metadata for debugging/analytics
- */
 export async function sendSystemEmail(args: SendSystemEmailArgs): Promise<{ messageId?: string }> {
   const {
     to,
@@ -112,10 +101,6 @@ export async function sendSystemEmail(args: SendSystemEmailArgs): Promise<{ mess
 
   const from = (fromOverride && fromOverride.trim()) ? fromOverride.trim() : DEFAULT_FROM;
 
-  // Resolve Reply-To:
-  // 1) replyToOverride if valid
-  // 2) org settings replyToEmail if orgId provided and valid
-  // 3) fallback
   let replyTo: string | null = null;
 
   if (replyToOverride && isValidEmail(replyToOverride)) {
@@ -124,8 +109,6 @@ export async function sendSystemEmail(args: SendSystemEmailArgs): Promise<{ mess
     replyTo = await getOrgReplyToEmail(orgId);
   }
 
-  // If you prefer to omit Reply-To entirely unless configured, set this to null.
-  // For now we default to a safe fallback so replies don't disappear.
   if (!replyTo) replyTo = FALLBACK_REPLY_TO;
 
   try {
@@ -138,10 +121,9 @@ export async function sendSystemEmail(args: SendSystemEmailArgs): Promise<{ mess
       ReplyTo: replyTo,
       Tag: tag,
       Metadata: metadata,
-      MessageStream: "outbound", // Optional; remove if you don't use message streams
+      MessageStream: "outbound",
     } as any);
 
-    // Postmark response usually includes MessageID
     const messageId = (res as any)?.MessageID || (res as any)?.MessageId;
 
     logger.info("sendSystemEmail: sent", {
