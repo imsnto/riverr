@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Conversation, ChatMessage, Visitor, User, Ticket, Hub, Space, EscalationIntakeRule, Project, Contact, Status } from '@/lib/data';
+import { Conversation, ChatMessage, Visitor, User, Ticket, Hub, Space, EscalationIntakeRule, Project, Task } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
@@ -258,8 +258,8 @@ export default function InboxConversationView({
     <>
       <div className="relative grid grid-rows-[auto_1fr_auto] h-full min-h-0 bg-background md:bg-card">
         {/* Header */}
-        <div className="p-3 flex justify-between items-center shrink-0">
-          <div className="flex items-center gap-2">
+        <div className="p-3 flex justify-between items-center shrink-0 border-b">
+          <div className="flex items-center gap-3 min-w-0">
             {isMobile && onBack && (
               <Button variant="ghost" size="icon" className="-ml-1" onClick={onBack}>
                 <ArrowLeft className="h-5 w-5" />
@@ -267,12 +267,12 @@ export default function InboxConversationView({
             )}
              <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2">
+                <Button variant="ghost" className="flex items-center gap-2 px-2 h-auto py-1">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={contact.avatarUrl || undefined} alt={displayName} />
                     <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
                   </Avatar>
-                  <span className="font-semibold">{displayName}</span>
+                  <span className="font-semibold truncate max-w-[120px]">{displayName}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -287,10 +287,10 @@ export default function InboxConversationView({
                     <span>Assign to...</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuPortal>
-                    <DropdownMenuSubContent className="min-w-[220px]">
+                    <DropdownMenuSubContent className="min-w-[240px] p-0 overflow-hidden">
                       <DropdownMenuItem 
                         onSelect={() => handleAssign(null)}
-                        className={cn(conversation.assigneeId === null && "bg-accent")}
+                        className={cn("m-1", conversation.assigneeId === null && "bg-accent")}
                       >
                         <div className="flex items-center justify-between w-full">
                           <span>Unassigned</span>
@@ -298,7 +298,7 @@ export default function InboxConversationView({
                         </div>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <ScrollArea className="max-h-[300px]">
+                      <div className="max-h-[300px] overflow-y-auto p-1">
                         {users.map(user => {
                           const isSelected = conversation.assigneeId === user.id;
                           return (
@@ -317,16 +317,23 @@ export default function InboxConversationView({
                             </DropdownMenuItem>
                           );
                         })}
-                      </ScrollArea>
+                      </div>
                     </DropdownMenuSubContent>
                   </DropdownMenuPortal>
                 </DropdownMenuSub>
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Badge variant={assignee ? 'secondary' : 'outline'}>
-              {assignee ? `Assigned to ${assignee.name}` : 'Unassigned'}
-            </Badge>
+            <div className="flex flex-col justify-center min-w-0 leading-tight">
+              <span className="text-sm font-semibold truncate">
+                {assignee ? `Assigned to ${assignee.name}` : 'Unassigned'}
+              </span>
+              {assignee && (
+                <span className="text-[10px] text-muted-foreground truncate">
+                  {assignee.email}
+                </span>
+              )}
+            </div>
 
           </div>
           <div className="flex items-center">
