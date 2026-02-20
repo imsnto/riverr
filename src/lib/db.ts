@@ -125,9 +125,15 @@ export const getContactEvents = async (contactId: string): Promise<ContactEvent[
 };
 
 export const subscribeToContactEvents = (contactId: string, onUpdate: (events: ContactEvent[]) => void) => {
-  const q = query(collection(db, "contacts", contactId, "events"), orderBy("timestamp", "desc"));
+  // We remove orderBy to avoid index requirement, sorting in-memory instead
+  const q = query(collection(db, "contacts", contactId, "events"));
   return onSnapshot(q, (snapshot) => {
     const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactEvent));
+    events.sort((a, b) => {
+        const timeA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp || 0);
+        const timeB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp || 0);
+        return timeB.getTime() - timeA.getTime();
+    });
     onUpdate(events);
   }, (error) => {
     console.error("Contact events subscription error:", error);
@@ -493,9 +499,13 @@ export const getConversationsForSpace = async (spaceId: string): Promise<Convers
 
 export const getMessagesForConversations = (conversationIds: string[], onUpdate: (messages: ChatMessage[]) => void) => {
   if (conversationIds.length === 0) return onUpdate([]);
-  const q = query(collection(db, 'chat_messages'), where('conversationId', 'in', conversationIds), orderBy('timestamp', 'asc'));
+  // Firestore 'in' limit is 30.
+  const cappedIds = conversationIds.slice(0, 30);
+  const q = query(collection(db, 'chat_messages'), where('conversationId', 'in', cappedIds));
   return onSnapshot(q, (snapshot) => {
     const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
+    // Sort in memory to avoid index requirement
+    messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     onUpdate(messages);
   });
 };

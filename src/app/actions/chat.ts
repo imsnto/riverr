@@ -280,6 +280,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
       }
   }
 
+  // Ensure "Chat Started" event exists for this contact + conversation
   const eventQuery = await adminDB.collection("contacts").doc(contactId).collection("events")
     .where("type", "==", "chat_started")
     .where("ref.conversationId", "==", conversationId)
@@ -329,21 +330,11 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
         const userDoc = await adminDB.collection('users').doc(message.authorId).get();
         if (userDoc.exists) authorName = userDoc.data()?.name || 'Agent';
       } else { 
-        const convoSnap = await adminDB.collection('conversations').doc(message.conversationId).get();
-        if (convoSnap.exists) {
-             const convoData = convoSnap.data() as any;
-             
-             if (!convoData.contactId || isWhimsical(convoData.visitorName) || convoData.visitorName === "Unknown") {
-                 const linkedContactId = await ensureCrmLinkedForConversationAdmin(message.conversationId);
-                 if (linkedContactId) {
-                     const contactDoc = await adminDB.collection('contacts').doc(linkedContactId).get();
-                     authorName = contactDoc.data()?.name || convoData.visitorName || 'Visitor';
-                 } else {
-                     authorName = convoData.visitorName || 'Visitor';
-                 }
-             } else {
-                 authorName = convoData.visitorName || 'Visitor';
-             }
+        // Sync CRM and set author name
+        const linkedContactId = await ensureCrmLinkedForConversationAdmin(message.conversationId);
+        if (linkedContactId) {
+            const contactDoc = await adminDB.collection('contacts').doc(linkedContactId).get();
+            authorName = contactDoc.data()?.name || 'Visitor';
         }
       }
   
