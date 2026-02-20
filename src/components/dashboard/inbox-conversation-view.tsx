@@ -9,7 +9,7 @@ import { Textarea } from '../ui/textarea';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
-import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon } from 'lucide-react';
+import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card } from '../ui/card';
@@ -287,14 +287,37 @@ export default function InboxConversationView({
                     <span>Assign to...</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuPortal>
-                    <DropdownMenuSubContent>
-                      <DropdownMenuItem onSelect={() => handleAssign(null)}>Unassigned</DropdownMenuItem>
+                    <DropdownMenuSubContent className="min-w-[220px]">
+                      <DropdownMenuItem 
+                        onSelect={() => handleAssign(null)}
+                        className={cn(conversation.assigneeId === null && "bg-accent")}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span>Unassigned</span>
+                          {conversation.assigneeId === null && <Check className="h-4 w-4" />}
+                        </div>
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      {users.map(user => (
-                        <DropdownMenuItem key={user.id} onSelect={() => handleAssign(user.id)}>
-                          {user.name}
-                        </DropdownMenuItem>
-                      ))}
+                      <ScrollArea className="max-h-[300px]">
+                        {users.map(user => {
+                          const isSelected = conversation.assigneeId === user.id;
+                          return (
+                            <DropdownMenuItem 
+                              key={user.id} 
+                              onSelect={() => handleAssign(user.id)}
+                              className={cn(isSelected && "bg-accent font-medium")}
+                            >
+                              <div className="flex items-center justify-between w-full gap-4">
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-sm truncate">{user.name}</span>
+                                  <span className="text-[10px] text-muted-foreground truncate">{user.email}</span>
+                                </div>
+                                {isSelected && <Check className="h-4 w-4 shrink-0" />}
+                              </div>
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </ScrollArea>
                     </DropdownMenuSubContent>
                   </DropdownMenuPortal>
                 </DropdownMenuSub>
