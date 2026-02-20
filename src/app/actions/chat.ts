@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -27,14 +28,11 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
         'sort_by': '_text_match:desc,sourceUpdatedAt:desc'
     };
     
-    // Filter by type: 'doc' to only search knowledge base articles for now
     const baseFilter = `type:='doc' && hubId:=${hubId} && helpCenterId:=[${allowedHelpCenterIds.join(',')}] && status:='published'`;
 
-    // Build search for public chunks
     const publicFilter = `${baseFilter} && isPublic:=true`;
     const publicSearchRequest = { ...searchParameters, filter_by: publicFilter };
     
-    // Build search for private chunks if user is logged in
     let privateSearchRequest = null;
     if (userId) {
         const privateFilter = `${baseFilter} && isPublic:=false && allowedUserIds:=[${userId}]`;
@@ -42,17 +40,14 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
     }
     
     try {
-        // Execute searches in parallel
         const [publicResults, privateResults] = await Promise.all([
             typesense.collections('memory_nodes').documents().search(publicSearchRequest),
             privateSearchRequest ? typesense.collections('memory_nodes').documents().search(privateSearchRequest) : Promise.resolve(null)
         ]);
         
-        // Merge and de-duplicate results
         const hits = [...(publicResults.hits || []), ...(privateResults?.hits || [])];
         const uniqueHits = Array.from(new Map(hits.map(item => [item.document.id, item])).values());
         
-        // Map to the HelpChunk type expected by the agent
         const chunks: HelpChunk[] = uniqueHits.map(hit => {
             const doc = hit.document as any;
             return {
@@ -75,7 +70,7 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
             return { chunks: [] };
         }
         console.error("Typesense search failed in searchHelpCenter:", error);
-        throw error; // Re-throw other errors
+        throw error;
     }
 }
 
@@ -160,22 +155,15 @@ async function searchSalesExtractions(params: SearchSalesExtractionsParams): Pro
     }
 }
 
-/**
- * SERVER-SIDE DATABASE CALLS
- */
-
 export async function updateConversation(conversationId: string, data: Partial<Conversation>) {
     const convRef = adminDB.collection('conversations').doc(conversationId);
     
-    // Sanitize data for Firestore update
     const cleanData = Object.fromEntries(
         Object.entries(data).filter(([_, v]) => v !== undefined)
     );
 
-    // 1. Direct Server Update
     await convRef.update(cleanData as any);
   
-    // 2. Server-side side effects (Sync contactId to tickets)
     if (cleanData.contactId) {
       const ticketsSnapshot = await adminDB.collection("tickets")
         .where("conversationId", "==", conversationId)
@@ -210,7 +198,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
   if (!visitorSnap.exists) return null;
   const visitor = { id: visitorSnap.id, ...(visitorSnap.data() as any) };
 
-  // guarantee visitor has a name
   let vName = visitor.name;
   if (!vName || vName.trim() === "" || vName.trim() === "Unknown") {
       vName = generateWhimsicalName();
@@ -220,7 +207,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
   
   const vEmail = visitor.email;
 
-  // 1) find existing contact by email
   let contactId: string | null = convo.contactId || visitor.contactId || null;
 
   if (!contactId && vEmail) {
@@ -232,7 +218,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
     if (!byEmail.empty) contactId = byEmail.docs[0].id;
   }
 
-  // 2) else find by externalIds.chatVisitorId
   if (!contactId) {
     const byVisitor = await adminDB.collection("contacts")
       .where("spaceId", "==", spaceId)
@@ -242,7 +227,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
     if (!byVisitor.empty) contactId = byVisitor.docs[0].id;
   }
 
-  // 3) create if missing
   if (!contactId) {
     const now = new Date();
     const newContactRef = await adminDB.collection("contacts").add({
@@ -266,8 +250,15 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
       isMerged: false,
     });
     contactId = newContactRef.id;
+
+    // Log the creation event
+    await adminDB.collection("contacts").doc(contactId).collection("events").add({
+        type: 'identity_added',
+        summary: 'Contact created automatically from chat.',
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        ref: { source: 'chat', hubId: convo.hubId, spaceId: spaceId }
+    });
   } else {
-      // Update existing contact if we now have more info
       const contactRef = adminDB.collection("contacts").doc(contactId);
       const contactSnap = await contactRef.get();
       if (contactSnap.exists) {
@@ -289,7 +280,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
       }
   }
 
-  // 4) Log chat started event if not already logged for this conversation
   const eventQuery = await adminDB.collection("contacts").doc(contactId).collection("events")
     .where("type", "==", "chat_started")
     .where("ref.conversationId", "==", conversationId)
@@ -312,7 +302,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
     updatedAt: new Date().toISOString(),
   };
 
-  // Sync lastMessageAuthor if it's currently a stale whimsical name, "Visitor", or "Unknown"
   if (!convo.lastMessageAuthor || 
       convo.lastMessageAuthor === "Visitor" || 
       convo.lastMessageAuthor === "Unknown" ||
@@ -329,27 +318,21 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
 }
   
   export async function addChatMessage(message: Omit<ChatMessage, "id">) {
-    // 1. Create the message in the server collection
     const messageRef = await adminDB.collection("chat_messages").add(message);
     
-    // 2. Process metadata updates (Last message preview, author name, etc.)
     if (message.conversationId && message.type === 'message') {
       let authorName = "Visitor";
   
-      // Handle AI Agent specifically
       if (message.authorId === 'ai_agent') {
           authorName = 'AI Agent';
       } else if (message.senderType === 'agent') {
-        // Direct server-to-server fetch for author names
         const userDoc = await adminDB.collection('users').doc(message.authorId).get();
         if (userDoc.exists) authorName = userDoc.data()?.name || 'Agent';
-      } else { // 'contact' (visitor)
-        // If it's a contact, we should check if they need identity sync
+      } else { 
         const convoSnap = await adminDB.collection('conversations').doc(message.conversationId).get();
         if (convoSnap.exists) {
              const convoData = convoSnap.data() as any;
              
-             // Guarantee CRM link if possible
              if (!convoData.contactId || isWhimsical(convoData.visitorName) || convoData.visitorName === "Unknown") {
                  const linkedContactId = await ensureCrmLinkedForConversationAdmin(message.conversationId);
                  if (linkedContactId) {
@@ -367,7 +350,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
       const preview = (message.content || "").slice(0, 140) || (message.attachments?.length ? "Sent an attachment" : "");
       const timestamp = new Date().toISOString();
   
-      // 3. Batch/Parallel update for Conversation and Tickets
       await Promise.all([
         updateConversation(message.conversationId, {
           lastMessageAt: message.timestamp,
@@ -395,9 +377,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
     return { ...message, id: messageRef.id };
   }
   
-  /**
-   * REFACTORED AGENT INVOCATION
-   */
   export async function invokeAgent(args: {
       bot: BotConfig;
       conversation: Conversation;
@@ -408,7 +387,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
           searchSupport,
           searchSalesExtractions,
           escalateToHuman: async ({ conversationId, reason }) => {
-              // These calls now trigger the adminDB functions above
               await updateConversation(conversationId, {
                   status: 'human',
                   escalated: true,
@@ -462,7 +440,7 @@ async function deleteChunksForArticle(articleId: string) {
       console.log(`No chunks found to delete for article ${articleId} (or collection doesn't exist).`);
     } else {
       console.error(`Error deleting chunks for article ${articleId}:`, error);
-      throw error; // Re-throw other errors
+      throw error;
     }
   }
 }
@@ -472,7 +450,6 @@ export async function reindexArticleAction(articleId: string) {
         const articleRef = adminDB.collection("help_center_articles").doc(articleId);
         const docSnap = await articleRef.get();
 
-        // Always delete old chunks first. If the doc doesn't exist, we still want to clean up the index.
         await deleteChunksForArticle(articleId);
 
         if (!docSnap.exists) {
@@ -482,7 +459,6 @@ export async function reindexArticleAction(articleId: string) {
         
         const article = { id: docSnap.id, ...docSnap.data() };
 
-        // If the article is not 'published', we're done. Deleting it was the goal.
         if (article.status !== 'published') {
             console.log(`Article ${articleId} is a draft, removed from index.`);
             return { ok: true, message: `Article ${articleId} is a draft and was removed from the index.` };
@@ -502,7 +478,6 @@ export async function reindexArticleAction(articleId: string) {
             throw new Error(`Hub ${hubId} is missing a spaceId.`);
         }
         
-        // Re-index if published.
         const res = await indexHelpCenterArticleToChunks({
             adminDB,
             article,
@@ -579,7 +554,6 @@ export async function importLibraryAction(
   const batch = adminDB.batch();
   const idMap: Record<string, string> = {};
 
-  // 1. Create Library
   const newHcRef = adminDB.collection("help_centers").doc();
   const oldHcId = data.helpCenter.id;
   idMap[oldHcId] = newHcRef.id;
@@ -590,13 +564,11 @@ export async function importLibraryAction(
     hubId,
   });
 
-  // 2. Map Collection IDs
   for (const coll of data.collections) {
     const newRef = adminDB.collection("help_center_collections").doc();
     idMap[coll.id] = newRef.id;
   }
 
-  // 3. Create Collections
   for (const coll of data.collections) {
     const newId = idMap[coll.id];
     const { id: _, ...collData } = coll;
@@ -608,7 +580,6 @@ export async function importLibraryAction(
     });
   }
 
-  // 4. Create Articles
   for (const art of data.articles) {
     const newRef = adminDB.collection("help_center_articles").doc();
     const { id: _, ...artData } = art;

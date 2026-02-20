@@ -104,7 +104,6 @@ export const getContacts = async (spaceId: string): Promise<Contact[]> => {
 };
 
 export const subscribeToContacts = (spaceId: string, onUpdate: (contacts: Contact[]) => void) => {
-  // Removed orderBy to avoid missing composite index error. Sorting is handled in-memory in the dashboard.
   const q = query(collection(db, "contacts"), where("spaceId", "==", spaceId));
   return onSnapshot(q, (snapshot) => {
     const contacts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact));
@@ -123,6 +122,16 @@ export const getContactEvents = async (contactId: string): Promise<ContactEvent[
   const q = query(collection(db, "contacts", contactId, "events"), orderBy("timestamp", "desc"));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactEvent));
+};
+
+export const subscribeToContactEvents = (contactId: string, onUpdate: (events: ContactEvent[]) => void) => {
+  const q = query(collection(db, "contacts", contactId, "events"), orderBy("timestamp", "desc"));
+  return onSnapshot(q, (snapshot) => {
+    const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactEvent));
+    onUpdate(events);
+  }, (error) => {
+    console.error("Contact events subscription error:", error);
+  });
 };
 
 export const addContactEvent = async (contactId: string, event: Omit<ContactEvent, "id">): Promise<ContactEvent> => {

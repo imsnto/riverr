@@ -15,13 +15,11 @@ import { getInitials } from '@/lib/utils';
 
 const getDateFromTimestamp = (timestamp: any): Date => {
   if (!timestamp) {
-    return new Date(); // Or handle as an invalid date
+    return new Date();
   }
   if (typeof timestamp.toDate === 'function') {
-    // Firestore Timestamp
     return timestamp.toDate();
   }
-  // JS Date object, ISO string, etc.
   return new Date(timestamp);
 };
 
@@ -41,7 +39,7 @@ export default function ContactsList({
 }: ContactsListProps) {
   return (
     <div className="flex flex-col h-full border-r bg-card">
-      <div className="p-4 border-b">
+      <div className="p-4 border-b shrink-0">
         <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">Contacts</h2>
             <Button variant="ghost" size="icon" onClick={onNewContact}>
@@ -67,7 +65,7 @@ export default function ContactsList({
                         key={contact.id}
                         onClick={() => onSelectContact(contact)}
                         className={cn(
-                        "w-full text-left px-3 py-2.5 cursor-pointer transition-colors",
+                        "w-full text-left px-3 py-2 cursor-pointer transition-colors",
                         selectedContact?.id === contact.id ? 'bg-primary/5' : 'hover:bg-muted/30'
                         )}
                     >
@@ -90,7 +88,7 @@ export default function ContactsList({
                                 </p>
                             )}
                         </div>
-                        <div className="flex items-center gap-1.5 mt-2 overflow-hidden">
+                        <div className="flex items-center gap-1.5 mt-1.5 overflow-hidden">
                             {contact.lastMessageAt && <MessageSquare className="h-3 w-3 text-primary/60" />}
                             {contact.lastOrderAt && <ShoppingCart className="h-3 w-3 text-green-500/60" />}
                             {contact.lastCallAt && <Phone className="h-3 w-3 text-blue-500/60" />}

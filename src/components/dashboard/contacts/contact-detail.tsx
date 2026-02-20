@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Contact, ContactEvent } from '@/lib/contacts-types';
@@ -34,11 +35,17 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+
     if (contact) {
-      db.getContactEvents(contact.id).then(setEvents);
+      unsubscribe = db.subscribeToContactEvents(contact.id, setEvents);
     } else {
       setEvents([]);
     }
+
+    return () => {
+        if (unsubscribe) unsubscribe();
+    };
   }, [contact]);
 
   const handleCopy = (text: string | null) => {
@@ -77,9 +84,8 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
         ref: { contactId: contact.id, createdBy: appUser.id },
     };
 
-    const newEvent = await db.addContactEvent(contact.id, eventData);
+    await db.addContactEvent(contact.id, eventData);
 
-    setEvents(prev => [newEvent, ...prev]);
     setNoteContent('');
     setIsAddingNote(false);
 
@@ -89,14 +95,12 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
   const handleDeleteNote = async (eventId: string) => {
     if (!contact) return;
     await db.deleteContactEvent(contact.id, eventId);
-    setEvents(prev => prev.filter(e => e.id !== eventId));
     toast({ title: 'Note deleted' });
   };
   
   const handleOpenConversation = (conversationId: string) => {
       if (!contact) return;
       
-      // Find the specific event to get the hubId/spaceId
       const event = events.find(e => e.ref?.conversationId === conversationId);
       const hubId = event?.ref?.hubId;
       const spaceId = event?.ref?.spaceId || contact.spaceId;
@@ -104,7 +108,6 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
       if (spaceId && hubId) {
           router.push(`/space/${spaceId}/hub/${hubId}/inbox?conversationId=${conversationId}`);
       } else {
-          // Fallback if we don't have the specific hub path
           toast({ title: "Opening conversation...", description: "Searching for conversation hub." });
           router.push(`/?view=inbox&conversationId=${conversationId}`);
       }
