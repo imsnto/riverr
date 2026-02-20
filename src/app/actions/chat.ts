@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -267,14 +266,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
       isMerged: false,
     });
     contactId = newContactRef.id;
-
-    // Create session started event
-    await adminDB.collection("contacts").doc(contactId).collection("events").add({
-        type: 'chat_started',
-        summary: `Started a chat conversation as ${vName}.`,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        ref: { conversationId, visitorId: visitor.id }
-    });
   } else {
       // Update existing contact if we now have more info
       const contactRef = adminDB.collection("contacts").doc(contactId);
@@ -296,6 +287,22 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
               await contactRef.update({ ...updates, updatedAt: new Date() });
           }
       }
+  }
+
+  // 4) Log chat started event if not already logged for this conversation
+  const eventQuery = await adminDB.collection("contacts").doc(contactId).collection("events")
+    .where("type", "==", "chat_started")
+    .where("ref.conversationId", "==", conversationId)
+    .limit(1)
+    .get();
+
+  if (eventQuery.empty) {
+    await adminDB.collection("contacts").doc(contactId).collection("events").add({
+        type: 'chat_started',
+        summary: `Started a chat conversation as ${vName}.`,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        ref: { conversationId, visitorId: visitor.id, hubId: convo.hubId, spaceId: spaceId }
+    });
   }
 
   const convoUpdates: any = {

@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Contact, ContactEvent } from '@/lib/contacts-types';
@@ -16,6 +15,7 @@ import * as db from '@/lib/db';
 import { useAuth } from '@/hooks/use-auth';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { getInitials } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 interface ContactDetailProps {
   contact: Contact | null;
@@ -26,6 +26,7 @@ interface ContactDetailProps {
 
 export default function ContactDetail({ contact, onBack, allUsers, appUser }: ContactDetailProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const isMobile = useIsMobile();
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [noteContent, setNoteContent] = useState('');
@@ -93,8 +94,20 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
   };
   
   const handleOpenConversation = (conversationId: string) => {
-      // In a real app this would navigate to the inbox view with the conversation selected.
-      toast({ title: "Action not yet implemented", description: "Navigating to conversations is coming soon." });
+      if (!contact) return;
+      
+      // Find the specific event to get the hubId/spaceId
+      const event = events.find(e => e.ref?.conversationId === conversationId);
+      const hubId = event?.ref?.hubId;
+      const spaceId = event?.ref?.spaceId || contact.spaceId;
+
+      if (spaceId && hubId) {
+          router.push(`/space/${spaceId}/hub/${hubId}/inbox?conversationId=${conversationId}`);
+      } else {
+          // Fallback if we don't have the specific hub path
+          toast({ title: "Opening conversation...", description: "Searching for conversation hub." });
+          router.push(`/?view=inbox&conversationId=${conversationId}`);
+      }
   }
 
 
