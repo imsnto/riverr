@@ -22,6 +22,13 @@ if (!admin.apps.length) admin.initializeApp();
 
 const db = admin.firestore();
 
+// Presence threshold constants (Intercom-like)
+const ACTIVE_WINDOW_MS = 2 * 60 * 1000;      // 2 minutes
+const INACTIVE_WINDOW_MS = 10 * 60 * 1000;   // 10 minutes (visitor likely left)
+const ACK_DELAY_MS = 10 * 60 * 1000;         // wait 10 minutes before acknowledgement email
+const ACK_COOLDOWN_MS = 24 * 60 * 60 * 1000; // once per 24h
+const REPLY_EMAIL_COOLDOWN_MS = 2 * 60 * 1000; // avoid spamming rapid replies
+
 // -----------------------------
 // Cooldown helpers
 // -----------------------------
@@ -171,10 +178,92 @@ export const sendAgentChatAlertEmail = onDocumentCreated(
 );
 
 // -----------------------------
-// 2) Scheduled Visitor Follow-up Email Job
+// 2) Visitor Reply Email Trigger (Intercom-style)
 // -----------------------------
 
-export const scheduledVisitorFollowupEmail = onSchedule(
+export const sendVisitorReplyEmail = onDocumentCreated(
+  {
+    document: "chat_messages/{messageId}",
+    secrets: [APP_BASE_URL, POSTMARK_SERVER_TOKEN],
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
+    const msg = snap.data() as any;
+    if (msg?.senderType !== "agent" && msg?.senderType !== "bot") return;
+
+    const conversationId = msg.conversationId;
+    if (!conversationId) return;
+
+    const conversationRef = db.doc(`conversations/${conversationId}`);
+    const convSnap = await conversationRef.get();
+    if (!convSnap.exists) return;
+    const conv = convSnap.data() as any;
+
+    const visitorEmail = conv.visitorEmail;
+    if (!visitorEmail) return;
+
+    // RULE: Only email if visitor is INACTIVE
+    const now = Date.now();
+    const lastActiveAt = conv.lastVisitorActiveAt ? (conv.lastVisitorActiveAt as admin.firestore.Timestamp).toMillis() : 0;
+    const isInactive = (now - lastActiveAt) > ACTIVE_WINDOW_MS;
+
+    if (!isInactive) {
+      logger.debug("sendVisitorReplyEmail: skipped, visitor active", { conversationId });
+      return;
+    }
+
+    // Cooldown: avoid rapid spam
+    const lastReplyEmailAt = conv.lastAgentReplyEmailAt ? (conv.lastAgentReplyEmailAt as admin.firestore.Timestamp).toMillis() : 0;
+    if (now - lastReplyEmailAt < REPLY_EMAIL_COOLDOWN_MS) {
+      logger.debug("sendVisitorReplyEmail: skipped, cooldown", { conversationId });
+      return;
+    }
+
+    const baseUrl = APP_BASE_URL.value();
+    const resumeUrl = `${baseUrl}/chatbot/${conv.hubId}/${conv.botId || 'default'}?conversationId=${conversationId}`;
+    const snippet = safeSnippet(msg.content || "");
+
+    const authorName = msg.authorId === 'ai_agent' ? 'AI Agent' : (conv.assigneeName || 'A team member');
+    const subject = `${authorName} replied to your chat`;
+
+    const htmlBody = `
+      <div style="font-family: ui-sans-serif, system-ui; line-height: 1.5">
+        <h2 style="margin: 0 0 12px 0;">New message from ${authorName}</h2>
+        <p style="margin: 0 0 14px 0; font-style: italic; color: #444; border-left: 2px solid #ddd; padding-left: 12px;">
+          "${snippet}"
+        </p>
+        <p style="margin: 0 0 14px 0;">
+          <a href="${resumeUrl}" style="display:inline-block;padding:10px 14px;border-radius:8px;text-decoration:none;background:#2563eb;color:white;">
+            Continue the conversation
+          </a>
+        </p>
+      </div>
+    `;
+
+    await sendSystemEmail({
+      orgId: conv.spaceId,
+      to: visitorEmail,
+      subject,
+      htmlBody,
+      textBody: `${subject}\n\n"${snippet}"\n\nContinue here: ${resumeUrl}`,
+      tag: "visitor_reply",
+      metadata: { conversationId },
+    });
+
+    await conversationRef.update({
+      lastAgentReplyEmailAt: admin.firestore.FieldValue.serverTimestamp(),
+      agentReplyEmailCount: admin.firestore.FieldValue.increment(1),
+    });
+  }
+);
+
+// -----------------------------
+// 3) Scheduled Acknowledgement Email Job
+// -----------------------------
+
+export const scheduledAcknowledgementEmail = onSchedule(
   {
     schedule: "every 10 minutes",
     secrets: [APP_BASE_URL, POSTMARK_SERVER_TOKEN],
@@ -183,113 +272,54 @@ export const scheduledVisitorFollowupEmail = onSchedule(
   async () => {
     const baseUrl = APP_BASE_URL.value();
     const now = admin.firestore.Timestamp.now();
-    const cutoffVisitorReplyMs = 60 * 60 * 1000;
-    const followupCooldownMs = 24 * 60 * 60 * 1000;
-    const maxFollowups = 2;
+    const ackCutoff = admin.firestore.Timestamp.fromMillis(now.toMillis() - ACK_DELAY_MS);
 
-    const visitorReplyCutoff = admin.firestore.Timestamp.fromMillis(now.toMillis() - cutoffVisitorReplyMs);
-
+    // Find conversations where:
+    // 1. Last message is from visitor
+    // 2. Visitor hasn't had an ack recently
+    // 3. Last message was long enough ago
     const querySnap = await db
       .collection("conversations")
-      .where("lastMessageFrom", "in", ["agent", "bot"])
-      .limit(200)
+      .where("lastMessageFrom", "in", ["visitor", "contact"])
+      .where("lastVisitorMessageAt", "<=", ackCutoff)
+      .limit(100)
       .get();
 
-    if (querySnap.empty) return;
-
-    let processed = 0;
-
     for (const doc of querySnap.docs) {
-      const conversationId = doc.id;
       const conv = doc.data() as any;
+      const visitorEmail = conv.visitorEmail;
+      if (!visitorEmail) continue;
 
-      try {
-        const visitorEmail: string | undefined = conv.visitorEmail;
-        if (!visitorEmail) continue;
+      // RULE: Visitor must be inactive
+      const lastActiveAt = conv.lastVisitorActiveAt ? (conv.lastVisitorActiveAt as admin.firestore.Timestamp).toMillis() : 0;
+      const isInactive = (now.toMillis() - lastActiveAt) > INACTIVE_WINDOW_MS;
+      if (!isInactive) continue;
 
-        const visitorId: string | undefined = conv.visitorId;
-        const lastAgentMessageAt: admin.firestore.Timestamp | undefined = conv.lastAgentMessageAt;
-        const lastVisitorSeenAt: admin.firestore.Timestamp | undefined = conv.lastVisitorSeenAt;
-        const lastVisitorMessageAt: admin.firestore.Timestamp | undefined = conv.lastVisitorMessageAt;
+      // Cooldown: at most once per 24h
+      const lastAckAt = conv.lastAckEmailAt ? (conv.lastAckEmailAt as admin.firestore.Timestamp).toMillis() : 0;
+      if (now.toMillis() - lastAckAt < ACK_COOLDOWN_MS) continue;
 
-        if (!lastAgentMessageAt) continue;
+      const resumeUrl = `${baseUrl}/chatbot/${conv.hubId}/${conv.botId || 'default'}?conversationId=${doc.id}`;
+      const subject = "We've received your message";
 
-        if (lastVisitorMessageAt && lastVisitorMessageAt.toMillis() > visitorReplyCutoff.toMillis()) {
-          continue;
-        }
-
-        if (lastVisitorSeenAt && lastVisitorSeenAt.toMillis() >= lastAgentMessageAt.toMillis()) {
-          continue;
-        }
-
-        const followupCount: number = typeof conv.followupEmailCount === "number" ? conv.followupEmailCount : 0;
-        if (followupCount >= maxFollowups) continue;
-
-        const lastFollowupEmailAt: admin.firestore.Timestamp | undefined = conv.lastFollowupEmailAt;
-        if (lastFollowupEmailAt && now.toMillis() - lastFollowupEmailAt.toMillis() < followupCooldownMs) {
-          continue;
-        }
-
-        const cooldownKey = `conv:${conversationId}|type:visitor_followup_email`;
-        const canSend = await canSendWithCooldown({
-          cooldownKey,
-          cooldownMs: followupCooldownMs,
-          force: false,
-        });
-        if (!canSend) continue;
-
-        const resumeUrl = `${baseUrl}/chatbot/${conv.hubId}/${conv.botId || 'default'}?conversationId=${conversationId}`;
-
-        const subject = "Still need help?";
-        const htmlBody = `
+      await sendSystemEmail({
+        orgId: conv.spaceId,
+        to: visitorEmail,
+        subject,
+        htmlBody: `
           <div style="font-family: ui-sans-serif, system-ui; line-height: 1.5">
-            <h2 style="margin: 0 0 12px 0;">Still need help?</h2>
-            <p style="margin: 0 0 14px 0;">
-              You have an unread message waiting in your Manowar chat.
-            </p>
-            <p style="margin: 0 0 14px 0;">
-              <a href="${resumeUrl}" style="display:inline-block;padding:10px 14px;border-radius:8px;text-decoration:none;background:#2563eb;color:white;">
-                Continue the conversation
-              </a>
-            </p>
-            <p style="color:#777; font-size: 12px; margin: 0;">
-              If you’re all set, you can ignore this email.
-            </p>
+            <h2>We got your message!</h2>
+            <p>Thanks for reaching out. We've received your message and a team member will get back to you as soon as possible.</p>
+            <p><a href="${resumeUrl}" style="display:inline-block;padding:10px 14px;border-radius:8px;text-decoration:none;background:#2563eb;color:white;">View your message</a></p>
           </div>
-        `;
-        const textBody = `Still need help?\n\nContinue the conversation: ${resumeUrl}\n\nIf you're all set, ignore this email.`;
+        `,
+        tag: "visitor_ack",
+        metadata: { conversationId: doc.id },
+      });
 
-        await sendSystemEmail({
-          orgId: conv.spaceId,
-          to: visitorEmail,
-          subject,
-          htmlBody,
-          textBody,
-          tag: "visitor_followup",
-          metadata: {
-            conversationId,
-          },
-        });
-
-        await doc.ref.set(
-          {
-            lastFollowupEmailAt: admin.firestore.FieldValue.serverTimestamp(),
-            followupEmailCount: admin.firestore.FieldValue.increment(1),
-          },
-          { merge: true }
-        );
-
-        await markCooldownSent(cooldownKey);
-        processed += 1;
-        if (processed >= 100) break;
-      } catch (err: any) {
-        logger.error("scheduledVisitorFollowupEmail: failed", {
-          conversationId,
-          err: err?.message ?? err,
-        });
-      }
+      await doc.ref.update({
+        lastAckEmailAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
     }
-
-    logger.info("scheduledVisitorFollowupEmail: done", { scanned: querySnap.size, processed });
   }
 );

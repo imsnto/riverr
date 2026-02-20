@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { marked } from 'marked';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { invokeAgent, createConversationAndLinkCrm, ensureConversationCrmLinkedAction, updateConversation, addChatMessage as addChatMessageAction } from '@/app/actions/chat';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -90,10 +91,35 @@ export default function ChatbotWidgetPage() {
     }
   };
 
+  // Heartbeat Presence Tracking
+  const updatePresence = async () => {
+    if (conversation && !document.hidden) {
+      await db.updateVisitorActivity(conversation.id);
+    }
+  };
+
   useEffect(() => {
-    window.addEventListener('focus', markAsSeen);
-    markAsSeen(); // Initial focus check
-    return () => window.removeEventListener('focus', markAsSeen);
+    const handleFocus = () => {
+      markAsSeen();
+      updatePresence();
+    };
+    const handleInteraction = () => updatePresence();
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('click', handleInteraction);
+    window.addEventListener('keydown', handleInteraction);
+
+    markAsSeen(); 
+    updatePresence();
+
+    const heartbeat = setInterval(updatePresence, 45000); // Heartbeat every 45s
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
+      clearInterval(heartbeat);
+    };
   }, [conversation?.id]);
 
   // Communicating unread count to parent window
@@ -273,6 +299,9 @@ export default function ChatbotWidgetPage() {
         setLoading(false);
         return;
     }
+
+    // Update presence on message send
+    await db.updateVisitorActivity(currentConversation.id);
 
     // IDENTITY CAPTURE LOGIC: Step 2 - Response to Prompt
     if (identityCaptureStep === 'prompting') {

@@ -43,6 +43,9 @@ export interface Space {
   members: Record<string, { role: string }>; // Map of user IDs to their roles
   isSystem?: boolean;
   isOnboarding?: boolean;
+  emailSettings?: {
+    replyToEmail?: string;
+  };
 }
 
 export type ConversationState =
@@ -494,10 +497,14 @@ export interface Conversation {
   visitorEmail?: string;
   state?: ConversationState;
   lastIntent?: string | null;
+  lastVisitorActiveAt?: string;
   lastVisitorSeenAt?: string;
   lastVisitorMessageAt?: string;
   lastAgentMessageAt?: string;
   lastAgentSeenAtByAgent?: Record<string, string>;
+  lastAckEmailAt?: string;
+  lastAgentReplyEmailAt?: string;
+  agentReplyEmailCount?: number;
   handoff?: {
     status: "none" | "offered" | "declined" | "completed";
     reason?: string;

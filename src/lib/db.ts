@@ -299,6 +299,13 @@ export const updateVisitor = async (visitorId: string, data: Partial<Visitor>) =
   await updateDoc(docRef, data);
 };
 
+export const updateVisitorActivity = async (conversationId: string) => {
+  const docRef = doc(db, 'conversations', conversationId);
+  await updateDoc(docRef, {
+    lastVisitorActiveAt: new Date().toISOString()
+  });
+};
+
 export const getConversationsForHub = async (hubId: string): Promise<Conversation[]> => {
   const q = query(collection(db, 'conversations'), where('hubId', '==', hubId));
   const querySnapshot = await getDocs(q);
