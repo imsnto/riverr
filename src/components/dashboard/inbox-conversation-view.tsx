@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Conversation, ChatMessage, Visitor, User, Ticket, Hub, Space, EscalationIntakeRule, Project, Task } from '@/lib/data';
+import { Conversation, ChatMessage, Visitor, User, Ticket, Hub, Space, EscalationIntakeRule, Project } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
@@ -28,7 +28,7 @@ interface InboxConversationViewProps {
   isContactPanelOpen: boolean;
   onToggleContactPanel: () => void;
   onSendMessage: (conversationId: string, message: Omit<ChatMessage, 'id' | 'conversationId'>) => void;
-  onAssignConversation: (conversationId: string, assigneeId: string | null) => void;
+  onAssignConversation: (conversationId: string, assigneeIds: string[]) => void;
   onBack?: () => void;
   onToggleContactDailog: () => void;
   activeHub: Hub;
@@ -48,7 +48,7 @@ const getInitials = (name: string | null) => {
   return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
-const defaultTicketStatuses: Status[] = [
+const defaultTicketStatuses = [
     { name: 'New', color: '#6b7280' }, { name: 'Open', color: '#3b82f6' }, 
     { name: 'Waiting on Customer', color: '#f59e0b' }, { name: 'Escalated', color: '#ef4444' }, 
     { name: 'Closed', color: '#22c55e' },
@@ -87,7 +87,6 @@ export default function InboxConversationView({
   const activeTicket = useMemo(() => {
     if (!conversation || !tickets || !activeHub) return null;
     const closingStatus = activeHub.ticketClosingStatusName || 'Closed';
-    // Find the most recent, non-closed ticket for this conversation
     return tickets
       .filter(t => t.conversationId === conversation.id && t.status !== closingStatus)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
@@ -97,7 +96,6 @@ export default function InboxConversationView({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, conversation?.id]);
 
-  // Mark conversation as seen when it's focused/active
   useEffect(() => {
     if (conversation && appUser) {
       const markSeen = async () => {
@@ -148,11 +146,25 @@ export default function InboxConversationView({
     }
   }
 
-  const handleAssign = (userId: string | null) => {
-    onAssignConversation(conversation.id, userId);
+  const handleToggleAssignee = (userId: string | null) => {
+    if (userId === null) {
+        onAssignConversation(conversation.id, []);
+        return;
+    }
+    
+    const currentIds = conversation.assignedAgentIds || (conversation.assigneeId ? [conversation.assigneeId] : []);
+    const newIds = currentIds.includes(userId)
+        ? currentIds.filter(id => id !== userId)
+        : [...currentIds, userId];
+        
+    onAssignConversation(conversation.id, newIds);
   };
 
-  const assignee = users.find(u => u.id === conversation.assigneeId);
+  const assignedAgents = useMemo(() => {
+    const ids = conversation.assignedAgentIds || (conversation.assigneeId ? [conversation.assigneeId] : []);
+    return users.filter(u => ids.includes(u.id));
+  }, [conversation, users]);
+
   const conversationMessages = messages.filter(m => m.conversationId === conversation.id);
   const ticketPillAssignee = activeTicket ? users.find(u => u.id === activeTicket.assignedTo) : null;
   const displayName = conversation.visitorName || contact.name || 'Visitor';
@@ -289,22 +301,22 @@ export default function InboxConversationView({
                   <DropdownMenuPortal>
                     <DropdownMenuSubContent className="min-w-[240px] p-0 overflow-hidden">
                       <DropdownMenuItem 
-                        onSelect={() => handleAssign(null)}
-                        className={cn("m-1", conversation.assigneeId === null && "bg-accent")}
+                        onSelect={() => handleToggleAssignee(null)}
+                        className={cn("m-1", (conversation.assignedAgentIds || []).length === 0 && "bg-accent")}
                       >
                         <div className="flex items-center justify-between w-full">
                           <span>Unassigned</span>
-                          {conversation.assigneeId === null && <Check className="h-4 w-4" />}
+                          {(conversation.assignedAgentIds || []).length === 0 && <Check className="h-4 w-4" />}
                         </div>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <div className="max-h-[300px] overflow-y-auto p-1">
                         {users.map(user => {
-                          const isSelected = conversation.assigneeId === user.id;
+                          const isSelected = (conversation.assignedAgentIds || []).includes(user.id);
                           return (
                             <DropdownMenuItem 
                               key={user.id} 
-                              onSelect={() => handleAssign(user.id)}
+                              onSelect={() => handleToggleAssignee(user.id)}
                               className={cn(isSelected && "bg-accent font-medium")}
                             >
                               <div className="flex items-center justify-between w-full gap-4">
@@ -326,11 +338,13 @@ export default function InboxConversationView({
 
             <div className="flex flex-col justify-center min-w-0 leading-tight">
               <span className="text-sm font-semibold truncate">
-                {assignee ? `Assigned to ${assignee.name}` : 'Unassigned'}
+                {assignedAgents.length === 0 ? 'Unassigned' : 
+                 assignedAgents.length === 1 ? `Assigned to ${assignedAgents[0].name}` :
+                 `Assigned to ${assignedAgents.length} people`}
               </span>
-              {assignee && (
+              {assignedAgents.length > 0 && (
                 <span className="text-[10px] text-muted-foreground truncate">
-                  {assignee.email}
+                  {assignedAgents.map(a => a.email).join(', ')}
                 </span>
               )}
             </div>
@@ -462,6 +476,13 @@ export default function InboxConversationView({
           allUsers={users}
           contact={contact}
           conversation={conversation}
+          onEscalate={onEscalate}
+          activeHub={activeHub}
+          allHubs={allHubs}
+          escalationRules={escalationRules}
+          projects={projects}
+          allTasks={allTasks}
+          onTaskSelect={onTaskSelect}
         />
       )}
     </>

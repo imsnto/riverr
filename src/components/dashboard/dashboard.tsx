@@ -446,9 +446,13 @@ export default function Dashboard({ view }: { view: string }) {
     await addChatMessageAction(messageData);
   };
 
-  const handleAssignConversation = async (cid: string, aid: string | null) => {
-    const status = aid ? 'open' : 'unassigned';
-    await db.updateConversation(cid, { assigneeId: aid, status });
+  const handleAssignConversation = async (cid: string, aid: string[]) => {
+    const status = aid.length > 0 ? 'open' : 'unassigned';
+    await db.updateConversation(cid, { 
+        assigneeId: aid.length > 0 ? aid[0] : null, 
+        assignedAgentIds: aid,
+        status 
+    });
   };
   
   const handleBotUpdate = async (bid: string, d: Partial<Bot>) => {

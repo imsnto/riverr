@@ -19,7 +19,7 @@ interface InboxLayoutProps {
   conversations: Conversation[];
   messages: ChatMessage[];
   onSendMessage: (conversationId: string, content: string, type: 'message' | 'note') => void;
-  onAssignConversation: (conversationId: string, assigneeId: string | null) => void;
+  onAssignConversation: (conversationId: string, assigneeIds: string[]) => void;
   setHideMobileBottomNav?: (hide: boolean) => void;
   activeHub: Hub;
   activeSpace: Space;
