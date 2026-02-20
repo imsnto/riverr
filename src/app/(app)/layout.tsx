@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { useAuth } from '@/hooks/use-auth';
-import { Space, Hub, User } from '@/lib/data';
+import { Space, Hub, User, Conversation } from '@/lib/data';
 import * as db from '@/lib/db';
 import { useRouter, useParams } from 'next/navigation';
 import { AppView } from '@/lib/routes';
@@ -14,6 +14,8 @@ import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import MobileBottomNav from '@/components/dashboard/mobile-bottom-nav';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db as firestoreDb } from '@/lib/firebase';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const { appUser, activeSpace, userSpaces, setActiveSpace, activeHub, setActiveHub } = useAuth();
@@ -21,6 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const params = useParams();
     const isMobile = useIsMobile();
     const [isLoading, setIsLoading] = useState(true);
+    const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
     const [spaceHubs, setSpaceHubs] = useState<Hub[]>([]);
     
@@ -37,6 +40,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             setIsLoading(false);
         }
     }, [activeSpace, appUser]);
+
+    // Global listener for unread messages count
+    useEffect(() => {
+      if (!appUser || !activeSpace) return;
+
+      const q = query(
+        collection(firestoreDb, 'conversations'),
+        where('spaceId', '==', activeSpace.id)
+      );
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const convos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
+        
+        const count = convos.reduce((acc, convo) => {
+          const lastSeen = convo.lastAgentSeenAtByAgent?.[appUser.id] ? new Date(convo.lastAgentSeenAtByAgent[appUser.id]).getTime() : 0;
+          const lastMessageAt = new Date(convo.lastMessageAt).getTime();
+          
+          if (convo.lastMessageAuthor !== appUser.name && lastMessageAt > lastSeen) {
+            return acc + 1;
+          }
+          return acc;
+        }, 0);
+
+        setUnreadMessagesCount(count);
+      });
+
+      return () => unsubscribe();
+    }, [appUser, activeSpace]);
 
     const handleViewChange = (newView: AppView) => {
         if (activeHub) {
@@ -87,6 +118,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               allSpaces={userSpaces}
               activeHub={activeHub}
               onHubChange={handleHubChange}
+              unreadMessagesCount={unreadMessagesCount}
             />
             <main className={cn(
               "flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden",

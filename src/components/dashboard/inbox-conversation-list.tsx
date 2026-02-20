@@ -63,6 +63,10 @@ export default function InboxConversationList({
           const isYou = convo.lastMessageAuthor === appUser.name;
           const isAI = convo.lastMessageAuthor === 'AI Agent';
           
+          const lastSeen = convo.lastAgentSeenAtByAgent?.[appUser.id] ? new Date(convo.lastAgentSeenAtByAgent[appUser.id]).getTime() : 0;
+          const lastMessageAt = new Date(convo.lastMessageAt).getTime();
+          const isUnread = convo.lastMessageAuthor !== appUser.name && lastMessageAt > lastSeen;
+          
           // Prefer cached conversation name for UI stability
           const displayName = convo.visitorName || visitor?.name || 'Visitor';
           
@@ -71,8 +75,9 @@ export default function InboxConversationList({
               key={convo.id}
               onClick={() => onSelectConversation(convo.id)}
               className={cn(
-                "p-4 cursor-pointer border-b !border-b-border/50 transition-colors",
-                isSelected ? 'bg-primary/5 border-l-4 border-primary' : 'hover:bg-muted/30'
+                "p-4 cursor-pointer border-b !border-b-border/50 transition-colors relative",
+                isSelected ? 'bg-primary/5 border-l-4 border-primary' : 'hover:bg-muted/30',
+                isUnread && !isSelected ? "bg-primary/5" : ""
               )}
             >
               <div className='flex items-center justify-between'>
@@ -84,13 +89,19 @@ export default function InboxConversationList({
                   <p
                   className={cn(
                     "font-semibold truncate pl-1 text-sm",
-                    isSelected ? 'text-primary' : ''
+                    isSelected ? 'text-primary' : '',
+                    isUnread ? 'font-bold' : ''
                   )}
                   >{displayName}</p>
                 </div>
-                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground whitespace-nowrap pl-2">
-                  {convo.lastMessageAt ? format(new Date(convo.lastMessageAt), "d MMM") : '---'}
-                </p>
+                <div className="flex flex-col items-end gap-1">
+                  <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground whitespace-nowrap pl-2">
+                    {convo.lastMessageAt ? format(new Date(convo.lastMessageAt), "d MMM") : '---'}
+                  </p>
+                  {isUnread && (
+                    <span className="h-2 w-2 rounded-full bg-primary" />
+                  )}
+                </div>
               </div>
               
               <div className="mt-3 overflow-hidden">
@@ -102,12 +113,13 @@ export default function InboxConversationList({
                       <Bot className="h-3 w-3" /> AI:
                     </span>
                   ) : convo.lastMessageAuthor && convo.lastMessageAuthor !== displayName ? (
-                    <span className="font-bold flex-shrink-0">{convo.lastMessageAuthor}:</span>
+                    <span className={cn("font-bold flex-shrink-0", isUnread ? "text-foreground" : "")}>{convo.lastMessageAuthor}:</span>
                   ) : null}
                   
                   <p className={cn(
                     "truncate flex-1 font-medium",
-                    isSelected ? "text-foreground" : ""
+                    isSelected ? "text-foreground" : "",
+                    isUnread ? "text-foreground font-semibold" : ""
                   )}>
                     {convo.lastMessage || 'No messages'}
                   </p>

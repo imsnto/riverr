@@ -17,6 +17,7 @@ import CreateTicketDialog from './create-ticket-dialog';
 import { Badge } from '../ui/badge';
 import TicketDetailsDialog from './ticket-details-dialog';
 import { marked } from 'marked';
+import * as db from '@/lib/db';
 
 interface InboxConversationViewProps {
   conversation: Conversation | null;
@@ -96,6 +97,26 @@ export default function InboxConversationView({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, conversation?.id]);
 
+  // Mark conversation as seen when it's focused/active
+  useEffect(() => {
+    if (conversation && appUser) {
+      const markSeen = async () => {
+        const lastSeen = conversation.lastAgentSeenAtByAgent?.[appUser.id] ? new Date(conversation.lastAgentSeenAtByAgent[appUser.id]).getTime() : 0;
+        const lastMessageAt = new Date(conversation.lastMessageAt).getTime();
+        
+        if (lastMessageAt > lastSeen) {
+          await db.updateAgentSeenAt(conversation.id, appUser.id);
+        }
+      };
+      
+      markSeen();
+      
+      const onFocus = () => markSeen();
+      window.addEventListener('focus', onFocus);
+      return () => window.removeEventListener('focus', onFocus);
+    }
+  }, [conversation?.id, conversation?.lastMessageAt, appUser]);
+
   if (!conversation || !contact) {
     return (
       <div className="flex h-full items-center justify-center p-4">
@@ -159,7 +180,7 @@ export default function InboxConversationView({
 
 
   const renderMessageBubble = (msg: ChatMessage) => {
-    const isCustomer = msg.senderType === 'contact';
+    const isCustomer = msg.senderType === 'contact' || msg.senderType === 'visitor';
     const agent = isCustomer ? null : users.find(u => u.id === msg.authorId);
     const isAI = msg.authorId === 'ai_agent';
 

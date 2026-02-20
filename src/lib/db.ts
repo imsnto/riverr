@@ -44,6 +44,7 @@ import {
   BrainJob,
   MemoryNode,
   DealAutomationRule,
+  Conversation,
 } from './data';
 import { ContactEvent } from './contacts-types';
 import { generateWhimsicalName } from './utils';
@@ -321,6 +322,13 @@ export const addConversation = async (convo: Omit<Conversation, 'id'>): Promise<
 export const updateConversation = async (convoId: string, data: Partial<Conversation>) => {
   const docRef = doc(db, 'conversations', convoId);
   await updateDoc(docRef, data);
+};
+
+export const updateAgentSeenAt = async (conversationId: string, userId: string) => {
+  const docRef = doc(db, 'conversations', conversationId);
+  await updateDoc(docRef, {
+    [`lastAgentSeenAtByAgent.${userId}`]: new Date().toISOString()
+  });
 };
 
 export const getMessagesForConversations = (convoIds: string[], callback: (messages: ChatMessage[]) => void, isVisitor = false) => {

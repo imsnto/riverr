@@ -1,3 +1,4 @@
+
 // src/components/dashboard/AppSidebar.tsx
 "use client";
 
@@ -154,6 +155,7 @@ interface AppSidebarProps {
   allSpaces: Space[];
   activeHub: Hub | null;
   onHubChange: (hubId: string, spaceId: string) => void;
+  unreadMessagesCount?: number;
 }
 
 const allTopItems: { key: AppView; icon: React.ElementType; label: string; fixed?: boolean }[] = [
@@ -192,6 +194,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   allSpaces,
   activeHub,
   onHubChange,
+  unreadMessagesCount = 0,
 }) => {
   const { appUser, signOut } = useAuth();
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
@@ -251,16 +254,23 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     const isActive = view === item.key;
     const variant = isActive ? "secondary" : "ghost";
     const Icon = item.icon;
+    const hasUnread = item.key === 'inbox' && unreadMessagesCount > 0;
     
     return (
       <Button
         key={item.key}
         onClick={() => handleNavigation(item.key)}
         variant={variant}
-        className={cn("h-10 w-full justify-start rounded-md px-3", !showLabels && "px-0 justify-center w-10 mx-auto")}
+        className={cn("h-10 w-full justify-start rounded-md px-3 relative", !showLabels && "px-0 justify-center w-10 mx-auto")}
       >
         <Icon className="w-4 h-4 shrink-0" />
         {showLabels && <span className="ml-2.5 truncate">{item.label}</span>}
+        {hasUnread && (
+          <span className={cn(
+            "absolute flex h-2 w-2 rounded-full bg-red-500",
+            showLabels ? "right-3 top-1/2 -translate-y-1/2" : "right-1 top-1"
+          )} />
+        )}
       </Button>
     );
   };
