@@ -194,7 +194,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   onHubChange,
 }) => {
   const { appUser, signOut } = useAuth();
-  const { isMobile, state, setOpen, openMobile, setOpenMobile } = useSidebar();
+  const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
   const router = useRouter();
 
   // Local browsing state for the popover
@@ -257,10 +257,10 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         key={item.key}
         onClick={() => handleNavigation(item.key)}
         variant={variant}
-        className={cn("h-12 w-full justify-start rounded-md px-4", !showLabels && "px-0 justify-center w-12 mx-auto")}
+        className={cn("h-10 w-full justify-start rounded-md px-3", !showLabels && "px-0 justify-center w-10 mx-auto")}
       >
-        <Icon className="w-4 h-4" />
-        {showLabels && <span className="ml-3">{item.label}</span>}
+        <Icon className="w-4 h-4 shrink-0" />
+        {showLabels && <span className="ml-2.5 truncate">{item.label}</span>}
       </Button>
     );
   };
@@ -268,13 +268,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   return (
     <Sidebar collapsible="icon">
       <div className={cn("flex flex-col h-full", showLabels ? "p-2" : "p-1")}>
-         <div className="flex justify-center p-2">
+         <div className="flex justify-center p-1.5">
           <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-12 h-12 justify-center p-0 rounded-lg">
+              <Button variant="outline" className="w-10 h-10 justify-center p-0 rounded-lg">
                   <Avatar className="h-full w-full rounded-lg">
                     <AvatarImage src={activeSpace?.logoUrl} className="object-cover" />
-                    <AvatarFallback className="rounded-lg text-lg font-bold">
+                    <AvatarFallback className="rounded-lg text-base font-bold">
                       {activeSpace ? getInitials(activeSpace.name) : "W"}
                     </AvatarFallback>
                   </Avatar>
@@ -317,10 +317,10 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             </PopoverContent>
           </Popover>
          </div>
-         <Separator className={cn("my-2", !showLabels && "mx-auto w-12")} />
+         <Separator className={cn("my-2", !showLabels && "mx-auto w-10")} />
         <div className="flex flex-col flex-1 space-y-1 overflow-y-auto">
           {topItems.map(renderButton)}
-          <div className={cn("px-3 py-2", !showLabels && "px-0")}>
+          <div className={cn("px-2 py-2", !showLabels && "px-0")}>
             <Separator />
           </div>
           {middleItems.map(renderButton)}
@@ -328,19 +328,19 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         <div className="flex flex-col mt-auto space-y-1">{bottomItems.map(renderButton)}</div>
         {appUser && (
             <>
-              <Separator className={cn("my-2", !showLabels && "mx-auto w-12")} />
+              <Separator className={cn("my-2", !showLabels && "mx-auto w-10")} />
               
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className={cn("h-14 justify-start rounded-md px-4 w-full", !showLabels && "px-0 justify-center h-12 w-12 mx-auto")}>
-                        <Avatar className="h-10 w-10">
+                    <Button variant="ghost" className={cn("h-12 justify-start rounded-md px-2 w-full", !showLabels && "px-0 justify-center h-10 w-10 mx-auto")}>
+                        <Avatar className="h-8 w-8 shrink-0">
                           <AvatarImage src={appUser.avatarUrl} alt={appUser.name} />
                           <AvatarFallback>{getInitials(appUser.name)}</AvatarFallback>
                         </Avatar>
                         {showLabels && (
-                          <div className="ml-3 text-left">
-                            <p className="text-sm font-medium leading-none">{appUser.name}</p>
-                            <p className="text-xs leading-none text-muted-foreground">{appUser.email}</p>
+                          <div className="ml-2.5 text-left min-w-0">
+                            <p className="text-sm font-medium leading-none truncate">{appUser.name}</p>
+                            <p className="text-[10px] leading-none text-muted-foreground truncate mt-1">{appUser.email}</p>
                           </div>
                         )}
                       </Button>

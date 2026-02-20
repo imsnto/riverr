@@ -1,6 +1,3 @@
-
-// Refreshed layout to remove sidebar logo and let top bar span full width
-
 "use client"
 
 import * as React from "react"
@@ -22,7 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-const SIDEBAR_WIDTH = "16rem" // Expanded width
+const SIDEBAR_WIDTH = "14rem" // Restored to a more compact expanded width
 const SIDEBAR_WIDTH_ICON = "3rem" // Collapsed (icon-only) width
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 
@@ -40,7 +37,7 @@ const SidebarContext = React.createContext<{
   toggleSidebar: () => void;
 } | null>(null)
 
-function useSidebar() {
+export function useSidebar() {
   const context = React.useContext(SidebarContext)
   if (!context) throw new Error("useSidebar must be used within a SidebarProvider.")
   return context
@@ -190,6 +187,5 @@ SidebarTrigger.displayName = "SidebarTrigger"
 export {
   Sidebar,
   SidebarProvider,
-  useSidebar,
   SidebarTrigger,
 }
