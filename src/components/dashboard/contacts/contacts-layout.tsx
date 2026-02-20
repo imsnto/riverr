@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -15,9 +16,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 interface ContactsLayoutProps {
     activeSpace: Space | null;
+    contacts?: Contact[];
 }
 
-export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
+export default function ContactsLayout({ activeSpace, contacts: propContacts }: ContactsLayoutProps) {
   const searchParams = useSearchParams();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -25,33 +27,40 @@ export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
   const isMobile = useIsMobile();
   const { appUser } = useAuth();
 
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [localContacts, setLocalContacts] = useState<Contact[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const displayContacts = propContacts || localContacts;
+
   useEffect(() => {
-    if (activeSpace) {
+    if (activeSpace && !propContacts) {
       setIsLoading(true);
       Promise.all([
           db.getContacts(activeSpace.id),
           db.getAllUsers()
       ]).then(([fetchedContacts, fetchedUsers]) => {
-        setContacts(fetchedContacts);
+        setLocalContacts(fetchedContacts);
         setAllUsers(fetchedUsers);
         setIsLoading(false);
       });
+    } else if (activeSpace) {
+        db.getAllUsers().then(fetchedUsers => {
+            setAllUsers(fetchedUsers);
+            setIsLoading(false);
+        });
     }
-  }, [activeSpace]);
+  }, [activeSpace, propContacts]);
 
   useEffect(() => {
     const contactIdFromUrl = searchParams.get('contactId');
-    if (contactIdFromUrl && contacts.length > 0) {
-      const contactToSelect = contacts.find(c => c.id === contactIdFromUrl);
+    if (contactIdFromUrl && displayContacts.length > 0) {
+      const contactToSelect = displayContacts.find(c => c.id === contactIdFromUrl);
       if (contactToSelect) {
         setSelectedContact(contactToSelect);
       }
     }
-  }, [searchParams, contacts]);
+  }, [searchParams, displayContacts]);
 
   const handleNewContact = () => {
       setIsCreateDialogOpen(true);
@@ -91,7 +100,9 @@ export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
         ref: { createdBy: appUser.id },
     });
 
-    setContacts(prev => [newContact, ...prev]);
+    if (!propContacts) {
+        setLocalContacts(prev => [newContact, ...prev]);
+    }
     setSelectedContact(newContact);
     
     toast({
@@ -144,7 +155,7 @@ export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
       <div className="h-full overflow-hidden">
         {!selectedContact ? (
           <ContactsList
-            contacts={contacts}
+            contacts={displayContacts}
             selectedContact={null}
             onSelectContact={setSelectedContact}
             onNewContact={handleNewContact}
@@ -169,7 +180,7 @@ export default function ContactsLayout({ activeSpace }: ContactsLayoutProps) {
   return (
     <div className="grid h-full grid-cols-1 md:grid-cols-[380px_1fr]">
       <ContactsList
-        contacts={contacts}
+        contacts={displayContacts}
         selectedContact={selectedContact}
         onSelectContact={setSelectedContact}
         onNewContact={handleNewContact}

@@ -213,7 +213,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
 
   // guarantee visitor has a name
   let vName = visitor.name;
-  if (!vName || vName.trim() === "") {
+  if (!vName || vName.trim() === "" || vName.trim() === "Unknown") {
       vName = generateWhimsicalName();
       await visitorRef.update({ name: vName });
       visitor.name = vName;
@@ -275,7 +275,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
           const contactData = contactSnap.data() as any;
           const updates: any = {};
           
-          if (vName && (!contactData.name || isWhimsical(contactData.name)) && !isWhimsical(vName)) {
+          if (vName && (!contactData.name || isWhimsical(contactData.name) || contactData.name === "Unknown") && !isWhimsical(vName)) {
               updates.name = vName;
           }
           
@@ -297,10 +297,11 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
     updatedAt: new Date().toISOString(),
   };
 
-  // Sync lastMessageAuthor if it's currently a stale whimsical name and we have a real name now
-  if (convo.lastMessageAuthor && 
-      (convo.lastMessageAuthor === "Visitor" || isWhimsical(convo.lastMessageAuthor)) && 
-      !isWhimsical(vName)) {
+  // Sync lastMessageAuthor if it's currently a stale whimsical name, "Visitor", or "Unknown"
+  if (!convo.lastMessageAuthor || 
+      convo.lastMessageAuthor === "Visitor" || 
+      convo.lastMessageAuthor === "Unknown" ||
+      isWhimsical(convo.lastMessageAuthor)) {
       convoUpdates.lastMessageAuthor = vName;
   }
 
@@ -334,7 +335,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
              const convoData = convoSnap.data() as any;
              
              // Guarantee CRM link if possible
-             if (!convoData.contactId || isWhimsical(convoData.visitorName)) {
+             if (!convoData.contactId || isWhimsical(convoData.visitorName) || convoData.visitorName === "Unknown") {
                  const linkedContactId = await ensureCrmLinkedForConversationAdmin(message.conversationId);
                  if (linkedContactId) {
                      const contactDoc = await adminDB.collection('contacts').doc(linkedContactId).get();

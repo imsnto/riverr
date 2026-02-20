@@ -103,6 +103,16 @@ export const getContacts = async (spaceId: string): Promise<Contact[]> => {
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact));
 };
 
+export const subscribeToContacts = (spaceId: string, onUpdate: (contacts: Contact[]) => void) => {
+  const q = query(collection(db, "contacts"), where("spaceId", "==", spaceId), orderBy("updatedAt", "desc"));
+  return onSnapshot(q, (snapshot) => {
+    const contacts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact));
+    onUpdate(contacts);
+  }, (error) => {
+    console.error("Contacts subscription error:", error);
+  });
+};
+
 export const addContact = async (contact: Omit<Contact, "id">): Promise<Contact> => {
   const docRef = await addDoc(collection(db, "contacts"), contact);
   return { ...contact, id: docRef.id } as Contact;

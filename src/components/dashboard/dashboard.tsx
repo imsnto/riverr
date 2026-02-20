@@ -73,6 +73,7 @@ export default function Dashboard({ view }: { view: string }) {
   const { toast } = useToast();
   const messageUnsubscribeRef = useRef<(() => void) | null>(null);
   const conversationUnsubscribeRef = useRef<(() => void) | null>(null);
+  const contactsUnsubscribeRef = useRef<(() => void) | null>(null);
   const [hideMobileBottomNav, setHideMobileBottomNav] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -119,9 +120,18 @@ export default function Dashboard({ view }: { view: string }) {
         conversationUnsubscribeRef.current();
         conversationUnsubscribeRef.current = null;
     }
+    if (contactsUnsubscribeRef.current) {
+        contactsUnsubscribeRef.current();
+        contactsUnsubscribeRef.current = null;
+    }
 
     const fetchedUsers = await db.getAllUsers();
     setAllUsers(fetchedUsers);
+
+    // Setup real-time contacts listener for the space
+    contactsUnsubscribeRef.current = db.subscribeToContacts(activeSpace.id, (updatedContacts) => {
+        setContacts(updatedContacts);
+    });
 
     // Set up conversation listener for the space or active hub
     const hubs = await db.getHubsForSpace(activeSpace.id);
@@ -175,7 +185,7 @@ export default function Dashboard({ view }: { view: string }) {
         const [
             fetchedProjects, fetchedTasks, fetchedTickets, fetchedDeals, fetchedSlackLogs,
             fetchedJobFlowTemplates, fetchedPhaseTemplates, fetchedTaskTemplates, fetchedJobs,
-            fetchedJobsTasks, fetchedBots, fetchedEscalationRules, fetchedContacts, fetchedHelpCenters,
+            fetchedJobsTasks, fetchedBots, fetchedEscalationRules, fetchedHelpCenters,
         ] = await Promise.all([
             db.getProjectsInHub(activeHub.id),
             db.getAllTasks(activeHub.id),
@@ -189,7 +199,6 @@ export default function Dashboard({ view }: { view: string }) {
             db.getAllJobFlowTasks(activeHub.id),
             db.getBots(activeHub.id),
             db.getEscalationIntakeRules(activeHub.id),
-            db.getContacts(activeSpace.id),
             db.getHelpCenters(activeHub.id),
         ]);
         setProjects(fetchedProjects);
@@ -209,7 +218,6 @@ export default function Dashboard({ view }: { view: string }) {
         setJobFlowTasks(fetchedJobsTasks);
         setBots(fetchedBots);
         setEscalationIntakeRules(fetchedEscalationRules);
-        setContacts(fetchedContacts);
         setHelpCenters(fetchedHelpCenters);
     }
     setIsLoading(false);
@@ -221,6 +229,7 @@ export default function Dashboard({ view }: { view: string }) {
     return () => { 
         if (messageUnsubscribeRef.current) messageUnsubscribeRef.current(); 
         if (conversationUnsubscribeRef.current) conversationUnsubscribeRef.current();
+        if (contactsUnsubscribeRef.current) contactsUnsubscribeRef.current();
     };
   }, [appUser, activeSpace, activeHub]);
 
@@ -481,7 +490,7 @@ export default function Dashboard({ view }: { view: string }) {
       case 'tickets': return <TicketsBoard tickets={tickets} onUpdateTickets={handleUpdateTickets} conversations={chatConversations} activeHub={activeHub!} activeSpace={activeSpace!} allHubs={allHubs} allUsers={allUsers} onUpdateActiveHub={handleUpdateActiveHub} onNavigateToSettings={() => router.push(`/space/${activeSpace?.id}/hub/${activeHub?.id}/settings`)} escalationRules={escalationRules} projects={projects} contacts={contacts} onDataRefresh={fetchData} onCreateTicket={handleCreateTicket} onEscalateTicket={handleEscalateTicket} allTasks={tasks} onTaskSelect={setSelectedTask} />;
       case 'deals': return <DealsBoard deals={deals} onUpdateDeals={handleUpdateDeals} onAddDeal={handleAddDeal} onDataRefresh={fetchData} contacts={contacts} activeHub={activeHub!} activeSpace={activeSpace!} allUsers={allUsers} onUpdateActiveHub={handleUpdateActiveHub} onNavigateToSettings={() => router.push(`/space/${activeSpace?.id}/hub/${activeHub?.id}/settings`)} />;
       case 'help-center': return <HelpCenterLayout bots={bots} />;
-      case 'contacts': return <ContactsLayout activeSpace={activeSpace} />;
+      case 'contacts': return <ContactsLayout activeSpace={activeSpace} contacts={contacts} />;
       case 'settings': return <SettingsLayout {...sp} />;
       case 'team-timesheets': return <TeamTimesheets allSpaces={userSpaces} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser!} activeHub={activeHub} />;
       case 'inbox': return <InboxLayout users={allUsers} appUser={appUser!} visitors={visitors} conversations={activeHub ? chatConversations.filter(c => c.hubId === activeHub.id) : []} messages={chatMessages} onSendMessage={handleSendMessageFromAgent} onAssignConversation={handleAssignConversation} setHideMobileBottomNav={setHideMobileBottomNav} activeHub={activeHub!} activeSpace={activeSpace!} allHubs={allHubs} escalationRules={escalationRules} projects={projects} contacts={contacts} onDataRefresh={fetchData} tickets={tickets} onCreateTicket={handleCreateTicket} onUpdateTicket={handleUpdateTicket} />;
