@@ -1,4 +1,4 @@
-// src/components/dashboard/settings-layout.tsx
+// src/components/dashboard/settings-layout.tsx (UPDATED)
 'use client';
 
 import React, { useState } from 'react';
@@ -8,6 +8,7 @@ import UserSettings from './user-settings';
 import SpaceSettings from './space-settings';
 import HubSettings from './hub-settings';
 import TeamTimesheets from './team-timesheets';
+import NotificationSettings from './notification-settings';
 import {
   User,
   Space,
@@ -31,7 +32,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import BrainSettings from './brain-settings';
 
-type SettingsView = 'users' | 'spaces' | 'hub' | 'inbox' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'brain';
+type SettingsView = 'users' | 'spaces' | 'hub' | 'inbox' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'brain' | 'notifications';
 
 interface SettingsLayoutProps {
   allUsers: User[];
@@ -81,6 +82,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
     { key: 'deal-automation', label: 'Deal Automation', disabled: !hubHasDeals },
     { key: 'escalation-intake', label: 'Escalation Intake', disabled: !(hubHasTickets && hubHasTasks) },
     { key: 'timesheets', label: 'Timesheets' },
+    { key: 'notifications', label: 'Notifications' },
     { key: 'brain', label: 'Business Brain' },
   ];
 
@@ -154,6 +156,8 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             appUser={props.appUser!}
           />
         );
+      case 'notifications':
+        return <NotificationSettings />;
       case 'brain':
         return <BrainSettings />;
       default:

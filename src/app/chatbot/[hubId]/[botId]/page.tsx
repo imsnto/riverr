@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -78,6 +77,33 @@ export default function ChatbotWidgetPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isAiThinking, identityCaptureStep]);
+
+  // Seen Tracking Logic
+  const markAsSeen = async () => {
+    if (conversation && !document.hidden) {
+      await db.updateConversation(conversation.id, { 
+        lastVisitorSeenAt: new Date().toISOString() 
+      });
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener('focus', markAsSeen);
+    return () => window.removeEventListener('focus', markAsSeen);
+  }, [conversation]);
+
+  // Communicating unread count to parent window
+  useEffect(() => {
+    if (!conversation) return;
+    const unreadMessages = visibleMessages.filter(m => 
+      (m.senderType === 'agent' || m.senderType === 'bot') && 
+      new Date(m.timestamp) > new Date(conversation.lastVisitorSeenAt || 0)
+    );
+    
+    if (window.parent) {
+      window.parent.postMessage({ type: 'riverr-unread-count', count: unreadMessages.length }, '*');
+    }
+  }, [visibleMessages, conversation]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -244,7 +270,7 @@ export default function ChatbotWidgetPage() {
             conversationId: currentConversation.id,
             authorId: visitor.id,
             type: 'message',
-            senderType: 'contact',
+            senderType: 'visitor',
             content: messageText,
             timestamp: new Date().toISOString(),
         };
@@ -321,7 +347,7 @@ export default function ChatbotWidgetPage() {
       conversationId: currentConversation.id,
       authorId: visitor.id,
       type: 'message',
-      senderType: 'contact',
+      senderType: 'visitor',
       content: userMessageContent,
       timestamp: new Date().toISOString(),
       attachments: messageAttachments,
@@ -469,7 +495,7 @@ export default function ChatbotWidgetPage() {
           <p className="text-xs text-zinc-500">AI Agent</p>
 
           {(visibleMessages.length > 0) && visibleMessages.map(msg => {
-            const isAgent = msg.senderType === 'agent';
+            const isAgent = msg.senderType === 'agent' || msg.senderType === 'bot';
             const agent = isAgent ? bot.agents?.find(u => u.id === msg.authorId) : null;
             const isAI = isAgent && msg.authorId === 'ai_agent';
             const contentHtml = isAI ? marked.parse(msg.content) : msg.content;

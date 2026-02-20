@@ -1,705 +1,742 @@
 
-'use client'
-
 import {
   collection,
-  getDocs,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   addDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
-  deleteDoc,
-  writeBatch,
-  limit,
-  serverTimestamp,
-  orderBy,
   onSnapshot,
-  runTransaction,
-} from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { getApp } from "firebase/app";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage } from "./firebase";
+  Timestamp,
+  serverTimestamp,
+  writeBatch,
+  increment,
+  limit,
+} from 'firebase/firestore';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
-  Space,
   User,
+  Space,
+  Hub,
   Project,
   Task,
   TimeEntry,
   SlackMeetingLog,
+  Document,
   Invite,
   JobFlowTemplate,
   Job,
   JobFlowTask,
   PhaseTemplate,
   TaskTemplate,
-  Document,
-  Hub,
-  Status,
-  Conversation,
-  ChatMessage,
-  Visitor,
   Bot,
-  HelpCenter,
-  HelpCenterCollection,
-  HelpCenterArticle,
-  Contact,
-  ContactEvent,
   Ticket,
   Deal,
-  DealAutomationRule,
   EscalationIntakeRule,
+  Contact,
+  Visitor,
+  ChatMessage,
   BrainJob,
-} from "./data";
-import seedData from './riverr-help-data.json';
-import { generateWhimsicalName } from "./utils";
+  MemoryNode,
+  DealAutomationRule,
+} from './data';
+import { ContactEvent } from './contacts-types';
+import { generateWhimsicalName } from './utils';
 
-const generateRandomProjectKey = () => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  return chars.charAt(Math.floor(Math.random() * chars.length)) + 
-         chars.charAt(Math.floor(Math.random() * chars.length));
-};
-
-const defaultTaskStatuses: Status[] = [
-    { name: 'Backlog', color: '#6b7280' },
-    { name: 'In Progress', color: '#3b82f6' },
-    { name: 'In Review', color: '#f59e0b' },
-    { name: 'Done', color: '#22c55e' },
-];
-
-const defaultTicketStatuses: Status[] = [
-    { name: 'New', color: '#6b7280' }, { name: 'Open', color: '#3b82f6' }, 
-    { name: 'Waiting on Customer', color: '#f59e0b' }, { name: 'Escalated', color: '#ef4444' }, 
-    { name: 'Closed', color: '#22c55e' },
-];
-
-// --- User Management ---
+// --- Users ---
 export const getUser = async (userId: string): Promise<User | null> => {
-  const userDoc = await getDoc(doc(db, "users", userId));
-  return userDoc.exists() ? ({ id: userDoc.id, ...userDoc.data() } as User) : null;
+  const docRef = doc(db, 'users', userId);
+  const docSnap = await getDoc(docRef);
+  return docSnap.exists() ? ({ id: docSnap.id, ...docSnap.data() } as User) : null;
 };
 
 export const getAllUsers = async (): Promise<User[]> => {
-  const querySnapshot = await getDocs(collection(db, "users"));
+  const querySnapshot = await getDocs(collection(db, 'users'));
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
 };
 
-export const addUser = async (user: Omit<User, "id">, uid: string): Promise<User> => {
-  await setDoc(doc(db, "users", uid), user);
-  return { ...user, id: uid };
+export const addUser = async (user: Omit<User, 'id'>, uid: string): Promise<User> => {
+  const userRef = doc(db, 'users', uid);
+  await setDoc(userRef, { ...user, onboardingComplete: false });
+  return { id: uid, ...user };
 };
 
-export const updateUser = async (userId: string, data: Partial<User>): Promise<void> => {
-  await updateDoc(doc(db, "users", userId), data);
+export const updateUser = async (userId: string, data: Partial<User>) => {
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, data);
 };
 
-// --- Contact Management ---
-export const getContacts = async (spaceId: string): Promise<Contact[]> => {
-  const q = query(collection(db, "contacts"), where("spaceId", "==", spaceId));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact));
+// --- Spaces ---
+export const addSpace = async (space: Omit<Space, 'id'>): Promise<string> => {
+  const docRef = await addDoc(collection(db, 'spaces'), space);
+  return docRef.id;
 };
 
-export const subscribeToContacts = (spaceId: string, onUpdate: (contacts: Contact[]) => void) => {
-  const q = query(collection(db, "contacts"), where("spaceId", "==", spaceId));
-  return onSnapshot(q, (snapshot) => {
-    const contacts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact));
-    onUpdate(contacts);
-  }, (error) => {
-    console.error("Contacts subscription error:", error);
-  });
+export const updateSpace = async (spaceId: string, data: Partial<Space>) => {
+  const docRef = doc(db, 'spaces', spaceId);
+  await updateDoc(docRef, data);
 };
 
-export const addContact = async (contact: Omit<Contact, "id">): Promise<Contact> => {
-  const docRef = await addDoc(collection(db, "contacts"), contact);
-  return { ...contact, id: docRef.id } as Contact;
+export const deleteSpace = async (spaceId: string) => {
+  const docRef = doc(db, 'spaces', spaceId);
+  await deleteDoc(docRef);
 };
 
-export const getContactEvents = async (contactId: string): Promise<ContactEvent[]> => {
-  const q = query(collection(db, "contacts", contactId, "events"), orderBy("timestamp", "desc"));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactEvent));
-};
-
-export const subscribeToContactEvents = (contactId: string, onUpdate: (events: ContactEvent[]) => void) => {
-  // We remove orderBy to avoid index requirement, sorting in-memory instead
-  const q = query(collection(db, "contacts", contactId, "events"));
-  return onSnapshot(q, (snapshot) => {
-    const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactEvent));
-    events.sort((a, b) => {
-        const timeA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp || 0);
-        const timeB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp || 0);
-        return timeB.getTime() - timeA.getTime();
-    });
-    onUpdate(events);
-  }, (error) => {
-    console.error("Contact events subscription error:", error);
-  });
-};
-
-export const addContactEvent = async (contactId: string, event: Omit<ContactEvent, "id">): Promise<ContactEvent> => {
-  const docRef = await addDoc(collection(db, "contacts", contactId, "events"), event);
-  return { ...event, id: docRef.id } as ContactEvent;
-};
-
-export const deleteContactEvent = async (contactId: string, eventId: string): Promise<void> => {
-  await deleteDoc(doc(db, "contacts", contactId, "events", eventId));
-};
-
-// --- Invite Management ---
-export const addInvite = async (invite: Omit<Invite, 'id' | 'status'>): Promise<void> => {
-    const inviteWithStatus = { ...invite, status: 'pending', createdAt: serverTimestamp() };
-    await addDoc(collection(db, "invites"), inviteWithStatus);
-};
-
-export const getPendingInvites = async (spaceIds: string[]): Promise<Invite[]> => {
-  if (spaceIds.length === 0) return [];
-  const q = query(collection(db, "invites"), where("spaceId", "in", spaceIds), where("status", "==", "pending"));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invite));
-};
-
-export const resendInvite = async (inviteId: string): Promise<void> => {
-  const functions = getFunctions(getApp());
-  const resendInviteFn = httpsCallable(functions, 'resendInvite');
-  await resendInviteFn({ inviteId });
-};
-
-export const revokeInvite = async (inviteId: string): Promise<void> => {
-  await deleteDoc(doc(db, "invites", inviteId));
-};
-
-// --- Space Management ---
 export const getSpacesForUser = async (userId: string): Promise<Space[]> => {
-  if (!userId) return [];
-  const q = query(collection(db, "spaces"), where(`members.${userId}.role`, 'in', ['Admin', 'Member']));
+  const q = query(collection(db, 'spaces'), where(`members.${userId}.role`, 'in', ['Admin', 'Member', 'Viewer']));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Space));
 };
 
-export const addSpace = async (space: Omit<Space, 'id'>) => {
-  const docRef = await addDoc(collection(db, "spaces"), space);
-  return docRef.id;
-};
-
-export const updateSpace = async (spaceId: string, data: Partial<Space>): Promise<void> => {
-  await updateDoc(doc(db, "spaces", spaceId), data);
-};
-
-export const deleteSpace = async (spaceId: string): Promise<void> => {
-  await deleteDoc(doc(db, "spaces", spaceId));
-};
-
-export const uploadSpaceLogo = async (file: File, spaceId: string): Promise<string> => {
-  const storageRef = ref(storage, `spaces/${spaceId}/logo_${Date.now()}_${file.name}`);
-  const snapshot = await uploadBytes(storageRef, file);
-  return getDownloadURL(snapshot.ref);
-};
-
-// --- Hub Management ---
-export const getHub = async (hubId: string): Promise<Hub | null> => {
-    const docSnap = await getDoc(doc(db, "hubs", hubId));
-    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as Hub : null;
-}
+// --- Hubs ---
 export const getHubsForSpace = async (spaceId: string): Promise<Hub[]> => {
   const q = query(collection(db, 'hubs'), where('spaceId', '==', spaceId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Hub));
 };
 
+export const getHub = async (hubId: string): Promise<Hub | null> => {
+  const docRef = doc(db, 'hubs', hubId);
+  const docSnap = await getDoc(docRef);
+  return docSnap.exists() ? ({ id: docSnap.id, ...docSnap.data() } as Hub) : null;
+};
+
 export const addHub = async (hub: Omit<Hub, 'id'>): Promise<Hub> => {
   const docRef = await addDoc(collection(db, 'hubs'), hub);
-  return { ...hub, id: docRef.id };
+  return { id: docRef.id, ...hub };
 };
 
-export const updateHub = async (hubId: string, data: Partial<Hub>): Promise<void> => {
-  await updateDoc(doc(db, "hubs", hubId), data);
+export const updateHub = async (hubId: string, data: Partial<Hub>) => {
+  const docRef = doc(db, 'hubs', hubId);
+  await updateDoc(docRef, data);
 };
 
-export const createDefaultHubForSpace = async (spaceId: string, userId: string, hubData: Partial<Omit<Hub, 'id' | 'spaceId'>>) => {
-  const finalHubData: Omit<Hub, 'id'> = {
-    name: hubData.name || 'Default Hub',
-    spaceId,
-    type: hubData.type || 'project-management',
-    createdAt: new Date().toISOString(),
-    createdBy: userId,
-    isDefault: hubData.isDefault || true,
-    settings: hubData.settings || { components: ['tasks', 'help-center'], defaultView: 'overview' },
-    isPrivate: hubData.isPrivate || false,
-    memberIds: hubData.memberIds || [],
-    statuses: hubData.statuses || defaultTaskStatuses,
-    ticketStatuses: hubData.ticketStatuses || defaultTicketStatuses,
-    ticketClosingStatusName: 'Closed',
-  };
-  const hubRef = await addDoc(collection(db, 'hubs'), finalHubData);
-  return { id: hubRef.id, ...finalHubData };
+export const createDefaultHubForSpace = async (spaceId: string, userId: string, params: { name: string, type: string }) => {
+    const hubData: Omit<Hub, 'id'> = {
+        name: params.name,
+        spaceId,
+        type: params.type,
+        createdAt: new Date().toISOString(),
+        createdBy: userId,
+        isDefault: true,
+        settings: { components: ['tasks', 'inbox'], defaultView: 'overview' },
+        statuses: [
+            { name: 'Backlog', color: '#6b7280' },
+            { name: 'In Progress', color: '#3b82f6' },
+            { name: 'In Review', color: '#f59e0b' },
+            { name: 'Done', color: '#22c55e' },
+        ],
+    };
+    return addHub(hubData);
 };
 
-// --- Project Management ---
+// --- Projects ---
 export const getProjectsInHub = async (hubId: string): Promise<Project[]> => {
-  const q = query(collection(db, "projects"), where("hubId", "==", hubId));
+  const q = query(collection(db, 'projects'), where('hubId', '==', hubId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
 };
 
-export const addProject = async (project: Omit<Project, "id">): Promise<Project> => {
-  const projectKey = project.key || generateRandomProjectKey();
-  const projectWithKey = { ...project, key: projectKey, taskCounter: 0 };
-  const docRef = await addDoc(collection(db, "projects"), projectWithKey);
-  return { ...projectWithKey, id: docRef.id };
+export const getProjectsInSpace = async (spaceId: string): Promise<Project[]> => {
+  const q = query(collection(db, 'projects'), where('spaceId', '==', spaceId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
 };
 
-export const updateProject = async (projectId: string, data: Partial<Project>): Promise<void> => {
-  await updateDoc(doc(db, "projects", projectId), data);
+export const addProject = async (project: Omit<Project, 'id'>): Promise<Project> => {
+  const docRef = await addDoc(collection(db, 'projects'), project);
+  // Optional: Initialize project task counter
+  return { id: docRef.id, ...project };
 };
 
-export const deleteProject = async (projectId: string): Promise<void> => {
-  const batch = writeBatch(db);
-  const tasksQuery = query(collection(db, "tasks"), where("project_id", "==", projectId));
-  const tasksSnapshot = await getDocs(tasksQuery);
-  tasksSnapshot.forEach(doc => batch.delete(doc.ref));
-  batch.delete(doc(db, "projects", projectId));
-  await batch.commit();
+export const updateProject = async (projectId: string, data: Partial<Project>) => {
+  const docRef = doc(db, 'projects', projectId);
+  await updateDoc(docRef, data);
 };
 
-// --- Task Management ---
+export const deleteProject = async (projectId: string) => {
+  const docRef = doc(db, 'projects', projectId);
+  await deleteDoc(docRef);
+};
+
+// --- Tasks ---
 export const getAllTasks = async (hubId: string): Promise<Task[]> => {
-  const q = query(collection(db, "tasks"), where("hubId", "==", hubId));
+  const q = query(collection(db, 'tasks'), where('hubId', '==', hubId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
 };
 
-export const addTask = async (task: Omit<Task, "id">): Promise<Task> => {
-  const taskRef = doc(collection(db, "tasks"));
-  if (task.parentId || !task.project_id) {
-      await setDoc(taskRef, task);
-      return { ...task, id: taskRef.id };
+export const addTask = async (task: Omit<Task, 'id'>): Promise<Task> => {
+  const docRef = await addDoc(collection(db, 'tasks'), task);
+  // Optional: Increment project task counter for keys like PROJ-1
+  if (task.project_id) {
+      const projRef = doc(db, 'projects', task.project_id);
+      await updateDoc(projRef, { taskCounter: increment(1) });
   }
-  const projectRef = doc(db, "projects", task.project_id);
-  try {
-      const newTaskData = await runTransaction(db, async (transaction) => {
-          const projectDoc = await transaction.get(projectRef);
-          if (!projectDoc.exists()) throw "Project not found!";
-          const projectData = projectDoc.data() as Project;
-          const newCounter = (projectData.taskCounter || 0) + 1;
-          const projectKey = projectData.key || generateRandomProjectKey();
-          const taskKey = `${projectKey}-${newCounter}`;
-          const completeTaskData = { ...task, taskKey };
-          transaction.update(projectRef, { taskCounter: newCounter, key: projectKey });
-          transaction.set(taskRef, completeTaskData);
-          return completeTaskData;
-      });
-      return { ...(newTaskData as Task), id: taskRef.id };
-  } catch (e) {
-      console.error("Add task transaction failed: ", e);
-      await setDoc(taskRef, task);
-      return { ...task, id: taskRef.id };
-  }
+  return { id: docRef.id, ...task };
 };
 
-export const updateTask = async (taskId: string, data: Partial<Task>): Promise<void> => {
-  const taskRef = doc(db, "tasks", taskId);
-  const { id: _omit, ...dataWithoutId } = data;
-  await updateDoc(taskRef, dataWithoutId);
+export const updateTask = async (taskId: string, data: Partial<Task>) => {
+  const docRef = doc(db, 'tasks', taskId);
+  await updateDoc(docRef, data);
 };
 
-export const deleteTask = async (taskId: string): Promise<void> => {
-  await deleteDoc(doc(db, "tasks", taskId));
+export const deleteTask = async (taskId: string) => {
+  const docRef = doc(db, 'tasks', taskId);
+  await deleteDoc(docRef);
 };
 
-// --- Ticket Management ---
+// --- Time Entries ---
+export const getTimeEntriesInHub = async (projectIds: string[]): Promise<TimeEntry[]> => {
+  if (projectIds.length === 0) return [];
+  const q = query(collection(db, 'time_entries'), where('project_id', 'in', projectIds.slice(0, 10)));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimeEntry));
+};
+
+export const addTimeEntry = async (entry: Omit<TimeEntry, 'id'>): Promise<TimeEntry> => {
+  const docRef = await addDoc(collection(db, 'time_entries'), entry);
+  return { id: docRef.id, ...entry };
+};
+
+// --- Tickets ---
 export const getTicketsInHub = async (hubId: string): Promise<Ticket[]> => {
-  const q = query(collection(db, "tickets"), where("hubId", "==", hubId));
+  const q = query(collection(db, 'tickets'), where('hubId', '==', hubId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ticket));
 };
 
-export const addTicket = async (ticket: Omit<Ticket, "id">): Promise<Ticket> => {
-  const docRef = await addDoc(collection(db, "tickets"), ticket);
-  return { ...ticket, id: docRef.id };
+export const addTicket = async (ticket: Omit<Ticket, 'id'>): Promise<Ticket> => {
+  const docRef = await addDoc(collection(db, 'tickets'), ticket);
+  return { id: docRef.id, ...ticket };
 };
 
-export const updateTicket = async (ticketId: string, data: Partial<Ticket>): Promise<void> => {
-  await updateDoc(doc(db, "tickets", ticketId), data);
+export const updateTicket = async (ticketId: string, data: Partial<Ticket>) => {
+  const docRef = doc(db, 'tickets', ticketId);
+  await updateDoc(docRef, data);
 };
 
-// --- Deal Management ---
+// --- Deals ---
 export const getDealsInHub = async (hubId: string): Promise<Deal[]> => {
-  const q = query(collection(db, "deals"), where("hubId", "==", hubId));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Deal));
+  const q = query(collection(db, 'deals'), where('hubId', '==', hubId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Deal));
 };
 
-export const addDeal = async (deal: Omit<Deal, "id">): Promise<Deal> => {
-  const docRef = await addDoc(collection(db, "deals"), deal);
-  return { ...deal, id: docRef.id };
+export const addDeal = async (deal: Omit<Deal, 'id'>): Promise<Deal> => {
+  const docRef = await addDoc(collection(db, 'deals'), deal);
+  return { id: docRef.id, ...deal };
 };
 
-export const updateDeal = async (dealId: string, data: Partial<Deal>): Promise<void> => {
-  await updateDoc(doc(db, "deals", dealId), data);
+export const updateDeal = async (dealId: string, data: Partial<Deal>) => {
+  const docRef = doc(db, 'deals', dealId);
+  await updateDoc(docRef, data);
 };
 
-export const getDealAutomationRules = async (hubId: string): Promise<DealAutomationRule[]> => {
-  const q = query(collection(db, "deal_automation_rules"), where("hubId", "==", hubId));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DealAutomationRule));
+// --- Contacts ---
+export const getContacts = async (spaceId: string): Promise<Contact[]> => {
+  const q = query(collection(db, 'contacts'), where('spaceId', '==', spaceId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact));
 };
 
-export const saveDealAutomationRule = async (rule: Omit<DealAutomationRule, 'id'>, ruleId?: string): Promise<void> => {
-  if (ruleId) {
-    await updateDoc(doc(db, "deal_automation_rules", ruleId), rule);
-  } else {
-    await addDoc(collection(db, "deal_automation_rules"), rule);
-  }
-};
-
-export const deleteDealAutomationRule = async (ruleId: string): Promise<void> => {
-  await deleteDoc(doc(db, "deal_automation_rules", ruleId));
-};
-
-// --- Time & Log Management ---
-export const getTimeEntriesInHub = async (projectIds: string[]): Promise<TimeEntry[]> => {
-  if (!projectIds || projectIds.length === 0) return [];
-  const results: TimeEntry[] = [];
-  for (let i = 0; i < projectIds.length; i += 30) {
-    const chunk = projectIds.slice(i, i + 30);
-    const q = query(collection(db, "time_entries"), where("project_id", "in", chunk));
-    const querySnapshot = await getDocs(q);
-    results.push(...querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimeEntry)));
-  }
-  return results;
-};
-
-export const addTimeEntry = async (timeData: Omit<TimeEntry, "id">): Promise<TimeEntry> => {
-  const docRef = await addDoc(collection(db, "time_entries"), timeData);
-  return { ...timeData, id: docRef.id };
-};
-
-export const getSlackMeetingLogsInSpace = async (spaceId: string): Promise<SlackMeetingLog[]> => {
-    const q = query(collection(db, "slack_meeting_logs"), where("space_id", "==", spaceId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SlackMeetingLog));
-};
-
-// --- Document Management ---
-export const getDocumentsInHub = async (hubId: string): Promise<Document[]> => {
-  const q = query(collection(db, "documents"), where("hubId", "==", hubId));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document));
-};
-
-export const getDocument = async (docId: string): Promise<Document | null> => {
-  const docSnap = await getDoc(doc(db, "documents", docId));
-  return docSnap.exists() ? ({ id: docSnap.id, ...docSnap.data() } as Document) : null;
-};
-
-export const addDocument = async (document: Omit<Document, "id">): Promise<Document> => {
-  const docRef = await addDoc(collection(db, "documents"), document);
-  return { ...document, id: docRef.id } as Document;
-};
-
-export const updateDocument = async (docId: string, data: Partial<Document>): Promise<void> => {
-  await updateDoc(doc(db, "documents", docId), data);
-};
-
-export const deleteDocument = async (docId: string): Promise<void> => {
-  await deleteDoc(doc(db, "documents", docId));
-};
-
-export const uploadImageToFirebase = async (file: File, hubId: string, docId: string): Promise<string> => {
-  const storageRef = ref(storage, `hubs/${hubId}/docs/${docId}/${Date.now()}_${file.name}`);
-  const snapshot = await uploadBytes(storageRef, file);
-  return getDownloadURL(snapshot.ref);
-};
-
-// --- Help Center Management ---
-export const getHelpCenters = async (hubId: string): Promise<HelpCenter[]> => {
-  const q = query(collection(db, 'help_centers'), where('hubId', '==', hubId));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenter));
-}
-
-export const addHelpCenter = async (helpCenter: Omit<HelpCenter, 'id'>): Promise<HelpCenter> => {
-  const docRef = await addDoc(collection(db, 'help_centers'), helpCenter);
-  return { id: docRef.id, ...helpCenter };
-}
-
-export const updateHelpCenter = async (helpCenterId: string, data: Partial<HelpCenter>): Promise<void> => {
-  await updateDoc(doc(db, 'help_centers', helpCenterId), data);
-}
-
-export const deleteHelpCenter = async (helpCenterId: string): Promise<void> => {
-  const batch = writeBatch(db);
-  const articlesQuery = query(collection(db, 'help_center_articles'), where('helpCenterId', '==', helpCenterId));
-  const articlesSnapshot = await getDocs(articlesQuery);
-  articlesSnapshot.forEach(doc => batch.delete(doc.ref));
-  const collectionsQuery = query(collection(db, 'help_center_collections'), where('helpCenterId', '==', helpCenterId));
-  const collectionsSnapshot = await getDocs(collectionsQuery);
-  collectionsSnapshot.forEach(doc => batch.delete(doc.ref));
-  batch.delete(doc(db, "help_centers", helpCenterId));
-  await batch.commit();
-};
-
-export const uploadHelpCenterCoverImage = async (file: File, helpCenterId: string): Promise<string> => {
-  const storageRef = ref(storage, `help_centers/${helpCenterId}/cover_${Date.now()}_${file.name}`);
-  const snapshot = await uploadBytes(storageRef, file);
-  return getDownloadURL(snapshot.ref);
-};
-
-export const getHelpCenterCollections = async (hubId: string): Promise<HelpCenterCollection[]> => {
-  const q = query(collection(db, 'help_center_collections'), where('hubId', '==', hubId));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenterCollection));
-}
-
-export const addHelpCenterCollection = async (collectionData: Omit<HelpCenterCollection, 'id'>): Promise<HelpCenterCollection> => {
-  const docRef = await addDoc(collection(db, "help_center_collections"), collectionData);
-  return { id: docRef.id, ...collectionData };
-}
-
-export const updateHelpCenterCollection = async (collectionId: string, data: Partial<HelpCenterCollection>): Promise<void> => {
-  await updateDoc(doc(db, "help_center_collections", collectionId), data);
-}
-
-export const deleteHelpCenterCollection = async (collectionId: string): Promise<void> => {
-  await deleteDoc(doc(db, "help_center_collections", collectionId));
-}
-
-export const getHelpCenterArticles = async (hubId: string): Promise<HelpCenterArticle[]> => {
-  const q = query(collection(db, 'help_center_articles'), where('hubId', '==', hubId));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenterArticle));
-}
-
-export const addHelpCenterArticle = async (articleData: Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle> => {
-  const docRef = await addDoc(collection(db, 'help_center_articles'), articleData);
-  return { id: docRef.id, ...articleData };
-}
-
-export const updateHelpCenterArticle = async (articleId: string, data: Partial<HelpCenterArticle>): Promise<void> => {
-  await updateDoc(doc(db, "help_center_articles", articleId), data);
-};
-
-export const deleteHelpCenterArticle = async (articleId: string): Promise<void> => {
-    await deleteDoc(doc(db, "help_center_articles", articleId));
-};
-
-// --- Inbox / Chat Management ---
-export const getConversationsForSpace = async (spaceId: string): Promise<Conversation[]> => {
-  const hubsInSpace = await getHubsForSpace(spaceId);
-  const hubIds = hubsInSpace.map(h => h.id);
-  if (hubIds.length === 0) return [];
-  const q = query(collection(db, 'conversations'), where('hubId', 'in', hubIds));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
-};
-
-export const getMessagesForConversations = (conversationIds: string[], onUpdate: (messages: ChatMessage[]) => void) => {
-  if (conversationIds.length === 0) return onUpdate([]);
-  // Firestore 'in' limit is 30.
-  const cappedIds = conversationIds.slice(0, 30);
-  const q = query(collection(db, 'chat_messages'), where('conversationId', 'in', cappedIds));
+export const subscribeToContacts = (spaceId: string, callback: (contacts: Contact[]) => void) => {
+  const q = query(collection(db, 'contacts'), where('spaceId', '==', spaceId));
   return onSnapshot(q, (snapshot) => {
-    const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
-    // Sort in memory to avoid index requirement
-    messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-    onUpdate(messages);
+    const contacts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact));
+    callback(contacts);
   });
 };
 
-export const addChatMessage = async (message: Omit<ChatMessage, "id">): Promise<ChatMessage> => {
-    const docRef = await addDoc(collection(db, "chat_messages"), message);
-    return { ...message, id: docRef.id };
+export const addContact = async (contact: Omit<Contact, 'id'>): Promise<Contact> => {
+  const docRef = await addDoc(collection(db, 'contacts'), contact);
+  return { id: docRef.id, ...contact };
 };
 
-export const updateConversation = async (conversationId: string, data: Partial<Conversation>): Promise<void> => {
-  await updateDoc(doc(db, "conversations", conversationId), data);
+export const subscribeToContactEvents = (contactId: string, callback: (events: ContactEvent[]) => void) => {
+    const q = query(collection(db, `contacts/${contactId}/events`));
+    return onSnapshot(q, (snapshot) => {
+        const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactEvent));
+        callback(events);
+    });
 };
 
-export const getConversation = (conversationId: string, onUpdate: (convo: Conversation) => void) => {
-  return onSnapshot(doc(db, 'conversations', conversationId), (doc) => {
-    if (doc.exists()) onUpdate({ id: doc.id, ...doc.data() } as Conversation);
-  });
+export const addContactEvent = async (contactId: string, event: Omit<ContactEvent, 'id'>) => {
+    return addDoc(collection(db, `contacts/${contactId}/events`), event);
+};
+
+export const deleteContactEvent = async (contactId: string, eventId: string) => {
+    return deleteDoc(doc(db, `contacts/${contactId}/events`, eventId));
+};
+
+// --- Visitors & Conversations ---
+export const getOrCreateVisitor = async (visitorId: string, initialData?: any): Promise<Visitor> => {
+  const docRef = doc(db, 'visitors', visitorId);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() } as Visitor;
+  }
+  const name = generateWhimsicalName();
+  const newVisitor = { 
+      id: visitorId, 
+      name, 
+      email: null, 
+      lastSeen: new Date().toISOString(),
+      ...initialData 
+  };
+  await setDoc(docRef, newVisitor);
+  return newVisitor as Visitor;
+};
+
+export const updateVisitor = async (visitorId: string, data: Partial<Visitor>) => {
+  const docRef = doc(db, 'visitors', visitorId);
+  await updateDoc(docRef, data);
 };
 
 export const getConversationsForHub = async (hubId: string): Promise<Conversation[]> => {
   const q = query(collection(db, 'conversations'), where('hubId', '==', hubId));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
+};
+
+export const getConversation = (convoId: string, callback: (convo: Conversation) => void) => {
+  const docRef = doc(db, 'conversations', convoId);
+  return onSnapshot(docRef, (docSnap) => {
+    if (docSnap.exists()) {
+      callback({ id: docSnap.id, ...docSnap.data() } as Conversation);
+    }
+  });
 };
 
 export const addConversation = async (convo: Omit<Conversation, 'id'>): Promise<Conversation> => {
-    const docRef = await addDoc(collection(db, 'conversations'), convo);
-    return { id: docRef.id, ...convo };
-}
-
-// --- Escalation & Automation Management ---
-export const getEscalationIntakeRules = async (hubId: string): Promise<EscalationIntakeRule[]> => {
-  const rulesRef = collection(db, 'hubs', hubId, 'escalation_intake');
-  const snapshot = await getDocs(rulesRef);
-  return snapshot.docs.map(doc => ({ id: doc.id, hubId, ...doc.data() } as EscalationIntakeRule));
+  const docRef = await addDoc(collection(db, 'conversations'), convo);
+  return { id: docRef.id, ...convo };
 };
 
-export const saveEscalationIntakeRule = async (hubId: string, rule: Omit<EscalationIntakeRule, 'id' | 'hubId'>, ruleId?: string): Promise<EscalationIntakeRule> => {
-  if (ruleId) {
-    await updateDoc(doc(db, 'hubs', hubId, 'escalation_intake', ruleId), rule);
-    return { ...rule, id: ruleId, hubId };
-  } else {
-    const docRef = await addDoc(collection(db, 'hubs', hubId, 'escalation_intake'), rule);
-    return { ...rule, id: docRef.id, hubId };
+export const updateConversation = async (convoId: string, data: Partial<Conversation>) => {
+  const docRef = doc(db, 'conversations', convoId);
+  await updateDoc(docRef, data);
+};
+
+export const getMessagesForConversations = (convoIds: string[], callback: (messages: ChatMessage[]) => void, isVisitor = false) => {
+  if (convoIds.length === 0) {
+      callback([]);
+      return () => {};
   }
+  const q = query(collection(db, 'chat_messages'), where('conversationId', 'in', convoIds.slice(0, 30)));
+  return onSnapshot(q, (snapshot) => {
+    const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
+    // Sort in memory to avoid index requirements
+    messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    callback(messages);
+  });
 };
 
-export const deleteEscalationIntakeRule = async (hubId: string, ruleId: string): Promise<void> => {
-  await deleteDoc(doc(db, 'hubs', hubId, 'escalation_intake', ruleId));
+export const addChatMessage = async (message: Omit<ChatMessage, 'id'>) => {
+  return addDoc(collection(db, 'chat_messages'), message);
 };
 
-export const getBots = async (hubId: string): Promise<Bot[]> => {
-  const q = query(collection(db, "bots"), where("hubId", "==", hubId));
+// --- Knowledge Base / Help Center ---
+export const getHelpCenters = async (hubId: string): Promise<HelpCenter[]> => {
+  const q = query(collection(db, 'help_centers'), where('hubId', '==', hubId));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bot));
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenter));
 };
 
-export const getBot = async (botId: string): Promise<Bot | null> => {
-    const docSnap = await getDoc(doc(db, 'bots', botId));
-    return docSnap.exists() ? ({ id: docSnap.id, ...docSnap.data() } as Bot) : null;
-}
-
-export const updateBot = async (botId: string, data: Partial<Bot>): Promise<void> => {
-  await updateDoc(doc(db, "bots", botId), data);
+export const addHelpCenter = async (hc: Omit<HelpCenter, 'id'>): Promise<HelpCenter> => {
+  const docRef = await addDoc(collection(db, 'help_centers'), hc);
+  return { id: docRef.id, ...hc };
 };
 
-export const deleteBot = async (botId: string): Promise<void> => {
-  await deleteDoc(doc(db, "bots", botId));
+export const updateHelpCenter = async (id: string, data: Partial<HelpCenter>) => {
+  const docRef = doc(db, 'help_centers', id);
+  await updateDoc(docRef, data);
 };
 
-export const addBot = async (bot: Omit<Bot, "id">): Promise<Bot> => {
-  const docRef = await addDoc(collection(db, "bots"), bot);
-  return { ...bot, id: docRef.id };
+export const deleteHelpCenter = async (id: string) => {
+  const docRef = doc(db, 'help_centers', id);
+  await deleteDoc(docRef);
 };
 
-// --- Visitor Management ---
-export const getOrCreateVisitor = async (visitorId: string, data?: Partial<Visitor>): Promise<Visitor> => {
-  const visitorRef = doc(db, "visitors", visitorId);
-  const visitorSnap = await getDoc(visitorRef);
-  if (visitorSnap.exists()) return { id: visitorSnap.id, ...visitorSnap.data() } as Visitor;
-  const newVisitor = { id: visitorId, name: generateWhimsicalName(), ...data, lastSeen: new Date().toISOString() };
-  await setDoc(visitorRef, newVisitor);
-  return newVisitor as Visitor;
+export const getHelpCenterCollections = async (hubId: string): Promise<HelpCenterCollection[]> => {
+  const q = query(collection(db, 'help_center_collections'), where('hubId', '==', hubId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenterCollection));
 };
 
-export const updateVisitor = async (visitorId: string, data: Partial<Visitor>): Promise<void> => {
-  await updateDoc(doc(db, "visitors", visitorId), data);
+export const addHelpCenterCollection = async (coll: Omit<HelpCenterCollection, 'id'>): Promise<HelpCenterCollection> => {
+  const docRef = await addDoc(collection(db, 'help_center_collections'), coll);
+  return { id: docRef.id, ...coll };
 };
 
-// --- Job Flow Management ---
+export const updateHelpCenterCollection = async (id: string, data: Partial<HelpCenterCollection>) => {
+  const docRef = doc(db, 'help_center_collections', id);
+  await updateDoc(docRef, data);
+};
+
+export const deleteHelpCenterCollection = async (id: string) => {
+  const docRef = doc(db, 'help_center_collections', id);
+  await deleteDoc(docRef);
+};
+
+export const getHelpCenterArticles = async (hubId: string): Promise<HelpCenterArticle[]> => {
+  const q = query(collection(db, 'help_center_articles'), where('hubId', '==', hubId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenterArticle));
+};
+
+export const addHelpCenterArticle = async (art: Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle> => {
+  const docRef = await addDoc(collection(db, 'help_center_articles'), art);
+  return { id: docRef.id, ...art };
+};
+
+export const updateHelpCenterArticle = async (id: string, data: Partial<HelpCenterArticle>) => {
+  const docRef = doc(db, 'help_center_articles', id);
+  await updateDoc(docRef, data);
+};
+
+export const deleteHelpCenterArticle = async (id: string) => {
+  const docRef = doc(db, 'help_center_articles', id);
+  await deleteDoc(docRef);
+};
+
+// --- Documents ---
+export const getDocumentsInHub = async (hubId: string): Promise<Document[]> => {
+  const q = query(collection(db, 'documents'), where('hubId', '==', hubId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document));
+};
+
+export const getDocument = async (id: string): Promise<Document | null> => {
+  const docRef = doc(db, 'documents', id);
+  const docSnap = await getDoc(docRef);
+  return docSnap.exists() ? ({ id: docSnap.id, ...docSnap.data() } as Document) : null;
+};
+
+export const addDocument = async (docData: Omit<Document, 'id'>): Promise<Document> => {
+  const docRef = await addDoc(collection(db, 'documents'), docData);
+  return { id: docRef.id, ...docData };
+};
+
+export const updateDocument = async (id: string, data: Partial<Document>) => {
+  const docRef = doc(db, 'documents', id);
+  await updateDoc(docRef, data);
+};
+
+export const deleteDocument = async (id: string) => {
+  const docRef = doc(db, 'documents', id);
+  await deleteDoc(docRef);
+};
+
+// --- Flows / Job Templates ---
 export const getJobFlowTemplates = async (hubId: string): Promise<JobFlowTemplate[]> => {
-  const q = query(collection(db, "job_flow_templates"), where("hubId", "==", hubId));
+  const q = query(collection(db, 'job_flow_templates'), where('hubId', '==', hubId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JobFlowTemplate));
 };
 
+export const addJobFlowTemplate = async (template: Omit<JobFlowTemplate, 'id'>) => {
+  return addDoc(collection(db, 'job_flow_templates'), template);
+};
+
 export const getPhaseTemplates = async (hubId: string): Promise<PhaseTemplate[]> => {
-  const q = query(collection(db, "phase_templates"), where("hubId", "==", hubId));
+  const q = query(collection(db, 'phase_templates'), where('hubId', '==', hubId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PhaseTemplate));
 };
 
+export const addPhaseTemplate = async (template: Omit<PhaseTemplate, 'id'>) => {
+  return addDoc(collection(db, 'phase_templates'), template);
+};
+
 export const getTaskTemplates = async (hubId: string): Promise<TaskTemplate[]> => {
-  const q = query(collection(db, "task_templates"), where("hubId", "==", hubId));
+  const q = query(collection(db, 'task_templates'), where('hubId', '==', hubId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TaskTemplate));
 };
 
+export const addTaskTemplate = async (template: Omit<TaskTemplate, 'id'>) => {
+  return addDoc(collection(db, 'task_templates'), template);
+};
+
 export const getAllJobs = async (hubId: string): Promise<Job[]> => {
-  const q = query(collection(db, "jobs"), where("hubId", "==", hubId));
+  const q = query(collection(db, 'jobs'), where('hubId', '==', hubId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
 };
 
 export const getAllJobFlowTasks = async (hubId: string): Promise<JobFlowTask[]> => {
-  const q = query(collection(db, "job_flow_tasks"), where("hubId", "==", hubId));
+  const q = query(collection(db, 'job_flow_tasks'), where('hubId', '==', hubId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JobFlowTask));
 };
 
-export const launchJob = async (name: string, template: JobFlowTemplate, roleMapping: Record<string, string>, creatorId: string, spaceId: string) => {
-    const jobRef = await addDoc(collection(db, "jobs"), {
+// --- Job Engine Logic ---
+export const launchJob = async (name: string, template: JobFlowTemplate, roleMapping: Record<string, string>, userId: string, spaceId: string) => {
+    const hubId = template.hubId;
+    const now = new Date().toISOString();
+    const jobData: Omit<Job, 'id'> = {
         name,
         workflowTemplateId: template.id,
         space_id: spaceId,
-        hubId: template.hubId,
+        hubId,
         currentPhaseIndex: 0,
         status: 'active',
-        createdAt: new Date().toISOString(),
-        createdBy: creatorId,
+        createdAt: now,
+        createdBy: userId,
         roleUserMapping: roleMapping,
-    });
+    };
+    const jobRef = await addDoc(collection(db, 'jobs'), jobData);
+    
+    // Create tasks for the first phase
+    const firstPhase = template.phases[0];
+    for (const taskTpl of firstPhase.tasks) {
+        const assignedTo = roleMapping[taskTpl.defaultAssigneeId] || taskTpl.defaultAssigneeId;
+        const taskData: Omit<Task, 'id'> = {
+            name: taskTpl.titleTemplate,
+            description: taskTpl.descriptionTemplate || '',
+            project_id: null,
+            hubId,
+            spaceId,
+            status: 'Pending',
+            createdAt: now,
+            createdBy: userId,
+            assigned_to: assignedTo,
+            due_date: new Date(Date.now() + taskTpl.estimatedDurationDays * 86400000).toISOString(),
+            priority: 'Medium',
+            tags: ['workflow'],
+            activities: [],
+            comments: [],
+            attachments: [],
+            relationships: []
+        };
+        const taskRef = await addDoc(collection(db, 'tasks'), taskData);
+        await addDoc(collection(db, 'job_flow_tasks'), {
+            jobId: jobRef.id,
+            taskId: taskRef.id,
+            phaseIndex: 0,
+            createdAt: now,
+            hubId,
+        });
+    }
     return jobRef.id;
 };
 
-export const updateJobPhase = async (job: Job, template: JobFlowTemplate, tasks: Task[], flowTasks: JobFlowTask[]) => {
-    const nextPhaseIndex = job.currentPhaseIndex + 1;
-    if (nextPhaseIndex >= template.phases.length) {
-        await updateDoc(doc(db, "jobs", job.id), { status: 'completed' });
-    } else {
-        await updateDoc(doc(db, "jobs", job.id), { currentPhaseIndex: nextPhaseIndex });
-    }
-};
-
 export const reviewJobPhase = async (jobId: string, phaseIndex: number, userId: string) => {
-    const q = query(collection(db, "job_flow_tasks"), where("jobId", "==", jobId), where("phaseIndex", "==", phaseIndex));
-    const snapshot = await getDocs(q);
+    const q = query(collection(db, 'job_flow_tasks'), where('jobId', '==', jobId), where('phaseIndex', '==', phaseIndex));
+    const snap = await getDocs(q);
     const batch = writeBatch(db);
-    snapshot.docs.forEach(d => batch.update(d.ref, { reviewedBy: userId }));
+    snap.docs.forEach(doc => {
+        batch.update(doc.ref, { reviewedBy: userId });
+    });
     await batch.commit();
 };
 
-// --- Business Brain Management ---
-export const startBrainJob = async (type: BrainJob['type'], params: Record<string, any>): Promise<string> => {
-    const jobData = { type, params, status: 'pending', createdAt: new Date().toISOString() };
+export const updateJobPhase = async (job: Job, template: JobFlowTemplate, allTasks: Task[], jobFlowTasks: JobFlowTask[]) => {
+    const nextPhaseIndex = job.currentPhaseIndex + 1;
+    const isLastPhase = nextPhaseIndex >= template.phases.length;
+    
+    const update: Partial<Job> = {
+        currentPhaseIndex: isLastPhase ? job.currentPhaseIndex : nextPhaseIndex,
+        status: isLastPhase ? 'completed' : 'active',
+    };
+    
+    await updateDoc(doc(db, 'jobs', job.id), update);
+    
+    if (!isLastPhase) {
+        const nextPhase = template.phases[nextPhaseIndex];
+        const now = new Date().toISOString();
+        for (const taskTpl of nextPhase.tasks) {
+            const assignedTo = job.roleUserMapping[taskTpl.defaultAssigneeId] || taskTpl.defaultAssigneeId;
+            const taskData: Omit<Task, 'id'> = {
+                name: taskTpl.titleTemplate,
+                description: taskTpl.descriptionTemplate || '',
+                project_id: null,
+                hubId: job.hubId,
+                spaceId: job.space_id,
+                status: 'Pending',
+                createdAt: now,
+                createdBy: job.createdBy,
+                assigned_to: assignedTo,
+                due_date: new Date(Date.now() + taskTpl.estimatedDurationDays * 86400000).toISOString(),
+                priority: 'Medium',
+                tags: ['workflow'],
+                activities: [],
+                comments: [],
+                attachments: [],
+                relationships: []
+            };
+            const taskRef = await addDoc(collection(db, 'tasks'), taskData);
+            await addDoc(collection(db, 'job_flow_tasks'), {
+                jobId: job.id,
+                taskId: taskRef.id,
+                phaseIndex: nextPhaseIndex,
+                createdAt: now,
+                hubId: job.hubId,
+            });
+        }
+    }
+};
+
+// --- Invites ---
+export const getPendingInvites = async (spaceIds: string[]): Promise<Invite[]> => {
+  if (spaceIds.length === 0) return [];
+  const q = query(collection(db, 'invites'), where('spaceId', 'in', spaceIds.slice(0, 10)), where('status', '==', 'pending'));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invite));
+};
+
+export const addInvite = async (invite: Omit<Invite, 'id'>) => {
+  return addDoc(collection(db, 'invites'), invite);
+};
+
+export const resendInvite = async (inviteId: string) => {
+    // This typically triggers a cloud function via a dummy field update or specialized function call
+    await updateDoc(doc(db, 'invites', inviteId), { sentAt: null, tokenHash: null });
+};
+
+export const revokeInvite = async (inviteId: string) => {
+    await updateDoc(doc(db, 'invites', inviteId), { status: 'expired' });
+};
+
+// --- Storage ---
+export const uploadSpaceLogo = async (file: File, spaceId: string) => {
+  const storageRef = ref(storage, `spaces/${spaceId}/logo_${Date.now()}`);
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+};
+
+export const uploadHelpCenterCoverImage = async (file: File, hcId: string) => {
+  const storageRef = ref(storage, `help_centers/${hcId}/cover_${Date.now()}`);
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+};
+
+export const uploadImageToFirebase = async (file: File, hubId: string, docId: string) => {
+  const storageRef = ref(storage, `hubs/${hubId}/docs/${docId}/${Date.now()}_${file.name}`);
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+};
+
+// --- Brain Jobs ---
+export const startBrainJob = async (type: BrainJob['type'], params: Record<string, any>) => {
+    const jobData: Omit<BrainJob, 'id'> = {
+        type,
+        status: 'pending',
+        params,
+        createdAt: new Date().toISOString(),
+    };
     const docRef = await addDoc(collection(db, 'brain_jobs'), jobData);
     return docRef.id;
 };
 
 export const getMemoryNodes = async (type: string): Promise<any[]> => {
-  const q = query(collection(db, "memory_nodes"), where("type", "==", type));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    const q = query(collection(db, 'memory_nodes'), where('type', '==', type));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 };
 
-export const getSalesExtractions = async (spaceId: string): Promise<any[]> => {
-  const q = query(collection(db, "sales_extractions"), where("spaceId", "==", spaceId), limit(50));
+export const getSalesExtractions = async (spaceId: string) => {
+    const q = query(collection(db, 'sales_extractions'), where('spaceId', '==', spaceId), limit(50));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+// --- Deal Automation ---
+export const getDealAutomationRules = async (hubId: string): Promise<DealAutomationRule[]> => {
+    const q = query(collection(db, 'deal_automation_rules'), where('hubId', '==', hubId));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as DealAutomationRule));
+};
+
+export const saveDealAutomationRule = async (rule: Omit<DealAutomationRule, 'id'>, ruleId?: string) => {
+    if (ruleId) {
+        await updateDoc(doc(db, 'deal_automation_rules', ruleId), rule);
+    } else {
+        await addDoc(collection(db, 'deal_automation_rules'), rule);
+    }
+};
+
+export const deleteDealAutomationRule = async (ruleId: string) => {
+    await deleteDoc(doc(db, 'deal_automation_rules', ruleId));
+};
+
+// --- Intake / Escalation Rules ---
+export const getEscalationIntakeRules = async (hubId: string): Promise<EscalationIntakeRule[]> => {
+    const q = query(collection(db, 'escalation_intake_rules'), where('hubId', '==', hubId));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as EscalationIntakeRule));
+};
+
+export const saveEscalationIntakeRule = async (hubId: string, rule: Omit<EscalationIntakeRule, 'id' | 'hubId'>, ruleId?: string) => {
+    const data = { ...rule, hubId };
+    if (ruleId) {
+        await updateDoc(doc(db, 'escalation_intake_rules', ruleId), data);
+    } else {
+        await addDoc(collection(db, 'escalation_intake_rules'), data);
+    }
+};
+
+export const deleteEscalationIntakeRule = async (hubId: string, ruleId: string) => {
+    await deleteDoc(doc(db, 'escalation_intake_rules', ruleId));
+};
+
+// --- Slack Meeting Logs ---
+export const getSlackMeetingLogsInSpace = async (spaceId: string): Promise<SlackMeetingLog[]> => {
+  const q = query(collection(db, 'slack_meeting_logs'), where('spaceId', '==', spaceId));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SlackMeetingLog));
+};
+
+// --- Bots ---
+export const getBots = async (hubId: string): Promise<Bot[]> => {
+  const q = query(collection(db, 'bots'), where('hubId', '==', hubId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bot));
+};
+
+export const getBot = async (botId: string): Promise<Bot | null> => {
+  const docRef = doc(db, 'bots', botId);
+  const docSnap = await getDoc(docRef);
+  return docSnap.exists() ? ({ id: docSnap.id, ...docSnap.data() } as Bot) : null;
+};
+
+export const addBot = async (bot: Omit<Bot, 'id'>): Promise<Bot> => {
+  const docRef = await addDoc(collection(db, 'bots'), bot);
+  return { id: docRef.id, ...bot };
+};
+
+export const updateBot = async (botId: string, data: Partial<Bot>) => {
+  const docRef = doc(db, 'bots', botId);
+  await updateDoc(docRef, data);
+};
+
+export const deleteBot = async (botId: string) => {
+  const docRef = doc(db, 'bots', botId);
+  await deleteDoc(docRef);
+};
+
+// --- Push Notifications ---
+export const savePushToken = async (userId: string, token: string, userAgent: string) => {
+  const tokenHash = btoa(token).substring(0, 20); // stable id
+  const tokenRef = doc(db, `users/${userId}/pushTokens/${tokenHash}`);
+  const now = new Date().toISOString();
+  await setDoc(tokenRef, {
+    token,
+    platform: 'web',
+    enabled: true,
+    createdAt: now,
+    lastSeenAt: now,
+    userAgent
+  }, { merge: true });
 };
 
 // --- Seeding ---
 export const seedDatabase = async () => {
-  const usersRef = collection(db, "users");
-  const snapshot = await getDocs(query(usersRef, limit(1)));
-  if (snapshot.empty) {
-    const batch = writeBatch(db);
-    const userIds = ["user-1", "user-2", "user-3", "user-4"];
-    const usersMock: Omit<User, 'id'>[] = [
-      { name: 'Brad', email: 'brad@test.com', avatarUrl: 'https://placehold.co/100x100/EFEFEF/333333/png?text=B', role: 'Admin', onboardingComplete: true },
-      { name: 'Alice', email: 'alice@test.com', avatarUrl: 'https://placehold.co/100x100/EFEFEF/333333/png?text=A', role: 'Member', onboardingComplete: true },
-      { name: 'Charlie', email: 'charlie@test.com', avatarUrl: 'https://placehold.co/100x100/EFEFEF/313333/png?text=C', role: 'Member', onboardingComplete: true },
-      { name: 'Diana', email: 'diana@test.com', avatarUrl: 'https://placehold.co/100x100/EFEFEF/323333/png?text=D', role: 'Member', onboardingComplete: true },
-    ];
-    usersMock.forEach((user, i) => batch.set(doc(db, "users", userIds[i]), user));
-    const spacesMock = [
-      { id: 'space-1', name: "Brad's Personal Space", members: { 'user-1': { role: 'admin' } } },
-      { id: 'space-2', name: 'Client Work', members: { 'user-1': { role: 'admin' }, 'user-2': { role: 'member' }, 'user-3': { role: 'member' } } },
-    ];
-    spacesMock.forEach((space) => batch.set(doc(db, "spaces", space.id), space));
-    const helpData = JSON.parse(JSON.stringify(seedData));
-    helpData.helpCenters.forEach((hc: any) => hc.id && batch.set(doc(db, "help_centers", hc.id), { name: hc.name, hubId: hc.hubId }));
-    helpData.collections.forEach((coll: any) => coll.id && batch.set(doc(db, "help_center_collections", coll.id), { name: coll.name, description: coll.description || '', hubId: coll.hubId, parentId: coll.parentId, helpCenterId: coll.helpCenterId }));
-    helpData.articles.forEach((art: any) => art.id && batch.set(doc(db, "help_center_articles", art.id), { title: art.title, content: art.content, status: art.status, folderId: art.folderId, helpCenterId: art.helpCenterId, hubId: art.hubId, authorId: art.authorId, createdAt: art.createdAt, updatedAt: art.updatedAt, type: art.type, visibility: art.visibility, allowedUserIds: art.allowedUserIds, isAiIndexed: art.isAiIndexed, isSeoIndexed: art.isSeoIndexed }));
-    await batch.commit();
-  }
+    // This function can be used to populate initial system data if needed
 };

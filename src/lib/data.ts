@@ -9,6 +9,22 @@ export interface User {
   role: 'Admin' | 'Member'; // Global role
   onboardingComplete?: boolean;
   onboardingIntent?: string;
+  notificationPrefs?: NotificationPrefs;
+}
+
+export interface NotificationPrefs {
+  pushEnabled: boolean;
+  emailEnabled: boolean;
+}
+
+export interface PushToken {
+  id: string;
+  token: string;
+  platform: 'web';
+  enabled: boolean;
+  createdAt: string;
+  lastSeenAt: string;
+  userAgent?: string;
 }
 
 export type HubRole = 'admin' | 'member' | 'viewer';
@@ -88,7 +104,6 @@ export interface Task {
   parentId?: string | null; // For subtasks
   relationships?: TaskRelationship[];
   comments?: Comment[];
-  activities?: Activity[];
   attachments?: Attachment[];
   // Escalation fields
   linkedTicketId?: string;
@@ -462,9 +477,11 @@ export interface Visitor {
 export interface Conversation {
   id: string;
   hubId: string;
+  spaceId: string;
   contactId: string | null;
   visitorId?: string | null;
   assigneeId: string | null;
+  assignedAgentIds?: string[];
   status: 'bot' | 'human' | 'closed' | 'unassigned';
   lastMessage: string;
   lastMessageAt: string; // ISO String
@@ -477,6 +494,10 @@ export interface Conversation {
   visitorEmail?: string;
   state?: ConversationState;
   lastIntent?: string | null;
+  lastVisitorSeenAt?: string;
+  lastVisitorMessageAt?: string;
+  lastAgentMessageAt?: string;
+  lastAgentSeenAtByAgent?: Record<string, string>;
   handoff?: {
     status: "none" | "offered" | "declined" | "completed";
     reason?: string;
@@ -491,7 +512,9 @@ export interface ChatMessage {
   type: 'message' | 'note' | 'event';
   content: string;
   timestamp: string; // ISO String
-  senderType?: 'contact' | 'agent';
+  senderType?: 'visitor' | 'agent' | 'bot' | 'contact';
+  visitorId?: string;
+  spaceId?: string;
   linked_ticket_id?: string;
   attachments?: Attachment[];
   visibility?: 'public' | 'internal';
