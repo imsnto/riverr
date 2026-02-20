@@ -1,4 +1,5 @@
 
+// src/components/dashboard/inbox-conversation-list.tsx
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -8,10 +9,9 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { Search, Menu, MapPin, Bot, MessageSquare } from 'lucide-react';
+import { Search, MapPin, Bot, MessageSquare, Filter } from 'lucide-react';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
-import { SidebarTrigger } from '../ui/sidebar';
 import { getInitials } from '@/lib/utils';
 
 interface InboxSidebarProps {
@@ -136,18 +136,11 @@ export default function InboxConversationList({
     <div className="flex flex-col h-full border-r bg-card">
       {/* Header */}
       <div className="p-4 border-b shrink-0 flex items-center justify-between">
-        <SidebarTrigger className="md:hidden">
-          <Menu className="h-5 w-5" />
-        </SidebarTrigger>
         <h2 className="text-lg font-semibold">Inbox</h2>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
-                <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                <path d="M6.5 12H17.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                <path d="M10 18H14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
+              <Filter className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

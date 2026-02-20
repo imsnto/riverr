@@ -9,7 +9,7 @@ import { Space, Hub, User, Conversation } from '@/lib/data';
 import * as db from '@/lib/db';
 import { useRouter, useParams } from 'next/navigation';
 import { AppView } from '@/lib/routes';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -27,7 +27,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     const [spaceHubs, setSpaceHubs] = useState<Hub[]>([]);
     
-    const currentView = (params.view as AppView) || (params.view as AppView) || 'overview';
+    const currentView = (params.view as AppView) || 'overview';
     
     useEffect(() => {
         if (activeSpace) {
@@ -124,6 +124,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               "flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden",
               isMobile && activeHub && "pb-20"
             )}>
+              {isMobile && (
+                <header className="h-14 border-b flex items-center px-4 shrink-0 bg-card">
+                  <SidebarTrigger className="mr-2" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none truncate">
+                      {activeSpace?.name}
+                    </span>
+                    <span className="text-sm font-bold truncate">
+                      {activeHub?.name || 'Select a Hub'}
+                    </span>
+                  </div>
+                </header>
+              )}
               {children}
             </main>
           </div>

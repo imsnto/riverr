@@ -18,9 +18,9 @@ import {
   User as UserIcon,
   ChevronsUpDown,
   Check,
-  MessageCircle as MessageCircleIcon,
   Ticket,
   DollarSign,
+  Grid2X2,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
@@ -278,30 +278,43 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   return (
     <Sidebar collapsible="icon">
       <div className={cn("flex flex-col h-full", showLabels ? "p-2" : "p-1")}>
-         <div className="flex justify-center p-1.5">
+         <div className="p-1.5">
           <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-10 h-10 justify-center p-0 rounded-lg">
-                  <Avatar className="h-full w-full rounded-lg">
+              <Button 
+                variant="outline" 
+                className={cn(
+                  "w-full justify-start gap-2 h-12 px-2 rounded-lg border-muted-foreground/20 hover:bg-accent transition-all",
+                  !showLabels && "w-10 h-10 p-0 justify-center"
+                )}
+              >
+                  <Avatar className="h-8 w-8 rounded-lg shrink-0 shadow-sm">
                     <AvatarImage src={activeSpace?.logoUrl} className="object-cover" />
-                    <AvatarFallback className="rounded-lg text-base font-bold">
+                    <AvatarFallback className="rounded-lg text-xs font-bold bg-primary text-primary-foreground">
                       {activeSpace ? getInitials(activeSpace.name) : "W"}
                     </AvatarFallback>
                   </Avatar>
+                  {showLabels && (
+                    <div className="flex flex-col items-start min-w-0 flex-1 overflow-hidden">
+                      <span className="text-xs font-bold truncate w-full text-left leading-none mb-1">{activeSpace?.name}</span>
+                      <span className="text-[10px] text-muted-foreground truncate w-full text-left leading-none">{activeHub?.name || 'Select Hub'}</span>
+                    </div>
+                  )}
+                  {showLabels && <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-50" />}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 ml-2" side="right" align="start">
+            <PopoverContent className="w-80 ml-2" side={isMobile ? "bottom" : "right"} align="start">
               <div className="grid gap-4">
                 <div className="space-y-1">
-                  <h4 className="font-medium leading-none">Workspace</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Switch between your spaces and hubs.
+                  <h4 className="font-medium leading-none">Switch Workspace</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Select a space and hub to change your context.
                   </p>
                 </div>
                 <Separator />
                 <div className="space-y-4">
                   <div className="grid grid-cols-[auto_1fr] items-center gap-x-4">
-                      <Label className="w-12">Space</Label>
+                      <Label className="w-12 text-xs">Space</Label>
                       <SpaceSwitcher 
                         spaces={allSpaces} 
                         selectedSpaceId={browsingSpaceId} 
@@ -309,7 +322,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                       />
                   </div>
                    <div className="grid grid-cols-[auto_1fr] items-center gap-x-4">
-                      <Label className="w-12">Hub</Label>
+                      <Label className="w-12 text-xs">Hub</Label>
                       <HubSwitcher 
                         hubs={browsingHubs} 
                         activeHubId={browsingSpaceId === activeSpace?.id ? activeHub?.id : undefined} 
@@ -334,6 +347,18 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             <Separator />
           </div>
           {middleItems.map(renderButton)}
+          
+          {showLabels && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2 justify-start px-3 text-muted-foreground hover:text-foreground text-xs"
+              onClick={() => router.push(`/space/${activeSpace?.id}/hubs`)}
+            >
+              <Grid2X2 className="mr-2 h-3.5 w-3.5" />
+              Manage Hubs
+            </Button>
+          )}
         </div>
         <div className="flex flex-col mt-auto space-y-1">{bottomItems.map(renderButton)}</div>
         {appUser && (
