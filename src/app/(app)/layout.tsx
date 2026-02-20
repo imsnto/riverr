@@ -1,3 +1,4 @@
+
 // src/app/(app)/layout.tsx
 'use client';
 
@@ -67,7 +68,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         if (targetHub) {
             setActiveSpace(targetSpace);
             setActiveHub(targetHub);
-            const defaultView = targetHub.settings?.defaultView || 'tasks';
+            const defaultView = targetHub.settings?.defaultView || 'overview';
             router.push(`/space/${targetSpace.id}/hub/${targetHub.id}/${defaultView}`);
         }
     };

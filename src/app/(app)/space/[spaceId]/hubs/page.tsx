@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -48,7 +49,7 @@ export default function HubSelectionPage() {
 
   const handleHubSelect = (hub: Hub) => {
     setActiveHub(hub);
-    const defaultView = hub.isDefault ? (hub.settings?.defaultView || 'overview') : 'overview';
+    const defaultView = hub.settings?.defaultView || 'overview';
     router.push(`/space/${spaceId}/hub/${hub.id}/${defaultView}`);
   };
   
@@ -61,7 +62,7 @@ export default function HubSelectionPage() {
     const newHubData: Omit<Hub, 'id'> = {
         name: values.name,
         type: 'project-management',
-        settings: { components: values.components, defaultView: values.components[0] || 'tasks' },
+        settings: { components: values.components, defaultView: 'overview' },
         spaceId: activeSpace.id, 
         createdBy: appUser.id, 
         isDefault: false, 

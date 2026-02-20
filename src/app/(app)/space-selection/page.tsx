@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -51,7 +52,7 @@ export default function SpaceSelectionPage() {
                 createdAt: new Date().toISOString(),
                 createdBy: appUser.id,
                 isDefault: hubsData.length === 1,
-                settings: { components: hub.components, defaultView: hub.components?.[0] || 'tasks' },
+                settings: { components: hub.components, defaultView: 'overview' },
                 isPrivate: hub.isPrivate,
                 memberIds: hub.isPrivate ? hub.memberIds : [],
                 statuses: hub.statuses
