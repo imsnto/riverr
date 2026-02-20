@@ -6,7 +6,7 @@ import { Conversation, ChatMessage, Visitor, User, Ticket, Hub, Space, Escalatio
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
 import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check, Bot } from 'lucide-react';
@@ -44,11 +44,6 @@ interface InboxConversationViewProps {
   onEscalate: (ticket: Ticket, intakeRuleId: string) => void;
   allTasks: Task[];
   onTaskSelect: (task: Task) => void;
-}
-
-const getInitials = (name: string | null) => {
-  if (!name) return '?';
-  return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
 const defaultTicketStatuses = [
@@ -354,11 +349,23 @@ export default function InboxConversationView({
                   <span className="text-sm font-semibold text-indigo-400">Handled by AI Agent</span>
                 </div>
               ) : (
-                <span className="text-sm font-semibold truncate">
-                  {assignedAgents.length === 0 ? 'Unassigned' : 
-                   assignedAgents.length === 1 ? `Assigned to ${assignedAgents[0].name}` :
-                   `Assigned to ${assignedAgents.length} people`}
-                </span>
+                <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold truncate">
+                    {assignedAgents.length === 0 ? 'Unassigned' : 
+                    assignedAgents.length === 1 ? `Assigned to ${assignedAgents[0].name}` :
+                    `Assigned to ${assignedAgents.length} people`}
+                    </span>
+                    {assignedAgents.length > 0 && (
+                        <div className="flex -space-x-2 overflow-hidden">
+                            {assignedAgents.map(agent => (
+                                <Avatar key={agent.id} className="h-5 w-5 border-2 border-background">
+                                    <AvatarImage src={agent.avatarUrl} alt={agent.name} />
+                                    <AvatarFallback className="text-[8px]">{getInitials(agent.name)}</AvatarFallback>
+                                </Avatar>
+                            ))}
+                        </div>
+                    )}
+                </div>
               )}
               {assignedAgents.length > 0 && conversation.status !== 'bot' && (
                 <span className="text-[10px] text-muted-foreground truncate">
