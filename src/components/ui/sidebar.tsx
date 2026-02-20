@@ -19,8 +19,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-const SIDEBAR_WIDTH = "14rem" // Restored to a more compact expanded width
-const SIDEBAR_WIDTH_ICON = "3rem" // Collapsed (icon-only) width
+const SIDEBAR_WIDTH = "14rem"
+const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
@@ -50,17 +50,23 @@ const SidebarProvider = React.forwardRef<
     open?: boolean
     onOpenChange?: (open: boolean) => void
   }
->(({ defaultOpen = true, open: openProp, onOpenChange: setOpenProp, className, style, children, ...props }, ref) => {
+>(({ defaultOpen = false, open: openProp, onOpenChange: setOpenProp, className, style, children, ...props }, ref) => {
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
   const [_open, _setOpen] = React.useState(defaultOpen)
   const open = openProp ?? _open
-  const setOpen = React.useCallback((value) => {
+  const setOpen = React.useCallback((value: boolean | ((prevState: boolean) => boolean)) => {
     const openState = typeof value === "function" ? value(open) : value
-    setOpenProp ? setOpenProp(openState) : _setOpen(openState)
+    if (setOpenProp) {
+      setOpenProp(openState)
+    } else {
+      _setOpen(openState)
+    }
     document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
   }, [setOpenProp, open])
+
   const toggleSidebar = React.useCallback(() => (isMobile ? setOpenMobile((o) => !o) : setOpen((o) => !o)), [isMobile, setOpen])
+
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === SIDEBAR_KEYBOARD_SHORTCUT && (event.metaKey || event.ctrlKey)) {
@@ -75,7 +81,7 @@ const SidebarProvider = React.forwardRef<
   const state = open ? "expanded" : "collapsed"
 
   return (
-    <SidebarContext.Provider value={{ state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar }}>
+    <SidebarContext value={{ state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar }}>
       <TooltipProvider delayDuration={0}>
         <div
           style={{
@@ -90,7 +96,7 @@ const SidebarProvider = React.forwardRef<
           {children}
         </div>
       </TooltipProvider>
-    </SidebarContext.Provider>
+    </SidebarContext>
   )
 })
 SidebarProvider.displayName = "SidebarProvider"
