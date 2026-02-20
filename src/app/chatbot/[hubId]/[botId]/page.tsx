@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -15,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { marked } from 'marked';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { invokeAgent, createConversationAndLinkCrm, ensureConversationCrmLinkedAction } from '@/app/actions/chat';
+import { invokeAgent, createConversationAndLinkCrm, ensureConversationCrmLinkedAction, updateConversation } from '@/app/actions/chat';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 
@@ -248,6 +247,14 @@ export default function ChatbotWidgetPage() {
             timestamp: new Date().toISOString(),
         };
         await db.addChatMessage(userReplyMessage);
+        
+        // Sync metadata
+        await updateConversation(currentConversation.id, {
+            lastMessage: messageText,
+            lastMessageAt: userReplyMessage.timestamp,
+            lastMessageAuthor: visitor.name || 'Visitor',
+        });
+
         setMessageText('');
 
         if (affirmative.some(w => userResponse.includes(w))) {
@@ -324,6 +331,13 @@ export default function ChatbotWidgetPage() {
       attachments: messageAttachments,
     };
     await db.addChatMessage(newMessageData);
+    
+    // Explicitly update metadata for the visitor message to ensure sidebar freshness
+    await updateConversation(currentConversation.id, {
+        lastMessage: userMessageContent || (attachments.length > 0 ? "Sent an attachment" : ""),
+        lastMessageAt: newMessageData.timestamp,
+        lastMessageAuthor: visitor.name || 'Visitor',
+    });
 
     setMessageText('');
     setAttachments([]);
@@ -346,7 +360,6 @@ export default function ChatbotWidgetPage() {
     }
     
     setLoading(false);
-    // setIsAiThinking(true);
 
     const incomingMessage: any = {
       id: `msg-${Date.now()}`,

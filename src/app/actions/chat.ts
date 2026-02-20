@@ -197,7 +197,7 @@ export async function updateConversation(conversationId: string, data: Partial<C
     
     // 2. Process metadata updates (Last message preview, author name, etc.)
     if (message.conversationId && message.type === 'message') {
-      let authorName = "System";
+      let authorName = "Visitor";
   
       // Handle AI Agent specifically
       if (message.authorId === 'ai_agent') {
@@ -206,10 +206,32 @@ export async function updateConversation(conversationId: string, data: Partial<C
         // Direct server-to-server fetch for author names
         const userDoc = await adminDB.collection('users').doc(message.authorId).get();
         if (userDoc.exists) authorName = userDoc.data()?.name || 'Agent';
-      } else { // 'contact'
+      } else { // 'contact' (visitor)
         const convoSnap = await adminDB.collection('conversations').doc(message.conversationId).get();
         if (convoSnap.exists) {
-             authorName = convoSnap.data()?.visitorName || 'Unknown';
+             const convoData = convoSnap.data() as any;
+             // Try to get latest real name from visitor record instead of cached visitorName
+             if (convoData.visitorId) {
+                 const visitorDoc = await adminDB.collection('visitors').doc(convoData.visitorId).get();
+                 if (visitorDoc.exists) {
+                     const vData = visitorDoc.data();
+                     // If visitor has a contact, prioritize contact name
+                     if (vData?.contactId) {
+                         const contactDoc = await adminDB.collection('contacts').doc(vData.contactId).get();
+                         if (contactDoc.exists) {
+                             authorName = contactDoc.data()?.name || vData.name || convoData.visitorName || 'Visitor';
+                         } else {
+                             authorName = vData.name || convoData.visitorName || 'Visitor';
+                         }
+                     } else {
+                         authorName = vData?.name || convoData.visitorName || 'Visitor';
+                     }
+                 } else {
+                     authorName = convoData.visitorName || 'Visitor';
+                 }
+             } else {
+                 authorName = convoData.visitorName || 'Visitor';
+             }
         }
       }
   
@@ -369,85 +391,90 @@ export async function reindexArticleAction(articleId: string) {
 }
 
 
-export interface SuggestedLead {
-  contact: Contact;
-  leadState: LeadStateNode;
-  persona?: SalesPersonaSegmentNode | null;
+export interface LibraryData {
+  helpCenter: Omit<HelpCenter, 'id' | 'hubId'>;
+  collections: (Omit<HelpCenterCollection, 'hubId' | 'helpCenterId'> & { oldId: string })[];
+  articles: (Omit<HelpCenterArticle, 'id' | 'hubId' | 'helpCenterId' | 'folderId'> & { oldFolderId: string | null })[];
 }
 
-export interface GetSuggestedLeadsParams {
-    spaceId: string;
-    topK?: number;
-}
+export async function exportLibraryAction(helpCenterId: string): Promise<LibraryData> {
+    const hcSnap = await adminDB.collection('help_centers').doc(helpCenterId).get();
+    if (!hcSnap.exists) throw new Error('Help Center not found');
+    const { id, hubId, ...helpCenter } = hcSnap.data() as HelpCenter;
 
-export async function getSuggestedLeadsAction(params: GetSuggestedLeadsParams): Promise<SuggestedLead[]> {
-    const { spaceId, topK = 10 } = params;
-
-    // 1. Fetch top lead states
-    const leadStatesQuery = adminDB.collection('lead_states')
-        .where('spaceId', '==', spaceId)
-        .orderBy('warmScore', 'desc')
-        .limit(topK);
-    const leadStatesSnapshot = await leadStatesQuery.get();
-    if (leadStatesSnapshot.empty) {
-        return [];
-    }
-    const leadStates = leadStatesSnapshot.docs.map(doc => doc.data() as LeadStateNode);
-
-    // 2. Batch fetch contacts and personas
-    const contactIds = [...new Set(leadStates.map(ls => ls.leadId))];
-    const personaKeys = [...new Set(leadStates.map(ls => ls.matchedPersonaSegmentKey).filter(Boolean))] as string[];
-
-    const contactPromises = contactIds.map(id => adminDB.collection('contacts').doc(id).get());
-    
-    let personaPromises: Promise<FirebaseFirestore.QuerySnapshot<FirebaseFirestore.DocumentData>>[] = [];
-    if (personaKeys.length > 0) {
-      // Firestore 'in' query is limited to 30 items
-      for (let i = 0; i < personaKeys.length; i += 30) {
-        const chunk = personaKeys.slice(i, i + 30);
-        const personasQuery = adminDB.collection('memory_nodes')
-            .where('spaceId', '==', spaceId)
-            .where('type', '==', 'sales_persona_segment')
-            .where('segmentKey', 'in', chunk);
-        personaPromises.push(personasQuery.get());
-      }
-    }
-    
-    const [contactDocs, ...personaSnapshots] = await Promise.all([
-        Promise.all(contactPromises),
-        ...personaPromises
-    ]);
-
-    const contactsMap = new Map<string, Contact>();
-    contactDocs.forEach(doc => {
-        if (doc.exists) {
-            contactsMap.set(doc.id, { id: doc.id, ...doc.data() } as Contact);
-        }
+    const collectionsSnap = await adminDB.collection('help_center_collections').where('helpCenterId', '==', helpCenterId).get();
+    const collections = collectionsSnap.docs.map(doc => {
+        const { id, hubId, helpCenterId, ...collectionData } = doc.data() as HelpCenterCollection;
+        return { oldId: doc.id, ...collectionData };
     });
 
-    const personasMap = new Map<string, SalesPersonaSegmentNode>();
-    personaSnapshots.flat().forEach(snapshot => {
-      snapshot.docs.forEach(doc => {
-        const persona = doc.data() as SalesPersonaSegmentNode;
-        personasMap.set(persona.segmentKey, persona);
-      })
+    const articlesSnap = await adminDB.collection('help_center_articles').where('helpCenterId', '==', helpCenterId).get();
+    const articles = articlesSnap.docs.map(doc => {
+        const { id, hubId, helpCenterId, folderId, ...articleData } = doc.data() as HelpCenterArticle;
+        return { oldFolderId: folderId, ...articleData };
     });
 
-    // 3. Combine data
-    const suggestedLeads: SuggestedLead[] = leadStates.map(ls => {
-        const contact = contactsMap.get(ls.leadId);
-        const persona = ls.matchedPersonaSegmentKey ? personasMap.get(ls.matchedPersonaSegmentKey) : null;
-        if (!contact) return null; // Should not happen if data is consistent
-        return { contact, leadState: ls, persona };
-    }).filter((l): l is SuggestedLead => l !== null);
-
-    return suggestedLeads;
+    return { helpCenter, collections, articles };
 }
 
-export async function draftSalesEmailAction(input: DraftSalesEmailInput): Promise<DraftSalesEmailOutput> {
-    return draftSalesEmail(input);
-}
+export async function importLibraryAction(hubId: string, spaceId: string, userId: string, data: LibraryData): Promise<{ newHelpCenterId: string }> {
+    const batch = adminDB.batch();
+    
+    // 1. Create new Help Center
+    const newHcRef = adminDB.collection('help_centers').doc();
+    batch.set(newHcRef, {
+        ...data.helpCenter,
+        name: `${data.helpCenter.name} (Imported)`,
+        hubId: hubId,
+        coverImageUrl: '',
+    });
 
+    // 2. Map old collection IDs to new ones
+    const collectionIdMap = new Map<string, string>();
+    data.collections.forEach(collection => {
+        const newId = adminDB.collection('help_center_collections').doc().id;
+        collectionIdMap.set(collection.oldId, newId);
+    });
+
+    // 3. Create new collections
+    data.collections.forEach(collection => {
+        const newId = collectionIdMap.get(collection.oldId)!;
+        const newParentId = collection.parentId ? collectionIdMap.get(collection.parentId) : null;
+        const collectionRef = adminDB.collection('help_center_collections').doc(newId);
+        
+        const { oldId, parentId, ...collectionData } = collection;
+
+        batch.set(collectionRef, {
+            ...collectionData,
+            hubId: hubId,
+            helpCenterId: newHcRef.id,
+            parentId: newParentId,
+        });
+    });
+
+    // 4. Create new articles
+    data.articles.forEach(article => {
+        const articleRef = adminDB.collection('help_center_articles').doc();
+        const newFolderId = article.oldFolderId ? collectionIdMap.get(article.oldFolderId) : null;
+
+        const { oldFolderId, ...articleData } = article;
+
+        batch.set(articleRef, {
+            ...articleData,
+            hubId: hubId,
+            spaceId: spaceId,
+            authorId: userId,
+            helpCenterId: newHcRef.id,
+            folderId: newFolderId,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        });
+    });
+
+    await batch.commit();
+
+    return { newHelpCenterId: newHcRef.id };
+}
 
 function normalizeEmail(email?: string | null) {
   const e = (email || "").trim().toLowerCase();
@@ -574,14 +601,28 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
   }
 
   // 4) link visitor + conversation
+  const isWhimsical = (name: string) => {
+      const words = name.split(' ');
+      return words.length === 2 && whimsicalAdjectives.includes(words[0]) && whimsicalNouns.includes(words[1]);
+  }
+
+  const convoUpdates: any = {
+    contactId,
+    visitorName: vName,
+    visitorEmail: vEmail,
+    updatedAt: new Date().toISOString(),
+  };
+
+  // Sync lastMessageAuthor if it's currently a stale whimsical name and we have a real name now
+  if (convo.lastMessageAuthor && 
+      (convo.lastMessageAuthor === "Visitor" || isWhimsical(convo.lastMessageAuthor)) && 
+      !isWhimsical(vName)) {
+      convoUpdates.lastMessageAuthor = vName;
+  }
+
   await Promise.all([
     visitorRef.update({ contactId }),
-    convoRef.update({
-      contactId,
-      visitorName: vName,
-      visitorEmail: vEmail,
-      updatedAt: new Date().toISOString(),
-    }),
+    convoRef.update(convoUpdates),
   ]);
 
   return contactId;
@@ -616,88 +657,4 @@ export async function createConversationAndLinkCrm(args: {
 export async function ensureConversationCrmLinkedAction(conversationId: string) {
   return await ensureCrmLinkedForConversationAdmin(conversationId);
 }
-
-export interface LibraryData {
-  helpCenter: Omit<HelpCenter, 'id' | 'hubId'>;
-  collections: (Omit<HelpCenterCollection, 'hubId' | 'helpCenterId'> & { oldId: string })[];
-  articles: (Omit<HelpCenterArticle, 'id' | 'hubId' | 'helpCenterId' | 'folderId'> & { oldFolderId: string | null })[];
-}
-
-export async function exportLibraryAction(helpCenterId: string): Promise<LibraryData> {
-    const hcSnap = await adminDB.collection('help_centers').doc(helpCenterId).get();
-    if (!hcSnap.exists) throw new Error('Help Center not found');
-    const { id, hubId, ...helpCenter } = hcSnap.data() as HelpCenter;
-
-    const collectionsSnap = await adminDB.collection('help_center_collections').where('helpCenterId', '==', helpCenterId).get();
-    const collections = collectionsSnap.docs.map(doc => {
-        const { id, hubId, helpCenterId, ...collectionData } = doc.data() as HelpCenterCollection;
-        return { oldId: doc.id, ...collectionData };
-    });
-
-    const articlesSnap = await adminDB.collection('help_center_articles').where('helpCenterId', '==', helpCenterId).get();
-    const articles = articlesSnap.docs.map(doc => {
-        const { id, hubId, helpCenterId, folderId, ...articleData } = doc.data() as HelpCenterArticle;
-        return { oldFolderId: folderId, ...articleData };
-    });
-
-    return { helpCenter, collections, articles };
-}
-
-export async function importLibraryAction(hubId: string, spaceId: string, userId: string, data: LibraryData): Promise<{ newHelpCenterId: string }> {
-    const batch = adminDB.batch();
-    
-    // 1. Create new Help Center
-    const newHcRef = adminDB.collection('help_centers').doc();
-    batch.set(newHcRef, {
-        ...data.helpCenter,
-        name: `${data.helpCenter.name} (Imported)`,
-        hubId: hubId,
-        coverImageUrl: '',
-    });
-
-    // 2. Map old collection IDs to new ones
-    const collectionIdMap = new Map<string, string>();
-    data.collections.forEach(collection => {
-        const newId = adminDB.collection('help_center_collections').doc().id;
-        collectionIdMap.set(collection.oldId, newId);
-    });
-
-    // 3. Create new collections
-    data.collections.forEach(collection => {
-        const newId = collectionIdMap.get(collection.oldId)!;
-        const newParentId = collection.parentId ? collectionIdMap.get(collection.parentId) : null;
-        const collectionRef = adminDB.collection('help_center_collections').doc(newId);
-        
-        const { oldId, parentId, ...collectionData } = collection;
-
-        batch.set(collectionRef, {
-            ...collectionData,
-            hubId: hubId,
-            helpCenterId: newHcRef.id,
-            parentId: newParentId,
-        });
-    });
-
-    // 4. Create new articles
-    data.articles.forEach(article => {
-        const articleRef = adminDB.collection('help_center_articles').doc();
-        const newFolderId = article.oldFolderId ? collectionIdMap.get(article.oldFolderId) : null;
-
-        const { oldFolderId, ...articleData } = article;
-
-        batch.set(articleRef, {
-            ...articleData,
-            hubId: hubId,
-            spaceId: spaceId,
-            authorId: userId,
-            helpCenterId: newHcRef.id,
-            folderId: newFolderId,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-        });
-    });
-
-    await batch.commit();
-
-    return { newHelpCenterId: newHcRef.id };
-}
+// ... (rest of file OMITTED)
