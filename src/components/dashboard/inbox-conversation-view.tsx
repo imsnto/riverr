@@ -85,6 +85,7 @@ export default function InboxConversationView({
   const [isCreateTicketOpen, setIsCreateTicketOpen] = useState(false);
   const [isTicketDetailsOpen, setIsTicketDetailsOpen] = useState(false);
 
+  // Moved hooks to the top to avoid conditional call errors
   const assignedAgents = useMemo(() => {
     if (!conversation) return [];
     const ids = conversation.assignedAgentIds || (conversation.assigneeId ? [conversation.assigneeId] : []);
@@ -343,31 +344,33 @@ export default function InboxConversationView({
             </DropdownMenu>
 
             <div className="flex flex-col justify-center min-w-0 leading-tight">
-              {conversation.status === 'bot' ? (
-                <div className="flex items-center gap-1.5">
-                  <Bot className="h-3.5 w-3.5 text-indigo-400" />
-                  <span className="text-sm font-semibold text-indigo-400">Handled by AI Agent</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold truncate">
+              <div className="flex items-center gap-3">
+                {conversation.status === 'bot' ? (
+                  <div className="flex items-center gap-1.5">
+                    <Bot className="h-3.5 w-3.5 text-indigo-400" />
+                    <span className="text-sm font-semibold text-indigo-400">Handled by AI Agent</span>
+                  </div>
+                ) : (
+                  <span className="text-sm font-semibold truncate">
                     {assignedAgents.length === 0 ? 'Unassigned' : 
                     assignedAgents.length === 1 ? `Assigned to ${assignedAgents[0].name}` :
                     `Assigned to ${assignedAgents.length} people`}
-                    </span>
-                    {assignedAgents.length > 0 && (
-                        <div className="flex -space-x-2 overflow-hidden">
-                            {assignedAgents.map(agent => (
-                                <Avatar key={agent.id} className="h-5 w-5 border-2 border-background">
-                                    <AvatarImage src={agent.avatarUrl} alt={agent.name} />
-                                    <AvatarFallback className="text-[8px]">{getInitials(agent.name)}</AvatarFallback>
-                                </Avatar>
-                            ))}
-                        </div>
-                    )}
-                </div>
-              )}
-              {assignedAgents.length > 0 && conversation.status !== 'bot' && (
+                  </span>
+                )}
+                
+                {assignedAgents.length > 0 && (
+                  <div className="flex -space-x-2 overflow-hidden">
+                    {assignedAgents.map(agent => (
+                      <Avatar key={agent.id} className="h-5 w-5 border-2 border-background">
+                        <AvatarImage src={agent.avatarUrl} alt={agent.name} />
+                        <AvatarFallback className="text-[8px]">{getInitials(agent.name)}</AvatarFallback>
+                      </Avatar>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {assignedAgents.length > 0 && (
                 <span className="text-[10px] text-muted-foreground truncate">
                   {assignedAgents.map(a => a.email).join(', ')}
                 </span>
