@@ -54,7 +54,7 @@ import TeamTimesheets from './team-timesheets';
 import ContactsLayout from './contacts/contacts-layout';
 import DealsBoard from './deals-board';
 import { DealFormValues } from './create-deal-dialog';
-import { reindexArticleAction } from '@/app/actions/chat';
+import { reindexArticleAction, addChatMessage as addChatMessageAction } from '@/app/actions/chat';
 import TicketsBoard from './tickets-board';
 import { ContentSkeleton } from './content-skeleton';
 import { LayoutTemplate } from 'lucide-react';
@@ -279,7 +279,7 @@ export default function Dashboard({ view }: { view: string }) {
     db.updateTicket(ut.id, ut);
   };
 
-  const handleCreateTicket = async (td: Omit<Ticket, 'id'>, esc: boolean, ruleId?: string) => {
+  const handleCreateTicket = async (td: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => {
     if (!appUser || !activeHub) return;
     const now = new Date().toISOString();
     const creationActivity: Activity = { id: `act-creation-${Date.now()}`, user_id: appUser.id, timestamp: now, type: 'ticket_creation' };
@@ -287,11 +287,11 @@ export default function Dashboard({ view }: { view: string }) {
     const convo = td.conversationId ? chatConversations.find(c => c.id === td.conversationId) : null;
     if (convo) finalTicketData = { ...finalTicketData, lastMessagePreview: convo.lastMessage, lastMessageAt: convo.lastMessageAt, lastMessageAuthor: convo.lastMessageAuthor };
     const newTicket = await db.addTicket(finalTicketData);
-    if (esc && ruleId) await handleEscalateTicket(newTicket, ruleId);
+    if (escalateNow && intakeRuleId) await handleEscalateTicket(newTicket, intakeRuleId);
     else setTickets(prev => [...prev, newTicket]);
     toast({ title: "Ticket created" });
     if (newTicket.conversationId) {
-        await db.addChatMessage({ conversationId: newTicket.conversationId, authorId: appUser.id, type: 'event', senderType: 'agent', content: `Ticket created: "${newTicket.title}"`, timestamp: new Date().toISOString(), linked_ticket_id: newTicket.id });
+        await addChatMessageAction({ conversationId: newTicket.conversationId, authorId: appUser.id, type: 'event', senderType: 'agent', content: `Ticket created: "${newTicket.title}"`, timestamp: new Date().toISOString(), linked_ticket_id: newTicket.id });
     }
   };
   
@@ -383,8 +383,18 @@ export default function Dashboard({ view }: { view: string }) {
  
   const handleSendMessageFromAgent = async (cid: string, content: string, type: 'message' | 'note') => {
     if (!appUser) return;
-    const nmd: Omit<ChatMessage, "id"> = { conversationId: cid, authorId: appUser.id, type, senderType: 'agent', content, timestamp: new Date().toISOString() };
-    const nm = await db.addChatMessage(nmd);
+    
+    const messageData: Omit<ChatMessage, "id"> = { 
+      conversationId: cid, 
+      authorId: appUser.id, 
+      type, 
+      senderType: 'agent', 
+      content, 
+      timestamp: new Date().toISOString() 
+    };
+
+    const nm = await addChatMessageAction(messageData);
+    
     if (type === 'message') {
         const ucs = chatConversations.map(c => (c.id === cid ? { ...c, lastMessage: content, lastMessageAt: nm.timestamp, lastMessageAuthor: appUser.name } : c)).sort((a,b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
         setChatConversations(ucs);

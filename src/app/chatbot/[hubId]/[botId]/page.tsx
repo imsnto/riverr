@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { marked } from 'marked';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { invokeAgent, createConversationAndLinkCrm, ensureConversationCrmLinkedAction, updateConversation } from '@/app/actions/chat';
+import { invokeAgent, createConversationAndLinkCrm, ensureConversationCrmLinkedAction, updateConversation, addChatMessage as addChatMessageAction } from '@/app/actions/chat';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 
@@ -177,7 +177,7 @@ export default function ChatbotWidgetPage() {
     setCapturedName('');
     setCapturedEmail('');
     
-    await db.addChatMessage({
+    await addChatMessageAction({
         conversationId: conversation.id,
         authorId: 'ai_agent',
         type: 'message',
@@ -247,19 +247,12 @@ export default function ChatbotWidgetPage() {
             content: messageText,
             timestamp: new Date().toISOString(),
         };
-        await db.addChatMessage(userReplyMessage);
+        await addChatMessageAction(userReplyMessage);
         
-        // Sync metadata
-        await updateConversation(currentConversation.id, {
-            lastMessage: messageText,
-            lastMessageAt: userReplyMessage.timestamp,
-            lastMessageAuthor: visitor.name || 'Visitor',
-        });
-
         setMessageText('');
 
         if (affirmative.some(w => userResponse.includes(w))) {
-            await db.addChatMessage({
+            await addChatMessageAction({
                 conversationId: currentConversation.id,
                 authorId: 'ai_agent',
                 type: 'message',
@@ -276,7 +269,7 @@ export default function ChatbotWidgetPage() {
                 const name = messageText.replace(email, '').replace(/my name is|i'm|im|is/gi, '').trim();
                 await db.updateVisitor(visitor.id, { name: name || null, email: email });
                 
-                await db.addChatMessage({
+                await addChatMessageAction({
                     conversationId: currentConversation.id,
                     authorId: 'ai_agent',
                     type: 'message',
@@ -291,7 +284,7 @@ export default function ChatbotWidgetPage() {
                 setIdentityCaptureStep('none');
             }
         } else {
-            await db.addChatMessage({
+            await addChatMessageAction({
                 conversationId: currentConversation.id,
                 authorId: 'ai_agent',
                 type: 'message',
@@ -331,15 +324,8 @@ export default function ChatbotWidgetPage() {
       timestamp: new Date().toISOString(),
       attachments: messageAttachments,
     };
-    await db.addChatMessage(newMessageData);
+    await addChatMessageAction(newMessageData);
     
-    // Explicitly update metadata for the visitor message to ensure sidebar freshness
-    await updateConversation(currentConversation.id, {
-        lastMessage: userMessageContent || (attachments.length > 0 ? "Sent an attachment" : ""),
-        lastMessageAt: newMessageData.timestamp,
-        lastMessageAuthor: visitor.name || 'Visitor',
-    });
-
     setMessageText('');
     setAttachments([]);
 
@@ -347,7 +333,7 @@ export default function ChatbotWidgetPage() {
     const needsIdentityCapture = !appUser && bot?.identityCapture.enabled && (!fetchedVisitor.name || (bot?.identityCapture.required && !fetchedVisitor.email));
 
     if (needsIdentityCapture && isNewConversation) {
-        await db.addChatMessage({
+        await addChatMessageAction({
             conversationId: currentConversation.id,
             authorId: 'ai_agent',
             type: 'message',
