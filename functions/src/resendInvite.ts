@@ -2,7 +2,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import crypto from "crypto";
-import * as postmark from "postmark";
+import { sendSystemEmail } from "./email/sendSystemEmail";
 
 const POSTMARK_SERVER_TOKEN = defineSecret("POSTMARK_SERVER_TOKEN");
 const APP_BASE_URL = defineSecret("APP_BASE_URL");
@@ -42,18 +42,19 @@ export const resendInvite = onCall({ secrets: [POSTMARK_SERVER_TOKEN, APP_BASE_U
   const baseUrl = APP_BASE_URL.value();
   const joinUrl = `${baseUrl}/join?invite=${encodeURIComponent(inviteId)}&token=${encodeURIComponent(rawToken)}`;
 
-  const client = new postmark.ServerClient(POSTMARK_SERVER_TOKEN.value());
   const spaceName = invite.spaceName ?? "a workspace";
 
-  await client.sendEmail({
-    From: "brad@riverr.app",
-    To: invite.email,
-    Subject: `Reminder: You’ve been invited to join ${spaceName}`,
-    HtmlBody: `
+  await sendSystemEmail({
+    to: invite.email,
+    subject: `Reminder: You’ve been invited to join ${spaceName}`,
+    orgId: invite.spaceId,
+    tag: "invite_reminder",
+    metadata: { inviteId },
+    htmlBody: `
       <div style="font-family: ui-sans-serif, system-ui; line-height: 1.5">
         <h2>Reminder: You’ve been invited to join <b>${spaceName}</b></h2>
         <p>Click below to accept your invitation:</p>
-        <p><a href="${joinUrl}">Accept invitation</a></p>
+        <p><a href="${joinUrl}" style="background: #2563eb; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; display: inline-block;">Accept invitation</a></p>
         <p style="color:#777; font-size: 12px;">
           If you weren’t expecting this, you can ignore this email. This link replaces any previous invitation links.
         </p>

@@ -1,7 +1,7 @@
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
-import * as postmark from "postmark";
+import { sendSystemEmail } from "./email/sendSystemEmail";
 
 const POSTMARK_SERVER_TOKEN = defineSecret("POSTMARK_SERVER_TOKEN");
 const APP_BASE_URL = defineSecret("APP_BASE_URL");
@@ -111,14 +111,15 @@ export const onVisitorMessageCreated = onDocumentCreated(
         const cooldownExpired = !lastSent || (now.toDate().getTime() - lastSent.getTime()) > 10 * 60 * 1000;
 
         if (isNewConversation || cooldownExpired) {
-          const client = new postmark.ServerClient(POSTMARK_SERVER_TOKEN.value());
           const chatUrl = `${APP_BASE_URL.value()}/space/${convo.spaceId || 'default'}/hub/${convo.hubId}/inbox?conversationId=${conversationId}`;
           
-          await client.sendEmail({
-            From: "brad@riverr.app",
-            To: agent.email,
-            Subject: "New chat message in Manowar",
-            HtmlBody: `
+          await sendSystemEmail({
+            to: agent.email,
+            subject: "New chat message in Manowar",
+            orgId: convo.spaceId,
+            tag: "agent_alert",
+            metadata: { conversationId, agentId },
+            htmlBody: `
               <div style="font-family: sans-serif; line-height: 1.5;">
                 <h3>New message from a visitor</h3>
                 <p><b>${convo.visitorName || 'Visitor'}:</b> ${message.content?.substring(0, 500) || '<i>Sent an attachment</i>'}</p>

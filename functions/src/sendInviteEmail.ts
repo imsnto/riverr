@@ -1,9 +1,8 @@
-
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import crypto from "crypto";
-import * as postmark from "postmark";
+import { sendSystemEmail } from "./email/sendSystemEmail";
 
 const POSTMARK_SERVER_TOKEN = defineSecret("POSTMARK_SERVER_TOKEN");
 const APP_BASE_URL = defineSecret("APP_BASE_URL");
@@ -45,18 +44,19 @@ export const sendInviteEmail = onDocumentCreated(
       inviteId
     )}&token=${encodeURIComponent(rawToken)}`;
 
-    const client = new postmark.ServerClient(POSTMARK_SERVER_TOKEN.value());
     const spaceName = invite.spaceName ?? "a workspace";
 
-    await client.sendEmail({
-      From: "brad@riverr.app",
-      To: invite.email,
-      Subject: `You’ve been invited to join ${spaceName}`,
-      HtmlBody: `
+    await sendSystemEmail({
+      to: invite.email,
+      subject: `You’ve been invited to join ${spaceName}`,
+      orgId: invite.spaceId,
+      tag: "invite",
+      metadata: { inviteId },
+      htmlBody: `
         <div style="font-family: ui-sans-serif, system-ui; line-height: 1.5">
           <h2>You’ve been invited to join <b>${spaceName}</b></h2>
           <p>Click below to accept your invitation:</p>
-          <p><a href="${joinUrl}">Accept invitation</a></p>
+          <p><a href="${joinUrl}" style="background: #2563eb; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; display: inline-block;">Accept invitation</a></p>
           <p style="color:#777; font-size: 12px;">
             If you weren’t expecting this, you can ignore this email.
           </p>
