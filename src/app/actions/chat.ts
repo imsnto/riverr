@@ -501,6 +501,7 @@ export async function createConversationAndLinkCrm(args: {
     contactId: null,
     visitorId: args.visitorId,
     assigneeId: args.assigneeId,
+    assignedAgentIds: args.assigneeId ? [args.assigneeId] : [], // Populate for notifications
     status: "bot",
     state: "ai_active",
     lastMessage: args.lastMessage,

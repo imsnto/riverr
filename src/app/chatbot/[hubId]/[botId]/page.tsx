@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -81,29 +82,33 @@ export default function ChatbotWidgetPage() {
   // Seen Tracking Logic
   const markAsSeen = async () => {
     if (conversation && !document.hidden) {
+      const now = new Date().toISOString();
       await db.updateConversation(conversation.id, { 
-        lastVisitorSeenAt: new Date().toISOString() 
+        lastVisitorSeenAt: now 
       });
     }
   };
 
   useEffect(() => {
     window.addEventListener('focus', markAsSeen);
+    markAsSeen(); // Initial focus check
     return () => window.removeEventListener('focus', markAsSeen);
-  }, [conversation]);
+  }, [conversation?.id]);
 
   // Communicating unread count to parent window
   useEffect(() => {
     if (!conversation) return;
+    const lastSeen = conversation.lastVisitorSeenAt ? new Date(conversation.lastVisitorSeenAt).getTime() : 0;
+    
     const unreadMessages = visibleMessages.filter(m => 
       (m.senderType === 'agent' || m.senderType === 'bot') && 
-      new Date(m.timestamp) > new Date(conversation.lastVisitorSeenAt || 0)
+      new Date(m.timestamp).getTime() > lastSeen
     );
     
     if (window.parent) {
       window.parent.postMessage({ type: 'riverr-unread-count', count: unreadMessages.length }, '*');
     }
-  }, [visibleMessages, conversation]);
+  }, [visibleMessages, conversation?.lastVisitorSeenAt]);
 
   useEffect(() => {
     const initialize = async () => {

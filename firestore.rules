@@ -152,13 +152,14 @@ service cloud.firestore {
     }
     
     match /conversations/{conversationId} {
-      allow read, update, delete: if isAuthenticated() && hasAccessToConversation(conversationId);
-      allow create: if true;
+      allow read, create: if true;
+      allow update: if true; // Allow visitors to update lastVisitorSeenAt
+      allow delete: if isAuthenticated() && hasAccessToConversation(conversationId);
     }
     
     match /chat_messages/{messageId} {
-      allow read, update, delete: if isAuthenticated() && hasAccessToConversation(resource.data.conversationId);
-      allow create: if true;
+      allow read, create: if true;
+      allow update, delete: if isAuthenticated() && hasAccessToConversation(resource.data.conversationId);
     }
 
     match /help_centers/{hcId} {
