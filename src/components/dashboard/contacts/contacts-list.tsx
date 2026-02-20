@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Contact } from '@/lib/contacts-types';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -37,8 +37,20 @@ export default function ContactsList({
   onSelectContact,
   onNewContact,
 }: ContactsListProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredContacts = useMemo(() => {
+    if (!searchTerm.trim()) return contacts;
+    const lowerTerm = searchTerm.toLowerCase();
+    return contacts.filter(contact => 
+      contact.name?.toLowerCase().includes(lowerTerm) ||
+      contact.primaryEmail?.toLowerCase().includes(lowerTerm) ||
+      contact.company?.toLowerCase().includes(lowerTerm)
+    );
+  }, [contacts, searchTerm]);
+
   return (
-    <div className="flex flex-col h-full border-r bg-card">
+    <div className="flex flex-col h-full border-r bg-card min-h-0">
       <div className="p-4 border-b shrink-0">
         <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">Contacts</h2>
@@ -48,56 +60,64 @@ export default function ContactsList({
         </div>
         <div className="relative mt-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search contacts..." className="pl-10 h-9" />
+          <Input 
+            placeholder="Search contacts..." 
+            className="pl-10 h-9" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
       </div>
       <ScrollArea className="flex-1">
-        {contacts.length === 0 && (
+        {filteredContacts.length === 0 ? (
             <div className="text-center p-8">
-                <p className="text-muted-foreground">No contacts found.</p>
+                <p className="text-sm text-muted-foreground">
+                  {searchTerm ? 'No matches found.' : 'No contacts found.'}
+                </p>
             </div>
+        ) : (
+          <div className="divide-y divide-border/50">
+              {filteredContacts.map((contact) => {
+                  const isAnonymous = !contact.name && !contact.primaryEmail && !contact.primaryPhone;
+                  return (
+                      <button
+                          key={contact.id}
+                          onClick={() => onSelectContact(contact)}
+                          className={cn(
+                          "w-full text-left px-3 py-2 cursor-pointer transition-colors",
+                          selectedContact?.id === contact.id ? 'bg-primary/5' : 'hover:bg-muted/30'
+                          )}
+                      >
+                          <div className="flex items-start justify-between">
+                              <div className="flex items-center space-x-3 overflow-hidden">
+                                  <Avatar className="h-8 w-8 shrink-0">
+                                      <AvatarFallback className="text-[10px]">{getInitials(contact.name)}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="overflow-hidden">
+                                      <div className="font-semibold text-sm truncate flex items-center gap-2">
+                                          {contact.name || 'Anonymous'}
+                                          {isAnonymous && <Badge variant="outline" className="text-[9px] h-4 px-1">Anon</Badge>}
+                                      </div>
+                                      <p className="text-[11px] text-muted-foreground truncate">{contact.primaryEmail || contact.primaryPhone || 'No contact info'}</p>
+                                  </div>
+                              </div>
+                              {contact.lastSeenAt && (
+                                  <p className="text-[9px] text-muted-foreground flex-shrink-0 ml-2 mt-0.5">
+                                      {formatDistanceToNow(getDateFromTimestamp(contact.lastSeenAt), { addSuffix: false })}
+                                  </p>
+                              )}
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-1.5 overflow-hidden">
+                              {contact.lastMessageAt && <MessageSquare className="h-3 w-3 text-primary/60" />}
+                              {contact.lastOrderAt && <ShoppingCart className="h-3 w-3 text-green-500/60" />}
+                              {contact.lastCallAt && <Phone className="h-3 w-3 text-blue-500/60" />}
+                              {contact.tags.slice(0,1).map(tag => <Badge key={tag} variant="outline" className="text-[9px] h-4 px-1 py-0">{tag}</Badge>)}
+                          </div>
+                      </button>
+                  )
+              })}
+          </div>
         )}
-        <div className="divide-y divide-border/50">
-            {contacts.map((contact) => {
-                const isAnonymous = !contact.name && !contact.primaryEmail && !contact.primaryPhone;
-                return (
-                    <button
-                        key={contact.id}
-                        onClick={() => onSelectContact(contact)}
-                        className={cn(
-                        "w-full text-left px-3 py-2 cursor-pointer transition-colors",
-                        selectedContact?.id === contact.id ? 'bg-primary/5' : 'hover:bg-muted/30'
-                        )}
-                    >
-                        <div className="flex items-start justify-between">
-                            <div className="flex items-center space-x-3 overflow-hidden">
-                                <Avatar className="h-8 w-8 shrink-0">
-                                    <AvatarFallback className="text-[10px]">{getInitials(contact.name)}</AvatarFallback>
-                                </Avatar>
-                                <div className="overflow-hidden">
-                                    <div className="font-semibold text-sm truncate flex items-center gap-2">
-                                        {contact.name || 'Anonymous'}
-                                        {isAnonymous && <Badge variant="outline" className="text-[9px] h-4 px-1">Anon</Badge>}
-                                    </div>
-                                    <p className="text-[11px] text-muted-foreground truncate">{contact.primaryEmail || contact.primaryPhone || 'No contact info'}</p>
-                                </div>
-                            </div>
-                            {contact.lastSeenAt && (
-                                <p className="text-[9px] text-muted-foreground flex-shrink-0 ml-2 mt-0.5">
-                                    {formatDistanceToNow(getDateFromTimestamp(contact.lastSeenAt), { addSuffix: false })}
-                                </p>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-1.5 overflow-hidden">
-                            {contact.lastMessageAt && <MessageSquare className="h-3 w-3 text-primary/60" />}
-                            {contact.lastOrderAt && <ShoppingCart className="h-3 w-3 text-green-500/60" />}
-                            {contact.lastCallAt && <Phone className="h-3 w-3 text-blue-500/60" />}
-                            {contact.tags.slice(0,1).map(tag => <Badge key={tag} variant="outline" className="text-[9px] h-4 px-1 py-0">{tag}</Badge>)}
-                        </div>
-                    </button>
-                )
-            })}
-        </div>
       </ScrollArea>
     </div>
   );

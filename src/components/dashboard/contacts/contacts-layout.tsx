@@ -178,7 +178,7 @@ export default function ContactsLayout({ activeSpace, contacts: propContacts }: 
   }
 
   return (
-    <div className="grid h-full grid-cols-1 md:grid-cols-[300px_1fr]">
+    <div className="grid h-full grid-cols-1 md:grid-cols-[300px_1fr] min-h-0 overflow-hidden">
       <ContactsList
         contacts={displayContacts}
         selectedContact={selectedContact}

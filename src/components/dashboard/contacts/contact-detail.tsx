@@ -185,7 +185,7 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
 
   return (
     <>
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background min-h-0">
       {/* Header */}
       <div className="p-4 md:p-6 border-b shrink-0">
         <div className="flex items-start justify-between">
