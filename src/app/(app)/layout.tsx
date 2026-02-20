@@ -41,7 +41,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         if (activeHub) {
             router.push(`/space/${activeSpace?.id}/hub/${activeHub.id}/${newView}`);
         } else if (activeSpace) {
-            router.push(`/space/${activeSpace.id}/hubs`);
+            // If no active hub but we have a space, we might need to pick one
+            // However, most views require a hub. We'll default to the first hub if available.
+            if (spaceHubs.length > 0) {
+                const targetHub = spaceHubs[0];
+                setActiveHub(targetHub);
+                router.push(`/space/${activeSpace.id}/hub/${targetHub.id}/${newView}`);
+            } else {
+                router.push(`/space/${activeSpace.id}/hubs`);
+            }
         } else if (newView === 'contacts') {
             router.push('/contacts');
         } else {
@@ -63,7 +71,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         if (newSpace) {
             setActiveSpace(newSpace);
             setActiveHub(null);
-            router.push(`/space/${spaceId}/hubs`);
+            // We no longer redirect to /hubs automatically. 
+            // The sidebar will update with the new space's hubs.
         }
     };
 

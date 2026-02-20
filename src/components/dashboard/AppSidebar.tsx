@@ -1,4 +1,3 @@
-
 // src/components/dashboard/AppSidebar.tsx
 "use client";
 
@@ -44,7 +43,7 @@ import { getInitials } from "@/lib/utils";
 
 interface SpaceSwitcherProps {
   spaces: Space[];
-  activeSpace: Space;
+  activeSpace: Space | null;
   onSpaceChange: (spaceId: string) => void;
 }
 
@@ -55,17 +54,16 @@ function SpaceSwitcher({ spaces, activeSpace, onSpaceChange }: SpaceSwitcherProp
      <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="ghost"
+          variant="outline"
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between"
-          disabled={!activeSpace}
         >
           <span className="truncate">{activeSpace ? activeSpace.name : "Select a space"}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command>
           <CommandInput placeholder="Search space..." />
           <CommandList>
@@ -101,26 +99,27 @@ interface HubSwitcherProps {
   hubs: Hub[];
   activeHub: Hub | null;
   onHubChange: (hubId: string) => void;
+  disabled: boolean;
 }
 
-function HubSwitcher({ hubs, activeHub, onHubChange }: HubSwitcherProps) {
+function HubSwitcher({ hubs, activeHub, onHubChange, disabled }: HubSwitcherProps) {
   const [open, setOpen] = React.useState(false)
 
   return (
      <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="ghost"
+          variant="outline"
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between"
-          disabled={!activeHub}
+          disabled={disabled}
         >
           <span className="truncate">{activeHub ? activeHub.name : "Select a hub"}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command>
           <CommandInput placeholder="Search hub..." />
           <CommandList>
@@ -264,43 +263,46 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   return (
     <Sidebar collapsible="icon">
       <div className={cn("flex flex-col h-full", showLabels ? "p-2" : "p-1")}>
-         {activeSpace && activeHub && (
-           <div className="flex justify-center p-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-12 h-12 justify-center p-0 rounded-lg">
-                    <Avatar className="h-full w-full rounded-lg">
-                      <AvatarImage src={activeSpace.logoUrl} className="object-cover" />
-                      <AvatarFallback className="rounded-lg text-lg font-bold">
-                        {getInitials(activeSpace.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 ml-2" side="right" align="start">
-                <div className="grid gap-4">
-                  <div className="space-y-1">
-                    <h4 className="font-medium leading-none">Workspace</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Switch between your spaces and hubs.
-                    </p>
+         <div className="flex justify-center p-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-12 h-12 justify-center p-0 rounded-lg">
+                  <Avatar className="h-full w-full rounded-lg">
+                    <AvatarImage src={activeSpace?.logoUrl} className="object-cover" />
+                    <AvatarFallback className="rounded-lg text-lg font-bold">
+                      {activeSpace ? getInitials(activeSpace.name) : "W"}
+                    </AvatarFallback>
+                  </Avatar>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 ml-2" side="right" align="start">
+              <div className="grid gap-4">
+                <div className="space-y-1">
+                  <h4 className="font-medium leading-none">Workspace</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Switch between your spaces and hubs.
+                  </p>
+                </div>
+                <Separator />
+                <div className="space-y-4">
+                  <div className="grid grid-cols-[auto_1fr] items-center gap-x-4">
+                      <Label className="w-12">Space</Label>
+                      <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />
                   </div>
-                  <Separator />
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-[auto_1fr] items-center gap-x-4">
-                        <Label>Space</Label>
-                        <SpaceSwitcher spaces={allSpaces} activeSpace={activeSpace} onSpaceChange={onSpaceChange} />
-                    </div>
-                     <div className="grid grid-cols-[auto_1fr] items-center gap-x-4">
-                        <Label>Hub</Label>
-                        <HubSwitcher hubs={allHubs} activeHub={activeHub} onHubChange={onHubChange} />
-                    </div>
+                   <div className="grid grid-cols-[auto_1fr] items-center gap-x-4">
+                      <Label className="w-12">Hub</Label>
+                      <HubSwitcher 
+                        hubs={allHubs} 
+                        activeHub={activeHub} 
+                        onHubChange={onHubChange} 
+                        disabled={!activeSpace}
+                      />
                   </div>
                 </div>
-              </PopoverContent>
-            </Popover>
-           </div>
-         )}
+              </div>
+            </PopoverContent>
+          </Popover>
+         </div>
          <Separator className={cn("my-2", !showLabels && "mx-auto w-12")} />
         <div className="flex flex-col flex-1 space-y-1 overflow-y-auto">
           {topItems.map(renderButton)}
