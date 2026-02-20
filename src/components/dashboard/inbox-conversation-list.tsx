@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -8,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { Search, Menu, MapPin } from 'lucide-react';
+import { Search, Menu, MapPin, Bot } from 'lucide-react';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { SidebarTrigger } from '../ui/sidebar';
@@ -54,7 +53,8 @@ export default function InboxConversationList({
       {filteredConversations.map(convo => {
         const visitor = visitors.find(c => c.id === convo.visitorId);
         const isSelected = selectedConversationId === convo.id;
-        const youReplied = convo.lastMessageAuthor === appUser.name;
+        const isYou = convo.lastMessageAuthor === appUser.name;
+        const isAI = convo.lastMessageAuthor === 'AI Agent';
         
         // Prefer cached conversation name for UI stability
         const displayName = convo.visitorName || visitor?.name || 'Visitor';
@@ -64,8 +64,8 @@ export default function InboxConversationList({
             key={convo.id}
             onClick={() => onSelectConversation(convo.id)}
             className={cn(
-              "p-4 cursor-pointer border-b !border-b-[#7c808375]",
-              isSelected ? 'bg-primary/10 border-l-4 border-primary' : 'hover:bg-gray/50'
+              "p-4 cursor-pointer border-b !border-b-border/50 transition-colors",
+              isSelected ? 'bg-primary/5 border-l-4 border-primary' : 'hover:bg-muted/30'
             )}
           >
             <div className='flex items-center justify-between'>
@@ -81,38 +81,29 @@ export default function InboxConversationList({
                 )}
                 >{displayName}</p>
               </div>
-              <p
-              className={cn(
-                "text-xs text-muted-foreground whitespace-nowrap pl-2",
-                isSelected ? 'text-white' : ''
-              )}
-              >
+              <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground whitespace-nowrap pl-2">
                 {format(new Date(convo.lastMessageAt), "d MMM")}
               </p>
             </div>
-            <div className="mt-4 overflow-hidden">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="text-[13px] flex items-center space-x-2 text-muted-foreground truncate">
-                    {youReplied &&
-                      (
-                        <>
-                          {
-                            appUser.avatarUrl ? (
-                              <Avatar className="h-[1.1rem] w-[1.1rem]">
-                                <AvatarImage src={appUser.avatarUrl} alt={appUser.name} />
-                                <AvatarFallback>{getInitials(appUser.name)}</AvatarFallback>
-                              </Avatar>
-                            ) : (
-                              <span className="font-semibold">You: </span>
-                            )
-                          }
-                        </>
-                      )
-                    }
-                    <p className='font-medium truncate w-[260px]'>{convo.lastMessage}</p>
-                  </div>
-                </div>
+            
+            <div className="mt-3 overflow-hidden">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {isYou ? (
+                  <span className="font-bold text-primary flex-shrink-0">You:</span>
+                ) : isAI ? (
+                  <span className="font-bold text-indigo-400 flex-shrink-0 flex items-center gap-1">
+                    <Bot className="h-3 w-3" /> AI:
+                  </span>
+                ) : convo.lastMessageAuthor && convo.lastMessageAuthor !== displayName ? (
+                  <span className="font-bold flex-shrink-0">{convo.lastMessageAuthor}:</span>
+                ) : null}
+                
+                <p className={cn(
+                  "truncate flex-1 font-medium",
+                  isSelected ? "text-foreground" : ""
+                )}>
+                  {convo.lastMessage}
+                </p>
               </div>
             </div>
           </div>
@@ -128,10 +119,10 @@ export default function InboxConversationList({
         <SidebarTrigger className="md:hidden">
           <Menu className="h-5 w-5" />
         </SidebarTrigger>
-        <h2 className="text-lg font-semibold">All incoming</h2>
+        <h2 className="text-lg font-semibold">Inbox</h2>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="h-8 w-8">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
                 <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 <path d="M6.5 12H17.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />

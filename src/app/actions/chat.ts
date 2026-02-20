@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -200,8 +199,11 @@ export async function updateConversation(conversationId: string, data: Partial<C
     if (message.conversationId && message.type === 'message') {
       let authorName = "System";
   
-      // Direct server-to-server fetch for author names
-      if (message.senderType === 'agent') {
+      // Handle AI Agent specifically
+      if (message.authorId === 'ai_agent') {
+          authorName = 'AI Agent';
+      } else if (message.senderType === 'agent') {
+        // Direct server-to-server fetch for author names
         const userDoc = await adminDB.collection('users').doc(message.authorId).get();
         if (userDoc.exists) authorName = userDoc.data()?.name || 'Agent';
       } else { // 'contact'
