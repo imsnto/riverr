@@ -130,6 +130,12 @@ export default function Dashboard({ view }: { view: string }) {
 
     // Setup real-time contacts listener for the space
     contactsUnsubscribeRef.current = db.subscribeToContacts(activeSpace.id, (updatedContacts) => {
+        // Sort in memory to avoid Firestore index requirement
+        updatedContacts.sort((a, b) => {
+            const dateA = a.updatedAt?.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt || 0);
+            const dateB = b.updatedAt?.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt || 0);
+            return dateB.getTime() - dateA.getTime();
+        });
         setContacts(updatedContacts);
     });
 

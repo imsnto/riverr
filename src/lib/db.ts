@@ -104,7 +104,8 @@ export const getContacts = async (spaceId: string): Promise<Contact[]> => {
 };
 
 export const subscribeToContacts = (spaceId: string, onUpdate: (contacts: Contact[]) => void) => {
-  const q = query(collection(db, "contacts"), where("spaceId", "==", spaceId), orderBy("updatedAt", "desc"));
+  // Removed orderBy to avoid missing composite index error. Sorting is handled in-memory in the dashboard.
+  const q = query(collection(db, "contacts"), where("spaceId", "==", spaceId));
   return onSnapshot(q, (snapshot) => {
     const contacts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact));
     onUpdate(contacts);
