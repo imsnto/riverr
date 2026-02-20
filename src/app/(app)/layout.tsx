@@ -122,29 +122,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             />
             <main className={cn(
               "flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden",
-              isMobile && activeHub && "pb-20"
+              isMobile && "pb-20"
             )}>
-              {isMobile && (
-                <header className="h-14 border-b flex items-center px-4 shrink-0 bg-card">
-                  <SidebarTrigger className="mr-2" />
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none truncate">
-                      {activeSpace?.name}
-                    </span>
-                    <span className="text-sm font-bold truncate">
-                      {activeHub?.name || 'Select a Hub'}
-                    </span>
-                  </div>
-                </header>
-              )}
               {children}
             </main>
           </div>
-          {isMobile && activeHub && (
+          {isMobile && (
             <MobileBottomNav
               currentView={currentView}
               onChangeView={handleViewChange}
               activeHub={activeHub}
+              activeSpace={activeSpace}
+              allSpaces={userSpaces}
+              onHubChange={handleHubChange}
             />
           )}
         </SidebarProvider>
