@@ -27,7 +27,7 @@ const ACTIVE_WINDOW_MS = 2 * 60 * 1000;      // 2 minutes
 const INACTIVE_WINDOW_MS = 10 * 60 * 1000;   // 10 minutes (visitor likely left)
 const ACK_DELAY_MS = 10 * 60 * 1000;         // wait 10 minutes before acknowledgement email
 const ACK_COOLDOWN_MS = 24 * 60 * 60 * 1000; // once per 24h
-const REPLY_EMAIL_COOLDOWN_MS = 2 * 60 * 1000; // avoid spamming rapid replies
+const REPLY_EMAIL_COOLDOWN_MS = 5 * 60 * 1000; // avoid spamming rapid replies (increased to 5 min)
 
 // -----------------------------
 // Cooldown helpers
