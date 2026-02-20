@@ -1,0 +1,31 @@
+
+{
+  "onboarding": {
+    "welcome": {
+      "url": "https://picsum.photos/seed/welcome/600/400",
+      "keywords": "welcome growth"
+    },
+    "spaces": {
+      "url": "https://picsum.photos/seed/spaces/600/400",
+      "keywords": "office structure"
+    },
+    "hubs": {
+      "url": "https://picsum.photos/seed/hubs/600/400",
+      "keywords": "team collaboration"
+    },
+    "features": {
+      "url": "https://picsum.photos/seed/features/600/400",
+      "keywords": "tools puzzle"
+    },
+    "complete": {
+      "url": "https://picsum.photos/seed/complete/600/400",
+      "keywords": "rocket success"
+    }
+  },
+  "help-center": {
+    "default-cover": {
+      "url": "https://picsum.photos/seed/help/1200/400",
+      "keywords": "abstract documentation"
+    }
+  }
+}

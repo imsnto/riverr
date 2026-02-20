@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ArrowLeft, ArrowRight, Rocket, Building2, Puzzle, Check } from 'lucide-react';
 import Image from 'next/image';
+import placeholders from '@/app/lib/placeholder-images.json';
 
 interface OnboardingGuideProps {
   onComplete: () => void;
@@ -16,31 +17,31 @@ const steps = [
     title: "Welcome to Manowar!",
     description: "Your new business OS. Let's get you set up with a quick tour of the basics.",
     icon: <Rocket className="h-12 w-12 text-primary" />,
-    imageSeed: 'welcome'
+    image: placeholders.onboarding.welcome
   },
   {
     title: "What are Spaces?",
     description: "Spaces are the highest level of organization, perfect for separating different companies, clients, or large departments.",
     icon: <Building2 className="h-12 w-12 text-primary" />,
-    imageSeed: 'spaces'
+    image: placeholders.onboarding.spaces
   },
   {
     title: "What are Hubs?",
     description: "Inside each Space, you can create multiple Hubs. Think of them as dedicated workspaces for specific projects or teams, like 'Marketing' or 'Q3 Product Launch'.",
     icon: <Puzzle className="h-12 w-12 text-primary" />,
-    imageSeed: 'hubs'
+    image: placeholders.onboarding.hubs
   },
   {
     title: "Power Up with Features",
     description: "Each Hub can be customized with features like Task Boards, Knowledge Bases, Inboxes, and more. You only add what you need, keeping your workspace clean.",
     icon: <Puzzle className="h-12 w-12 text-primary" />,
-    imageSeed: 'features'
+    image: placeholders.onboarding.features
   },
   {
     title: "You're All Set!",
     description: "That's it! You're ready to create your first Space. You can always change these settings later.",
     icon: <Check className="h-12 w-12 text-primary" />,
-    imageSeed: 'complete'
+    image: placeholders.onboarding.complete
   }
 ];
 
@@ -78,14 +79,15 @@ export default function OnboardingGuide({ onComplete }: OnboardingGuideProps) {
           </DialogHeader>
         </div>
         <div className="bg-muted/50 p-6 border-y">
-            <Image 
-                src={`https://picsum.photos/seed/${currentStep.imageSeed}/600/400`}
-                width={600}
-                height={400}
-                alt={currentStep.title}
-                className="rounded-lg shadow-lg w-full h-auto"
-                data-ai-hint="abstract illustration"
-            />
+            <div className="relative aspect-video w-full">
+                <Image 
+                    src={currentStep.image.url}
+                    fill
+                    alt={currentStep.title}
+                    className="rounded-lg shadow-lg object-cover"
+                    data-ai-hint={currentStep.image.keywords}
+                />
+            </div>
         </div>
         <DialogFooter className="p-6 flex justify-between w-full">
             <div>
