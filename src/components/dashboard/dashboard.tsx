@@ -123,15 +123,18 @@ export default function Dashboard({ view }: { view: string }) {
     const fetchedUsers = await db.getAllUsers();
     setAllUsers(fetchedUsers);
 
-    // Set up conversation listener for the space
+    // Set up conversation listener for the space or active hub
     const hubs = await db.getHubsForSpace(activeSpace.id);
     const hubIds = hubs.map(h => h.id);
     setAllHubs(hubs);
 
-    if (hubIds.length > 0) {
+    // Use active hub id if possible to simplify the query and avoid index issues
+    const targetHubIds = activeHub ? [activeHub.id] : hubIds;
+
+    if (targetHubIds.length > 0) {
         const qConvos = query(
             collection(firestoreDb, 'conversations'), 
-            where('hubId', 'in', hubIds),
+            where('hubId', 'in', targetHubIds.slice(0, 10)),
             orderBy('lastMessageAt', 'desc')
         );
         conversationUnsubscribeRef.current = onSnapshot(qConvos, (snapshot) => {
@@ -146,6 +149,9 @@ export default function Dashboard({ view }: { view: string }) {
             const convoIds = convos.map(c => c.id);
             if (messageUnsubscribeRef.current) messageUnsubscribeRef.current();
             messageUnsubscribeRef.current = db.getMessagesForConversations(convoIds, (messages) => { setChatMessages(messages); });
+        }, (error) => {
+            console.error("Conversation sync failed:", error);
+            // Don't show toast for every index error during dev, but log it clearly
         });
     }
 
@@ -473,7 +479,7 @@ export default function Dashboard({ view }: { view: string }) {
       case 'contacts': return <ContactsLayout activeSpace={activeSpace} />;
       case 'settings': return <SettingsLayout {...sp} />;
       case 'team-timesheets': return <TeamTimesheets allSpaces={userSpaces} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser!} activeHub={activeHub} />;
-      case 'inbox': return <InboxLayout users={allUsers} appUser={appUser!} visitors={visitors} conversations={chatConversations} messages={chatMessages} onSendMessage={handleSendMessageFromAgent} onAssignConversation={handleAssignConversation} setHideMobileBottomNav={setHideMobileBottomNav} activeHub={activeHub!} activeSpace={activeSpace!} allHubs={allHubs} escalationRules={escalationRules} projects={projects} contacts={contacts} onDataRefresh={fetchData} tickets={tickets} onCreateTicket={handleCreateTicket} onUpdateTicket={handleUpdateTicket} />;
+      case 'inbox': return <InboxLayout users={allUsers} appUser={appUser!} visitors={visitors} conversations={activeHub ? chatConversations.filter(c => c.hubId === activeHub.id) : []} messages={chatMessages} onSendMessage={handleSendMessageFromAgent} onAssignConversation={handleAssignConversation} setHideMobileBottomNav={setHideMobileBottomNav} activeHub={activeHub!} activeSpace={activeSpace!} allHubs={allHubs} escalationRules={escalationRules} projects={projects} contacts={contacts} onDataRefresh={fetchData} tickets={tickets} onCreateTicket={handleCreateTicket} onUpdateTicket={handleUpdateTicket} />;
       default: return <div className="p-8"><h1 className="text-2xl font-bold">Coming Soon: {view}</h1></div>;
     }
   };

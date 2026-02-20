@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -7,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { Search, Menu, MapPin, Bot } from 'lucide-react';
+import { Search, Menu, MapPin, Bot, MessageSquare } from 'lucide-react';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { SidebarTrigger } from '../ui/sidebar';
@@ -50,65 +51,72 @@ export default function InboxConversationList({
 
   const conversationListContent = (
     <ScrollArea className="flex-1">
-      {filteredConversations.map(convo => {
-        const visitor = visitors.find(c => c.id === convo.visitorId);
-        const isSelected = selectedConversationId === convo.id;
-        const isYou = convo.lastMessageAuthor === appUser.name;
-        const isAI = convo.lastMessageAuthor === 'AI Agent';
-        
-        // Prefer cached conversation name for UI stability
-        const displayName = convo.visitorName || visitor?.name || 'Visitor';
-        
-        return (
-          <div
-            key={convo.id}
-            onClick={() => onSelectConversation(convo.id)}
-            className={cn(
-              "p-4 cursor-pointer border-b !border-b-border/50 transition-colors",
-              isSelected ? 'bg-primary/5 border-l-4 border-primary' : 'hover:bg-muted/30'
-            )}
-          >
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center space-x-2'>
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={visitor?.avatarUrl} alt={displayName} />
-                  <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
-                </Avatar>
-                <p
-                className={cn(
-                  "font-semibold truncate pl-1 text-sm",
-                  isSelected ? 'text-primary' : ''
-                )}
-                >{displayName}</p>
-              </div>
-              <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground whitespace-nowrap pl-2">
-                {format(new Date(convo.lastMessageAt), "d MMM")}
-              </p>
-            </div>
-            
-            <div className="mt-3 overflow-hidden">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {isYou ? (
-                  <span className="font-bold text-primary flex-shrink-0">You:</span>
-                ) : isAI ? (
-                  <span className="font-bold text-indigo-400 flex-shrink-0 flex items-center gap-1">
-                    <Bot className="h-3 w-3" /> AI:
-                  </span>
-                ) : convo.lastMessageAuthor && convo.lastMessageAuthor !== displayName ? (
-                  <span className="font-bold flex-shrink-0">{convo.lastMessageAuthor}:</span>
-                ) : null}
-                
-                <p className={cn(
-                  "truncate flex-1 font-medium",
-                  isSelected ? "text-foreground" : ""
-                )}>
-                  {convo.lastMessage}
+      {filteredConversations.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-64 p-8 text-center text-muted-foreground">
+          <MessageSquare className="h-8 w-8 mb-2 opacity-20" />
+          <p className="text-sm italic">No conversations found</p>
+        </div>
+      ) : (
+        filteredConversations.map(convo => {
+          const visitor = visitors.find(c => c.id === convo.visitorId);
+          const isSelected = selectedConversationId === convo.id;
+          const isYou = convo.lastMessageAuthor === appUser.name;
+          const isAI = convo.lastMessageAuthor === 'AI Agent';
+          
+          // Prefer cached conversation name for UI stability
+          const displayName = convo.visitorName || visitor?.name || 'Visitor';
+          
+          return (
+            <div
+              key={convo.id}
+              onClick={() => onSelectConversation(convo.id)}
+              className={cn(
+                "p-4 cursor-pointer border-b !border-b-border/50 transition-colors",
+                isSelected ? 'bg-primary/5 border-l-4 border-primary' : 'hover:bg-muted/30'
+              )}
+            >
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center space-x-2'>
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={visitor?.avatarUrl} alt={displayName} />
+                    <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+                  </Avatar>
+                  <p
+                  className={cn(
+                    "font-semibold truncate pl-1 text-sm",
+                    isSelected ? 'text-primary' : ''
+                  )}
+                  >{displayName}</p>
+                </div>
+                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground whitespace-nowrap pl-2">
+                  {convo.lastMessageAt ? format(new Date(convo.lastMessageAt), "d MMM") : '---'}
                 </p>
               </div>
+              
+              <div className="mt-3 overflow-hidden">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {isYou ? (
+                    <span className="font-bold text-primary flex-shrink-0">You:</span>
+                  ) : isAI ? (
+                    <span className="font-bold text-indigo-400 flex-shrink-0 flex items-center gap-1">
+                      <Bot className="h-3 w-3" /> AI:
+                    </span>
+                  ) : convo.lastMessageAuthor && convo.lastMessageAuthor !== displayName ? (
+                    <span className="font-bold flex-shrink-0">{convo.lastMessageAuthor}:</span>
+                  ) : null}
+                  
+                  <p className={cn(
+                    "truncate flex-1 font-medium",
+                    isSelected ? "text-foreground" : ""
+                  )}>
+                    {convo.lastMessage || 'No messages'}
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })
+      )}
     </ScrollArea>
   );
 
