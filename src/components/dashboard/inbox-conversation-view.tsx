@@ -90,7 +90,6 @@ export default function InboxConversationView({
   const [isCreateTicketOpen, setIsCreateTicketOpen] = useState(false);
   const [isTicketDetailsOpen, setIsTicketDetailsOpen] = useState(false);
 
-  // Define Hooks at top level
   const assignedAgents = useMemo(() => {
     if (!conversation) return [];
     const ids = conversation.assignedAgentIds || (conversation.assigneeId ? [conversation.assigneeId] : []);
@@ -352,7 +351,7 @@ export default function InboxConversationView({
               {conversation.status === 'bot' ? (
                 <div className="flex items-center gap-1.5">
                   <Bot className="h-3.5 w-3.5 text-indigo-400" />
-                  <span className="text-sm font-semibold text-indigo-400">AI Agent Active</span>
+                  <span className="text-sm font-semibold text-indigo-400">Handled by AI Agent</span>
                 </div>
               ) : (
                 <span className="text-sm font-semibold truncate">
@@ -361,7 +360,7 @@ export default function InboxConversationView({
                    `Assigned to ${assignedAgents.length} people`}
                 </span>
               )}
-              {assignedAgents.length > 0 && (
+              {assignedAgents.length > 0 && conversation.status !== 'bot' && (
                 <span className="text-[10px] text-muted-foreground truncate">
                   {assignedAgents.map(a => a.email).join(', ')}
                 </span>
