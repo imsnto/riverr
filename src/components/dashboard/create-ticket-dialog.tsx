@@ -47,8 +47,8 @@ type TicketFormValues = z.infer<typeof ticketSchema>;
 interface CreateTicketDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  activeHub: Hub;
-  activeSpace: Space;
+  activeHub: Hub | null;
+  activeSpace: Space | null;
   allUsers: User[];
   onCreateTicket: (ticketData: Omit<Ticket, 'id'>, escalateNow: boolean, intakeRuleId?: string) => void;
   allHubs: Hub[];
@@ -119,22 +119,22 @@ export default function CreateTicketDialog({
   const displayContact = contactInfo || selectedContact;
 
   const intraHubEscalationProject = useMemo(() => {
-    if (!activeHub.settings?.intraHubEscalationProjectId) return null;
+    if (!activeHub?.settings?.intraHubEscalationProjectId) return null;
     return projects.find(p => p.id === activeHub.settings.intraHubEscalationProjectId);
   }, [activeHub, projects]);
 
   const availableRules = useMemo(() => {
-    if (intraHubEscalationProject) return [];
+    if (!activeHub || intraHubEscalationProject) return [];
     return escalationRules.filter(rule => 
         rule.enabled &&
         rule.allowedSourceHubIds.includes(activeHub.id) &&
         rule.allowedTypes.includes(ticketType)
     );
-  }, [intraHubEscalationProject, escalationRules, activeHub.id, ticketType]);
+  }, [intraHubEscalationProject, escalationRules, activeHub, ticketType]);
 
 
   const onSubmit = (values: TicketFormValues) => {
-    if (!appUser) return;
+    if (!appUser || !activeHub || !activeSpace) return;
     const now = new Date().toISOString();
     
     let finalIntakeRuleId = values.intakeRuleId;
@@ -165,6 +165,8 @@ export default function CreateTicketDialog({
     onCreateTicket(newTicket, values.escalateNow, finalIntakeRuleId);
     onOpenChange(false);
   };
+
+  if (!activeHub || !activeSpace) return null;
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>

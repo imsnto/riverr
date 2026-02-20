@@ -57,6 +57,7 @@ import { DealFormValues } from './create-deal-dialog';
 import { reindexArticleAction } from '@/app/actions/chat';
 import TicketsBoard from './tickets-board';
 import { ContentSkeleton } from './content-skeleton';
+import { LayoutTemplate } from 'lucide-react';
 
 const isUnread = (mention: any, lastRead: string | null) => {
   if (!lastRead) return true;
@@ -410,6 +411,23 @@ export default function Dashboard({ view }: { view: string }) {
   };
 
   const renderView = () => {
+    const hubRequiredViews = ['overview', 'tasks', 'tickets', 'deals', 'inbox', 'help-center', 'flows'];
+    const isHubRequired = hubRequiredViews.includes(view);
+
+    if (isHubRequired && !activeHub) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full text-center p-8 bg-card">
+                <div className="bg-primary/10 p-4 rounded-full mb-4">
+                    <LayoutTemplate className="h-12 w-12 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">Select a Hub</h3>
+                <p className="text-muted-foreground max-w-sm">
+                    Please select a hub from the sidebar workspace menu to view your {view}.
+                </p>
+            </div>
+        );
+    }
+
     const op = { projects, tasks, timeEntries, activeSpace, activeHub, allUsers, appUser, unreadMentions, onTaskSelect: setSelectedTask, jobs, jobFlowTemplates, jobFlowTasks, onUpdateTask: handleUpdateTask, onDataRefresh: fetchData };
     const sp = { allUsers, allSpaces: userSpaces, allHubs, onSave: handleSpaceSave, onDelete: db.deleteSpace, appUser, onInvite: fetchData, handleInvite: async (i: any) => { await db.addInvite(i); fetchData(); }, projects, tasks, timeEntries, activeHub, onUpdateActiveHub: handleUpdateActiveHub, bots, onBotUpdate: handleBotUpdate, onBotAdd: handleBotAdd, onBotDelete: handleBotDelete, escalationRules, tickets, conversations: chatConversations };
     const cv = view as AppView;
@@ -436,7 +454,7 @@ export default function Dashboard({ view }: { view: string }) {
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       {renderView()}
       <ProjectFormDialog isOpen={isProjectFormOpen} onOpenChange={setIsProjectFormOpen} onSave={handleSaveProject} project={editingProject} spaceId={activeSpace?.id || ''} spaceMembers={allUsers.filter(u => activeSpace?.members[u.id])} />
-      {selectedTask && (<TaskDetailsDialog task={selectedTask} timeEntries={timeEntries.filter(t => t.task_id === selectedTask?.id)} isOpen={!!selectedTask} onOpenChange={(o) => { if (!o) setSelectedTask(null); }} onUpdateTask={handleUpdateTask} onAddTask={async (td, tid) => { const nt = await handleAddTask(td); return nt; }} onRemoveTask={handleDeleteTask} onTaskSelect={setSelectedTask} onLogTime={handleLogTime} statuses={activeHub!.statuses?.map(s => s.name) || []} allUsers={allUsers} allTasks={tasks} projects={projects} />)}
+      {selectedTask && (<TaskDetailsDialog task={selectedTask} timeEntries={timeEntries.filter(t => t.task_id === selectedTask?.id)} isOpen={!!selectedTask} onOpenChange={(o) => { if (!o) setSelectedTask(null); }} onUpdateTask={handleUpdateTask} onAddTask={async (td, tid) => { const nt = await handleAddTask(td); return nt; }} onRemoveTask={handleDeleteTask} onTaskSelect={setSelectedTask} onLogTime={handleLogTime} statuses={activeHub?.statuses?.map(s => s.name) || []} allUsers={allUsers} allTasks={tasks} projects={projects} />)}
     </div>
   );
 }
