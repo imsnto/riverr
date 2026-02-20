@@ -1,4 +1,3 @@
-
 'use client'
 
 import {
@@ -55,19 +54,13 @@ import {
   BrainJob,
 } from "./data";
 import seedData from './riverr-help-data.json';
+import { generateWhimsicalName } from "./utils";
 
 const generateRandomProjectKey = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   return chars.charAt(Math.floor(Math.random() * chars.length)) + 
          chars.charAt(Math.floor(Math.random() * chars.length));
 };
-
-export const whimsicalAdjectives = ["Clever", "Silly", "Witty", "Happy", "Brave", "Curious", "Dapper", "Eager", "Fancy", "Gentle", "Jolly", "Kindly", "Lucky", "Merry", "Nifty", "Plucky", "Quirky", "Sunny", "Thrifty", "Zippy", "Agile", "Blissful", "Calm", "Dandy", "Elated", "Fearless"];
-export const whimsicalNouns = ["Alpaca", "Badger", "Capybara", "Dingo", "Echidna", "Fossa", "Gecko", "Hedgehog", "Impala", "Jerboa", "Koala", "Loris", "Mongoose", "Narwhal", "Okapi", "Pangolin", "Quokka", "Serval", "Tarsier", "Urial", "Wallaby", "Xerus", "Zebra", "Aardvark"];
-
-export function generateWhimsicalName() {
-  return `${whimsicalAdjectives[Math.floor(Math.random()*whimsicalAdjectives.length)]} ${whimsicalNouns[Math.floor(Math.random()*whimsicalNouns.length)]}`;
-}
 
 const defaultTaskStatuses: Status[] = [
     { name: 'Backlog', color: '#6b7280' },
