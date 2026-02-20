@@ -1,3 +1,4 @@
+
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -10,7 +11,7 @@ export const whimsicalNouns = ["Alpaca", "Badger", "Capybara", "Dingo", "Echidna
 
 export function getInitials(name: string | null | undefined): string {
     if (!name) return '';
-    const words = name.split(' ').filter(Boolean);
+    const words = name.trim().split(' ').filter(Boolean);
     if (words.length >= 2) {
         return (words[0][0] + words[1][0]).toUpperCase();
     }
@@ -22,7 +23,7 @@ export function getInitials(name: string | null | undefined): string {
 
 export function isWhimsical(name: string | null | undefined) {
   if (!name) return true;
-  const words = name.split(' ');
+  const words = name.trim().split(' ').filter(Boolean);
   return words.length === 2 && whimsicalAdjectives.includes(words[0]) && whimsicalNouns.includes(words[1]);
 }
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -75,10 +76,10 @@ export default function ContactsList({
                                 <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
                             </Avatar>
                             <div className="overflow-hidden">
-                                <p className="font-semibold truncate flex items-center gap-2">
+                                <div className="font-semibold truncate flex items-center gap-2">
                                     {contact.name || 'Anonymous'}
                                     {isAnonymous && <Badge variant="outline">Anonymous</Badge>}
-                                </p>
+                                </div>
                                 <p className="text-sm text-muted-foreground truncate">{contact.primaryEmail || contact.primaryPhone}</p>
                             </div>
                         </div>
