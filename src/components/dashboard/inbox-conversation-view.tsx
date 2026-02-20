@@ -90,6 +90,13 @@ export default function InboxConversationView({
   const [isCreateTicketOpen, setIsCreateTicketOpen] = useState(false);
   const [isTicketDetailsOpen, setIsTicketDetailsOpen] = useState(false);
 
+  // Define Hooks at top level
+  const assignedAgents = useMemo(() => {
+    if (!conversation) return [];
+    const ids = conversation.assignedAgentIds || (conversation.assigneeId ? [conversation.assigneeId] : []);
+    return users.filter(u => ids.includes(u.id));
+  }, [conversation, users]);
+
   const activeTicket = useMemo(() => {
     if (!conversation || !tickets || !activeHub) return null;
     const closingStatus = activeHub.ticketClosingStatusName || 'Closed';
@@ -97,6 +104,11 @@ export default function InboxConversationView({
       .filter(t => t.conversationId === conversation.id && t.status !== closingStatus)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
   }, [conversation, tickets, activeHub]);
+
+  const ticketPillAssignee = useMemo(() => {
+    if (!activeTicket) return null;
+    return users.find(u => u.id === activeTicket.assignedTo) || null;
+  }, [activeTicket, users]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -120,17 +132,6 @@ export default function InboxConversationView({
       return () => window.removeEventListener('focus', onFocus);
     }
   }, [conversation?.id, conversation?.lastMessageAt, appUser]);
-
-  const assignedAgents = useMemo(() => {
-    if (!conversation) return [];
-    const ids = conversation.assignedAgentIds || (conversation.assigneeId ? [conversation.assigneeId] : []);
-    return users.filter(u => ids.includes(u.id));
-  }, [conversation, users]);
-
-  const ticketPillAssignee = useMemo(() => {
-    if (!activeTicket) return null;
-    return users.find(u => u.id === activeTicket.assignedTo) || null;
-  }, [activeTicket, users]);
 
   if (!conversation || !contact) {
     return (
@@ -348,11 +349,18 @@ export default function InboxConversationView({
             </DropdownMenu>
 
             <div className="flex flex-col justify-center min-w-0 leading-tight">
-              <span className="text-sm font-semibold truncate">
-                {assignedAgents.length === 0 ? 'Unassigned' : 
-                 assignedAgents.length === 1 ? `Assigned to ${assignedAgents[0].name}` :
-                 `Assigned to ${assignedAgents.length} people`}
-              </span>
+              {conversation.status === 'bot' ? (
+                <div className="flex items-center gap-1.5">
+                  <Bot className="h-3.5 w-3.5 text-indigo-400" />
+                  <span className="text-sm font-semibold text-indigo-400">AI Agent Active</span>
+                </div>
+              ) : (
+                <span className="text-sm font-semibold truncate">
+                  {assignedAgents.length === 0 ? 'Unassigned' : 
+                   assignedAgents.length === 1 ? `Assigned to ${assignedAgents[0].name}` :
+                   `Assigned to ${assignedAgents.length} people`}
+                </span>
+              )}
               {assignedAgents.length > 0 && (
                 <span className="text-[10px] text-muted-foreground truncate">
                   {assignedAgents.map(a => a.email).join(', ')}

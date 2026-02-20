@@ -469,7 +469,7 @@ export default function Dashboard({ view }: { view: string }) {
   };
 
   const renderView = () => {
-    const hubRequiredViews = ['overview', 'tasks', 'tickets', 'deals', 'inbox', 'help-center', 'flows'];
+    const hubRequiredViews = ['overview', 'tasks', 'tickets', 'deals', 'inbox', 'help-center' /*, 'flows'*/];
     const isHubRequired = hubRequiredViews.includes(view);
 
     if (isHubRequired && !activeHub) {
@@ -504,6 +504,7 @@ export default function Dashboard({ view }: { view: string }) {
       case 'settings': return <SettingsLayout {...sp} />;
       case 'team-timesheets': return <TeamTimesheets allSpaces={userSpaces} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser!} activeHub={activeHub} />;
       case 'inbox': return <InboxLayout users={allUsers} appUser={appUser!} visitors={visitors} conversations={activeHub ? chatConversations.filter(c => c.hubId === activeHub.id) : []} messages={chatMessages} onSendMessage={handleSendMessageFromAgent} onAssignConversation={handleAssignConversation} setHideMobileBottomNav={setHideMobileBottomNav} activeHub={activeHub!} activeSpace={activeSpace!} allHubs={allHubs} escalationRules={escalationRules} projects={projects} contacts={contacts} onDataRefresh={fetchData} tickets={tickets} onCreateTicket={handleCreateTicket} onUpdateTicket={handleUpdateTicket} />;
+      // case 'flows': return <div className="flex h-full min-h-0 flex-1 min-w-0"><JobFlowBoard activeSpace={activeSpace!} allUsers={allUsers} jobFlowTemplates={jobFlowTemplates} jobs={jobs} jobFlowTasks={jobFlowTasks} tasks={tasks} onJobLaunched={fetchData} onUpdateTask={handleUpdateTask} onTaskSelect={setSelectedTask} /></div>;
       default: return <div className="p-8"><h1 className="text-2xl font-bold">Coming Soon: {view}</h1></div>;
     }
   };

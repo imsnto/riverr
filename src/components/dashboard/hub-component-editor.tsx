@@ -25,7 +25,7 @@ const ALL_COMPONENTS: Record<string, { name: string; description: string; icon: 
     'contacts': { name: 'Contacts', description: 'View and manage all customer and lead profiles.', icon: <Users /> },
     'inbox': { name: 'Inbox', description: 'Live chat and messaging with visitors and customers.', icon: <MessageCircle /> },
     'tickets': { name: 'Tickets', description: 'Track and manage customer issues from open to resolved.', icon: <Headset /> },
-    'flows': { name: 'Workflows', description: 'Automate processes, assignments, and job flows.', icon: <Workflow /> },
+    // 'flows': { name: 'Workflows', description: 'Automate processes, assignments, and job flows.', icon: <Workflow /> },
 };
 
 
@@ -33,7 +33,7 @@ const CATEGORIES = [
     { name: 'Core Work', icon: <Briefcase />, components: ['tasks', 'help-center'] },
     { name: 'Sales', icon: <Star />, components: ['deals', 'contacts', 'inbox'] },
     { name: 'Support', icon: <Headset />, components: ['tickets', 'help-center', 'inbox'] },
-    { name: 'Automation', icon: <Workflow />, components: ['flows'] },
+    // { name: 'Automation', icon: <Workflow />, components: ['flows'] },
 ];
 
 interface HubComponentEditorProps {
@@ -96,6 +96,7 @@ export default function HubComponentEditor({ selected, setSelected }: HubCompone
                                   return (
                                       <button
                                           key={id}
+                                          type="button"
                                           onClick={() => handleToggle(id)}
                                           className={cn(
                                               "w-full text-left p-3 rounded-lg border-2 flex justify-between items-start transition-colors",

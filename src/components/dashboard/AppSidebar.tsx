@@ -174,7 +174,7 @@ const allMiddleItems: {
   { key: "inbox", icon: MessageCircle, label: 'Inbox' },
   { key: "contacts", icon: Users, label: 'Contacts' },
   { key: 'help-center', icon: BookOpen, label: 'Knowledge' },
-  { key: "flows", icon: Workflow, label: 'Flows' },
+  // { key: "flows", icon: Workflow, label: 'Flows' },
 ];
 
 const allBottomItems: {

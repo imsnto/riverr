@@ -1,5 +1,4 @@
 
-
 export const HUB_VIEWS = {
   overview: "/overview",
   tasks: "/tasks",
@@ -7,7 +6,7 @@ export const HUB_VIEWS = {
   deals: "/deals",
   inbox: "/inbox",
   "help-center": "/help-center",
-  flows: "/flows",
+  // flows: "/flows",
   'team-timesheets': "/team-timesheets",
   settings: "/settings",
   contacts: "/contacts",
