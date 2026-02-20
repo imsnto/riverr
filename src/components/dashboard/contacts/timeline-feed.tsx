@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useMemo } from 'react';
 import { ContactEvent, ContactEventType } from '@/lib/contacts-types';
@@ -13,6 +14,7 @@ import {
   PhoneOutgoing,
   MoreHorizontal,
   Trash2,
+  Bot,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
@@ -87,12 +89,13 @@ const TimelineEventRow = ({ event, allUsers, appUser, onDeleteNote, onOpenConver
     const Icon = eventIcons[event.type] || StickyNote;
     const canDeleteNote = event.type === 'note' && event.ref.createdBy === appUser?.id;
     const conversationId = event.type.startsWith('chat_') ? event.ref.conversationId : null;
+    const isAI = event.ref?.createdBy === 'ai_agent';
     const createdByAgent = event.ref?.createdBy && event.ref.createdBy === appUser?.id;
 
     return (
         <div className="relative flex items-start gap-3 group py-2 pl-12">
             <div className="absolute left-4 top-[9px] -translate-x-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background border-2 border-border">
-                 <Icon className="h-4 w-4 text-muted-foreground" />
+                 {isAI ? <Bot className="h-4 w-4 text-indigo-400" /> : <Icon className="h-4 w-4 text-muted-foreground" />}
             </div>
             <div className="flex-1 rounded-md p-3 pt-1.5 transition-colors hover:bg-muted/50">
                 <div className="flex justify-between items-start">
@@ -100,8 +103,10 @@ const TimelineEventRow = ({ event, allUsers, appUser, onDeleteNote, onOpenConver
                         <p>{event.summary}</p>
                         {event.type.startsWith('chat_') && (
                             <div className="text-xs text-muted-foreground flex items-center gap-2">
-                                <Badge variant="outline">{createdByAgent ? `From: ${appUser?.name}` : `From: Contact`}</Badge>
-                                <Badge variant="secondary">Widget</Badge>
+                                <Badge variant="outline" className="text-[10px] font-normal h-4">
+                                    {isAI ? 'AI Assistant' : createdByAgent ? `Rep: ${appUser?.name}` : `Contact`}
+                                </Badge>
+                                <Badge variant="secondary" className="text-[10px] font-normal h-4">Chat Session</Badge>
                             </div>
                         )}
                     </div>
@@ -134,7 +139,7 @@ const TimelineEventRow = ({ event, allUsers, appUser, onDeleteNote, onOpenConver
                          </DropdownMenu>
                     </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-[10px] uppercase font-bold tracking-tight text-muted-foreground/60 mt-1">
                     {formatDistanceToNow(getDateFromTimestamp(event.timestamp), { addSuffix: true })}
                 </p>
             </div>
@@ -204,9 +209,10 @@ export default function TimelineFeed({ contactId, events = [], allUsers, appUser
                     key={filter.key} 
                     variant={activeFilter === filter.key ? 'secondary' : 'ghost'}
                     size="sm"
+                    className="h-7 text-xs px-2.5"
                     onClick={() => setActiveFilter(filter.key)}
                 >
-                    {filter.label} {eventCounts[filter.key] > 0 && `(${eventCounts[filter.key]})`}
+                    {filter.label} {eventCounts[filter.key] > 0 && <span className="ml-1 opacity-50">{eventCounts[filter.key]}</span>}
                 </Button>
             ))}
         </div>

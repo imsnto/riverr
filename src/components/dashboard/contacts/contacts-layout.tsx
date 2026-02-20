@@ -113,7 +113,7 @@ export default function ContactsLayout({ activeSpace, contacts: propContacts }: 
 
   if (isLoading) {
     return (
-        <div className="grid h-full grid-cols-1 md:grid-cols-[380px_1fr]">
+        <div className="grid h-full grid-cols-1 md:grid-cols-[300px_1fr]">
             <div className="flex flex-col h-full border-r bg-card p-4 space-y-4">
                 <div className="flex items-center justify-between">
                     <Skeleton className="h-8 w-32" />
@@ -178,7 +178,7 @@ export default function ContactsLayout({ activeSpace, contacts: propContacts }: 
   }
 
   return (
-    <div className="grid h-full grid-cols-1 md:grid-cols-[380px_1fr]">
+    <div className="grid h-full grid-cols-1 md:grid-cols-[300px_1fr]">
       <ContactsList
         contacts={displayContacts}
         selectedContact={selectedContact}

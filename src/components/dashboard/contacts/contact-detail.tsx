@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Contact, ContactEvent } from '@/lib/contacts-types';
@@ -5,7 +6,7 @@ import { User } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { AtSign, Edit, Phone, Tag, MoreHorizontal, MessageSquare, Mail, PlusCircle, Copy, ArrowLeft } from 'lucide-react';
+import { AtSign, Edit, Phone, Tag, MoreHorizontal, MessageSquare, Mail, PlusCircle, Copy, ArrowLeft, Users2 } from 'lucide-react';
 import TimelineFeed from './timeline-feed';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -99,13 +100,22 @@ export default function ContactDetail({ contact, onBack, allUsers, appUser }: Co
 
   if (!contact) {
     return (
-      <div className="hidden h-full items-center justify-center bg-background p-8 md:flex">
-        <div className="text-center">
-          <AtSign className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-4 text-lg font-medium">Select a contact</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Choose a contact from the list to see their details.
-          </p>
+      <div className="hidden h-full flex-col items-center justify-center bg-background md:flex p-12 text-center">
+        <div className="max-w-sm space-y-6">
+            <div className="mx-auto w-24 h-24 rounded-full bg-primary/5 border-2 border-dashed border-primary/20 flex items-center justify-center">
+                <Users2 className="h-10 w-10 text-primary/40" />
+            </div>
+            <div>
+                <h3 className="text-xl font-bold tracking-tight">Select a contact</h3>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                    Choose a customer or lead from the list to view their full profile, timeline, and communication history.
+                </p>
+            </div>
+            <div className="pt-4 flex flex-col gap-2">
+                <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
+                <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/50">Pro Tip</p>
+                <p className="text-xs text-muted-foreground/70">Use the search bar to find contacts by name, email, or company.</p>
+            </div>
         </div>
       </div>
     );
