@@ -10,17 +10,30 @@ export class TwilioMessagingProvider implements MessagingProvider {
     this.client = twilio(accountSid, authToken);
   }
 
+  /**
+   * Validates that the request genuinely came from Twilio.
+   */
   validateWebhook(req: any): boolean {
-    const signature = req.headers['x-twilio-signature'];
-    const url = req.protocol + '://' + req.get('host') + req.originalUrl;
+    const signature = req.headers['x-twilio-signature'] || '';
+    
+    // In cloud environments (like Firebase/GCP), the original protocol is often passed in a header.
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.headers['host'] || req.get('host');
+    const url = protocol + '://' + host + req.originalUrl;
+    
     const params = req.body;
+    
     return twilio.validateRequest(this.authToken, signature, url, params);
   }
 
+  /**
+   * Maps a Twilio request body to a normalized InboundSms object.
+   */
   parseInboundSms(req: any): InboundSms {
     const b = req.body;
     const media: { url: string; contentType?: string }[] = [];
     const numMedia = parseInt(b.NumMedia || '0', 10);
+    
     for (let i = 0; i < numMedia; i++) {
       media.push({
         url: b[`MediaUrl${i}`],
@@ -37,6 +50,9 @@ export class TwilioMessagingProvider implements MessagingProvider {
     };
   }
 
+  /**
+   * Maps a Twilio status callback to a normalized SmsStatus object.
+   */
   parseSmsStatus(req: any): SmsStatus {
     const b = req.body;
     return {
@@ -66,6 +82,9 @@ export class TwilioMessagingProvider implements MessagingProvider {
     }
   }
 
+  /**
+   * Sends an outbound SMS via Twilio.
+   */
   async sendSms(args: {
     from: string;
     to: string;
