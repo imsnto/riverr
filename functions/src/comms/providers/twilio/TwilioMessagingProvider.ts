@@ -1,13 +1,13 @@
 
-import * as twilio from 'twilio';
+import { Twilio, validateRequest } from 'twilio';
 import { MessagingProvider, InboundSms, SmsStatus } from '../MessagingProvider';
 
 export class TwilioMessagingProvider implements MessagingProvider {
   readonly name = 'twilio';
-  private client: twilio.Twilio;
+  private client: Twilio;
 
   constructor(private accountSid: string, private authToken: string) {
-    this.client = twilio(accountSid, authToken);
+    this.client = new Twilio(accountSid, authToken);
   }
 
   /**
@@ -26,7 +26,7 @@ export class TwilioMessagingProvider implements MessagingProvider {
     // Body MUST be parsed from x-www-form-urlencoded into a plain object (handled by default in CF v2)
     const params = req.body || {};
 
-    return twilio.validateRequest(this.authToken, signature, url, params);
+    return validateRequest(this.authToken, signature, url, params);
   }
 
   /**

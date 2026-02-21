@@ -20,10 +20,6 @@ function normalizePhoneFallback(raw: string): string {
   return keepPlus ? `+${digits}` : digits;
 }
 
-/**
- * POST /api/twilio/sms/inbound
- * Handled by Twilio Webhook when a message is received.
- */
 export const twilioSmsInbound = onRequest(
   { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID] },
   async (req, res) => {
@@ -32,7 +28,6 @@ export const twilioSmsInbound = onRequest(
       authToken: TWILIO_AUTH_TOKEN.value(),
     });
 
-    // 1. Validate webhook signature using canonical URL
     const baseUrl = PUBLIC_BASE_URL.value();
     if (!provider.validateWebhook(req, baseUrl)) {
       logger.warn("Unauthorized Twilio webhook attempt (inbound)");
@@ -44,10 +39,8 @@ export const twilioSmsInbound = onRequest(
       const inbound = provider.parseInboundSms(req);
       const { to, from, body, providerMessageId, media } = inbound;
 
-      // 2. Resolve To number to identify Space and Hub
-      // Lookup ID format: twilio_sms_+14155551234 (normalized)
-      const toNormalizedId = normalizePhoneFallback(to);
-      const lookupRef = db.doc(`phone_channel_lookups/twilio_sms_${toNormalizedId}`);
+      const toNormalized = normalizePhoneFallback(to);
+      const lookupRef = db.doc(`phone_channel_lookups/twilio_sms_${toNormalized}`);
       const lookupSnap = await lookupRef.get();
 
       if (!lookupSnap.exists || !lookupSnap.get('isActive')) {
@@ -57,16 +50,13 @@ export const twilioSmsInbound = onRequest(
       }
 
       const { spaceId, hubId } = lookupSnap.data() as any;
-
-      // 3. Resolve Contact via Phone
-      const fromE164 = from;
       const fromNormalized = normalizePhoneFallback(from);
       
+      // CRM Linking logic
       let contactId: string | null = null;
-      
       const contactQuery = await db.collection("contacts")
         .where("spaceId", "==", spaceId)
-        .where("primaryPhoneE164", "==", fromE164)
+        .where("primaryPhoneE164", "==", from)
         .limit(1)
         .get();
         
@@ -78,30 +68,20 @@ export const twilioSmsInbound = onRequest(
           .where("primaryPhoneNormalized", "==", fromNormalized)
           .limit(1)
           .get();
-        if (!normQuery.empty) {
-          contactId = normQuery.docs[0].id;
-        } else {
-          const rawQuery = await db.collection("contacts")
-            .where("spaceId", "==", spaceId)
-            .where("primaryPhone", "==", fromE164)
-            .limit(1)
-            .get();
-          if (!rawQuery.empty) contactId = rawQuery.docs[0].id;
-        }
+        if (!normQuery.empty) contactId = normQuery.docs[0].id;
       }
 
-      // 4. Create new contact if not found
       if (!contactId) {
         const newContactRef = await db.collection("contacts").add({
           spaceId,
-          name: fromE164,
-          primaryPhone: fromE164,
-          primaryPhoneE164: fromE164,
+          name: from,
+          primaryPhone: from,
+          primaryPhoneE164: from,
           primaryPhoneNormalized: fromNormalized,
           phoneNormalizationStatus: 'e164',
           source: 'sms',
           emails: [],
-          phones: [fromE164],
+          phones: [from],
           externalIds: {},
           tags: [],
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -110,17 +90,9 @@ export const twilioSmsInbound = onRequest(
           mergeParentId: null
         });
         contactId = newContactRef.id;
-        
-        await newContactRef.collection("events").add({
-          type: 'identity_added',
-          summary: 'Contact created automatically from inbound SMS.',
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          ref: { source: 'sms', hubId, spaceId }
-        });
       }
 
-      // 5. Ensure deterministic conversation
-      const conversationId = `sms_${spaceId}_${toNormalizedId.replace(/\+/g, '')}_${fromNormalized.replace(/\+/g, '')}`;
+      const conversationId = `sms_${spaceId}_${toNormalized.replace(/\+/g, '')}_${fromNormalized.replace(/\+/g, '')}`;
       const convoRef = db.doc(`conversations/${conversationId}`);
 
       await db.runTransaction(async (tx) => {
@@ -138,7 +110,6 @@ export const twilioSmsInbound = onRequest(
             channelProvider: 'twilio',
             channelAddress: to,
             externalAddress: from,
-            visitorPhone: from,
             lastMessage: body.slice(0, 140),
             lastMessageAt: now,
             lastMessageAuthor: from,
@@ -155,7 +126,6 @@ export const twilioSmsInbound = onRequest(
           });
         }
 
-        // 6. Create message idempotently
         const msgRef = db.doc(`chat_messages/twilio_${providerMessageId}`);
         tx.set(msgRef, {
           conversationId,
@@ -173,7 +143,7 @@ export const twilioSmsInbound = onRequest(
       res.status(200).send("<Response></Response>");
     } catch (err: any) {
       logger.error("Inbound SMS error", err);
-      res.status(200).send("OK"); // Avoid retry storms on logic errors
+      res.status(200).send("OK");
     }
   }
 );

@@ -19,7 +19,7 @@ export interface MessagingProvider {
   /**
    * Validates that the request genuinely came from the provider.
    * @param req The raw request object.
-   * @param baseUrl The canonical public base URL of the application.
+   * @param baseUrl The canonical public base URL of the application for signature matching.
    */
   validateWebhook(req: any, baseUrl: string): boolean;
   parseInboundSms(req: any): InboundSms;
