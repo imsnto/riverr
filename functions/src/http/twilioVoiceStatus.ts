@@ -27,31 +27,54 @@ export const twilioVoiceStatus = onRequest(
     try {
       const { providerCallId, status, durationSeconds } = provider.parseCallStatus(req);
       
-      const eventRef = db.doc(`chat_messages/twilio_call_${providerCallId}_status_${status}`);
-      const eventSnap = await db.collection("chat_messages")
-        .where("providerCallId", "==", providerCallId)
-        .where("type", "==", "event")
-        .limit(1).get();
+      const lookupRef = db.doc(`provider_call_lookups/twilio_${providerCallId}`);
+      const lookupSnap = await lookupRef.get();
 
-      if (!eventSnap.empty) {
-        const baseEvent = eventSnap.docs[0].data();
-        const conversationId = baseEvent.conversationId;
+      if (lookupSnap.exists) {
+        const { conversationId } = lookupSnap.data() as any;
         const now = new Date().toISOString();
 
-        let eventType: any = `call_${status}`;
-        if (status === 'completed') eventType = 'call_ended';
-        if (['busy', 'failed', 'no-answer', 'canceled'].includes(status)) eventType = 'call_missed';
+        // Map Twilio status to internal eventType (ensuring no hyphens and matching UI)
+        let eventType: 'call_ringing' | 'call_answered' | 'call_ended' | 'call_missed';
+        
+        switch(status) {
+            case 'ringing': eventType = 'call_ringing'; break;
+            case 'in-progress': eventType = 'call_answered'; break;
+            case 'completed': eventType = 'call_ended'; break;
+            case 'busy':
+            case 'failed':
+            case 'no-answer':
+            case 'canceled':
+                eventType = 'call_missed';
+                break;
+            default:
+                res.status(200).send("OK");
+                return;
+        }
 
-        await eventRef.set({
-          ...baseEvent,
-          id: eventRef.id,
+        const msgId = `twilio_call_${providerCallId}_status_${eventType}`;
+        await db.doc(`chat_messages/${msgId}`).set({
+          conversationId,
+          type: 'event',
           eventType,
+          senderType: 'contact',
           durationSeconds: durationSeconds || null,
           timestamp: now,
+          channel: 'voice',
+          provider: 'twilio',
+          providerCallId,
         }, { merge: true });
 
-        // Update convo metadata
-        const label = eventType === 'call_ended' ? `Call ended (${durationSeconds}s)` : `Call ${status}`;
+        // Update convo metadata with mm:ss formatting for ended calls
+        let label = `Call ${status}`;
+        if (eventType === 'call_ended' && durationSeconds) {
+            const mins = Math.floor(durationSeconds / 60);
+            const secs = durationSeconds % 60;
+            label = `Call ended (${mins}:${secs.toString().padStart(2, '0')})`;
+        } else if (eventType === 'call_missed') {
+            label = `Call missed`;
+        }
+
         await db.doc(`conversations/${conversationId}`).update({
           lastMessage: label,
           lastMessageAt: now,

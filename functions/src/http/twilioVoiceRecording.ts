@@ -27,23 +27,28 @@ export const twilioVoiceRecording = onRequest(
     const { RecordingUrl, CallSid, RecordingDuration } = req.body;
 
     try {
-      const eventSnap = await db.collection("chat_messages")
-        .where("providerCallId", "==", CallSid)
-        .limit(1).get();
+      const lookupRef = db.doc(`provider_call_lookups/twilio_${CallSid}`);
+      const lookupSnap = await lookupRef.get();
 
-      if (!eventSnap.empty) {
-        const baseEvent = eventSnap.docs[0].data();
+      if (lookupSnap.exists) {
+        const { conversationId } = lookupSnap.data() as any;
         const now = new Date().toISOString();
 
-        await db.collection("chat_messages").add({
-          ...baseEvent,
+        const msgId = `twilio_call_${CallSid}_voicemail`;
+        await db.doc(`chat_messages/${msgId}`).set({
+          conversationId,
+          type: 'event',
           eventType: 'voicemail_recorded',
+          senderType: 'contact',
           recordingUrl: RecordingUrl,
           durationSeconds: parseInt(RecordingDuration, 10),
           timestamp: now,
-        });
+          channel: 'voice',
+          provider: 'twilio',
+          providerCallId: CallSid,
+        }, { merge: true });
 
-        await db.doc(`conversations/${baseEvent.conversationId}`).update({
+        await db.doc(`conversations/${conversationId}`).update({
           lastMessage: 'New voicemail recorded',
           lastMessageAt: now,
           updatedAt: now,

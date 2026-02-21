@@ -3,7 +3,6 @@ import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import { getVoiceProvider } from "../comms/providerFactory";
-import { normalizePhoneFallback } from "../comms/utils";
 import { logger } from "firebase-functions";
 
 const PUBLIC_BASE_URL = defineSecret("PUBLIC_BASE_URL");
@@ -25,13 +24,19 @@ export const twilioVoiceDialResult = onRequest(
       return;
     }
 
-    const { DialCallStatus, To } = req.body;
-    const toNormalized = normalizePhoneFallback(To);
+    const { DialCallStatus } = req.body;
+    // Get To from query params as backup (Twilio Dial action body is inconsistent with 'To')
+    const toNormalized = String(req.query.to || "");
     
-    // If completed, we just finish. Otherwise, check for voicemail fallback.
     if (DialCallStatus === 'completed') {
       res.type('text/xml').send('<Response><Hangup/></Response>');
       return;
+    }
+
+    if (!toNormalized) {
+        logger.warn("twilioVoiceDialResult: Missing toNormalized context");
+        res.type('text/xml').send('<Response><Hangup/></Response>');
+        return;
     }
 
     const lookupRef = db.doc(`phone_channel_lookups/twilio_voice_${toNormalized}`);

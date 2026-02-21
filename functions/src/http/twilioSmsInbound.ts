@@ -3,6 +3,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import { getMessagingProvider } from "../comms/providerFactory";
+import { normalizePhoneFallback } from "../comms/utils";
 import { logger } from "firebase-functions";
 
 const PUBLIC_BASE_URL = defineSecret("PUBLIC_BASE_URL");
@@ -11,14 +12,6 @@ const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
-
-function normalizePhoneFallback(raw: string): string {
-  if (!raw) return "";
-  const trimmed = raw.trim();
-  const keepPlus = trimmed.startsWith("+");
-  const digits = trimmed.replace(/[^\d]/g, "");
-  return keepPlus ? `+${digits}` : digits;
-}
 
 export const twilioSmsInbound = onRequest(
   { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID] },
@@ -110,6 +103,8 @@ export const twilioSmsInbound = onRequest(
             channelProvider: 'twilio',
             channelAddress: to,
             externalAddress: from,
+            assigneeId: null,
+            assignedAgentIds: [],
             lastMessage: body.slice(0, 140),
             lastMessageAt: now,
             lastMessageAuthor: from,

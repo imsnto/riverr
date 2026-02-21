@@ -38,10 +38,10 @@ export const twilioVoiceInbound = onRequest(
         return;
       }
 
-      const { spaceId, hubId, defaultForwardToE164, voicemailEnabled } = lookupSnap.data() as any;
+      const { spaceId, hubId, defaultForwardToE164 } = lookupSnap.data() as any;
       const fromNormalized = normalizePhoneFallback(from);
 
-      // CRM Linking logic (Reused pattern)
+      // CRM Linking logic
       let contactId: string | null = null;
       const contactQuery = await db.collection("contacts")
         .where("spaceId", "==", spaceId)
@@ -51,8 +51,14 @@ export const twilioVoiceInbound = onRequest(
 
       if (!contactId) {
         const newContactRef = await db.collection("contacts").add({
-          spaceId, name: from, primaryPhone: from, primaryPhoneE164: from, primaryPhoneNormalized: fromNormalized,
-          source: 'call', createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          spaceId,
+          name: from,
+          primaryPhone: from,
+          primaryPhoneE164: from,
+          primaryPhoneNormalized: fromNormalized,
+          source: 'call',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           isMerged: false,
         });
         contactId = newContactRef.id;
@@ -62,22 +68,56 @@ export const twilioVoiceInbound = onRequest(
       const convoRef = db.doc(`conversations/${conversationId}`);
       const now = new Date().toISOString();
 
+      // Ensure all required fields for Inbox UI
       await convoRef.set({
-        spaceId, hubId, contactId, status: 'human', channel: 'voice', channelProvider: 'twilio',
-        channelAddress: to, externalAddress: from, lastMessage: 'Incoming call...', lastMessageAt: now,
-        updatedAt: now, createdAt: now
+        spaceId,
+        hubId,
+        contactId,
+        status: 'human',
+        state: 'human_assigned',
+        channel: 'voice',
+        channelProvider: 'twilio',
+        channelAddress: to,
+        externalAddress: from,
+        assigneeId: null,
+        assignedAgentIds: [],
+        lastMessage: 'Incoming call...',
+        lastMessageAt: now,
+        lastMessageAuthor: from,
+        updatedAt: now,
+        createdAt: now
       }, { merge: true });
+
+      // Create a deterministic lookup for status and recording callbacks
+      await db.doc(`provider_call_lookups/twilio_${providerCallId}`).set({
+        conversationId,
+        spaceId,
+        hubId,
+        contactId,
+        from,
+        to,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
 
       const eventRef = db.doc(`chat_messages/twilio_call_${providerCallId}_started`);
       await eventRef.set({
-        conversationId, type: 'event', eventType: 'call_started', senderType: 'contact',
-        timestamp: now, channel: 'voice', provider: 'twilio', providerCallId, from, to
+        conversationId,
+        type: 'event',
+        eventType: 'call_started',
+        senderType: 'contact',
+        timestamp: now,
+        channel: 'voice',
+        provider: 'twilio',
+        providerCallId,
+        from,
+        to
       }, { merge: true });
 
       const twiml = provider.buildForwardTwiML({
         forwardToE164: defaultForwardToE164,
         statusCallbackUrl: `${baseUrl.replace(/\/$/, "")}/api/twilio/voice/status`,
-        actionUrl: `${baseUrl.replace(/\/$/, "")}/api/twilio/voice/dial-result`,
+        // Bake context into the dial-result URL
+        actionUrl: `${baseUrl.replace(/\/$/, "")}/api/twilio/voice/dial-result?to=${encodeURIComponent(toNormalized)}`,
       });
 
       res.type('text/xml').send(twiml);

@@ -226,10 +226,18 @@ export default function InboxConversationView({
         
         if (msg.eventType?.startsWith('call_') || msg.eventType === 'voicemail_recorded') {
             const Icon = msg.eventType === 'call_missed' ? PhoneMissed : msg.eventType === 'call_ended' ? PhoneOutgoing : msg.eventType === 'voicemail_recorded' ? Mic : PhoneIncoming;
-            const label = msg.eventType === 'call_started' ? 'Call started' : 
-                          msg.eventType === 'call_missed' ? 'Call missed' :
-                          msg.eventType === 'call_ended' ? `Call ended (${msg.durationSeconds || 0}s)` :
-                          msg.eventType === 'voicemail_recorded' ? 'Voicemail received' : 'Call event';
+            
+            let label = 'Call event';
+            if (msg.eventType === 'call_started') label = 'Call started';
+            else if (msg.eventType === 'call_ringing') label = 'Call ringing';
+            else if (msg.eventType === 'call_answered') label = 'Call answered';
+            else if (msg.eventType === 'call_missed') label = 'Call missed';
+            else if (msg.eventType === 'call_ended') {
+                const secs = msg.durationSeconds || 0;
+                const mm = Math.floor(secs / 60);
+                const ss = secs % 60;
+                label = `Call ended (${mm}:${ss.toString().padStart(2, '0')})`;
+            } else if (msg.eventType === 'voicemail_recorded') label = 'Voicemail received';
 
             return (
                 <div key={msg.id} className="flex justify-center py-2">
