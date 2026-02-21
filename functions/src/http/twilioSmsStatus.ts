@@ -19,7 +19,10 @@ const db = admin.firestore();
 export const twilioSmsStatus = onRequest(
   { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID] },
   async (req, res) => {
-    const provider = getMessagingProvider('twilio');
+    const provider = getMessagingProvider('twilio', {
+      accountSid: TWILIO_ACCOUNT_SID.value(),
+      authToken: TWILIO_AUTH_TOKEN.value(),
+    });
 
     // 1. Validate webhook signature
     if (!provider.validateWebhook(req)) {

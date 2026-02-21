@@ -27,7 +27,10 @@ function normalizePhoneFallback(raw: string): string {
 export const twilioSmsInbound = onRequest(
   { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID] },
   async (req, res) => {
-    const provider = getMessagingProvider('twilio');
+    const provider = getMessagingProvider('twilio', {
+      accountSid: TWILIO_ACCOUNT_SID.value(),
+      authToken: TWILIO_AUTH_TOKEN.value(),
+    });
 
     // 1. Validate webhook signature
     if (!provider.validateWebhook(req)) {
@@ -58,6 +61,7 @@ export const twilioSmsInbound = onRequest(
       
       let contactId: string | null = null;
       
+      // A) Primary E.164 match
       const contactQuery = await db.collection("contacts")
         .where("spaceId", "==", spaceId)
         .where("primaryPhoneE164", "==", fromE164)
@@ -67,12 +71,23 @@ export const twilioSmsInbound = onRequest(
       if (!contactQuery.empty) {
         contactId = contactQuery.docs[0].id;
       } else {
+        // B) Normalized fallback match
         const normQuery = await db.collection("contacts")
           .where("spaceId", "==", spaceId)
           .where("primaryPhoneNormalized", "==", fromNormalized)
           .limit(1)
           .get();
-        if (!normQuery.empty) contactId = normQuery.docs[0].id;
+        if (!normQuery.empty) {
+          contactId = normQuery.docs[0].id;
+        } else {
+          // C) Legacy raw match
+          const rawQuery = await db.collection("contacts")
+            .where("spaceId", "==", spaceId)
+            .where("primaryPhone", "==", fromE164)
+            .limit(1)
+            .get();
+          if (!rawQuery.empty) contactId = rawQuery.docs[0].id;
+        }
       }
 
       if (!contactId) {
