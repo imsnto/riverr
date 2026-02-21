@@ -13,11 +13,10 @@ export class TwilioMessagingProvider implements MessagingProvider {
   /**
    * Validates that the request genuinely came from Twilio using a canonical base URL.
    */
-  validateWebhook(req: any): boolean {
+  validateWebhook(req: any, baseUrl: string): boolean {
     const signature = req.headers["x-twilio-signature"] || "";
-    const baseUrl = process.env.PUBLIC_BASE_URL;
     if (!baseUrl) {
-      console.error("TwilioMessagingProvider: PUBLIC_BASE_URL is not defined in environment.");
+      console.error("TwilioMessagingProvider: baseUrl is not defined for validation.");
       return false;
     }
 
@@ -48,7 +47,7 @@ export class TwilioMessagingProvider implements MessagingProvider {
     return {
       to: (b.To || '').trim(),
       from: (b.From || '').trim(),
-      body: b.Body,
+      body: b.Body || "",
       providerMessageId: b.MessageSid,
       media: media.length > 0 ? media : undefined,
     };

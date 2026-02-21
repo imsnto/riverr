@@ -1,3 +1,4 @@
+
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
@@ -24,7 +25,8 @@ export const twilioSmsStatus = onRequest(
     });
 
     // 1. Validate webhook signature using canonical URL
-    if (!provider.validateWebhook(req)) {
+    const baseUrl = PUBLIC_BASE_URL.value();
+    if (!provider.validateWebhook(req, baseUrl)) {
       logger.warn("Unauthorized Twilio webhook attempt (status)");
       res.status(401).send("Unauthorized");
       return;

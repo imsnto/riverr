@@ -16,7 +16,12 @@ export interface SmsStatus {
 
 export interface MessagingProvider {
   name: string;
-  validateWebhook(req: any): boolean;
+  /**
+   * Validates that the request genuinely came from the provider.
+   * @param req The raw request object.
+   * @param baseUrl The canonical public base URL of the application.
+   */
+  validateWebhook(req: any, baseUrl: string): boolean;
   parseInboundSms(req: any): InboundSms;
   parseSmsStatus(req: any): SmsStatus;
   sendSms(args: {
