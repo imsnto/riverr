@@ -1,4 +1,3 @@
-
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
@@ -24,7 +23,7 @@ export const twilioSmsStatus = onRequest(
       authToken: TWILIO_AUTH_TOKEN.value(),
     });
 
-    // 1. Validate webhook signature
+    // 1. Validate webhook signature using canonical URL
     if (!provider.validateWebhook(req)) {
       logger.warn("Unauthorized Twilio webhook attempt (status)");
       res.status(401).send("Unauthorized");
@@ -35,7 +34,7 @@ export const twilioSmsStatus = onRequest(
       const status = provider.parseSmsStatus(req);
       const { providerMessageId, status: deliveryStatus, errorCode, errorMessage } = status;
 
-      // Use the lookup collection to find the internal messageId
+      // 2. Use the lookup collection to find the internal messageId
       const lookupRef = db.doc(`provider_message_lookups/twilio_${providerMessageId}`);
       const lookupSnap = await lookupRef.get();
 

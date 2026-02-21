@@ -1,4 +1,3 @@
-
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
@@ -32,7 +31,7 @@ export const twilioSmsInbound = onRequest(
       authToken: TWILIO_AUTH_TOKEN.value(),
     });
 
-    // 1. Validate webhook signature
+    // 1. Validate webhook signature using canonical URL
     if (!provider.validateWebhook(req)) {
       logger.warn("Unauthorized Twilio webhook attempt (inbound)");
       res.status(401).send("Unauthorized");
@@ -44,6 +43,7 @@ export const twilioSmsInbound = onRequest(
       const { to, from, body, providerMessageId, media } = inbound;
 
       // 2. Resolve To number to identify Space and Hub
+      // Lookup ID format: twilio_sms_+14155551234
       const lookupRef = db.doc(`phone_channel_lookups/twilio_sms_${to}`);
       const lookupSnap = await lookupRef.get();
 
@@ -55,7 +55,7 @@ export const twilioSmsInbound = onRequest(
 
       const { spaceId, hubId } = lookupSnap.data() as any;
 
-      // 3. Resolve Contact via Phone (CRM Linking)
+      // 3. Resolve Contact via Phone (CRM Linking Priority: E.164 -> Normalized -> Raw)
       const fromE164 = from;
       const fromNormalized = normalizePhoneFallback(from);
       
@@ -90,6 +90,7 @@ export const twilioSmsInbound = onRequest(
         }
       }
 
+      // 4. Create new contact if not found
       if (!contactId) {
         const newContactRef = await db.collection("contacts").add({
           spaceId,
@@ -118,7 +119,7 @@ export const twilioSmsInbound = onRequest(
         });
       }
 
-      // 4. Ensure deterministic conversation
+      // 5. Ensure deterministic conversation
       const conversationId = `sms_${spaceId}_${to.replace(/[^\d+]/g, '')}_${from.replace(/[^\d+]/g, '')}`;
       const convoRef = db.doc(`conversations/${conversationId}`);
 
@@ -154,7 +155,7 @@ export const twilioSmsInbound = onRequest(
           });
         }
 
-        // 5. Create message idempotently
+        // 6. Create message idempotently (Use merge: true for retries)
         const msgRef = db.doc(`chat_messages/twilio_${providerMessageId}`);
         tx.set(msgRef, {
           conversationId,
