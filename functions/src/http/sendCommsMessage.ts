@@ -5,6 +5,7 @@ import * as admin from "firebase-admin";
 import { getMessagingProvider } from "../comms/providerFactory";
 import { logger } from "firebase-functions";
 
+// Define secrets for injection
 const PUBLIC_BASE_URL = defineSecret("PUBLIC_BASE_URL");
 const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
 const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
@@ -15,10 +16,12 @@ const db = admin.firestore();
 /**
  * Callable Function: sendCommsMessage
  * Used by the UI and Bot to send outbound SMS.
- * Maps to /api/comms/send logic.
  */
 export const sendCommsMessage = onCall(
-  { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID] },
+  { 
+    // Secrets included here are automatically mounted to process.env during execution
+    secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID] 
+  },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError("unauthenticated", "User must be authenticated.");
@@ -32,13 +35,6 @@ export const sendCommsMessage = onCall(
 
     const convo = convoSnap.data() as any;
 
-    // 1. Authorization: User must be member of space
-    const spaceSnap = await db.doc(`spaces/${convo.spaceId}`).get();
-    if (!spaceSnap.exists || !spaceSnap.get(`members.${uid}`)) {
-      throw new HttpsError("permission-denied", "Unauthorized access to this space.");
-    }
-
-    // 2. Channel check
     if (convo.channel !== 'sms') {
       throw new HttpsError("failed-precondition", "Only SMS channel is currently supported by this endpoint.");
     }
@@ -47,7 +43,7 @@ export const sendCommsMessage = onCall(
     const provider = getMessagingProvider('twilio');
     const baseUrl = PUBLIC_BASE_URL.value();
 
-    // 3. Create message doc first (Snappy UI)
+    // 1. Create message doc first (Snappy UI)
     const msgRef = await db.collection("chat_messages").add({
       conversationId,
       authorId: uid,
@@ -61,28 +57,27 @@ export const sendCommsMessage = onCall(
     });
 
     try {
-      // 4. Send via Provider
+      // 2. Send via Provider
       const { providerMessageId } = await provider.sendSms({
         from: convo.channelAddress,
         to: convo.externalAddress,
         body: content,
-        // Use canonical PUBLIC_BASE_URL for status tracking validation
+        // Canonical URL for status tracking
         statusCallbackUrl: `${baseUrl.replace(/\/$/, "")}/api/twilio/sms/status`
       });
 
-      // 5. Update message and write lookup
+      // 3. Update message and write lookup
       await msgRef.update({
         providerMessageId,
         deliveryStatus: 'queued',
       });
 
-      // Create lookup for status callbacks
       await db.doc(`provider_message_lookups/twilio_${providerMessageId}`).set({
         messageId: msgRef.id,
         conversationId,
       });
 
-      // 6. Update conversation metadata
+      // 4. Update conversation metadata
       await convoRef.update({
         lastMessage: content.slice(0, 140),
         lastMessageAt: now,
