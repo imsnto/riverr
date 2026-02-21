@@ -1,3 +1,4 @@
+
 // functions/src/index.ts
 export { sendInviteEmail } from "./sendInviteEmail";
 export { acceptInvite } from "./acceptInvite";
@@ -10,3 +11,8 @@ export {
   sendVisitorReplyEmail,
   scheduledAcknowledgementEmail 
 } from "./chatNotifications/emailNotifications";
+
+// SMS Webhooks and API
+export { twilioSmsInbound } from "./http/twilioSmsInbound";
+export { twilioSmsStatus } from "./http/twilioSmsStatus";
+export { sendCommsMessage } from "./http/sendCommsMessage";

@@ -512,6 +512,10 @@ export interface Conversation {
     reason?: string;
     offeredAt?: string; // ISO
   } | null;
+  channel: 'webchat' | 'sms';
+  channelProvider?: 'twilio';
+  channelAddress?: string; // Twilio number E.164
+  externalAddress?: string; // Customer phone E.164
 }
 
 export interface ChatMessage {
@@ -528,6 +532,13 @@ export interface ChatMessage {
   attachments?: Attachment[];
   visibility?: 'public' | 'internal';
   isInternal?: boolean;
+  channel?: 'webchat' | 'sms';
+  provider?: 'internal' | 'twilio';
+  providerMessageId?: string;
+  deliveryStatus?: 'created'|'queued'|'sent'|'delivered'|'failed'|'undelivered';
+  errorCode?: string;
+  errorMessage?: string;
+  media?: { url: string; contentType?: string }[];
 }
 
 // --- Help Center Interfaces ---
@@ -727,3 +738,28 @@ export interface LeadStateNode {
 
 
 export type MemoryNode = RawConversationNode | RawInteractionNode | SupportIntentNode | SalesPersonaSegmentNode | SalesMessagePatternNode | LeadStateNode;
+
+export interface Contact {
+  id: string;
+  spaceId: string;
+  name: string | null;
+  company: string | null;
+  emails: string[];
+  phones: string[];
+  primaryEmail: string | null;
+  primaryPhone: string | null;
+  primaryPhoneE164?: string | null;
+  primaryPhoneNormalized?: string | null;
+  phoneNormalizationStatus?: 'e164'|'fallback'|'unknown';
+  source: 'webchat' | 'sms' | 'manual' | 'order' | 'call' | 'chat';
+  externalIds: Record<string, string>;
+  tags: string[];
+  createdAt: any;
+  updatedAt: any;
+  lastSeenAt: any | null;
+  lastMessageAt: any | null;
+  lastOrderAt: any | null;
+  lastCallAt: any | null;
+  mergeParentId: string | null;
+  isMerged: boolean;
+}

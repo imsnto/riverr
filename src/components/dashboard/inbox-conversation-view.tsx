@@ -9,7 +9,7 @@ import { Textarea } from '../ui/textarea';
 import { cn, getInitials } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
-import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check, Bot } from 'lucide-react';
+import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check, Bot, Smartphone } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card } from '../ui/card';
@@ -18,6 +18,8 @@ import { Badge } from '../ui/badge';
 import TicketDetailsDialog from './ticket-details-dialog';
 import { marked } from 'marked';
 import * as db from '@/lib/db';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getApp } from 'firebase/app';
 
 interface InboxConversationViewProps {
   conversation: Conversation | null;
@@ -80,12 +82,12 @@ export default function InboxConversationView({
 }: InboxConversationViewProps) {
   const [isNote, setIsNote] = useState(false);
   const [messageText, setMessageText] = useState('');
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const [isCreateTicketOpen, setIsCreateTicketOpen] = useState(false);
   const [isTicketDetailsOpen, setIsTicketDetailsOpen] = useState(false);
 
-  // Moved hooks to the top to avoid conditional call errors
   const assignedAgents = useMemo(() => {
     if (!conversation) return [];
     const ids = conversation.assignedAgentIds || (conversation.assigneeId ? [conversation.assigneeId] : []);
@@ -136,20 +138,36 @@ export default function InboxConversationView({
     );
   }
 
-  const handleSend = () => {
-    if (!messageText.trim()) return;
+  const handleSend = async () => {
+    if (!messageText.trim() || isSending) return;
 
-    const newMessage: Omit<ChatMessage, 'id' | 'conversationId'> = {
-      authorId: appUser.id,
-      type: isNote ? 'note' : 'message',
-      senderType: 'agent',
-      content: messageText,
-      timestamp: new Date().toISOString(),
-    };
-
-    onSendMessage(conversation.id, newMessage);
-    setMessageText('');
-    setIsNote(false);
+    if (conversation.channel === 'sms' && !isNote) {
+      setIsSending(true);
+      try {
+        const functions = getFunctions(getApp());
+        const sendComms = httpsCallable(functions, 'sendCommsMessage');
+        await sendComms({
+          conversationId: conversation.id,
+          content: messageText
+        });
+        setMessageText('');
+      } catch (e: any) {
+        console.error("SMS send failed", e);
+      } finally {
+        setIsSending(false);
+      }
+    } else {
+      const newMessage: Omit<ChatMessage, 'id' | 'conversationId'> = {
+        authorId: appUser.id,
+        type: isNote ? 'note' : 'message',
+        senderType: 'agent',
+        content: messageText,
+        timestamp: new Date().toISOString(),
+      };
+      onSendMessage(conversation.id, newMessage);
+      setMessageText('');
+      setIsNote(false);
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -258,9 +276,12 @@ export default function InboxConversationView({
                 </div>
             )}
           </div>
-          <p className={cn("text-[11px] mt-1 opacity-70", isCustomer ? "" : "text-right")}>
-            {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}
-          </p>
+          <div className={cn("flex items-center gap-2 text-[11px] mt-1 opacity-70", isCustomer ? "" : "justify-end")}>
+            {msg.deliveryStatus && (
+              <span className="capitalize">{msg.deliveryStatus}</span>
+            )}
+            <span>{formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}</span>
+          </div>
         </div>
          {!isCustomer && agent && (
             <Avatar className="h-8 w-8">
@@ -279,7 +300,7 @@ export default function InboxConversationView({
         {/* Header */}
         <div className="p-3 flex justify-between items-center shrink-0 border-b">
           <div className="flex items-center gap-3 min-w-0">
-            {isMobile && onBack && (
+            {isBack && (
               <Button variant="ghost" size="icon" className="-ml-1" onClick={onBack}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
@@ -291,7 +312,14 @@ export default function InboxConversationView({
                     <AvatarImage src={contact.avatarUrl || undefined} alt={displayName} />
                     <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
                   </Avatar>
-                  <span className="font-semibold truncate max-w-[120px]">{displayName}</span>
+                  <div className="flex flex-col items-start min-w-0">
+                    <span className="font-semibold truncate max-w-[120px]">{displayName}</span>
+                    {conversation.channel === 'sms' && (
+                      <Badge variant="outline" className="h-4 px-1 text-[9px] gap-1">
+                        <Smartphone className="h-2 w-2" /> SMS
+                      </Badge>
+                    )}
+                  </div>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -458,9 +486,9 @@ export default function InboxConversationView({
                     size="icon" 
                     className="h-8 w-8 rounded-full" 
                     onClick={handleSend}
-                    disabled={!messageText.trim()}
+                    disabled={!messageText.trim() || isSending}
                 >
-                    <Send className="h-4 w-4" />
+                    {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
                 </div>
             </div>
@@ -503,7 +531,7 @@ export default function InboxConversationView({
           onUpdateTicket={onUpdateTicket}
           statuses={activeHub.ticketStatuses?.map(s => s.name) || defaultTicketStatuses.map(s => s.name)}
           allUsers={users}
-          contact={contact as any} // Cast to Contact if necessary, model is similar
+          contact={contact as any} 
           conversation={conversation}
           onEscalate={onEscalate}
           activeHub={activeHub}

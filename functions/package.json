@@ -19,7 +19,8 @@
     "firebase-functions": "^5.0.0",
     "genkit": "^1.27.0",
     "postmark": "^4.0.2",
-    "typesense": "^1.8.0"
+    "typesense": "^1.8.0",
+    "twilio": "^5.4.5"
   },
   "devDependencies": {
     "typescript": "^5.0.0",

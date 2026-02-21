@@ -9,10 +9,11 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { Search, MapPin, Bot, MessageSquare, Filter } from 'lucide-react';
+import { Search, MapPin, Bot, MessageSquare, Filter, Smartphone } from 'lucide-react';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { getInitials } from '@/lib/utils';
+import { Badge } from '../ui/badge';
 
 interface InboxSidebarProps {
   conversations: Conversation[];
@@ -67,8 +68,7 @@ export default function InboxConversationList({
           const lastMessageAt = new Date(convo.lastMessageAt).getTime();
           const isUnread = convo.lastMessageAuthor !== appUser.name && lastMessageAt > lastSeen;
           
-          // Prefer cached conversation name for UI stability
-          const displayName = convo.visitorName || visitor?.name || 'Visitor';
+          const displayName = convo.visitorName || visitor?.name || convo.externalAddress || 'Visitor';
           
           return (
             <div
@@ -86,13 +86,18 @@ export default function InboxConversationList({
                     <AvatarImage src={visitor?.avatarUrl} alt={displayName} />
                     <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
                   </Avatar>
-                  <p
-                  className={cn(
-                    "font-semibold truncate pl-1 text-sm",
-                    isSelected ? 'text-primary' : '',
-                    isUnread ? 'font-bold' : ''
-                  )}
-                  >{displayName}</p>
+                  <div className="flex flex-col">
+                    <p
+                    className={cn(
+                      "font-semibold truncate pl-1 text-sm",
+                      isSelected ? 'text-primary' : '',
+                      isUnread ? 'font-bold' : ''
+                    )}
+                    >{displayName}</p>
+                    {convo.channel === 'sms' && (
+                      <Badge variant="outline" className="h-3 px-1 text-[8px] w-fit ml-1">SMS</Badge>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground whitespace-nowrap pl-2">
@@ -134,7 +139,6 @@ export default function InboxConversationList({
 
   return (
     <div className="flex flex-col h-full border-r bg-card">
-      {/* Header */}
       <div className="p-4 border-b shrink-0 flex items-center justify-between">
         <h2 className="text-lg font-semibold">Inbox</h2>
         <DropdownMenu>

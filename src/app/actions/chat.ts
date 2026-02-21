@@ -15,6 +15,14 @@ import { isWhimsical, generateWhimsicalName } from '@/lib/utils';
 
 const typesense = getTypesenseSearch();
 
+function normalizePhoneFallback(raw: string) {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  const keepPlus = trimmed.startsWith("+");
+  const digits = trimmed.replace(/[^\d]/g, "");
+  return keepPlus ? `+${digits}` : digits;
+}
+
 async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
     const { hubId, allowedHelpCenterIds, userId, query, topK = 10 } = params;
 
@@ -186,152 +194,280 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
   if (!convoSnap.exists) return null;
 
   const convo = convoSnap.data() as any;
-  if (!convo.visitorId) return null;
 
+  // Resolve spaceId
   const hubSnap = await adminDB.collection("hubs").doc(convo.hubId).get();
   if (!hubSnap.exists) return null;
   const spaceId = hubSnap.data()?.spaceId;
   if (!spaceId) return null;
 
-  const visitorRef = adminDB.collection("visitors").doc(convo.visitorId);
-  const visitorSnap = await visitorRef.get();
-  if (!visitorSnap.exists) return null;
-  const visitor = { id: visitorSnap.id, ...(visitorSnap.data() as any) };
+  // ---- CASE A: Webchat / Visitor-based ----
+  if (convo.visitorId) {
+    const visitorRef = adminDB.collection("visitors").doc(convo.visitorId);
+    const visitorSnap = await visitorRef.get();
+    if (!visitorSnap.exists) return null;
+    const visitor = { id: visitorSnap.id, ...(visitorSnap.data() as any) };
 
-  let vName = visitor.name;
-  if (!vName || vName.trim() === "" || vName.trim() === "Unknown") {
+    let vName = visitor.name;
+    if (!vName || vName.trim() === "" || vName.trim() === "Unknown") {
       vName = generateWhimsicalName();
       await visitorRef.update({ name: vName });
       visitor.name = vName;
-  }
-  
-  const vEmail = visitor.email;
-  const vPhone = visitor.phone;
+    }
 
-  let contactId: string | null = convo.contactId || visitor.contactId || null;
+    const vEmail = visitor.email;
+    const vPhone = visitor.phone;
 
-  if (!contactId && vEmail) {
-    const byEmail = await adminDB.collection("contacts")
-      .where("spaceId", "==", spaceId)
-      .where("primaryEmail", "==", vEmail.toLowerCase())
-      .limit(1)
-      .get();
-    if (!byEmail.empty) contactId = byEmail.docs[0].id;
-  }
+    let contactId: string | null = convo.contactId || visitor.contactId || null;
 
-  if (!contactId && vPhone) {
-    const byPhone = await adminDB.collection("contacts")
-      .where("spaceId", "==", spaceId)
-      .where("primaryPhone", "==", vPhone)
-      .limit(1)
-      .get();
-    if (!byPhone.empty) contactId = byPhone.docs[0].id;
-  }
+    if (!contactId && vEmail) {
+      const byEmail = await adminDB.collection("contacts")
+        .where("spaceId", "==", spaceId)
+        .where("primaryEmail", "==", vEmail.toLowerCase())
+        .limit(1)
+        .get();
+      if (!byEmail.empty) contactId = byEmail.docs[0].id;
+    }
 
-  if (!contactId) {
-    const byVisitor = await adminDB.collection("contacts")
-      .where("spaceId", "==", spaceId)
-      .where("externalIds.chatVisitorId", "==", visitor.id)
-      .limit(1)
-      .get();
-    if (!byVisitor.empty) contactId = byVisitor.docs[0].id;
-  }
+    if (!contactId && vPhone) {
+      const byPhone = await adminDB.collection("contacts")
+        .where("spaceId", "==", spaceId)
+        .where("primaryPhone", "==", vPhone)
+        .limit(1)
+        .get();
+      if (!byPhone.empty) contactId = byPhone.docs[0].id;
+    }
 
-  if (!contactId) {
+    if (!contactId) {
+      const byVisitor = await adminDB.collection("contacts")
+        .where("spaceId", "==", spaceId)
+        .where("externalIds.chatVisitorId", "==", visitor.id)
+        .limit(1)
+        .get();
+      if (!byVisitor.empty) contactId = byVisitor.docs[0].id;
+    }
+
     const now = new Date();
-    const newContactRef = await adminDB.collection("contacts").add({
-      spaceId,
-      name: vName,
-      company: visitor.companyName || null,
-      emails: vEmail ? [vEmail.toLowerCase()] : [],
-      phones: vPhone ? [vPhone] : [],
-      primaryEmail: vEmail ? vEmail.toLowerCase() : null,
-      primaryPhone: vPhone || null,
-      source: "chat",
-      externalIds: { chatVisitorId: visitor.id },
-      tags: [],
-      createdAt: now,
-      updatedAt: now,
-      lastSeenAt: now,
-      lastMessageAt: null,
-      lastOrderAt: null,
-      lastCallAt: null,
-      mergeParentId: null,
-      isMerged: false,
-    });
-    contactId = newContactRef.id;
 
-    // Log the creation event
-    await adminDB.collection("contacts").doc(contactId).collection("events").add({
-        type: 'identity_added',
-        summary: 'Contact created automatically from chat.',
+    if (!contactId) {
+      const newContactRef = await adminDB.collection("contacts").add({
+        spaceId,
+        name: vName,
+        company: visitor.companyName || null,
+        emails: vEmail ? [vEmail.toLowerCase()] : [],
+        phones: vPhone ? [vPhone] : [],
+        primaryEmail: vEmail ? vEmail.toLowerCase() : null,
+        primaryPhone: vPhone || null,
+        primaryPhoneE164: null,
+        primaryPhoneNormalized: vPhone ? normalizePhoneFallback(vPhone) : null,
+        phoneNormalizationStatus: vPhone ? "fallback" : "unknown",
+        source: "chat",
+        externalIds: { chatVisitorId: visitor.id },
+        tags: [],
+        createdAt: now,
+        updatedAt: now,
+        lastSeenAt: now,
+        lastMessageAt: null,
+        lastOrderAt: null,
+        lastCallAt: null,
+        mergeParentId: null,
+        isMerged: false,
+      });
+      contactId = newContactRef.id;
+
+      await adminDB.collection("contacts").doc(contactId).collection("events").add({
+        type: "identity_added",
+        summary: "Contact created automatically from chat.",
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        ref: { source: 'chat', hubId: convo.hubId, spaceId: spaceId }
-    });
-  } else {
+        ref: { source: "chat", hubId: convo.hubId, spaceId },
+      });
+    } else {
       const contactRef = adminDB.collection("contacts").doc(contactId);
       const contactSnap = await contactRef.get();
       if (contactSnap.exists) {
-          const contactData = contactSnap.data() as any;
-          const updates: any = {};
-          
-          if (vName && (!contactData.name || isWhimsical(contactData.name) || contactData.name === "Unknown") && !isWhimsical(vName)) {
-              updates.name = vName;
-          }
-          
-          if (vEmail && !contactData.primaryEmail) {
-              updates.primaryEmail = vEmail.toLowerCase();
-              updates.emails = admin.firestore.FieldValue.arrayUnion(vEmail.toLowerCase());
-          }
+        const contactData = contactSnap.data() as any;
+        const updates: any = {};
 
-          if (vPhone && !contactData.primaryPhone) {
-              updates.primaryPhone = vPhone;
-              updates.phones = admin.firestore.FieldValue.arrayUnion(vPhone);
-          }
-          
-          if (Object.keys(updates).length > 0) {
-              await contactRef.update({ ...updates, updatedAt: new Date() });
-          }
+        if (vName && (!contactData.name || isWhimsical(contactData.name) || contactData.name === "Unknown") && !isWhimsical(vName)) {
+          updates.name = vName;
+        }
+
+        if (vEmail && !contactData.primaryEmail) {
+          updates.primaryEmail = vEmail.toLowerCase();
+          updates.emails = admin.firestore.FieldValue.arrayUnion(vEmail.toLowerCase());
+        }
+
+        if (vPhone && !contactData.primaryPhone) {
+          updates.primaryPhone = vPhone;
+          updates.phones = admin.firestore.FieldValue.arrayUnion(vPhone);
+          updates.primaryPhoneNormalized = normalizePhoneFallback(vPhone);
+          updates.phoneNormalizationStatus = "fallback";
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await contactRef.update({ ...updates, updatedAt: now });
+        }
       }
-  }
+    }
 
-  // Ensure "Chat Started" event exists for this contact + conversation
-  const eventQuery = await adminDB.collection("contacts").doc(contactId).collection("events")
-    .where("type", "==", "chat_started")
-    .where("ref.conversationId", "==", conversationId)
-    .limit(1)
-    .get();
+    const eventQuery = await adminDB.collection("contacts").doc(contactId).collection("events")
+      .where("type", "==", "chat_started")
+      .where("ref.conversationId", "==", conversationId)
+      .limit(1)
+      .get();
 
-  if (eventQuery.empty) {
-    await adminDB.collection("contacts").doc(contactId).collection("events").add({
-        type: 'chat_started',
+    if (eventQuery.empty) {
+      await adminDB.collection("contacts").doc(contactId).collection("events").add({
+        type: "chat_started",
         summary: `Started a chat conversation as ${vName}.`,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        ref: { conversationId, visitorId: visitor.id, hubId: convo.hubId, spaceId: spaceId }
-    });
-  }
+        ref: { conversationId, visitorId: visitor.id, hubId: convo.hubId, spaceId },
+      });
+    }
 
-  const convoUpdates: any = {
-    contactId,
-    visitorName: vName,
-    visitorEmail: vEmail,
-    visitorPhone: vPhone,
-    updatedAt: new Date().toISOString(),
-  };
+    const convoUpdates: any = {
+      contactId,
+      visitorName: vName,
+      visitorEmail: vEmail,
+      visitorPhone: vPhone,
+      updatedAt: new Date().toISOString(),
+    };
 
-  if (!convo.lastMessageAuthor || 
-      convo.lastMessageAuthor === "Visitor" || 
+    if (!convo.lastMessageAuthor ||
+      convo.lastMessageAuthor === "Visitor" ||
       convo.lastMessageAuthor === "Unknown" ||
       isWhimsical(convo.lastMessageAuthor)) {
       convoUpdates.lastMessageAuthor = vName;
+    }
+
+    await Promise.all([
+      visitorRef.update({ contactId }),
+      convoRef.update(convoUpdates),
+    ]);
+
+    return contactId;
   }
 
-  await Promise.all([
-    visitorRef.update({ contactId }),
-    convoRef.update(convoUpdates),
-  ]);
+  // ---- CASE B: SMS-based ----
+  if (convo.channel === "sms" && convo.externalAddress) {
+    const fromE164 = String(convo.externalAddress);
+    const fromFallback = normalizePhoneFallback(fromE164);
 
-  return contactId;
+    let contactId: string | null = convo.contactId || null;
+
+    if (!contactId) {
+      const byE164 = await adminDB.collection("contacts")
+        .where("spaceId", "==", spaceId)
+        .where("primaryPhoneE164", "==", fromE164)
+        .limit(1)
+        .get();
+      if (!byE164.empty) contactId = byE164.docs[0].id;
+    }
+
+    if (!contactId && fromFallback) {
+      const byNorm = await adminDB.collection("contacts")
+        .where("spaceId", "==", spaceId)
+        .where("primaryPhoneNormalized", "==", fromFallback)
+        .limit(1)
+        .get();
+      if (!byNorm.empty) contactId = byNorm.docs[0].id;
+    }
+
+    if (!contactId) {
+      const byRaw = await adminDB.collection("contacts")
+        .where("spaceId", "==", spaceId)
+        .where("primaryPhone", "==", fromE164)
+        .limit(1)
+        .get();
+      if (!byRaw.empty) contactId = byRaw.docs[0].id;
+    }
+
+    const now = new Date();
+
+    if (!contactId) {
+      const newContactRef = await adminDB.collection("contacts").add({
+        spaceId,
+        name: fromE164,
+        emails: [],
+        phones: [fromE164],
+        primaryEmail: null,
+        primaryPhone: fromE164,
+        primaryPhoneE164: fromE164,
+        primaryPhoneNormalized: fromFallback || null,
+        phoneNormalizationStatus: "e164",
+        source: "sms",
+        externalIds: {},
+        tags: [],
+        createdAt: now,
+        updatedAt: now,
+        lastSeenAt: now,
+        lastMessageAt: null,
+        lastOrderAt: null,
+        lastCallAt: null,
+        mergeParentId: null,
+        isMerged: false,
+      });
+      contactId = newContactRef.id;
+
+      await adminDB.collection("contacts").doc(contactId).collection("events").add({
+        type: "identity_added",
+        summary: "Contact created automatically from SMS.",
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        ref: { source: "sms", hubId: convo.hubId, spaceId },
+      });
+    } else {
+      const contactRef = adminDB.collection("contacts").doc(contactId);
+      const contactSnap = await contactRef.get();
+      if (contactSnap.exists) {
+        const contactData = contactSnap.data() as any;
+        const updates: any = {};
+
+        if (!contactData.primaryPhone) {
+          updates.primaryPhone = fromE164;
+          updates.phones = admin.firestore.FieldValue.arrayUnion(fromE164);
+        }
+        if (!contactData.primaryPhoneE164) {
+          updates.primaryPhoneE164 = fromE164;
+        }
+        if (!contactData.primaryPhoneNormalized && fromFallback) {
+          updates.primaryPhoneNormalized = fromFallback;
+          updates.phoneNormalizationStatus = contactData.primaryPhoneE164 ? "e164" : "fallback";
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await contactRef.update({ ...updates, updatedAt: now });
+        }
+      }
+    }
+
+    const eventQuery = await adminDB.collection("contacts").doc(contactId).collection("events")
+      .where("type", "==", "chat_started")
+      .where("ref.conversationId", "==", conversationId)
+      .limit(1)
+      .get();
+
+    if (eventQuery.empty) {
+      await adminDB.collection("contacts").doc(contactId).collection("events").add({
+        type: "chat_started",
+        summary: `Started an SMS conversation from ${fromE164}.`,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        ref: { conversationId, hubId: convo.hubId, spaceId },
+      });
+    }
+
+    await convoRef.update({
+      contactId,
+      visitorPhone: fromE164,
+      updatedAt: new Date().toISOString(),
+      lastMessageAuthor: convo.lastMessageAuthor && !isWhimsical(convo.lastMessageAuthor)
+        ? convo.lastMessageAuthor
+        : fromE164,
+    });
+
+    return contactId;
+  }
+
+  return null;
 }
   
   export async function addChatMessage(message: Omit<ChatMessage, "id">) {
@@ -346,7 +482,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
         const userDoc = await adminDB.collection('users').doc(message.authorId).get();
         if (userDoc.exists) authorName = userDoc.data()?.name || 'Agent';
       } else { 
-        // Sync CRM and set author name
         const linkedContactId = await ensureCrmLinkedForConversationAdmin(message.conversationId);
         if (linkedContactId) {
             const contactDoc = await adminDB.collection('contacts').doc(linkedContactId).get();
@@ -517,13 +652,14 @@ export async function createConversationAndLinkCrm(args: {
     contactId: null,
     visitorId: args.visitorId,
     assigneeId: args.assigneeId,
-    assignedAgentIds: args.assigneeId ? [args.assigneeId] : [], // Populate for notifications
+    assignedAgentIds: args.assigneeId ? [args.assigneeId] : [], 
     status: "bot",
     state: "ai_active",
     lastMessage: args.lastMessage,
     lastMessageAt: new Date().toISOString(),
     lastMessageAuthor: args.lastMessageAuthor,
     updatedAt: new Date().toISOString(),
+    channel: 'webchat'
   });
 
   await ensureCrmLinkedForConversationAdmin(convoRef.id);
