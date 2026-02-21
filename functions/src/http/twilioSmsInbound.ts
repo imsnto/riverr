@@ -7,10 +7,22 @@ import { logger } from "firebase-functions";
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
+function normalizePhoneFallback(raw: string): string {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  const keepPlus = trimmed.startsWith("+");
+  const digits = trimmed.replace(/[^\d]/g, "");
+  return keepPlus ? `+${digits}` : digits;
+}
+
+/**
+ * POST /api/twilio/sms/inbound
+ * Handled by Twilio Webhook when a message is received.
+ */
 export const twilioSmsInbound = onRequest(async (req, res) => {
   const provider = getMessagingProvider('twilio');
 
-  // Skip validation in local development if needed, but recommended for production
+  // 1. Validate webhook signature (Recommended for production)
   // if (!provider.validateWebhook(req)) {
   //   logger.warn("Unauthorized Twilio webhook attempt");
   //   res.status(401).send("Unauthorized");
@@ -21,7 +33,7 @@ export const twilioSmsInbound = onRequest(async (req, res) => {
     const inbound = provider.parseInboundSms(req);
     const { to, from, body, providerMessageId, media } = inbound;
 
-    // 1. Resolve To number
+    // 2. Resolve To number to identify Space and Hub
     const lookupRef = db.doc(`phone_channel_lookups/twilio_sms_${to}`);
     const lookupSnap = await lookupRef.get();
 
@@ -33,7 +45,60 @@ export const twilioSmsInbound = onRequest(async (req, res) => {
 
     const { spaceId, hubId } = lookupSnap.data() as any;
 
-    // 2. Ensure deterministic conversation
+    // 3. Resolve Contact via Phone (CRM Linking)
+    const fromE164 = from;
+    const fromNormalized = normalizePhoneFallback(from);
+    
+    let contactId: string | null = null;
+    
+    // Lookup chain: E.164 -> Normalized -> Raw
+    const contactQuery = await db.collection("contacts")
+      .where("spaceId", "==", spaceId)
+      .where("primaryPhoneE164", "==", fromE164)
+      .limit(1)
+      .get();
+      
+    if (!contactQuery.empty) {
+      contactId = contactQuery.docs[0].id;
+    } else {
+      const normQuery = await db.collection("contacts")
+        .where("spaceId", "==", spaceId)
+        .where("primaryPhoneNormalized", "==", fromNormalized)
+        .limit(1)
+        .get();
+      if (!normQuery.empty) contactId = normQuery.docs[0].id;
+    }
+
+    // Create contact if not found
+    if (!contactId) {
+      const newContactRef = await db.collection("contacts").add({
+        spaceId,
+        name: fromE164,
+        primaryPhone: fromE164,
+        primaryPhoneE164: fromE164,
+        primaryPhoneNormalized: fromNormalized,
+        phoneNormalizationStatus: 'e164',
+        source: 'sms',
+        emails: [],
+        phones: [fromE164],
+        externalIds: {},
+        tags: [],
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        isMerged: false,
+        mergeParentId: null
+      });
+      contactId = newContactRef.id;
+      
+      await newContactRef.collection("events").add({
+        type: 'identity_added',
+        summary: 'Contact created automatically from inbound SMS.',
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        ref: { source: 'sms', hubId, spaceId }
+      });
+    }
+
+    // 4. Ensure deterministic conversation
     const conversationId = `sms_${spaceId}_${to.replace(/[^\d+]/g, '')}_${from.replace(/[^\d+]/g, '')}`;
     const convoRef = db.doc(`conversations/${conversationId}`);
 
@@ -45,22 +110,31 @@ export const twilioSmsInbound = onRequest(async (req, res) => {
         tx.set(convoRef, {
           spaceId,
           hubId,
-          contactId: null, // Will be resolved by metadata/CRM trigger
+          contactId,
           status: 'bot',
           state: 'ai_active',
           channel: 'sms',
           channelProvider: 'twilio',
           channelAddress: to,
           externalAddress: from,
+          visitorPhone: from,
           lastMessage: body.slice(0, 140),
           lastMessageAt: now,
           lastMessageAuthor: from,
           updatedAt: now,
           createdAt: now,
         });
+      } else {
+        tx.update(convoRef, {
+          contactId,
+          lastMessage: body.slice(0, 140),
+          lastMessageAt: now,
+          lastMessageAuthor: from,
+          updatedAt: now
+        });
       }
 
-      // 3. Create message idempotently
+      // 5. Create message idempotently
       const msgRef = db.doc(`chat_messages/twilio_${providerMessageId}`);
       tx.set(msgRef, {
         conversationId,
