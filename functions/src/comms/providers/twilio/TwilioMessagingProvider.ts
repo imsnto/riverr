@@ -11,18 +11,22 @@ export class TwilioMessagingProvider implements MessagingProvider {
   }
 
   /**
-   * Validates that the request genuinely came from Twilio.
+   * Validates that the request genuinely came from Twilio using a canonical base URL.
    */
   validateWebhook(req: any): boolean {
-    const signature = req.headers['x-twilio-signature'] || '';
-    
-    // In cloud environments (like Firebase/GCP), the original protocol is often passed in a header.
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-    const host = req.headers['host'] || req.get('host');
-    const url = protocol + '://' + host + req.originalUrl;
-    
-    const params = req.body;
-    
+    const signature = req.headers["x-twilio-signature"] || "";
+    const baseUrl = process.env.PUBLIC_BASE_URL;
+    if (!baseUrl) {
+      console.error("TwilioMessagingProvider: PUBLIC_BASE_URL is not defined in environment.");
+      return false;
+    }
+
+    // Twilio signs the exact URL it requested.
+    const url = baseUrl.replace(/\/$/, "") + req.originalUrl;
+
+    // Body MUST be parsed from x-www-form-urlencoded into a plain object (handled by default in CF v2)
+    const params = req.body || {};
+
     return twilio.validateRequest(this.authToken, signature, url, params);
   }
 
@@ -42,8 +46,8 @@ export class TwilioMessagingProvider implements MessagingProvider {
     }
 
     return {
-      to: b.To,
-      from: b.From,
+      to: (b.To || '').trim(),
+      from: (b.From || '').trim(),
       body: b.Body,
       providerMessageId: b.MessageSid,
       media: media.length > 0 ? media : undefined,
