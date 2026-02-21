@@ -464,6 +464,7 @@ export interface Visitor {
   id: string;
   name: string | null;
   email: string | null;
+  phone?: string | null;
   avatarUrl?: string;
   location?: {pathname: string, domain: string};
   lastSeen?: string;
@@ -495,6 +496,7 @@ export interface Conversation {
   escalationReason?: string;
   visitorName?: string;
   visitorEmail?: string;
+  visitorPhone?: string;
   state?: ConversationState;
   lastIntent?: string | null;
   lastVisitorActiveAt?: string;

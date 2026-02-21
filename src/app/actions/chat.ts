@@ -206,6 +206,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
   }
   
   const vEmail = visitor.email;
+  const vPhone = visitor.phone;
 
   let contactId: string | null = convo.contactId || visitor.contactId || null;
 
@@ -216,6 +217,15 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
       .limit(1)
       .get();
     if (!byEmail.empty) contactId = byEmail.docs[0].id;
+  }
+
+  if (!contactId && vPhone) {
+    const byPhone = await adminDB.collection("contacts")
+      .where("spaceId", "==", spaceId)
+      .where("primaryPhone", "==", vPhone)
+      .limit(1)
+      .get();
+    if (!byPhone.empty) contactId = byPhone.docs[0].id;
   }
 
   if (!contactId) {
@@ -234,9 +244,9 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
       name: vName,
       company: visitor.companyName || null,
       emails: vEmail ? [vEmail.toLowerCase()] : [],
-      phones: [],
+      phones: vPhone ? [vPhone] : [],
       primaryEmail: vEmail ? vEmail.toLowerCase() : null,
-      primaryPhone: null,
+      primaryPhone: vPhone || null,
       source: "chat",
       externalIds: { chatVisitorId: visitor.id },
       tags: [],
@@ -273,6 +283,11 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
               updates.primaryEmail = vEmail.toLowerCase();
               updates.emails = admin.firestore.FieldValue.arrayUnion(vEmail.toLowerCase());
           }
+
+          if (vPhone && !contactData.primaryPhone) {
+              updates.primaryPhone = vPhone;
+              updates.phones = admin.firestore.FieldValue.arrayUnion(vPhone);
+          }
           
           if (Object.keys(updates).length > 0) {
               await contactRef.update({ ...updates, updatedAt: new Date() });
@@ -300,6 +315,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
     contactId,
     visitorName: vName,
     visitorEmail: vEmail,
+    visitorPhone: vPhone,
     updatedAt: new Date().toISOString(),
   };
 
