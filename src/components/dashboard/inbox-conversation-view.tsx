@@ -9,7 +9,7 @@ import { Textarea } from '../ui/textarea';
 import { cn, getInitials } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
-import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check, Bot, Smartphone } from 'lucide-react';
+import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check, Bot, Smartphone, Phone, PhoneMissed, PhoneIncoming, PhoneOutgoing, Mic } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card } from '../ui/card';
@@ -223,6 +223,34 @@ export default function InboxConversationView({
 
     if (msg.type === 'event') {
         const eventAuthor = users.find(u => u.id === msg.authorId);
+        
+        if (msg.eventType?.startsWith('call_') || msg.eventType === 'voicemail_recorded') {
+            const Icon = msg.eventType === 'call_missed' ? PhoneMissed : msg.eventType === 'call_ended' ? PhoneOutgoing : msg.eventType === 'voicemail_recorded' ? Mic : PhoneIncoming;
+            const label = msg.eventType === 'call_started' ? 'Call started' : 
+                          msg.eventType === 'call_missed' ? 'Call missed' :
+                          msg.eventType === 'call_ended' ? `Call ended (${msg.durationSeconds || 0}s)` :
+                          msg.eventType === 'voicemail_recorded' ? 'Voicemail received' : 'Call event';
+
+            return (
+                <div key={msg.id} className="flex justify-center py-2">
+                    <Card className="bg-muted/50 border-none shadow-none px-4 py-2 flex items-center gap-3">
+                        <Icon className={cn("h-4 w-4", msg.eventType === 'call_missed' ? 'text-destructive' : 'text-primary')} />
+                        <div className="flex flex-col">
+                            <span className="text-xs font-semibold">{label}</span>
+                            {msg.recordingUrl && (
+                                <audio controls className="h-8 mt-2 max-w-[200px]">
+                                    <source src={msg.recordingUrl} />
+                                </audio>
+                            )}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground ml-2">
+                            {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}
+                        </span>
+                    </Card>
+                </div>
+            )
+        }
+
         return (
             <div key={msg.id} className="flex justify-center py-2">
                 <div className="text-xs text-muted-foreground flex items-center gap-2">
@@ -300,7 +328,7 @@ export default function InboxConversationView({
         {/* Header */}
         <div className="p-3 flex justify-between items-center shrink-0 border-b">
           <div className="flex items-center gap-3 min-w-0">
-            {isBack && (
+            {onBack && (
               <Button variant="ghost" size="icon" className="-ml-1" onClick={onBack}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
@@ -314,11 +342,18 @@ export default function InboxConversationView({
                   </Avatar>
                   <div className="flex flex-col items-start min-w-0">
                     <span className="font-semibold truncate max-w-[120px]">{displayName}</span>
-                    {conversation.channel === 'sms' && (
-                      <Badge variant="outline" className="h-4 px-1 text-[9px] gap-1">
-                        <Smartphone className="h-2 w-2" /> SMS
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-1 mt-0.5">
+                        {conversation.channel === 'sms' && (
+                        <Badge variant="outline" className="h-4 px-1 text-[9px] gap-1">
+                            <Smartphone className="h-2 w-2" /> SMS
+                        </Badge>
+                        )}
+                        {conversation.channel === 'voice' && (
+                        <Badge variant="outline" className="h-4 px-1 text-[9px] gap-1">
+                            <Phone className="h-2 w-2" /> Voice
+                        </Badge>
+                        )}
+                    </div>
                   </div>
                 </Button>
               </DropdownMenuTrigger>

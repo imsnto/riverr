@@ -512,7 +512,7 @@ export interface Conversation {
     reason?: string;
     offeredAt?: string; // ISO
   } | null;
-  channel: 'webchat' | 'sms';
+  channel: 'webchat' | 'sms' | 'voice';
   channelProvider?: 'twilio';
   channelAddress?: string; // Twilio number E.164
   externalAddress?: string; // Customer phone E.164
@@ -523,6 +523,7 @@ export interface ChatMessage {
   conversationId: string;
   authorId: string; // Can be a Visitor ID or a User ID
   type: 'message' | 'note' | 'event';
+  eventType?: 'call_started' | 'call_ringing' | 'call_answered' | 'call_missed' | 'call_ended' | 'voicemail_recorded';
   content: string;
   timestamp: string; // ISO String
   senderType?: 'visitor' | 'agent' | 'bot' | 'contact';
@@ -532,13 +533,16 @@ export interface ChatMessage {
   attachments?: Attachment[];
   visibility?: 'public' | 'internal';
   isInternal?: boolean;
-  channel?: 'webchat' | 'sms';
+  channel?: 'webchat' | 'sms' | 'voice';
   provider?: 'internal' | 'twilio';
   providerMessageId?: string;
+  providerCallId?: string;
   deliveryStatus?: 'created'|'queued'|'sent'|'delivered'|'failed'|'undelivered';
   errorCode?: string;
   errorMessage?: string;
   media?: { url: string; contentType?: string }[];
+  durationSeconds?: number;
+  recordingUrl?: string;
 }
 
 // --- Help Center Interfaces ---

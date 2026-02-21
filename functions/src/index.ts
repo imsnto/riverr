@@ -19,3 +19,9 @@ export { onSmsMessageCreated } from "./chat/botTrigger";
 export { twilioSmsInbound } from "./http/twilioSmsInbound";
 export { twilioSmsStatus } from "./http/twilioSmsStatus";
 export { sendCommsMessage } from "./http/sendCommsMessage";
+
+// Voice Webhooks
+export { twilioVoiceInbound } from "./http/twilioVoiceInbound";
+export { twilioVoiceStatus } from "./http/twilioVoiceStatus";
+export { twilioVoiceRecording } from "./http/twilioVoiceRecording";
+export { twilioVoiceDialResult } from "./http/twilioVoiceDialResult";
