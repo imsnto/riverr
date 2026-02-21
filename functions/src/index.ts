@@ -12,6 +12,9 @@ export {
   scheduledAcknowledgementEmail 
 } from "./chatNotifications/emailNotifications";
 
+// SMS Bot Logic
+export { onSmsMessageCreated } from "./chat/botTrigger";
+
 // SMS Webhooks and API
 export { twilioSmsInbound } from "./http/twilioSmsInbound";
 export { twilioSmsStatus } from "./http/twilioSmsStatus";

@@ -30,3 +30,11 @@ export function isWhimsical(name: string | null | undefined) {
 export function generateWhimsicalName() {
   return `${whimsicalAdjectives[Math.floor(Math.random() * whimsicalAdjectives.length)]} ${whimsicalNouns[Math.floor(Math.random() * whimsicalNouns.length)]}`;
 }
+
+export function normalizePhoneFallback(raw: string): string {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  const keepPlus = trimmed.startsWith("+");
+  const digits = trimmed.replace(/[^\d]/g, "");
+  return keepPlus ? `+${digits}` : digits;
+}

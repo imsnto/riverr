@@ -11,17 +11,11 @@ import { LeadStateNode, Contact, SalesPersonaSegmentNode, ChatMessage, Visitor, 
 import { draftSalesEmail, type DraftSalesEmailInput, type DraftSalesEmailOutput } from '@/ai/flows/draft-sales-email';
 import { serverTimestamp } from 'firebase-admin/firestore';
 import admin from 'firebase-admin';
-import { isWhimsical, generateWhimsicalName } from '@/lib/utils';
+import { isWhimsical, generateWhimsicalName, normalizePhoneFallback } from '@/lib/utils';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getApp } from 'firebase/app';
 
 const typesense = getTypesenseSearch();
-
-function normalizePhoneFallback(raw: string) {
-  if (!raw) return "";
-  const trimmed = raw.trim();
-  const keepPlus = trimmed.startsWith("+");
-  const digits = trimmed.replace(/[^\d]/g, "");
-  return keepPlus ? `+${digits}` : digits;
-}
 
 async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
     const { hubId, allowedHelpCenterIds, userId, query, topK = 10 } = params;
@@ -537,14 +531,55 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
               });
           },
           persistAssistantMessage: async ({ conversationId, text }) => {
-              await addChatMessage({
+              // SMS-aware delivery
+              const convo = await adminDB.collection('conversations').doc(conversationId).get();
+              const convoData = convo.data() as Conversation;
+
+              const messageData: Omit<ChatMessage, 'id'> = {
                   conversationId,
                   authorId: 'ai_agent',
                   type: 'message',
                   senderType: 'agent',
                   content: text,
                   timestamp: new Date().toISOString(),
-              });
+              };
+
+              if (convoData?.channel === 'sms') {
+                  // Direct bypass to internal logic of sendCommsMessage
+                  const msgRef = await adminDB.collection("chat_messages").add({
+                      ...messageData,
+                      channel: 'sms',
+                      provider: 'twilio',
+                      deliveryStatus: 'created',
+                  });
+
+                  // Call the provider directly since we are already server-side
+                  const { getMessagingProvider } = await import('@/../functions/src/comms/providerFactory');
+                  const provider = getMessagingProvider('twilio');
+                  
+                  try {
+                      const { providerMessageId } = await provider.sendSms({
+                          from: convoData.channelAddress!,
+                          to: convoData.externalAddress!,
+                          body: text,
+                      });
+
+                      await msgRef.update({
+                          providerMessageId,
+                          deliveryStatus: 'queued',
+                      });
+
+                      await adminDB.doc(`provider_message_lookups/twilio_${providerMessageId}`).set({
+                          messageId: msgRef.id,
+                          conversationId,
+                      });
+                  } catch (e) {
+                      console.error("AI SMS delivery failed", e);
+                      await msgRef.update({ deliveryStatus: 'failed' });
+                  }
+              } else {
+                  await addChatMessage(messageData);
+              }
           },
           onChatMessage: async (message) => {
               await addChatMessage(message);
