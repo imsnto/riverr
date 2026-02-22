@@ -29,6 +29,7 @@ export const twilioVoiceInbound = onRequest(
     try {
       const { to, from, providerCallId } = provider.parseInboundCall(req);
       const toNormalized = normalizePhoneFallback(to);
+      const fromNormalized = normalizePhoneFallback(from);
       
       const lookupRef = db.doc(`phone_channel_lookups/twilio_voice_${toNormalized}`);
       const lookupSnap = await lookupRef.get();
@@ -39,7 +40,6 @@ export const twilioVoiceInbound = onRequest(
       }
 
       const { spaceId, hubId, defaultForwardToE164 } = lookupSnap.data() as any;
-      const fromNormalized = normalizePhoneFallback(from);
 
       // CRM Linking logic
       let contactId: string | null = null;
@@ -60,6 +60,11 @@ export const twilioVoiceInbound = onRequest(
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           isMerged: false,
+          mergeParentId: null,
+          emails: [],
+          phones: [from],
+          tags: [],
+          externalIds: {},
         });
         contactId = newContactRef.id;
       }
@@ -73,6 +78,7 @@ export const twilioVoiceInbound = onRequest(
         spaceId,
         hubId,
         contactId,
+        visitorId: null,
         status: 'human',
         state: 'human_assigned',
         channel: 'voice',
@@ -96,14 +102,18 @@ export const twilioVoiceInbound = onRequest(
         contactId,
         from,
         to,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+        fromNormalized,
+        toNormalized,
+        createdAt: now,
+      }, { merge: true });
 
       const eventRef = db.doc(`chat_messages/twilio_call_${providerCallId}_started`);
       await eventRef.set({
         conversationId,
+        authorId: 'system',
         type: 'event',
         eventType: 'call_started',
+        content: 'Incoming call',
         senderType: 'contact',
         timestamp: now,
         channel: 'voice',

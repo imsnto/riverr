@@ -27,32 +27,36 @@ export const twilioVoiceRecording = onRequest(
     const { RecordingUrl, CallSid, RecordingDuration } = req.body;
 
     try {
-      const lookupRef = db.doc(`provider_call_lookups/twilio_${CallSid}`);
-      const lookupSnap = await lookupRef.get();
+      const lookupSnap = await db.doc(`provider_call_lookups/twilio_${CallSid}`).get();
 
       if (lookupSnap.exists) {
-        const { conversationId } = lookupSnap.data() as any;
+        const { conversationId, from, to } = lookupSnap.data() as any;
         const now = new Date().toISOString();
 
         const msgId = `twilio_call_${CallSid}_voicemail`;
         await db.doc(`chat_messages/${msgId}`).set({
           conversationId,
+          authorId: 'system',
           type: 'event',
           eventType: 'voicemail_recorded',
+          content: 'Voicemail received',
           senderType: 'contact',
           recordingUrl: RecordingUrl,
-          durationSeconds: parseInt(RecordingDuration, 10),
+          durationSeconds: RecordingDuration ? parseInt(RecordingDuration, 10) : null,
           timestamp: now,
           channel: 'voice',
           provider: 'twilio',
           providerCallId: CallSid,
+          from,
+          to
         }, { merge: true });
 
-        await db.doc(`conversations/${conversationId}`).update({
+        await db.doc(`conversations/${conversationId}`).set({
           lastMessage: 'New voicemail recorded',
           lastMessageAt: now,
+          lastMessageAuthor: from,
           updatedAt: now,
-        });
+        }, { merge: true });
       }
       res.status(200).send("OK");
     } catch (err: any) {

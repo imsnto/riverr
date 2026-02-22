@@ -25,7 +25,7 @@ export const twilioVoiceDialResult = onRequest(
     }
 
     const { DialCallStatus } = req.body;
-    // Get To from query params as backup (Twilio Dial action body is inconsistent with 'To')
+    // Get To from query params as canonical context
     const toNormalized = String(req.query.to || "");
     
     if (DialCallStatus === 'completed') {
@@ -41,7 +41,7 @@ export const twilioVoiceDialResult = onRequest(
 
     const lookupRef = db.doc(`phone_channel_lookups/twilio_voice_${toNormalized}`);
     const lookupSnap = await lookupRef.get();
-    const { voicemailEnabled } = lookupSnap.data() || {};
+    const voicemailEnabled = lookupSnap.exists ? !!lookupSnap.get('voicemailEnabled') : false;
 
     if (voicemailEnabled) {
       const twiml = provider.buildVoicemailTwiML({

@@ -11,6 +11,21 @@ const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
+function mapCallStatusToEventType(status: string): string | null {
+  switch (status) {
+    case 'ringing': return 'call_ringing';
+    case 'in-progress': return 'call_answered';
+    case 'completed': return 'call_ended';
+    case 'busy':
+    case 'failed':
+    case 'no-answer':
+    case 'canceled':
+      return 'call_missed';
+    default:
+      return null;
+  }
+}
+
 export const twilioVoiceStatus = onRequest(
   { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN] },
   async (req, res) => {
@@ -27,34 +42,22 @@ export const twilioVoiceStatus = onRequest(
     try {
       const { providerCallId, status, durationSeconds } = provider.parseCallStatus(req);
       
-      const lookupRef = db.doc(`provider_call_lookups/twilio_${providerCallId}`);
-      const lookupSnap = await lookupRef.get();
+      const lookupSnap = await db.doc(`provider_call_lookups/twilio_${providerCallId}`).get();
 
       if (lookupSnap.exists) {
-        const { conversationId } = lookupSnap.data() as any;
+        const { conversationId, from, to } = lookupSnap.data() as any;
         const now = new Date().toISOString();
 
-        // Map Twilio status to internal eventType (ensuring no hyphens and matching UI)
-        let eventType: 'call_ringing' | 'call_answered' | 'call_ended' | 'call_missed';
-        
-        switch(status) {
-            case 'ringing': eventType = 'call_ringing'; break;
-            case 'in-progress': eventType = 'call_answered'; break;
-            case 'completed': eventType = 'call_ended'; break;
-            case 'busy':
-            case 'failed':
-            case 'no-answer':
-            case 'canceled':
-                eventType = 'call_missed';
-                break;
-            default:
-                res.status(200).send("OK");
-                return;
+        const eventType = mapCallStatusToEventType(status);
+        if (!eventType) {
+            res.status(200).send("OK");
+            return;
         }
 
         const msgId = `twilio_call_${providerCallId}_status_${eventType}`;
         await db.doc(`chat_messages/${msgId}`).set({
           conversationId,
+          authorId: 'system',
           type: 'event',
           eventType,
           senderType: 'contact',
@@ -63,6 +66,8 @@ export const twilioVoiceStatus = onRequest(
           channel: 'voice',
           provider: 'twilio',
           providerCallId,
+          from,
+          to
         }, { merge: true });
 
         // Update convo metadata with mm:ss formatting for ended calls
@@ -73,13 +78,18 @@ export const twilioVoiceStatus = onRequest(
             label = `Call ended (${mins}:${secs.toString().padStart(2, '0')})`;
         } else if (eventType === 'call_missed') {
             label = `Call missed`;
+        } else if (eventType === 'call_answered') {
+            label = 'Call answered';
+        } else if (eventType === 'call_ringing') {
+            label = 'Incoming call ringing';
         }
 
-        await db.doc(`conversations/${conversationId}`).update({
+        await db.doc(`conversations/${conversationId}`).set({
           lastMessage: label,
           lastMessageAt: now,
+          lastMessageAuthor: from,
           updatedAt: now,
-        });
+        }, { merge: true });
       }
 
       res.status(200).send("OK");

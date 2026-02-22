@@ -529,6 +529,8 @@ export interface ChatMessage {
   senderType?: 'visitor' | 'agent' | 'bot' | 'contact';
   visitorId?: string;
   spaceId?: string;
+  from?: string;
+  to?: string;
   linked_ticket_id?: string;
   attachments?: Attachment[];
   visibility?: 'public' | 'internal';
