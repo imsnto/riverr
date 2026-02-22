@@ -129,6 +129,7 @@ export const twilioSmsInbound = onRequest(
             lastMessageAuthor: from,
             updatedAt: now,
             createdAt: now,
+            twilioSubaccountSid: twilioSubaccountSid || null
           });
         } else {
           tx.update(convoRef, {

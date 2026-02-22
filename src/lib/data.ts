@@ -43,6 +43,13 @@ export interface Space {
   members: Record<string, { role: string }>; // Map of user IDs to their roles
   isSystem?: boolean;
   isOnboarding?: boolean;
+  comms?: {
+    twilio?: {
+      subaccountSid: string;
+      status: 'active' | 'pending' | 'suspended';
+      provisionedAt: any;
+    }
+  };
   emailSettings?: {
     replyToEmail?: string;
   };
@@ -486,7 +493,7 @@ export interface Conversation {
   visitorId?: string | null;
   assigneeId: string | null;
   assignedAgentIds?: string[];
-  status: 'bot' | 'human' | 'closed' | 'unassigned';
+  status: 'bot' | 'human' | 'closed' | 'unassigned' | 'open';
   lastMessage: string;
   lastMessageAt: string; // ISO String
   lastMessageAuthor: string | null;
@@ -516,6 +523,7 @@ export interface Conversation {
   channelProvider?: 'twilio';
   channelAddress?: string; // Twilio number E.164
   externalAddress?: string; // Customer phone E.164
+  twilioSubaccountSid?: string;
 }
 
 export interface ChatMessage {
@@ -757,7 +765,7 @@ export interface Contact {
   primaryPhoneE164?: string | null;
   primaryPhoneNormalized?: string | null;
   phoneNormalizationStatus?: 'e164'|'fallback'|'unknown';
-  source: 'webchat' | 'sms' | 'manual' | 'order' | 'call' | 'chat';
+  source: 'webchat' | 'sms' | 'manual' | 'order' | 'call' | 'chat' | 'voice';
   externalIds: Record<string, string>;
   tags: string[];
   createdAt: any;

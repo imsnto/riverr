@@ -74,7 +74,7 @@ export const twilioVoiceInbound = onRequest(
           primaryPhone: from,
           primaryPhoneE164: from,
           primaryPhoneNormalized: fromNormalized,
-          source: 'call',
+          source: 'voice',
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           isMerged: false,

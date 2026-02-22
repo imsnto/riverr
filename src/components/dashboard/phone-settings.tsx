@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { Space, Hub } from '@/lib/data';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Loader2, Phone, MessageSquare, Info, ShieldAlert, Check, ChevronRight, Globe, Trash2, Settings } from 'lucide-react';
+import { Plus, Loader2, Phone, MessageSquare, Info, ShieldAlert, Check, ChevronRight, Globe, Trash2, Settings, Search } from 'lucide-react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
 import { useToast } from '@/hooks/use-toast';

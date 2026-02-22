@@ -34,7 +34,7 @@ export const provisionTwilioSubaccount = onCall(
 
     try {
       const subaccount = await client.api.accounts.create({
-        friendlyName: `Manowar - ${spaceSnap.get('name') || spaceId}`
+        friendlyName: `TimeFlow - ${spaceSnap.get('name') || spaceId}`
       });
 
       // Save pointer on Space

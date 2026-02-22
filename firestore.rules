@@ -63,6 +63,10 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow list: if isAuthenticated() && 
         resource.data.members[request.auth.uid].role in ['Admin', 'Member'];
+        
+      match /commsNumbers/{numberId} {
+        allow read: if isAuthenticated() && isExistInSpace(spaceId);
+      }
     }
     
     match /hubs/{hubId} {
@@ -71,8 +75,8 @@ service cloud.firestore {
     }
     
     match /projects/{projectId} {
-      allow read, update, delete: if isAuthenticated() && isHubMember(resource.data.space_id, resource.data.hubId);
-      allow create: if isAuthenticated() && isHubMember(request.resource.data.space_id, request.resource.data.hubId);
+      allow read, update, delete: if isAuthenticated() && isHubMember(resource.data.spaceId, resource.data.hubId);
+      allow create: if isAuthenticated() && isHubMember(request.resource.data.spaceId, request.resource.data.hubId);
       allow list: if isAuthenticated();
     }
     
@@ -82,9 +86,21 @@ service cloud.firestore {
       allow list: if isAuthenticated();
     }
     
-    match /time_entries/{entryId} {
+    match /tickets/{ticketId} {
       allow read, update, delete: if isAuthenticated() && isHubMember(resource.data.spaceId, resource.data.hubId);
       allow create: if isAuthenticated() && isHubMember(request.resource.data.spaceId, request.resource.data.hubId);
+      allow list: if isAuthenticated();
+    }
+
+    match /deals/{dealId} {
+      allow read, update, delete: if isAuthenticated() && isHubMember(resource.data.spaceId, resource.data.hubId);
+      allow create: if isAuthenticated() && isHubMember(request.resource.data.spaceId, request.resource.data.hubId);
+      allow list: if isAuthenticated();
+    }
+    
+    match /time_entries/{entryId} {
+      allow read, update, delete: if isAuthenticated() && isExistInSpace(resource.data.spaceId);
+      allow create: if isAuthenticated() && isExistInSpace(request.resource.data.spaceId);
       allow list: if isAuthenticated();
     }
     
@@ -95,8 +111,8 @@ service cloud.firestore {
     }
     
     match /channels/{entryId} {
-      allow read, update, delete: if isAuthenticated() && isHubMember(resource.data.space_id, resource.data.hubId);
-      allow create: if isAuthenticated() && isHubMember(request.resource.data.space_id, request.resource.data.hubId);
+      allow read, update, delete: if isAuthenticated() && isHubMember(resource.data.spaceId, resource.data.hubId);
+      allow create: if isAuthenticated() && isHubMember(request.resource.data.spaceId, request.resource.data.hubId);
       allow list: if isAuthenticated();
     }
     
@@ -109,10 +125,6 @@ service cloud.firestore {
     }
     
     match /phase_templates/{entryId} {
-      allow read, write: if isAuthenticated();
-    }
-    
-    match /read_states/{entryId} {
       allow read, write: if isAuthenticated();
     }
     
@@ -145,6 +157,9 @@ service cloud.firestore {
     match /contacts/{contactId} {
       allow create, get: if true;
       allow update, list: if isAuthenticated();
+      match /events/{eventId} {
+        allow read, write: if isAuthenticated();
+      }
     }
     
     match /visitors/{visitorId} {
@@ -173,6 +188,20 @@ service cloud.firestore {
     match /help_center_articles/{hcaId} {
       allow create: if isAuthenticated() && isHubAdmin(get(/databases/$(database)/documents/hubs/$(request.resource.data.hubId)).data.spaceId, request.resource.data.hubId);
        allow read, update, delete: if isAuthenticated() && isHubMember(get(/databases/$(database)/documents/hubs/$(resource.data.hubId)).data.spaceId, resource.data.hubId);
+    }
+
+    match /phone_channel_lookups/{lookupId} {
+      allow read: if true; // Webhooks need to look this up
+      allow write: if isAuthenticated(); // Should be gated by function usually
+    }
+
+    match /provider_call_lookups/{sid} {
+      allow read: if true;
+      allow write: if false; // System only
+    }
+
+    match /twilio_subaccount_secrets/{sid} {
+      allow read, write: if false; // Only Admin SDK
     }
   }
 }
