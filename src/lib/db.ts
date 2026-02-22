@@ -47,7 +47,7 @@ import {
   Conversation,
 } from './data';
 import { ContactEvent } from './contacts-types';
-import { generateWhimsicalName } from './utils';
+import { generateWhimsicalName, normalizePhoneFallback } from './utils';
 
 // --- Users ---
 export const getUser = async (userId: string): Promise<User | null> => {
@@ -151,7 +151,10 @@ export const getProjectsInSpace = async (spaceId: string): Promise<Project[]> =>
 
 export const addProject = async (project: Omit<Project, 'id'>): Promise<Project> => {
   const docRef = await addDoc(collection(db, 'projects'), project);
-  // Optional: Initialize project task counter
+  if (task.project_id) {
+      const projRef = doc(db, 'projects', task.project_id);
+      await updateDoc(projRef, { taskCounter: increment(1) });
+  }
   return { id: docRef.id, ...project };
 };
 
@@ -174,7 +177,6 @@ export const getAllTasks = async (hubId: string): Promise<Task[]> => {
 
 export const addTask = async (task: Omit<Task, 'id'>): Promise<Task> => {
   const docRef = await addDoc(collection(db, 'tasks'), task);
-  // Optional: Increment project task counter for keys like PROJ-1
   if (task.project_id) {
       const projRef = doc(db, 'projects', task.project_id);
       await updateDoc(projRef, { taskCounter: increment(1) });
@@ -327,7 +329,7 @@ export const addConversation = async (convo: Omit<Conversation, 'id'>): Promise<
 };
 
 export const updateConversation = async (convoId: string, data: Partial<Conversation>) => {
-  const docRef = doc(db, 'conversations', convoId);
+  const docRef = db.doc(db, 'conversations', convoId);
   await updateDoc(docRef, data);
 };
 
@@ -346,7 +348,6 @@ export const getMessagesForConversations = (convoIds: string[], callback: (messa
   const q = query(collection(db, 'chat_messages'), where('conversationId', 'in', convoIds.slice(0, 30)));
   return onSnapshot(q, (snapshot) => {
     const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
-    // Sort in memory to avoid index requirements
     messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     callback(messages);
   });
@@ -508,7 +509,6 @@ export const launchJob = async (name: string, template: JobFlowTemplate, roleMap
     };
     const jobRef = await addDoc(collection(db, 'jobs'), jobData);
     
-    // Create tasks for the first phase
     const firstPhase = template.phases[0];
     for (const taskTpl of firstPhase.tasks) {
         const assignedTo = roleMapping[taskTpl.defaultAssigneeId] || taskTpl.defaultAssigneeId;
@@ -611,7 +611,6 @@ export const addInvite = async (invite: Omit<Invite, 'id'>) => {
 };
 
 export const resendInvite = async (inviteId: string) => {
-    // This typically triggers a cloud function via a dummy field update or specialized function call
     await updateDoc(doc(db, 'invites', inviteId), { sentAt: null, tokenHash: null });
 };
 
@@ -738,7 +737,7 @@ export const deleteBot = async (botId: string) => {
 
 // --- Push Notifications ---
 export const savePushToken = async (userId: string, token: string, userAgent: string) => {
-  const tokenHash = btoa(token).substring(0, 20); // stable id
+  const tokenHash = btoa(token).substring(0, 20);
   const tokenRef = doc(db, `users/${userId}/pushTokens/${tokenHash}`);
   const now = new Date().toISOString();
   await setDoc(tokenRef, {
@@ -751,7 +750,34 @@ export const savePushToken = async (userId: string, token: string, userAgent: st
   }, { merge: true });
 };
 
-// --- Seeding ---
-export const seedDatabase = async () => {
-    // This function can be used to populate initial system data if needed
+// --- Comms (Numbers) ---
+export const getCommsNumbersForSpace = (spaceId: string, callback: (numbers: any[]) => void) => {
+  const q = query(collection(db, `spaces/${spaceId}/commsNumbers`));
+  return onSnapshot(q, (snapshot) => {
+    callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
 };
+
+export const assignNumberToHub = async (spaceId: string, hubId: string, number: any, type: 'sms' | 'voice', channelSettings: any = {}) => {
+  const e164 = number.phoneNumber;
+  const toNormalized = normalizePhoneFallback(e164);
+  const lookupId = `twilio_${type}_${toNormalized}`;
+  
+  await setDoc(doc(db, 'phone_channel_lookups', lookupId), {
+    spaceId,
+    hubId,
+    channelAddress: e164,
+    isActive: true,
+    twilioSubaccountSid: number.subaccountSid,
+    ...channelSettings
+  });
+};
+
+export const releaseNumberFromHub = async (type: 'sms' | 'voice', e164: string) => {
+  const toNormalized = normalizePhoneFallback(e164);
+  const lookupId = `twilio_${type}_${toNormalized}`;
+  await deleteDoc(doc(db, 'phone_channel_lookups', lookupId));
+};
+
+// --- Seeding ---
+export const seedDatabase = async () => {};

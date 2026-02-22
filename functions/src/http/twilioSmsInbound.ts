@@ -7,7 +7,7 @@ import { normalizePhoneFallback } from "../comms/utils";
 import { logger } from "firebase-functions";
 
 const PUBLIC_BASE_URL = defineSecret("PUBLIC_BASE_URL");
-const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
+const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN"); // Global fallback
 const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
 
 if (!admin.apps.length) admin.initializeApp();
@@ -16,36 +16,54 @@ const db = admin.firestore();
 export const twilioSmsInbound = onRequest(
   { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID] },
   async (req, res) => {
+    const baseUrl = PUBLIC_BASE_URL.value();
+    const b = req.body;
+    const to = (b.To || "").trim();
+    
+    if (!to) {
+      logger.warn("Inbound SMS missing 'To' field");
+      res.status(200).send("OK");
+      return;
+    }
+
+    const toNormalized = normalizePhoneFallback(to);
+    const lookupRef = db.doc(`phone_channel_lookups/twilio_sms_${toNormalized}`);
+    const lookupSnap = await lookupRef.get();
+
+    if (!lookupSnap.exists || !lookupSnap.get('isActive')) {
+      logger.info("Ignoring SMS to unassigned/inactive number", { to });
+      res.status(200).send("OK");
+      return;
+    }
+
+    const { spaceId, hubId, twilioSubaccountSid } = lookupSnap.data() as any;
+
+    // Resolve Auth Token for validation
+    let authToken = TWILIO_AUTH_TOKEN.value();
+    if (twilioSubaccountSid) {
+      const secretsSnap = await db.doc(`twilio_subaccount_secrets/${twilioSubaccountSid}`).get();
+      if (secretsSnap.exists) {
+        authToken = secretsSnap.get('authToken');
+      }
+    }
+
     const provider = getMessagingProvider('twilio', {
-      accountSid: TWILIO_ACCOUNT_SID.value(),
-      authToken: TWILIO_AUTH_TOKEN.value(),
+      accountSid: twilioSubaccountSid || TWILIO_ACCOUNT_SID.value(),
+      authToken: authToken,
     });
 
-    const baseUrl = PUBLIC_BASE_URL.value();
     if (!provider.validateWebhook(req, baseUrl)) {
-      logger.warn("Unauthorized Twilio webhook attempt (inbound)");
+      logger.warn("Unauthorized Twilio webhook attempt (inbound SMS)", { to });
       res.status(401).send("Unauthorized");
       return;
     }
 
     try {
       const inbound = provider.parseInboundSms(req);
-      const { to, from, body, providerMessageId, media } = inbound;
-
-      const toNormalized = normalizePhoneFallback(to);
-      const lookupRef = db.doc(`phone_channel_lookups/twilio_sms_${toNormalized}`);
-      const lookupSnap = await lookupRef.get();
-
-      if (!lookupSnap.exists || !lookupSnap.get('isActive')) {
-        logger.info("Ignoring SMS to unassigned/inactive number", { to });
-        res.status(200).send("OK");
-        return;
-      }
-
-      const { spaceId, hubId } = lookupSnap.data() as any;
+      const { from, body, providerMessageId, media } = inbound;
       const fromNormalized = normalizePhoneFallback(from);
       
-      // CRM Linking logic
+      // CRM Linking logic (Phone-based)
       let contactId: string | null = null;
       const contactQuery = await db.collection("contacts")
         .where("spaceId", "==", spaceId)
@@ -94,6 +112,7 @@ export const twilioSmsInbound = onRequest(
 
         if (!convoSnap.exists) {
           tx.set(convoRef, {
+            id: conversationId,
             spaceId,
             hubId,
             contactId,
@@ -123,6 +142,7 @@ export const twilioSmsInbound = onRequest(
 
         const msgRef = db.doc(`chat_messages/twilio_${providerMessageId}`);
         tx.set(msgRef, {
+          id: `twilio_${providerMessageId}`,
           conversationId,
           senderType: 'contact',
           type: 'message',

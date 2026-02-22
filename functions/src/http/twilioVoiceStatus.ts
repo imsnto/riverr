@@ -30,67 +30,87 @@ export const twilioVoiceStatus = onRequest(
   { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN] },
   async (req, res) => {
     const baseUrl = PUBLIC_BASE_URL.value();
-    const provider = getVoiceProvider('twilio', {
-      authToken: TWILIO_AUTH_TOKEN.value(),
-    });
+    const { CallSid } = req.body;
 
-    if (!provider.validateWebhook(req, baseUrl)) {
-      res.status(401).send("Unauthorized");
+    if (!CallSid) {
+      res.status(200).send("OK");
       return;
     }
 
     try {
-      const { providerCallId, status, durationSeconds } = provider.parseCallStatus(req);
-      
-      const lookupSnap = await db.doc(`provider_call_lookups/twilio_${providerCallId}`).get();
-
-      if (lookupSnap.exists) {
-        const { conversationId, from, to } = lookupSnap.data() as any;
-        const now = new Date().toISOString();
-
-        const eventType = mapCallStatusToEventType(status);
-        if (!eventType) {
-            res.status(200).send("OK");
-            return;
-        }
-
-        const msgId = `twilio_call_${providerCallId}_status_${eventType}`;
-        await db.doc(`chat_messages/${msgId}`).set({
-          conversationId,
-          authorId: 'system',
-          type: 'event',
-          eventType,
-          senderType: 'contact',
-          durationSeconds: durationSeconds || null,
-          timestamp: now,
-          channel: 'voice',
-          provider: 'twilio',
-          providerCallId,
-          from,
-          to
-        }, { merge: true });
-
-        // Update convo metadata with mm:ss formatting for ended calls
-        let label = `Call ${status}`;
-        if (eventType === 'call_ended' && durationSeconds) {
-            const mins = Math.floor(durationSeconds / 60);
-            const secs = durationSeconds % 60;
-            label = `Call ended (${mins}:${secs.toString().padStart(2, '0')})`;
-        } else if (eventType === 'call_missed') {
-            label = `Call missed`;
-        } else if (eventType === 'call_answered') {
-            label = 'Call answered';
-        } else if (eventType === 'call_ringing') {
-            label = 'Incoming call ringing';
-        }
-
-        await db.doc(`conversations/${conversationId}`).set({
-          lastMessage: label,
-          lastMessageAt: now,
-          lastMessageAuthor: from,
-          updatedAt: now,
-        }, { merge: true });
+      const lookupSnap = await db.doc(`provider_call_lookups/twilio_${CallSid}`).get();
+      if (!lookupSnap.exists) {
+        res.status(200).send("OK");
+        return;
       }
+
+      const { twilioSubaccountSid } = lookupSnap.data() as any;
+
+      // Resolve Auth Token for validation
+      let authToken = TWILIO_AUTH_TOKEN.value();
+      if (twilioSubaccountSid) {
+        const secretsSnap = await db.doc(`twilio_subaccount_secrets/${twilioSubaccountSid}`).get();
+        if (secretsSnap.exists) {
+          authToken = secretsSnap.get('authToken');
+        }
+      }
+
+      const provider = getVoiceProvider('twilio', {
+        authToken: authToken,
+      });
+
+      if (!provider.validateWebhook(req, baseUrl)) {
+        logger.warn("Unauthorized Twilio voice status attempt", { CallSid });
+        res.status(401).send("Unauthorized");
+        return;
+      }
+
+      const { providerCallId, status, durationSeconds } = provider.parseCallStatus(req);
+      const { conversationId, from, to } = lookupSnap.data() as any;
+      const now = new Date().toISOString();
+
+      const eventType = mapCallStatusToEventType(status);
+      if (!eventType) {
+          res.status(200).send("OK");
+          return;
+      }
+
+      const msgId = `twilio_call_${providerCallId}_status_${eventType}`;
+      await db.doc(`chat_messages/${msgId}`).set({
+        id: msgId,
+        conversationId,
+        authorId: 'system',
+        type: 'event',
+        eventType,
+        senderType: 'contact',
+        durationSeconds: durationSeconds || null,
+        timestamp: now,
+        channel: 'voice',
+        provider: 'twilio',
+        providerCallId,
+        from,
+        to
+      }, { merge: true });
+
+      let label = `Call ${status}`;
+      if (eventType === 'call_ended' && durationSeconds) {
+          const mins = Math.floor(durationSeconds / 60);
+          const secs = durationSeconds % 60;
+          label = `Call ended (${mins}:${secs.toString().padStart(2, '0')})`;
+      } else if (eventType === 'call_missed') {
+          label = `Call missed`;
+      } else if (eventType === 'call_answered') {
+          label = 'Call answered';
+      } else if (eventType === 'call_ringing') {
+          label = 'Incoming call ringing';
+      }
+
+      await db.doc(`conversations/${conversationId}`).set({
+        lastMessage: label,
+        lastMessageAt: now,
+        lastMessageAuthor: from,
+        updatedAt: now,
+      }, { merge: true });
 
       res.status(200).send("OK");
     } catch (err: any) {

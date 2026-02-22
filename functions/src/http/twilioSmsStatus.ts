@@ -15,33 +15,56 @@ const db = admin.firestore();
 export const twilioSmsStatus = onRequest(
   { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID] },
   async (req, res) => {
-    const provider = getMessagingProvider('twilio', {
-      accountSid: TWILIO_ACCOUNT_SID.value(),
-      authToken: TWILIO_AUTH_TOKEN.value(),
-    });
-
     const baseUrl = PUBLIC_BASE_URL.value();
-    if (!provider.validateWebhook(req, baseUrl)) {
-      logger.warn("Unauthorized Twilio webhook attempt (status)");
-      res.status(401).send("Unauthorized");
+    const { MessageSid } = req.body;
+
+    if (!MessageSid) {
+      res.status(200).send("OK");
       return;
     }
 
     try {
-      const status = provider.parseSmsStatus(req);
-      const { providerMessageId, status: deliveryStatus, errorCode, errorMessage } = status;
-
-      const lookupRef = db.doc(`provider_message_lookups/twilio_${providerMessageId}`);
+      const lookupRef = db.doc(`provider_message_lookups/twilio_${MessageSid}`);
       const lookupSnap = await lookupRef.get();
 
-      if (lookupSnap.exists) {
-        const { messageId } = lookupSnap.data() as any;
-        await db.doc(`chat_messages/${messageId}`).update({
-          deliveryStatus,
-          errorCode: errorCode || null,
-          errorMessage: errorMessage || null,
-        });
+      if (!lookupSnap.exists) {
+        logger.info("Ignoring status callback for unknown message", { MessageSid });
+        res.status(200).send("OK");
+        return;
       }
+
+      const { conversationId } = lookupSnap.data() as any;
+      const convoSnap = await db.doc(`conversations/${conversationId}`).get();
+      const twilioSubaccountSid = convoSnap.get('twilioSubaccountSid');
+
+      // Resolve Auth Token for validation
+      let authToken = TWILIO_AUTH_TOKEN.value();
+      if (twilioSubaccountSid) {
+        const secretsSnap = await db.doc(`twilio_subaccount_secrets/${twilioSubaccountSid}`).get();
+        if (secretsSnap.exists) {
+          authToken = secretsSnap.get('authToken');
+        }
+      }
+
+      const provider = getMessagingProvider('twilio', {
+        accountSid: twilioSubaccountSid || TWILIO_ACCOUNT_SID.value(),
+        authToken: authToken,
+      });
+
+      if (!provider.validateWebhook(req, baseUrl)) {
+        logger.warn("Unauthorized Twilio webhook attempt (status)", { MessageSid });
+        res.status(401).send("Unauthorized");
+        return;
+      }
+
+      const status = provider.parseSmsStatus(req);
+      const { status: deliveryStatus, errorCode, errorMessage } = status;
+
+      await db.doc(`chat_messages/twilio_${MessageSid}`).update({
+        deliveryStatus,
+        errorCode: errorCode || null,
+        errorMessage: errorMessage || null,
+      });
 
       res.status(200).send("OK");
     } catch (err: any) {

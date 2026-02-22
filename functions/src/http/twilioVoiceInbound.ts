@@ -8,40 +8,58 @@ import { logger } from "firebase-functions";
 
 const PUBLIC_BASE_URL = defineSecret("PUBLIC_BASE_URL");
 const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
+const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
 export const twilioVoiceInbound = onRequest(
-  { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN] },
+  { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID] },
   async (req, res) => {
     const baseUrl = PUBLIC_BASE_URL.value();
+    const b = req.body;
+    const to = (b.To || b.Called || "").trim();
+
+    if (!to) {
+      res.status(200).send("<Response><Hangup/></Response>");
+      return;
+    }
+
+    const toNormalized = normalizePhoneFallback(to);
+    const lookupRef = db.doc(`phone_channel_lookups/twilio_voice_${toNormalized}`);
+    const lookupSnap = await lookupRef.get();
+
+    if (!lookupSnap.exists || !lookupSnap.get('isActive')) {
+      res.type('text/xml').send('<Response><Say>The number you called is currently unavailable. Goodbye.</Say></Response>');
+      return;
+    }
+
+    const { spaceId, hubId, defaultForwardToE164, twilioSubaccountSid } = lookupSnap.data() as any;
+
+    // Resolve Auth Token for validation
+    let authToken = TWILIO_AUTH_TOKEN.value();
+    if (twilioSubaccountSid) {
+      const secretsSnap = await db.doc(`twilio_subaccount_secrets/${twilioSubaccountSid}`).get();
+      if (secretsSnap.exists) {
+        authToken = secretsSnap.get('authToken');
+      }
+    }
+
     const provider = getVoiceProvider('twilio', {
-      authToken: TWILIO_AUTH_TOKEN.value(),
+      authToken: authToken,
     });
 
     if (!provider.validateWebhook(req, baseUrl)) {
-      logger.warn("Unauthorized Twilio voice attempt");
+      logger.warn("Unauthorized Twilio voice attempt", { to });
       res.status(401).send("Unauthorized");
       return;
     }
 
     try {
-      const { to, from, providerCallId } = provider.parseInboundCall(req);
-      const toNormalized = normalizePhoneFallback(to);
+      const { from, providerCallId } = provider.parseInboundCall(req);
       const fromNormalized = normalizePhoneFallback(from);
       
-      const lookupRef = db.doc(`phone_channel_lookups/twilio_voice_${toNormalized}`);
-      const lookupSnap = await lookupRef.get();
-
-      if (!lookupSnap.exists || !lookupSnap.get('isActive')) {
-        res.type('text/xml').send('<Response><Say>The number you called is currently unavailable. Goodbye.</Say></Response>');
-        return;
-      }
-
-      const { spaceId, hubId, defaultForwardToE164 } = lookupSnap.data() as any;
-
-      // CRM Linking logic
+      // CRM Linking
       let contactId: string | null = null;
       const contactQuery = await db.collection("contacts")
         .where("spaceId", "==", spaceId)
@@ -73,8 +91,8 @@ export const twilioVoiceInbound = onRequest(
       const convoRef = db.doc(`conversations/${conversationId}`);
       const now = new Date().toISOString();
 
-      // Ensure all required fields for Inbox UI
       await convoRef.set({
+        id: conversationId,
         spaceId,
         hubId,
         contactId,
@@ -91,10 +109,10 @@ export const twilioVoiceInbound = onRequest(
         lastMessageAt: now,
         lastMessageAuthor: from,
         updatedAt: now,
-        createdAt: now
+        createdAt: now,
+        twilioSubaccountSid: twilioSubaccountSid || null
       }, { merge: true });
 
-      // Create a deterministic lookup for status and recording callbacks
       await db.doc(`provider_call_lookups/twilio_${providerCallId}`).set({
         conversationId,
         spaceId,
@@ -105,10 +123,12 @@ export const twilioVoiceInbound = onRequest(
         fromNormalized,
         toNormalized,
         createdAt: now,
+        twilioSubaccountSid: twilioSubaccountSid || null
       }, { merge: true });
 
-      const eventRef = db.doc(`chat_messages/twilio_call_${providerCallId}_started`);
-      await eventRef.set({
+      const eventId = `twilio_call_${providerCallId}_started`;
+      await db.doc(`chat_messages/${eventId}`).set({
+        id: eventId,
         conversationId,
         authorId: 'system',
         type: 'event',
@@ -126,7 +146,6 @@ export const twilioVoiceInbound = onRequest(
       const twiml = provider.buildForwardTwiML({
         forwardToE164: defaultForwardToE164,
         statusCallbackUrl: `${baseUrl.replace(/\/$/, "")}/api/twilio/voice/status`,
-        // Bake context into the dial-result URL
         actionUrl: `${baseUrl.replace(/\/$/, "")}/api/twilio/voice/dial-result?to=${encodeURIComponent(toNormalized)}`,
       });
 

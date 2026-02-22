@@ -25,3 +25,10 @@ export { twilioVoiceInbound } from "./http/twilioVoiceInbound";
 export { twilioVoiceStatus } from "./http/twilioVoiceStatus";
 export { twilioVoiceRecording } from "./http/twilioVoiceRecording";
 export { twilioVoiceDialResult } from "./http/twilioVoiceDialResult";
+
+// Provisioning
+export { 
+  provisionTwilioSubaccount, 
+  searchNumbers, 
+  buyPhoneNumber 
+} from "./twilio/provisioning";
