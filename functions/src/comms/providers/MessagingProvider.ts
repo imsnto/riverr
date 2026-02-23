@@ -1,4 +1,3 @@
-
 export interface InboundSms {
   to: string;
   from: string;
@@ -19,9 +18,9 @@ export interface MessagingProvider {
   /**
    * Validates that the request genuinely came from the provider.
    * @param req The raw request object.
-   * @param baseUrl The canonical public base URL of the application for signature matching.
+   * @param canonicalPublicBaseUrl The public domain URL (e.g. https://app.example.com)
    */
-  validateWebhook(req: any, baseUrl: string): boolean;
+  validateWebhook(req: any, canonicalPublicBaseUrl: string): boolean;
   parseInboundSms(req: any): InboundSms;
   parseSmsStatus(req: any): SmsStatus;
   sendSms(args: {

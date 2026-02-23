@@ -1,4 +1,3 @@
-
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
@@ -16,7 +15,7 @@ const db = admin.firestore();
 export const twilioVoiceInbound = onRequest(
   { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID] },
   async (req, res) => {
-    const baseUrl = PUBLIC_BASE_URL.value();
+    const canonicalPublicBaseUrl = PUBLIC_BASE_URL.value();
     const b = req.body;
     const to = (b.To || b.Called || "").trim();
 
@@ -31,13 +30,12 @@ export const twilioVoiceInbound = onRequest(
     const lookupSnap = await lookupRef.get();
 
     if (!lookupSnap.exists || !lookupSnap.get('isActive')) {
-      res.type('text/xml').send('<Response><Say>The number you called is currently unavailable. Goodbye.</Say></Response>');
+      res.type('text/xml').send('<Response><Say>The number you called is currently unavailable.</Say></Response>');
       return;
     }
 
     const { spaceId, hubId, defaultForwardToE164, twilioSubaccountSid } = lookupSnap.data() as any;
 
-    // STEP 1: Resolve Auth Token for validation
     let authToken = TWILIO_AUTH_TOKEN.value();
     if (twilioSubaccountSid) {
       const secretsSnap = await db.doc(`twilio_subaccount_secrets/${twilioSubaccountSid}`).get();
@@ -50,8 +48,7 @@ export const twilioVoiceInbound = onRequest(
       authToken: authToken,
     });
 
-    if (!provider.validateWebhook(req, baseUrl)) {
-      logger.warn("Unauthorized Twilio voice signature", { to, twilioSubaccountSid });
+    if (!provider.validateWebhook(req, canonicalPublicBaseUrl)) {
       res.status(401).send("Unauthorized");
       return;
     }
@@ -60,7 +57,7 @@ export const twilioVoiceInbound = onRequest(
       const { from, providerCallId } = provider.parseInboundCall(req);
       const fromNormalized = normalizePhoneFallback(from);
       
-      // CRM Linking
+      // CRM Match
       let contactId: string | null = null;
       const contactQuery = await db.collection("contacts")
         .where("spaceId", "==", spaceId)
@@ -89,7 +86,6 @@ export const twilioVoiceInbound = onRequest(
         contactId = newContactRef.id;
       }
 
-      // Deterministic Voice Conversation ID
       const conversationId = `voice_${spaceId}_${toNormalized.replace(/\+/g, '')}_${fromNormalized.replace(/\+/g, '')}`;
       const convoRef = db.doc(`conversations/${conversationId}`);
       const now = new Date().toISOString();
@@ -116,7 +112,6 @@ export const twilioVoiceInbound = onRequest(
         twilioSubaccountSid: twilioSubaccountSid || null
       }, { merge: true });
 
-      // Call lookup for status and recording callbacks
       await db.doc(`provider_call_lookups/twilio_${providerCallId}`).set({
         conversationId,
         spaceId,
@@ -149,14 +144,14 @@ export const twilioVoiceInbound = onRequest(
 
       const twiml = provider.buildForwardTwiML({
         forwardToE164: defaultForwardToE164,
-        statusCallbackUrl: `${baseUrl.replace(/\/$/, "")}/api/twilio/voice/status`,
-        actionUrl: `${baseUrl.replace(/\/$/, "")}/api/twilio/voice/dial-result?to=${encodeURIComponent(toNormalized)}`,
+        statusCallbackUrl: `${canonicalPublicBaseUrl.replace(/\/$/, "")}/api/twilio/voice/status`,
+        actionUrl: `${canonicalPublicBaseUrl.replace(/\/$/, "")}/api/twilio/voice/dial-result?to=${encodeURIComponent(toNormalized)}`,
       });
 
       res.type('text/xml').send(twiml);
     } catch (err: any) {
       logger.error("Inbound Call error", err);
-      res.type('text/xml').send('<Response><Say>An internal error occurred.</Say></Response>');
+      res.type('text/xml').send('<Response><Say>Internal Error.</Say></Response>');
     }
   }
 );

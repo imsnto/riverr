@@ -1,4 +1,3 @@
-
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
@@ -15,7 +14,7 @@ const db = admin.firestore();
 export const twilioSmsStatus = onRequest(
   { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID] },
   async (req, res) => {
-    const baseUrl = PUBLIC_BASE_URL.value();
+    const canonicalPublicBaseUrl = PUBLIC_BASE_URL.value();
     const { MessageSid } = req.body;
 
     if (!MessageSid) {
@@ -28,7 +27,6 @@ export const twilioSmsStatus = onRequest(
       const lookupSnap = await lookupRef.get();
 
       if (!lookupSnap.exists) {
-        logger.info("Ignoring status callback for unknown message", { MessageSid });
         res.status(200).send("OK");
         return;
       }
@@ -37,7 +35,6 @@ export const twilioSmsStatus = onRequest(
       const convoSnap = await db.doc(`conversations/${conversationId}`).get();
       const twilioSubaccountSid = convoSnap.get('twilioSubaccountSid');
 
-      // Resolve Auth Token for validation
       let authToken = TWILIO_AUTH_TOKEN.value();
       if (twilioSubaccountSid) {
         const secretsSnap = await db.doc(`twilio_subaccount_secrets/${twilioSubaccountSid}`).get();
@@ -51,8 +48,7 @@ export const twilioSmsStatus = onRequest(
         authToken: authToken,
       });
 
-      if (!provider.validateWebhook(req, baseUrl)) {
-        logger.warn("Unauthorized Twilio webhook attempt (status)", { MessageSid });
+      if (!provider.validateWebhook(req, canonicalPublicBaseUrl)) {
         res.status(401).send("Unauthorized");
         return;
       }

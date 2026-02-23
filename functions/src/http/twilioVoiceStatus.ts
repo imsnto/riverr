@@ -1,4 +1,3 @@
-
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
@@ -29,7 +28,7 @@ function mapCallStatusToEventType(status: string): string | null {
 export const twilioVoiceStatus = onRequest(
   { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN] },
   async (req, res) => {
-    const baseUrl = PUBLIC_BASE_URL.value();
+    const canonicalPublicBaseUrl = PUBLIC_BASE_URL.value();
     const { CallSid } = req.body;
 
     if (!CallSid) {
@@ -46,7 +45,6 @@ export const twilioVoiceStatus = onRequest(
 
       const { twilioSubaccountSid } = lookupSnap.data() as any;
 
-      // Resolve Auth Token for validation
       let authToken = TWILIO_AUTH_TOKEN.value();
       if (twilioSubaccountSid) {
         const secretsSnap = await db.doc(`twilio_subaccount_secrets/${twilioSubaccountSid}`).get();
@@ -59,8 +57,7 @@ export const twilioVoiceStatus = onRequest(
         authToken: authToken,
       });
 
-      if (!provider.validateWebhook(req, baseUrl)) {
-        logger.warn("Unauthorized Twilio voice status attempt", { CallSid });
+      if (!provider.validateWebhook(req, canonicalPublicBaseUrl)) {
         res.status(401).send("Unauthorized");
         return;
       }
@@ -101,8 +98,6 @@ export const twilioVoiceStatus = onRequest(
           label = `Call missed`;
       } else if (eventType === 'call_answered') {
           label = 'Call answered';
-      } else if (eventType === 'call_ringing') {
-          label = 'Incoming call ringing';
       }
 
       await db.doc(`conversations/${conversationId}`).set({

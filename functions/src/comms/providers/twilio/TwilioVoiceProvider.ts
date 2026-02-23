@@ -1,4 +1,3 @@
-
 import { twiml, validateRequest } from 'twilio';
 import { VoiceProvider, InboundCall, CallStatus } from '../VoiceProvider';
 
@@ -7,11 +6,28 @@ export class TwilioVoiceProvider implements VoiceProvider {
 
   constructor(private authToken: string) {}
 
-  validateWebhook(req: any, baseUrl: string): boolean {
+  validateWebhook(req: any, canonicalPublicBaseUrl: string): boolean {
     const signature = req.headers["x-twilio-signature"] || "";
-    const url = baseUrl.replace(/\/$/, "") + req.originalUrl;
+    if (!canonicalPublicBaseUrl) {
+      console.error("TwilioVoiceProvider: canonicalPublicBaseUrl is not defined.");
+      return false;
+    }
+
+    const pathAndQuery = req.originalUrl || req.url || "";
+    const url = canonicalPublicBaseUrl.replace(/\/$/, "") + pathAndQuery;
     const params = req.body || {};
-    return validateRequest(this.authToken, signature, url, params);
+
+    const isValid = validateRequest(this.authToken, signature, url, params);
+
+    if (!isValid) {
+      console.warn("Twilio Voice signature validation failed", {
+        url,
+        signature: signature?.slice(0, 8) + "...",
+        bodyKeys: Object.keys(params)
+      });
+    }
+
+    return isValid;
   }
 
   parseInboundCall(req: any): InboundCall {
@@ -40,9 +56,6 @@ export class TwilioVoiceProvider implements VoiceProvider {
   }): string {
     const response = new twiml.VoiceResponse();
     
-    // Optional: add a short whisper or announcement here
-    // response.say('Forwarding call to Manowar agent.');
-
     const dial = response.dial({
       timeout: 20,
       action: args.actionUrl,

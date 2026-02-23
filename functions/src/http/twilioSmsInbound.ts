@@ -1,4 +1,3 @@
-
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
@@ -7,7 +6,7 @@ import { normalizePhoneFallback } from "../comms/utils";
 import { logger } from "firebase-functions";
 
 const PUBLIC_BASE_URL = defineSecret("PUBLIC_BASE_URL");
-const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN"); // Global fallback
+const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
 const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
 
 if (!admin.apps.length) admin.initializeApp();
@@ -16,7 +15,7 @@ const db = admin.firestore();
 export const twilioSmsInbound = onRequest(
   { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID] },
   async (req, res) => {
-    const baseUrl = PUBLIC_BASE_URL.value();
+    const canonicalPublicBaseUrl = PUBLIC_BASE_URL.value();
     const b = req.body;
     const to = (b.To || "").trim();
     
@@ -39,7 +38,7 @@ export const twilioSmsInbound = onRequest(
 
     const { spaceId, hubId, twilioSubaccountSid } = lookupSnap.data() as any;
 
-    // STEP 1: Resolve Auth Token for signature validation
+    // Resolve specific subaccount token for validation
     let authToken = TWILIO_AUTH_TOKEN.value();
     if (twilioSubaccountSid) {
       const secretsSnap = await db.doc(`twilio_subaccount_secrets/${twilioSubaccountSid}`).get();
@@ -53,9 +52,7 @@ export const twilioSmsInbound = onRequest(
       authToken: authToken,
     });
 
-    // STEP 2: Deterministic signature validation
-    if (!provider.validateWebhook(req, baseUrl)) {
-      logger.warn("Unauthorized Twilio signature (inbound SMS)", { to, twilioSubaccountSid });
+    if (!provider.validateWebhook(req, canonicalPublicBaseUrl)) {
       res.status(401).send("Unauthorized");
       return;
     }
@@ -65,7 +62,7 @@ export const twilioSmsInbound = onRequest(
       const { from, body, providerMessageId, media } = inbound;
       const fromNormalized = normalizePhoneFallback(from);
       
-      // CRM Linking logic (Phone-based)
+      // CRM Matching
       let contactId: string | null = null;
       const contactQuery = await db.collection("contacts")
         .where("spaceId", "==", spaceId)
@@ -98,7 +95,6 @@ export const twilioSmsInbound = onRequest(
         contactId = newContactRef.id;
       }
 
-      // Deterministic conversation ID for SMS
       const conversationId = `sms_${spaceId}_${toNormalized.replace(/\+/g, '')}_${fromNormalized.replace(/\+/g, '')}`;
       const convoRef = db.doc(`conversations/${conversationId}`);
 

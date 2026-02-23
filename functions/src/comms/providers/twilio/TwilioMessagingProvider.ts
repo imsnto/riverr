@@ -1,4 +1,3 @@
-
 import { Twilio, validateRequest } from 'twilio';
 import { MessagingProvider, InboundSms, SmsStatus } from '../MessagingProvider';
 
@@ -12,28 +11,34 @@ export class TwilioMessagingProvider implements MessagingProvider {
 
   /**
    * Validates that the request genuinely came from Twilio using a canonical base URL.
-   * This is essential for environments behind proxies (like Firebase App Hosting/Cloud Run).
    */
-  validateWebhook(req: any, baseUrl: string): boolean {
+  validateWebhook(req: any, canonicalPublicBaseUrl: string): boolean {
     const signature = req.headers["x-twilio-signature"] || "";
-    if (!baseUrl) {
-      console.error("TwilioMessagingProvider: baseUrl is not defined for validation.");
+    if (!canonicalPublicBaseUrl) {
+      console.error("TwilioMessagingProvider: canonicalPublicBaseUrl is not defined.");
       return false;
     }
 
-    // Twilio signs the exact URL it requested.
-    // We use the canonical baseUrl + the original request path.
-    const url = baseUrl.replace(/\/$/, "") + req.originalUrl;
+    // Reconstruct exact URL signed by Twilio
+    const pathAndQuery = req.originalUrl || req.url || "";
+    const url = canonicalPublicBaseUrl.replace(/\/$/, "") + pathAndQuery;
 
-    // Body MUST be parsed from x-www-form-urlencoded into a plain object (handled by default in CF v2)
+    // Params MUST be the raw form-encoded body
     const params = req.body || {};
 
-    return validateRequest(this.authToken, signature, url, params);
+    const isValid = validateRequest(this.authToken, signature, url, params);
+    
+    if (!isValid) {
+      console.warn("Twilio SMS signature validation failed", {
+        url,
+        signature: signature?.slice(0, 8) + "...",
+        bodyKeys: Object.keys(params)
+      });
+    }
+
+    return isValid;
   }
 
-  /**
-   * Maps a Twilio request body to a normalized InboundSms object.
-   */
   parseInboundSms(req: any): InboundSms {
     const b = req.body;
     const media: { url: string; contentType?: string }[] = [];
@@ -55,9 +60,6 @@ export class TwilioMessagingProvider implements MessagingProvider {
     };
   }
 
-  /**
-   * Maps a Twilio status callback to a normalized SmsStatus object.
-   */
   parseSmsStatus(req: any): SmsStatus {
     const b = req.body;
     return {
@@ -87,9 +89,6 @@ export class TwilioMessagingProvider implements MessagingProvider {
     }
   }
 
-  /**
-   * Sends an outbound SMS via Twilio.
-   */
   async sendSms(args: {
     from: string;
     to: string;

@@ -1,4 +1,3 @@
-
 export interface InboundCall {
   to: string;
   from: string;
@@ -13,7 +12,12 @@ export interface CallStatus {
 
 export interface VoiceProvider {
   name: string;
-  validateWebhook(req: any, baseUrl: string): boolean;
+  /**
+   * Validates that the request genuinely came from the provider.
+   * @param req The raw request object.
+   * @param canonicalPublicBaseUrl The public domain URL (e.g. https://app.example.com)
+   */
+  validateWebhook(req: any, canonicalPublicBaseUrl: string): boolean;
   parseInboundCall(req: any): InboundCall;
   parseCallStatus(req: any): CallStatus;
   buildForwardTwiML(args: {
