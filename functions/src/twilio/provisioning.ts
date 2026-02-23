@@ -69,7 +69,6 @@ export const provisionTwilioSubaccount = onCall(
 
 /**
  * Searches for available phone numbers in a subaccount.
- * Now resolves SID from Space ID for security.
  */
 export const searchNumbers = onCall(
   { secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN] },
@@ -112,7 +111,8 @@ export const searchNumbers = onCall(
         phoneNumber: n.phoneNumber, 
         friendlyName: n.friendlyName,
         locality: n.locality,
-        region: n.region
+        region: n.region,
+        capabilities: n.capabilities
       })) };
     } catch (err: any) {
       logger.error("Failed to search numbers", err);
@@ -123,7 +123,6 @@ export const searchNumbers = onCall(
 
 /**
  * Buys a number and configures webhooks.
- * Now resolves SID from Space ID for security.
  */
 export const buyPhoneNumber = onCall(
   { secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, PUBLIC_BASE_URL] },
@@ -180,7 +179,6 @@ export const buyPhoneNumber = onCall(
 
 /**
  * Assigns a number to a Hub server-side.
- * Firestore rules block direct client writes to routing docs.
  */
 export const assignNumberToHub = onCall(async (request) => {
   const uid = request.auth?.uid;
@@ -196,9 +194,44 @@ export const assignNumberToHub = onCall(async (request) => {
 
   if (!spaceId || !hubId || !number?.phoneNumber) throw new HttpsError("invalid-argument", "Missing params");
 
+  // 1. Auth Check (Space Admin)
   const spaceSnap = await db.doc(`spaces/${spaceId}`).get();
   if (!spaceSnap.exists || spaceSnap.get(`members.${uid}.role`) !== 'Admin') {
     throw new HttpsError("permission-denied", "Only space admins can assign numbers");
+  }
+
+  // 2. Hub Ownership Check
+  const hubSnap = await db.doc(`hubs/${hubId}`).get();
+  if (!hubSnap.exists) throw new HttpsError("not-found", "Hub not found");
+  if (hubSnap.get("spaceId") !== spaceId) {
+    throw new HttpsError("permission-denied", "Hub does not belong to this space");
+  }
+
+  // 3. Number Ownership Check
+  const ownedNumQuery = await db.collection(`spaces/${spaceId}/commsNumbers`)
+    .where("phoneNumber", "==", number.phoneNumber)
+    .limit(1)
+    .get();
+
+  if (ownedNumQuery.empty) {
+    throw new HttpsError("permission-denied", "Number is not owned by this space");
+  }
+  const ownedNumData = ownedNumQuery.docs[0].data();
+
+  // 4. Capability Check
+  if (type === 'sms' && !ownedNumData.capabilities?.sms) {
+    throw new HttpsError("failed-precondition", "Number does not support SMS");
+  }
+  if (type === 'voice' && !ownedNumData.capabilities?.voice) {
+    throw new HttpsError("failed-precondition", "Number does not support Voice");
+  }
+
+  // 5. Voice Forwarding Validation
+  if (type === 'voice') {
+    const fwd = channelSettings?.defaultForwardToE164;
+    if (!fwd || !/^\+\d{10,15}$/.test(fwd)) {
+      throw new HttpsError("invalid-argument", "Forwarding number must be valid E.164 (e.g. +14155551234)");
+    }
   }
 
   const e164 = number.phoneNumber;
@@ -210,9 +243,10 @@ export const assignNumberToHub = onCall(async (request) => {
     hubId,
     channelAddress: e164,
     isActive: true,
-    twilioSubaccountSid: number.subaccountSid,
-    ...channelSettings
-  });
+    twilioSubaccountSid: ownedNumData.subaccountSid,
+    ...channelSettings,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
 
   return { success: true };
 });

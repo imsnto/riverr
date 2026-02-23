@@ -14,7 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import * as db from '@/lib/db';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -29,7 +29,7 @@ export default function PhoneSettings({ space, allHubs }: PhoneSettingsProps) {
   const { toast } = useToast();
   const [provisioning, setProvisioning] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [buying, setBuyings] = useState(false);
+  const [buyingNumber, setBuyingNumber] = useState<string | null>(null);
   const [assigning, setAssigning] = useState(false);
   
   const [numbers, setNumbers] = useState<any[]>([]);
@@ -89,7 +89,7 @@ export default function PhoneSettings({ space, allHubs }: PhoneSettingsProps) {
   };
 
   const handleBuy = async (phoneNumber: string) => {
-    setBuyings(true);
+    setBuyingNumber(phoneNumber);
     try {
       const functions = getFunctions(getApp());
       const buy = httpsCallable(functions, 'buyPhoneNumber');
@@ -100,14 +100,17 @@ export default function PhoneSettings({ space, allHubs }: PhoneSettingsProps) {
     } catch (e: any) {
       toast({ variant: 'destructive', title: "Purchase Failed", description: e.message });
     } finally {
-      setBuyings(false);
+      setBuyingNumber(null);
     }
   };
 
   const handleOpenAssign = (num: any) => {
     setSelectedNumber(num);
-    setTargetHubId(''); // Reset selection
+    setTargetHubId('');
     setForwardTo('');
+    setEnableSms(true);
+    setEnableVoice(true);
+    setEnableVoicemail(true);
     setIsAssignModalOpen(true);
   };
 
@@ -123,27 +126,19 @@ export default function PhoneSettings({ space, allHubs }: PhoneSettingsProps) {
       const functions = getFunctions(getApp());
       const assign = httpsCallable(functions, 'assignNumberToHub');
       
-      if (enableSms) {
-        await assign({
-          spaceId: space.id,
-          hubId: targetHubId,
-          number: selectedNumber,
-          type: 'sms'
-        });
-      }
-      
+      const channelSettings: any = {};
       if (enableVoice) {
-        await assign({
-          spaceId: space.id,
-          hubId: targetHubId,
-          number: selectedNumber,
-          type: 'voice',
-          channelSettings: {
-            defaultForwardToE164: forwardTo,
-            voicemailEnabled: enableVoicemail
-          }
-        });
+        channelSettings.defaultForwardToE164 = forwardTo;
+        channelSettings.voicemailEnabled = enableVoicemail;
       }
+
+      await assign({
+        spaceId: space.id,
+        hubId: targetHubId,
+        number: selectedNumber,
+        type: enableSms && enableVoice ? 'both' : (enableSms ? 'sms' : 'voice'),
+        channelSettings
+      });
       
       toast({ title: "Number Assigned", description: `${selectedNumber.phoneNumber} routing updated.` });
       setIsAssignModalOpen(false);
@@ -314,8 +309,8 @@ export default function PhoneSettings({ space, allHubs }: PhoneSettingsProps) {
                       <p className="font-semibold">{n.phoneNumber}</p>
                       <p className="text-[10px] text-muted-foreground uppercase">{n.locality}, {n.region}</p>
                     </div>
-                    <Button size="sm" onClick={() => handleBuy(n.phoneNumber)} disabled={buying}>
-                      {buying ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Buy'}
+                    <Button size="sm" onClick={() => handleBuy(n.phoneNumber)} disabled={buyingNumber === n.phoneNumber}>
+                      {buyingNumber === n.phoneNumber ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Buy'}
                     </Button>
                   </div>
                 ))}
@@ -386,7 +381,7 @@ export default function PhoneSettings({ space, allHubs }: PhoneSettingsProps) {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setIsAssignModalOpen(false)} disabled={assigning}>Cancel</Button>
-            <Button onClick={handleConfirmAssign} disabled={!targetHubId || assigning}>
+            <Button onClick={handleConfirmAssign} disabled={!targetHubId || assigning || (enableVoice && !forwardTo)}>
               {assigning ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Routing'}
             </Button>
           </DialogFooter>

@@ -167,9 +167,11 @@ service cloud.firestore {
     }
     
     match /conversations/{conversationId} {
-      allow read: if true; // Public for widget
-      allow create: if true; // Visitors create
-      allow update: if true; // Visitors update metadata
+      allow read: if true; // Still public for widget, but we should use tokens soon
+      allow create: if true 
+        && request.resource.data.channel in ['webchat', 'sms', 'voice'];
+      allow update: if isAuthenticated() && hasAccessToConversation(conversationId)
+        || (request.resource.data.diff(resource.data).changedKeys().hasOnly(['lastVisitorSeenAt', 'lastVisitorActiveAt', 'visitorName', 'visitorEmail', 'visitorPhone']));
       allow delete: if isAuthenticated() && hasAccessToConversation(conversationId);
     }
     
@@ -181,7 +183,7 @@ service cloud.firestore {
 
     match /help_centers/{hcId} {
       allow create: if isAuthenticated() && isHubAdmin(get(/databases/$(database)/documents/hubs/$(request.resource.data.hubId)).data.spaceId, request.resource.data.hubId);
-      allow read, update, delete: if isAuthenticated() && isHubMember(get(/databases/$(database)/documents/hubs/$(resource.data.hubId)).data.spaceId, resource.data.hubId);
+      allow read, update, delete: if isAuthenticated() && isHubMember(get(/databases/$(database)/documents/hubs/$(request.resource.data.hubId)).data.spaceId, resource.data.hubId);
     }
     match /help_center_collections/{hccId} {
        allow create: if isAuthenticated() && isHubAdmin(get(/databases/$(database)/documents/hubs/$(request.resource.data.hubId)).data.spaceId, request.resource.data.hubId);
