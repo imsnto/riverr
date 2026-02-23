@@ -26,7 +26,8 @@ export const twilioVoiceInbound = onRequest(
     }
 
     const toNormalized = normalizePhoneFallback(to);
-    const lookupRef = db.doc(`phone_channel_lookups/twilio_voice_${toNormalized}`);
+    const lookupId = `twilio_voice_${toNormalized}`;
+    const lookupRef = db.doc(`phone_channel_lookups/${lookupId}`);
     const lookupSnap = await lookupRef.get();
 
     if (!lookupSnap.exists || !lookupSnap.get('isActive')) {
@@ -36,7 +37,7 @@ export const twilioVoiceInbound = onRequest(
 
     const { spaceId, hubId, defaultForwardToE164, twilioSubaccountSid } = lookupSnap.data() as any;
 
-    // Resolve Auth Token for validation
+    // STEP 1: Resolve Auth Token for validation
     let authToken = TWILIO_AUTH_TOKEN.value();
     if (twilioSubaccountSid) {
       const secretsSnap = await db.doc(`twilio_subaccount_secrets/${twilioSubaccountSid}`).get();
@@ -50,7 +51,7 @@ export const twilioVoiceInbound = onRequest(
     });
 
     if (!provider.validateWebhook(req, baseUrl)) {
-      logger.warn("Unauthorized Twilio voice attempt", { to });
+      logger.warn("Unauthorized Twilio voice signature", { to, twilioSubaccountSid });
       res.status(401).send("Unauthorized");
       return;
     }
@@ -63,8 +64,9 @@ export const twilioVoiceInbound = onRequest(
       let contactId: string | null = null;
       const contactQuery = await db.collection("contacts")
         .where("spaceId", "==", spaceId)
-        .where("primaryPhoneE164", "==", from)
+        .where("primaryPhoneNormalized", "==", fromNormalized)
         .limit(1).get();
+      
       if (!contactQuery.empty) contactId = contactQuery.docs[0].id;
 
       if (!contactId) {
@@ -87,6 +89,7 @@ export const twilioVoiceInbound = onRequest(
         contactId = newContactRef.id;
       }
 
+      // Deterministic Voice Conversation ID
       const conversationId = `voice_${spaceId}_${toNormalized.replace(/\+/g, '')}_${fromNormalized.replace(/\+/g, '')}`;
       const convoRef = db.doc(`conversations/${conversationId}`);
       const now = new Date().toISOString();
@@ -113,6 +116,7 @@ export const twilioVoiceInbound = onRequest(
         twilioSubaccountSid: twilioSubaccountSid || null
       }, { merge: true });
 
+      // Call lookup for status and recording callbacks
       await db.doc(`provider_call_lookups/twilio_${providerCallId}`).set({
         conversationId,
         spaceId,

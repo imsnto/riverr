@@ -27,18 +27,19 @@ export const twilioSmsInbound = onRequest(
     }
 
     const toNormalized = normalizePhoneFallback(to);
-    const lookupRef = db.doc(`phone_channel_lookups/twilio_sms_${toNormalized}`);
+    const lookupId = `twilio_sms_${toNormalized}`;
+    const lookupRef = db.doc(`phone_channel_lookups/${lookupId}`);
     const lookupSnap = await lookupRef.get();
 
     if (!lookupSnap.exists || !lookupSnap.get('isActive')) {
-      logger.info("Ignoring SMS to unassigned/inactive number", { to });
+      logger.info("Ignoring SMS to unassigned/inactive number", { to, lookupId });
       res.status(200).send("OK");
       return;
     }
 
     const { spaceId, hubId, twilioSubaccountSid } = lookupSnap.data() as any;
 
-    // Resolve Auth Token for validation
+    // STEP 1: Resolve Auth Token for signature validation
     let authToken = TWILIO_AUTH_TOKEN.value();
     if (twilioSubaccountSid) {
       const secretsSnap = await db.doc(`twilio_subaccount_secrets/${twilioSubaccountSid}`).get();
@@ -52,8 +53,9 @@ export const twilioSmsInbound = onRequest(
       authToken: authToken,
     });
 
+    // STEP 2: Deterministic signature validation
     if (!provider.validateWebhook(req, baseUrl)) {
-      logger.warn("Unauthorized Twilio webhook attempt (inbound SMS)", { to });
+      logger.warn("Unauthorized Twilio signature (inbound SMS)", { to, twilioSubaccountSid });
       res.status(401).send("Unauthorized");
       return;
     }
@@ -67,19 +69,12 @@ export const twilioSmsInbound = onRequest(
       let contactId: string | null = null;
       const contactQuery = await db.collection("contacts")
         .where("spaceId", "==", spaceId)
-        .where("primaryPhoneE164", "==", from)
+        .where("primaryPhoneNormalized", "==", fromNormalized)
         .limit(1)
         .get();
         
       if (!contactQuery.empty) {
         contactId = contactQuery.docs[0].id;
-      } else {
-        const normQuery = await db.collection("contacts")
-          .where("spaceId", "==", spaceId)
-          .where("primaryPhoneNormalized", "==", fromNormalized)
-          .limit(1)
-          .get();
-        if (!normQuery.empty) contactId = normQuery.docs[0].id;
       }
 
       if (!contactId) {
@@ -103,6 +98,7 @@ export const twilioSmsInbound = onRequest(
         contactId = newContactRef.id;
       }
 
+      // Deterministic conversation ID for SMS
       const conversationId = `sms_${spaceId}_${toNormalized.replace(/\+/g, '')}_${fromNormalized.replace(/\+/g, '')}`;
       const convoRef = db.doc(`conversations/${conversationId}`);
 
@@ -110,12 +106,20 @@ export const twilioSmsInbound = onRequest(
         const convoSnap = await tx.get(convoRef);
         const now = new Date().toISOString();
 
+        const convoData: any = {
+          contactId,
+          lastMessage: body.slice(0, 140),
+          lastMessageAt: now,
+          lastMessageAuthor: from,
+          updatedAt: now,
+        };
+
         if (!convoSnap.exists) {
           tx.set(convoRef, {
+            ...convoData,
             id: conversationId,
             spaceId,
             hubId,
-            contactId,
             status: 'bot',
             state: 'ai_active',
             channel: 'sms',
@@ -124,21 +128,11 @@ export const twilioSmsInbound = onRequest(
             externalAddress: from,
             assigneeId: null,
             assignedAgentIds: [],
-            lastMessage: body.slice(0, 140),
-            lastMessageAt: now,
-            lastMessageAuthor: from,
-            updatedAt: now,
             createdAt: now,
             twilioSubaccountSid: twilioSubaccountSid || null
           });
         } else {
-          tx.update(convoRef, {
-            contactId,
-            lastMessage: body.slice(0, 140),
-            lastMessageAt: now,
-            lastMessageAuthor: from,
-            updatedAt: now
-          });
+          tx.update(convoRef, convoData);
         }
 
         const msgRef = db.doc(`chat_messages/twilio_${providerMessageId}`);
@@ -158,7 +152,7 @@ export const twilioSmsInbound = onRequest(
 
       res.status(200).send("<Response></Response>");
     } catch (err: any) {
-      logger.error("Inbound SMS error", err);
+      logger.error("Inbound SMS processing error", err);
       res.status(200).send("OK");
     }
   }
