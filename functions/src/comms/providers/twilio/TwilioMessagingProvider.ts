@@ -12,6 +12,7 @@ export class TwilioMessagingProvider implements MessagingProvider {
 
   /**
    * Validates that the request genuinely came from Twilio using a canonical base URL.
+   * This is essential for environments behind proxies (like Firebase App Hosting/Cloud Run).
    */
   validateWebhook(req: any, baseUrl: string): boolean {
     const signature = req.headers["x-twilio-signature"] || "";
@@ -21,6 +22,7 @@ export class TwilioMessagingProvider implements MessagingProvider {
     }
 
     // Twilio signs the exact URL it requested.
+    // We use the canonical baseUrl + the original request path.
     const url = baseUrl.replace(/\/$/, "") + req.originalUrl;
 
     // Body MUST be parsed from x-www-form-urlencoded into a plain object (handled by default in CF v2)

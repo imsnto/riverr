@@ -6,6 +6,7 @@ import { VoiceProvider } from './providers/VoiceProvider';
 
 /**
  * Returns a messaging provider instance.
+ * Supports credential overrides for multi-tenant subaccounts.
  */
 export function getMessagingProvider(
   providerName: 'twilio',
@@ -25,6 +26,7 @@ export function getMessagingProvider(
 
 /**
  * Returns a voice provider instance.
+ * Supports credential overrides for multi-tenant subaccounts.
  */
 export function getVoiceProvider(
   providerName: 'twilio',
