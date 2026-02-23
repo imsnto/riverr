@@ -52,7 +52,6 @@ service cloud.firestore {
       return isHubMember(spaceId, hubId);
     }
   
-    
     match /users/{userId} {
       allow update, delete: if isAuthenticated() && isOwner(userId);
       allow create, read: if isAuthenticated();
@@ -61,8 +60,7 @@ service cloud.firestore {
     match /spaces/{spaceId} {
       allow read, update, delete: if isAuthenticated() && isExistInSpace(spaceId);
       allow create: if isAuthenticated();
-      allow list: if isAuthenticated() && 
-        resource.data.members[request.auth.uid].role in ['Admin', 'Member'];
+      allow list: if isAuthenticated();
         
       match /commsNumbers/{numberId} {
         allow read: if isAuthenticated() && isExistInSpace(spaceId);
@@ -155,10 +153,12 @@ service cloud.firestore {
     }
     
     match /contacts/{contactId} {
-      allow create, get: if true;
-      allow update, list: if isAuthenticated();
+      allow read: if isAuthenticated() && isExistInSpace(resource.data.spaceId);
+      allow create: if isAuthenticated() && isExistInSpace(request.resource.data.spaceId);
+      allow update, delete: if isAuthenticated() && isExistInSpace(resource.data.spaceId);
+      allow list: if isAuthenticated();
       match /events/{eventId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isAuthenticated() && isExistInSpace(get(/databases/$(database)/documents/contacts/$(contactId)).data.spaceId);
       }
     }
     
@@ -167,13 +167,15 @@ service cloud.firestore {
     }
     
     match /conversations/{conversationId} {
-      allow read, create: if true;
-      allow update: if true; // Allow visitors to update lastVisitorSeenAt
+      allow read: if true; // Public for widget
+      allow create: if true; // Visitors create
+      allow update: if true; // Visitors update metadata
       allow delete: if isAuthenticated() && hasAccessToConversation(conversationId);
     }
     
     match /chat_messages/{messageId} {
-      allow read, create: if true;
+      allow read: if true; // Public for widget
+      allow create: if true; // Visitors create
       allow update, delete: if isAuthenticated() && hasAccessToConversation(resource.data.conversationId);
     }
 
@@ -191,8 +193,8 @@ service cloud.firestore {
     }
 
     match /phone_channel_lookups/{lookupId} {
-      allow read: if true; // Webhooks need to look this up
-      allow write: if isAuthenticated(); // Should be gated by function usually
+      allow read: if true; 
+      allow write: if false; // System only (Cloud Functions)
     }
 
     match /provider_call_lookups/{sid} {
@@ -201,7 +203,7 @@ service cloud.firestore {
     }
 
     match /twilio_subaccount_secrets/{sid} {
-      allow read, write: if false; // Only Admin SDK
+      allow read, write: if false; // Admin SDK only
     }
   }
 }

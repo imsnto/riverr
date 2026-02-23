@@ -4,6 +4,7 @@ import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import { Twilio } from "twilio";
 import { logger } from "firebase-functions";
+import { normalizePhoneFallback } from "../comms/utils";
 
 const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
 const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
@@ -29,6 +30,10 @@ export const provisionTwilioSubaccount = onCall(
     if (!spaceSnap.exists || spaceSnap.get(`members.${uid}.role`) !== 'Admin') {
       throw new HttpsError("permission-denied", "Only space admins can provision Twilio");
     }
+
+    // Idempotency: Return existing if already provisioned
+    const existingSid = spaceSnap.get('comms.twilio.subaccountSid');
+    if (existingSid) return { subaccountSid: existingSid };
 
     const client = new Twilio(TWILIO_ACCOUNT_SID.value(), TWILIO_AUTH_TOKEN.value());
 
@@ -64,22 +69,34 @@ export const provisionTwilioSubaccount = onCall(
 
 /**
  * Searches for available phone numbers in a subaccount.
+ * Now resolves SID from Space ID for security.
  */
 export const searchNumbers = onCall(
   { secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN] },
   async (request) => {
-    const { subaccountSid, countryCode, areaCode, type } = request.data as { 
-      subaccountSid: string; 
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Must be logged in");
+
+    const { spaceId, countryCode, areaCode, type } = request.data as { 
+      spaceId: string; 
       countryCode: string; 
       areaCode?: string;
       type: 'local' | 'tollFree' 
     };
 
-    if (!subaccountSid || !countryCode) throw new HttpsError("invalid-argument", "Missing required params");
+    if (!spaceId || !countryCode) throw new HttpsError("invalid-argument", "Missing required params");
+
+    const spaceSnap = await db.doc(`spaces/${spaceId}`).get();
+    if (!spaceSnap.exists || spaceSnap.get(`members.${uid}.role`) !== 'Admin') {
+      throw new HttpsError("permission-denied", "Only space admins can search numbers");
+    }
+
+    const subaccountSid = spaceSnap.get("comms.twilio.subaccountSid");
+    if (!subaccountSid) throw new HttpsError("failed-precondition", "Twilio not provisioned for this space");
 
     // Fetch subaccount token
     const secretsSnap = await db.doc(`twilio_subaccount_secrets/${subaccountSid}`).get();
-    if (!secretsSnap.exists) throw new HttpsError("not-found", "Subaccount creds not found");
+    if (!secretsSnap.exists) throw new HttpsError("not-found", "Subaccount credentials not found");
 
     const client = new Twilio(subaccountSid, secretsSnap.get('authToken'));
 
@@ -106,15 +123,27 @@ export const searchNumbers = onCall(
 
 /**
  * Buys a number and configures webhooks.
+ * Now resolves SID from Space ID for security.
  */
 export const buyPhoneNumber = onCall(
   { secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, PUBLIC_BASE_URL] },
   async (request) => {
-    const { spaceId, subaccountSid, phoneNumber } = request.data as { spaceId: string; subaccountSid: string; phoneNumber: string };
-    if (!spaceId || !subaccountSid || !phoneNumber) throw new HttpsError("invalid-argument", "Missing params");
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Must be logged in");
+
+    const { spaceId, phoneNumber } = request.data as { spaceId: string; phoneNumber: string };
+    if (!spaceId || !phoneNumber) throw new HttpsError("invalid-argument", "Missing params");
+
+    const spaceSnap = await db.doc(`spaces/${spaceId}`).get();
+    if (!spaceSnap.exists || spaceSnap.get(`members.${uid}.role`) !== 'Admin') {
+      throw new HttpsError("permission-denied", "Only space admins can buy numbers");
+    }
+
+    const subaccountSid = spaceSnap.get("comms.twilio.subaccountSid");
+    if (!subaccountSid) throw new HttpsError("failed-precondition", "Twilio not provisioned for this space");
 
     const secretsSnap = await db.doc(`twilio_subaccount_secrets/${subaccountSid}`).get();
-    if (!secretsSnap.exists) throw new HttpsError("not-found", "Subaccount creds not found");
+    if (!secretsSnap.exists) throw new HttpsError("not-found", "Subaccount credentials not found");
 
     const client = new Twilio(subaccountSid, secretsSnap.get('authToken'));
     const baseUrl = PUBLIC_BASE_URL.value().replace(/\/$/, "");
@@ -148,3 +177,42 @@ export const buyPhoneNumber = onCall(
     }
   }
 );
+
+/**
+ * Assigns a number to a Hub server-side.
+ * Firestore rules block direct client writes to routing docs.
+ */
+export const assignNumberToHub = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Must be logged in");
+
+  const { spaceId, hubId, number, type, channelSettings } = request.data as {
+    spaceId: string;
+    hubId: string;
+    number: any;
+    type: 'sms' | 'voice';
+    channelSettings?: any;
+  };
+
+  if (!spaceId || !hubId || !number?.phoneNumber) throw new HttpsError("invalid-argument", "Missing params");
+
+  const spaceSnap = await db.doc(`spaces/${spaceId}`).get();
+  if (!spaceSnap.exists || spaceSnap.get(`members.${uid}.role`) !== 'Admin') {
+    throw new HttpsError("permission-denied", "Only space admins can assign numbers");
+  }
+
+  const e164 = number.phoneNumber;
+  const toNormalized = normalizePhoneFallback(e164);
+  const lookupId = `twilio_${type}_${toNormalized}`;
+  
+  await db.doc(`phone_channel_lookups/${lookupId}`).set({
+    spaceId,
+    hubId,
+    channelAddress: e164,
+    isActive: true,
+    twilioSubaccountSid: number.subaccountSid,
+    ...channelSettings
+  });
+
+  return { success: true };
+});

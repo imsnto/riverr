@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { Space, Hub } from '@/lib/data';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Loader2, Phone, MessageSquare, Info, ShieldAlert, Check, ChevronRight, Globe, Trash2, Settings, Search } from 'lucide-react';
+import { Plus, Loader2, Phone, MessageSquare, ShieldAlert, Check, ChevronRight, Search, Settings } from 'lucide-react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
 import { useToast } from '@/hooks/use-toast';
@@ -14,7 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import * as db from '@/lib/db';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -30,6 +30,7 @@ export default function PhoneSettings({ space, allHubs }: PhoneSettingsProps) {
   const [provisioning, setProvisioning] = useState(false);
   const [searching, setSearching] = useState(false);
   const [buying, setBuyings] = useState(false);
+  const [assigning, setAssigning] = useState(false);
   
   const [numbers, setNumbers] = useState<any[]>([]);
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
@@ -69,13 +70,12 @@ export default function PhoneSettings({ space, allHubs }: PhoneSettingsProps) {
   };
 
   const handleSearch = async () => {
-    if (!twilioConfig?.subaccountSid) return;
     setSearching(true);
     try {
       const functions = getFunctions(getApp());
       const search = httpsCallable(functions, 'searchNumbers');
       const result = await search({ 
-        subaccountSid: twilioConfig.subaccountSid,
+        spaceId: space.id,
         countryCode,
         areaCode: areaCode || undefined,
         type: 'local'
@@ -89,12 +89,11 @@ export default function PhoneSettings({ space, allHubs }: PhoneSettingsProps) {
   };
 
   const handleBuy = async (phoneNumber: string) => {
-    if (!twilioConfig?.subaccountSid) return;
     setBuyings(true);
     try {
       const functions = getFunctions(getApp());
       const buy = httpsCallable(functions, 'buyPhoneNumber');
-      await buy({ spaceId: space.id, subaccountSid: twilioConfig.subaccountSid, phoneNumber });
+      await buy({ spaceId: space.id, phoneNumber });
       toast({ title: "Number Purchased!", description: `${phoneNumber} is now owned by your space.` });
       setIsBuyModalOpen(false);
       setAvailableNumbers([]);
@@ -107,27 +106,51 @@ export default function PhoneSettings({ space, allHubs }: PhoneSettingsProps) {
 
   const handleOpenAssign = (num: any) => {
     setSelectedNumber(num);
+    setTargetHubId(''); // Reset selection
     setForwardTo('');
     setIsAssignModalOpen(true);
   };
 
   const handleConfirmAssign = async () => {
     if (!targetHubId || !selectedNumber) return;
+    if (enableVoice && !forwardTo) {
+      toast({ variant: 'destructive', title: "Forwarding required", description: "Please enter a destination phone number for calls." });
+      return;
+    }
     
+    setAssigning(true);
     try {
+      const functions = getFunctions(getApp());
+      const assign = httpsCallable(functions, 'assignNumberToHub');
+      
       if (enableSms) {
-        await db.assignNumberToHub(space.id, targetHubId, selectedNumber, 'sms');
-      }
-      if (enableVoice) {
-        await db.assignNumberToHub(space.id, targetHubId, selectedNumber, 'voice', {
-          defaultForwardToE164: forwardTo,
-          voicemailEnabled: enableVoicemail
+        await assign({
+          spaceId: space.id,
+          hubId: targetHubId,
+          number: selectedNumber,
+          type: 'sms'
         });
       }
-      toast({ title: "Number Assigned", description: `${selectedNumber.phoneNumber} is now routing to the selected hub.` });
+      
+      if (enableVoice) {
+        await assign({
+          spaceId: space.id,
+          hubId: targetHubId,
+          number: selectedNumber,
+          type: 'voice',
+          channelSettings: {
+            defaultForwardToE164: forwardTo,
+            voicemailEnabled: enableVoicemail
+          }
+        });
+      }
+      
+      toast({ title: "Number Assigned", description: `${selectedNumber.phoneNumber} routing updated.` });
       setIsAssignModalOpen(false);
     } catch (e: any) {
       toast({ variant: 'destructive', title: "Assignment Failed", description: e.message });
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -292,7 +315,7 @@ export default function PhoneSettings({ space, allHubs }: PhoneSettingsProps) {
                       <p className="text-[10px] text-muted-foreground uppercase">{n.locality}, {n.region}</p>
                     </div>
                     <Button size="sm" onClick={() => handleBuy(n.phoneNumber)} disabled={buying}>
-                      Buy
+                      {buying ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Buy'}
                     </Button>
                   </div>
                 ))}
@@ -362,8 +385,10 @@ export default function PhoneSettings({ space, allHubs }: PhoneSettingsProps) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsAssignModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleConfirmAssign} disabled={!targetHubId}>Save Routing</Button>
+            <Button variant="ghost" onClick={() => setIsAssignModalOpen(false)} disabled={assigning}>Cancel</Button>
+            <Button onClick={handleConfirmAssign} disabled={!targetHubId || assigning}>
+              {assigning ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Routing'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

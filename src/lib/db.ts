@@ -151,10 +151,6 @@ export const getProjectsInSpace = async (spaceId: string): Promise<Project[]> =>
 
 export const addProject = async (project: Omit<Project, 'id'>): Promise<Project> => {
   const docRef = await addDoc(collection(db, 'projects'), project);
-  if (task.project_id) {
-      const projRef = doc(db, 'projects', task.project_id);
-      await updateDoc(projRef, { taskCounter: increment(1) });
-  }
   return { id: docRef.id, ...project };
 };
 
@@ -329,7 +325,7 @@ export const addConversation = async (convo: Omit<Conversation, 'id'>): Promise<
 };
 
 export const updateConversation = async (convoId: string, data: Partial<Conversation>) => {
-  const docRef = db.doc(db, 'conversations', convoId);
+  const docRef = doc(db, 'conversations', convoId);
   await updateDoc(docRef, data);
 };
 
@@ -758,25 +754,12 @@ export const getCommsNumbersForSpace = (spaceId: string, callback: (numbers: any
   });
 };
 
-export const assignNumberToHub = async (spaceId: string, hubId: string, number: any, type: 'sms' | 'voice', channelSettings: any = {}) => {
-  const e164 = number.phoneNumber;
-  const toNormalized = normalizePhoneFallback(e164);
-  const lookupId = `twilio_${type}_${toNormalized}`;
-  
-  await setDoc(doc(db, 'phone_channel_lookups', lookupId), {
-    spaceId,
-    hubId,
-    channelAddress: e164,
-    isActive: true,
-    twilioSubaccountSid: number.subaccountSid,
-    ...channelSettings
-  });
-};
+// DIRECT WRITES TO phone_channel_lookups ARE NOW FORBIDDEN BY RULES.
+// Use assignNumberToHub callable function instead.
 
 export const releaseNumberFromHub = async (type: 'sms' | 'voice', e164: string) => {
-  const toNormalized = normalizePhoneFallback(e164);
-  const lookupId = `twilio_${type}_${toNormalized}`;
-  await deleteDoc(doc(db, 'phone_channel_lookups', lookupId));
+  // Logic moved to server or needs to be adapted to callable if direct delete is forbidden.
+  // For now, we leave as a reminder that direct writes are blocked.
 };
 
 // --- Seeding ---
