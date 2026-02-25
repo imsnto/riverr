@@ -1,4 +1,3 @@
-
 // src/components/dashboard/help-center-layout.tsx
 'use client';
 import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
@@ -10,7 +9,7 @@ import { Button, buttonVariants } from '../ui/button';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
-import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2, Bot as BotIcon, Lock, Globe, Wand2, Upload, Loader2, Image as ImageIcon, Download, ExternalLink, HelpCircle, CheckCircle2, AlertCircle } from 'lucide-react';
+import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2, Bot as BotIcon, Lock, Globe, Wand2, Upload, Loader2, Image as ImageIcon, Download, ExternalLink, HelpCircle, CheckCircle2, AlertCircle, MoreVertical, Star } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import HelpCenterFormDialog, { HelpCenterFormValues } from './help-center-form-dialog';
 import { Input } from '../ui/input';
@@ -32,6 +31,7 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import Image from 'next/image';
 import { generateCoverImage } from '@/ai/flows/generate-cover-image';
 import Link from 'next/link';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 interface HelpCenterLayoutProps {
     bots: Bot[];
@@ -743,6 +743,9 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
     const [visibility, setVisibility] = useState(helpCenter.visibility || 'public');
     const [coverImageUrl, setCoverImageUrl] = useState(helpCenter.coverImageUrl || '');
     const [customDomain, setCustomDomain] = useState(helpCenter.customDomain || '');
+    const [primaryDomainType, setPrimaryDomainType] = useState<'default' | 'custom'>(helpCenter.primaryDomainType || 'default');
+    const [isAddingDomain, setIsAddingDomain] = useState(false);
+    
     const [prompt, setPrompt] = useState('');
     const [isGenerating, startTransition] = useTransition();
     const [isUploading, setIsUploading] = useState(false);
@@ -754,10 +757,11 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
     const hasChanges = name !== helpCenter.name 
         || visibility !== helpCenter.visibility 
         || coverImageUrl !== (helpCenter.coverImageUrl || '')
-        || customDomain !== (helpCenter.customDomain || '');
+        || customDomain !== (helpCenter.customDomain || '')
+        || primaryDomainType !== (helpCenter.primaryDomainType || 'default');
 
     const handleSave = () => {
-        onSave({ name, visibility, coverImageUrl, customDomain });
+        onSave({ name, visibility, coverImageUrl, customDomain, primaryDomainType });
         toast({ title: "Library settings saved." });
     }
 
@@ -813,6 +817,8 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
         });
     };
 
+    const defaultUrl = `manowar.cloud/hc/${helpCenter.id}`;
+
     return (
         <div className="p-6 h-full flex flex-col">
             <div className="flex justify-between items-center mb-6 shrink-0">
@@ -841,55 +847,134 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
                                     </div>
                                 </RadioGroup>
                             </div>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <Label htmlFor="hc-domain">Custom Domain</Label>
-                                    <Link 
-                                        href="/docs/custom-domains" 
-                                        className="text-xs text-primary hover:underline flex items-center gap-1"
-                                    >
-                                        <HelpCircle className="h-3 w-3" />
-                                        How to setup
-                                    </Link>
-                                </div>
-                                <div className="flex gap-2">
-                                    <Input 
-                                        id="hc-domain" 
-                                        value={customDomain} 
-                                        onChange={(e) => {
-                                            setCustomDomain(e.target.value);
-                                            setDnsStatus('unchecked');
-                                        }} 
-                                        placeholder="e.g., help.example.com"
-                                        className="flex-1"
-                                    />
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={handleVerifyDns}
-                                        disabled={isVerifying || !customDomain}
-                                    >
-                                        {isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
-                                    </Button>
-                                </div>
-                                {dnsStatus === 'valid' && (
-                                    <p className="text-xs text-emerald-500 flex items-center gap-1.5 font-medium">
-                                        <CheckCircle2 className="h-3.5 w-3.5" />
-                                        Domain verified and active
-                                    </p>
-                                )}
-                                {dnsStatus === 'invalid' && (
-                                    <p className="text-xs text-destructive flex items-center gap-1.5 font-medium">
-                                        <AlertCircle className="h-3.5 w-3.5" />
-                                        DNS records incorrect or still propagating
-                                    </p>
-                                )}
-                                <p className="text-[10px] text-muted-foreground italic">
-                                    Map a subdomain to your public Help Center. Requires a CNAME record pointing to proxy.manowar.cloud.
-                                </p>
-                            </div>
                         </CardContent>
                     </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <CardTitle>Domains</CardTitle>
+                                    <CardDescription>Manage the URLs for your public Help Center.</CardDescription>
+                                </div>
+                                {!customDomain && !isAddingDomain && (
+                                    <Button size="sm" variant="outline" onClick={() => setIsAddingDomain(true)}>
+                                        <Plus className="h-4 w-4 mr-2" /> Add Custom Domain
+                                    </Button>
+                                )}
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="divide-y border rounded-lg overflow-hidden">
+                                {/* Default Domain Row */}
+                                <div className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                            <Globe className="h-4 w-4 text-primary" />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-sm">{defaultUrl}</p>
+                                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Default Manowar Domain</p>
+                                        </div>
+                                        {primaryDomainType === 'default' && (
+                                            <Badge variant="secondary" className="h-5 px-1.5 text-[9px] bg-primary/10 text-primary border-primary/20">Primary</Badge>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Link href={`/hc/${helpCenter.id}`} target="_blank" className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), "h-8 w-8")}>
+                                            <ExternalLink className="h-4 w-4" />
+                                        </Link>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => setPrimaryDomainType('default')} disabled={primaryDomainType === 'default'}>
+                                                    <Star className="h-4 w-4 mr-2" /> Set as Primary
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                </div>
+
+                                {/* Custom Domain Row */}
+                                {customDomain && (
+                                    <div className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 rounded-full bg-indigo-500/10 flex items-center justify-center">
+                                                <ShieldAlert className="h-4 w-4 text-indigo-500" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-sm">{customDomain}</p>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Custom Domain</p>
+                                                    {dnsStatus === 'valid' ? (
+                                                        <span className="flex items-center text-[9px] text-emerald-500 font-bold uppercase"><CheckCircle2 className="h-2.5 w-2.5 mr-1"/> Verified</span>
+                                                    ) : (
+                                                        <span className="flex items-center text-[9px] text-amber-500 font-bold uppercase"><AlertCircle className="h-2.5 w-2.5 mr-1"/> Setup Pending</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {primaryDomainType === 'custom' && (
+                                                <Badge variant="secondary" className="h-5 px-1.5 text-[9px] bg-primary/10 text-primary border-primary/20">Primary</Badge>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button variant="outline" size="sm" className="h-8" onClick={handleVerifyDns} disabled={isVerifying}>
+                                                {isVerifying ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Verify'}
+                                            </Button>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => setPrimaryDomainType('custom')} disabled={primaryDomainType === 'custom'}>
+                                                        <Star className="h-4 w-4 mr-2" /> Set as Primary
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => setIsAddingDomain(true)}>
+                                                        <Edit className="h-4 w-4 mr-2" /> Edit Domain
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onClick={() => {
+                                                        setCustomDomain('');
+                                                        setPrimaryDomainType('default');
+                                                        setDnsStatus('unchecked');
+                                                    }} className="text-destructive">
+                                                        <Trash2 className="h-4 w-4 mr-2" /> Remove Domain
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {isAddingDomain && (
+                                <div className="mt-4 p-4 border rounded-lg bg-muted/20 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="hc-domain">Custom Subdomain</Label>
+                                        <Link href="/docs/custom-domains" className="text-xs text-primary hover:underline flex items-center gap-1">
+                                            <HelpCircle className="h-3 w-3" /> Setup Instructions
+                                        </Link>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Input 
+                                            id="hc-domain" 
+                                            value={customDomain} 
+                                            onChange={(e) => {
+                                                setCustomDomain(e.target.value);
+                                                setDnsStatus('unchecked');
+                                            }} 
+                                            placeholder="e.g., help.yourcompany.com"
+                                            className="flex-1"
+                                        />
+                                        <Button size="sm" onClick={() => setIsAddingDomain(false)}>Done</Button>
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
                     {visibility === 'public' && (
                         <Card>
                             <CardHeader>
@@ -949,3 +1034,24 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
         </div>
     );
 };
+
+function ShieldAlert(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z" />
+      <path d="M12 8v4" />
+      <path d="M12 16h.01" />
+    </svg>
+  )
+}

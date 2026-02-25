@@ -564,6 +564,7 @@ export interface HelpCenter {
   coverImageUrl?: string;
   visibility?: 'public' | 'internal';
   customDomain?: string;
+  primaryDomainType?: 'default' | 'custom';
 }
 
 export interface HelpCenterCollection {
