@@ -1,4 +1,4 @@
-
+// src/components/dashboard/help-center-layout.tsx
 'use client';
 import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -9,7 +9,7 @@ import { Button, buttonVariants } from '../ui/button';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
-import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2, Bot as BotIcon, Lock, Globe, Wand2, Upload, Loader2, Image as ImageIcon, Download } from 'lucide-react';
+import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2, Bot as BotIcon, Lock, Globe, Wand2, Upload, Loader2, Image as ImageIcon, Download, ExternalLink, HelpCircle } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import HelpCenterFormDialog, { HelpCenterFormValues } from './help-center-form-dialog';
 import { Input } from '../ui/input';
@@ -29,6 +29,7 @@ import { Label } from '../ui/label';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import Image from 'next/image';
 import { generateCoverImage } from '@/ai/flows/generate-cover-image';
+import Link from 'next/link';
 
 interface HelpCenterLayoutProps {
     bots: Bot[];
@@ -739,16 +740,20 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
     const [name, setName] = useState(helpCenter.name);
     const [visibility, setVisibility] = useState(helpCenter.visibility || 'public');
     const [coverImageUrl, setCoverImageUrl] = useState(helpCenter.coverImageUrl || '');
+    const [customDomain, setCustomDomain] = useState(helpCenter.customDomain || '');
     const [prompt, setPrompt] = useState('');
     const [isGenerating, startTransition] = useTransition();
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
     
-    const hasChanges = name !== helpCenter.name || visibility !== helpCenter.visibility || coverImageUrl !== (helpCenter.coverImageUrl || '');
+    const hasChanges = name !== helpCenter.name 
+        || visibility !== helpCenter.visibility 
+        || coverImageUrl !== (helpCenter.coverImageUrl || '')
+        || customDomain !== (helpCenter.customDomain || '');
 
     const handleSave = () => {
-        onSave({ name, visibility, coverImageUrl });
+        onSave({ name, visibility, coverImageUrl, customDomain });
         toast({ title: "Library settings saved." });
     }
 
@@ -812,6 +817,28 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
                                         <Label htmlFor="r2">Internal</Label>
                                     </div>
                                 </RadioGroup>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="hc-domain">Custom Domain</Label>
+                                    <Link 
+                                        href="https://docs.riverr.app/knowledge/custom-domains" 
+                                        target="_blank"
+                                        className="text-xs text-primary hover:underline flex items-center gap-1"
+                                    >
+                                        <HelpCircle className="h-3 w-3" />
+                                        How to setup
+                                    </Link>
+                                </div>
+                                <Input 
+                                    id="hc-domain" 
+                                    value={customDomain} 
+                                    onChange={(e) => setCustomDomain(e.target.value)} 
+                                    placeholder="e.g., help.example.com"
+                                />
+                                <p className="text-[10px] text-muted-foreground italic">
+                                    Map a subdomain to your public Help Center. Requires a CNAME record pointing to our servers.
+                                </p>
                             </div>
                         </CardContent>
                     </Card>

@@ -563,6 +563,7 @@ export interface HelpCenter {
   icon?: string;
   coverImageUrl?: string;
   visibility?: 'public' | 'internal';
+  customDomain?: string;
 }
 
 export interface HelpCenterCollection {
