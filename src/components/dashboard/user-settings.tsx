@@ -61,7 +61,7 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
   }, [initialUsers, userSpaces]);
   
   const getRoleInSpace = (user: User, space: Space): SpaceMember | null => {
-      return space.members[user.id] || null;
+      return (space.members[user.id] as unknown as SpaceMember) || null;
   }
 
   const handleRemoveUser = (user: User) => {
@@ -73,7 +73,9 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
     try {
         await db.removeUserFromSpace(activeSpace.id, userToRemove.id);
         toast({ title: 'User Removed', description: `${userToRemove.name} has been removed from ${activeSpace.name}.` });
-        onInvite(); // Refresh parent data
+        // The real-time listener in useAuth will handle the space member update.
+        // We call onInvite() to trigger a refresh of the global user list in Dashboard.
+        onInvite(); 
     } catch (e) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to remove user.' });
     } finally {
@@ -84,7 +86,6 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
   const handleInviteAndClose = async (values: Omit<Invite, 'id' | 'tokenHash' | 'sentAt' | 'expiresAt' | 'createdAt' | 'status'>) => {
     handleInvite(values);
     
-    // Give Firestore a moment to process the creation and trigger the function
     setTimeout(() => {
         const spaceIds = userSpaces.map(s => s.id);
         db.getPendingInvites(spaceIds).then(setPendingInvites);
@@ -104,7 +105,6 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
         title: "Invitation Resent",
         description: `A new invitation has been sent to ${email}.`,
       });
-      // Optionally refetch invites to update `sentAt` if you display it
       const spaceIds = userSpaces.map(s => s.id);
       db.getPendingInvites(spaceIds).then(setPendingInvites);
     } catch (error: any) {
@@ -168,6 +168,8 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
                             const userMemberships = userSpaces
                                 .map(space => ({ space, membership: getRoleInSpace(user, space) }))
                                 .filter(item => item.membership && !item.space.isSystem);
+
+                            if (userMemberships.length === 0) return null;
 
                             return (
                                 <TableRow key={user.id}>

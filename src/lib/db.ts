@@ -83,22 +83,31 @@ export const updateSpace = async (spaceId: string, data: Partial<Space>) => {
   await updateDoc(docRef, data);
 };
 
+/**
+ * Removes a user from a space and all associated private hubs.
+ */
 export const removeUserFromSpace = async (spaceId: string, userId: string) => {
   const spaceRef = doc(db, 'spaces', spaceId);
-  await updateDoc(spaceRef, {
+  const batch = writeBatch(db);
+
+  // 1. Remove from space members map
+  batch.update(spaceRef, {
     [`members.${userId}`]: deleteField()
   });
   
-  // Also remove from hubs in that space if they are private members
-  const hubs = await getHubsForSpace(spaceId);
-  const batch = writeBatch(db);
-  hubs.forEach(hub => {
+  // 2. Remove from all hubs in this space (cleaning up private member lists)
+  const hubsQuery = query(collection(db, 'hubs'), where('spaceId', '==', spaceId));
+  const hubsSnap = await getDocs(hubsQuery);
+  
+  hubsSnap.docs.forEach(hubDoc => {
+    const hub = hubDoc.data() as Hub;
     if (hub.memberIds && hub.memberIds.includes(userId)) {
-      batch.update(doc(db, 'hubs', hub.id), {
+      batch.update(hubDoc.ref, {
         memberIds: hub.memberIds.filter(id => id !== userId)
       });
     }
   });
+
   await batch.commit();
 };
 
@@ -111,6 +120,17 @@ export const getSpacesForUser = async (userId: string): Promise<Space[]> => {
   const q = query(collection(db, 'spaces'), where(`members.${userId}.role`, 'in', ['Admin', 'Member', 'Viewer']));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Space));
+};
+
+/**
+ * Real-time subscription for spaces where the user is a member.
+ */
+export const subscribeToUserSpaces = (userId: string, callback: (spaces: Space[]) => void) => {
+  const q = query(collection(db, 'spaces'), where(`members.${userId}.role`, 'in', ['Admin', 'Member', 'Viewer']));
+  return onSnapshot(q, (snapshot) => {
+    const spaces = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Space));
+    callback(spaces);
+  });
 };
 
 // --- Hubs ---

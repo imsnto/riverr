@@ -1,13 +1,10 @@
-
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { User as AppUser, Space, SpaceMember, Invite, Hub } from '@/lib/data';
 import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword as firebaseSignIn, updateProfile } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { getUser, addUser, addSpace, getSpacesForUser, seedDatabase, updateUser } from '@/lib/db';
-import { writeBatch, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getUser, addUser, addSpace, getSpacesForUser, seedDatabase, updateUser, subscribeToUserSpaces } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 
 
@@ -46,6 +43,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [activeSpace, _setActiveSpace] = useState<Space | null>(null);
   const [activeHub, _setActiveHub] = useState<Hub | null>(null);
   const [isUserAdmin, setIsUserAdmin] = useState(false);
+  
+  const spacesUnsubRef = useRef<(() => void) | null>(null);
 
   const setActiveSpace = (space: Space | null) => {
     _setActiveSpace(space);
@@ -92,14 +91,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_HUB);
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setFirebaseUser(user);
         const token = await user.getIdToken();
         document.cookie = `token=${token}; path=/; max-age=3600`;
         
         let userProfile = await getUser(user.uid);
-        let spaces: Space[] = [];
 
         if (!userProfile) {
           const newUser: Omit<AppUser, 'id'> = {
@@ -118,26 +116,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             isOnboarding: true,
           };
           await addSpace(systemSpace);
-          spaces = await getSpacesForUser(userProfile.id);
-        } else {
-           spaces = await getSpacesForUser(userProfile.id);
         }
         
         setAppUser(userProfile);
-        setUserSpaces(spaces);
-        localStorage.setItem(LOCAL_STORAGE_KEY_USER, JSON.stringify({ appUser: userProfile, firebaseUser: user, userSpaces: spaces }));
-        
-        if (activeSpace) {
-            const stillMember = spaces.find(s => s.id === activeSpace.id);
-            if (!stillMember) {
-                setActiveSpace(null);
-                setActiveHub(null);
-            }
-        }
-        
-        const realSpaces = spaces.filter(s => !s.isSystem);
-        const isAdminInAnySpace = realSpaces.some(s => s.members[userProfile!.id]?.role === 'Admin');
-        setIsUserAdmin(isAdminInAnySpace);
+
+        // Setup real-time listener for spaces
+        if (spacesUnsubRef.current) spacesUnsubRef.current();
+        spacesUnsubRef.current = subscribeToUserSpaces(user.uid, (spaces) => {
+            setUserSpaces(spaces);
+            
+            // Sync with current active space if its metadata changed
+            _setActiveSpace(prev => {
+                if (!prev) return null;
+                const updated = spaces.find(s => s.id === prev.id);
+                return updated || null;
+            });
+
+            // Update admin status
+            const realSpaces = spaces.filter(s => !s.isSystem);
+            const isAdminInAnySpace = realSpaces.some(s => s.members[userProfile!.id]?.role === 'Admin');
+            setIsUserAdmin(isAdminInAnySpace);
+
+            // Update cache
+            localStorage.setItem(LOCAL_STORAGE_KEY_USER, JSON.stringify({ 
+                appUser: userProfile, 
+                firebaseUser: user, 
+                userSpaces: spaces 
+            }));
+        });
 
         setStatus('authenticated');
 
@@ -148,6 +154,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setActiveSpace(null);
         setActiveHub(null);
         setIsUserAdmin(false);
+        if (spacesUnsubRef.current) spacesUnsubRef.current();
+        spacesUnsubRef.current = null;
         localStorage.removeItem(LOCAL_STORAGE_KEY_USER);
         localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_SPACE);
         localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_HUB);
@@ -156,7 +164,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+        unsubscribeAuth();
+        if (spacesUnsubRef.current) spacesUnsubRef.current();
+    };
   }, []);
 
   const handleSignOut = async () => {
@@ -167,7 +178,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setStatus('loading');
     try {
       await signInWithPopup(auth, googleProvider);
-      // The onAuthStateChanged listener will handle the rest
     } catch (error) {
       console.error("Error during Google Sign-In:", error);
       setStatus('unauthenticated');
@@ -178,9 +188,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setStatus('loading');
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // Immediately update the Firebase Auth user's profile
       await updateProfile(userCredential.user, { displayName: name });
-      // The onAuthStateChanged listener will now pick up the user with the correct displayName
     } catch (error) {
       console.error("Error during Email/Password Sign-Up:", error);
       setStatus('unauthenticated');
