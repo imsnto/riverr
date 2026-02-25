@@ -9,7 +9,7 @@ import { Button, buttonVariants } from '../ui/button';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
-import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2, Bot as BotIcon, Lock, Globe, Wand2, Upload, Loader2, Image as ImageIcon, Download, ExternalLink, HelpCircle, CheckCircle2, AlertCircle, MoreVertical, Star } from 'lucide-react';
+import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2, Bot as BotIcon, Lock, Globe, Wand2, Upload, Loader2, Image as ImageIcon, Download, ExternalLink, HelpCircle, CheckCircle2, AlertCircle, MoreVertical, Star, Edit } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import HelpCenterFormDialog, { HelpCenterFormValues } from './help-center-form-dialog';
 import { Input } from '../ui/input';
