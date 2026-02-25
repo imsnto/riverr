@@ -10,7 +10,7 @@ import { Button, buttonVariants } from '../ui/button';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
-import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2, Bot as BotIcon, Lock, Globe, Wand2, Upload, Loader2, Image as ImageIcon, Download, ExternalLink, HelpCircle } from 'lucide-react';
+import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2, Bot as BotIcon, Lock, Globe, Wand2, Upload, Loader2, Image as ImageIcon, Download, ExternalLink, HelpCircle, CheckCircle2, AlertCircle } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import HelpCenterFormDialog, { HelpCenterFormValues } from './help-center-form-dialog';
 import { Input } from '../ui/input';
@@ -20,6 +20,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { cn, getInitials } from '@/lib/utils';
 import { reindexArticleAction, exportLibraryAction, importLibraryAction } from '@/app/actions/chat';
+import { verifyCustomDomainDns } from '@/app/actions/dns';
 import { suggestLibraryIcon } from '@/ai/flows/suggest-library-icon';
 import { Separator } from '../ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -745,6 +746,8 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
     const [prompt, setPrompt] = useState('');
     const [isGenerating, startTransition] = useTransition();
     const [isUploading, setIsUploading] = useState(false);
+    const [isVerifying, setIsVerifying] = useState(false);
+    const [dnsStatus, setDnsStatus] = useState<'unchecked' | 'valid' | 'invalid'>('unchecked');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
     
@@ -757,6 +760,25 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
         onSave({ name, visibility, coverImageUrl, customDomain });
         toast({ title: "Library settings saved." });
     }
+
+    const handleVerifyDns = async () => {
+        if (!customDomain) return;
+        setIsVerifying(true);
+        try {
+            const result = await verifyCustomDomainDns(customDomain);
+            setDnsStatus(result.success ? 'valid' : 'invalid');
+            if (result.success) {
+                toast({ title: "DNS Verified!", description: "Your custom domain is correctly configured." });
+            } else {
+                toast({ variant: 'destructive', title: "Verification Failed", description: result.error || "We couldn't verify your DNS records." });
+            }
+        } catch (error) {
+            setDnsStatus('invalid');
+            toast({ variant: 'destructive', title: "Verification Error", description: "An error occurred while checking DNS." });
+        } finally {
+            setIsVerifying(false);
+        }
+    };
 
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -830,14 +852,40 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
                                         How to setup
                                     </Link>
                                 </div>
-                                <Input 
-                                    id="hc-domain" 
-                                    value={customDomain} 
-                                    onChange={(e) => setCustomDomain(e.target.value)} 
-                                    placeholder="e.g., help.example.com"
-                                />
+                                <div className="flex gap-2">
+                                    <Input 
+                                        id="hc-domain" 
+                                        value={customDomain} 
+                                        onChange={(e) => {
+                                            setCustomDomain(e.target.value);
+                                            setDnsStatus('unchecked');
+                                        }} 
+                                        placeholder="e.g., help.example.com"
+                                        className="flex-1"
+                                    />
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        onClick={handleVerifyDns}
+                                        disabled={isVerifying || !customDomain}
+                                    >
+                                        {isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
+                                    </Button>
+                                </div>
+                                {dnsStatus === 'valid' && (
+                                    <p className="text-xs text-emerald-500 flex items-center gap-1.5 font-medium">
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                        Domain verified and active
+                                    </p>
+                                )}
+                                {dnsStatus === 'invalid' && (
+                                    <p className="text-xs text-destructive flex items-center gap-1.5 font-medium">
+                                        <AlertCircle className="h-3.5 w-3.5" />
+                                        DNS records incorrect or still propagating
+                                    </p>
+                                )}
                                 <p className="text-[10px] text-muted-foreground italic">
-                                    Map a subdomain to your public Help Center. Requires a CNAME record pointing to our servers.
+                                    Map a subdomain to your public Help Center. Requires a CNAME record pointing to proxy.manowar.cloud.
                                 </p>
                             </div>
                         </CardContent>
