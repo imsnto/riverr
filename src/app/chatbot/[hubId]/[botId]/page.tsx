@@ -147,12 +147,15 @@ export default function ChatbotWidgetPage() {
     const handleIncomingMessage = (event: MessageEvent) => {
       // 1. Initial Handshake: Learn parent origin
       if (!parentOrigin && event.data && event.data.type === 'manowar-parent-hello') {
+        if (event.source !== window.parent) return;
         setParentOrigin(event.origin);
+        // Ack back to parent that we are ready
+        window.parent.postMessage({ type: 'manowar-widget-ready' }, event.origin);
         return;
       }
 
       // 2. Verified communication ONLY
-      if (!parentOrigin || event.origin !== parentOrigin) return;
+      if (!parentOrigin || event.origin !== parentOrigin || event.source !== window.parent) return;
 
       if (event.data && event.data.type === 'manowar-identity-update') {
         const { contactId } = event.data.identity;

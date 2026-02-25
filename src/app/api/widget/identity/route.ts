@@ -56,7 +56,6 @@ export async function POST(request: NextRequest) {
     if (provider.secureModeEnabled && user_id) {
       if (!user_hash) {
         console.warn(`[Identity] Signature missing for user_id ${user_id} (Secure Mode ON)`);
-        // Fail closed silently to match Intercom behavior
         return NextResponse.json({ status: 'anonymous', message: 'Secure mode required' }, { status: 200, headers: corsHeaders });
       }
 
@@ -79,11 +78,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ status: 'anonymous', message: 'Invalid signature' }, { status: 200, headers: corsHeaders });
       }
     } else if (!provider.secureModeEnabled) {
+      // If secure mode is disabled, we "trust" what's provided if identify by email is allowed
       isVerified = true;
-    }
-
-    if (!isVerified && !provider.allowEmailOnlyIdentify) {
-      return NextResponse.json({ status: 'anonymous', message: 'Identification failed' }, { status: 200, headers: corsHeaders });
     }
 
     // 4. Resolve SpaceId from Hub
@@ -93,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     // 5. Upsert Contact
     let contactId = null;
-    if (user_id) {
+    if (user_id && isVerified) {
       const contactQuery = await adminDB.collection('contacts')
         .where('providerId', '==', providerId)
         .where('externalUserId', '==', user_id)
@@ -104,13 +100,50 @@ export async function POST(request: NextRequest) {
         spaceId,
         providerId,
         externalUserId: user_id,
-        emails: email ? [email.toLowerCase()] : [],
+        emails: email ? admin.firestore.FieldValue.arrayUnion(email.toLowerCase()) : [],
         primaryEmail: email ? email.toLowerCase() : null,
         name: name || null,
         customAttributes: custom_attributes || {},
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         lastSeenAt: admin.firestore.FieldValue.serverTimestamp(),
         identifiedAt: new Date().toISOString(),
+        source: 'chat' as const,
+      };
+
+      if (!contactQuery.empty) {
+        const doc = contactQuery.docs[0];
+        await doc.ref.update(contactData);
+        contactId = doc.id;
+      } else {
+        const newRef = await adminDB.collection('contacts').add({
+          ...contactData,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          isMerged: false,
+          mergeParentId: null,
+          tags: [],
+          externalIds: {},
+          phones: [],
+        });
+        contactId = newRef.id;
+      }
+    } else if (email && provider.allowEmailOnlyIdentify && isVerified) {
+      // Fallback: Identify by email if allowed and verified (or non-secure mode)
+      const emailLower = email.toLowerCase();
+      const contactQuery = await adminDB.collection('contacts')
+        .where('spaceId', '==', spaceId)
+        .where('primaryEmail', '==', emailLower)
+        .limit(1)
+        .get();
+
+      const contactData = {
+        spaceId,
+        providerId,
+        emails: admin.firestore.FieldValue.arrayUnion(emailLower),
+        primaryEmail: emailLower,
+        name: name || null,
+        customAttributes: custom_attributes || {},
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastSeenAt: admin.firestore.FieldValue.serverTimestamp(),
         source: 'chat' as const,
       };
 
@@ -143,11 +176,12 @@ export async function POST(request: NextRequest) {
         });
       } else if (anonymousVisitorId) {
         // Find most recent active conversation for this anonymous visitor
+        // status 'in' + orderBy requires a composite index
         const activeConvo = await adminDB.collection('conversations')
           .where('visitorId', '==', anonymousVisitorId)
           .where('hubId', '==', hubId)
           .where('status', 'in', ['open','bot','human','unassigned'])
-          .orderBy('updatedAt', 'desc')
+          .orderBy('lastMessageAt', 'desc') 
           .limit(1)
           .get();
 
@@ -162,7 +196,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ contactId, status: 'identified' }, { status: 200, headers: corsHeaders });
+    return NextResponse.json({ contactId, status: contactId ? 'identified' : 'anonymous' }, { status: 200, headers: corsHeaders });
   } catch (error: any) {
     console.error(`[Identity] API Error:`, error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500, headers: corsHeaders });
