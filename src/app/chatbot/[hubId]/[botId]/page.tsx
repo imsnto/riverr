@@ -1,5 +1,4 @@
 
-// src/app/chatbot/[hubId]/[botId]/page.tsx
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -50,8 +49,8 @@ export default function ChatbotWidgetPage() {
   const { hubId, botId } = params as { hubId: string; botId: string };
   const { appUser } = useAuth();
 
-  // The origin of the parent window, passed during boot
-  const parentOrigin = searchParams.get('parent_origin');
+  // SECURITY: Learn parent origin via handshake, NOT URL params
+  const [parentOrigin, setParentOrigin] = useState<string | null>(null);
 
   const [bot, setBot] = useState<BotDataWithAgents | null>(null);
   const [visitor, setVisitor] = useState<Visitor | null>(null);
@@ -145,9 +144,15 @@ export default function ChatbotWidgetPage() {
   }, [visibleMessages, conversation?.lastVisitorSeenAt, parentOrigin]);
 
   useEffect(() => {
-    const handleIdentityUpdate = (event: MessageEvent) => {
-      // SECURITY: Only trust identity updates from the verified parent origin
-      if (parentOrigin && event.origin !== parentOrigin) return;
+    const handleIncomingMessage = (event: MessageEvent) => {
+      // 1. Initial Handshake: Learn parent origin
+      if (!parentOrigin && event.data && event.data.type === 'manowar-parent-hello') {
+        setParentOrigin(event.origin);
+        return;
+      }
+
+      // 2. Verified communication ONLY
+      if (!parentOrigin || event.origin !== parentOrigin) return;
 
       if (event.data && event.data.type === 'manowar-identity-update') {
         const { contactId } = event.data.identity;
@@ -159,8 +164,8 @@ export default function ChatbotWidgetPage() {
       }
     };
 
-    window.addEventListener('message', handleIdentityUpdate);
-    return () => window.removeEventListener('message', handleIdentityUpdate);
+    window.addEventListener('message', handleIncomingMessage);
+    return () => window.removeEventListener('message', handleIncomingMessage);
   }, [parentOrigin]);
 
   useEffect(() => {

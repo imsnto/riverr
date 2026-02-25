@@ -42,9 +42,9 @@ export async function POST(request: NextRequest) {
     }
     const provider = providerSnap.data() as any;
 
-    // 2. Validate Hub/Bot alignment (Stricter logic)
-    var isHubAllowed = !provider.allowedHubIds || provider.allowedHubIds.includes(hubId);
-    var isBotAllowed = !provider.allowedBotIds || provider.allowedBotIds.includes(botId);
+    // 2. Validate Hub/Bot alignment
+    const isHubAllowed = !provider.allowedHubIds || provider.allowedHubIds.includes(hubId);
+    const isBotAllowed = !provider.allowedBotIds || provider.allowedBotIds.includes(botId);
     
     if (!isHubAllowed || !isBotAllowed) {
       console.error(`[Identity] Unauthorized hub/bot for provider ${providerId}`);
@@ -56,7 +56,8 @@ export async function POST(request: NextRequest) {
     if (provider.secureModeEnabled && user_id) {
       if (!user_hash) {
         console.warn(`[Identity] Signature missing for user_id ${user_id} (Secure Mode ON)`);
-        return NextResponse.json({ error: 'Signature required' }, { status: 401, headers: corsHeaders });
+        // Fail closed silently to match Intercom behavior
+        return NextResponse.json({ status: 'anonymous', message: 'Secure mode required' }, { status: 200, headers: corsHeaders });
       }
 
       const expectedHash = crypto
@@ -64,7 +65,6 @@ export async function POST(request: NextRequest) {
         .update(user_id)
         .digest('hex');
 
-      // Constant-time comparison
       try {
         isVerified = crypto.timingSafeEqual(
           Buffer.from(expectedHash, 'hex'),
@@ -76,14 +76,14 @@ export async function POST(request: NextRequest) {
 
       if (!isVerified) {
         console.error(`[Identity] Invalid signature for user_id ${user_id}`);
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 401, headers: corsHeaders });
+        return NextResponse.json({ status: 'anonymous', message: 'Invalid signature' }, { status: 200, headers: corsHeaders });
       }
     } else if (!provider.secureModeEnabled) {
       isVerified = true;
     }
 
     if (!isVerified && !provider.allowEmailOnlyIdentify) {
-      return NextResponse.json({ status: 'anonymous', message: 'Secure mode required' }, { status: 200, headers: corsHeaders });
+      return NextResponse.json({ status: 'anonymous', message: 'Identification failed' }, { status: 200, headers: corsHeaders });
     }
 
     // 4. Resolve SpaceId from Hub
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date().toISOString()
         });
       } else if (anonymousVisitorId) {
-        // Find most recent active conversation for this anonymous visitor in this hub
+        // Find most recent active conversation for this anonymous visitor
         const activeConvo = await adminDB.collection('conversations')
           .where('visitorId', '==', anonymousVisitorId)
           .where('hubId', '==', hubId)
