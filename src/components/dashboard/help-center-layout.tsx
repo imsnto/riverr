@@ -31,7 +31,8 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import Image from 'next/image';
 import { generateCoverImage } from '@/ai/flows/generate-cover-image';
 import Link from 'next/link';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
+import { Badge } from '../ui/badge';
 
 interface HelpCenterLayoutProps {
     bots: Bot[];
