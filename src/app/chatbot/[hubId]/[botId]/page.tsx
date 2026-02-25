@@ -1,4 +1,4 @@
-
+// src/app/chatbot/[hubId]/[botId]/page.tsx
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -134,7 +134,7 @@ export default function ChatbotWidgetPage() {
     );
     
     if (window.parent) {
-      window.parent.postMessage({ type: 'riverr-unread-count', count: unreadMessages.length }, '*');
+      window.parent.postMessage({ type: 'manowar-unread-count', count: unreadMessages.length }, '*');
     }
   }, [visibleMessages, conversation?.lastVisitorSeenAt]);
 
@@ -168,10 +168,10 @@ export default function ChatbotWidgetPage() {
           setSpaceId(hub.spaceId);
         }
 
-        let visitorId = localStorage.getItem('riverr_chat_visitor_id');
+        let visitorId = localStorage.getItem('manowar_chat_visitor_id');
         if (!visitorId) {
           visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-          localStorage.setItem('riverr_chat_visitor_id', visitorId);
+          localStorage.setItem('manowar_chat_visitor_id', visitorId);
         }
         await loadVisitorAndConversation(visitorId);
       } catch (e) {
@@ -233,7 +233,7 @@ export default function ChatbotWidgetPage() {
       });
       return;
     }
-    let visitorId = localStorage.getItem('riverr_chat_visitor_id');
+    let visitorId = localStorage.getItem('manowar_chat_visitor_id');
     if (!visitorId || !conversation) return;
 
     await db.updateVisitor(visitorId, { name: capturedName, email: capturedEmail });
@@ -463,7 +463,7 @@ export default function ChatbotWidgetPage() {
 
   const handleClose = () => {
     if (window.parent) {
-      window.parent.postMessage('close-riverr-chat', '*');
+      window.parent.postMessage('close-manowar-chat', '*');
     }
   };
 
@@ -639,7 +639,7 @@ export default function ChatbotWidgetPage() {
                     {file.type.startsWith('image/') ? (
                       <ImageIcon className="h-4 w-4 flex-shrink-0" />
                     ) : (
-                      <FileIcon className="h-4 w-4 flex-shrink-0" />
+                      <File className="h-4 w-4 flex-shrink-0" />
                     )}
                     <span className="truncate">{file.name}</span>
                   </div>

@@ -1,4 +1,4 @@
-
+// src/components/dashboard/chatbot/[hubId]/[botId]/page.tsx
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -103,7 +103,7 @@ export default function ChatbotWidgetPage() {
         setSpaceId(hub.spaceId);
       }
 
-      let visitorId = localStorage.getItem('riverr_chat_visitor_id');
+      let visitorId = localStorage.getItem('manowar_chat_visitor_id');
       const fetchedVisitor = visitorId ? await db.getOrCreateVisitor(visitorId) : null;
       
       if (!appUser && combinedBotData?.identityCapture.enabled && (!fetchedVisitor || (!fetchedVisitor.name && !fetchedVisitor.email))) {
@@ -112,7 +112,7 @@ export default function ChatbotWidgetPage() {
         setIsCapturingIdentity(false);
         if (!visitorId) {
             visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-            localStorage.setItem('riverr_chat_visitor_id', visitorId);
+            localStorage.setItem('manowar_chat_visitor_id', visitorId);
         }
         await loadVisitorAndConversation(visitorId);
       }
@@ -166,10 +166,10 @@ export default function ChatbotWidgetPage() {
           // You might want to show an error message
           return;
       }
-      let visitorId = localStorage.getItem('riverr_chat_visitor_id');
+      let visitorId = localStorage.getItem('manowar_chat_visitor_id');
       if (!visitorId) {
           visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-          localStorage.setItem('riverr_chat_visitor_id', visitorId);
+          localStorage.setItem('manowar_chat_visitor_id', visitorId);
       }
       
       await db.updateVisitor(visitorId, { name: capturedName, email: capturedEmail });
@@ -274,7 +274,7 @@ export default function ChatbotWidgetPage() {
 
   const handleClose = () => {
     if (window.parent) {
-      window.parent.postMessage('close-riverr-chat', '*');
+      window.parent.postMessage('close-manowar-chat', '*');
     }
   };
 

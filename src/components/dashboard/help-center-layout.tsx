@@ -822,7 +822,7 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
                                 <div className="flex items-center justify-between">
                                     <Label htmlFor="hc-domain">Custom Domain</Label>
                                     <Link 
-                                        href="https://docs.riverr.app/knowledge/custom-domains" 
+                                        href="https://manowar.cloud/docs/custom-domains" 
                                         target="_blank"
                                         className="text-xs text-primary hover:underline flex items-center gap-1"
                                     >
