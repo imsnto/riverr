@@ -1,131 +1,149 @@
-(function() {
-  var W = window;
-  var D = document;
 
-  // 1. Initialize Queue (Intercom style)
-  var M = function() {
-    M.c(arguments);
-  };
-  M.q = [];
-  M.c = function(args) {
-    M.q.push(args);
+(function(W, D) {
+  // CONFIGURATION
+  var API_BASE_URL = 'https://manowar.cloud'; 
+  var scriptEl = D.currentScript;
+  var parentOrigin = W.location.origin;
+
+  // Initialize the queue if it doesn't exist
+  W.Manowar = W.Manowar || function() {
+    (W.Manowar.q = W.Manowar.q || []).push(arguments);
   };
 
-  if (typeof W.Manowar !== 'function') {
-    W.Manowar = M;
+  var iframe = null;
+  var isBooted = false;
+  var anonymousVisitorId = localStorage.getItem('manowar_chat_visitor_id');
+
+  if (!anonymousVisitorId) {
+    anonymousVisitorId = 'v_' + Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('manowar_chat_visitor_id', anonymousVisitorId);
   }
 
-  var MANOWAR_BASE_URL = 'https://manowar.cloud'; // Change to current origin if needed
-  var API_BASE_URL = window.location.origin;
+  function createIframe(botId, hubId) {
+    if (iframe) return;
 
-  function getSettings() {
-    return W.manowarSettings || {};
-  }
-
-  function createIframe(settings) {
-    if (D.getElementById('manowar-iframe')) return;
-
-    var botId = settings.bot_id || D.currentScript.getAttribute('data-bot-id');
-    var hubId = settings.hub_id || D.currentScript.getAttribute('data-hub-id');
-
-    if (!botId || !hubId) {
-      console.error('[Manowar] Missing bot_id or hub_id');
-      return;
-    }
-
-    var iframe = D.createElement('iframe');
-    iframe.id = 'manowar-iframe';
-    iframe.src = MANOWAR_BASE_URL + '/chatbot/' + hubId + '/' + botId;
+    iframe = D.createElement('iframe');
+    // Pass parent origin for postMessage validation inside the widget
+    var src = API_BASE_URL + '/chatbot/' + hubId + '/' + botId + '?parent_origin=' + encodeURIComponent(parentOrigin);
+    
+    iframe.src = src;
+    iframe.id = 'manowar-chat-widget';
     iframe.style.position = 'fixed';
     iframe.style.bottom = '20px';
     iframe.style.right = '20px';
     iframe.style.width = '380px';
     iframe.style.height = '600px';
     iframe.style.border = 'none';
-    iframe.style.zIndex = '999999';
     iframe.style.borderRadius = '16px';
-    iframe.style.boxShadow = '0 4px 20px rgba(0,0,0,0.15)';
+    iframe.style.boxShadow = '0 10px 25px rgba(0,0,0,0.15)';
+    iframe.style.zIndex = '999999';
+    iframe.style.display = 'none'; // Hidden until 'show'
     iframe.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
-    iframe.style.display = 'none'; // Initially hidden
-
+    
     D.body.appendChild(iframe);
-
-    // Initial Identify if settings present
-    if (settings.user_id || settings.email) {
-      W.Manowar('update', settings);
-    }
   }
 
-  // 2. Real Handler Implementation
-  var isBooted = false;
-  W.Manowar = function() {
-    var args = Array.prototype.slice.call(arguments);
-    var command = args[0];
-    var data = args[1];
+  function handleCommand(args) {
+    var cmd = args[0];
+    var params = args[1] || {};
 
-    if (command === 'boot') {
-      if (isBooted) return;
-      createIframe(data || getSettings());
-      isBooted = true;
-    } else if (command === 'update') {
-      var s = data || getSettings();
-      var botId = s.bot_id || D.currentScript.getAttribute('data-bot-id');
-      var hubId = s.hub_id || D.currentScript.getAttribute('data-hub-id');
-      var visitorId = localStorage.getItem('manowar_chat_visitor_id');
+    switch(cmd) {
+      case 'boot':
+        if (isBooted) return;
+        var bId = params.bot_id || scriptEl.getAttribute('data-bot-id');
+        var hId = params.hub_id || scriptEl.getAttribute('data-hub-id');
+        if (!bId || !hId) return console.error('[Manowar] Missing bot_id or hub_id');
+        
+        createIframe(bId, hId);
+        isBooted = true;
 
-      fetch(API_BASE_URL + '/api/widget/identity', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          botId: botId,
-          hubId: hubId,
-          providerId: s.provider_id,
-          user_id: s.user_id,
-          email: s.email,
-          name: s.name,
-          user_hash: s.user_hash,
-          custom_attributes: s.custom_attributes,
-          anonymousVisitorId: visitorId
+        if (params.user_id || params.email) {
+          handleCommand(['update', params]);
+        }
+        break;
+
+      case 'update':
+        if (!isBooted) return;
+        var botId = params.bot_id || scriptEl.getAttribute('data-bot-id');
+        var hubId = params.hub_id || scriptEl.getAttribute('data-hub-id');
+
+        fetch(API_BASE_URL + '/api/widget/identity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            botId: botId,
+            hubId: hubId,
+            providerId: params.provider_id,
+            user_id: params.user_id,
+            user_hash: params.user_hash,
+            email: params.email,
+            name: params.name,
+            anonymousVisitorId: anonymousVisitorId,
+            custom_attributes: params.custom_attributes
+          })
         })
-      }).then(function(res) { return res.json(); })
-        .then(function(result) {
-          var frame = D.getElementById('manowar-iframe');
-          if (frame && frame.contentWindow) {
-            frame.contentWindow.postMessage({ type: 'manowar-identity-update', identity: result }, '*');
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.contactId && iframe) {
+            // Securely post to the iframe origin
+            iframe.contentWindow.postMessage({
+              type: 'manowar-identity-update',
+              identity: data
+            }, API_BASE_URL);
           }
-        });
-    } else if (command === 'show') {
-      var f = D.getElementById('manowar-iframe');
-      if (f) f.style.display = 'block';
-    } else if (command === 'hide') {
-      var f = D.getElementById('manowar-iframe');
-      if (f) f.style.display = 'none';
-    } else if (command === 'shutdown') {
-      var f = D.getElementById('manowar-iframe');
-      if (f) f.parentNode.removeChild(f);
-      isBooted = false;
-    }
-  };
+        })
+        .catch(function(e) { console.error('[Manowar] Identity failed', e); });
+        break;
 
-  // 3. Replay Queue
-  if (M.q && M.q.length > 0) {
-    for (var i = 0; i < M.q.length; i++) {
-      W.Manowar.apply(W, M.q[i]);
+      case 'show':
+        if (iframe) iframe.style.display = 'block';
+        break;
+
+      case 'hide':
+        if (iframe) iframe.style.display = 'none';
+        break;
+
+      case 'shutdown':
+        if (iframe) {
+          D.body.removeChild(iframe);
+          iframe = null;
+          isBooted = false;
+        }
+        break;
     }
   }
 
-  // 4. Auto-boot if manowarSettings or script tags present
-  if (W.manowarSettings) {
-    W.Manowar('boot');
-  } else if (D.currentScript.getAttribute('data-bot-id')) {
-    W.Manowar('boot');
-  }
-
-  // Listen for close events from widget
+  // Listen for messages from the widget
   W.addEventListener('message', function(event) {
+    // SECURITY: Only trust messages from the Manowar origin
+    if (event.origin !== API_BASE_URL) return;
+
     if (event.data === 'close-manowar-chat') {
-      W.Manowar('hide');
+      handleCommand(['hide']);
     }
   });
 
-})();
+  // Replay queued commands
+  if (W.Manowar && W.Manowar.q) {
+    var q = W.Manowar.q;
+    W.Manowar = handleCommand;
+    for (var i = 0; i < q.length; i++) {
+      handleCommand(q[i]);
+    }
+  } else {
+    W.Manowar = handleCommand;
+  }
+
+  // Auto-boot if manowarSettings is present
+  if (W.manowarSettings) {
+    handleCommand(['boot', W.manowarSettings]);
+  } else {
+    // Or fallback to data attributes on the script tag
+    var bId = scriptEl.getAttribute('data-bot-id');
+    var hId = scriptEl.getAttribute('data-hub-id');
+    if (bId && hId) {
+      handleCommand(['boot', {}]);
+    }
+  }
+
+})(window, document);

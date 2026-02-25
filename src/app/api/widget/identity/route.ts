@@ -1,5 +1,7 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDB } from '@/lib/firebase-admin';
+import admin from 'firebase-admin';
 import crypto from 'crypto';
 
 const corsHeaders = {
@@ -40,8 +42,11 @@ export async function POST(request: NextRequest) {
     }
     const provider = providerSnap.data() as any;
 
-    // 2. Validate Hub/Bot alignment
-    if (!provider.allowedHubIds?.includes(hubId) && !provider.allowedBotIds?.includes(botId)) {
+    // 2. Validate Hub/Bot alignment (Stricter logic)
+    var isHubAllowed = !provider.allowedHubIds || provider.allowedHubIds.includes(hubId);
+    var isBotAllowed = !provider.allowedBotIds || provider.allowedBotIds.includes(botId);
+    
+    if (!isHubAllowed || !isBotAllowed) {
       console.error(`[Identity] Unauthorized hub/bot for provider ${providerId}`);
       return NextResponse.json({ error: 'Unauthorized access' }, { status: 403, headers: corsHeaders });
     }
@@ -74,7 +79,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401, headers: corsHeaders });
       }
     } else if (!provider.secureModeEnabled) {
-      // In non-secure mode, we allow identification if email-only is enabled or user_id is present
       isVerified = true;
     }
 
@@ -100,7 +104,7 @@ export async function POST(request: NextRequest) {
         spaceId,
         providerId,
         externalUserId: user_id,
-        email: email ? [email.toLowerCase()] : [],
+        emails: email ? [email.toLowerCase()] : [],
         primaryEmail: email ? email.toLowerCase() : null,
         name: name || null,
         customAttributes: custom_attributes || {},
@@ -138,11 +142,12 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date().toISOString()
         });
       } else if (anonymousVisitorId) {
-        // Find active conversation for this anonymous visitor in this hub
+        // Find most recent active conversation for this anonymous visitor in this hub
         const activeConvo = await adminDB.collection('conversations')
           .where('visitorId', '==', anonymousVisitorId)
           .where('hubId', '==', hubId)
-          .where('status', '!=', 'closed')
+          .where('status', 'in', ['open','bot','human','unassigned'])
+          .orderBy('updatedAt', 'desc')
           .limit(1)
           .get();
 

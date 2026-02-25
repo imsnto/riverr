@@ -167,7 +167,7 @@ service cloud.firestore {
     }
     
     match /conversations/{conversationId} {
-      allow read: if true; // Still public for widget, but we should use tokens soon
+      allow read: if true; 
       allow create: if true 
         && request.resource.data.channel in ['webchat', 'sms', 'voice'];
       allow update: if isAuthenticated() && hasAccessToConversation(conversationId)
@@ -176,8 +176,8 @@ service cloud.firestore {
     }
     
     match /chat_messages/{messageId} {
-      allow read: if true; // Public for widget
-      allow create: if true; // Visitors create
+      allow read: if true;
+      allow create: if true;
       allow update, delete: if isAuthenticated() && hasAccessToConversation(resource.data.conversationId);
     }
 
@@ -206,6 +206,11 @@ service cloud.firestore {
 
     match /twilio_subaccount_secrets/{sid} {
       allow read, write: if false; // Admin SDK only
+    }
+
+    match /providers/{providerId} {
+      allow read: if false; // Admin SDK only (sensitive secrets)
+      allow write: if false; // Manual/Admin setup
     }
   }
 }

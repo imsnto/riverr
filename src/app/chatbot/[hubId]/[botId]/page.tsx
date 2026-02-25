@@ -1,8 +1,9 @@
+
 // src/app/chatbot/[hubId]/[botId]/page.tsx
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Bot as BotData, Visitor, Conversation, ChatMessage, Attachment, Contact, User } from '@/lib/data';
 import * as db from '@/lib/db';
 import { Button } from '@/components/ui/button';
@@ -42,11 +43,15 @@ const isPublicForVisitor = (msg: ChatMessage) => {
 
 export default function ChatbotWidgetPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const storage = getStorage();
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { hubId, botId } = params as { hubId: string; botId: string };
   const { appUser } = useAuth();
+
+  // The origin of the parent window, passed during boot
+  const parentOrigin = searchParams.get('parent_origin');
 
   const [bot, setBot] = useState<BotDataWithAgents | null>(null);
   const [visitor, setVisitor] = useState<Visitor | null>(null);
@@ -125,7 +130,7 @@ export default function ChatbotWidgetPage() {
 
   // Communicating unread count to parent window
   useEffect(() => {
-    if (!conversation) return;
+    if (!conversation || !parentOrigin) return;
     const lastSeen = conversation.lastVisitorSeenAt ? new Date(conversation.lastVisitorSeenAt).getTime() : 0;
     
     const unreadMessages = visibleMessages.filter(m => 
@@ -134,12 +139,16 @@ export default function ChatbotWidgetPage() {
     );
     
     if (window.parent) {
-      window.parent.postMessage({ type: 'manowar-unread-count', count: unreadMessages.length }, '*');
+      // SECURITY: Post unread count ONLY to the verified parent origin
+      window.parent.postMessage({ type: 'manowar-unread-count', count: unreadMessages.length }, parentOrigin);
     }
-  }, [visibleMessages, conversation?.lastVisitorSeenAt]);
+  }, [visibleMessages, conversation?.lastVisitorSeenAt, parentOrigin]);
 
   useEffect(() => {
     const handleIdentityUpdate = (event: MessageEvent) => {
+      // SECURITY: Only trust identity updates from the verified parent origin
+      if (parentOrigin && event.origin !== parentOrigin) return;
+
       if (event.data && event.data.type === 'manowar-identity-update') {
         const { contactId } = event.data.identity;
         if (contactId) {
@@ -152,7 +161,7 @@ export default function ChatbotWidgetPage() {
 
     window.addEventListener('message', handleIdentityUpdate);
     return () => window.removeEventListener('message', handleIdentityUpdate);
-  }, []);
+  }, [parentOrigin]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -478,8 +487,9 @@ export default function ChatbotWidgetPage() {
   };
 
   const handleClose = () => {
-    if (window.parent) {
-      window.parent.postMessage('close-manowar-chat', '*');
+    if (window.parent && parentOrigin) {
+      // SECURITY: Post close command ONLY to the verified parent origin
+      window.parent.postMessage('close-manowar-chat', parentOrigin);
     }
   };
 
