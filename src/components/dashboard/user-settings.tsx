@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -43,6 +41,7 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
   const [inviteToRevoke, setInviteToRevoke] = useState<Invite | null>(null);
+  const [userToRemove, setUserToRemove] = useState<User | null>(null);
 
   useEffect(() => {
     if (userSpaces.length > 0) {
@@ -65,13 +64,21 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
       return space.members[user.id] || null;
   }
 
-  const handleRemoveUser = (userId: string) => {
-    const userToRemove = initialUsers.find(u => u.id === userId);
-    toast({
-        variant: 'destructive',
-        title: 'Action Not Implemented',
-        description: `Removing users is not yet implemented.`
-    })
+  const handleRemoveUser = (user: User) => {
+    setUserToRemove(user);
+  }
+
+  const handleConfirmRemove = async () => {
+    if (!userToRemove || !activeSpace) return;
+    try {
+        await db.removeUserFromSpace(activeSpace.id, userToRemove.id);
+        toast({ title: 'User Removed', description: `${userToRemove.name} has been removed from ${activeSpace.name}.` });
+        onInvite(); // Refresh parent data
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to remove user.' });
+    } finally {
+        setUserToRemove(null);
+    }
   }
 
   const handleInviteAndClose = async (values: Omit<Invite, 'id' | 'tokenHash' | 'sentAt' | 'expiresAt' | 'createdAt' | 'status'>) => {
@@ -207,7 +214,7 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
                                                         <Edit className="mr-2 h-4 w-4" />
                                                         Edit Permissions
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleRemoveUser(user.id)} className="text-destructive">
+                                                    <DropdownMenuItem onClick={() => handleRemoveUser(user)} className="text-destructive">
                                                         <Trash2 className="mr-2 h-4 w-4" />
                                                         Remove User
                                                     </DropdownMenuItem>
@@ -303,6 +310,24 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={handleRevoke} className={cn(buttonVariants({ variant: "destructive" }))}>
                         Revoke
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!userToRemove} onOpenChange={(open) => !open && setUserToRemove(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Remove User from Space?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will remove <span className="font-semibold">{userToRemove?.name}</span> from the <span className="font-semibold">{activeSpace?.name}</span> workspace. 
+                        They will lose access to all hubs and projects within this space.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmRemove} className={cn(buttonVariants({ variant: "destructive" }))}>
+                        Remove User
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

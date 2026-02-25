@@ -1,4 +1,3 @@
-
 import {
   collection,
   doc,
@@ -16,6 +15,7 @@ import {
   writeBatch,
   increment,
   limit,
+  deleteField,
 } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -81,6 +81,25 @@ export const addSpace = async (space: Omit<Space, 'id'>): Promise<string> => {
 export const updateSpace = async (spaceId: string, data: Partial<Space>) => {
   const docRef = doc(db, 'spaces', spaceId);
   await updateDoc(docRef, data);
+};
+
+export const removeUserFromSpace = async (spaceId: string, userId: string) => {
+  const spaceRef = doc(db, 'spaces', spaceId);
+  await updateDoc(spaceRef, {
+    [`members.${userId}`]: deleteField()
+  });
+  
+  // Also remove from hubs in that space if they are private members
+  const hubs = await getHubsForSpace(spaceId);
+  const batch = writeBatch(db);
+  hubs.forEach(hub => {
+    if (hub.memberIds && hub.memberIds.includes(userId)) {
+      batch.update(doc(db, 'hubs', hub.id), {
+        memberIds: hub.memberIds.filter(id => id !== userId)
+      });
+    }
+  });
+  await batch.commit();
 };
 
 export const deleteSpace = async (spaceId: string) => {
