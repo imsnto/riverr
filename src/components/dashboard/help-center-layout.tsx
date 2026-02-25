@@ -1,3 +1,4 @@
+
 // src/components/dashboard/help-center-layout.tsx
 'use client';
 import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
@@ -262,7 +263,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         hubId: activeHub.id,
         spaceId: activeSpace.id,
         type: 'article',
-        isPublic: false,
+        visibility: 'public',
         allowedUserIds: [appUser.id],
         isAiIndexed: true,
         isSeoIndexed: false,
@@ -822,8 +823,7 @@ const LibrarySettingsPage = ({ helpCenter, onBack, onSave, onExport, onDelete }:
                                 <div className="flex items-center justify-between">
                                     <Label htmlFor="hc-domain">Custom Domain</Label>
                                     <Link 
-                                        href="https://manowar.cloud/docs/custom-domains" 
-                                        target="_blank"
+                                        href="/docs/custom-domains" 
                                         className="text-xs text-primary hover:underline flex items-center gap-1"
                                     >
                                         <HelpCircle className="h-3 w-3" />
