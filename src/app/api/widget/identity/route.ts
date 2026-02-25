@@ -42,21 +42,21 @@ export async function POST(request: NextRequest) {
     }
     const provider = providerSnap.data() as any;
 
-    // 2. Validate Hub/Bot alignment
+    // 2. Validate Hub/Bot alignment (Strict)
     const isHubAllowed = !provider.allowedHubIds || provider.allowedHubIds.includes(hubId);
     const isBotAllowed = !provider.allowedBotIds || provider.allowedBotIds.includes(botId);
     
     if (!isHubAllowed || !isBotAllowed) {
-      console.error(`[Identity] Unauthorized hub/bot for provider ${providerId}`);
+      console.error(`[Identity] Unauthorized hub/bot access for provider ${providerId}`);
       return NextResponse.json({ error: 'Unauthorized access' }, { status: 403, headers: corsHeaders });
     }
 
-    // 3. SECURE MODE VERIFICATION
+    // 3. Secure Mode Verification
     let isVerified = false;
     if (provider.secureModeEnabled && user_id) {
       if (!user_hash) {
-        console.warn(`[Identity] Signature missing for user_id ${user_id} (Secure Mode ON)`);
-        return NextResponse.json({ status: 'anonymous', message: 'Secure mode required' }, { status: 200, headers: corsHeaders });
+        console.warn(`[Identity] user_hash missing for user_id ${user_id} (Secure Mode ON)`);
+        return NextResponse.json({ status: 'anonymous' }, { status: 200, headers: corsHeaders });
       }
 
       const expectedHash = crypto
@@ -74,21 +74,23 @@ export async function POST(request: NextRequest) {
       }
 
       if (!isVerified) {
-        console.error(`[Identity] Invalid signature for user_id ${user_id}`);
-        return NextResponse.json({ status: 'anonymous', message: 'Invalid signature' }, { status: 200, headers: corsHeaders });
+        console.error(`[Identity] Invalid HMAC signature for user_id ${user_id}`);
+        return NextResponse.json({ status: 'anonymous' }, { status: 200, headers: corsHeaders });
       }
     } else if (!provider.secureModeEnabled) {
-      // If secure mode is disabled, we "trust" what's provided if identify by email is allowed
       isVerified = true;
     }
 
-    // 4. Resolve SpaceId from Hub
+    // 4. Resolve Workspace context
     const hubSnap = await adminDB.collection('hubs').doc(hubId).get();
     if (!hubSnap.exists) return NextResponse.json({ error: 'Hub not found' }, { status: 404, headers: corsHeaders });
     const spaceId = hubSnap.data()?.spaceId;
 
     // 5. Upsert Contact
     let contactId = null;
+    const emailLower = email?.toLowerCase();
+
+    // Strategy A: Identify by external user_id (Strongest)
     if (user_id && isVerified) {
       const contactQuery = await adminDB.collection('contacts')
         .where('providerId', '==', providerId)
@@ -96,27 +98,30 @@ export async function POST(request: NextRequest) {
         .limit(1)
         .get();
 
-      const contactData = {
+      const baseData = {
         spaceId,
         providerId,
         externalUserId: user_id,
-        emails: email ? admin.firestore.FieldValue.arrayUnion(email.toLowerCase()) : [],
-        primaryEmail: email ? email.toLowerCase() : null,
+        primaryEmail: emailLower || null,
         name: name || null,
         customAttributes: custom_attributes || {},
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         lastSeenAt: admin.firestore.FieldValue.serverTimestamp(),
-        identifiedAt: new Date().toISOString(),
         source: 'chat' as const,
       };
 
       if (!contactQuery.empty) {
         const doc = contactQuery.docs[0];
-        await doc.ref.update(contactData);
+        const updatePayload: any = { ...baseData };
+        if (emailLower) {
+            updatePayload.emails = admin.firestore.FieldValue.arrayUnion(emailLower);
+        }
+        await doc.ref.update(updatePayload);
         contactId = doc.id;
       } else {
         const newRef = await adminDB.collection('contacts').add({
-          ...contactData,
+          ...baseData,
+          emails: emailLower ? [emailLower] : [],
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           isMerged: false,
           mergeParentId: null,
@@ -126,19 +131,18 @@ export async function POST(request: NextRequest) {
         });
         contactId = newRef.id;
       }
-    } else if (email && provider.allowEmailOnlyIdentify && isVerified) {
-      // Fallback: Identify by email if allowed and verified (or non-secure mode)
-      const emailLower = email.toLowerCase();
+    } 
+    // Strategy B: Identify by email (Only if Secure Mode is OFF)
+    else if (emailLower && provider.allowEmailOnlyIdentify && !provider.secureModeEnabled) {
       const contactQuery = await adminDB.collection('contacts')
         .where('spaceId', '==', spaceId)
         .where('primaryEmail', '==', emailLower)
         .limit(1)
         .get();
 
-      const contactData = {
+      const baseData = {
         spaceId,
         providerId,
-        emails: admin.firestore.FieldValue.arrayUnion(emailLower),
         primaryEmail: emailLower,
         name: name || null,
         customAttributes: custom_attributes || {},
@@ -149,11 +153,14 @@ export async function POST(request: NextRequest) {
 
       if (!contactQuery.empty) {
         const doc = contactQuery.docs[0];
-        await doc.ref.update(contactData);
+        const updatePayload: any = { ...baseData };
+        updatePayload.emails = admin.firestore.FieldValue.arrayUnion(emailLower);
+        await doc.ref.update(updatePayload);
         contactId = doc.id;
       } else {
         const newRef = await adminDB.collection('contacts').add({
-          ...contactData,
+          ...baseData,
+          emails: [emailLower],
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           isMerged: false,
           mergeParentId: null,
@@ -167,16 +174,17 @@ export async function POST(request: NextRequest) {
 
     // 6. Link to Conversation
     if (contactId) {
+      const updateData = {
+        contactId,
+        visitorName: name || emailLower || undefined,
+        visitorEmail: emailLower || undefined,
+        updatedAt: new Date().toISOString()
+      };
+
       if (conversationId) {
-        await adminDB.collection('conversations').doc(conversationId).update({
-          contactId,
-          visitorName: name || email || undefined,
-          visitorEmail: email || undefined,
-          updatedAt: new Date().toISOString()
-        });
+        await adminDB.collection('conversations').doc(conversationId).update(updateData);
       } else if (anonymousVisitorId) {
-        // Find most recent active conversation for this anonymous visitor
-        // status 'in' + orderBy requires a composite index
+        // Link identity to the most recent active session for this visitor
         const activeConvo = await adminDB.collection('conversations')
           .where('visitorId', '==', anonymousVisitorId)
           .where('hubId', '==', hubId)
@@ -186,12 +194,7 @@ export async function POST(request: NextRequest) {
           .get();
 
         if (!activeConvo.empty) {
-          await activeConvo.docs[0].ref.update({
-            contactId,
-            visitorName: name || email || undefined,
-            visitorEmail: email || undefined,
-            updatedAt: new Date().toISOString()
-          });
+          await activeConvo.docs[0].ref.update(updateData);
         }
       }
     }

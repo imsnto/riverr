@@ -49,7 +49,7 @@ export default function ChatbotWidgetPage() {
   const { hubId, botId } = params as { hubId: string; botId: string };
   const { appUser } = useAuth();
 
-  // SECURITY: Learn parent origin via handshake, NOT URL params
+  // SECURITY: Handshake establishes origin-based trust
   const [parentOrigin, setParentOrigin] = useState<string | null>(null);
 
   const [bot, setBot] = useState<BotDataWithAgents | null>(null);
@@ -138,23 +138,24 @@ export default function ChatbotWidgetPage() {
     );
     
     if (window.parent) {
-      // SECURITY: Post unread count ONLY to the verified parent origin
       window.parent.postMessage({ type: 'manowar-unread-count', count: unreadMessages.length }, parentOrigin);
     }
   }, [visibleMessages, conversation?.lastVisitorSeenAt, parentOrigin]);
 
   useEffect(() => {
     const handleIncomingMessage = (event: MessageEvent) => {
-      // 1. Initial Handshake: Learn parent origin
+      // 1. Handshake Guard: Learn parent origin securely
       if (!parentOrigin && event.data && event.data.type === 'manowar-parent-hello') {
+        if (!event.origin || event.origin === 'null') return;
         if (event.source !== window.parent) return;
+        
         setParentOrigin(event.origin);
-        // Ack back to parent that we are ready
+        // Ack readiness back to parent
         window.parent.postMessage({ type: 'manowar-widget-ready' }, event.origin);
         return;
       }
 
-      // 2. Verified communication ONLY
+      // 2. Origin Guard: Reject unverified sources
       if (!parentOrigin || event.origin !== parentOrigin || event.source !== window.parent) return;
 
       if (event.data && event.data.type === 'manowar-identity-update') {
@@ -272,7 +273,6 @@ export default function ChatbotWidgetPage() {
     await db.updateVisitor(visitorId, { name: capturedName, email: capturedEmail });
     setIdentityCaptureStep('none');
     
-    // Perform CRM sync BEFORE sending the AI message to ensure metadata is correct
     await ensureConversationCrmLinkedAction(conversation.id);
     await loadVisitorAndConversation(visitorId);
 
@@ -334,10 +334,8 @@ export default function ChatbotWidgetPage() {
         return;
     }
 
-    // Update presence on message send
     await db.updateVisitorActivity(currentConversation.id);
 
-    // IDENTITY CAPTURE LOGIC: Step 2 - Response to Prompt
     if (identityCaptureStep === 'prompting') {
         const affirmative = ['yes', 'sure', 'ok', 'alright', 'yeah', 'yep', 'fine', 'of course', 'no problem'];
         const userResponse = messageText.trim().toLowerCase();
@@ -365,7 +363,6 @@ export default function ChatbotWidgetPage() {
             });
             setIdentityCaptureStep('collecting');
         } else {
-            // Heuristic check: Did they just type an email?
             const emailMatch = messageText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
             if (emailMatch) {
                 const email = emailMatch[0];
@@ -386,7 +383,6 @@ export default function ChatbotWidgetPage() {
                 });
                 setIdentityCaptureStep('none');
             } else {
-                // If they said "no" or something else, don't nag if not required
                 if (!bot.identityCapture.required) {
                     await addChatMessageAction({
                         conversationId: currentConversation.id,
@@ -398,7 +394,6 @@ export default function ChatbotWidgetPage() {
                     });
                     setIdentityCaptureStep('none');
                 } else {
-                    // Re-prompt if required? Or just force form.
                     setIdentityCaptureStep('collecting');
                 }
             }
@@ -438,7 +433,6 @@ export default function ChatbotWidgetPage() {
     setMessageText('');
     setAttachments([]);
 
-    // IDENTITY CAPTURE LOGIC: Step 1 - The initial prompt
     const needsIdentityCapture = !appUser && bot?.identityCapture.enabled && (!visitor.name || (bot?.identityCapture.required && !visitor.email));
 
     if (needsIdentityCapture && isNewConversation) {
@@ -457,7 +451,6 @@ export default function ChatbotWidgetPage() {
     
     setLoading(false);
 
-    // Only invoke agent if we aren't mid-identity capture
     if (identityCaptureStep === 'none') {
         const incomingMessage: any = {
             id: `msg-${Date.now()}`,
@@ -496,7 +489,6 @@ export default function ChatbotWidgetPage() {
 
   const handleClose = () => {
     if (window.parent && parentOrigin) {
-      // SECURITY: Post close command ONLY to the verified parent origin
       window.parent.postMessage('close-manowar-chat', parentOrigin);
     }
   };
@@ -572,7 +564,6 @@ export default function ChatbotWidgetPage() {
       {/* Body */}
       <ScrollArea className="flex-1" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
-          {/* Welcome bubble (always visible) */}
           <div className="flex items-end gap-2">
             <div className="p-3 rounded-xl rounded-bl-sm max-w-xs break-words" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
               <p className="text-sm whitespace-pre-wrap">{bot.welcomeMessage}</p>
@@ -609,7 +600,6 @@ export default function ChatbotWidgetPage() {
             );
           })}
 
-          {/* IDENTITY CAPTURE INLINE FORM */}
           {identityCaptureStep === 'collecting' && (
               <div className="flex items-end gap-2">
                 <div className="p-4 rounded-xl rounded-bl-sm max-w-xs break-words shadow-lg border border-white/10" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
