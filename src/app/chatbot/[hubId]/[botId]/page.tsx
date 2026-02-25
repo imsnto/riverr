@@ -139,6 +139,22 @@ export default function ChatbotWidgetPage() {
   }, [visibleMessages, conversation?.lastVisitorSeenAt]);
 
   useEffect(() => {
+    const handleIdentityUpdate = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'manowar-identity-update') {
+        const { contactId } = event.data.identity;
+        if (contactId) {
+          // Identity confirmed, reload state to fetch new contact data
+          let vId = localStorage.getItem('manowar_chat_visitor_id');
+          if (vId) loadVisitorAndConversation(vId);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleIdentityUpdate);
+    return () => window.removeEventListener('message', handleIdentityUpdate);
+  }, []);
+
+  useEffect(() => {
     const initialize = async () => {
       setIsLoading(true);
 
@@ -639,7 +655,7 @@ export default function ChatbotWidgetPage() {
                     {file.type.startsWith('image/') ? (
                       <ImageIcon className="h-4 w-4 flex-shrink-0" />
                     ) : (
-                      <File className="h-4 w-4 flex-shrink-0" />
+                      <FileIcon className="h-4 w-4 flex-shrink-0" />
                     )}
                     <span className="truncate">{file.name}</span>
                   </div>

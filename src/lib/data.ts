@@ -758,6 +758,8 @@ export type MemoryNode = RawConversationNode | RawInteractionNode | SupportInten
 export interface Contact {
   id: string;
   spaceId: string;
+  providerId?: string; // New: SaaS provider scope
+  externalUserId?: string; // New: ID in host app
   name: string | null;
   company: string | null;
   emails: string[];
@@ -769,6 +771,7 @@ export interface Contact {
   phoneNormalizationStatus?: 'e164'|'fallback'|'unknown';
   source: 'webchat' | 'sms' | 'manual' | 'order' | 'call' | 'chat' | 'voice';
   externalIds: Record<string, string>;
+  customAttributes?: Record<string, any>;
   tags: string[];
   createdAt: any;
   updatedAt: any;
@@ -776,6 +779,17 @@ export interface Contact {
   lastMessageAt: any | null;
   lastOrderAt: any | null;
   lastCallAt: any | null;
+  identifiedAt?: string; // New: when secure identify happened
   mergeParentId: string | null;
   isMerged: boolean;
+}
+
+export interface ProviderConfig {
+  id: string; // providerId
+  name: string;
+  secureModeEnabled: boolean;
+  secureModeSecret: string; // Never sent to client
+  allowedHubIds: string[];
+  allowedBotIds: string[];
+  allowEmailOnlyIdentify?: boolean;
 }
