@@ -60,6 +60,12 @@ export default function ChatbotWidgetPage() {
   const [spaceId, setSpaceId] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isChatOpen, setIsChatOpen] = useState<boolean>(() => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('riverr_chat_open') === 'true';
+  }
+  return false; // default on server
+});
 
   const [isLoading, setIsLoading] = useState(true);
   const [messageText, setMessageText] = useState('');
@@ -85,12 +91,23 @@ export default function ChatbotWidgetPage() {
   }, [messages]);
 
   useEffect(() => {
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === 'riverr_chat_open') {
+      setIsChatOpen(e.newValue === 'true');
+    }
+  };
+  window.addEventListener('storage', handleStorage);
+  return () => window.removeEventListener('storage', handleStorage);
+}, []);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [visibleMessages, isAiThinking, identityCaptureStep]);
 
   // Seen Tracking Logic
   const markAsSeen = async () => {
-    if (conversation && !document.hidden) {
+    const isChatOpen = localStorage.getItem('riverr_chat_open')
+    if (conversation && !document.hidden && isChatOpen === 'true') {
       const now = new Date().toISOString();
       await db.updateConversation(conversation.id, { 
         lastVisitorSeenAt: now 
@@ -104,6 +121,12 @@ export default function ChatbotWidgetPage() {
       await db.updateVisitorActivity(conversation.id);
     }
   };
+
+  useEffect(() => {
+    if (isChatOpen && conversation?.id) {
+      markAsSeen();
+      }
+  }, [isChatOpen, conversation?.id]);
 
   useEffect(() => {
     const handleFocus = () => {
@@ -559,8 +582,8 @@ export default function ChatbotWidgetPage() {
   };
 
   const handleClose = () => {
-    if (window.parent && parentOrigin) {
-      window.parent.postMessage('close-manowar-chat', parentOrigin);
+    if (window.parent) {
+      window.parent.postMessage('close-manowar-chat', '*');
     }
   };
 
