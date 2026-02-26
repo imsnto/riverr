@@ -204,7 +204,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
 
     let vName = visitor.name;
     if (!vName || vName.trim() === "" || vName.trim() === "Unknown") {
-      vName = generateWhimsicalName();
+      vName = '';
       await visitorRef.update({ name: vName });
       visitor.name = vName;
     }
@@ -334,9 +334,13 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
       convoUpdates.lastMessageAuthor = vName;
     }
 
+    const cleanUpdates = Object.fromEntries(
+      Object.entries(convoUpdates).filter(([_, v]) => v !== undefined)
+   );
+
     await Promise.all([
       visitorRef.update({ contactId }),
-      convoRef.update(convoUpdates),
+      convoRef.update(cleanUpdates),
     ]);
 
     return contactId;
@@ -554,7 +558,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
                   });
 
                   // Call the provider directly since we are already server-side
-                  const { getMessagingProvider } = await import('@/../functions/src/comms/providerFactory');
+                  const { getMessagingProvider } = getApp().functions('us-central1');
                   const provider = getMessagingProvider('twilio');
                   
                   try {

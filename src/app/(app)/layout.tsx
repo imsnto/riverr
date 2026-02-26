@@ -16,6 +16,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import MobileBottomNav from '@/components/dashboard/mobile-bottom-nav';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db as firestoreDb } from '@/lib/firebase';
+import NotificationPermission from '@/components/dashboard/NotificationPermission';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const { appUser, activeSpace, userSpaces, setActiveSpace, activeHub, setActiveHub } = useAuth();
@@ -124,6 +125,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               "flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden",
               isMobile && "pb-20"
             )}>
+              <NotificationPermission />
               {children}
             </main>
           </div>

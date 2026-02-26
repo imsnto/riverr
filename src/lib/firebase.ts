@@ -4,7 +4,7 @@ import { getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { getMessaging, Messaging } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { firebaseApp } from '@/lib/firebase-init';
 
 const app = firebaseApp;
@@ -13,13 +13,11 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 
-let messaging: Messaging | null = null;
-if (typeof window !== 'undefined') {
-  try {
-    messaging = getMessaging(app);
-  } catch (e) {
-    console.warn("FCM not supported in this browser.");
-  }
+
+let messaging: ReturnType<typeof getMessaging>;
+
+if (typeof window !== "undefined" && "navigator" in window) {
+  messaging = getMessaging(app);
 }
 
-export { app, auth, db, storage, googleProvider, signInWithPopup, signOut, messaging };
+export { app, auth, db, storage, googleProvider, signInWithPopup, signOut, messaging, getToken, onMessage };

@@ -19,6 +19,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { invokeAgent, createConversationAndLinkCrm, ensureConversationCrmLinkedAction, updateConversation, addChatMessage as addChatMessageAction } from '@/app/actions/chat';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db as firestore } from '@/lib/firebase';
 
 
 interface BotDataWithAgents extends BotData {
@@ -299,6 +301,28 @@ export default function ChatbotWidgetPage() {
     return downloadURL;
   };
 
+      async function callSendNotificationAPI(
+        title: string,
+        body: string,
+        recipients: string[],
+        url: string
+    ) {
+        try {
+            const res = await fetch("/api/notifications", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title, body, recipients, url }),
+            });
+
+            const data = await res.json();
+            console.log('notification response', data)
+            return data;
+        } catch (err) {
+            console.error("Error calling send notification API:", err);
+            return { success: false, error: "Failed to call API" };
+        }
+    }
+
   const handleSendMessage = async () => {
     if (!messageText.trim() && attachments.length === 0) return;
     if (!visitor || !spaceId || !bot) return;
@@ -467,16 +491,63 @@ export default function ChatbotWidgetPage() {
         };
 
         try {
-            setIsAiThinking(true);
+            // setIsAiThinking(true);
             await invokeAgent({
                 bot: botConfig,
                 conversation: JSON.parse(JSON.stringify(currentConversation)),
                 message: incomingMessage,
             });
+
+            if(spaceId && hubId && visitor && bot) {
+  const url = `/space/${spaceId}/hub/${hubId}/inbox`;
+  const visitorName = visitor?.name || 'Visitor';
+  const notificationTitle = `New message from ${visitorName}`;
+  const content = userMessageContent || '';
+  const notificationBody = content.length > 100
+      ? content.substring(0, 100) + '...'
+      : content;
+  const assignedAgentIds = currentConversation?.assignedAgentIds || [];
+
+  if (assignedAgentIds.length > 0) {
+    const tokens: string[] = [];
+
+    // Firestore in-query max 10, so split into chunks
+    const chunks = [];
+    for (let i = 0; i < assignedAgentIds.length; i += 10) {
+      chunks.push(assignedAgentIds.slice(i, i + 10));
+    }
+
+    for (const chunk of chunks) {
+      const tokenQuery = query(
+        collection(firestore, "fcmTokens"),
+        where("id", "in", chunk)
+      );
+      const tokenDocs = await getDocs(tokenQuery);
+      tokenDocs.forEach(doc => {
+        const data = doc.data();
+        if (data.tokens && Array.isArray(data.tokens)) {
+          tokens.push(...data.tokens);
+        }
+      });
+    }
+
+    const uniqueTokens = Array.from(new Set(tokens));
+
+    if (uniqueTokens.length > 0) {
+      callSendNotificationAPI(notificationTitle, notificationBody, uniqueTokens, url)
+        .catch(err => console.error("Notification API error:", err));
+    } else {
+      console.warn("No FCM tokens found for assigned agents");
+    }
+  } else {
+    console.warn("No agents assigned to this conversation");
+  }
+}
+
         } catch (e) {
             console.error("Agent failed to answer:", e);
         } finally {
-            setIsAiThinking(false);
+            // setIsAiThinking(false);
         }
     }
   };

@@ -35,6 +35,8 @@ import { Label } from "../ui/label";
 import { AppView } from "@/lib/routes";
 import { getInitials } from "@/lib/utils";
 import * as db from '@/lib/db';
+import { messaging } from "@/lib/firebase";
+import { deleteToken } from "firebase/messaging";
 
 interface SpaceSwitcherProps {
   spaces: Space[];
@@ -220,6 +222,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   }, [browsingSpaceId]);
 
   const handleLogout = async () => {
+    deleteToken(messaging);
     await signOut();
     router.push('/login');
   };

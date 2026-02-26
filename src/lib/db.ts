@@ -319,10 +319,9 @@ export const getOrCreateVisitor = async (visitorId: string, initialData?: any): 
   if (docSnap.exists()) {
     return { id: docSnap.id, ...docSnap.data() } as Visitor;
   }
-  const name = generateWhimsicalName();
   const newVisitor = { 
       id: visitorId, 
-      name, 
+      name: null, 
       email: null, 
       lastSeen: new Date().toISOString(),
       ...initialData 

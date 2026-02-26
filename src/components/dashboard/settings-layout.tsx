@@ -33,6 +33,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import BrainSettings from './brain-settings';
 import PhoneSettings from './phone-settings';
+import { deleteToken } from "firebase/messaging";
+import { messaging } from '@/lib/firebase';
 
 type SettingsView = 'users' | 'spaces' | 'hub' | 'phone' | 'inbox' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'brain' | 'notifications';
 
@@ -67,6 +69,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
 
   const handleLogout = async () => {
     await signOut();
+    deleteToken(messaging);
     router.push('/login');
   };
 
