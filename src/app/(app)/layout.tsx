@@ -17,14 +17,19 @@ import MobileBottomNav from '@/components/dashboard/mobile-bottom-nav';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db as firestoreDb } from '@/lib/firebase';
 import NotificationPermission from '@/components/dashboard/NotificationPermission';
+import SpaceFormDialog, { HubFormValues } from '@/components/dashboard/space-form-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-    const { appUser, activeSpace, userSpaces, setActiveSpace, activeHub, setActiveHub } = useAuth();
+    const { appUser, activeSpace, userSpaces, setUserSpaces, setActiveSpace, activeHub, setActiveHub } = useAuth();
     const router = useRouter();
     const params = useParams();
     const isMobile = useIsMobile();
+    const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
     const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+    const [isNewSpaceDialogOpen, setIsNewSpaceDialogOpen] = useState(false);
+    const [allUsers, setAllUsers] = useState<User[]>([]);
 
     const [spaceHubs, setSpaceHubs] = useState<Hub[]>([]);
     
@@ -41,6 +46,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             setIsLoading(false);
         }
     }, [activeSpace, appUser]);
+
+    useEffect(() => {
+        if (appUser) {
+            db.getAllUsers().then(setAllUsers);
+        }
+    }, [appUser]);
 
     // Global listener for unread messages count
     useEffect(() => {
@@ -89,11 +100,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
 
     const handleHubChange = async (hubId: string, spaceId: string) => {
-        // Find the target space
         const targetSpace = userSpaces.find(s => s.id === spaceId);
         if (!targetSpace) return;
 
-        // Fetch hubs for that space to find the target hub object
         const hubs = await db.getHubsForSpace(spaceId);
         const targetHub = hubs.find(h => h.id === hubId);
 
@@ -102,6 +111,42 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             setActiveHub(targetHub);
             const defaultView = targetHub.settings?.defaultView || 'overview';
             router.push(`/space/${targetSpace.id}/hub/${targetHub.id}/${defaultView}`);
+        }
+    };
+
+    const handleSaveSpace = async (spaceData: Omit<Space, 'id'>, hubsData: HubFormValues[]) => {
+        if (!appUser) return;
+        try {
+            const newSpaceId = await db.addSpace(spaceData);
+            for (const hub of hubsData) {
+                const finalHubData: Omit<Hub, 'id'> = {
+                    name: hub.name,
+                    spaceId: newSpaceId,
+                    type: 'project-management',
+                    createdAt: new Date().toISOString(),
+                    createdBy: appUser.id,
+                    isDefault: hubsData.length === 1,
+                    settings: { components: hub.components, defaultView: 'overview' },
+                    isPrivate: hub.isPrivate,
+                    memberIds: hub.isPrivate ? hub.memberIds : [],
+                    statuses: hub.statuses
+                };
+                await db.addHub(finalHubData);
+            }
+            
+            const updatedSpaces = await db.getSpacesForUser(appUser.id);
+            setUserSpaces(updatedSpaces);
+            const newSpace = updatedSpaces.find(s => s.id === newSpaceId);
+            if (newSpace) {
+                setActiveSpace(newSpace);
+                setActiveHub(null);
+                router.push(`/space/${newSpaceId}/hubs`);
+            }
+
+            toast({ title: 'Space Created' });
+        } catch (e) {
+            toast({ variant: "destructive", title: "Failed to create space" });
+            console.error(e);
         }
     };
 
@@ -120,6 +165,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               activeHub={activeHub}
               onHubChange={handleHubChange}
               unreadMessagesCount={unreadMessagesCount}
+              onNewSpace={() => setIsNewSpaceDialogOpen(true)}
             />
             <main className={cn(
               "flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden",
@@ -137,6 +183,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               activeSpace={activeSpace}
               allSpaces={userSpaces}
               onHubChange={handleHubChange}
+            />
+          )}
+          {appUser && (
+            <SpaceFormDialog
+                isOpen={isNewSpaceDialogOpen}
+                onOpenChange={setIsNewSpaceDialogOpen}
+                onSave={handleSaveSpace}
+                space={null}
+                allUsers={allUsers}
+                currentUser={appUser}
             />
           )}
         </SidebarProvider>

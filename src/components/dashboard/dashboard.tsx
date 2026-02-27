@@ -1,4 +1,5 @@
 
+// src/components/dashboard/dashboard.tsx
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -414,16 +415,14 @@ export default function Dashboard({ view }: { view: string }) {
     } catch (e) { toast({ variant: 'destructive', title: 'Save failed' }) }
   }
 
-  const handleSpaceSave = async (sd: Omit<Space, 'id'>, sid?: string) => {
-    if (sid) { await db.updateSpace(sid, sd); toast({ title: 'Space Updated' }); }
-    else {
-        const nsid = await db.addSpace(sd);
-        await db.createDefaultHubForSpace(nsid, appUser!.id, { name: 'Default Hub', type: 'project-management' });
-        toast({ title: 'Space Created' });
-    }
+  const handleSpaceSave = async (sd: Partial<Omit<Space, 'id'>>, sid?: string) => {
+    if (!sid) return; // Creation handled in Layout now
+    await db.updateSpace(sid, sd);
+    toast({ title: 'Space Updated' });
     const us = await db.getSpacesForUser(appUser!.id);
     setUserSpaces(us);
-    if (sid) { const aus = us.find(s => s.id === sid); if (aus) setActiveSpace(aus); }
+    const aus = us.find(s => s.id === sid); 
+    if (aus) setActiveSpace(aus);
  };
  
   const handleSendMessageFromAgent = async (cid: string, content: string, type: 'message' | 'note') => {
@@ -481,7 +480,7 @@ export default function Dashboard({ view }: { view: string }) {
     }
 
     const op = { projects, tasks, timeEntries, activeSpace, activeHub, allUsers, appUser, unreadMentions, onTaskSelect: setSelectedTask, jobs, jobFlowTemplates, jobFlowTasks, onUpdateTask: handleUpdateTask, onDataRefresh: fetchData };
-    const sp = { allUsers, allSpaces: userSpaces, allHubs, onSave: handleSpaceSave, onDelete: db.deleteSpace, appUser, onInvite: fetchData, handleInvite: async (i: any) => { await db.addInvite(i); fetchData(); }, projects, tasks, timeEntries, activeHub, onUpdateActiveHub: handleUpdateActiveHub, bots, onBotUpdate: handleBotUpdate, onBotAdd: handleBotAdd, onBotDelete: handleBotDelete, escalationRules, tickets, conversations: chatConversations };
+    const sp = { allUsers, allSpaces: userSpaces, allHubs, onSave: handleSpaceSave, onDelete: db.deleteSpace, appUser, onInvite: fetchData, handleInvite: async (i: any) => { await db.addInvite(i); fetchData(); }, projects, tasks, timeEntries, activeHub, onUpdateActiveHub: handleUpdateActiveHub, bots, onBotUpdate: handleBotUpdate, onBotAdd: handleBotAdd, onBotDelete: handleBotDelete, escalationRules, tickets, conversations: chatConversations, activeSpace };
     const cv = view as AppView;
     switch (cv) {
       case 'overview': return <div className="overflow-y-auto p-8"><Overview {...op} /></div>;

@@ -11,7 +11,6 @@ import {
   FolderKanban,
   MessageCircle,
   BookOpen,
-  Workflow,
   Settings,
   Clock,
   LogOut,
@@ -21,6 +20,7 @@ import {
   Ticket,
   DollarSign,
   Grid2X2,
+  Plus,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
@@ -28,7 +28,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Space, Hub, User } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '../ui/command';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Label } from "../ui/label";
@@ -42,9 +42,10 @@ interface SpaceSwitcherProps {
   spaces: Space[];
   selectedSpaceId: string | undefined;
   onSpaceChange: (spaceId: string) => void;
+  onNewSpace?: () => void;
 }
 
-function SpaceSwitcher({ spaces, selectedSpaceId, onSpaceChange }: SpaceSwitcherProps) {
+function SpaceSwitcher({ spaces, selectedSpaceId, onSpaceChange, onNewSpace }: SpaceSwitcherProps) {
   const [open, setOpen] = React.useState(false);
   const selectedSpace = spaces.find(s => s.id === selectedSpaceId);
 
@@ -66,8 +67,8 @@ function SpaceSwitcher({ spaces, selectedSpaceId, onSpaceChange }: SpaceSwitcher
           <CommandInput placeholder="Search space..." />
           <CommandList>
             <CommandEmpty>No space found.</CommandEmpty>
-            <CommandGroup>
-              {spaces.map((space) => (
+            <CommandGroup heading="Spaces">
+              {spaces.filter(s => !s.isSystem).map((space) => (
                 <CommandItem
                   key={space.id}
                   value={space.name}
@@ -85,6 +86,13 @@ function SpaceSwitcher({ spaces, selectedSpaceId, onSpaceChange }: SpaceSwitcher
                   {space.name}
                 </CommandItem>
               ))}
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup>
+              <CommandItem onSelect={() => { onNewSpace?.(); setOpen(false); }}>
+                <Plus className="mr-2 h-4 w-4" />
+                <span>Create New Space</span>
+              </CommandItem>
             </CommandGroup>
           </CommandList>
         </Command>
@@ -158,6 +166,7 @@ interface AppSidebarProps {
   activeHub: Hub | null;
   onHubChange: (hubId: string, spaceId: string) => void;
   unreadMessagesCount?: number;
+  onNewSpace?: () => void;
 }
 
 const allTopItems: { key: AppView; icon: React.ElementType; label: string; fixed?: boolean }[] = [
@@ -176,7 +185,6 @@ const allMiddleItems: {
   { key: "inbox", icon: MessageCircle, label: 'Inbox' },
   { key: "contacts", icon: Users, label: 'Contacts' },
   { key: 'help-center', icon: BookOpen, label: 'Knowledge' },
-  // { key: "flows", icon: Workflow, label: 'Flows' },
 ];
 
 const allBottomItems: {
@@ -197,6 +205,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   activeHub,
   onHubChange,
   unreadMessagesCount = 0,
+  onNewSpace,
 }) => {
   const { appUser, signOut } = useAuth();
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
@@ -321,7 +330,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                       <SpaceSwitcher 
                         spaces={allSpaces} 
                         selectedSpaceId={browsingSpaceId} 
-                        onSpaceChange={setBrowsingSpaceId} 
+                        onSpaceChange={setBrowsingSpaceId}
+                        onNewSpace={() => {
+                          onNewSpace?.();
+                          setIsPopoverOpen(false);
+                        }}
                       />
                   </div>
                    <div className="grid grid-cols-[auto_1fr] items-center gap-x-4">

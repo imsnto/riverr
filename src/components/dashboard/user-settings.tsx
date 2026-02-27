@@ -1,14 +1,15 @@
 
+// src/components/dashboard/user-settings.tsx
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { User, Space, Invite, SpaceMember, Hub } from '@/lib/data';
+import { User, Space, Invite, Hub } from '@/lib/data';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Edit, Trash2, Plus } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Plus, Mail } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import InviteUserDialog from './invite-user-dialog';
@@ -28,45 +29,31 @@ import {
 import { cn } from '@/lib/utils';
 
 interface UserSettingsProps {
+    activeSpace: Space;
     allUsers: User[];
-    allSpaces: Space[];
     allHubs: Hub[];
     appUser: User | null;
     onInvite: () => void;
     handleInvite: (values: Omit<Invite, 'id' | 'token' | 'status'>) => void;
 }
 
-export default function UserSettings({ allUsers: initialUsers, allHubs, handleInvite, onInvite }: UserSettingsProps) {
+export default function UserSettings({ activeSpace, allUsers, allHubs, handleInvite, onInvite, appUser }: UserSettingsProps) {
   const { toast } = useToast();
-  const { appUser, userSpaces, activeSpace } = useAuth();
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
   const [inviteToRevoke, setInviteToRevoke] = useState<Invite | null>(null);
   const [userToRemove, setUserToRemove] = useState<User | null>(null);
 
   useEffect(() => {
-    if (userSpaces.length > 0) {
-      const spaceIds = userSpaces.map(s => s.id);
-      db.getPendingInvites(spaceIds).then(setPendingInvites);
+    if (activeSpace) {
+      db.getPendingInvites([activeSpace.id]).then(setPendingInvites);
     }
-  }, [userSpaces]);
+  }, [activeSpace]);
 
-
-  const usersInMySpaces = useMemo(() => {
-    if (!userSpaces.length || !initialUsers.length) return [];
-    const memberIds = new Set<string>();
-    userSpaces.forEach(space => {
-        if (space.members) {
-            Object.keys(space.members).forEach(id => memberIds.add(id));
-        }
-    });
-    return initialUsers.filter(user => memberIds.has(user.id));
-  }, [initialUsers, userSpaces]);
-  
-  const getRoleInSpace = (user: User, space: Space): string | null => {
-      if (!space.members) return null;
-      return space.members[user.id]?.role || null;
-  }
+  const membersInSpace = useMemo(() => {
+    if (!activeSpace || !allUsers.length) return [];
+    return allUsers.filter(user => activeSpace.members && activeSpace.members[user.id]);
+  }, [allUsers, activeSpace]);
 
   const handleRemoveUser = (user: User) => {
     setUserToRemove(user);
@@ -88,9 +75,9 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
   const handleInviteAndClose = async (values: Omit<Invite, 'id' | 'tokenHash' | 'sentAt' | 'expiresAt' | 'createdAt' | 'status'>) => {
     handleInvite(values);
     
+    // Optimistic / delayed refresh for invites
     setTimeout(() => {
-        const spaceIds = userSpaces.map(s => s.id);
-        db.getPendingInvites(spaceIds).then(setPendingInvites);
+        db.getPendingInvites([activeSpace.id]).then(setPendingInvites);
     }, 2000);
 
     setIsInviteOpen(false);
@@ -107,8 +94,7 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
         title: "Invitation Resent",
         description: `A new invitation has been sent to ${email}.`,
       });
-      const spaceIds = userSpaces.map(s => s.id);
-      db.getPendingInvites(spaceIds).then(setPendingInvites);
+      db.getPendingInvites([activeSpace.id]).then(setPendingInvites);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -138,50 +124,45 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
     }
   };
 
-
   return (
     <>
         <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold">Members</h1>
+                    <p className="text-muted-foreground text-sm">Members of the <span className="font-semibold">{activeSpace.name}</span> workspace.</p>
+                </div>
+                <Button onClick={() => setIsInviteOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Invite Teammate
+                </Button>
+            </div>
+
             <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <CardTitle>Manage Users</CardTitle>
-                            <CardDescription>View and invite users to your spaces.</CardDescription>
-                        </div>
-                         <Button onClick={() => setIsInviteOpen(true)}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Invite User
-                        </Button>
-                    </div>
+                <CardHeader className="pb-0">
+                    <CardTitle className="text-lg">Current Members</CardTitle>
                 </CardHeader>
                 <CardContent>
                 <Table>
                     <TableHeader>
                         <TableRow>
                         <TableHead>User</TableHead>
-                        <TableHead>Space</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {usersInMySpaces.length === 0 ? (
+                        {membersInSpace.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                                    No members found in your workspaces.
+                                <TableCell colSpan={3} className="text-center py-8 text-muted-foreground italic">
+                                    No members found.
                                 </TableCell>
                             </TableRow>
-                        ) : usersInMySpaces.map(user => {
-                            const userMemberships = userSpaces
-                                .map(space => ({ space, role: getRoleInSpace(user, space) }))
-                                .filter(item => item.role);
-
-                            if (userMemberships.length === 0) return null;
-
+                        ) : membersInSpace.map(user => {
+                            const role = activeSpace.members[user.id]?.role;
                             return (
                                 <TableRow key={user.id}>
-                                    <TableCell className="align-top">
+                                    <TableCell>
                                         <div className="flex items-center gap-3">
                                             <Avatar>
                                                 <AvatarImage src={user.avatarUrl} alt={user.name} />
@@ -193,28 +174,12 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
                                             </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="align-top">
-                                         <div className="flex flex-col gap-2 items-start">
-                                            {userMemberships.map(({ space }) => (
-                                                <div key={space.id} className="flex items-center h-6">
-                                                    {space.name}
-                                                    {space.isSystem && <Badge variant="outline" className="ml-2 text-[10px] h-4">System</Badge>}
-                                                </div>
-                                            ))}
-                                        </div>
+                                    <TableCell>
+                                        <Badge variant={role === 'Admin' ? 'default' : 'secondary'}>
+                                            {role}
+                                        </Badge>
                                     </TableCell>
-                                    <TableCell className="align-top">
-                                        <div className="flex flex-col gap-2 items-start">
-                                            {userMemberships.map(({ space, role }) => (
-                                                <div key={space.id} className="flex items-center h-6">
-                                                    <Badge variant={role === 'Admin' ? 'default' : 'secondary'}>
-                                                        {role}
-                                                    </Badge>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right align-top">
+                                    <TableCell className="text-right">
                                         {user.id !== appUser?.id && (
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
@@ -225,11 +190,11 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem disabled>
                                                         <Edit className="mr-2 h-4 w-4" />
-                                                        Edit Permissions
+                                                        Edit Role
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => handleRemoveUser(user)} className="text-destructive">
                                                         <Trash2 className="mr-2 h-4 w-4" />
-                                                        Remove User
+                                                        Remove from Space
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -245,15 +210,14 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
 
              <Card>
                 <CardHeader>
-                    <CardTitle>Pending Invitations</CardTitle>
-                    <CardDescription>These users have been invited but have not yet joined.</CardDescription>
+                    <CardTitle className="text-lg">Pending Invitations</CardTitle>
+                    <CardDescription>Invites sent to join this space.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Email</TableHead>
-                                <TableHead>Space</TableHead>
                                 <TableHead>Role</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
@@ -263,8 +227,7 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
                                 pendingInvites.map(invite => (
                                     <TableRow key={invite.id}>
                                         <TableCell className="font-medium">{invite.email}</TableCell>
-                                        <TableCell>{invite.spaceName}</TableCell>
-                                        <TableCell><Badge variant="secondary">{invite.spaceRole}</Badge></TableCell>
+                                        <TableCell><Badge variant="outline">{invite.spaceRole}</Badge></TableCell>
                                         <TableCell className="text-right">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
@@ -293,7 +256,7 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
+                                    <TableCell colSpan={3} className="text-center text-muted-foreground py-4 italic">
                                         No pending invitations.
                                     </TableCell>
                                 </TableRow>
@@ -303,20 +266,21 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
                 </CardContent>
             </Card>
         </div>
-        {activeSpace && <InviteUserDialog 
+        
+        <InviteUserDialog 
             isOpen={isInviteOpen}
             onOpenChange={setIsInviteOpen}
             onInvite={handleInviteAndClose}
             activeSpace={activeSpace}
-            allHubs={allHubs.filter(h => h.spaceId === activeSpace.id)}
-        />}
+            allHubs={allHubs}
+        />
 
         <AlertDialog open={!!inviteToRevoke} onOpenChange={setInviteToRevoke}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        This will permanently revoke the invitation for <span className="font-semibold">{inviteToRevoke?.email}</span>. This action cannot be undone.
+                        This will permanently revoke the invitation for <span className="font-semibold">{inviteToRevoke?.email}</span>.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
