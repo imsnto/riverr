@@ -1,5 +1,3 @@
-
-// src/components/dashboard/settings-layout.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -62,6 +60,30 @@ interface SettingsLayoutProps {
   conversations: Conversation[];
 }
 
+// Sub-component for sidebar buttons, moved outside to prevent recreation on re-render
+const NavButton = ({ 
+  item, 
+  activeView, 
+  setActiveView 
+}: { 
+  item: { key: SettingsView, label: string, icon: any, hidden?: boolean },
+  activeView: SettingsView,
+  setActiveView: (view: SettingsView) => void
+}) => {
+  if (item.hidden) return null;
+  const Icon = item.icon;
+  return (
+    <Button
+      variant={activeView === item.key ? 'secondary' : 'ghost'}
+      onClick={() => setActiveView(item.key)}
+      className="justify-start h-9 px-3 w-full"
+    >
+      <Icon className="mr-2 h-4 w-4" />
+      {item.label}
+    </Button>
+  );
+};
+
 export default function SettingsLayout(props: SettingsLayoutProps) {
   const [activeView, setActiveView] = useState<SettingsView>('users');
   const isMobile = useIsMobile();
@@ -70,7 +92,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
 
   const handleLogout = async () => {
     try {
-        if (messaging) {
+        if (typeof window !== 'undefined' && messaging) {
             await deleteToken(messaging).catch(() => {});
         }
     } catch (e) {}
@@ -129,6 +151,8 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             appUser={props.appUser}
           />
         );
+      case 'brain':
+        return <BrainSettings />;
       case 'phone':
         return <PhoneSettings space={activeSpace} allHubs={props.allHubs.filter(h => h.spaceId === activeSpace.id)} />;
       case 'hub-general':
@@ -188,27 +212,10 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
         );
       case 'notifications':
         return <NotificationSettings />;
-      case 'brain':
-        return <BrainSettings />;
       default:
         return null;
     }
   };
-
-  const NavButton = ({ item }: { item: { key: SettingsView, label: string, icon: any, hidden?: boolean } }) => {
-    if (item.hidden) return null;
-    const Icon = item.icon;
-    return (
-        <Button
-            variant={activeView === item.key ? 'secondary' : 'ghost'}
-            onClick={() => setActiveView(item.key)}
-            className="justify-start h-9 px-3 w-full"
-        >
-            <Icon className="mr-2 h-4 w-4" />
-            {item.label}
-        </Button>
-    )
-  }
 
   if (isMobile) {
     return (
@@ -256,19 +263,40 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             <div className="p-3 space-y-6">
                 <div className="space-y-1">
                     <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50">Space: {activeSpace?.name}</p>
-                    {spaceNavItems.map(item => <NavButton key={item.key} item={item} />)}
+                    {spaceNavItems.map(item => (
+                      <NavButton 
+                        key={item.key} 
+                        item={item} 
+                        activeView={activeView} 
+                        setActiveView={setActiveView} 
+                      />
+                    ))}
                 </div>
 
                 {props.activeHub && (
                     <div className="space-y-1">
                         <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50">Hub: {props.activeHub.name}</p>
-                        {hubNavItems.map(item => <NavButton key={item.key} item={item} />)}
+                        {hubNavItems.map(item => (
+                          <NavButton 
+                            key={item.key} 
+                            item={item} 
+                            activeView={activeView} 
+                            setActiveView={setActiveView} 
+                          />
+                        ))}
                     </div>
                 )}
 
                 <div className="space-y-1">
                     <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50">Global Workspace</p>
-                    {workspaceNavItems.map(item => <NavButton key={item.key} item={item} />)}
+                    {workspaceNavItems.map(item => (
+                      <NavButton 
+                        key={item.key} 
+                        item={item} 
+                        activeView={activeView} 
+                        setActiveView={setActiveView} 
+                      />
+                    ))}
                 </div>
             </div>
         </ScrollArea>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -63,14 +62,20 @@ export default function InviteUserDialog({ isOpen, onOpenChange, onInvite, activ
 
   const onSubmit = (values: InviteFormValues) => {
     if (!appUser) return;
-    const inviteData = {
+    
+    // Create a clean object for Firestore (Firebase does not allow undefined values)
+    const inviteData: any = {
         email: values.email,
         spaceRole: values.spaceRole,
         spaceId: activeSpace.id,
         spaceName: activeSpace.name,
-        hubAccess: values.spaceRole === 'Admin' ? undefined : values.hubAccess,
         createdBy: appUser.id,
     };
+
+    // Only include hubAccess if it's not an Admin (admins get full access automatically)
+    if (values.spaceRole !== 'Admin' && values.hubAccess) {
+        inviteData.hubAccess = values.hubAccess;
+    }
 
     onInvite(inviteData);
     form.reset();
