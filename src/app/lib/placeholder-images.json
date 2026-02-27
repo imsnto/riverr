@@ -1,25 +1,24 @@
-
 {
   "onboarding": {
     "welcome": {
-      "url": "https://picsum.photos/seed/welcome/600/400",
-      "keywords": "welcome growth"
+      "url": "https://picsum.photos/seed/manowar-welcome/600/400",
+      "keywords": "startup growth"
     },
     "spaces": {
-      "url": "https://picsum.photos/seed/spaces/600/400",
-      "keywords": "office structure"
+      "url": "https://picsum.photos/seed/manowar-spaces/600/400",
+      "keywords": "modern office"
     },
     "hubs": {
-      "url": "https://picsum.photos/seed/hubs/600/400",
+      "url": "https://picsum.photos/seed/manowar-hubs/600/400",
       "keywords": "team collaboration"
     },
     "features": {
-      "url": "https://picsum.photos/seed/features/600/400",
-      "keywords": "tools puzzle"
+      "url": "https://picsum.photos/seed/manowar-features/600/400",
+      "keywords": "app dashboard"
     },
     "complete": {
-      "url": "https://picsum.photos/seed/complete/600/400",
-      "keywords": "rocket success"
+      "url": "https://picsum.photos/seed/manowar-complete/600/400",
+      "keywords": "success celebration"
     }
   },
   "help-center": {
