@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -52,16 +53,19 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
 
 
   const usersInMySpaces = useMemo(() => {
-    if (!userSpaces.length) return [];
+    if (!userSpaces.length || !initialUsers.length) return [];
     const memberIds = new Set<string>();
     userSpaces.forEach(space => {
-        Object.keys(space.members).forEach(id => memberIds.add(id));
+        if (space.members) {
+            Object.keys(space.members).forEach(id => memberIds.add(id));
+        }
     });
     return initialUsers.filter(user => memberIds.has(user.id));
   }, [initialUsers, userSpaces]);
   
-  const getRoleInSpace = (user: User, space: Space): SpaceMember | null => {
-      return (space.members[user.id] as unknown as SpaceMember) || null;
+  const getRoleInSpace = (user: User, space: Space): string | null => {
+      if (!space.members) return null;
+      return space.members[user.id]?.role || null;
   }
 
   const handleRemoveUser = (user: User) => {
@@ -73,8 +77,6 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
     try {
         await db.removeUserFromSpace(activeSpace.id, userToRemove.id);
         toast({ title: 'User Removed', description: `${userToRemove.name} has been removed from ${activeSpace.name}.` });
-        // The real-time listener in useAuth will handle the space member update.
-        // We call onInvite() to trigger a refresh of the global user list in Dashboard.
         onInvite(); 
     } catch (e) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to remove user.' });
@@ -164,10 +166,16 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {usersInMySpaces.map(user => {
+                        {usersInMySpaces.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                                    No members found in your workspaces.
+                                </TableCell>
+                            </TableRow>
+                        ) : usersInMySpaces.map(user => {
                             const userMemberships = userSpaces
-                                .map(space => ({ space, membership: getRoleInSpace(user, space) }))
-                                .filter(item => item.membership && !item.space.isSystem);
+                                .map(space => ({ space, role: getRoleInSpace(user, space) }))
+                                .filter(item => item.role);
 
                             if (userMemberships.length === 0) return null;
 
@@ -188,16 +196,19 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
                                     <TableCell className="align-top">
                                          <div className="flex flex-col gap-2 items-start">
                                             {userMemberships.map(({ space }) => (
-                                                <div key={space.id} className="flex items-center h-6">{space.name}</div>
+                                                <div key={space.id} className="flex items-center h-6">
+                                                    {space.name}
+                                                    {space.isSystem && <Badge variant="outline" className="ml-2 text-[10px] h-4">System</Badge>}
+                                                </div>
                                             ))}
                                         </div>
                                     </TableCell>
                                     <TableCell className="align-top">
                                         <div className="flex flex-col gap-2 items-start">
-                                            {userMemberships.map(({ space, membership }) => (
+                                            {userMemberships.map(({ space, role }) => (
                                                 <div key={space.id} className="flex items-center h-6">
-                                                    <Badge variant={membership!.role === 'Admin' ? 'default' : 'secondary'}>
-                                                        {membership!.role}
+                                                    <Badge variant={role === 'Admin' ? 'default' : 'secondary'}>
+                                                        {role}
                                                     </Badge>
                                                 </div>
                                             ))}
@@ -282,7 +293,7 @@ export default function UserSettings({ allUsers: initialUsers, allHubs, handleIn
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                    <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
                                         No pending invitations.
                                     </TableCell>
                                 </TableRow>

@@ -105,12 +105,21 @@ export default function Dashboard({ view }: { view: string }) {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   const fetchData = async () => {
-    if (!appUser || !activeSpace) {
+    if (!appUser) {
         setIsLoading(false);
         return;
     }
     setIsLoading(true);
     
+    // 1. Fetch Users (Global - required for settings regardless of active space)
+    const fetchedUsers = await db.getAllUsers();
+    setAllUsers(fetchedUsers);
+
+    if (!activeSpace) {
+        setIsLoading(false);
+        return;
+    }
+
     // Clear old listeners
     if (messageUnsubscribeRef.current) {
         messageUnsubscribeRef.current();
@@ -125,12 +134,8 @@ export default function Dashboard({ view }: { view: string }) {
         contactsUnsubscribeRef.current = null;
     }
 
-    const fetchedUsers = await db.getAllUsers();
-    setAllUsers(fetchedUsers);
-
-    // Setup real-time contacts listener for the space
+    // 2. Setup real-time contacts listener for the space
     contactsUnsubscribeRef.current = db.subscribeToContacts(activeSpace.id, (updatedContacts) => {
-        // Sort in memory to avoid Firestore index requirement
         updatedContacts.sort((a, b) => {
             const dateA = a.updatedAt?.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt || 0);
             const dateB = b.updatedAt?.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt || 0);
@@ -139,39 +144,31 @@ export default function Dashboard({ view }: { view: string }) {
         setContacts(updatedContacts);
     });
 
-    // Set up conversation listener for the space or active hub
+    // 3. Set up conversation listener for the space or active hub
     const hubs = await db.getHubsForSpace(activeSpace.id);
     const hubIds = hubs.map(h => h.id);
     setAllHubs(hubs);
 
-    // Use active hub id if possible to simplify the query and avoid index issues
     const targetHubIds = activeHub ? [activeHub.id] : hubIds;
 
     if (targetHubIds.length > 0) {
-        // Simplified query: no orderBy to avoid index requirement
         const qConvos = query(
             collection(firestoreDb, 'conversations'), 
             where('hubId', 'in', targetHubIds.slice(0, 10))
         );
         conversationUnsubscribeRef.current = onSnapshot(qConvos, (snapshot) => {
             const convos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
-            
-            // Sort in-memory to avoid Firestore index requirement
             convos.sort((a, b) => new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime());
-            
             setChatConversations(convos);
             
-            // Sync visitors for these conversations
             const visitorIds = [...new Set(convos.map(c => c.visitorId).filter(Boolean))];
             Promise.all(visitorIds.map(id => db.getOrCreateVisitor(id!))).then(v => setVisitors(v as Visitor[]));
 
-            // Sync message listener if conversations change
             const convoIds = convos.map(c => c.id);
             if (messageUnsubscribeRef.current) messageUnsubscribeRef.current();
             messageUnsubscribeRef.current = db.getMessagesForConversations(convoIds, (messages) => { setChatMessages(messages); });
         }, (error) => {
             console.error("Conversation sync failed:", error);
-            toast({ variant: 'destructive', title: 'Data sync failed', description: 'Check console for Firestore errors.' });
         });
     }
 
@@ -230,8 +227,7 @@ export default function Dashboard({ view }: { view: string }) {
   };
 
   useEffect(() => {
-    if (activeSpace) fetchData();
-    else if (appUser) setIsLoading(false);
+    fetchData();
     return () => { 
         if (messageUnsubscribeRef.current) messageUnsubscribeRef.current(); 
         if (conversationUnsubscribeRef.current) conversationUnsubscribeRef.current();
@@ -442,7 +438,6 @@ export default function Dashboard({ view }: { view: string }) {
       timestamp: new Date().toISOString() 
     };
 
-    // Metadata is handled by the server action
     await addChatMessageAction(messageData);
   };
 
@@ -461,7 +456,6 @@ export default function Dashboard({ view }: { view: string }) {
     toast({ title: "Bot Updated" });
   }
   const handleBotAdd = async (b: Omit<Bot, 'id'>) => { const nb = await db.addBot(b); setBots(prev => [...prev, nb]); }
-  const handleBotAddArticles = async (bid: string, docIds: string[]) => { /* Implementation handled in BotSettings */ };
   const handleBotDelete = async (bid: string) => { await db.deleteBot(bid); setBots(prev => prev.filter(b => b.id !== bid)); toast({ title: "Bot Deleted" }); };
   const handleLogTime = async (td: Omit<TimeEntry, 'id'>) => {
     const nte = await db.addTimeEntry({...td, spaceId: activeSpace!.id});
@@ -469,7 +463,7 @@ export default function Dashboard({ view }: { view: string }) {
   };
 
   const renderView = () => {
-    const hubRequiredViews = ['overview', 'tasks', 'tickets', 'deals', 'inbox', 'help-center' /*, 'flows'*/];
+    const hubRequiredViews = ['overview', 'tasks', 'tickets', 'deals', 'inbox', 'help-center'];
     const isHubRequired = hubRequiredViews.includes(view);
 
     if (isHubRequired && !activeHub) {
@@ -504,14 +498,13 @@ export default function Dashboard({ view }: { view: string }) {
       case 'settings': return <SettingsLayout {...sp} />;
       case 'team-timesheets': return <TeamTimesheets allSpaces={userSpaces} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser!} activeHub={activeHub} />;
       case 'inbox': return <InboxLayout users={allUsers} appUser={appUser!} visitors={visitors} conversations={activeHub ? chatConversations.filter(c => c.hubId === activeHub.id) : []} messages={chatMessages} onSendMessage={handleSendMessageFromAgent} onAssignConversation={handleAssignConversation} setHideMobileBottomNav={setHideMobileBottomNav} activeHub={activeHub!} activeSpace={activeSpace!} allHubs={allHubs} escalationRules={escalationRules} projects={projects} contacts={contacts} onDataRefresh={fetchData} tickets={tickets} onCreateTicket={handleCreateTicket} onUpdateTicket={handleUpdateTicket} />;
-      // case 'flows': return <div className="flex h-full min-h-0 flex-1 min-w-0"><JobFlowBoard activeSpace={activeSpace!} allUsers={allUsers} jobFlowTemplates={jobFlowTemplates} jobs={jobs} jobFlowTasks={jobFlowTasks} tasks={tasks} onJobLaunched={fetchData} onUpdateTask={handleUpdateTask} onTaskSelect={setSelectedTask} /></div>;
       default: return <div className="p-8"><h1 className="text-2xl font-bold">Coming Soon: {view}</h1></div>;
     }
   };
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-      {renderView()}
+      {isLoading ? <ContentSkeleton /> : renderView()}
       <ProjectFormDialog isOpen={isProjectFormOpen} onOpenChange={setIsProjectFormOpen} onSave={handleSaveProject} project={editingProject} spaceId={activeSpace?.id || ''} spaceMembers={allUsers.filter(u => activeSpace?.members[u.id])} />
       {selectedTask && (
         <TaskDetailsDialog 
