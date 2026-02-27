@@ -28,7 +28,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import DealAutomationSettings from './deal-automation-settings';
 import EscalationIntakeSettings from './escalation-intake-settings';
-import { LogOut, Phone, User as UserIcon, Building2, LayoutGrid, Bell, BrainCircuit } from 'lucide-react';
+import { LogOut, Phone, User as UserIcon, Building2, LayoutGrid, Bell, BrainCircuit, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import BrainSettings from './brain-settings';
