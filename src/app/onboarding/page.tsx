@@ -62,7 +62,7 @@ export default function OnboardingPage() {
 
     useEffect(() => {
         if (status === 'loading') {
-            return; // Wait until auth status is resolved
+            return;
         }
 
         if (status === 'unauthenticated') {
@@ -71,19 +71,20 @@ export default function OnboardingPage() {
         }
 
         if (status === 'authenticated') {
-            // If onboarding is already marked as complete, they shouldn't be here.
-            if (appUser?.onboardingComplete) {
+            const realSpaces = userSpaces.filter(s => !s.isSystem);
+            
+            // If they already have real spaces (e.g. from an invite), they should skip onboarding.
+            if (appUser?.onboardingComplete || realSpaces.length > 0) {
                 router.push('/space-selection');
                 return;
             }
 
-            // If they are authenticated but have no spaces at all (edge case recovery)
+            // If they have no spaces at all (edge case recovery)
             if (userSpaces.length === 0) {
                  router.push('/space-selection');
                  return;
             }
             
-            // Otherwise, they are in the correct place. Show the onboarding content.
             setIsLoading(false);
         }
 

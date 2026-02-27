@@ -7,21 +7,21 @@ import { useAuth } from '@/hooks/use-auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { updateUser } from '@/lib/db';
 
 function JoinContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { status, firebaseUser } = useAuth();
+  const { status, firebaseUser, setAppUser } = useAuth();
   
   const inviteId = searchParams.get('invite');
   const token = searchParams.get('token');
 
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [spaceName, setSpaceName] = useState('');
 
   useEffect(() => {
     if (status === 'loading') {
@@ -48,7 +48,11 @@ function JoinContent() {
           const result = await acceptInviteFn({ inviteId, token });
           const { spaceId } = result.data as { spaceId: string };
           
-          // Force a reload of spaces and redirect
+          // Mark onboarding as complete for the user since they've joined a real space
+          await updateUser(firebaseUser.uid, { onboardingComplete: true });
+          setAppUser(prev => prev ? { ...prev, onboardingComplete: true } : null);
+
+          // Redirect to the invited space
           router.push(`/space/${spaceId}/hubs`);
           
         } catch (err: any) {
@@ -60,7 +64,7 @@ function JoinContent() {
 
       acceptInvite();
     }
-  }, [status, firebaseUser, inviteId, token, router]);
+  }, [status, firebaseUser, inviteId, token, router, setAppUser]);
 
   if (isLoading) {
     return (
