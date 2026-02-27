@@ -40,12 +40,22 @@ export const acceptInvite = onCall(async (request) => {
 
   const membershipId = `${spaceId}_${uid}`;
   const membershipRef = admin.firestore().doc(`memberships/${membershipId}`);
+  const spaceRef = admin.firestore().doc(`spaces/${spaceId}`);
 
-  await membershipRef.set(
-    {
+  const role = invite.spaceRole ?? "Member";
+
+  // Atomically update the space member list and create the membership record
+  await admin.firestore().runTransaction(async (transaction) => {
+    // 1. Update the members map on the Space document (Crucial for Firestore rules and UI list)
+    transaction.update(spaceRef, {
+      [`members.${uid}`]: { role }
+    });
+
+    // 2. Create the dedicated membership document
+    transaction.set(membershipRef, {
       spaceId,
       userId: uid,
-      spaceRole: invite.spaceRole ?? "member",
+      spaceRole: role,
       hubs: invite.hubAccess
         ? Object.fromEntries(
             Object.entries(invite.hubAccess).map(([hubId, role]) => [hubId, { role }])
@@ -53,14 +63,14 @@ export const acceptInvite = onCall(async (request) => {
         : {},
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       invitedBy: invite.createdBy ?? null,
-    },
-    { merge: true }
-  );
+    }, { merge: true });
 
-  await inviteRef.update({
-    status: "accepted",
-    acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
-    acceptedBy: uid,
+    // 3. Mark invite as accepted
+    transaction.update(inviteRef, {
+      status: "accepted",
+      acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+      acceptedBy: uid,
+    });
   });
 
   return { spaceId };

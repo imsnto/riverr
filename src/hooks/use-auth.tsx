@@ -126,10 +126,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUserSpaces(spaces);
             
             // Sync with current active space if its metadata changed
+            let updatedActiveSpace: Space | null = null;
             _setActiveSpace(prev => {
                 if (!prev) return null;
                 const updated = spaces.find(s => s.id === prev.id);
-                return updated || null;
+                updatedActiveSpace = updated || null;
+                return updatedActiveSpace;
             });
 
             // Update admin status
@@ -137,12 +139,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const isAdminInAnySpace = realSpaces.some(s => s.members[userProfile!.id]?.role === 'Admin');
             setIsUserAdmin(isAdminInAnySpace);
 
-            // Update cache
+            // CRITICAL: Synchronize localStorage with real-time state to prevent stale data after refresh
             localStorage.setItem(LOCAL_STORAGE_KEY_USER, JSON.stringify({ 
                 appUser: userProfile, 
                 firebaseUser: user, 
                 userSpaces: spaces 
             }));
+            
+            if (updatedActiveSpace) {
+                localStorage.setItem(LOCAL_STORAGE_KEY_ACTIVE_SPACE, JSON.stringify(updatedActiveSpace));
+            } else {
+                localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_SPACE);
+            }
         });
 
         setStatus('authenticated');

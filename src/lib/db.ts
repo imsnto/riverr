@@ -85,17 +85,23 @@ export const updateSpace = async (spaceId: string, data: Partial<Space>) => {
 
 /**
  * Removes a user from a space and all associated private hubs.
+ * Also cleans up the memberships collection for data integrity.
  */
 export const removeUserFromSpace = async (spaceId: string, userId: string) => {
   const spaceRef = doc(db, 'spaces', spaceId);
+  const membershipId = `${spaceId}_${userId}`;
+  const membershipRef = doc(db, 'memberships', membershipId);
   const batch = writeBatch(db);
 
-  // 1. Remove from space members map
+  // 1. Remove from space members map (Primary authorization source)
   batch.update(spaceRef, {
     [`members.${userId}`]: deleteField()
   });
   
-  // 2. Remove from all hubs in this space (cleaning up private member lists)
+  // 2. Delete the dedicated membership document
+  batch.delete(membershipRef);
+  
+  // 3. Remove from all hubs in this space (cleaning up private member lists)
   const hubsQuery = query(collection(db, 'hubs'), where('spaceId', '==', spaceId));
   const hubsSnap = await getDocs(hubsQuery);
   
@@ -130,6 +136,8 @@ export const subscribeToUserSpaces = (userId: string, callback: (spaces: Space[]
   return onSnapshot(q, (snapshot) => {
     const spaces = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Space));
     callback(spaces);
+  }, (error) => {
+    console.error("Error subscribing to spaces:", error);
   });
 };
 
