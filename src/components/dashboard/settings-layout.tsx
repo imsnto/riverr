@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils';
 import UserSettings from './user-settings';
 import SpaceSettings from './space-settings';
 import HubSettings from './hub-settings';
-import TeamTimesheets from './team-timesheets';
 import NotificationSettings from './notification-settings';
 import {
   User,
@@ -36,7 +35,7 @@ import PhoneSettings from './phone-settings';
 import { deleteToken } from "firebase/messaging";
 import { messaging } from '@/lib/firebase';
 import { ScrollArea } from '../ui/scroll-area';
-import { Separator } from '../ui/separator';
+import TeamTimesheets from './team-timesheets';
 
 type SettingsView = 'users' | 'space-general' | 'hub-general' | 'phone' | 'agents' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'brain' | 'notifications';
 
@@ -70,8 +69,12 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
+    try {
+        if (messaging) {
+            await deleteToken(messaging).catch(() => {});
+        }
+    } catch (e) {}
     await signOut();
-    deleteToken(messaging);
     router.push('/login');
   };
 
@@ -83,22 +86,22 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
   const hubHasTasks = props.activeHub?.settings?.components?.includes('tasks');
 
   const spaceNavItems = [
-    { key: 'users', label: 'Members', icon: UserIcon },
-    { key: 'space-general', label: 'Space Settings', icon: Building2 },
-    { key: 'phone', label: 'Phone & SMS', icon: Phone, hidden: !isSpaceAdmin },
+    { key: 'users' as SettingsView, label: 'Members', icon: UserIcon },
+    { key: 'space-general' as SettingsView, label: 'Space Settings', icon: Building2 },
+    { key: 'brain' as SettingsView, label: 'Business Brain', icon: BrainCircuit },
+    { key: 'phone' as SettingsView, label: 'Phone & SMS', icon: Phone, hidden: !isSpaceAdmin },
   ];
 
   const hubNavItems = [
-    { key: 'hub-general', label: 'General', icon: LayoutGrid },
-    { key: 'agents', label: 'Agents', icon: BrainCircuit, hidden: !hubHasInbox },
-    { key: 'deal-automation', label: 'Deal Automation', icon: LayoutGrid, hidden: !hubHasDeals },
-    { key: 'escalation-intake', label: 'Escalation Intake', icon: LayoutGrid, hidden: !(hubHasTickets && hubHasTasks) },
+    { key: 'hub-general' as SettingsView, label: 'General', icon: LayoutGrid },
+    { key: 'agents' as SettingsView, label: 'Agents', icon: BrainCircuit, hidden: !hubHasInbox },
+    { key: 'deal-automation' as SettingsView, label: 'Deal Automation', icon: LayoutGrid, hidden: !hubHasDeals },
+    { key: 'escalation-intake' as SettingsView, label: 'Escalation Intake', icon: LayoutGrid, hidden: !(hubHasTickets && hubHasTasks) },
   ];
 
   const workspaceNavItems = [
-    { key: 'timesheets', label: 'Timesheets', icon: Clock },
-    { key: 'notifications', label: 'Notifications', icon: Bell },
-    { key: 'brain', label: 'Business Brain', icon: BrainCircuit },
+    { key: 'timesheets' as SettingsView, label: 'Timesheets', icon: Clock },
+    { key: 'notifications' as SettingsView, label: 'Notifications', icon: Bell },
   ];
 
   const renderContent = () => {
@@ -192,14 +195,13 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
     }
   };
 
-  const navButton = (item: any) => {
+  const NavButton = ({ item }: { item: { key: SettingsView, label: string, icon: any, hidden?: boolean } }) => {
     if (item.hidden) return null;
     const Icon = item.icon;
     return (
         <Button
-            key={item.key}
             variant={activeView === item.key ? 'secondary' : 'ghost'}
-            onClick={() => setActiveView(item.key as SettingsView)}
+            onClick={() => setActiveView(item.key)}
             className="justify-start h-9 px-3 w-full"
         >
             <Icon className="mr-2 h-4 w-4" />
@@ -219,6 +221,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
                     <SelectContent>
                         <SelectItem value="users">Space: Members</SelectItem>
                         <SelectItem value="space-general">Space: Settings</SelectItem>
+                        <SelectItem value="brain">Space: Business Brain</SelectItem>
                         {isSpaceAdmin && <SelectItem value="phone">Space: Phone & SMS</SelectItem>}
                         {props.activeHub && (
                             <>
@@ -230,7 +233,6 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
                         )}
                         <SelectItem value="timesheets">Workspace: Timesheets</SelectItem>
                         <SelectItem value="notifications">Workspace: Notifications</SelectItem>
-                        <SelectItem value="brain">Workspace: Brain</SelectItem>
                     </SelectContent>
                 </Select>
                 <Button variant="outline" size="icon" onClick={handleLogout} className="h-10 w-10">
@@ -254,19 +256,19 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             <div className="p-3 space-y-6">
                 <div className="space-y-1">
                     <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50">Space: {activeSpace?.name}</p>
-                    {spaceNavItems.map(navButton)}
+                    {spaceNavItems.map(item => <NavButton key={item.key} item={item} />)}
                 </div>
 
                 {props.activeHub && (
                     <div className="space-y-1">
                         <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50">Hub: {props.activeHub.name}</p>
-                        {hubNavItems.map(navButton)}
+                        {hubNavItems.map(item => <NavButton key={item.key} item={item} />)}
                     </div>
                 )}
 
                 <div className="space-y-1">
                     <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50">Global Workspace</p>
-                    {workspaceNavItems.map(navButton)}
+                    {workspaceNavItems.map(item => <NavButton key={item.key} item={item} />)}
                 </div>
             </div>
         </ScrollArea>
