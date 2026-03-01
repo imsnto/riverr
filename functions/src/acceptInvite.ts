@@ -47,9 +47,11 @@ export const acceptInvite = onCall(async (request) => {
   // Atomically update the space member list and create the membership record
   await admin.firestore().runTransaction(async (transaction) => {
     // 1. Update the members map on the Space document (Crucial for Firestore rules and UI list)
-    transaction.update(spaceRef, {
-      [`members.${uid}`]: { role }
-    });
+    transaction.set(spaceRef, {
+      [`members.${uid}`]: { 
+        role: role 
+      }
+    }, { merge: true });
 
     // 2. Create the dedicated membership document
     transaction.set(membershipRef, {
