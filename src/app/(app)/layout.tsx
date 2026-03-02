@@ -183,6 +183,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               activeSpace={activeSpace}
               allSpaces={userSpaces}
               onHubChange={handleHubChange}
+              unreadMessagesCount={unreadMessagesCount}
             />
           )}
           {appUser && (

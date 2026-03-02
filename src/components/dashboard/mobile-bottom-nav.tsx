@@ -1,4 +1,5 @@
 
+// src/components/dashboard/mobile-bottom-nav.tsx
 'use client';
 
 import { AppView } from '@/lib/routes';
@@ -48,6 +49,7 @@ interface MobileBottomNavProps {
   activeSpace: Space | null;
   allSpaces: Space[];
   onHubChange: (hubId: string, spaceId: string) => void;
+  unreadMessagesCount?: number;
 }
 
 export default function MobileBottomNav({
@@ -57,6 +59,7 @@ export default function MobileBottomNav({
   activeSpace,
   allSpaces,
   onHubChange,
+  unreadMessagesCount = 0,
 }: MobileBottomNavProps) {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isSwitchingWorkspace, setIsSwitchingWorkspace] = useState(false);
@@ -92,6 +95,10 @@ export default function MobileBottomNav({
   // Show top 4 items instead of 3
   const visibleItems = useMemo(() => availableItems.slice(0, 4), [availableItems]);
 
+  const isInboxUnread = unreadMessagesCount > 0;
+  const isInboxInMore = !visibleItems.some(i => i.key === 'inbox') && availableItems.some(i => i.key === 'inbox');
+  const showDotOnMore = isInboxUnread && isInboxInMore;
+
   const handleHubSelect = (hubId: string) => {
     if (browsingSpaceId) {
       onHubChange(hubId, browsingSpaceId);
@@ -108,28 +115,37 @@ export default function MobileBottomNav({
     <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-auto">
       {/* Floating Pill Toolbar */}
       <div className="flex items-center gap-4 bg-background/80 backdrop-blur-md border shadow-2xl rounded-full p-1.5 px-6">
-        {visibleItems.map((item) => (
-          <Button
-            key={item.key}
-            variant={currentView === item.key ? 'secondary' : 'ghost'}
-            className={cn(
-              "h-12 w-12 rounded-full flex items-center justify-center p-0",
-              currentView === item.key ? "bg-primary text-primary-foreground hover:bg-primary/90" : "text-muted-foreground"
-            )}
-            onClick={() => handleNavigate(item.key)}
-          >
-            {item.icon}
-            <span className="sr-only">{item.label}</span>
-          </Button>
-        ))}
+        {visibleItems.map((item) => {
+          const hasUnread = item.key === 'inbox' && isInboxUnread;
+          return (
+            <Button
+              key={item.key}
+              variant={currentView === item.key ? 'secondary' : 'ghost'}
+              className={cn(
+                "h-12 w-12 rounded-full flex items-center justify-center p-0 relative",
+                currentView === item.key ? "bg-primary text-primary-foreground hover:bg-primary/90" : "text-muted-foreground"
+              )}
+              onClick={() => handleNavigate(item.key)}
+            >
+              {item.icon}
+              {hasUnread && (
+                <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background" />
+              )}
+              <span className="sr-only">{item.label}</span>
+            </Button>
+          );
+        })}
 
         <Sheet open={isMoreOpen} onOpenChange={setIsMoreOpen}>
           <SheetTrigger asChild>
             <Button
               variant="ghost"
-              className="h-12 w-12 rounded-full flex items-center justify-center p-0 text-muted-foreground"
+              className="h-12 w-12 rounded-full flex items-center justify-center p-0 text-muted-foreground relative"
             >
               <MoreHorizontal className="h-6 w-6" />
+              {showDotOnMore && (
+                <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background" />
+              )}
               <span className="sr-only">More</span>
             </Button>
           </SheetTrigger>
@@ -150,30 +166,36 @@ export default function MobileBottomNav({
             <ScrollArea className="flex-1 mt-4">
               {!isSwitchingWorkspace ? (
                 <div className="px-2 space-y-1">
-                  {availableItems.map((item) => (
-                    <button
-                      key={item.key}
-                      onClick={() => handleNavigate(item.key)}
-                      className={cn(
-                        "w-full flex items-center gap-4 p-4 rounded-2xl transition-colors text-left",
-                        currentView === item.key ? "bg-primary/10" : "hover:bg-muted"
-                      )}
-                    >
-                      <div className={cn(
-                        "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
-                        currentView === item.key ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                      )}>
-                        {item.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={cn("font-semibold", currentView === item.key ? "text-primary" : "text-foreground")}>
-                          {item.label}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">{item.desc}</p>
-                      </div>
-                      {currentView === item.key && <Check className="h-5 w-5 text-primary" />}
-                    </button>
-                  ))}
+                  {availableItems.map((item) => {
+                    const hasUnread = item.key === 'inbox' && isInboxUnread;
+                    return (
+                      <button
+                        key={item.key}
+                        onClick={() => handleNavigate(item.key)}
+                        className={cn(
+                          "w-full flex items-center gap-4 p-4 rounded-2xl transition-colors text-left relative",
+                          currentView === item.key ? "bg-primary/10" : "hover:bg-muted"
+                        )}
+                      >
+                        <div className={cn(
+                          "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 relative",
+                          currentView === item.key ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                        )}>
+                          {item.icon}
+                          {hasUnread && (
+                            <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500 border-2 border-background" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={cn("font-semibold", currentView === item.key ? "text-primary" : "text-foreground")}>
+                            {item.label}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">{item.desc}</p>
+                        </div>
+                        {currentView === item.key && <Check className="h-5 w-5 text-primary" />}
+                      </button>
+                    )
+                  })}
 
                   <Separator className="my-4 mx-4" />
 
