@@ -304,6 +304,10 @@ export default function ProjectBoard({
     const newStatusName = `New Status ${statuses.length + 1}`;
     const randomColor = STATUS_COLORS[statuses.length % STATUS_COLORS.length];
     onUpdateActiveHub({ statuses: [...statuses, { name: newStatusName, color: randomColor.color }] });
+    
+    // Immediately enter editing mode for the new status
+    setEditingColumn(newStatusName);
+    setNewColumnName(newStatusName);
   };
 
   const handleRenameColumn = (oldName: string) => {
@@ -577,7 +581,7 @@ export default function ProjectBoard({
                                 <td className="px-4 py-2"><div className="flex items-center gap-2 min-w-0"><Input defaultValue={task.name} className={cn("h-7 text-sm font-medium border-transparent bg-transparent hover:bg-white/5 focus:bg-background focus:border-input transition-all w-full truncate text-ellipsis whitespace-nowrap", isDone && "line-through text-muted-foreground")} onBlur={(e) => { if (e.target.value !== task.name) { onUpdateTask({ ...task, name: e.target.value }); } }} /></div></td>
                                 <td className="px-4 py-2"><Select value={task.assigned_to || 'unassigned'} onValueChange={(val) => onUpdateTask({ ...task, assigned_to: val === 'unassigned' ? null : val })}><SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-full gap-2 px-1"><SelectValue>{assignee ? (<div className="flex items-center gap-1.5 overflow-hidden"><Avatar className="h-5 w-5 border border-white/10 shrink-0"><AvatarImage src={assignee.avatarUrl} /><AvatarFallback className="text-[8px]">{getInitials(assignee.name)}</AvatarFallback></Avatar><span className="text-xs truncate">{assignee.name}</span></div>) : <span className="text-muted-foreground/50 text-xs">Unassigned</span>}</SelectValue></SelectTrigger><SelectContent><SelectItem value="unassigned">Unassigned</SelectItem>{allUsers.map(u => (<SelectItem key={u.id} value={u.id}><div className="flex items-center gap-2"><Avatar className="h-5 w-5"><AvatarImage src={u.avatarUrl}/></Avatar>{u.name}</div></SelectItem>))}</SelectContent></Select></td>
                                 <td className="px-4 py-2"><Select value={task.status} onValueChange={(val) => onUpdateTask({ ...task, status: val })}><SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-full gap-2 px-1"><SelectValue>{statusObj && (<Badge style={{ backgroundColor: statusObj.color + '20', color: statusObj.color, borderColor: statusObj.color + '40' }} className="uppercase text-[10px] font-bold px-2 py-0 rounded-sm tracking-tight h-5 whitespace-nowrap">{statusObj.name}</Badge>)}</SelectValue></SelectTrigger><SelectContent>{statuses.map(s => (<SelectItem key={s.name} value={s.name}>{s.name}</SelectItem>))}</SelectContent></Select></td>
-                                <td className="px-4 py-2"><Popover><PopoverTrigger asChild><Button variant="ghost" size="sm" className={cn("h-7 px-1 text-xs font-normal w-full justify-start", !task.due_date && "text-muted-foreground/30")}>{task.due_date ? format(parseISO(task.due_date), 'MMM d, yyyy') : 'Set date'}</Button></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><CalendarPicker mode="single" selected={task.due_date ? parseISO(task.due_date) : undefined} onSelect={(d) => onUpdateTask({ ...task, due_date: d?.toISOString() || null })} initialFocus /></PopoverContent></Popover></td>
+                                <td className="px-4 py-2"><Popover><PopoverTrigger asChild><Button variant="ghost" size="sm" className={cn("h-7 px-1 text-xs font-normal w-full justify-start", !task.due_date && "text-muted-foreground/30")}>{task.due_date ? format(parseISO(task.due_date), 'MMM d, yyyy') : 'Set date'}</Button></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><CalendarPicker mode="single" selected={task.due_date ? parseISO(task.due_date) : undefined} onSelect={(d) => handleFieldChange('due_date', d?.toISOString())} initialFocus /></PopoverContent></Popover></td>
                                 <td className="px-4 py-2"><Select value={task.priority || 'none'} onValueChange={(val) => onUpdateTask({ ...task, priority: val === 'none' ? null : val as any })}><SelectTrigger className="h-7 border-transparent bg-transparent hover:bg-white/5 w-full gap-2 px-1"><SelectValue>{task.priority ? (<div className="flex items-center gap-1.5"><PriorityIcon priority={task.priority} /><span className="text-[11px] capitalize">{task.priority}</span></div>) : <span className="text-muted-foreground/30 text-[11px]">None</span>}</SelectValue></SelectTrigger><SelectContent><SelectItem value="none">None</SelectItem><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem><SelectItem value="Urgent">Urgent</SelectItem></SelectContent></Select></td>
                             </tr>
                         );
@@ -628,7 +632,10 @@ export default function ProjectBoard({
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild><div className="flex items-center"><Button size="sm" className="h-8 rounded-r-none" onClick={() => onNewTaskRequest()}>Add Task</Button><Button size="sm" className="h-8 rounded-l-none border-l border-white/10 px-2"><ChevronDown className="h-4 w-4" /></Button></div></DropdownMenuTrigger>
-              <DropdownMenuContent align="end"><DropdownMenuItem onClick={() => onNewTaskRequest()}>New Task</DropdownMenuItem><DropdownMenuItem disabled>New Section</DropdownMenuItem></DropdownMenuContent>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onNewTaskRequest()}>New Task</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleAddNewColumn}>Add Status</DropdownMenuItem>
+              </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
