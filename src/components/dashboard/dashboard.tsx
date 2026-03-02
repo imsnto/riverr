@@ -110,7 +110,6 @@ export default function Dashboard({ view }: { view: string }) {
         setIsLoading(false);
         return;
     }
-    setIsLoading(true);
     
     // 1. Fetch Users (Global - required for settings regardless of active space)
     const fetchedUsers = await db.getAllUsers();
@@ -227,14 +226,19 @@ export default function Dashboard({ view }: { view: string }) {
     setIsLoading(false);
   };
 
+  // Only trigger a full reload when the Space or Hub ID actually changes.
+  // This prevents losing board state during metadata updates like status renames.
   useEffect(() => {
-    fetchData();
+    if (appUser) {
+      setIsLoading(true);
+      fetchData();
+    }
     return () => { 
         if (messageUnsubscribeRef.current) messageUnsubscribeRef.current(); 
         if (conversationUnsubscribeRef.current) conversationUnsubscribeRef.current();
         if (contactsUnsubscribeRef.current) contactsUnsubscribeRef.current();
     };
-  }, [appUser, activeSpace, activeHub]);
+  }, [appUser?.id, activeSpace?.id, activeHub?.id]);
 
   useEffect(() => {
     if (!appUser) return;
@@ -390,7 +394,7 @@ export default function Dashboard({ view }: { view: string }) {
         const updatedHub = { ...activeHub, ...ud };
         setActiveHub(updatedHub);
         setAllHubs(prev => prev.map(h => h.id === activeHub.id ? updatedHub : h));
-        toast({ title: 'Hub updated successfully' });
+        // Suppress toast for visual tweaks like status renames to keep the UI flow smooth
     } catch(e) { toast({ variant: 'destructive', title: 'Failed to update hub' }); }
   }
 
