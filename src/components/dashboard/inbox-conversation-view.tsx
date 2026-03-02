@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -468,7 +467,7 @@ export default function InboxConversationView({
         </ScrollArea>
 
         {/* Composer */}
-        <div className={cn("p-2 border-t bg-background md:bg-card space-y-2", isNote && "bg-amber-50 dark:bg-amber-950/50")}>
+        <div className={cn("p-3 pb-8 md:pb-4 border-t bg-background md:bg-card space-y-2", isNote && "bg-amber-50 dark:bg-amber-950/50")}>
             {activeTicket && (
                 <button
                     onClick={() => setIsTicketDetailsOpen(true)}
