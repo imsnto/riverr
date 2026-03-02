@@ -106,7 +106,7 @@ export default function MobileBottomNav({
   return (
     <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-auto">
       {/* Floating Pill Toolbar */}
-      <div className="flex items-center gap-1 bg-background/80 backdrop-blur-md border shadow-2xl rounded-full p-1.5 px-2">
+      <div className="flex items-center gap-3 bg-background/80 backdrop-blur-md border shadow-2xl rounded-full p-1.5 px-4">
         {topThree.map((item) => (
           <Button
             key={item.key}
