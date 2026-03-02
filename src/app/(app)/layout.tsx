@@ -1,15 +1,14 @@
 
-// src/app/(app)/layout.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { useAuth } from '@/hooks/use-auth';
 import { Space, Hub, User, Conversation } from '@/lib/data';
 import * as db from '@/lib/db';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { AppView } from '@/lib/routes';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -20,10 +19,11 @@ import NotificationPermission from '@/components/dashboard/NotificationPermissio
 import SpaceFormDialog, { HubFormValues } from '@/components/dashboard/space-form-dialog';
 import { useToast } from '@/hooks/use-toast';
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+function AppLayoutContent({ children }: { children: React.ReactNode }) {
     const { appUser, activeSpace, userSpaces, setUserSpaces, setActiveSpace, activeHub, setActiveHub } = useAuth();
     const router = useRouter();
     const params = useParams();
+    const searchParams = useSearchParams();
     const isMobile = useIsMobile();
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
@@ -34,6 +34,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const [spaceHubs, setSpaceHubs] = useState<Hub[]>([]);
     
     const currentView = (params.view as AppView) || 'overview';
+    const isChatActive = isMobile && searchParams.has('conversationId');
     
     useEffect(() => {
         if (activeSpace) {
@@ -169,13 +170,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             />
             <main className={cn(
               "flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden",
-              isMobile && "pb-20"
+              isMobile && !isChatActive && "pb-20"
             )}>
               <NotificationPermission />
               {children}
             </main>
           </div>
-          {isMobile && (
+          {isMobile && !isChatActive && (
             <MobileBottomNav
               currentView={currentView}
               onChangeView={handleViewChange}
@@ -197,5 +198,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             />
           )}
         </SidebarProvider>
+    );
+}
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <Suspense fallback={<DashboardSkeleton />}>
+            <AppLayoutContent>{children}</AppLayoutContent>
+        </Suspense>
     );
 }

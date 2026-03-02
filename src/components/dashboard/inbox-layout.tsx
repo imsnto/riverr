@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import ContactDetailDialog from './inbox-contact-dailog';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 interface InboxLayoutProps {
   users: User[];
@@ -20,7 +20,6 @@ interface InboxLayoutProps {
   messages: ChatMessage[];
   onSendMessage: (conversationId: string, content: string, type: 'message' | 'note') => void;
   onAssignConversation: (conversationId: string, assigneeIds: string[]) => void;
-  setHideMobileBottomNav?: (hide: boolean) => void;
   activeHub: Hub;
   activeSpace: Space;
   allHubs: Hub[];
@@ -41,7 +40,6 @@ export default function InboxLayout({
   messages,
   onSendMessage,
   onAssignConversation,
-  setHideMobileBottomNav,
   activeHub,
   activeSpace,
   allHubs,
@@ -54,16 +52,11 @@ export default function InboxLayout({
   onUpdateTicket,
 }: InboxLayoutProps) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isContactPanelOpen, setIsContactPanelOpen] = useState(true);
   const [isContactDailog, setIsContactDailog] = useState(false);
   const isMobile = useIsMobile();
-
-  useEffect(() => {
-    if (setHideMobileBottomNav) {
-      setHideMobileBottomNav(isMobile && !!selectedConversationId);
-    }
-  }, [isMobile, selectedConversationId, setHideMobileBottomNav]);
 
   useEffect(() => {
     const convoIdFromUrl = searchParams.get('conversationId');
@@ -75,7 +68,17 @@ export default function InboxLayout({
   }, [searchParams, selectedConversationId, conversations]);
 
   const handleSelectConversation = (id: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('conversationId', id);
+    router.push(url.pathname + url.search);
     setSelectedConversationId(id);
+  };
+
+  const handleBack = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('conversationId');
+    router.push(url.pathname + url.search);
+    setSelectedConversationId(null);
   };
 
   const handleAgentSendMessage = (conversationId: string, message: Omit<ChatMessage, 'id' | 'conversationId'>) => {
@@ -124,7 +127,7 @@ export default function InboxLayout({
                 onToggleContactDailog={() => setIsContactDailog(true)}
                 onSendMessage={handleAgentSendMessage}
                 onAssignConversation={onAssignConversation}
-                onBack={() => setSelectedConversationId(null)}
+                onBack={handleBack}
                 activeHub={activeHub}
                 activeSpace={activeSpace}
                 allHubs={allHubs}
@@ -135,6 +138,8 @@ export default function InboxLayout({
                 tickets={tickets}
                 onCreateTicket={onCreateTicket}
                 onUpdateTicket={onUpdateTicket}
+                allTasks={[]}
+                onTaskSelect={() => {}}
               />
               {isContactPanelOpen && (
                 <div className="hidden xl:block h-full min-h-0">
