@@ -21,6 +21,7 @@ import {
   LayoutGrid,
   Table as TableIcon,
   ChevronUp,
+  ArrowLeft,
 } from 'lucide-react';
 import { Button, buttonVariants } from '../ui/button';
 import { cn, getInitials } from '@/lib/utils';
@@ -592,6 +593,9 @@ export default function ProjectBoard({
       <div className="flex flex-col border-b border-[#2a2a2a] shrink-0">
         <div className="flex items-center justify-between px-6 py-2">
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="md:hidden h-8 w-8 -ml-2" onClick={onBack}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 hover:bg-white/5">
