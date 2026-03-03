@@ -106,8 +106,7 @@ export default function ChatbotWidgetPage() {
 
   // Seen Tracking Logic
   const markAsSeen = async () => {
-    const isChatOpen = localStorage.getItem('riverr_chat_open')
-    if (conversation && !document.hidden && isChatOpen === 'true') {
+    if (conversation && !document.hidden) {
       const now = new Date().toISOString();
       await db.updateConversation(conversation.id, { 
         lastVisitorSeenAt: now 
@@ -122,11 +121,6 @@ export default function ChatbotWidgetPage() {
     }
   };
 
-  useEffect(() => {
-    if (isChatOpen && conversation?.id) {
-      markAsSeen();
-      }
-  }, [isChatOpen, conversation?.id]);
 
   useEffect(() => {
     const handleFocus = () => {

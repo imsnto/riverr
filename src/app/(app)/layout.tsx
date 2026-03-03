@@ -60,7 +60,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
 
       const q = query(
         collection(firestoreDb, 'conversations'),
-        where('spaceId', '==', activeSpace.id)
+        where('hubId', '==', activeHub?.id)
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
