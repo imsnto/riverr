@@ -3,9 +3,8 @@
 import React from 'react';
 import { Project, Task } from '@/lib/data';
 import { Button } from '../ui/button';
-import { Plus, Archive, LayoutTemplate, Settings } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
-import { Separator } from '../ui/separator';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -23,7 +22,7 @@ export default function ProjectSidebar({ projects, tasks, selectedProjectId, onS
       const projectTasks = tasks.filter(t => t.project_id === projectId);
       if (projectTasks.length === 0) return null;
       
-      const lastUpdatedTask = projectTasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      const lastUpdatedTask = projectTasks.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())[0];
       if (!lastUpdatedTask) return null;
 
       return lastUpdatedTask.createdAt ? formatDistanceToNow(new Date(lastUpdatedTask.createdAt), { addSuffix: true }) : '';
@@ -70,12 +69,6 @@ export default function ProjectSidebar({ projects, tasks, selectedProjectId, onS
           })}
         </div>
       </ScrollArea>
-       <div className="mt-auto p-2">
-          <Separator className="my-2" />
-           <Button variant="ghost" className="w-full justify-start text-zinc-400 hover:text-white">
-             <Settings className="h-4 w-4 mr-2" /> Settings
-          </Button>
-      </div>
     </div>
   );
 }
