@@ -56,7 +56,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
 
     // Global listener for unread messages count
     useEffect(() => {
-      if (!appUser || !activeSpace) return;
+      if (!appUser || !activeSpace || !activeHub) return;
 
       const q = query(
         collection(firestoreDb, 'conversations'),
@@ -80,7 +80,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
       });
 
       return () => unsubscribe();
-    }, [appUser, activeSpace]);
+    }, [appUser, activeSpace, activeHub]);
 
     const handleViewChange = (newView: AppView) => {
         if (activeHub) {
