@@ -20,6 +20,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Project, User } from '@/lib/data';
@@ -33,9 +34,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 
 const projectSchema = z.object({
   name: z.string().min(2, 'Project name must be at least 2 characters long.'),
+  key: z.string().min(1, 'Key is required').max(5, 'Key must be 5 characters or less').regex(/^[A-Z0-9]+$/, 'Key must be uppercase alphanumeric'),
   members: z.array(z.string()).min(1, 'At least one member is required.'),
   status: z.enum(['Active', 'On Hold', 'Archived']),
-  defaultView: z.enum(['board', 'list']).default('board'),
+  defaultView: z.enum(['board', 'list', 'table']).default('board'),
 });
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
@@ -49,6 +51,16 @@ interface ProjectFormDialogProps {
   spaceMembers: User[];
 }
 
+function generateKey(name: string): string {
+    return name
+        .split(/\s+/)
+        .map(word => word[0])
+        .filter(Boolean)
+        .join('')
+        .toUpperCase()
+        .slice(0, 3);
+}
+
 export default function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, spaceId, spaceMembers }: ProjectFormDialogProps) {
   const { appUser } = useAuth();
   
@@ -56,6 +68,7 @@ export default function ProjectFormDialog({ isOpen, onOpenChange, onSave, projec
     resolver: zodResolver(projectSchema),
     defaultValues: {
       name: '',
+      key: '',
       members: appUser ? [appUser.id] : [],
       status: 'Active',
       defaultView: 'board',
@@ -67,6 +80,7 @@ export default function ProjectFormDialog({ isOpen, onOpenChange, onSave, projec
       if (project) {
           form.reset({
               name: project.name,
+              key: project.key || '',
               members: project.members,
               status: project.status,
               defaultView: project.defaultView || 'board',
@@ -74,6 +88,7 @@ export default function ProjectFormDialog({ isOpen, onOpenChange, onSave, projec
       } else {
           form.reset({
               name: '',
+              key: '',
               members: [appUser.id],
               status: 'Active',
               defaultView: 'board',
@@ -87,6 +102,7 @@ export default function ProjectFormDialog({ isOpen, onOpenChange, onSave, projec
     
     const projectData = {
         name: values.name,
+        key: values.key,
         members: values.members,
         status: values.status,
         defaultView: values.defaultView,
@@ -97,6 +113,14 @@ export default function ProjectFormDialog({ isOpen, onOpenChange, onSave, projec
     onSave(projectData, project?.id);
     onOpenChange(false);
   };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const name = e.target.value;
+      form.setValue('name', name);
+      if (!project && !form.getValues('key')) {
+          form.setValue('key', generateKey(name));
+      }
+  }
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -116,8 +140,22 @@ export default function ProjectFormDialog({ isOpen, onOpenChange, onSave, projec
                 <FormItem>
                   <FormLabel>Project Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Website Redesign" {...field} />
+                    <Input placeholder="e.g., Website Redesign" {...field} onChange={handleNameChange} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="key"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Project Key</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., WR" {...field} className="uppercase" />
+                  </FormControl>
+                  <FormDescription>A unique short code for this project's tasks (e.g. XY-1).</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -175,6 +213,7 @@ export default function ProjectFormDialog({ isOpen, onOpenChange, onSave, projec
                     <SelectContent>
                         <SelectItem value="board">Kanban Board</SelectItem>
                         <SelectItem value="list">List View</SelectItem>
+                        <SelectItem value="table">Table View</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

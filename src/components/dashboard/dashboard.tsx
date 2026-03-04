@@ -1,5 +1,3 @@
-
-// src/components/dashboard/dashboard.tsx
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -68,6 +66,16 @@ const isUnread = (mention: any, lastRead: string | null) => {
   return mentionDate > new Date(lastRead);
 };
 
+function generateProjectKey(name: string): string {
+    return name
+        .split(/\s+/)
+        .map(word => word[0])
+        .filter(Boolean)
+        .join('')
+        .toUpperCase()
+        .slice(0, 3);
+}
+
 export default function Dashboard({ view }: { view: string }) {
   const { appUser, activeSpace, userSpaces, setUserSpaces, setActiveSpace, activeHub, setActiveHub } = useAuth();
   const router = useRouter();
@@ -111,7 +119,6 @@ export default function Dashboard({ view }: { view: string }) {
         return;
     }
     
-    // 1. Fetch Users (Global - required for settings regardless of active space)
     const fetchedUsers = await db.getAllUsers();
     setAllUsers(fetchedUsers);
 
@@ -120,7 +127,6 @@ export default function Dashboard({ view }: { view: string }) {
         return;
     }
 
-    // Clear old listeners
     if (messageUnsubscribeRef.current) {
         messageUnsubscribeRef.current();
         messageUnsubscribeRef.current = null;
@@ -134,7 +140,6 @@ export default function Dashboard({ view }: { view: string }) {
         contactsUnsubscribeRef.current = null;
     }
 
-    // 2. Setup real-time contacts listener for the space
     contactsUnsubscribeRef.current = db.subscribeToContacts(activeSpace.id, (updatedContacts) => {
         updatedContacts.sort((a, b) => {
             const dateA = a.updatedAt?.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt || 0);
@@ -144,7 +149,6 @@ export default function Dashboard({ view }: { view: string }) {
         setContacts(updatedContacts);
     });
 
-    // 3. Set up conversation listener for the space or active hub
     const hubs = await db.getHubsForSpace(activeSpace.id);
     const hubIds = hubs.map(h => h.id);
     setAllHubs(hubs);
@@ -226,8 +230,6 @@ export default function Dashboard({ view }: { view: string }) {
     setIsLoading(false);
   };
 
-  // Only trigger a full reload when the Space or Hub ID actually changes.
-  // This prevents losing board state during metadata updates like status renames.
   useEffect(() => {
     if (appUser) {
       setIsLoading(true);
@@ -306,8 +308,27 @@ export default function Dashboard({ view }: { view: string }) {
   const handleAddTask = async (task: Omit<Task, 'id'>): Promise<Task> => {
     if (!activeHub) throw new Error("No active hub.");
     const now = new Date().toISOString();
+    
+    let taskKey = task.taskKey;
+    if (!taskKey && task.project_id) {
+        const project = projects.find(p => p.id === task.project_id);
+        if (project) {
+            const nextNumber = (project.taskCounter || 0) + 1;
+            const pKey = project.key || generateProjectKey(project.name);
+            taskKey = `${pKey}-${nextNumber}`;
+        }
+    }
+
     const creationActivity: Activity = { id: `act-creation-${Date.now()}`, user_id: appUser!.id, timestamp: now, type: 'task_creation' };
-    const taskWithHub = { ...task, hubId: activeHub.id, spaceId: activeSpace!.id, createdBy: appUser!.id, createdAt: now, activities: [...(task.activities || []), creationActivity] };
+    const taskWithHub = { 
+        ...task, 
+        taskKey,
+        hubId: activeHub.id, 
+        spaceId: activeSpace!.id, 
+        createdBy: appUser!.id, 
+        createdAt: now, 
+        activities: [...(task.activities || []), creationActivity] 
+    };
     const newTask = await db.addTask(taskWithHub);
     setTasks(prev => [...prev, newTask]);
     return newTask;
@@ -394,7 +415,6 @@ export default function Dashboard({ view }: { view: string }) {
         const updatedHub = { ...activeHub, ...ud };
         setActiveHub(updatedHub);
         setAllHubs(prev => prev.map(h => h.id === activeHub.id ? updatedHub : h));
-        // Suppress toast for visual tweaks like status renames to keep the UI flow smooth
     } catch(e) { toast({ variant: 'destructive', title: 'Failed to update hub' }); }
   }
 
@@ -413,14 +433,15 @@ export default function Dashboard({ view }: { view: string }) {
   const handleSaveProject = async (values: Omit<Project, 'id' | 'hubId'>, pid?: string) => {
     if (!activeHub) { toast({ variant: 'destructive', title: 'No active hub selected' }); return; }
     try {
-        const pd = { ...values, hubId: activeHub.id };
+        const projectKey = values.key || generateProjectKey(values.name);
+        const pd = { ...values, hubId: activeHub.id, key: projectKey };
         if (pid) { await handleUpdateProject(pid, pd); toast({ title: 'Project Updated' }); }
         else { await handleAddProject(pd); toast({ title: 'Project Created' }); }
     } catch (e) { toast({ variant: 'destructive', title: 'Save failed' }) }
   }
 
   const handleSpaceSave = async (sd: Partial<Omit<Space, 'id'>>, sid?: string) => {
-    if (!sid) return; // Creation handled in Layout now
+    if (!sid) return;
     await db.updateSpace(sid, sd);
     toast({ title: 'Space Updated' });
     const us = await db.getSpacesForUser(appUser!.id);
@@ -516,7 +537,7 @@ export default function Dashboard({ view }: { view: string }) {
             isOpen={!!selectedTask} 
             onOpenChange={(o) => { if (!o) setSelectedTask(null); }} 
             onUpdateTask={handleUpdateTask} 
-            onAddTask={async (td, tid) => { const nt = await handleAddTask(td); return nt; }} 
+            onAddTask={handleAddTask} 
             onRemoveTask={handleDeleteTask} 
             onTaskSelect={setSelectedTask} 
             onLogTime={handleLogTime} 

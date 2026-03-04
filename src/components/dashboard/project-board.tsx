@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, DragEvent, useRef, useEffect, useMemo } from 'react';
@@ -103,16 +102,21 @@ const TaskCard = ({
         isDragging && 'opacity-50 ring-2 ring-primary'
       )}
     >
-      <CardHeader className="p-3 cursor-grab">
-        <CardTitle className="text-sm font-medium">{task.name}</CardTitle>
-      </CardHeader>
-      <CardFooter className="flex justify-between items-center p-3 pt-0">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          {task.taskKey && <span className="text-[10px] font-semibold font-mono bg-muted/50 px-1 rounded">{task.taskKey}</span>}
+      <CardHeader className="p-3 cursor-grab space-y-1.5">
+        <div className="flex items-center justify-between">
+          {task.taskKey && (
+            <span className="text-[10px] font-bold font-mono text-muted-foreground uppercase tracking-wider">
+              {task.taskKey}
+            </span>
+          )}
+          {task.priority && <PriorityIcon priority={task.priority} />}
         </div>
-        <Avatar className="h-5 w-5">
+        <CardTitle className="text-sm font-medium leading-snug">{task.name}</CardTitle>
+      </CardHeader>
+      <CardFooter className="flex justify-end items-center p-3 pt-0">
+        <Avatar className="h-5 w-5 border border-white/10">
           <AvatarImage src={assignee?.avatarUrl} alt={assignee?.name} />
-          <AvatarFallback className="text-[8px]">{assignee ? getInitials(assignee.name) : 'U'}</AvatarFallback>
+          <AvatarFallback className="text-[8px]">{assignee ? getInitials(assignee.name) : '?'}</AvatarFallback>
         </Avatar>
       </CardFooter>
     </Card>
@@ -126,7 +130,7 @@ const PriorityIcon = ({ priority }: { priority: Task['priority'] }) => {
         'High': 'text-orange-400',
         'Urgent': 'text-red-500',
     };
-    return <Flag className={cn("h-3.5 w-3.5", priority ? (styles as any)[priority] : 'text-muted-foreground/20')} />;
+    return <Flag className={cn("h-3 w-3", priority ? (styles as any)[priority] : 'text-muted-foreground/20')} />;
 }
 
 interface ProjectBoardProps {
@@ -407,6 +411,10 @@ export default function ProjectBoard({
     }
     setSortConfig({ key, direction });
   };
+
+  const handleFieldChange = (field: keyof Task, value: any) => {
+      // Placeholder for table view updates
+  }
 
   const renderStatusColumn = (status: Status) => {
     const columnTasks = tasks.filter((task) => task.status === status.name);
