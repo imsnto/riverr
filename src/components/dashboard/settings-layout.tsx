@@ -92,12 +92,33 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
 
   const handleLogout = async () => {
     try {
-        if (typeof window !== 'undefined' && messaging) {
-            await deleteToken(messaging).catch(() => {});
-        }
-    } catch (e) {}
-    await signOut();
-    router.push('/login');
+      // 1. Delete the FCM token from Firebase servers
+      if (messaging) {
+        await deleteToken(messaging);
+      }
+  
+      // 2. Unregister the Service Worker (Crucial for iOS stability)
+      // This forces the next login to create a fresh messaging environment
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const registration of registrations) {
+        await registration.unregister();
+      }
+  
+      // 3. Clear the initialization flag so the next user can re-register
+      // (Assuming isFCMInitialized is exported or accessible)
+      // isFCMInitialized = false; 
+  
+      // 4. Perform standard sign out
+      await signOut();
+      
+      // 5. Redirect to login
+      router.push('/login');
+    } catch (error) {
+      console.error("Error during logout:", error);
+      // Still sign out even if worker cleanup fails
+      await signOut();
+      router.push('/login');
+    }
   };
 
   const isSpaceAdmin = activeSpace && props.appUser && activeSpace.members[props.appUser.id]?.role === 'Admin';
