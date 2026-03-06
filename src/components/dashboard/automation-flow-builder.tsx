@@ -9,13 +9,13 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
-  Handle,
-  Position,
   MarkerType,
   useReactFlow,
   ReactFlowProvider,
   type NodeProps,
   type Connection,
+  Handle,
+  Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -57,8 +57,6 @@ import {
   Search,
   Link,
   Zap,
-  LayoutGrid,
-  Settings,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -78,6 +76,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '../ui/separator';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
 const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; color: string; description: string; category: 'conversation' | 'ai' | 'logic' | 'human' }> = {
   start: { label: 'Conversation Start', icon: PlayCircle, color: 'bg-emerald-500', description: 'Triggered when a new chat begins.', category: 'conversation' },
@@ -109,8 +108,8 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
         className="absolute -bottom-10 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        <Popover>
+          <PopoverTrigger asChild>
             <Button 
               variant="outline" 
               size="icon" 
@@ -119,11 +118,11 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
             >
               <Plus className="h-4 w-4" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="bottom" align="center" className="w-72 p-0 shadow-2xl border-2">
+          </PopoverTrigger>
+          <PopoverContent side="right" align="start" className="w-72 p-0 shadow-2xl border-2 overflow-hidden">
             <ScrollArea className="max-h-[450px]">
               <div className="p-2">
-                <p className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Connect to Step</p>
+                <p className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b mb-2">Connect to Step</p>
                 
                 <div className="space-y-4 py-2">
                     {[
@@ -138,40 +137,47 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
                                 {Object.entries(NODE_TYPES_META)
                                     .filter(([t, m]) => t !== 'start' && m.category === cat.key)
                                     .map(([t, m]) => (
-                                        <DropdownMenuItem key={t} onClick={(e) => {
-                                            e.stopPropagation();
-                                            data.onAddNodeAndConnect?.(t as AutomationNodeType, id, handleId);
-                                        }} className="gap-3 p-2 cursor-pointer">
-                                            <div className={cn("h-6 w-6 rounded flex items-center justify-center text-white", m.color)}>
-                                                {React.createElement(m.icon, { className: 'h-3 w-3' })}
+                                        <button 
+                                            key={t}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                data.onAddNodeAndConnect?.(t as AutomationNodeType, id, handleId);
+                                            }} 
+                                            className="flex items-center gap-3 w-full p-2 hover:bg-accent rounded-md transition-colors text-left"
+                                        >
+                                            <div className={cn("h-6 w-6 rounded flex items-center justify-center text-white shrink-0", m.color)}>
+                                                {React.createElement(m.icon, { className: 'h-3.5 w-3.5' })}
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="text-[11px] font-bold">{m.label}</span>
                                             </div>
-                                        </DropdownMenuItem>
+                                        </button>
                                     ))}
                             </div>
                         </div>
                     ))}
                 </div>
 
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={(e) => {
-                  e.stopPropagation();
-                  data.onPickExisting?.(id, handleId);
-                }} className="gap-3 p-2.5 cursor-pointer">
-                  <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-zinc-700 text-white">
+                <Separator className="my-2" />
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    data.onPickExisting?.(id, handleId);
+                  }} 
+                  className="flex items-center gap-3 w-full p-2.5 hover:bg-accent rounded-md transition-colors text-left"
+                >
+                  <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-zinc-700 text-white shrink-0">
                     <Link className="h-4 w-4" />
                   </div>
                   <div className="flex flex-col">
                     <span className="text-xs font-bold">Connect Existing Step...</span>
                     <span className="text-[9px] text-muted-foreground">Link to a node already on the map.</span>
                   </div>
-                </DropdownMenuItem>
+                </button>
               </div>
             </ScrollArea>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </PopoverContent>
+        </Popover>
         {label && <span className="mt-1 text-[8px] font-black uppercase text-muted-foreground/50 tracking-tighter whitespace-nowrap">{label}</span>}
       </div>
     );
