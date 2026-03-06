@@ -162,7 +162,7 @@ export default function ChatbotWidgetPage() {
   }, [visibleMessages, conversation?.lastVisitorSeenAt, parentOrigin]);
 
   useEffect(() => {
-    const handleIncomingMessage = (event: MessageEvent) => {
+    const handleIncomingMessage = async (event: MessageEvent) => {
       // 1. Handshake Guard: Learn parent origin securely
       if (!parentOrigin && event.data && event.data.type === 'manowar-parent-hello') {
         if (!event.origin || event.origin === 'null') return;
@@ -177,19 +177,45 @@ export default function ChatbotWidgetPage() {
       // 2. Origin Guard: Reject unverified sources
       if (!parentOrigin || event.origin !== parentOrigin || event.source !== window.parent) return;
 
+      // Identity update from a verified identify handshake
       if (event.data && event.data.type === 'manowar-identity-update') {
         const { contactId } = event.data.identity;
         if (contactId) {
           // Identity confirmed, reload state to fetch new contact data
           let vId = localStorage.getItem('manowar_chat_visitor_id');
-          if (vId) loadVisitorAndConversation(vId);
+          if (vId) await loadVisitorAndConversation(vId);
+        }
+      }
+
+      // Handle raw identity payload from loader proxy (e.g. from Manowar('update', ...))
+      if (event.data && event.data.type === 'manowar-identity-payload') {
+        const payload = event.data.data;
+        try {
+          const res = await fetch('/api/widget/identity', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...payload,
+              botId,
+              hubId,
+              anonymousVisitorId: localStorage.getItem('manowar_chat_visitor_id'),
+              conversationId: conversation?.id
+            })
+          });
+          const result = await res.json();
+          if (result.contactId) {
+             let vId = localStorage.getItem('manowar_chat_visitor_id');
+             if (vId) await loadVisitorAndConversation(vId);
+          }
+        } catch (err) {
+          console.error('[Manowar] Identity verification failed', err);
         }
       }
     };
 
     window.addEventListener('message', handleIncomingMessage);
     return () => window.removeEventListener('message', handleIncomingMessage);
-  }, [parentOrigin]);
+  }, [parentOrigin, botId, hubId, conversation?.id]);
 
   useEffect(() => {
     const initialize = async () => {

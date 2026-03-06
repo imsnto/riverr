@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Bot as BotData, User, HelpCenter } from '@/lib/data';
-import { Bot as BotIcon, X, Check, ChevronsUpDown, Upload, Loader2, Send, MessageSquare, ChevronDown } from 'lucide-react';
+import { Bot as BotIcon, X, Check, ChevronsUpDown, Upload, Loader2, Send, MessageSquare, ChevronDown, Copy, Terminal, ShieldCheck, Smartphone, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { ScrollArea } from '../ui/scroll-area';
@@ -42,6 +42,7 @@ import { handleIncomingMessage, AgentAdapters, BotConfig as AgentConfig, Convers
 import { searchHelpCenterAction, searchSupportAction } from '@/app/actions/chat';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getInitials } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
     const [open, setOpen] = React.useState(false);
@@ -150,6 +151,7 @@ export default function AgentSettingsDialog({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { appUser, activeHub } = useAuth();
+  const { toast } = useToast();
 
 
   const form = useForm<AgentSettingsFormValues>({
@@ -249,6 +251,13 @@ export default function AgentSettingsDialog({
                 visitorName: appUser?.name,
                 visitorEmail: appUser?.email,
                 userId: appUser?.id,
+                status: 'bot',
+                lastMessage: '',
+                lastMessageAt: new Date().toISOString(),
+                lastMessageAuthor: 'Visitor',
+                channel: 'webchat',
+                contactId: null,
+                spaceId: activeHub.spaceId,
             });
         }
       }
@@ -373,14 +382,64 @@ export default function AgentSettingsDialog({
         }
     };
   
-  const embedScript = agent ? `
-  <script
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: 'Copied to clipboard' });
+  };
+
+  const basicSnippet = agent ? `<script
   src="https://manowar.cloud/chatbot-loader.js"
   data-bot-id="${agent.id}"
   data-hub-id="${agent.hubId}"
   async
-></script>
-  `.trim() : '';
+></script>`.trim() : '';
+
+  const identifiedSnippet = agent ? `<script
+  src="https://manowar.cloud/chatbot-loader.js"
+  data-bot-id="${agent.id}"
+  data-hub-id="${agent.hubId}"
+  data-provider-id="YOUR_PROVIDER_ID"
+  async
+></script>`.trim() : '';
+
+  const updateCallSnippet = `window.Manowar('update', {
+  provider_id: 'YOUR_PROVIDER_ID',
+  user_id: 'CURRENT_USER_ID',
+  email: 'CURRENT_USER_EMAIL',
+  name: 'CURRENT_USER_NAME',
+  user_hash: 'SERVER_GENERATED_HASH'
+});`;
+
+  const reactExample = `useEffect(() => {
+  if (!user || !userHash || !window.Manowar) return;
+
+  window.Manowar('update', {
+    provider_id: 'YOUR_PROVIDER_ID',
+    user_id: user.id,
+    email: user.email,
+    name: user.name,
+    user_hash: userHash,
+  });
+}, [user, userHash]);`;
+
+  const nextJsLayout = `import Script from 'next/script'
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        {children}
+        <Script
+          src="https://manowar.cloud/chatbot-loader.js"
+          strategy="afterInteractive"
+          data-bot-id="${agent?.id || 'BOT_ID'}"
+          data-hub-id="${agent?.hubId || 'HUB_ID'}"
+          data-provider-id="YOUR_PROVIDER_ID"
+        />
+      </body>
+    </html>
+  )
+}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -787,18 +846,110 @@ export default function AgentSettingsDialog({
                       
                       <TabsContent value="installation" className="pt-6">
                         {agent ? (
-                            <>
-                                <div>
-                                    <Label className="font-semibold">Embeddable Script</Label>
-                                    <p className="text-sm text-muted-foreground mt-1 mb-2">To add this agent to your website, paste this code snippet before the closing <code>&lt;/body&gt;</code> tag of your HTML file.</p>
-                                    <pre className="bg-muted p-4 rounded-md text-xs overflow-x-auto font-mono text-foreground">
-                                        <code>{embedScript}</code>
-                                    </pre>
-                                </div>
-                            </>
+                            <Tabs defaultValue="basic" className="w-full">
+                                <TabsList className="grid w-full grid-cols-2 mb-6">
+                                    <TabsTrigger value="basic">Basic Install</TabsTrigger>
+                                    <TabsTrigger value="identify">Identify Logged-in Users</TabsTrigger>
+                                </TabsList>
+                                
+                                <ScrollArea className="h-[400px] pr-4">
+                                    <TabsContent value="basic" className="mt-0 space-y-6">
+                                        <div>
+                                            <h4 className="font-bold flex items-center gap-2 mb-2"><Globe className="h-4 w-4"/> Anonymous Install</h4>
+                                            <p className="text-xs text-muted-foreground mb-4">
+                                                Best for simple websites. Visitors can chat, but logged-in users will not be automatically recognized.
+                                            </p>
+                                            <div className="relative">
+                                                <pre className="bg-muted p-4 rounded-md text-xs overflow-x-auto font-mono text-foreground border">
+                                                    <code>{basicSnippet}</code>
+                                                </pre>
+                                                <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={() => handleCopy(basicSnippet)}>
+                                                    <Copy className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </TabsContent>
+
+                                    <TabsContent value="identify" className="mt-0 space-y-8 pb-10">
+                                        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-4 flex items-start gap-3">
+                                            <ShieldCheck className="h-5 w-5 text-indigo-400 shrink-0 mt-0.5" />
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-bold text-indigo-300">Identify Logged-in Users</p>
+                                                <p className="text-xs text-indigo-300/70">
+                                                    Use this for SaaS products. Calling <code>Manowar(&apos;update&apos;, ...)</code> automatically links chat conversations to your app&apos;s users.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <h5 className="text-sm font-bold flex items-center gap-2"><Terminal className="h-4 w-4"/> 1. Update your script tag</h5>
+                                            <div className="relative">
+                                                <pre className="bg-muted p-4 rounded-md text-xs overflow-x-auto font-mono text-foreground border">
+                                                    <code>{identifiedSnippet}</code>
+                                                </pre>
+                                                <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={() => handleCopy(identifiedSnippet)}>
+                                                    <Copy className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <h5 className="text-sm font-bold flex items-center gap-2"><Terminal className="h-4 w-4"/> 2. Identify after auth resolves</h5>
+                                            <div className="relative">
+                                                <pre className="bg-muted p-4 rounded-md text-xs overflow-x-auto font-mono text-foreground border">
+                                                    <code>{updateCallSnippet}</code>
+                                                </pre>
+                                                <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={() => handleCopy(updateCallSnippet)}>
+                                                    <Copy className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                            <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-md">
+                                                <p className="text-xs text-amber-300 flex items-center gap-2">
+                                                    <Info className="h-3 w-3" /> 
+                                                    <strong>user_hash</strong> must be generated on your server using your Manowar provider secret.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <Separator />
+
+                                        <div className="space-y-6">
+                                            <h4 className="font-bold flex items-center gap-2"><Code className="h-4 w-4"/> Framework Examples</h4>
+                                            
+                                            <div className="space-y-3">
+                                                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">React SPA</p>
+                                                <div className="relative">
+                                                    <pre className="bg-muted p-4 rounded-md text-[10px] overflow-x-auto font-mono text-foreground border">
+                                                        <code>{reactExample}</code>
+                                                    </pre>
+                                                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={() => handleCopy(reactExample)}>
+                                                        <Copy className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Next.js (Root Layout)</p>
+                                                <div className="relative">
+                                                    <pre className="bg-muted p-4 rounded-md text-[10px] overflow-x-auto font-mono text-foreground border">
+                                                        <code>{nextJsLayout}</code>
+                                                    </pre>
+                                                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={() => handleCopy(nextJsLayout)}>
+                                                        <Copy className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </TabsContent>
+                                </ScrollArea>
+                            </Tabs>
                         ) : (
-                            <div className="text-center text-sm text-muted-foreground p-4">
-                                Save the agent to get the installation script.
+                            <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                                <Smartphone className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                                <h3 className="text-lg font-semibold text-foreground">Save Agent to Install</h3>
+                                <p className="text-sm text-muted-foreground px-10">
+                                    Once you save this agent, you will get the installation code snippets for your website.
+                                </p>
                             </div>
                         )}
                       </TabsContent>
