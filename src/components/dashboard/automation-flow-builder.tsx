@@ -79,7 +79,7 @@ import {
 } from '@/components/ui/command';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Switch } from '../ui/switch';
-import { Separator } from '@/components/ui/separator';
+import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; color: string; description: string; category: 'conversation' | 'ai' | 'logic' | 'human' }> = {
@@ -285,8 +285,8 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
       position,
       data: type === 'message' ? { text: 'Bot: Hi there!' } :
             type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email', inputType: 'email', saveToProfile: true, validation: { retryAttempts: 2, errorMessage: 'Please enter a valid email.' } } :
-            type === 'ai_classifier' ? { text: 'Classify the visitor’s response into one of the following intents.', intents: [{ id: `i_${Date.now()}`, label: 'Support', description: 'Visitor needs technical help or reports a bug' }] } :
-            type === 'quick_reply' ? { text: 'Choose an option:', buttons: [{ id: `b_${Date.now()}`, label: 'Pricing' }] } :
+            type === 'ai_classifier' ? { text: '', intents: [{ id: `i_${Date.now()}`, label: 'Support', description: 'Visitor needs technical help or reports a bug' }] } :
+            type === 'quick_reply' ? { text: '', buttons: [{ id: `b_${Date.now()}`, label: 'Pricing' }] } :
             type === 'condition' ? { conditionField: 'email', operator: 'exists' } :
             type === 'handoff' ? { text: 'Connecting you to an agent...', teamId: 'support', priority: 'medium' } :
             type === 'ai_step' ? { knowledgeSources: ['default'], fallbackBehavior: 'escalate' } :
@@ -355,10 +355,10 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
           // AI DRIVEN DEFAULT FLOW
           defaultNodes = [
             { id: 'start', type: 'start', position: { x: 120, y: 40 }, data: {} },
-            { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi there! How can we help you today?' } },
+            { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi! Welcome to our site. How can we help you today?' } },
             { id: 'wait_input', type: 'end', position: { x: 120, y: 320 }, data: { waitBehavior: 'pause' } },
             { id: 'router', type: 'ai_classifier', position: { x: 420, y: 320 }, data: { 
-                text: 'Classify the visitor’s response into one of the following intents.', 
+                text: '', 
                 intents: [
                   { id: 'i1', label: 'Support', description: 'Visitor needs technical help or reports a bug' },
                   { id: 'i2', label: 'Pricing', description: 'Visitor asks about costs, plans, or billing' },
@@ -392,7 +392,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             { id: 'start', type: 'start', position: { x: 120, y: 40 }, data: {} },
             { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi! Welcome to our site. How can we help you today?' } },
             { id: 'options', type: 'quick_reply', position: { x: 120, y: 320 }, data: { 
-                text: 'Please select an option below:', 
+                text: '', 
                 buttons: [
                   { id: 'b1', label: 'Support' },
                   { id: 'b2', label: 'Sales' },
@@ -610,13 +610,14 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
                     {selectedNode.type === 'quick_reply' && (
                         <div className="space-y-6">
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase">Prompt Text</Label>
+                            <Label className="text-xs font-bold uppercase">Prompt Text (Optional)</Label>
                             <Input 
                             value={selectedNode.data.text || ''} 
                             onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
                             placeholder="e.g. Choose an option:"
                             className="border-2"
                             />
+                            <p className='text-[10px] text-muted-foreground italic'>If empty, buttons will attach to the previous message.</p>
                         </div>
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
@@ -1034,12 +1035,14 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
   const [isThinking, setIsThinking] = useState(false);
   const [userInput, setUserInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleStep = useCallback(async (nodeId: string | null, handleId?: string) => {
     if (!nodeId) return;
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
 
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setCurrentNodeId(nodeId);
 
     // SILENT LOGIC NODES (Don't render anything, just move along)
@@ -1050,12 +1053,10 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
     }
 
     if (node.type === 'ai_classifier') {
-      // AI Classifier is silent logic. It stays as currentNodeId waiting for handleInput.
       return;
     }
 
     if (node.type === 'condition') {
-      // Simple random evaluation for simulation
       const met = Math.random() > 0.5;
       const targetHandle = met ? 'true' : 'false';
       const nextEdge = edges.find(e => e.source === nodeId && e.sourceHandle === targetHandle);
@@ -1069,10 +1070,30 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
         setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text, type: 'automation' }]);
       }
       const nextEdge = edges.find(e => e.source === nodeId && (!e.sourceHandle || e.sourceHandle === 'next'));
-      if (nextEdge) setTimeout(() => handleStep(nextEdge.target), 800);
+      if (nextEdge) {
+        timeoutRef.current = setTimeout(() => handleStep(nextEdge.target), 800);
+      }
     } else if (node.type === 'quick_reply') {
       const buttons = node.data.buttons || [];
-      setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text || 'How can I help?', type: 'automation', buttons }]);
+      const text = node.data.text;
+      
+      if (!text) {
+          // GHOST MODE: Attach to last message if it's a bot message
+          setMessages(prev => {
+              if (prev.length > 0) {
+                  const last = prev[prev.length - 1];
+                  if (last.role === 'bot') {
+                      const updated = [...prev];
+                      updated[updated.length - 1] = { ...last, buttons };
+                      return updated;
+                  }
+              }
+              // Fallback if no previous bot message
+              return [...prev, { id: Date.now(), role: 'bot', text: '', type: 'automation', buttons }];
+          });
+      } else {
+          setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text, type: 'automation', buttons }]);
+      }
     } else if (node.type === 'capture_input') {
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt, type: 'automation' }]);
     } else if (node.type === 'handoff') {
@@ -1080,7 +1101,7 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
       setMessages(prev => [...prev, { id: Date.now(), role: 'system', text: 'Escalated to human' }]);
     } else if (node.type === 'ai_step') {
       setIsThinking(true);
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         setIsThinking(false);
         const resolved = Math.random() > 0.4;
         if (resolved) {
@@ -1092,14 +1113,17 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
           if (nextEdge) handleStep(nextEdge.target);
         }
       }, 1500);
-    } else if (node.type === 'end') {
-        // Wait node, stop simulation until input
     }
   }, [nodes, edges]);
 
   useEffect(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setMessages([]);
     handleStep('start');
+    
+    return () => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    }
   }, [handleStep]);
 
   useEffect(() => {
@@ -1110,16 +1134,27 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
   }, [messages, isThinking]);
 
   const handleInput = (text: string, buttonId?: string) => {
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', text }]);
+    if (!text.trim() && !buttonId) return;
+    
+    setMessages(prev => [...prev, { id: Date.now(), role: 'user', text: text || 'Click' }]);
     
     const currentNode = nodes.find(n => n.id === currentNodeId);
-    
     let targetEdge;
+
     if (buttonId) {
-        // Quick Reply button click
+        // Direct button click
         targetEdge = edges.find(e => e.source === currentNodeId && e.sourceHandle === `intent:${buttonId}`);
+    } else if (currentNode?.type === 'quick_reply') {
+        // Type matching for buttons
+        const buttons = currentNode.data.buttons || [];
+        const matchedButton = buttons.find((b: any) => text.toLowerCase().includes(b.label.toLowerCase()));
+        
+        if (matchedButton) {
+            targetEdge = edges.find(e => e.source === currentNodeId && e.sourceHandle === `intent:${matchedButton.id}`);
+        } else {
+            targetEdge = edges.find(e => e.source === currentNodeId && e.sourceHandle === 'fallback');
+        }
     } else if (currentNode?.type === 'ai_classifier') {
-        // MOCK AI CLASSIFICATION
         const intents = currentNode.data.intents || [];
         const matchedIntent = intents.find((i: any) => text.toLowerCase().includes(i.label.toLowerCase()));
         
@@ -1129,7 +1164,6 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
             targetEdge = edges.find(e => e.source === currentNodeId && e.sourceHandle === 'fallback');
         }
     } else {
-        // Normal linear progression (e.g. after a Wait node or Capture input)
         targetEdge = edges.find(e => e.source === currentNodeId && (e.sourceHandle === 'next' || !e.sourceHandle));
     }
 
@@ -1140,6 +1174,7 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
   };
 
   const handleReset = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setMessages([]);
     handleStep('start');
   };
@@ -1164,29 +1199,31 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
                 {m.role === 'system' ? (
                   <Badge variant="outline" className="self-center bg-muted/50 uppercase text-[9px] font-black">{m.text}</Badge>
                 ) : (
-                  <div className={cn(
-                    "max-w-[85%] p-3 rounded-2xl text-sm shadow-sm",
-                    m.role === 'user' ? "bg-primary text-primary-foreground rounded-br-none" : 
-                    m.type === 'ai' ? "bg-indigo-500/10 border-2 border-indigo-500/20 text-foreground rounded-bl-none" :
-                    "bg-muted text-foreground rounded-bl-none"
-                  )}>
-                    <p className="whitespace-pre-wrap">{m.text}</p>
-                  </div>
-                )}
-                {m.buttons && (
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {m.buttons.map((btn: any) => (
-                      <Button 
-                        key={btn.id} 
-                        variant="outline" 
-                        size="sm" 
-                        className="rounded-full h-8 text-xs font-semibold"
-                        onClick={() => handleInput(btn.label, btn.id)}
-                      >
-                        {btn.label}
-                      </Button>
-                    ))}
-                  </div>
+                  <>
+                    {m.text && (
+                        <div className={cn(
+                            "max-w-[85%] p-3 rounded-2xl text-sm shadow-sm",
+                            m.role === 'user' ? "bg-primary text-primary-foreground rounded-br-none" : 
+                            m.type === 'ai' ? "bg-indigo-500/10 border-2 border-indigo-500/20 text-foreground rounded-bl-none" :
+                            "bg-muted text-foreground rounded-bl-none"
+                        )}>
+                            <p className="whitespace-pre-wrap">{m.text}</p>
+                        </div>
+                    )}
+                    {m.buttons && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                            {m.buttons.map((btn: any) => (
+                            <button 
+                                key={btn.id} 
+                                onClick={() => handleInput(btn.label, btn.id)}
+                                className="h-9 px-4 rounded-full border-2 border-primary/30 bg-background text-primary hover:bg-primary/5 transition-all text-xs font-bold"
+                            >
+                                {btn.label}
+                            </button>
+                            ))}
+                        </div>
+                    )}
+                  </>
                 )}
               </div>
             ))}
@@ -1203,7 +1240,7 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
           <div className="relative">
             <Input 
               placeholder="Type a message..." 
-              className="pr-12 rounded-full h-11" 
+              className="pr-12 rounded-full h-11 border-2 focus-visible:ring-primary/20" 
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleInput(userInput)}
