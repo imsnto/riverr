@@ -17,6 +17,8 @@ import { getMessagingProvider } from '@/lib/comms/providerFactory';
 
 const typesense = getTypesenseSearch();
 
+export type SearchSalesExtractionsResult = { extractions: any[] };
+
 async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
     const { hubId, allowedHelpCenterIds, userId, query, topK = 10 } = params;
 
@@ -660,4 +662,32 @@ export async function reindexArticleAction(articleId: string) {
     spaceId,
     publicHelpBaseUrl: process.env.PUBLIC_HELP_BASE_URL || "https://app.manowar.cloud",
   });
+}
+
+export async function searchSalesExtractionsAction(params: { query: string; spaceId: string }): Promise<SearchSalesExtractionsResult> {
+    const { query, spaceId } = params;
+    
+    const searchParameters = {
+        'q': query,
+        'query_by': 'recommendedPersonaClusterText,pains,objections,buyingSignals',
+        'filter_by': `spaceId:=${spaceId}`,
+        'per_page': 50
+    };
+
+    try {
+        const results = await typesense.collections('sales_extractions').documents().search(searchParameters);
+        const extractions = (results.hits || []).map(hit => ({
+            id: hit.document.id,
+            ...hit.document,
+            _searchScore: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
+        }));
+        return { extractions };
+    } catch (error: any) {
+        if (error.httpStatus === 404) {
+            console.warn("Typesense search failed: 'sales_extractions' collection not found. Returning empty results.");
+            return { extractions: [] };
+        }
+        console.error("Typesense search failed in searchSalesExtractionsAction:", error);
+        return { extractions: [] };
+    }
 }

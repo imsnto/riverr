@@ -1,7 +1,7 @@
-import { TwilioMessagingProvider } from './providers/twilio/TwilioMessagingProvider';
-import { TwilioVoiceProvider } from './providers/twilio/TwilioVoiceProvider';
-import { MessagingProvider } from './providers/MessagingProvider';
-import { VoiceProvider } from './providers/VoiceProvider';
+import { TwilioMessagingProvider } from './twilio/TwilioMessagingProvider';
+import { TwilioVoiceProvider } from './twilio/TwilioVoiceProvider';
+import { MessagingProvider } from './MessagingProvider';
+import { VoiceProvider } from './VoiceProvider';
 
 /**
  * Returns a messaging provider instance.
