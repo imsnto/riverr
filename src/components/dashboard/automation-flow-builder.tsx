@@ -77,6 +77,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '../ui/separator';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 
 const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; color: string; description: string; category: 'conversation' | 'ai' | 'logic' | 'human' }> = {
   start: { label: 'Conversation Start', icon: PlayCircle, color: 'bg-emerald-500', description: 'Triggered when a new chat begins.', category: 'conversation' },
@@ -108,76 +109,17 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
         className="absolute -bottom-10 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="h-7 w-7 rounded-full bg-background shadow-lg hover:bg-primary hover:text-primary-foreground border-primary/20 p-0"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent side="right" align="start" className="w-72 p-0 shadow-2xl border-2 overflow-hidden">
-            <ScrollArea className="max-h-[450px]">
-              <div className="p-2">
-                <p className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b mb-2">Connect to Step</p>
-                
-                <div className="space-y-4 py-2">
-                    {[
-                        { key: 'conversation', label: 'Conversation' },
-                        { key: 'ai', label: 'AI' },
-                        { key: 'logic', label: 'Logic' },
-                        { key: 'human', label: 'Human' }
-                    ].map(cat => (
-                        <div key={cat.key}>
-                            <p className="px-2 mb-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{cat.label}</p>
-                            <div className="grid gap-1">
-                                {Object.entries(NODE_TYPES_META)
-                                    .filter(([t, m]) => t !== 'start' && m.category === cat.key)
-                                    .map(([t, m]) => (
-                                        <button 
-                                            key={t}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                data.onAddNodeAndConnect?.(t as AutomationNodeType, id, handleId);
-                                            }} 
-                                            className="flex items-center gap-3 w-full p-2 hover:bg-accent rounded-md transition-colors text-left"
-                                        >
-                                            <div className={cn("h-6 w-6 rounded flex items-center justify-center text-white shrink-0", m.color)}>
-                                                {React.createElement(m.icon, { className: 'h-3.5 w-3.5' })}
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[11px] font-bold">{m.label}</span>
-                                            </div>
-                                        </button>
-                                    ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <Separator className="my-2" />
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    data.onPickExisting?.(id, handleId);
-                  }} 
-                  className="flex items-center gap-3 w-full p-2.5 hover:bg-accent rounded-md transition-colors text-left"
-                >
-                  <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-zinc-700 text-white shrink-0">
-                    <Link className="h-4 w-4" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold">Connect Existing Step...</span>
-                    <span className="text-[9px] text-muted-foreground">Link to a node already on the map.</span>
-                  </div>
-                </button>
-              </div>
-            </ScrollArea>
-          </PopoverContent>
-        </Popover>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          className="h-7 w-7 rounded-full bg-background shadow-lg hover:bg-primary hover:text-primary-foreground border-primary/20 p-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            data.onOpenNodePicker?.(id, handleId);
+          }}
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
         {label && <span className="mt-1 text-[8px] font-black uppercase text-muted-foreground/50 tracking-tighter whitespace-nowrap">{label}</span>}
       </div>
     );
@@ -309,9 +251,10 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
   const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'builder' | 'preview'>('builder');
-  const [pickingTarget, setPickingTarget] = useState<{ sourceId: string, sourceHandle: string } | null>(null);
-  const { fitView, getNode } = useReactFlow();
+  const [nodePickerInfo, setNodePickerInfo] = useState<{ sourceId: string, sourceHandle: string } | null>(null);
+  const [isPickingExisting, setIsPickingExisting] = useState(false);
   
+  const { fitView, getNode } = useReactFlow();
   const initializedRef = useRef(false);
 
   const deleteNode = useCallback((id: string) => {
@@ -356,20 +299,17 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
     setNodes((nds) => [...nds, newNode]);
     setEdges((eds) => [...eds, newEdge]);
     setSelectedNodeId(id);
+    setNodePickerInfo(null);
   }, [getNode, setNodes, setEdges]);
 
-  const onPickExisting = useCallback((sourceId: string, sourceHandle: string) => {
-    setPickingTarget({ sourceId, sourceHandle });
-  }, []);
-
-  const handlePickTargetNode = (targetId: string) => {
-    if (!pickingTarget) return;
+  const onPickExisting = useCallback((targetId: string) => {
+    if (!nodePickerInfo) return;
     
     const newEdge = {
-      id: `e_${pickingTarget.sourceId}_${targetId}`,
-      source: pickingTarget.sourceId,
+      id: `e_${nodePickerInfo.sourceId}_${targetId}`,
+      source: nodePickerInfo.sourceId,
       target: targetId,
-      sourceHandle: pickingTarget.sourceHandle,
+      sourceHandle: nodePickerInfo.sourceHandle,
       type: 'smoothstep',
       animated: true,
       markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
@@ -377,8 +317,9 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
     };
 
     setEdges((eds) => addEdge(newEdge, eds));
-    setPickingTarget(null);
-  };
+    setNodePickerInfo(null);
+    setIsPickingExisting(false);
+  }, [nodePickerInfo, setEdges]);
 
   const nodesWithActions = useMemo(() => 
     nodes.map(n => ({
@@ -387,9 +328,12 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
         ...n.data, 
         onDelete: deleteNode,
         onAddNodeAndConnect: onAddNodeAndConnect,
-        onPickExisting: onPickExisting
+        onOpenNodePicker: (sourceId: string, sourceHandle: string) => {
+            setNodePickerInfo({ sourceId, sourceHandle });
+            setIsPickingExisting(false);
+        }
       }
-    })), [nodes, deleteNode, onAddNodeAndConnect, onPickExisting]
+    })), [nodes, deleteNode, onAddNodeAndConnect]
   );
 
   useEffect(() => {
@@ -500,7 +444,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
           </div>
         </header>
 
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden relative">
           {activeTab === 'builder' ? (
             <>
               <div className="flex-1 bg-[#090909] bg-[radial-gradient(#1a1a1a_1px,transparent_1px)] [background-size:24px_24px] relative">
@@ -525,262 +469,318 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
                 </ReactFlow>
               </div>
 
-              {(selectedNodeId && selectedNode) || pickingTarget ? (
+              {(selectedNodeId && selectedNode) ? (
                 <aside className="w-[420px] bg-background border-l flex flex-col shadow-2xl animate-in slide-in-from-right duration-300">
                   <div className="p-4 border-b flex items-center justify-between bg-muted/20 shrink-0">
                     <div className="flex items-center gap-3">
-                      {pickingTarget ? (
-                        <>
-                          <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-zinc-700 text-white">
-                            <Link className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <h3 className="text-xs font-bold uppercase tracking-widest">Pick Target Node</h3>
-                            <p className="text-[10px] text-muted-foreground">Select a node to connect to</p>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center text-white", NODE_TYPES_META[selectedNode!.type as AutomationNodeType].color)}>
-                            {React.createElement(NODE_TYPES_META[selectedNode!.type as AutomationNodeType].icon, { className: 'h-4 w-4' })}
-                          </div>
-                          <div>
-                            <h3 className="text-xs font-bold uppercase tracking-widest">{NODE_TYPES_META[selectedNode!.type as AutomationNodeType].label}</h3>
-                            <p className="text-[10px] text-muted-foreground">ID: {selectedNode!.id.substring(0, 8)}</p>
-                          </div>
-                        </>
-                      )}
+                        <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center text-white", NODE_TYPES_META[selectedNode!.type as AutomationNodeType].color)}>
+                        {React.createElement(NODE_TYPES_META[selectedNode!.type as AutomationNodeType].icon, { className: 'h-4 w-4' })}
+                        </div>
+                        <div>
+                        <h3 className="text-xs font-bold uppercase tracking-widest">{NODE_TYPES_META[selectedNode!.type as AutomationNodeType].label}</h3>
+                        <p className="text-[10px] text-muted-foreground">ID: {selectedNode!.id.substring(0, 8)}</p>
+                        </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => { setSelectedNodeId(null); setPickingTarget(null); }}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setSelectedNodeId(null)}>
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
 
                   <ScrollArea className="flex-1">
-                    {pickingTarget ? (
-                      <div className="p-4">
-                        <Command className="border rounded-md shadow-sm">
-                          <CommandInput placeholder="Search existing nodes..." />
-                          <CommandList>
-                            <CommandEmpty>No nodes found.</CommandEmpty>
-                            <CommandGroup heading="Nodes on Map">
-                              {nodes.filter(n => n.id !== pickingTarget.sourceId).map(n => {
-                                const meta = NODE_TYPES_META[n.type as AutomationNodeType];
-                                return (
-                                  <CommandItem key={n.id} onSelect={() => handlePickTargetNode(n.id)} className="gap-3 p-3 cursor-pointer">
-                                    <div className={cn("h-6 w-6 rounded flex items-center justify-center text-white shrink-0", meta.color)}>
-                                      {React.createElement(meta.icon, { className: 'h-3 w-3' })}
-                                    </div>
-                                    <div className="flex flex-col min-w-0">
-                                      <span className="text-xs font-bold truncate">{n.data.text || n.data.prompt || n.data.name || meta.label}</span>
-                                      <span className="text-[10px] text-muted-foreground">{meta.label}</span>
-                                    </div>
-                                  </CommandItem>
-                                );
-                              })}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                        <Button variant="ghost" className="w-full mt-4" onClick={() => setPickingTarget(null)}>Cancel</Button>
-                      </div>
-                    ) : selectedNode && (
-                      <div className="p-6 space-y-8 pb-32">
-                        {selectedNode.type === 'message' && (
-                          <div className="space-y-4">
-                            <Label className="text-xs font-bold uppercase">Bot Message</Label>
-                            <Textarea 
-                              value={selectedNode.data.text || ''} 
-                              onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                              placeholder="Bot: Hi there!"
-                              rows={10}
-                              className="bg-muted/30 border-2 font-medium"
-                            />
-                          </div>
-                        )}
-
-                        {selectedNode.type === 'intent_router' && (
-                          <div className="space-y-6">
-                            <div className="space-y-2">
-                              <Label className="text-xs font-bold uppercase">Classification Question</Label>
-                              <Input 
-                                value={selectedNode.data.text || ''} 
-                                onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                                placeholder="e.g. How can we help today?"
-                                className="border-2"
-                              />
-                            </div>
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-xs font-bold uppercase text-indigo-500">Intents (AI Classification)</Label>
-                                <Button variant="outline" size="sm" className="h-7 px-3 text-[10px] font-bold" onClick={() => {
-                                  const newIntents = [...(selectedNode.data.intents || []), { id: `intent_${Date.now()}`, label: 'New Intent' }];
-                                  updateNodeData(selectedNode.id, { intents: newIntents });
-                                }}><Plus className="h-3 w-3 mr-1" /> Add Intent</Button>
-                              </div>
-                              <div className="space-y-2">
-                                {(selectedNode.data.intents || []).map((intent: any, idx: number) => (
-                                  <div key={intent.id} className="flex items-center gap-2 p-2 border-2 rounded-xl bg-background group">
-                                    <Navigation className="h-3 w-3 text-muted-foreground opacity-40 shrink-0" />
-                                    <Input 
-                                      value={intent.label} 
-                                      onChange={(e) => {
-                                        const newIntents = [...selectedNode.data.intents];
-                                        newIntents[idx].label = e.target.value;
-                                        updateNodeData(selectedNode.id, { intents: newIntents });
-                                      }}
-                                      className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-bold p-0"
-                                    />
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => {
-                                      updateNodeData(selectedNode.id, { intents: selectedNode.data.intents.filter((i: any) => i.id !== intent.id) });
-                                    }}>
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {selectedNode.type === 'quick_reply' && (
-                          <div className="space-y-6">
-                            <div className="space-y-2">
-                              <Label className="text-xs font-bold uppercase">Prompt Text</Label>
-                              <Input 
-                                value={selectedNode.data.text || ''} 
-                                onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                                placeholder="e.g. Choose an option:"
-                                className="border-2"
-                              />
-                            </div>
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-xs font-bold uppercase text-purple-500">Buttons</Label>
-                                <Button variant="outline" size="sm" className="h-7 px-3 text-[10px] font-bold" onClick={() => {
-                                  const newButtons = [...(selectedNode.data.buttons || []), { id: `btn_${Date.now()}`, label: 'New Button' }];
-                                  updateNodeData(selectedNode.id, { buttons: newButtons });
-                                }}><Plus className="h-3 w-3 mr-1" /> Add Button</Button>
-                              </div>
-                              <div className="space-y-2">
-                                {(selectedNode.data.buttons || []).map((btn: any, idx: number) => (
-                                  <div key={btn.id} className="flex items-center gap-2 p-2 border-2 rounded-xl bg-background group">
-                                    <MousePointerClick className="h-3 w-3 text-muted-foreground opacity-40 shrink-0" />
-                                    <Input 
-                                      value={btn.label} 
-                                      onChange={(e) => {
-                                        const newButtons = [...selectedNode.data.buttons];
-                                        newButtons[idx].label = e.target.value;
-                                        updateNodeData(selectedNode.id, { buttons: newButtons });
-                                      }}
-                                      className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-bold p-0"
-                                    />
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => {
-                                      updateNodeData(selectedNode.id, { buttons: selectedNode.data.buttons.filter((b: any) => b.id !== btn.id) });
-                                    }}>
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {selectedNode.type === 'capture_input' && (
-                          <div className="space-y-6">
-                            <div className="space-y-2">
-                              <Label className="text-xs font-bold uppercase">Question Prompt</Label>
-                              <Input 
-                                value={selectedNode.data.prompt || ''} 
-                                onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
-                                placeholder="e.g. What is your email address?"
-                                className="border-2"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-xs font-bold uppercase text-teal-600">Save As Variable</Label>
-                              <div className="flex items-center gap-3 p-3 border-2 rounded-xl bg-teal-500/5 border-teal-500/20">
-                                <Database className="h-4 w-4 text-teal-600" />
-                                <Input 
-                                  value={selectedNode.data.variableName || ''} 
-                                  onChange={(e) => updateNodeData(selectedNode.id, { variableName: e.target.value })}
-                                  placeholder="e.g. visitor_email"
-                                  className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-mono text-teal-700 bg-transparent p-0"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {selectedNode.type === 'ai_step' && (
-                          <div className="space-y-4">
-                            <Label className="text-xs font-bold uppercase">AI Behavior / Instructions</Label>
-                            <Textarea 
-                              value={selectedNode.data.prompt || ''} 
-                              onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
-                              placeholder="e.g. Act as a technical support agent. Use the knowledge base to answer questions."
-                              rows={10}
-                              className="bg-muted/30 border-2 font-medium"
-                            />
-                          </div>
-                        )}
-
-                        {selectedNode.type === 'condition' && (
-                          <div className="space-y-4">
-                            <Label className="text-xs font-bold uppercase">Check Property</Label>
-                            <Select 
-                              value={selectedNode.data.conditionField} 
-                              onValueChange={(val) => updateNodeData(selectedNode.id, { conditionField: val })}
-                            >
-                              <SelectTrigger className="h-11 border-2 rounded-xl"><SelectValue placeholder="Select property..." /></SelectTrigger>
-                              <SelectContent className="rounded-xl">
-                                <SelectItem value="email">Visitor Email</SelectItem>
-                                <SelectItem value="name">Visitor Name</SelectItem>
-                                <SelectItem value="identified">Secure Identity Token</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
-
-                        {selectedNode.type === 'handoff' && (
-                          <div className="space-y-4">
-                            <Label className="text-xs font-bold uppercase">Transfer Message</Label>
-                            <Textarea 
-                              value={selectedNode.data.text || ''} 
-                              onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                              placeholder="e.g. Connecting you to our team. Someone will be with you shortly."
-                              className="bg-muted/30 border-2 font-medium"
-                              rows={6}
-                            />
-                          </div>
-                        )}
-
-                        {selectedNode.type === 'end' && (
-                          <div className="space-y-4">
-                            <Label className="text-xs font-bold uppercase">Wait Behavior</Label>
-                            <p className="text-xs text-muted-foreground">The bot will pause here and resume the flow when the visitor sends their next message.</p>
-                          </div>
-                        )}
-
-                        <Separator />
-                        
+                    <div className="p-6 space-y-8 pb-32">
+                    {selectedNode.type === 'message' && (
                         <div className="space-y-4">
-                          <Label className="text-xs font-bold uppercase text-destructive">Advanced Actions</Label>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="w-full text-destructive border-destructive/20 hover:bg-destructive/5" 
-                            onClick={() => deleteNode(selectedNode!.id)}
-                            disabled={selectedNode!.id === 'start'}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete This Step
-                          </Button>
+                        <Label className="text-xs font-bold uppercase">Bot Message</Label>
+                        <Textarea 
+                            value={selectedNode.data.text || ''} 
+                            onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
+                            placeholder="Bot: Hi there!"
+                            rows={10}
+                            className="bg-muted/30 border-2 font-medium"
+                        />
                         </div>
-                      </div>
                     )}
+
+                    {selectedNode.type === 'intent_router' && (
+                        <div className="space-y-6">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase">Classification Question</Label>
+                            <Input 
+                            value={selectedNode.data.text || ''} 
+                            onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
+                            placeholder="e.g. How can we help today?"
+                            className="border-2"
+                            />
+                        </div>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                            <Label className="text-xs font-bold uppercase text-indigo-500">Intents (AI Classification)</Label>
+                            <Button variant="outline" size="sm" className="h-7 px-3 text-[10px] font-bold" onClick={() => {
+                                const newIntents = [...(selectedNode.data.intents || []), { id: `intent_${Date.now()}`, label: 'New Intent' }];
+                                updateNodeData(selectedNode.id, { intents: newIntents });
+                            }}><Plus className="h-3 w-3 mr-1" /> Add Intent</Button>
+                            </div>
+                            <div className="space-y-2">
+                            {(selectedNode.data.intents || []).map((intent: any, idx: number) => (
+                                <div key={intent.id} className="flex items-center gap-2 p-2 border-2 rounded-xl bg-background group">
+                                <Navigation className="h-3 w-3 text-muted-foreground opacity-40 shrink-0" />
+                                <Input 
+                                    value={intent.label} 
+                                    onChange={(e) => {
+                                    const newIntents = [...selectedNode.data.intents];
+                                    newIntents[idx].label = e.target.value;
+                                    updateNodeData(selectedNode.id, { intents: newIntents });
+                                    }}
+                                    className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-bold p-0"
+                                />
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => {
+                                    updateNodeData(selectedNode.id, { intents: selectedNode.data.intents.filter((i: any) => i.id !== intent.id) });
+                                }}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                                </div>
+                            ))}
+                            </div>
+                        </div>
+                        </div>
+                    )}
+
+                    {selectedNode.type === 'quick_reply' && (
+                        <div className="space-y-6">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase">Prompt Text</Label>
+                            <Input 
+                            value={selectedNode.data.text || ''} 
+                            onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
+                            placeholder="e.g. Choose an option:"
+                            className="border-2"
+                            />
+                        </div>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                            <Label className="text-xs font-bold uppercase text-purple-500">Buttons</Label>
+                            <Button variant="outline" size="sm" className="h-7 px-3 text-[10px] font-bold" onClick={() => {
+                                const newButtons = [...(selectedNode.data.buttons || []), { id: `btn_${Date.now()}`, label: 'New Button' }];
+                                updateNodeData(selectedNode.id, { buttons: newButtons });
+                            }}><Plus className="h-3 w-3 mr-1" /> Add Button</Button>
+                            </div>
+                            <div className="space-y-2">
+                            {(selectedNode.data.buttons || []).map((btn: any, idx: number) => (
+                                <div key={btn.id} className="flex items-center gap-2 p-2 border-2 rounded-xl bg-background group">
+                                <MousePointerClick className="h-3 w-3 text-muted-foreground opacity-40 shrink-0" />
+                                <Input 
+                                    value={btn.label} 
+                                    onChange={(e) => {
+                                    const newButtons = [...selectedNode.data.buttons];
+                                    newButtons[idx].label = e.target.value;
+                                    updateNodeData(selectedNode.id, { buttons: newButtons });
+                                    }}
+                                    className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-bold p-0"
+                                />
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => {
+                                    updateNodeData(selectedNode.id, { buttons: selectedNode.data.buttons.filter((b: any) => b.id !== btn.id) });
+                                }}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                                </div>
+                            ))}
+                            </div>
+                        </div>
+                        </div>
+                    )}
+
+                    {selectedNode.type === 'capture_input' && (
+                        <div className="space-y-6">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase">Question Prompt</Label>
+                            <Input 
+                            value={selectedNode.data.prompt || ''} 
+                            onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
+                            placeholder="e.g. What is your email address?"
+                            className="border-2"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase text-teal-600">Save As Variable</Label>
+                            <div className="flex items-center gap-3 p-3 border-2 rounded-xl bg-teal-500/5 border-teal-500/20">
+                            <Database className="h-4 w-4 text-teal-600" />
+                            <Input 
+                                value={selectedNode.data.variableName || ''} 
+                                onChange={(e) => updateNodeData(selectedNode.id, { variableName: e.target.value })}
+                                placeholder="e.g. visitor_email"
+                                className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-mono text-teal-700 bg-transparent p-0"
+                            />
+                            </div>
+                        </div>
+                        </div>
+                    )}
+
+                    {selectedNode.type === 'ai_step' && (
+                        <div className="space-y-4">
+                        <Label className="text-xs font-bold uppercase">AI Behavior / Instructions</Label>
+                        <Textarea 
+                            value={selectedNode.data.prompt || ''} 
+                            onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
+                            placeholder="e.g. Act as a technical support agent. Use the knowledge base to answer questions."
+                            rows={10}
+                            className="bg-muted/30 border-2 font-medium"
+                        />
+                        </div>
+                    )}
+
+                    {selectedNode.type === 'condition' && (
+                        <div className="space-y-4">
+                        <Label className="text-xs font-bold uppercase">Check Property</Label>
+                        <Select 
+                            value={selectedNode.data.conditionField} 
+                            onValueChange={(val) => updateNodeData(selectedNode.id, { conditionField: val })}
+                        >
+                            <SelectTrigger className="h-11 border-2 rounded-xl"><SelectValue placeholder="Select property..." /></SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                            <SelectItem value="email">Visitor Email</SelectItem>
+                            <SelectItem value="name">Visitor Name</SelectItem>
+                            <SelectItem value="identified">Secure Identity Token</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        </div>
+                    )}
+
+                    {selectedNode.type === 'handoff' && (
+                        <div className="space-y-4">
+                        <Label className="text-xs font-bold uppercase">Transfer Message</Label>
+                        <Textarea 
+                            value={selectedNode.data.text || ''} 
+                            onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
+                            placeholder="e.g. Connecting you to our team. Someone will be with you shortly."
+                            className="bg-muted/30 border-2 font-medium"
+                            rows={6}
+                        />
+                        </div>
+                    )}
+
+                    {selectedNode.type === 'end' && (
+                        <div className="space-y-4">
+                        <Label className="text-xs font-bold uppercase">Wait Behavior</Label>
+                        <p className="text-xs text-muted-foreground">The bot will pause here and resume the flow when the visitor sends their next message.</p>
+                        </div>
+                    )}
+
+                    <Separator />
+                    
+                    <div className="space-y-4">
+                        <Label className="text-xs font-bold uppercase text-destructive">Advanced Actions</Label>
+                        <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full text-destructive border-destructive/20 hover:bg-destructive/5" 
+                        onClick={() => deleteNode(selectedNode!.id)}
+                        disabled={selectedNode!.id === 'start'}
+                        >
+                        <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete This Step
+                        </Button>
+                    </div>
+                    </div>
                   </ScrollArea>
                 </aside>
               ) : null}
+
+              {/* Node Picker Popout */}
+              <Sheet open={!!nodePickerInfo} onOpenChange={(open) => !open && setNodePickerInfo(null)}>
+                <SheetContent side="right" className="w-[440px] p-0 flex flex-col sm:max-w-[440px]">
+                    <SheetHeader className="p-6 pb-4 border-b shrink-0">
+                        <SheetTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Connect to Step</SheetTitle>
+                    </SheetHeader>
+                    <ScrollArea className="flex-1">
+                        <div className="p-6 space-y-8">
+                            {!isPickingExisting ? (
+                                <>
+                                    {[
+                                        { key: 'conversation', label: 'Conversation' },
+                                        { key: 'ai', label: 'Intelligence' },
+                                        { key: 'logic', label: 'Logic' },
+                                        { key: 'human', label: 'Human' }
+                                    ].map(cat => (
+                                        <div key={cat.key} className="space-y-3">
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider pl-1 opacity-60">{cat.label}</p>
+                                            <div className="grid gap-2">
+                                                {Object.entries(NODE_TYPES_META)
+                                                    .filter(([t, m]) => t !== 'start' && m.category === cat.key)
+                                                    .map(([t, m]) => (
+                                                        <button 
+                                                            key={t}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (nodePickerInfo) {
+                                                                    onAddNodeAndConnect(t as AutomationNodeType, nodePickerInfo.sourceId, nodePickerInfo.sourceHandle);
+                                                                }
+                                                            }} 
+                                                            className="flex items-center gap-4 w-full p-3 hover:bg-accent rounded-xl transition-all border border-transparent hover:border-border group"
+                                                        >
+                                                            <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center text-white shrink-0 shadow-md", m.color)}>
+                                                                {React.createElement(m.icon, { className: 'h-5 w-5' })}
+                                                            </div>
+                                                            <div className="flex flex-col text-left overflow-hidden">
+                                                                <span className="text-sm font-bold group-hover:text-primary transition-colors">{m.label}</span>
+                                                                <span className="text-[11px] text-muted-foreground line-clamp-1">{m.description}</span>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    <Separator className="my-2" />
+                                    
+                                    <button 
+                                        onClick={() => setIsPickingExisting(true)} 
+                                        className="flex items-center gap-4 w-full p-4 bg-muted/30 hover:bg-muted rounded-2xl transition-all border-2 border-dashed border-border group"
+                                    >
+                                        <div className="h-10 w-10 rounded-xl flex items-center justify-center bg-background text-foreground shrink-0 border shadow-sm">
+                                            <Link className="h-5 w-5" />
+                                        </div>
+                                        <div className="flex flex-col text-left">
+                                            <span className="text-sm font-bold">Connect Existing Step...</span>
+                                            <span className="text-[11px] text-muted-foreground">Link this path to a node already on the map.</span>
+                                        </div>
+                                    </button>
+                                </>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Button variant="ghost" size="sm" onClick={() => setIsPickingExisting(false)} className="-ml-2 h-8">
+                                            <ArrowLeft className="h-4 w-4 mr-2" /> Back
+                                        </Button>
+                                        <span className="text-xs font-bold uppercase tracking-widest">Select Target</span>
+                                    </div>
+                                    
+                                    <Command className="border rounded-xl shadow-sm">
+                                        <CommandInput placeholder="Search existing steps..." />
+                                        <CommandList>
+                                            <CommandEmpty>No steps found.</CommandEmpty>
+                                            <CommandGroup heading="Nodes on Canvas">
+                                                {nodes.filter(n => n.id !== nodePickerInfo?.sourceId).map(n => {
+                                                    const m = NODE_TYPES_META[n.type as AutomationNodeType];
+                                                    return (
+                                                        <CommandItem key={n.id} onSelect={() => onPickExisting(n.id)} className="gap-4 p-3 cursor-pointer">
+                                                            <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center text-white shrink-0", m.color)}>
+                                                                {React.createElement(m.icon, { className: 'h-4 w-4' })}
+                                                            </div>
+                                                            <div className="flex flex-col min-w-0">
+                                                                <span className="text-sm font-bold truncate">{n.data.text || n.data.prompt || n.data.name || m.label}</span>
+                                                                <span className="text-[10px] text-muted-foreground uppercase">{m.label}</span>
+                                                            </div>
+                                                        </CommandItem>
+                                                    );
+                                                })}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </div>
+                            )}
+                        </div>
+                    </ScrollArea>
+                </SheetContent>
+              </Sheet>
             </>
           ) : (
             <PreviewArea nodes={nodes} edges={edges} />
@@ -944,6 +944,26 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
       </div>
     </div>
   );
+}
+
+function ArrowLeft(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m12 19-7-7 7-7" />
+      <path d="M19 12H5" />
+    </svg>
+  )
 }
 
 export default function AutomationFlowBuilder(props: AutomationFlowBuilderProps) {
