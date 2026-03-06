@@ -61,6 +61,7 @@ import {
   Clock,
   Users,
   UserPlus,
+  Loader2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -1104,7 +1105,9 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
     } else if (node.type === 'capture_input') {
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt, type: 'automation' }]);
     } else if (node.type === 'identity_form') {
-      setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt || "Please tell us your details.", type: 'automation', isIdentityForm: true }]);
+      setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt || "Please tell us your details.", type: 'automation', isIdentityForm: true, nodeId: node.id }]);
+      // STOP HERE and wait for interaction
+      return;
     } else if (node.type === 'handoff') {
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text || 'Transferring...', type: 'automation' }]);
       setMessages(prev => [...prev, { id: Date.now(), role: 'system', text: 'Escalated to human' }]);
@@ -1142,44 +1145,52 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
     }
   }, [messages, isThinking]);
 
-  const handleInput = (text: string, buttonId?: string) => {
-    if (!text.trim() && !buttonId) return;
+  const handleInput = (text: string, buttonId?: string, forceNodeId?: string) => {
+    if (!text.trim() && !buttonId && !forceNodeId) return;
     
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', text: text || 'Click' }]);
+    const targetNodeId = forceNodeId || currentNodeId;
+    const currentNode = nodes.find(n => n.id === targetNodeId);
+
+    // Don't show "user message" for form submission, just advance
+    if (!forceNodeId) {
+        setMessages(prev => [...prev, { id: Date.now(), role: 'user', text: text || 'Click' }]);
+        setUserInput('');
+    }
     
-    const currentNode = nodes.find(n => n.id === currentNodeId);
     let targetEdge;
 
     if (buttonId) {
         // Direct button click
-        targetEdge = edges.find(e => e.source === currentNodeId && e.sourceHandle === `intent:${buttonId}`);
+        targetEdge = edges.find(e => e.source === targetNodeId && e.sourceHandle === `intent:${buttonId}`);
+    } else if (currentNode?.type === 'identity_form') {
+        // Form simulation always advances via 'next' or default handle
+        targetEdge = edges.find(e => e.source === targetNodeId && (e.sourceHandle === 'next' || !e.sourceHandle));
     } else if (currentNode?.type === 'quick_reply') {
         // Type matching for buttons
         const buttons = currentNode.data.buttons || [];
         const matchedButton = buttons.find((b: any) => text.toLowerCase().includes(b.label.toLowerCase()));
         
         if (matchedButton) {
-            targetEdge = edges.find(e => e.source === currentNodeId && e.sourceHandle === `intent:${matchedButton.id}`);
+            targetEdge = edges.find(e => e.source === targetNodeId && e.sourceHandle === `intent:${matchedButton.id}`);
         } else {
-            targetEdge = edges.find(e => e.source === currentNodeId && e.sourceHandle === 'fallback');
+            targetEdge = edges.find(e => e.source === targetNodeId && e.sourceHandle === 'fallback');
         }
     } else if (currentNode?.type === 'ai_classifier') {
         const intents = currentNode.data.intents || [];
         const matchedIntent = intents.find((i: any) => text.toLowerCase().includes(i.label.toLowerCase()));
         
         if (matchedIntent) {
-            targetEdge = edges.find(e => e.source === currentNodeId && e.sourceHandle === `intent:${matchedIntent.id}`);
+            targetEdge = edges.find(e => e.source === targetNodeId && e.sourceHandle === `intent:${matchedIntent.id}`);
         } else {
-            targetEdge = edges.find(e => e.source === currentNodeId && e.sourceHandle === 'fallback');
+            targetEdge = edges.find(e => e.source === targetNodeId && e.sourceHandle === 'fallback');
         }
     } else {
-        targetEdge = edges.find(e => e.source === currentNodeId && (e.sourceHandle === 'next' || !e.sourceHandle));
+        targetEdge = edges.find(e => e.source === targetNodeId && (e.sourceHandle === 'next' || !e.sourceHandle));
     }
 
     if (targetEdge) {
         handleStep(targetEdge.target);
     }
-    setUserInput('');
   };
 
   const handleReset = () => {
@@ -1218,10 +1229,12 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
                         )}>
                             <p className="whitespace-pre-wrap">{m.text}</p>
                             {m.isIdentityForm && (
-                              <div className="mt-3 space-y-2 p-2 border-t border-black/5">
-                                <div className="h-8 bg-black/5 rounded animate-pulse" />
-                                <div className="h-8 bg-black/5 rounded animate-pulse" />
-                                <div className="h-8 bg-primary/20 rounded" />
+                              <div className="mt-3 space-y-3 p-3 border-t border-black/5 bg-background/50 rounded-xl">
+                                <Input placeholder="Name" className="h-8 text-xs bg-background" disabled />
+                                <Input placeholder="Email" className="h-8 text-xs bg-background" disabled />
+                                <Button size="sm" className="w-full h-8 text-xs font-bold" onClick={() => handleInput("Simulated Form Submission", undefined, m.nodeId)}>
+                                    Submit Details
+                                </Button>
                               </div>
                             )}
                         </div>
