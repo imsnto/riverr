@@ -214,7 +214,7 @@ async function executeHybridFlow(args: {
           currentStepId = intentEdge.target;
         } else {
           // Fallback path
-          const fallbackEdge = edges.find(e => e.source === currentStepId && e.sourceHandle === 'unknown');
+          const fallbackEdge = edges.find(e => e.source === currentStepId && e.sourceHandle === 'fallback');
           currentStepId = fallbackEdge?.target;
         }
       } else {

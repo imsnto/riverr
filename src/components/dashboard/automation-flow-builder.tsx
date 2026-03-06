@@ -59,6 +59,7 @@ import {
   Zap,
   ArrowLeft,
   Clock,
+  Users,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -86,7 +87,7 @@ const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; co
   start: { label: 'Start', icon: PlayCircle, color: 'bg-emerald-500', description: 'Triggered when a new chat begins.', category: 'conversation' },
   message: { label: 'Send Message', icon: MessageSquare, color: 'bg-blue-500', description: 'Sends a static text message to the visitor.', category: 'conversation' },
   quick_reply: { label: 'Quick Replies', icon: MousePointerClick, color: 'bg-purple-500', description: 'Offers buttons for the visitor to click.', category: 'conversation' },
-  ai_classifier: { label: 'AI Classifier', icon: Navigation, color: 'bg-indigo-600', description: 'Classifies what the visitor is asking and routes the conversation.', category: 'ai' },
+  ai_classifier: { label: 'AI Classifier', icon: Navigation, color: 'bg-indigo-600', description: 'Analyzes the visitor’s response and routes to the best path.', category: 'ai' },
   capture_input: { label: 'Capture Input', icon: Database, color: 'bg-teal-500', description: 'Asks a question and saves the response.', category: 'conversation' },
   ai_step: { label: 'AI Reasoning', icon: Bot, color: 'bg-violet-500', description: 'Conversational reasoning with knowledge base.', category: 'ai' },
   condition: { label: 'Condition', icon: Split, color: 'bg-amber-500', description: 'Branch based on data or identified state.', category: 'logic' },
@@ -214,9 +215,9 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
                 </div>
               ))}
               <div className="relative pointer-events-auto">
-                <Badge variant="outline" className="bg-muted text-muted-foreground text-[8px] h-5 px-1.5">UNKNOWN</Badge>
-                <Handle type="source" position={Position.Bottom} id="unknown" className="w-2.5 h-2.5 bg-zinc-400 border-2 border-background" />
-                <AddStepButton handleId="unknown" label="Unknown" />
+                <Badge variant="outline" className="bg-muted text-muted-foreground text-[8px] h-5 px-1.5 uppercase font-bold">Fallback</Badge>
+                <Handle type="source" position={Position.Bottom} id="fallback" className="w-2.5 h-2.5 bg-zinc-400 border-2 border-background" />
+                <AddStepButton handleId="fallback" label="Fallback" />
               </div>
             </div>
           ) : (
@@ -284,11 +285,11 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
       position,
       data: type === 'message' ? { text: 'Bot: Hi there!' } :
             type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email', inputType: 'email', saveToProfile: true, validation: { retryAttempts: 2, errorMessage: 'Invalid email' } } :
-            type === 'ai_classifier' ? { text: 'How can we help?', intents: [{ id: `i_${Date.now()}`, label: 'Support', description: 'User needs help or has a technical issue' }] } :
+            type === 'ai_classifier' ? { text: 'Analyze the visitor’s response and classify it into one of the following intents.', intents: [{ id: `i_${Date.now()}`, label: 'Support', description: 'Visitor needs technical help or reports a bug' }] } :
             type === 'quick_reply' ? { text: 'Choose an option:', buttons: [{ id: `b_${Date.now()}`, label: 'Pricing' }] } :
             type === 'condition' ? { conditionField: 'email', operator: 'exists' } :
             type === 'handoff' ? { text: 'Connecting you to an agent...', teamId: 'support', priority: 'medium' } :
-            type === 'ai_step' ? { knowledgeSources: ['base'], fallbackBehavior: 'escalate' } :
+            type === 'ai_step' ? { knowledgeSources: ['default'], fallbackBehavior: 'escalate' } :
             type === 'end' ? { waitBehavior: 'pause' } :
             {},
     };
@@ -350,33 +351,35 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
         const defaultNodes: any[] = [
           { id: 'start', type: 'start', position: { x: 120, y: 40 }, data: {} },
           { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi there! How can we help you today?' } },
-          { id: 'router', type: 'ai_classifier', position: { x: 420, y: 180 }, data: { 
-              text: 'How can we help today?', 
+          { id: 'wait_input', type: 'end', position: { x: 120, y: 320 }, data: { waitBehavior: 'pause' } },
+          { id: 'router', type: 'ai_classifier', position: { x: 420, y: 320 }, data: { 
+              text: 'Analyze the visitor’s response and classify it into one of the following intents.', 
               intents: [
-                { id: 'i1', label: 'Support', description: 'User needs technical help or reports a bug' },
-                { id: 'i2', label: 'Pricing', description: 'User asks about costs, plans, or billing' },
-                { id: 'i3', label: 'Features', description: 'User wants to know what the product does' },
-                { id: 'i4', label: 'Human', description: 'User explicitly asks to speak to a person' }
+                { id: 'i1', label: 'Support', description: 'Visitor needs technical help or reports a bug' },
+                { id: 'i2', label: 'Pricing', description: 'Visitor asks about costs, plans, or billing' },
+                { id: 'i3', label: 'Features', description: 'Visitor wants to know what the product does' },
+                { id: 'i4', label: 'Human', description: 'Visitor explicitly asks to speak to a person' }
               ] 
           }},
-          { id: 'ai', type: 'ai_step', position: { x: 820, y: 80 }, data: { knowledgeSources: ['default'], fallbackBehavior: 'escalate' } },
-          { id: 'pricing_msg', type: 'message', position: { x: 820, y: 260 }, data: { text: "We'd be happy to help with pricing and plans.\n\nTell us what you're looking for, or ask to speak with sales." } },
-          { id: 'handoff', type: 'handoff', position: { x: 820, y: 440 }, data: { text: 'Connecting you to our team. Someone will be with you shortly.', teamId: 'support', priority: 'high' } },
-          { id: 'wait', type: 'end', position: { x: 1180, y: 220 }, data: { waitBehavior: 'pause' } }
+          { id: 'ai', type: 'ai_step', position: { x: 820, y: 220 }, data: { knowledgeSources: ['default'], fallbackBehavior: 'escalate' } },
+          { id: 'pricing_msg', type: 'message', position: { x: 820, y: 400 }, data: { text: "We'd be happy to help with pricing and plans.\n\nTell us what you're looking for, or ask to speak with sales." } },
+          { id: 'handoff', type: 'handoff', position: { x: 820, y: 580 }, data: { text: 'Connecting you to our team. Someone will be with you shortly.', teamId: 'support', priority: 'high' } },
+          { id: 'terminal_wait', type: 'end', position: { x: 1180, y: 360 }, data: { waitBehavior: 'pause' } }
         ];
 
         const defaultEdges: any[] = [
           { id: 'e1', source: 'start', target: 'greeting', sourceHandle: 'next', type: 'smoothstep' },
-          { id: 'e2', source: 'greeting', target: 'router', sourceHandle: 'next', type: 'smoothstep' },
-          { id: 'e3', source: 'router', target: 'ai', sourceHandle: 'intent:i1', type: 'smoothstep' },
-          { id: 'e4', source: 'router', target: 'pricing_msg', sourceHandle: 'intent:i2', type: 'smoothstep' },
-          { id: 'e5', source: 'router', target: 'ai', sourceHandle: 'intent:i3', type: 'smoothstep' },
-          { id: 'e6', source: 'router', target: 'handoff', sourceHandle: 'intent:i4', type: 'smoothstep' },
-          { id: 'e7', source: 'router', target: 'ai', sourceHandle: 'unknown', type: 'smoothstep' },
-          { id: 'e8', source: 'ai', target: 'wait', sourceHandle: 'resolved', type: 'smoothstep' },
-          { id: 'e9', source: 'ai', target: 'handoff', sourceHandle: 'unresolved', type: 'smoothstep' },
-          { id: 'e10', source: 'pricing_msg', target: 'wait', sourceHandle: 'next', type: 'smoothstep' },
-          { id: 'e11', source: 'handoff', target: 'wait', sourceHandle: 'next', type: 'smoothstep' }
+          { id: 'e2', source: 'greeting', target: 'wait_input', sourceHandle: 'next', type: 'smoothstep' },
+          { id: 'e3', source: 'wait_input', target: 'router', sourceHandle: 'next', type: 'smoothstep' },
+          { id: 'e4', source: 'router', target: 'ai', sourceHandle: 'intent:i1', type: 'smoothstep' },
+          { id: 'e5', source: 'router', target: 'pricing_msg', sourceHandle: 'intent:i2', type: 'smoothstep' },
+          { id: 'e6', source: 'router', target: 'ai', sourceHandle: 'intent:i3', type: 'smoothstep' },
+          { id: 'e7', source: 'router', target: 'handoff', sourceHandle: 'intent:i4', type: 'smoothstep' },
+          { id: 'e8', source: 'router', target: 'ai', sourceHandle: 'fallback', type: 'smoothstep' },
+          { id: 'e9', source: 'ai', target: 'terminal_wait', sourceHandle: 'resolved', type: 'smoothstep' },
+          { id: 'e10', source: 'ai', target: 'handoff', sourceHandle: 'unresolved', type: 'smoothstep' },
+          { id: 'e11', source: 'pricing_msg', target: 'terminal_wait', sourceHandle: 'next', type: 'smoothstep' },
+          { id: 'e12', source: 'handoff', target: 'terminal_wait', sourceHandle: 'next', type: 'smoothstep' }
         ];
 
         setNodes(defaultNodes);
@@ -512,17 +515,19 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
                     {selectedNode.type === 'ai_classifier' && (
                         <div className="space-y-6">
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase">Classification Question</Label>
-                            <Input 
+                            <Label className="text-xs font-bold uppercase">AI Behavior / Instructions</Label>
+                            <Textarea 
                             value={selectedNode.data.text || ''} 
                             onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                            placeholder="e.g. How can we help today?"
-                            className="border-2"
+                            placeholder="e.g. Analyze the visitor’s response and classify it into one of the following intents."
+                            className="border-2 bg-muted/30 font-medium"
+                            rows={4}
                             />
+                            <p className="text-[10px] text-muted-foreground mt-1">Provide context for the AI classification engine.</p>
                         </div>
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                            <Label className="text-xs font-bold uppercase text-indigo-500">Intents (AI Classification)</Label>
+                            <Label className="text-xs font-bold uppercase text-indigo-500">Intents (Branching paths)</Label>
                             <Button variant="outline" size="sm" className="h-7 px-3 text-[10px] font-bold" onClick={() => {
                                 const newIntents = [...(selectedNode.data.intents || []), { id: `intent_${Date.now()}`, label: 'New Intent', description: '' }];
                                 updateNodeData(selectedNode.id, { intents: newIntents });
@@ -880,11 +885,11 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
                 </aside>
               ) : null}
 
-              {/* Node Picker Popout */}
+              {/* Node Picker Side Drawer */}
               <Sheet open={!!nodePickerInfo} onOpenChange={(open) => !open && setNodePickerInfo(null)}>
                 <SheetContent side="right" className="w-[440px] p-0 flex flex-col sm:max-w-[440px]">
-                    <SheetHeader className="p-6 pb-4 border-b shrink-0">
-                        <SheetTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Connect to Step</SheetTitle>
+                    <SheetHeader className="p-6 pb-4 border-b shrink-0 text-left">
+                        <SheetTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Add Step to Path</SheetTitle>
                     </SheetHeader>
                     <ScrollArea className="flex-1">
                         <div className="p-6 space-y-8">
