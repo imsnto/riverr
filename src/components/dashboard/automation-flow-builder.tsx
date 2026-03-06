@@ -106,17 +106,28 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
     if (connected) return null;
 
     return (
-      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center">
+      <div 
+        className="absolute -bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="h-6 w-6 rounded-full bg-background shadow-sm hover:bg-primary hover:text-primary-foreground border-primary/20 p-0">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-6 w-6 rounded-full bg-background shadow-sm hover:bg-primary hover:text-primary-foreground border-primary/20 p-0"
+              onClick={(e) => e.stopPropagation()}
+            >
               <Plus className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="bottom" align="center" className="w-64 p-2 shadow-2xl border-2">
             <p className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Connect to Step</p>
             {Object.entries(NODE_TYPES_META).filter(([t]) => t !== 'start').map(([t, m]) => (
-              <DropdownMenuItem key={t} onClick={() => data.onAddNodeAndConnect?.(t as AutomationNodeType, id, handleId)} className="gap-3 p-2.5 cursor-pointer">
+              <DropdownMenuItem key={t} onClick={(e) => {
+                e.stopPropagation();
+                data.onAddNodeAndConnect?.(t as AutomationNodeType, id, handleId);
+              }} className="gap-3 p-2.5 cursor-pointer">
                 <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center text-white", m.color)}>
                   {React.createElement(m.icon, { className: 'h-4 w-4' })}
                 </div>
