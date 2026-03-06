@@ -68,7 +68,13 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger, 
+  DropdownMenuSeparator 
+} from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '../ui/separator';
 
@@ -85,16 +91,52 @@ const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; co
 };
 
 const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
+  const { getEdges } = useReactFlow();
+  const edges = getEdges();
   const meta = NODE_TYPES_META[type as AutomationNodeType];
   const Icon = meta.icon;
   const hasOutputs = !['handoff', 'end'].includes(type);
+
+  const isHandleConnected = (handleId: string) => 
+    edges.some(e => e.source === id && e.sourceHandle === handleId);
+
+  const AddStepButton = ({ handleId, label }: { handleId: string, label?: string }) => {
+    const connected = isHandleConnected(handleId);
+    if (connected) return null;
+
+    return (
+      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon" className="h-6 w-6 rounded-full bg-background shadow-sm hover:bg-primary hover:text-primary-foreground border-primary/20 p-0">
+              <Plus className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="bottom" align="center" className="w-64 p-2 shadow-2xl border-2">
+            <p className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Connect to Step</p>
+            {Object.entries(NODE_TYPES_META).filter(([t]) => t !== 'start').map(([t, m]) => (
+              <DropdownMenuItem key={t} onClick={() => data.onAddNodeAndConnect?.(t as AutomationNodeType, id, handleId)} className="gap-3 p-2.5 cursor-pointer">
+                <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center text-white", m.color)}>
+                  {React.createElement(m.icon, { className: 'h-4 w-4' })}
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold">{m.label}</span>
+                  <span className="text-[9px] text-muted-foreground">{m.description}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {label && <span className="mt-1 text-[8px] font-black uppercase text-muted-foreground/50 tracking-tighter whitespace-nowrap">{label}</span>}
+      </div>
+    );
+  };
 
   return (
     <Card className={cn(
       "w-64 border-2 shadow-sm relative transition-all group",
       selected ? "border-primary ring-4 ring-primary/10 scale-[1.02] shadow-xl z-50" : "border-border"
     )}>
-      {/* Quick Delete Button */}
       {type !== 'start' && (
         <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity z-50">
           <Button
@@ -143,10 +185,12 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
                 <div className="relative pointer-events-auto">
                   <Badge className="bg-emerald-500 hover:bg-emerald-500 text-[9px] h-5 px-2 uppercase font-black">True</Badge>
                   <Handle type="source" position={Position.Bottom} id="true" className="w-2 h-2 opacity-0" />
+                  <AddStepButton handleId="true" label="If True" />
                 </div>
                 <div className="relative pointer-events-auto">
                   <Badge className="bg-rose-500 hover:bg-rose-500 text-[9px] h-5 px-2 uppercase font-black">False</Badge>
                   <Handle type="source" position={Position.Bottom} id="false" className="w-2 h-2 opacity-0" />
+                  <AddStepButton handleId="false" label="If False" />
                 </div>
               </>
             ) : type === 'ai_step' ? (
@@ -154,10 +198,12 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
                 <div className="relative pointer-events-auto">
                   <Badge className="bg-emerald-500 hover:bg-emerald-500 text-[9px] h-5 px-2 uppercase font-black">Resolved</Badge>
                   <Handle type="source" position={Position.Bottom} id="resolved" className="w-2 h-2 opacity-0" />
+                  <AddStepButton handleId="resolved" label="Answered" />
                 </div>
                 <div className="relative pointer-events-auto">
                   <Badge className="bg-orange-500 hover:bg-orange-500 text-[9px] h-5 px-2 uppercase font-black">Unresolved</Badge>
                   <Handle type="source" position={Position.Bottom} id="unresolved" className="w-2 h-2 opacity-0" />
+                  <AddStepButton handleId="unresolved" label="Fallback" />
                 </div>
               </>
             ) : type === 'intent_router' ? (
@@ -168,15 +214,20 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
                       {intent.label}
                     </Badge>
                     <Handle type="source" position={Position.Bottom} id={`intent:${intent.id}`} className="w-2 h-2 opacity-0" />
+                    <AddStepButton handleId={`intent:${intent.id}`} label={intent.label} />
                   </div>
                 ))}
                 <div className="relative pointer-events-auto">
                   <Badge variant="outline" className="bg-muted text-muted-foreground text-[8px] h-5 px-1.5">UNKNOWN</Badge>
                   <Handle type="source" position={Position.Bottom} id="unknown" className="w-2 h-2 opacity-0" />
+                  <AddStepButton handleId="unknown" label="Unknown" />
                 </div>
               </div>
             ) : (
-              <Handle type="source" position={Position.Bottom} id="next" className="w-3 h-3 bg-primary border-2 border-background pointer-events-auto" />
+              <div className="relative pointer-events-auto">
+                <Handle type="source" position={Position.Bottom} id="next" className="w-3 h-3 bg-primary border-2 border-background" />
+                <AddStepButton handleId="next" label="Next Step" />
+              </div>
             )}
           </div>
         )}
@@ -209,7 +260,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
   const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'builder' | 'preview'>('builder');
-  const { fitView, screenToFlowPosition } = useReactFlow();
+  const { fitView, screenToFlowPosition, getNode } = useReactFlow();
 
   const deleteNode = useCallback((id: string) => {
     if (id === 'start') return;
@@ -218,12 +269,53 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
     setSelectedNodeId((prev) => prev === id ? null : prev);
   }, [setNodes, setEdges]);
 
-  // Inject onDelete into node data
-  const nodesWithDelete = useMemo(() => 
+  const onAddNodeAndConnect = useCallback((type: AutomationNodeType, sourceId: string, sourceHandle: string) => {
+    const parentNode = getNode(sourceId);
+    if (!parentNode) return;
+
+    const id = `node_${Date.now()}`;
+    // Position below parent
+    const position = { 
+      x: parentNode.position.x, 
+      y: parentNode.position.y + 200 
+    };
+
+    const newNode = {
+      id,
+      type,
+      position,
+      data: type === 'message' ? { text: 'New Message' } :
+            type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email' } :
+            type === 'intent_router' ? { text: 'How can we help?', intents: [{ id: `i_${Date.now()}`, label: 'Option 1' }] } :
+            {},
+    };
+
+    const newEdge = {
+      id: `e_${sourceId}_${id}`,
+      source: sourceId,
+      target: id,
+      sourceHandle,
+      type: 'smoothstep',
+      animated: true,
+      markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
+      style: { strokeWidth: 2, stroke: '#3b82f6' }
+    };
+
+    setNodes((nds) => [...nds, newNode]);
+    setEdges((eds) => [...eds, newEdge]);
+    setSelectedNodeId(id);
+  }, [getNode, setNodes, setEdges]);
+
+  // Inject functions into node data
+  const nodesWithActions = useMemo(() => 
     nodes.map(n => ({
       ...n,
-      data: { ...n.data, onDelete: deleteNode }
-    })), [nodes, deleteNode]
+      data: { 
+        ...n.data, 
+        onDelete: deleteNode,
+        onAddNodeAndConnect: onAddNodeAndConnect
+      }
+    })), [nodes, deleteNode, onAddNodeAndConnect]
   );
 
   useEffect(() => {
@@ -273,29 +365,14 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
   }, [isOpen, fitView, initialFlow, setNodes, setEdges]);
 
   const onConnect = useCallback((params: Connection) => {
-    setEdges((eds) => addEdge({ ...params, type: 'smoothstep', animated: true }, eds));
+    setEdges((eds) => addEdge({ 
+      ...params, 
+      type: 'smoothstep', 
+      animated: true,
+      markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
+      style: { strokeWidth: 2, stroke: '#3b82f6' }
+    }, eds));
   }, [setEdges]);
-
-  const handleAddNode = (type: AutomationNodeType) => {
-    // Place new node in the center of the current view
-    const center = screenToFlowPosition({
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-    });
-
-    const id = `node_${Date.now()}`;
-    const newNode = {
-      id,
-      type,
-      position: center, 
-      data: type === 'message' ? { text: 'New Message' } :
-            type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email' } :
-            type === 'intent_router' ? { text: 'How can we help?', intents: [{ id: 'i1', label: 'Option 1' }] } :
-            {},
-    };
-    setNodes((nds) => [...nds, newNode]);
-    setSelectedNodeId(id);
-  };
 
   const handleNodeClick = (_: any, node: any) => setSelectedNodeId(node.id);
 
@@ -350,7 +427,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
             <>
               <div className="flex-1 bg-[#090909] bg-[radial-gradient(#1a1a1a_1px,transparent_1px)] [background-size:24px_24px] relative">
                 <ReactFlow
-                  nodes={nodesWithDelete}
+                  nodes={nodesWithActions}
                   edges={edges}
                   onNodesChange={onNodesChange}
                   onEdgesChange={onEdgesChange}
@@ -367,42 +444,6 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
                 >
                   <Background />
                   <Controls className="bg-card border-border shadow-2xl rounded-lg overflow-hidden fill-foreground" />
-                  <Panel position="top-left" className="flex flex-col gap-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button className="rounded-full shadow-2xl h-10 px-6 gap-2">
-                          <Plus className="h-4 w-4" /> Add Step
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="right" align="start" className="w-64 p-2 shadow-2xl border-2">
-                        <p className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Conversation</p>
-                        {['message', 'quick_reply', 'capture_input'].map(type => (
-                          <DropdownMenuItem key={type} onClick={() => handleAddNode(type as AutomationNodeType)} className="gap-3 p-2.5 cursor-pointer">
-                            <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center text-white", NODE_TYPES_META[type as AutomationNodeType].color)}>
-                              {React.createElement(NODE_TYPES_META[type as AutomationNodeType].icon, { className: 'h-4 w-4' })}
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-xs font-bold">{NODE_TYPES_META[type as AutomationNodeType].label}</span>
-                              <span className="text-[9px] text-muted-foreground">{NODE_TYPES_META[type as AutomationNodeType].description}</span>
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
-                        <DropdownMenuSeparator />
-                        <p className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Intelligence</p>
-                        {['intent_router', 'ai_step', 'condition', 'handoff'].map(type => (
-                          <DropdownMenuItem key={type} onClick={() => handleAddNode(type as AutomationNodeType)} className="gap-3 p-2.5 cursor-pointer">
-                            <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center text-white", NODE_TYPES_META[type as AutomationNodeType].color)}>
-                              {React.createElement(NODE_TYPES_META[type as AutomationNodeType].icon, { className: 'h-4 w-4' })}
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-xs font-bold">{NODE_TYPES_META[type as AutomationNodeType].label}</span>
-                              <span className="text-[9px] text-muted-foreground">{NODE_TYPES_META[type as AutomationNodeType].description}</span>
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </Panel>
                 </ReactFlow>
               </div>
 
