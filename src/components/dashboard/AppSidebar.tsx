@@ -36,7 +36,9 @@ import { AppView } from "@/lib/routes";
 import { getInitials } from "@/lib/utils";
 import * as db from '@/lib/db';
 import { messaging } from "@/lib/firebase";
-import { deleteToken } from "firebase/messaging";
+import { deleteToken, getToken } from "firebase/messaging";
+import { arrayRemove, doc, updateDoc } from "firebase/firestore";
+import { db as firestore } from "@/lib/firebase";
 
 interface SpaceSwitcherProps {
   spaces: Space[];
@@ -232,32 +234,28 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
   const handleLogout = async () => {
     try {
-      // 1. Delete the FCM token from Firebase servers
-      if (messaging) {
-        await deleteToken(messaging);
+
+      const token = await getToken(messaging)
+      const userId = appUser?.id;
+
+      if(token && userId){
+        const userTokensRef = doc(firestore, "fcmTokens", userId);
+
+      // 2. Remove ONLY this token from the array
+      await updateDoc(userTokensRef, {
+        tokens: arrayRemove(token)
+      });
       }
-  
-      // 2. Unregister the Service Worker (Crucial for iOS stability)
-      // This forces the next login to create a fresh messaging environment
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      for (const registration of registrations) {
-        await registration.unregister();
-      }
-  
-      // 3. Clear the initialization flag so the next user can re-register
-      // (Assuming isFCMInitialized is exported or accessible)
-      // isFCMInitialized = false; 
+      console.log(token)
   
       // 4. Perform standard sign out
       await signOut();
       
       // 5. Redirect to login
-      router.push('/login');
+      window.location.replace('/login');
     } catch (error) {
       console.error("Error during logout:", error);
       // Still sign out even if worker cleanup fails
-      await signOut();
-      router.push('/login');
     }
   };
 
