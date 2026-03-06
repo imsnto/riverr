@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   ReactFlow,
   Background,
@@ -57,31 +57,19 @@ import {
   AlertCircle,
   Search,
   ArrowRight,
+  Edit
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-
-// --- CONFIG ---
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 
 const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; color: string; description: string }> = {
   start: { label: 'Conversation Start', icon: PlayCircle, color: 'bg-emerald-500', description: 'Triggered when a new chat begins.' },
@@ -95,11 +83,10 @@ const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; co
   end: { label: 'Wait for Visitor', icon: CircleStop, color: 'bg-gray-500', description: 'Resets flow or waits for free-text reply.' },
 };
 
-// --- CUSTOM NODES ---
-
-const BaseNode = ({ data, type, selected, children, label, warning }: { data: any; type: string; selected: boolean; children?: React.ReactNode; label?: string; warning?: string }) => {
+const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
   const meta = NODE_TYPES_META[type as AutomationNodeType];
   const Icon = meta.icon;
+  const hasOutputs = !['handoff', 'end'].includes(type);
 
   return (
     <Card className={cn(
@@ -113,88 +100,70 @@ const BaseNode = ({ data, type, selected, children, label, warning }: { data: an
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground opacity-60 leading-none">
-              {label || meta.label}
+              {meta.label}
             </p>
             <h4 className="font-bold text-xs truncate mt-1">
               {data.text || data.prompt || data.name || (type === 'start' ? 'Conversation Start' : 'Step')}
             </h4>
           </div>
         </div>
-        {children}
-        {warning && (
-          <Badge variant="destructive" className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 text-[9px] uppercase font-black px-2 py-0 h-5 border-2 border-background shadow-lg">
-            <AlertCircle className="h-2.5 w-2.5 mr-1" /> {warning}
-          </Badge>
+
+        {type !== 'start' && (
+          <Handle type="target" position={Position.Top} className="w-3 h-3 bg-border border-2 border-background" />
+        )}
+
+        {type === 'capture_input' && data.variableName && (
+          <div className="mt-2 p-1.5 bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded text-[10px] font-mono text-teal-700 dark:text-teal-400">
+            SAVE AS: {data.variableName}
+          </div>
+        )}
+
+        {hasOutputs && (
+          <div className="absolute -bottom-3 left-0 right-0 flex justify-center gap-12 px-4 pointer-events-none">
+            {type === 'condition' ? (
+              <>
+                <div className="relative pointer-events-auto">
+                  <Badge className="bg-emerald-500 hover:bg-emerald-500 text-[9px] h-5 px-2">TRUE</Badge>
+                  <Handle type="source" position={Position.Bottom} id="true" className="w-2 h-2 opacity-0" />
+                </div>
+                <div className="relative pointer-events-auto">
+                  <Badge className="bg-rose-500 hover:bg-rose-500 text-[9px] h-5 px-2">FALSE</Badge>
+                  <Handle type="source" position={Position.Bottom} id="false" className="w-2 h-2 opacity-0" />
+                </div>
+              </>
+            ) : type === 'ai_step' ? (
+              <>
+                <div className="relative pointer-events-auto">
+                  <Badge className="bg-emerald-500 hover:bg-emerald-500 text-[9px] h-5 px-2">RESOLVED</Badge>
+                  <Handle type="source" position={Position.Bottom} id="resolved" className="w-2 h-2 opacity-0" />
+                </div>
+                <div className="relative pointer-events-auto">
+                  <Badge className="bg-orange-500 hover:bg-orange-500 text-[9px] h-5 px-2">UNRESOLVED</Badge>
+                  <Handle type="source" position={Position.Bottom} id="unresolved" className="w-2 h-2 opacity-0" />
+                </div>
+              </>
+            ) : type === 'intent_router' ? (
+              <div className="flex gap-2">
+                {(data.intents || []).map((intent: any) => (
+                  <div key={intent.id} className="relative pointer-events-auto">
+                    <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 border-indigo-200 text-[8px] h-5 px-1.5 whitespace-nowrap">
+                      {intent.label}
+                    </Badge>
+                    <Handle type="source" position={Position.Bottom} id={`intent:${intent.id}`} className="w-2 h-2 opacity-0" />
+                  </div>
+                ))}
+                <div className="relative pointer-events-auto">
+                  <Badge variant="outline" className="bg-muted text-muted-foreground text-[8px] h-5 px-1.5">UNKNOWN</Badge>
+                  <Handle type="source" position={Position.Bottom} id="unknown" className="w-2 h-2 opacity-0" />
+                </div>
+              </div>
+            ) : (
+              <Handle type="source" position={Position.Bottom} id="next" className="w-3 h-3 bg-primary border-2 border-background pointer-events-auto" />
+            )}
+          </div>
         )}
       </div>
     </Card>
-  );
-};
-
-const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
-  const hasOutputs = !['handoff', 'end'].includes(type);
-  const isBranching = ['intent_router', 'quick_reply', 'condition', 'ai_step'].includes(type);
-
-  return (
-    <BaseNode data={data} type={type} selected={selected}>
-      {/* Input Handle */}
-      {type !== 'start' && (
-        <Handle type="target" position={Position.Top} className="w-3 h-3 bg-border border-2 border-background" />
-      )}
-
-      {/* Content Previews */}
-      {type === 'capture_input' && data.variableName && (
-        <div className="mt-2 p-1.5 bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded text-[10px] font-mono text-teal-700 dark:text-teal-400">
-          SAVE AS: {data.variableName}
-        </div>
-      )}
-
-      {/* Output Handles */}
-      {hasOutputs && (
-        <div className="absolute -bottom-3 left-0 right-0 flex justify-center gap-12 px-4 pointer-events-none">
-          {type === 'condition' ? (
-            <>
-              <div className="relative pointer-events-auto">
-                <Badge className="bg-emerald-500 hover:bg-emerald-500 text-[9px] h-5 px-2">TRUE</Badge>
-                <Handle type="source" position={Position.Bottom} id="true" className="w-2 h-2 opacity-0" />
-              </div>
-              <div className="relative pointer-events-auto">
-                <Badge className="bg-rose-500 hover:bg-rose-500 text-[9px] h-5 px-2">FALSE</Badge>
-                <Handle type="source" position={Position.Bottom} id="false" className="w-2 h-2 opacity-0" />
-              </div>
-            </>
-          ) : type === 'ai_step' ? (
-            <>
-              <div className="relative pointer-events-auto">
-                <Badge className="bg-emerald-500 hover:bg-emerald-500 text-[9px] h-5 px-2">RESOLVED</Badge>
-                <Handle type="source" position={Position.Bottom} id="resolved" className="w-2 h-2 opacity-0" />
-              </div>
-              <div className="relative pointer-events-auto">
-                <Badge className="bg-orange-500 hover:bg-orange-500 text-[9px] h-5 px-2">UNRESOLVED</Badge>
-                <Handle type="source" position={Position.Bottom} id="unresolved" className="w-2 h-2 opacity-0" />
-              </div>
-            </>
-          ) : type === 'intent_router' ? (
-            <div className="flex gap-2">
-              {(data.intents || []).map((intent: any) => (
-                <div key={intent.id} className="relative pointer-events-auto">
-                  <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 border-indigo-200 text-[8px] h-5 px-1.5 whitespace-nowrap">
-                    {intent.label}
-                  </Badge>
-                  <Handle type="source" position={Position.Bottom} id={`intent:${intent.id}`} className="w-2 h-2 opacity-0" />
-                </div>
-              ))}
-              <div className="relative pointer-events-auto">
-                <Badge variant="outline" className="bg-muted text-muted-foreground text-[8px] h-5 px-1.5">UNKNOWN</Badge>
-                <Handle type="source" position={Position.Bottom} id="unknown" className="w-2 h-2 opacity-0" />
-              </div>
-            </div>
-          ) : (
-            <Handle type="source" position={Position.Bottom} id="next" className="w-3 h-3 bg-primary border-2 border-background pointer-events-auto" />
-          )}
-        </div>
-      )}
-    </BaseNode>
   );
 };
 
@@ -210,28 +179,23 @@ const nodeTypes = {
   end: CustomNodeComponent,
 };
 
-// --- BUILDER MAIN ---
-
 interface AutomationFlowBuilderProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   flow: AutomationFlow;
   onSave: (flow: AutomationFlow) => void;
-  allUsers?: User[];
 }
 
-function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, allUsers = [] }: AutomationFlowBuilderProps) {
+function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: AutomationFlowBuilderProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'builder' | 'preview'>('builder');
   const { fitView } = useReactFlow();
 
-  // Initialize nodes and edges from flow data
   useEffect(() => {
     if (isOpen) {
       if (!initialFlow.nodes || initialFlow.nodes.length === 0) {
-        // Create default starter flow
         const defaultNodes: any[] = [
           { id: 'start', type: 'start', position: { x: 120, y: 40 }, data: {} },
           { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi there! How can we help you today?' } },
@@ -271,27 +235,26 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, all
         setEdges((initialFlow as any).edges || []);
       }
       
-      // Auto-fit after a tiny delay to allow React Flow to render
       setTimeout(() => fitView({ padding: 0.15, duration: 400 }), 100);
     }
-  }, [isOpen]);
+  }, [isOpen, fitView, initialFlow]);
 
   const onConnect = useCallback((params: Connection) => {
     setEdges((eds) => addEdge({ ...params, type: 'smoothstep', animated: true }, eds));
-  }, []);
+  }, [setEdges]);
 
   const handleAddNode = (type: AutomationNodeType) => {
     const id = `node_${Date.now()}`;
     const newNode = {
       id,
       type,
-      position: { x: 100, y: 100 }, // Initial position, user can drag
+      position: { x: 100, y: 100 }, 
       data: type === 'message' ? { text: 'New Message' } :
             type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email' } :
             type === 'intent_router' ? { text: 'How can we help?', intents: [{ id: 'i1', label: 'Option 1' }] } :
             {},
     };
-    setNodes((nds) => eds => [...nds, newNode]);
+    setNodes((nds) => [...nds, newNode]);
     setSelectedNodeId(id);
   };
 
@@ -322,7 +285,6 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, all
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[100vw] w-screen h-screen p-0 flex flex-col overflow-hidden rounded-none border-none">
-        {/* Header */}
         <header className="flex items-center justify-between p-3 border-b bg-background shrink-0 z-[200] shadow-sm">
           <div className="flex items-center gap-4">
             <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -354,7 +316,6 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, all
         <div className="flex-1 flex overflow-hidden">
           {activeTab === 'builder' ? (
             <>
-              {/* Canvas Area */}
               <div className="flex-1 bg-[#090909] bg-[radial-gradient(#1a1a1a_1px,transparent_1px)] [background-size:24px_24px] relative">
                 <ReactFlow
                   nodes={nodes}
@@ -413,7 +374,6 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, all
                 </ReactFlow>
               </div>
 
-              {/* Sidebar Configuration */}
               {selectedNodeId && selectedNode && (
                 <aside className="w-[420px] bg-background border-l flex flex-col shadow-2xl animate-in slide-in-from-right duration-300">
                   <div className="p-4 border-b flex items-center justify-between bg-muted/20 shrink-0">

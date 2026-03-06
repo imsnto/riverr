@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -22,9 +22,9 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Bot as BotData, User, HelpCenter, ChatMessage, AutomationFlow } from '@/lib/data';
+import { Bot as BotData, User, HelpCenter } from '@/lib/data';
 import { 
   Bot as BotIcon, 
   X, 
@@ -45,37 +45,27 @@ import {
   Wand2,
   Zap,
   Split,
-  ChevronRight
+  ChevronRight,
+  Edit,
+  MoreHorizontal,
+  Trash2
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
-import { Textarea } from '../ui/textarea';
-import { ScrollArea } from '../ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Switch } from '../ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Badge } from '../ui/badge';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import { Checkbox } from '../ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
-import { marked } from 'marked';
-import { handleIncomingMessage, AgentAdapters, BotConfig as AgentConfig, Conversation as AgentConversation, IncomingMessage } from '@/lib/agent';
-import { searchHelpCenterAction, searchSupportAction } from '@/app/actions/chat';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Separator } from '../ui/separator';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import AutomationFlowBuilder from './automation-flow-builder';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuPortal,
-  DropdownMenuSubContent,
-} from '@/components/ui/dropdown-menu';
 
 function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
     const [open, setOpen] = useState(false);
@@ -223,7 +213,6 @@ export default function AgentSettingsDialog({
 }: AgentSettingsDialogProps) {
   const [isFlowBuilderOpen, setIsFlowBuilderOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { activeHub } = useAuth();
   const { toast } = useToast();
 
   const form = useForm<AgentSettingsFormValues>({
@@ -335,28 +324,9 @@ export default function AgentSettingsDialog({
     toast({ title: 'Copied to clipboard' });
   };
 
-  const basicSnippet = agent ? `<script
-  src="https://manowar.cloud/chatbot-loader.js"
-  data-bot-id="${agent.id}"
-  data-hub-id="${agent.hubId}"
-  async
-></script>`.trim() : '';
+  const basicSnippet = agent ? `<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${agent.id}" data-hub-id="${agent.hubId}" async></script>`.trim() : '';
 
-  const identifiedSnippet = agent ? `<script
-  src="https://manowar.cloud/chatbot-loader.js"
-  data-bot-id="${agent.id}"
-  data-hub-id="${agent.hubId}"
-  data-provider-id="YOUR_PROVIDER_ID"
-  async
-></script>`.trim() : '';
-
-  const updateCallSnippet = `window.Manowar('update', {
-  provider_id: 'YOUR_PROVIDER_ID',
-  user_id: 'CURRENT_USER_ID',
-  email: 'CURRENT_USER_EMAIL',
-  name: 'CURRENT_USER_NAME',
-  user_hash: 'SERVER_GENERATED_HASH'
-});`;
+  const identifiedSnippet = agent ? `<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${agent.id}" data-hub-id="${agent.hubId}" data-provider-id="YOUR_PROVIDER_ID" async></script>`.trim() : '';
 
   return (
     <>
@@ -379,7 +349,7 @@ export default function AgentSettingsDialog({
                       render={({ field }) => (
                           <FormItem className="flex items-center justify-between rounded-lg border p-3">
                               <div className="space-y-0.5">
-                                  <FormLabel>Agent Enabled</Label>
+                                  <FormLabel>Agent Enabled</FormLabel>
                                   <FormDescription>If disabled, this agent will not respond.</FormDescription>
                               </div>
                               <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
