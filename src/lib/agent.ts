@@ -222,16 +222,35 @@ async function executeHybridFlow(args: {
         currentStepId = nextEdge?.target;
       }
     } else if (currentNode.type === 'capture_input') {
-      const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
-      currentStepId = nextEdge?.target;
+      // Validate input based on type
+      const inputType = currentNode.data.inputType || 'text';
+      const isValid = validateInput(message.text, inputType);
+      
+      if (isValid) {
+        const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+        currentStepId = nextEdge?.target;
+      } else {
+        // Validation failed - stay on current node and retry
+        await adapters.persistAssistantMessage({
+          conversationId: conversation.id,
+          hubId: conversation.hubId,
+          text: currentNode.data.validation?.errorMessage || `Please enter a valid ${inputType}.`,
+          responderType: 'automation',
+        });
+        return;
+      }
     } else if (currentNode.type === 'condition') {
         const field = currentNode.data.conditionField;
-        let valExists = false;
-        if (field === 'email') valExists = !!(conversation.visitorEmail || conversation.meta?.email);
-        if (field === 'name') valExists = !!(conversation.visitorName || conversation.meta?.name);
-        if (field === 'identified') valExists = !!conversation.contactId;
+        const operator = currentNode.data.operator || 'exists';
+        const comparisonValue = currentNode.data.conditionValue;
         
-        const targetHandle = valExists ? 'true' : 'false';
+        let actualValue: any = null;
+        if (field === 'email') actualValue = conversation.visitorEmail;
+        if (field === 'name') actualValue = conversation.visitorName;
+        if (field === 'identified') actualValue = !!conversation.contactId;
+        
+        const met = evaluateCondition(actualValue, operator, comparisonValue);
+        const targetHandle = met ? 'true' : 'false';
         const branchEdge = edges.find(e => e.source === currentStepId && e.sourceHandle === targetHandle);
         currentStepId = branchEdge?.target;
     } else {
@@ -294,12 +313,16 @@ async function executeHybridFlow(args: {
 
     if (node.type === 'condition') {
       const field = node.data.conditionField;
-      let valExists = false;
-      if (field === 'email') valExists = !!(conversation.visitorEmail || conversation.meta?.email);
-      if (field === 'name') valExists = !!(conversation.visitorName || conversation.meta?.name);
-      if (field === 'identified') valExists = !!conversation.contactId;
+      const operator = node.data.operator || 'exists';
+      const comparisonValue = node.data.conditionValue;
+      
+      let actualValue: any = null;
+      if (field === 'email') actualValue = conversation.visitorEmail;
+      if (field === 'name') actualValue = conversation.visitorName;
+      if (field === 'identified') actualValue = !!conversation.contactId;
 
-      const targetHandle = valExists ? 'true' : 'false';
+      const met = evaluateCondition(actualValue, operator, comparisonValue);
+      const targetHandle = met ? 'true' : 'false';
       const branchEdge = edges.find(e => e.source === currentStepId && e.sourceHandle === targetHandle);
       currentStepId = branchEdge?.target;
       continue;
@@ -329,17 +352,23 @@ async function executeHybridFlow(args: {
     }
 
     if (node.type === 'end') {
+      const waitBehavior = node.data.waitBehavior || 'pause';
+      
+      if (waitBehavior === 'end') {
+        await adapters.updateConversation({
+          conversationId: conversation.id,
+          hubId: conversation.hubId,
+          patch: { status: 'resolved', meta: { ...conversation.meta, currentFlowStepId: undefined } }
+        });
+        return;
+      }
+
       const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
       if (nextEdge) {
           // It's a "Wait for visitor" but with a path forward. 
           // Stop this turn and let the next interaction pick up from here.
           return;
       }
-      await adapters.updateConversation({
-        conversationId: conversation.id,
-        hubId: conversation.hubId,
-        patch: { status: 'resolved', meta: { ...conversation.meta, currentFlowStepId: undefined } }
-      });
       return;
     }
 
@@ -401,10 +430,46 @@ async function executeAiPhase(args: {
 // Helpers
 // -------------------------
 
+function validateInput(text: string, type: string): boolean {
+  if (!text) return false;
+  switch (type) {
+    case 'email':
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text.trim());
+    case 'phone':
+      return /^\+?[\d\s\-()]{7,}$/.test(text.trim());
+    case 'number':
+      return !isNaN(parseFloat(text)) && isFinite(Number(text));
+    case 'url':
+      try { new URL(text); return true; } catch { return false; }
+    case 'text':
+    default:
+      return text.length > 0;
+  }
+}
+
+function evaluateCondition(value: any, operator: string, comparison: any): boolean {
+  switch (operator) {
+    case 'exists':
+      return value !== null && value !== undefined && value !== '';
+    case 'equals':
+      return String(value) === String(comparison);
+    case 'not_equals':
+      return String(value) !== String(comparison);
+    case 'contains':
+      return String(value).toLowerCase().includes(String(comparison).toLowerCase());
+    case 'gt':
+      return Number(value) > Number(comparison);
+    case 'lt':
+      return Number(value) < Number(comparison);
+    default:
+      return !!value;
+  }
+}
+
 /**
  * Categorize free-text input against defined intent paths.
  */
-async function classifyIntent(text: string, intentPaths: { id: string; label: string }[]): Promise<string | null> {
+async function classifyIntent(text: string, intentPaths: { id: string; label: string; description?: string }[]): Promise<string | null> {
     if (!text || intentPaths.length === 0) return null;
     
     const normalizedText = text.toLowerCase();

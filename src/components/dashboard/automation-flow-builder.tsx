@@ -57,6 +57,8 @@ import {
   Search,
   Link,
   Zap,
+  ArrowLeft,
+  Clock,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -78,9 +80,10 @@ import { Separator } from '../ui/separator';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
+import { Switch } from '../ui/switch';
 
 const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; color: string; description: string; category: 'conversation' | 'ai' | 'logic' | 'human' }> = {
-  start: { label: 'Conversation Start', icon: PlayCircle, color: 'bg-emerald-500', description: 'Triggered when a new chat begins.', category: 'conversation' },
+  start: { label: 'Start', icon: PlayCircle, color: 'bg-emerald-500', description: 'Triggered when a new chat begins.', category: 'conversation' },
   message: { label: 'Send Message', icon: MessageSquare, color: 'bg-blue-500', description: 'Sends a static text message to the visitor.', category: 'conversation' },
   quick_reply: { label: 'Quick Replies', icon: MousePointerClick, color: 'bg-purple-500', description: 'Offers buttons for the visitor to click.', category: 'conversation' },
   intent_router: { label: 'Intent Router', icon: Navigation, color: 'bg-indigo-600', description: 'AI classifies text and routes to specific paths.', category: 'ai' },
@@ -167,7 +170,7 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
 
         {type === 'capture_input' && data.variableName && (
           <div className="mt-2 p-1.5 bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded text-[10px] font-mono text-teal-700 dark:text-teal-400">
-            SAVE AS: {data.variableName}
+            {data.inputType?.toUpperCase() || 'TEXT'}: {data.variableName}
           </div>
         )}
 
@@ -279,9 +282,13 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
       type,
       position,
       data: type === 'message' ? { text: 'Bot: Hi there!' } :
-            type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email' } :
-            type === 'intent_router' ? { text: 'How can we help?', intents: [{ id: `i_${Date.now()}`, label: 'Support' }] } :
+            type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email', inputType: 'email', validation: { retryAttempts: 2, errorMessage: 'Invalid email' } } :
+            type === 'intent_router' ? { text: 'How can we help?', intents: [{ id: `i_${Date.now()}`, label: 'Support', description: 'User needs help or has a technical issue' }] } :
             type === 'quick_reply' ? { text: 'Choose an option:', buttons: [{ id: `b_${Date.now()}`, label: 'Pricing' }] } :
+            type === 'condition' ? { conditionField: 'email', operator: 'exists' } :
+            type === 'handoff' ? { text: 'Connecting you to an agent...', teamId: 'support', priority: 'medium' } :
+            type === 'ai_step' ? { knowledgeSources: ['base'], fallbackBehavior: 'escalate' } :
+            type === 'end' ? { waitBehavior: 'pause' } :
             {},
     };
 
@@ -345,16 +352,16 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
           { id: 'router', type: 'intent_router', position: { x: 420, y: 180 }, data: { 
               text: 'How can we help today?', 
               intents: [
-                { id: 'i1', label: 'Support' },
-                { id: 'i2', label: 'Pricing' },
-                { id: 'i3', label: 'Features' },
-                { id: 'i4', label: 'Human' }
+                { id: 'i1', label: 'Support', description: 'User needs technical help or reports a bug' },
+                { id: 'i2', label: 'Pricing', description: 'User asks about costs, plans, or billing' },
+                { id: 'i3', label: 'Features', description: 'User wants to know what the product does' },
+                { id: 'i4', label: 'Human', description: 'User explicitly asks to speak to a person' }
               ] 
           }},
-          { id: 'ai', type: 'ai_step', position: { x: 820, y: 80 }, data: {} },
+          { id: 'ai', type: 'ai_step', position: { x: 820, y: 80 }, data: { knowledgeSources: ['default'], fallbackBehavior: 'escalate' } },
           { id: 'pricing_msg', type: 'message', position: { x: 820, y: 260 }, data: { text: "We'd be happy to help with pricing and plans.\n\nTell us what you're looking for, or ask to speak with sales." } },
-          { id: 'handoff', type: 'handoff', position: { x: 820, y: 440 }, data: { text: 'Connecting you to our team. Someone will be with you shortly.' } },
-          { id: 'wait', type: 'end', position: { x: 1180, y: 220 }, data: {} }
+          { id: 'handoff', type: 'handoff', position: { x: 820, y: 440 }, data: { text: 'Connecting you to our team. Someone will be with you shortly.', teamId: 'support', priority: 'high' } },
+          { id: 'wait', type: 'end', position: { x: 1180, y: 220 }, data: { waitBehavior: 'pause' } }
         ];
 
         const defaultEdges: any[] = [
@@ -516,28 +523,41 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
                             <div className="flex items-center justify-between">
                             <Label className="text-xs font-bold uppercase text-indigo-500">Intents (AI Classification)</Label>
                             <Button variant="outline" size="sm" className="h-7 px-3 text-[10px] font-bold" onClick={() => {
-                                const newIntents = [...(selectedNode.data.intents || []), { id: `intent_${Date.now()}`, label: 'New Intent' }];
+                                const newIntents = [...(selectedNode.data.intents || []), { id: `intent_${Date.now()}`, label: 'New Intent', description: '' }];
                                 updateNodeData(selectedNode.id, { intents: newIntents });
                             }}><Plus className="h-3 w-3 mr-1" /> Add Intent</Button>
                             </div>
-                            <div className="space-y-2">
+                            <div className="space-y-4">
                             {(selectedNode.data.intents || []).map((intent: any, idx: number) => (
-                                <div key={intent.id} className="flex items-center gap-2 p-2 border-2 rounded-xl bg-background group">
-                                <Navigation className="h-3 w-3 text-muted-foreground opacity-40 shrink-0" />
-                                <Input 
-                                    value={intent.label} 
+                                <div key={intent.id} className="p-3 border-2 rounded-xl bg-background group space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <Navigation className="h-3 w-3 text-muted-foreground opacity-40 shrink-0" />
+                                    <Input 
+                                        value={intent.label} 
+                                        onChange={(e) => {
+                                        const newIntents = [...selectedNode.data.intents];
+                                        newIntents[idx].label = e.target.value;
+                                        updateNodeData(selectedNode.id, { intents: newIntents });
+                                        }}
+                                        className="h-7 text-sm border-none shadow-none focus-visible:ring-0 font-bold p-0"
+                                        placeholder="Intent Name"
+                                    />
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => {
+                                        updateNodeData(selectedNode.id, { intents: selectedNode.data.intents.filter((i: any) => i.id !== intent.id) });
+                                    }}>
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                  <Textarea 
+                                    value={intent.description} 
                                     onChange={(e) => {
-                                    const newIntents = [...selectedNode.data.intents];
-                                    newIntents[idx].label = e.target.value;
-                                    updateNodeData(selectedNode.id, { intents: newIntents });
+                                      const newIntents = [...selectedNode.data.intents];
+                                      newIntents[idx].description = e.target.value;
+                                      updateNodeData(selectedNode.id, { intents: newIntents });
                                     }}
-                                    className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-bold p-0"
-                                />
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => {
-                                    updateNodeData(selectedNode.id, { intents: selectedNode.data.intents.filter((i: any) => i.id !== intent.id) });
-                                }}>
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                                    className="text-xs bg-muted/30 border-none resize-none min-h-[60px]"
+                                    placeholder="Describe this intent for the AI..."
+                                  />
                                 </div>
                             ))}
                             </div>
@@ -600,8 +620,26 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
                             className="border-2"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-teal-600">Save As Variable</Label>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase">Input Type & Validation</Label>
+                            <Select 
+                              value={selectedNode.data.inputType} 
+                              onValueChange={(val) => updateNodeData(selectedNode.id, { inputType: val })}
+                            >
+                              <SelectTrigger className="border-2"><SelectValue placeholder="Select type..." /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="email">Email Address</SelectItem>
+                                <SelectItem value="phone">Phone Number</SelectItem>
+                                <SelectItem value="text">Free Text</SelectItem>
+                                <SelectItem value="number">Number</SelectItem>
+                                <SelectItem value="url">URL</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase">Save As Variable</Label>
                             <div className="flex items-center gap-3 p-3 border-2 rounded-xl bg-teal-500/5 border-teal-500/20">
                             <Database className="h-4 w-4 text-teal-600" />
                             <Input 
@@ -611,57 +649,202 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
                                 className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-mono text-teal-700 bg-transparent p-0"
                             />
                             </div>
+                          </div>
+
+                          <div className="space-y-2 border-t pt-4">
+                            <Label className="text-xs font-bold uppercase">Error Handling</Label>
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">Retry Attempts</span>
+                                <Input 
+                                  type="number" 
+                                  value={selectedNode.data.validation?.retryAttempts || 2} 
+                                  onChange={(e) => updateNodeData(selectedNode.id, { validation: { ...selectedNode.data.validation, retryAttempts: parseInt(e.target.value) } })}
+                                  className="w-16 h-8 text-xs"
+                                />
+                              </div>
+                              <Textarea 
+                                value={selectedNode.data.validation?.errorMessage || ''} 
+                                onChange={(e) => updateNodeData(selectedNode.id, { validation: { ...selectedNode.data.validation, errorMessage: e.target.value } })}
+                                className="text-xs bg-muted/30"
+                                placeholder="Message if validation fails..."
+                              />
+                            </div>
+                          </div>
                         </div>
                         </div>
                     )}
 
                     {selectedNode.type === 'ai_step' && (
+                        <div className="space-y-6">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase">AI Behavior / Instructions</Label>
+                          <Textarea 
+                              value={selectedNode.data.prompt || ''} 
+                              onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
+                              placeholder="e.g. Act as a technical support agent. Use the knowledge base to answer questions."
+                              rows={8}
+                              className="bg-muted/30 border-2 font-medium"
+                          />
+                        </div>
                         <div className="space-y-4">
-                        <Label className="text-xs font-bold uppercase">AI Behavior / Instructions</Label>
-                        <Textarea 
-                            value={selectedNode.data.prompt || ''} 
-                            onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
-                            placeholder="e.g. Act as a technical support agent. Use the knowledge base to answer questions."
-                            rows={10}
-                            className="bg-muted/30 border-2 font-medium"
-                        />
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase">Knowledge Sources</Label>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Switch checked={selectedNode.data.knowledgeSources?.includes('default')} onCheckedChange={() => {}} />
+                                <span className="text-xs font-medium">Default Knowledge Base</span>
+                              </div>
+                              <div className="flex items-center gap-2 opacity-50">
+                                <Switch checked={false} disabled />
+                                <span className="text-xs font-medium">Website Crawl (Upcoming)</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase">Fallback Behavior</Label>
+                            <Select 
+                              value={selectedNode.data.fallbackBehavior || 'escalate'} 
+                              onValueChange={(val) => updateNodeData(selectedNode.id, { fallbackBehavior: val })}
+                            >
+                              <SelectTrigger className="border-2"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="escalate">Escalate to Human</SelectItem>
+                                <SelectItem value="clarify">Ask Clarifying Question</SelectItem>
+                                <SelectItem value="route">Route to Another Step</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
                         </div>
                     )}
 
                     {selectedNode.type === 'condition' && (
+                        <div className="space-y-6">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase">Property to Check</Label>
+                          <Select 
+                              value={selectedNode.data.conditionField} 
+                              onValueChange={(val) => updateNodeData(selectedNode.id, { conditionField: val })}
+                          >
+                              <SelectTrigger className="h-11 border-2 rounded-xl"><SelectValue placeholder="Select property..." /></SelectTrigger>
+                              <SelectContent className="rounded-xl">
+                              <SelectItem value="email">Visitor Email</SelectItem>
+                              <SelectItem value="name">Visitor Name</SelectItem>
+                              <SelectItem value="identified">Secure Identity Token</SelectItem>
+                              <SelectItem value="plan">Subscription Plan</SelectItem>
+                              <SelectItem value="spend">Total Spend</SelectItem>
+                              </SelectContent>
+                          </Select>
+                        </div>
                         <div className="space-y-4">
-                        <Label className="text-xs font-bold uppercase">Check Property</Label>
-                        <Select 
-                            value={selectedNode.data.conditionField} 
-                            onValueChange={(val) => updateNodeData(selectedNode.id, { conditionField: val })}
-                        >
-                            <SelectTrigger className="h-11 border-2 rounded-xl"><SelectValue placeholder="Select property..." /></SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                            <SelectItem value="email">Visitor Email</SelectItem>
-                            <SelectItem value="name">Visitor Name</SelectItem>
-                            <SelectItem value="identified">Secure Identity Token</SelectItem>
-                            </SelectContent>
-                        </Select>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase">Operator</Label>
+                            <Select 
+                              value={selectedNode.data.operator || 'exists'} 
+                              onValueChange={(val) => updateNodeData(selectedNode.id, { operator: val })}
+                            >
+                              <SelectTrigger className="border-2"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="exists">Exists</SelectItem>
+                                <SelectItem value="equals">Equals</SelectItem>
+                                <SelectItem value="not_equals">Does not equal</SelectItem>
+                                <SelectItem value="contains">Contains</SelectItem>
+                                <SelectItem value="gt">Greater than</SelectItem>
+                                <SelectItem value="lt">Less than</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {selectedNode.data.operator !== 'exists' && (
+                            <div className="space-y-2">
+                              <Label className="text-xs font-bold uppercase">Comparison Value</Label>
+                              <Input 
+                                value={selectedNode.data.conditionValue || ''} 
+                                onChange={(e) => updateNodeData(selectedNode.id, { conditionValue: e.target.value })}
+                                placeholder="Enter value..."
+                                className="border-2"
+                              />
+                            </div>
+                          )}
+                        </div>
                         </div>
                     )}
 
                     {selectedNode.type === 'handoff' && (
+                        <div className="space-y-6">
                         <div className="space-y-4">
-                        <Label className="text-xs font-bold uppercase">Transfer Message</Label>
-                        <Textarea 
-                            value={selectedNode.data.text || ''} 
-                            onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                            placeholder="e.g. Connecting you to our team. Someone will be with you shortly."
-                            className="bg-muted/30 border-2 font-medium"
-                            rows={6}
-                        />
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase">Assign to Team</Label>
+                            <Select 
+                              value={selectedNode.data.teamId || 'support'} 
+                              onValueChange={(val) => updateNodeData(selectedNode.id, { teamId: val })}
+                            >
+                              <SelectTrigger className="border-2"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="support">Support Team</SelectItem>
+                                <SelectItem value="sales">Sales Team</SelectItem>
+                                <SelectItem value="billing">Billing Team</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase">Priority</Label>
+                            <Select 
+                              value={selectedNode.data.priority || 'medium'} 
+                              onValueChange={(val) => updateNodeData(selectedNode.id, { priority: val })}
+                            >
+                              <SelectTrigger className="border-2"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="low">Low</SelectItem>
+                                <SelectItem value="medium">Medium</SelectItem>
+                                <SelectItem value="high">High</SelectItem>
+                                <SelectItem value="urgent">Urgent</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase">Transfer Message</Label>
+                            <Textarea 
+                                value={selectedNode.data.text || ''} 
+                                onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
+                                placeholder="e.g. Connecting you to our team. Someone will be with you shortly."
+                                className="bg-muted/30 border-2 font-medium"
+                                rows={4}
+                            />
+                        </div>
                         </div>
                     )}
 
                     {selectedNode.type === 'end' && (
+                        <div className="space-y-6">
                         <div className="space-y-4">
-                        <Label className="text-xs font-bold uppercase">Wait Behavior</Label>
-                        <p className="text-xs text-muted-foreground">The bot will pause here and resume the flow when the visitor sends their next message.</p>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase">Wait Behavior</Label>
+                            <Select 
+                              value={selectedNode.data.waitBehavior || 'pause'} 
+                              onValueChange={(val) => updateNodeData(selectedNode.id, { waitBehavior: val })}
+                            >
+                              <SelectTrigger className="border-2"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pause">Pause flow (Wait for reply)</SelectItem>
+                                <SelectItem value="end">End conversation</SelectItem>
+                                <SelectItem value="reopen">Reopen if visitor replies</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {selectedNode.data.waitBehavior === 'end' && (
+                            <div className="space-y-2">
+                              <Label className="text-xs font-bold uppercase">Auto-close after (minutes)</Label>
+                              <Input 
+                                type="number" 
+                                value={selectedNode.data.autoCloseMinutes || 30} 
+                                onChange={(e) => updateNodeData(selectedNode.id, { autoCloseMinutes: parseInt(e.target.value) })}
+                                className="border-2"
+                              />
+                            </div>
+                          )}
+                        </div>
                         </div>
                     )}
 
@@ -944,26 +1127,6 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
       </div>
     </div>
   );
-}
-
-function ArrowLeft(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m12 19-7-7 7-7" />
-      <path d="M19 12H5" />
-    </svg>
-  )
 }
 
 export default function AutomationFlowBuilder(props: AutomationFlowBuilderProps) {
