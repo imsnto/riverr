@@ -35,6 +35,9 @@ import {
   ChevronDown,
   Link as LinkIcon,
   Unlink,
+  ZoomIn,
+  ZoomOut,
+  Maximize,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -84,6 +87,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
   const [nodes, setNodes] = useState<AutomationNode[]>(initialFlow.nodes || []);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'builder' | 'preview'>('builder');
+  const [zoom, setZoom] = useState(1);
 
   // Initialize with a default flow if empty
   useEffect(() => {
@@ -128,7 +132,6 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
     
     const updatedNodes = [...nodes, newNode];
     
-    // Wire it up
     const newNodes = updatedNodes.map(n => {
         if (n.id !== parentNodeId) return n;
         
@@ -142,7 +145,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
         }
         if (pathKey === 'buttons' && typeof subIndex === 'number') {
             const buttons = [...(n.data.buttons || [])];
-            buttons[subIndex] = { ...buttons[buttons.length - 1], nextStepId: newNodeId };
+            buttons[subIndex] = { ...buttons[subIndex], nextStepId: newNodeId };
             return { ...n, data: { ...n.data, buttons } };
         }
         return n;
@@ -195,11 +198,10 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return null;
 
-    // Detect cycles to prevent infinite recursion
     if (renderedIds.has(nodeId)) {
         return (
             <div className="flex flex-col items-center">
-                <div className="h-8 w-px bg-primary/30" />
+                <div className="h-8 w-px bg-border shrink-0" />
                 <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 gap-2">
                     <ArrowRight className="h-3 w-3" /> Recursive Link to Step {node.id.substring(0, 5)}
                 </Badge>
@@ -262,11 +264,18 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
             </div>
         </Card>
 
-        {/* Child Paths */}
+        {/* Vertical Trunk Line coming out of the bottom of parent */}
+        {((node.type === 'intent_router' && node.data.intents?.length) || 
+          (node.type === 'quick_reply' && node.data.buttons?.length) ||
+          node.type === 'condition' || 
+          node.type === 'ai_step' ||
+          (!isBranching && !['end', 'handoff'].includes(node.type) && node.nextStepId)) && (
+            <div className="h-8 w-px bg-border shrink-0" />
+        )}
+
         <div className="flex gap-12 mt-0">
             {node.type === 'intent_router' && (node.data.intents || []).map((intent, iIdx) => (
                 <div key={intent.id} className="flex flex-col items-center min-w-[200px]">
-                    <div className="h-8 w-px bg-border" />
                     <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 border-indigo-500/20 px-2 py-1 text-[10px] uppercase font-bold tracking-tight shrink-0">
                         {intent.label}
                     </Badge>
@@ -276,7 +285,6 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
 
             {node.type === 'quick_reply' && (node.data.buttons || []).map((btn, bIdx) => (
                 <div key={btn.id} className="flex flex-col items-center min-w-[200px]">
-                    <div className="h-8 w-px bg-border" />
                     <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500/20 px-2 py-1 text-[10px] uppercase font-bold tracking-tight shrink-0">
                         BTN: {btn.label}
                     </Badge>
@@ -287,12 +295,10 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
             {node.type === 'condition' && (
                 <>
                     <div className="flex flex-col items-center min-w-[200px]">
-                        <div className="h-8 w-px bg-border" />
                         <Badge className="bg-emerald-500 h-5 px-2 text-[9px] font-bold uppercase">TRUE</Badge>
                         {renderPath(node.id, 'matchNextStepId', node.data.matchNextStepId)}
                     </div>
                     <div className="flex flex-col items-center min-w-[200px]">
-                        <div className="h-8 w-px bg-border" />
                         <Badge className="bg-rose-500 h-5 px-2 text-[9px] font-bold uppercase">FALSE</Badge>
                         {renderPath(node.id, 'fallbackNextStepId', node.data.fallbackNextStepId)}
                     </div>
@@ -302,13 +308,11 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
             {node.type === 'ai_step' && (
                 <>
                     <div className="flex flex-col items-center min-w-[200px]">
-                        <div className="h-8 w-px bg-border" />
                         <Badge className="bg-teal-500 h-5 px-2 text-[9px] font-bold uppercase">RESOLVED</Badge>
                         <div className="h-8 w-px bg-border" />
                         <p className="text-[10px] text-muted-foreground italic font-medium">Continues naturally</p>
                     </div>
                     <div className="flex flex-col items-center min-w-[200px]">
-                        <div className="h-8 w-px bg-border" />
                         <Badge className="bg-orange-500 h-5 px-2 text-[9px] font-bold uppercase">UNRESOLVED</Badge>
                         {renderPath(node.id, 'fallbackNextStepId', node.data.fallbackNextStepId)}
                     </div>
@@ -420,6 +424,12 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
           </Tabs>
 
           <div className="flex items-center gap-2">
+            <div className="flex items-center border rounded-md mr-4 bg-muted/30">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.max(0.25, zoom - 0.1))}><ZoomOut className="h-4 w-4" /></Button>
+                <div className="px-2 text-[10px] font-bold w-12 text-center">{Math.round(zoom * 100)}%</div>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.min(2, zoom + 0.1))}><ZoomIn className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 border-l" onClick={() => setZoom(1)}><Maximize className="h-4 w-4" /></Button>
+            </div>
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button onClick={handleSave}>Save Changes</Button>
           </div>
@@ -430,231 +440,225 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
             <>
               {/* Canvas Area */}
               <div className="flex-1 bg-muted/20 overflow-auto p-12 relative flex flex-col items-center">
-                {/* Main Tree */}
-                <div className="inline-block">
+                <div 
+                    className="inline-block transition-transform duration-200 ease-out origin-top"
+                    style={{ transform: `scale(${zoom})` }}
+                >
                     {startNode && renderNode(startNode.id)}
-                </div>
 
-                {/* Detached Nodes */}
-                {detachedNodes.length > 0 && (
-                    <div className="mt-32 w-full max-w-4xl opacity-60 hover:opacity-100 transition-opacity">
-                        <Separator className="mb-8" />
-                        <div className="flex items-center gap-2 mb-4 text-muted-foreground">
-                            <Unlink className="h-4 w-4" />
-                            <h4 className="text-xs font-bold uppercase tracking-widest">Unconnected Nodes</h4>
+                    {/* Detached Nodes */}
+                    {detachedNodes.length > 0 && (
+                        <div className="mt-32 w-full max-w-4xl opacity-60 hover:opacity-100 transition-opacity">
+                            <Separator className="mb-8" />
+                            <div className="flex items-center gap-2 mb-4 text-muted-foreground">
+                                <Unlink className="h-4 w-4" />
+                                <h4 className="text-xs font-bold uppercase tracking-widest">Unconnected Nodes</h4>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                {detachedNodes.map(node => (
+                                    <Card 
+                                        key={node.id} 
+                                        className={cn("p-4 cursor-pointer border-2 hover:border-primary/50", selectedNodeId === node.id && "border-primary")}
+                                        onClick={() => setSelectedNodeId(node.id)}
+                                    >
+                                        <div className="flex justify-between items-center mb-2">
+                                            <Badge variant="outline" className="text-[10px]">{node.type}</Badge>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteNode(node.id)}><Trash2 className="h-3 w-3" /></Button>
+                                        </div>
+                                        <p className="text-xs truncate text-muted-foreground">{node.data.text || node.data.prompt || '(Empty)'}</p>
+                                    </Card>
+                                ))}
+                            </div>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                            {detachedNodes.map(node => (
-                                <Card 
-                                    key={node.id} 
-                                    className={cn("p-4 cursor-pointer border-2 hover:border-primary/50", selectedNodeId === node.id && "border-primary")}
-                                    onClick={() => setSelectedNodeId(node.id)}
-                                >
-                                    <div className="flex justify-between items-center mb-2">
-                                        <Badge variant="outline" className="text-[10px]">{node.type}</Badge>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteNode(node.id)}><Trash2 className="h-3 w-3" /></Button>
-                                    </div>
-                                    <p className="text-xs truncate text-muted-foreground">{node.data.text || node.data.prompt || '(Empty)'}</p>
-                                </Card>
-                            ))}
-                        </div>
-                    </div>
-                )}
+                    )}
+                </div>
               </div>
 
-              {/* Properties Panel */}
-              <aside className="w-[400px] border-l bg-card flex flex-col shrink-0">
-                <div className="p-4 border-b flex items-center justify-between bg-muted/30">
-                    <h3 className="font-bold flex items-center gap-2">
-                        <Settings2 className="h-4 w-4" />
-                        Step Configuration
-                    </h3>
-                    {selectedNodeId && (
+              {/* Properties Panel (Contextual) */}
+              {selectedNodeId && (
+                <aside className="w-[400px] border-l bg-card flex flex-col shrink-0 animate-in slide-in-from-right duration-200">
+                    <div className="p-4 border-b flex items-center justify-between bg-muted/30">
+                        <h3 className="font-bold flex items-center gap-2 text-sm">
+                            <Settings2 className="h-4 w-4" />
+                            Step Configuration
+                        </h3>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedNodeId(null)}>
                             <X className="h-4 w-4" />
                         </Button>
-                    )}
-                </div>
-                
-                <ScrollArea className="flex-1">
-                    {nodes.find(n => n.id === selectedNodeId) ? (() => {
-                        const selectedNode = nodes.find(n => n.id === selectedNodeId)!;
-                        return (
-                        <div className="p-6 space-y-8 pb-32">
-                            <div className="space-y-3">
-                                <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Behavior</Label>
-                                <div className="p-4 rounded-xl border-2 bg-background shadow-sm space-y-1">
-                                    <span className="font-bold text-sm capitalize">{selectedNode.type.replace('_', ' ')}</span>
-                                    <p className="text-[10px] text-muted-foreground">{NODE_TYPES.find(t => t.type === selectedNode.type)?.description}</p>
-                                </div>
-                            </div>
-
-                            <Separator />
-
-                            {selectedNode.type === 'message' && (
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label>Bot Message</Label>
-                                        <Textarea 
-                                            value={selectedNode.data.text || ''} 
-                                            onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                                            placeholder="What should the bot say?"
-                                            rows={6}
-                                            className="resize-none"
-                                        />
+                    </div>
+                    
+                    <ScrollArea className="flex-1">
+                        {nodes.find(n => n.id === selectedNodeId) ? (() => {
+                            const selectedNode = nodes.find(n => n.id === selectedNodeId)!;
+                            return (
+                            <div className="p-6 space-y-8 pb-32">
+                                <div className="space-y-3">
+                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Behavior</Label>
+                                    <div className="p-4 rounded-xl border-2 bg-background shadow-sm space-y-1">
+                                        <span className="font-bold text-sm capitalize">{selectedNode.type.replace('_', ' ')}</span>
+                                        <p className="text-[10px] text-muted-foreground">{NODE_TYPES.find(t => t.type === selectedNode.type)?.description}</p>
                                     </div>
                                 </div>
-                            )}
 
-                            {selectedNode.type === 'intent_router' && (
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <Label>Classification Prompt</Label>
-                                        <Input 
-                                            value={selectedNode.data.text || ''} 
-                                            onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                                            placeholder="e.g. How can we help today?"
-                                        />
-                                    </div>
+                                <Separator />
+
+                                {selectedNode.type === 'message' && (
                                     <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <Label>Intent Categories</Label>
-                                            <Button variant="outline" size="sm" onClick={() => {
-                                                const newIntents = [...(selectedNode.data.intents || []), { id: `intent_${Date.now()}`, label: 'New Intent' }];
-                                                updateNodeData(selectedNode.id, { intents: newIntents });
-                                            }}>Add Intent</Button>
+                                        <div className="space-y-2">
+                                            <Label>Bot Message</Label>
+                                            <Textarea 
+                                                value={selectedNode.data.text || ''} 
+                                                onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
+                                                placeholder="What should the bot say?"
+                                                rows={6}
+                                                className="resize-none"
+                                            />
                                         </div>
-                                        {selectedNode.data.intents?.map((intent, iIndex) => (
-                                            <div key={intent.id} className="flex items-center gap-2 p-2 border rounded-lg bg-background">
-                                                <Input 
-                                                    value={intent.label} 
-                                                    onChange={(e) => {
-                                                        const newIntents = [...(selectedNode.data.intents || [])];
-                                                        newIntents[iIndex].label = e.target.value;
-                                                        updateNodeData(selectedNode.id, { intents: newIntents });
-                                                    }}
-                                                    placeholder="Category Name"
-                                                    className="h-8 text-xs border-none focus-visible:ring-0"
-                                                />
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => {
-                                                    updateNodeData(selectedNode.id, { intents: selectedNode.data.intents?.filter(i => i.id !== intent.id) });
-                                                }}>
-                                                    <Trash2 className="h-3 w-3" />
-                                                </Button>
-                                            </div>
-                                        ))}
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {selectedNode.type === 'quick_reply' && (
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <Label>Question Text</Label>
-                                        <Input 
-                                            value={selectedNode.data.text || ''} 
-                                            onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                                            placeholder="Ask something..."
-                                        />
+                                {selectedNode.type === 'intent_router' && (
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label>Classification Prompt</Label>
+                                            <Input 
+                                                value={selectedNode.data.text || ''} 
+                                                onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
+                                                placeholder="e.g. How can we help today?"
+                                            />
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <Label>Intent Categories</Label>
+                                                <Button variant="outline" size="sm" onClick={() => {
+                                                    const newIntents = [...(selectedNode.data.intents || []), { id: `intent_${Date.now()}`, label: 'New Intent' }];
+                                                    updateNodeData(selectedNode.id, { intents: newIntents });
+                                                }}>Add Intent</Button>
+                                            </div>
+                                            {selectedNode.data.intents?.map((intent, iIndex) => (
+                                                <div key={intent.id} className="flex items-center gap-2 p-2 border rounded-lg bg-background">
+                                                    <Input 
+                                                        value={intent.label} 
+                                                        onChange={(e) => {
+                                                            const newIntents = [...(selectedNode.data.intents || [])];
+                                                            newIntents[iIndex].label = e.target.value;
+                                                            updateNodeData(selectedNode.id, { intents: newIntents });
+                                                        }}
+                                                        placeholder="Category Name"
+                                                        className="h-8 text-xs border-none focus-visible:ring-0"
+                                                    />
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => {
+                                                        updateNodeData(selectedNode.id, { intents: selectedNode.data.intents?.filter(i => i.id !== intent.id) });
+                                                    }}>
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
+                                )}
+
+                                {selectedNode.type === 'quick_reply' && (
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label>Question Text</Label>
+                                            <Input 
+                                                value={selectedNode.data.text || ''} 
+                                                onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
+                                                placeholder="Ask something..."
+                                            />
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <Label>Buttons</Label>
+                                                <Button variant="outline" size="sm" onClick={() => {
+                                                    const newButtons = [...(selectedNode.data.buttons || []), { id: `btn_${Date.now()}`, label: 'New Button' }];
+                                                    updateNodeData(selectedNode.id, { buttons: newButtons });
+                                                }}>Add Button</Button>
+                                            </div>
+                                            {selectedNode.data.buttons?.map((btn, bIndex) => (
+                                                <div key={btn.id} className="flex items-center gap-2 p-2 border rounded-lg bg-background">
+                                                    <Input 
+                                                        value={btn.label} 
+                                                        onChange={(e) => {
+                                                            const newButtons = [...(selectedNode.data.buttons || [])];
+                                                            newButtons[bIndex].label = e.target.value;
+                                                            updateNodeData(selectedNode.id, { buttons: newButtons });
+                                                        }}
+                                                        placeholder="Button Label"
+                                                        className="h-8 text-xs border-none focus-visible:ring-0"
+                                                    />
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => {
+                                                        updateNodeData(selectedNode.id, { buttons: selectedNode.data.buttons?.filter(b => b.id !== btn.id) });
+                                                    }}>
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedNode.type === 'condition' && (
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label>Check for property:</Label>
+                                            <Select 
+                                                value={selectedNode.data.conditionField} 
+                                                onValueChange={(val) => updateNodeData(selectedNode.id, { conditionField: val })}
+                                            >
+                                                <SelectTrigger><SelectValue placeholder="Select data point" /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="email">Email exists</SelectItem>
+                                                    <SelectItem value="name">Name exists</SelectItem>
+                                                    <SelectItem value="identified">Visitor is identified</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedNode.type === 'capture_input' && (
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label>Bot Prompt</Label>
+                                            <Input 
+                                                value={selectedNode.data.prompt || ''} 
+                                                onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
+                                                placeholder="e.g. What is your email address?"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Save value as variable:</Label>
+                                            <Input 
+                                                value={selectedNode.data.variableName || ''} 
+                                                onChange={(e) => updateNodeData(selectedNode.id, { variableName: e.target.value })}
+                                                placeholder="e.g. user_email"
+                                                className="font-mono text-xs"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedNode.type === 'handoff' && (
                                     <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <Label>Buttons</Label>
-                                            <Button variant="outline" size="sm" onClick={() => {
-                                                const newButtons = [...(selectedNode.data.buttons || []), { id: `btn_${Date.now()}`, label: 'New Button' }];
-                                                updateNodeData(selectedNode.id, { buttons: newButtons });
-                                            }}>Add Button</Button>
+                                        <div className="space-y-2">
+                                            <Label>Transfer Message</Label>
+                                            <Textarea 
+                                                value={selectedNode.data.text || ''} 
+                                                onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
+                                                placeholder="e.g. Transferring you to our support team..."
+                                                rows={4}
+                                            />
                                         </div>
-                                        {selectedNode.data.buttons?.map((btn, bIndex) => (
-                                            <div key={btn.id} className="flex items-center gap-2 p-2 border rounded-lg bg-background">
-                                                <Input 
-                                                    value={btn.label} 
-                                                    onChange={(e) => {
-                                                        const newButtons = [...(selectedNode.data.buttons || [])];
-                                                        newButtons[bIndex].label = e.target.value;
-                                                        updateNodeData(selectedNode.id, { buttons: newButtons });
-                                                    }}
-                                                    placeholder="Button Label"
-                                                    className="h-8 text-xs border-none focus-visible:ring-0"
-                                                />
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => {
-                                                    updateNodeData(selectedNode.id, { buttons: selectedNode.data.buttons?.filter(b => b.id !== btn.id) });
-                                                }}>
-                                                    <Trash2 className="h-3 w-3" />
-                                                </Button>
-                                            </div>
-                                        ))}
                                     </div>
-                                </div>
-                            )}
-
-                            {selectedNode.type === 'condition' && (
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <Label>Check for property:</Label>
-                                        <Select 
-                                            value={selectedNode.data.conditionField} 
-                                            onValueChange={(val) => updateNodeData(selectedNode.id, { conditionField: val })}
-                                        >
-                                            <SelectTrigger><SelectValue placeholder="Select data point" /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="email">Email exists</SelectItem>
-                                                <SelectItem value="name">Name exists</SelectItem>
-                                                <SelectItem value="identified">Visitor is identified</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                            )}
-
-                            {selectedNode.type === 'capture_input' && (
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <Label>Bot Prompt</Label>
-                                        <Input 
-                                            value={selectedNode.data.prompt || ''} 
-                                            onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
-                                            placeholder="e.g. What is your email address?"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Save value as variable:</Label>
-                                        <Input 
-                                            value={selectedNode.data.variableName || ''} 
-                                            onChange={(e) => updateNodeData(selectedNode.id, { variableName: e.target.value })}
-                                            placeholder="e.g. user_email"
-                                            className="font-mono text-xs"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            {selectedNode.type === 'handoff' && (
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label>Transfer Message</Label>
-                                        <Textarea 
-                                            value={selectedNode.data.text || ''} 
-                                            onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                                            placeholder="e.g. Transferring you to our support team..."
-                                            rows={4}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        );
-                    })() : (
-                        <div className="flex flex-col items-center justify-center h-full p-12 text-center text-muted-foreground bg-muted/10">
-                            <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-6 border-2 border-dashed border-muted-foreground/20">
-                                <Plus className="h-8 w-8 opacity-20" />
+                                )}
                             </div>
-                            <h4 className="font-bold text-foreground mb-2">No Step Selected</h4>
-                            <p className="text-sm">Click a step on the map to configure its behavior.</p>
-                        </div>
-                    )}
-                </ScrollArea>
-              </aside>
+                            );
+                        })() : null}
+                    </ScrollArea>
+                </aside>
+              )}
             </>
           ) : (
             <PreviewArea nodes={nodes} allUsers={allUsers} />
@@ -739,8 +743,6 @@ function PreviewArea({ nodes, allUsers }: { nodes: AutomationNode[], allUsers: U
             if (btn?.nextStepId) {
                 handleStep(btn.nextStepId);
             } else if (currentNode.type === 'intent_router') {
-                // If it's a router and user typed free text, we simulate classification
-                // In reality, this would call the AI
                 const fallback = currentNode.data.fallbackNextStepId || currentNode.nextStepId;
                 if (fallback) handleStep(fallback);
             }
