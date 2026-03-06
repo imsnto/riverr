@@ -32,7 +32,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -139,12 +139,9 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
         <div className="flex-1 flex overflow-hidden">
           {/* Canvas */}
           <div className="flex-1 bg-muted/20 overflow-y-auto p-12">
-            <div className="max-w-md mx-auto space-y-8 relative">
-                {/* Visual Connector Line */}
-                <div className="absolute left-1/2 top-4 bottom-4 w-0.5 bg-border -translate-x-1/2" />
-
+            <div className="max-w-md mx-auto relative flex flex-col items-center">
                 {nodes.map((node, index) => (
-                    <div key={node.id} className="relative z-10 flex flex-col items-center">
+                    <div key={node.id} className="w-full relative z-10 flex flex-col items-center">
                         <Card 
                             className={cn(
                                 "w-full border-2 transition-all cursor-pointer hover:shadow-lg",
@@ -196,17 +193,15 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                             )}
                         </Card>
                         
-                        {/* Add Step Button Between Nodes */}
-                        {index < nodes.length - 1 && (
-                            <div className="h-8 w-px bg-border my-2" />
-                        )}
+                        {/* Connector line after every node pointing downwards */}
+                        <div className="h-8 w-0.5 bg-border" />
                     </div>
                 ))}
 
-                <div className="flex flex-col items-center pt-4">
+                <div className="flex flex-col items-center">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button className="rounded-full h-12 px-6 shadow-xl">
+                            <Button className="rounded-full h-12 px-6 shadow-xl relative z-10">
                                 <Plus className="h-5 w-5 mr-2" /> Add Next Step
                             </Button>
                         </DropdownMenuTrigger>
