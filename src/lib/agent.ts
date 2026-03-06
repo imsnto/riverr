@@ -57,7 +57,7 @@ export type Conversation = ImportedConversation & {
     attemptCount?: number;
     intentHistory?: string[];
     activePlaybook?: ActivePlaybookInfo;
-    currentFlowStepId?: string; // New: Tracks position in structured flow
+    currentFlowStepId?: string; // Tracks position in structured flow
     [key: string]: any;
   };
 };
@@ -158,7 +158,7 @@ export async function handleIncomingMessage(args: {
 
   // ---- 2. AUTOMATION CHECK: KEYWORD TRIGGER ----
   if (bot.handoffKeywords?.length && containsAny(text, bot.handoffKeywords)) {
-      await offerHuman(adapters, conversation, botName, "User requested agent via keyword.");
+      await escalateNow(adapters, conversation, "User requested agent via keyword.");
       return;
   }
 
@@ -177,7 +177,7 @@ export async function handleIncomingMessage(args: {
   // ---- 5. HUMAN ESCALATION FALLBACK ----
   const attemptCount = (conversation.meta?.attemptCount ?? 0) + 1;
   if (attemptCount >= 2) {
-      await offerHuman(adapters, conversation, botName, "AI unable to resolve request");
+      await escalateNow(adapters, conversation, "Automated limits reached.");
   } else {
       await adapters.updateConversation({
           conversationId: conversation.id,
@@ -214,15 +214,19 @@ async function executeFlow(args: {
   } else {
     // We are responding to an active interactive node
     const currentNode = nodes.find(n => n.id === currentStepId);
+    
     if (currentNode?.type === 'quick_reply') {
       const selectedButtonId = message.meta?.buttonId;
       const button = currentNode.data.buttons?.find(b => b.id === selectedButtonId);
       if (button?.nextStepId) {
         currentStepId = button.nextStepId;
       } else {
-        // Fallback or specific phrase match
-        currentStepId = currentNode.nextStepId;
+        // Fallback for "Free Text" input on a quick reply step
+        currentStepId = currentNode.data.defaultNextStepId || currentNode.nextStepId;
       }
+    } else if (currentNode?.type === 'capture_input') {
+      // Input was captured (handled by client or action), now move forward
+      currentStepId = currentNode.nextStepId;
     } else {
       // Default: move to next step
       currentStepId = currentNode?.nextStepId;
@@ -264,28 +268,36 @@ async function executeFlow(args: {
       return; // Stop and wait for click
     }
 
-    if (node.type === 'ai_step') {
-      await executeAiPhase(args);
-      return; // AI phase handles its own next steps or terminal state
-    }
-
-    if (node.type === 'handoff') {
-      await adapters.updateConversation({
-        conversationId: conversation.id,
-        hubId: conversation.hubId,
-        patch: { status: 'waiting_human', lastResponderType: 'system' }
-      });
-      await adapters.escalateToHuman({
-        conversationId: conversation.id,
-        hubId: conversation.hubId,
-        reason: "Escalated by flow step.",
-      });
+    if (node.type === 'capture_input') {
       await adapters.persistAssistantMessage({
         conversationId: conversation.id,
         hubId: conversation.hubId,
-        text: node.data.text || `A support ticket has been created. Our team will respond shortly.`,
+        text: node.data.prompt || "Please enter information:",
         responderType: 'automation',
       });
+      return; // Stop and wait for input
+    }
+
+    if (node.type === 'condition') {
+      // Evaluation logic: checking if variable exists
+      const field = node.data.conditionField;
+      const val = (conversation as any)[field!] || (conversation.visitorName && field === 'name') || (conversation.visitorEmail && field === 'email');
+      
+      currentStepId = val ? node.data.matchNextStepId : node.data.fallbackNextStepId;
+      continue;
+    }
+
+    if (node.type === 'ai_step') {
+      const resolved = await executeAiPhase(args);
+      if (!resolved && node.data.fallbackNextStepId) {
+        currentStepId = node.data.fallbackNextStepId;
+        continue;
+      }
+      return; 
+    }
+
+    if (node.type === 'handoff') {
+      await escalateNow(adapters, conversation, "Escalated by flow step.", node.data.text);
       return;
     }
 
@@ -307,7 +319,7 @@ async function executeAiPhase(args: {
   conversation: Conversation;
   message: IncomingMessage;
   adapters: AgentAdapters;
-}) {
+}): Promise<boolean> {
   const { bot, adapters, conversation, message } = args;
   const text = message.text || "";
   const botName = bot.name || "Support";
@@ -335,7 +347,8 @@ async function executeAiPhase(args: {
           responderType: 'ai',
           meta: { intent: intent.intentKey, from: 'SupportIntentNode' },
       });
-      return;
+      await adapters.updateConversation({ conversationId: conversation.id, hubId: conversation.hubId, patch: { aiResolved: true } });
+      return true;
   }
 
   // B. Help Center Search
@@ -370,11 +383,11 @@ async function executeAiPhase(args: {
           sources: best.map(c => ({ articleId: c.articleId, title: c.title, url: c.url, score: c.score })),
           meta: { topScore },
       });
-      return;
+      await adapters.updateConversation({ conversationId: conversation.id, hubId: conversation.hubId, patch: { aiResolved: true } });
+      return true;
   }
 
-  // If AI fails, offer human
-  await offerHuman(adapters, conversation, botName, "AI unable to resolve request");
+  return false;
 }
 
 // -------------------------
@@ -391,23 +404,27 @@ function extractSteps(chunks: HelpChunk[]) {
   return lines.map(l => l.trim()).filter(l => /^\d+\.|^step\s+/i.test(l)).slice(0, 6);
 }
 
-async function offerHuman(adapters: AgentAdapters, conversation: Conversation, botName: string, reason: string) {
-  if (conversation.handoff?.status === "declined") return;
-
+async function escalateNow(adapters: AgentAdapters, conversation: Conversation, reason: string, customMessage?: string) {
   await adapters.updateConversation({
     conversationId: conversation.id,
     hubId: conversation.hubId,
     patch: {
       status: 'waiting_human',
-      handoff: { status: "offered", reason, offeredAt: new Date().toISOString() },
+      lastResponderType: 'system',
+      handoff: { status: "completed", reason, offeredAt: new Date().toISOString() },
     },
+  });
+
+  await adapters.escalateToHuman({
+    conversationId: conversation.id,
+    hubId: conversation.hubId,
+    reason,
   });
 
   await adapters.persistAssistantMessage({
     conversationId: conversation.id,
     hubId: conversation.hubId,
-    text: `I’m sorry I couldn’t be more helpful. Would you like to talk to a member of the **${botName}** team?`,
+    text: customMessage || `Connecting you to a member of our team... they will reply here shortly.`,
     responderType: 'automation',
-    meta: { handoff: "offered" },
   });
 }

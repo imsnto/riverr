@@ -447,6 +447,7 @@ export interface AutomationNode {
   data: {
     text?: string;
     buttons?: { id: string; label: string; nextStepId?: string }[];
+    defaultNextStepId?: string; // For "free text" or fallback
     variableName?: string;
     prompt?: string;
     conditionField?: string;
