@@ -79,6 +79,8 @@ import {
 } from '@/components/ui/command';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Switch } from '../ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; color: string; description: string; category: 'conversation' | 'ai' | 'logic' | 'human' }> = {
   start: { label: 'Start', icon: PlayCircle, color: 'bg-emerald-500', description: 'Triggered when a new chat begins.', category: 'conversation' },
@@ -900,7 +902,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
                         </div>
                     )}
 
-                    <Separator />
+                    <Separator className="my-6" />
                     
                     <div className="space-y-4">
                         <Label className="text-xs font-bold uppercase text-destructive">Advanced Actions</Label>
