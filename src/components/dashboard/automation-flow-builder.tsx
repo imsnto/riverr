@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
@@ -66,10 +67,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
+import { Separator } from '../ui/separator';
 
 const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; color: string; description: string }> = {
   start: { label: 'Conversation Start', icon: PlayCircle, color: 'bg-emerald-500', description: 'Triggered when a new chat begins.' },
@@ -90,9 +91,26 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
 
   return (
     <Card className={cn(
-      "w-64 border-2 shadow-sm relative transition-all",
+      "w-64 border-2 shadow-sm relative transition-all group",
       selected ? "border-primary ring-4 ring-primary/10 scale-[1.02] shadow-xl z-50" : "border-border"
     )}>
+      {/* Quick Delete Button */}
+      {type !== 'start' && (
+        <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity z-50">
+          <Button
+            variant="destructive"
+            size="icon"
+            className="h-6 w-6 rounded-full shadow-lg"
+            onClick={(e) => {
+              e.stopPropagation();
+              data.onDelete?.(id);
+            }}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+
       <div className="p-3">
         <div className="flex items-center gap-3 mb-2">
           <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-inner", meta.color)}>
@@ -123,22 +141,22 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
             {type === 'condition' ? (
               <>
                 <div className="relative pointer-events-auto">
-                  <Badge className="bg-emerald-500 hover:bg-emerald-500 text-[9px] h-5 px-2">TRUE</Badge>
+                  <Badge className="bg-emerald-500 hover:bg-emerald-500 text-[9px] h-5 px-2 uppercase font-black">True</Badge>
                   <Handle type="source" position={Position.Bottom} id="true" className="w-2 h-2 opacity-0" />
                 </div>
                 <div className="relative pointer-events-auto">
-                  <Badge className="bg-rose-500 hover:bg-rose-500 text-[9px] h-5 px-2">FALSE</Badge>
+                  <Badge className="bg-rose-500 hover:bg-rose-500 text-[9px] h-5 px-2 uppercase font-black">False</Badge>
                   <Handle type="source" position={Position.Bottom} id="false" className="w-2 h-2 opacity-0" />
                 </div>
               </>
             ) : type === 'ai_step' ? (
               <>
                 <div className="relative pointer-events-auto">
-                  <Badge className="bg-emerald-500 hover:bg-emerald-500 text-[9px] h-5 px-2">RESOLVED</Badge>
+                  <Badge className="bg-emerald-500 hover:bg-emerald-500 text-[9px] h-5 px-2 uppercase font-black">Resolved</Badge>
                   <Handle type="source" position={Position.Bottom} id="resolved" className="w-2 h-2 opacity-0" />
                 </div>
                 <div className="relative pointer-events-auto">
-                  <Badge className="bg-orange-500 hover:bg-orange-500 text-[9px] h-5 px-2">UNRESOLVED</Badge>
+                  <Badge className="bg-orange-500 hover:bg-orange-500 text-[9px] h-5 px-2 uppercase font-black">Unresolved</Badge>
                   <Handle type="source" position={Position.Bottom} id="unresolved" className="w-2 h-2 opacity-0" />
                 </div>
               </>
@@ -191,7 +209,22 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
   const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'builder' | 'preview'>('builder');
-  const { fitView } = useReactFlow();
+  const { fitView, screenToFlowPosition } = useReactFlow();
+
+  const deleteNode = useCallback((id: string) => {
+    if (id === 'start') return;
+    setNodes((nds) => nds.filter((n) => n.id !== id));
+    setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
+    setSelectedNodeId((prev) => prev === id ? null : prev);
+  }, [setNodes, setEdges]);
+
+  // Inject onDelete into node data
+  const nodesWithDelete = useMemo(() => 
+    nodes.map(n => ({
+      ...n,
+      data: { ...n.data, onDelete: deleteNode }
+    })), [nodes, deleteNode]
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -237,18 +270,24 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
       
       setTimeout(() => fitView({ padding: 0.15, duration: 400 }), 100);
     }
-  }, [isOpen, fitView, initialFlow]);
+  }, [isOpen, fitView, initialFlow, setNodes, setEdges]);
 
   const onConnect = useCallback((params: Connection) => {
     setEdges((eds) => addEdge({ ...params, type: 'smoothstep', animated: true }, eds));
   }, [setEdges]);
 
   const handleAddNode = (type: AutomationNodeType) => {
+    // Place new node in the center of the current view
+    const center = screenToFlowPosition({
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+    });
+
     const id = `node_${Date.now()}`;
     const newNode = {
       id,
       type,
-      position: { x: 100, y: 100 }, 
+      position: center, 
       data: type === 'message' ? { text: 'New Message' } :
             type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email' } :
             type === 'intent_router' ? { text: 'How can we help?', intents: [{ id: 'i1', label: 'Option 1' }] } :
@@ -262,13 +301,6 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
 
   const updateNodeData = (id: string, newData: any) => {
     setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...newData } } : n)));
-  };
-
-  const deleteNode = (id: string) => {
-    if (id === 'start') return;
-    setNodes((nds) => nds.filter((n) => n.id !== id));
-    setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
-    if (selectedNodeId === id) setSelectedNodeId(null);
   };
 
   const handleSave = () => {
@@ -318,7 +350,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
             <>
               <div className="flex-1 bg-[#090909] bg-[radial-gradient(#1a1a1a_1px,transparent_1px)] [background-size:24px_24px] relative">
                 <ReactFlow
-                  nodes={nodes}
+                  nodes={nodesWithDelete}
                   edges={edges}
                   onNodesChange={onNodesChange}
                   onEdgesChange={onEdgesChange}
