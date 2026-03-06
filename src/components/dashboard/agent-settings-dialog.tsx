@@ -22,8 +22,9 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Bot as BotData, User, HelpCenter, ChatMessage, AutomationFlow } from '@/lib/data';
+import { Bot as BotData, User, HelpCenter, ChatMessage } from '@/lib/data';
 import { 
   Bot as BotIcon, 
   X, 
@@ -64,6 +65,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import AutomationFlowBuilder from './automation-flow-builder';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
+  DropdownMenuSubContent,
+} from '@/components/ui/dropdown-menu';
 
 function ShieldAlertIcon(props: any) {
   return (
