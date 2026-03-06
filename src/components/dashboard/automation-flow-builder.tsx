@@ -70,12 +70,12 @@ interface AutomationFlowBuilderProps {
 const NODE_TYPES: { type: AutomationNodeType; label: string; icon: any; description: string; color: string }[] = [
   { type: 'message', label: 'Send Message', icon: MessageSquare, description: 'Send a static message to the visitor.', color: 'border-blue-500 bg-blue-500/5' },
   { type: 'quick_reply', label: 'Quick Replies', icon: MousePointerClick, description: 'Offer buttons for the visitor to click.', color: 'border-purple-500 bg-purple-500/5' },
-  { type: 'intent_router', label: 'Intent Router', icon: Navigation, description: 'Classify user request and route to specific path.', color: 'border-indigo-600 bg-indigo-600/5' },
+  { type: 'intent_router', label: 'Intent Router', icon: Navigation, description: 'AI classifies user request and routes to specific path.', color: 'border-indigo-600 bg-indigo-600/5' },
   { type: 'capture_input', label: 'Capture Input', icon: Database, description: 'Ask a question and save the response.', color: 'border-teal-500 bg-teal-500/5' },
   { type: 'ai_step', label: 'AI Response', icon: Bot, description: 'Attempt to resolve using AI and knowledge base.', color: 'border-violet-500 bg-violet-500/5' },
-  { type: 'condition', label: 'Condition', icon: Split, description: 'Branch based on user data or input.', color: 'border-indigo-500 bg-indigo-500/5' },
+  { type: 'condition', label: 'Condition', icon: Split, description: 'Branch based on user data or input.', color: 'border-slate-500 bg-slate-500/5' },
   { type: 'handoff', label: 'Human Handoff', icon: UserCheck, description: 'Escalate to a human support agent.', color: 'border-orange-500 bg-orange-500/5' },
-  { type: 'end', label: 'End Conversation', icon: CircleStop, description: 'Mark the conversation as resolved.', color: 'border-gray-500 bg-gray-500/5' },
+  { type: 'end', label: 'End Flow', icon: CircleStop, description: 'Resolve the case or wait for reply.', color: 'border-gray-500 bg-gray-500/5' },
 ];
 
 export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: initialFlow, onSave, allUsers = [] }: AutomationFlowBuilderProps) {
@@ -101,7 +101,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
       data: type === 'quick_reply' ? { text: 'How can I help?', buttons: [{ id: `btn_${Date.now()}`, label: 'Option 1' }] } : 
             type === 'message' ? { text: 'New message' } :
             type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email' } : 
-            type === 'intent_router' ? { text: 'What are you looking for?', intents: [{ id: `intent_${Date.now()}`, label: 'Order Help' }] } :
+            type === 'intent_router' ? { text: 'How can we help today?', intents: [{ id: `intent_${Date.now()}`, label: 'Support Request' }] } :
             type === 'condition' ? { conditionField: 'email', conditionValue: '', matchNextStepId: '', fallbackNextStepId: '' } : {},
     };
     
@@ -209,7 +209,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                                 </p>
                                                 {hasDeadEnd && (
                                                     <Badge variant="destructive" className="h-4 px-1 text-[8px] animate-pulse">
-                                                        <AlertCircle className="h-2 w-2 mr-1" /> Path Missing
+                                                        <AlertCircle className="h-2 w-2 mr-1" /> No next step connected
                                                     </Badge>
                                                 )}
                                             </div>
@@ -225,10 +225,10 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                                  node.type === 'end' ? 'Resolve Case' : 'New Step'}
                                             </h4>
                                             
-                                            {node.type === 'ai_step' && (
-                                                <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1 italic">
-                                                    AI automatically clarifies if details are missing.
-                                                </p>
+                                            {node.type === 'capture_input' && node.data.variableName && (
+                                                <Badge variant="outline" className="mt-1 h-4 text-[9px] font-mono py-0 text-teal-600 bg-teal-50 border-teal-200">
+                                                    SAVE AS: {node.data.variableName}
+                                                </Badge>
                                             )}
                                         </div>
                                         {node.id !== 'start' && (
@@ -320,7 +320,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                                     <CheckCircle2 className="h-3 w-3" />
                                                     <span>Answered / Resolved</span>
                                                 </div>
-                                                <span className="opacity-60">Wait for visitor</span>
+                                                <span className="opacity-60">Continues Conversation</span>
                                             </div>
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-1.5 text-rose-500 font-bold text-[10px] uppercase tracking-tighter">
@@ -434,8 +434,17 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
 
                             {selectedNode.type === 'intent_router' && (
                                 <div className="space-y-6">
+                                    <div className="bg-indigo-500/10 p-4 rounded-xl border-2 border-indigo-500/20 mb-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Bot className="h-4 w-4 text-indigo-600" />
+                                            <p className="text-xs font-bold text-indigo-900">AI Driven Classification</p>
+                                        </div>
+                                        <p className="text-[10px] leading-relaxed text-indigo-800/70">
+                                            The system uses AI to understand visitor goals. You define the categories (intents), and the system handles synonyms and variations automatically.
+                                        </p>
+                                    </div>
                                     <div className="space-y-2">
-                                        <Label>Message / Question</Label>
+                                        <Label>Initial Question</Label>
                                         <Input 
                                             value={selectedNode.data.text || ''} 
                                             onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
@@ -443,7 +452,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                         />
                                     </div>
                                     <div className="space-y-4">
-                                        <Label>Defined Intents</Label>
+                                        <Label>Intent Categories</Label>
                                         {selectedNode.data.intents?.map((intent, iIndex) => (
                                             <div key={intent.id} className="space-y-3 p-4 border-2 rounded-xl bg-muted/20 relative group/intent-edit">
                                                 <div className="flex items-center gap-2">
@@ -454,7 +463,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                                             newIntents[iIndex].label = e.target.value;
                                                             updateNodeData(selectedNode.id, { intents: newIntents });
                                                         }}
-                                                        placeholder="Intent name (e.g. Pricing)"
+                                                        placeholder="e.g. Billing Support"
                                                         className="h-9 font-medium"
                                                     />
                                                     <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive opacity-0 group-hover/intent-edit:opacity-100 transition-opacity" onClick={() => {
@@ -464,17 +473,17 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                                     </Button>
                                                 </div>
                                                 <div className="space-y-1.5">
-                                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">Route to step:</Label>
+                                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">Route to Step:</Label>
                                                     <Select value={intent.nextStepId || 'none'} onValueChange={(val) => {
                                                         const newIntents = [...(selectedNode.data.intents || [])];
                                                         newIntents[iIndex].nextStepId = val === 'none' ? undefined : val;
                                                         updateNodeData(selectedNode.id, { intents: newIntents });
                                                     }}>
                                                         <SelectTrigger className="h-9 text-xs bg-background">
-                                                            <SelectValue placeholder="End path" />
+                                                            <SelectValue placeholder="No connection" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectItem value="none">End Flow</SelectItem>
+                                                            <SelectItem value="none">End Path</SelectItem>
                                                             {nodes.filter(n => n.id !== selectedNode.id).map(n => (
                                                                 <SelectItem key={n.id} value={n.id}>{getNodeTitle(n)}</SelectItem>
                                                             ))}
@@ -487,7 +496,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                             const newIntents = [...(selectedNode.data.intents || []), { id: `intent_${Date.now()}`, label: 'New Intent' }];
                                             updateNodeData(selectedNode.id, { intents: newIntents });
                                         }}>
-                                            <Plus className="h-4 w-4 mr-2" /> Add Intent Path
+                                            <Plus className="h-4 w-4 mr-2" /> Add Intent Route
                                         </Button>
                                     </div>
                                     
@@ -543,17 +552,17 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                                     </Button>
                                                 </div>
                                                 <div className="space-y-1.5">
-                                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">On click, continue to:</Label>
+                                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">Route to Step:</Label>
                                                     <Select value={btn.nextStepId || 'none'} onValueChange={(val) => {
                                                         const newButtons = [...(selectedNode.data.buttons || [])];
                                                         newButtons[bIndex].nextStepId = val === 'none' ? undefined : val;
                                                         updateNodeData(selectedNode.id, { buttons: newButtons });
                                                     }}>
                                                         <SelectTrigger className="h-9 text-xs bg-background">
-                                                            <SelectValue placeholder="End path" />
+                                                            <SelectValue placeholder="No connection" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectItem value="none">End / Wait for Reply</SelectItem>
+                                                            <SelectItem value="none">End Path</SelectItem>
                                                             {nodes.filter(n => n.id !== selectedNode.id).map(n => (
                                                                 <SelectItem key={n.id} value={n.id}>{getNodeTitle(n)}</SelectItem>
                                                             ))}
@@ -584,10 +593,10 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                         </div>
                                     </div>
                                     <div className="space-y-3">
-                                        <Label className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">If Unresolved, route to:</Label>
+                                        <Label className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">If Unresolved, Route to:</Label>
                                         <Select value={selectedNode.data.fallbackNextStepId || 'none'} onValueChange={(val) => updateNodeData(selectedNode.id, { fallbackNextStepId: val === 'none' ? undefined : val })}>
                                             <SelectTrigger className="bg-background h-10 ring-2 ring-rose-500/20">
-                                                <SelectValue placeholder="End conversation" />
+                                                <SelectValue placeholder="No connection" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="none">Wait for Visitor</SelectItem>
@@ -603,18 +612,19 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                             {/* Standard Step Transitions */}
                             {(['message', 'capture_input', 'start'].includes(selectedNode.type)) && (
                                 <div className="space-y-3 pt-4 border-t">
-                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Continue to next step:</Label>
+                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Connect to Next Step:</Label>
                                     <Select value={selectedNode.nextStepId || 'none'} onValueChange={(val) => updateNodeLink(selectedNode.id, val === 'none' ? undefined : val)}>
                                         <SelectTrigger className="h-10 bg-background">
-                                            <SelectValue placeholder="Wait for visitor response" />
+                                            <SelectValue placeholder="No connection" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="none">End / Wait for Visitor</SelectItem>
+                                            <SelectItem value="none">End Path</SelectItem>
                                             {nodes.filter(n => n.id !== selectedNode.id).map(n => (
                                                 <SelectItem key={n.id} value={n.id}>{getNodeTitle(n)}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
+                                    <p className="text-[10px] text-muted-foreground italic">Graph connections define flow execution.</p>
                                 </div>
                             )}
 
@@ -638,7 +648,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                 <Plus className="h-8 w-8 opacity-20" />
                             </div>
                             <h4 className="font-bold text-foreground mb-2">No Step Selected</h4>
-                            <p className="text-sm">Select a node on the canvas to configure its routing and behavior.</p>
+                            <p className="text-sm">Select a node on the canvas to configure its behavior.</p>
                         </div>
                     )}
                 </ScrollArea>
@@ -710,7 +720,7 @@ function PreviewArea({ nodes, allUsers }: { nodes: AutomationNode[], allUsers: U
             setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text || "Connecting you to an agent...", type: 'automation' }]);
             setMessages(prev => [...prev, { id: Date.now(), role: 'system', text: "Escalated to human" }]);
         } else if (node.type === 'end') {
-            setMessages(prev => [...prev, { id: Date.now(), role: 'system', text: "Conversation resolved" }]);
+            setMessages(prev => [...prev, { id: Date.now(), role: 'system', text: "Flow ended" }]);
         }
     };
 
