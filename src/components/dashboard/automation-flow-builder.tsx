@@ -280,61 +280,81 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                 
                 {/* Branches Container */}
                 <div className="relative flex justify-center w-full min-w-max px-12">
-                    {/* Horizontal Bridge Line */}
-                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-border mx-auto w-[calc(100%-240px)]" />
-                    
-                    <div className="flex gap-16">
-                        {isIntentRouter && (node.data.intents || []).map((intent, iIdx) => (
-                            <div key={intent.id} className="flex flex-col items-center">
-                                <div className="h-12 w-0.5 bg-border shrink-0" />
-                                <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 border-indigo-500/20 px-3 py-1 text-[10px] uppercase font-bold tracking-tight shrink-0 mb-4 shadow-sm">
-                                    {intent.label}
-                                </Badge>
-                                {renderPath(node.id, 'intents', intent.nextStepId, iIdx)}
-                            </div>
-                        ))}
-
-                        {isQuickReply && (node.data.buttons || []).map((btn, bIdx) => (
-                            <div key={btn.id} className="flex flex-col items-center">
-                                <div className="h-12 w-0.5 bg-border shrink-0" />
-                                <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500/20 px-3 py-1 text-[10px] uppercase font-bold tracking-tight shrink-0 mb-4 shadow-sm">
-                                    BTN: {btn.label}
-                                </Badge>
-                                {renderPath(node.id, 'buttons', btn.nextStepId, bIdx)}
-                            </div>
-                        ))}
-
-                        {isCondition && (
+                    {(() => {
+                        const branches = isIntentRouter ? (node.data.intents || []) :
+                                         isQuickReply ? (node.data.buttons || []) :
+                                         isCondition ? ['true', 'false'] :
+                                         isAIStep ? ['resolved', 'unresolved'] : [];
+                        const totalBranches = branches.length;
+                        
+                        return (
                             <>
-                                <div className="flex flex-col items-center">
-                                    <div className="h-12 w-0.5 bg-border shrink-0" />
-                                    <Badge className="bg-emerald-500 h-6 px-3 text-[10px] font-bold uppercase tracking-wider mb-4 shadow-sm">TRUE</Badge>
-                                    {renderPath(node.id, 'matchNextStepId', node.data.matchNextStepId)}
-                                </div>
-                                <div className="flex flex-col items-center">
-                                    <div className="h-12 w-0.5 bg-border shrink-0" />
-                                    <Badge className="bg-rose-500 h-6 px-3 text-[10px] font-bold uppercase tracking-wider mb-4 shadow-sm">FALSE</Badge>
-                                    {renderPath(node.id, 'fallbackNextStepId', node.data.fallbackNextStepId)}
+                                {/* Robust Horizontal Bridge Line */}
+                                {totalBranches > 1 && (
+                                    <div 
+                                        className="absolute top-0 h-0.5 bg-border" 
+                                        style={{ 
+                                            left: `${100 / (totalBranches * 2)}%`, 
+                                            right: `${100 / (totalBranches * 2)}%` 
+                                        }} 
+                                    />
+                                )}
+                                
+                                <div className="flex gap-16">
+                                    {isIntentRouter && (node.data.intents || []).map((intent, iIdx) => (
+                                        <div key={intent.id} className="flex flex-col items-center">
+                                            <div className="h-12 w-0.5 bg-border shrink-0" />
+                                            <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 border-indigo-500/20 px-3 py-1 text-[10px] uppercase font-bold tracking-tight shrink-0 mb-4 shadow-sm">
+                                                {intent.label}
+                                            </Badge>
+                                            {renderPath(node.id, 'intents', intent.nextStepId, iIdx)}
+                                        </div>
+                                    ))}
+
+                                    {isQuickReply && (node.data.buttons || []).map((btn, bIdx) => (
+                                        <div key={btn.id} className="flex flex-col items-center">
+                                            <div className="h-12 w-0.5 bg-border shrink-0" />
+                                            <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500/20 px-3 py-1 text-[10px] uppercase font-bold tracking-tight shrink-0 mb-4 shadow-sm">
+                                                BTN: {btn.label}
+                                            </Badge>
+                                            {renderPath(node.id, 'buttons', btn.nextStepId, bIdx)}
+                                        </div>
+                                    ))}
+
+                                    {isCondition && (
+                                        <>
+                                            <div className="flex flex-col items-center">
+                                                <div className="h-12 w-0.5 bg-border shrink-0" />
+                                                <Badge className="bg-emerald-500 h-6 px-3 text-[10px] font-bold uppercase tracking-wider mb-4 shadow-sm">TRUE</Badge>
+                                                {renderPath(node.id, 'matchNextStepId', node.data.matchNextStepId)}
+                                            </div>
+                                            <div className="flex flex-col items-center">
+                                                <div className="h-12 w-0.5 bg-border shrink-0" />
+                                                <Badge className="bg-rose-500 h-6 px-3 text-[10px] font-bold uppercase tracking-wider mb-4 shadow-sm">FALSE</Badge>
+                                                {renderPath(node.id, 'fallbackNextStepId', node.data.fallbackNextStepId)}
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {isAIStep && (
+                                        <>
+                                            <div className="flex flex-col items-center">
+                                                <div className="h-12 w-0.5 bg-border shrink-0" />
+                                                <Badge className="bg-teal-500 h-6 px-3 text-[10px] font-bold uppercase tracking-wider mb-4 shadow-sm">RESOLVED</Badge>
+                                                <div className="h-12 w-0.5 bg-border/50 border-dashed border-l-2" />
+                                                <p className="text-[10px] text-muted-foreground italic font-medium mt-2">Continues naturally</p>
+                                            </div>
+                                            <div className="flex flex-col items-center">
+                                                <div className="h-12 w-0.5 bg-border shrink-0" />
+                                                <Badge className="bg-orange-500 h-6 px-3 text-[10px] font-bold uppercase tracking-wider mb-4 shadow-sm">UNRESOLVED</Badge>
+                                                {renderPath(node.id, 'fallbackNextStepId', node.data.fallbackNextStepId)}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </>
-                        )}
-
-                        {isAIStep && (
-                            <>
-                                <div className="flex flex-col items-center">
-                                    <div className="h-12 w-0.5 bg-border shrink-0" />
-                                    <Badge className="bg-teal-500 h-6 px-3 text-[10px] font-bold uppercase tracking-wider mb-4 shadow-sm">RESOLVED</Badge>
-                                    <div className="h-12 w-0.5 bg-border/50 dashed" />
-                                    <p className="text-[10px] text-muted-foreground italic font-medium mt-2">Continues naturally</p>
-                                </div>
-                                <div className="flex flex-col items-center">
-                                    <div className="h-12 w-0.5 bg-border shrink-0" />
-                                    <Badge className="bg-orange-500 h-6 px-3 text-[10px] font-bold uppercase tracking-wider mb-4 shadow-sm">UNRESOLVED</Badge>
-                                    {renderPath(node.id, 'fallbackNextStepId', node.data.fallbackNextStepId)}
-                                </div>
-                            </>
-                        )}
-                    </div>
+                        );
+                    })()}
                 </div>
             </div>
         ) : (
@@ -348,18 +368,18 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
   const renderPath = (parentId: string, pathKey: string, nextStepId: string | undefined, subIndex?: number) => {
     if (nextStepId) {
         return (
-            <div className="relative flex flex-col items-center w-full">
+            <div className="relative flex flex-col items-center w-full group">
                 {/* Disconnect Button floating above the line */}
                 <Button 
                     variant="secondary" 
                     size="icon" 
-                    className="absolute top-4 left-1/2 -translate-x-1/2 h-7 w-7 z-30 shadow-lg border opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive hover:text-white" 
+                    className="absolute top-4 left-1/2 -translate-x-1/2 h-7 w-7 z-[100] shadow-lg border opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive hover:text-white" 
                     onClick={(e) => { e.stopPropagation(); disconnectPath(parentId, pathKey, subIndex); }}
                     title="Disconnect path"
                 >
                     <Unlink className="h-3.5 w-3.5" />
                 </Button>
-                <div className="group w-full flex flex-col items-center">
+                <div className="w-full flex flex-col items-center">
                     {renderNode(nextStepId)}
                 </div>
             </div>
@@ -431,7 +451,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[100vw] w-screen h-screen p-0 flex flex-col overflow-hidden rounded-none border-none">
-        <div className="flex items-center justify-between p-4 border-b bg-background shrink-0 z-50 shadow-sm">
+        <div className="flex items-center justify-between p-4 border-b bg-background shrink-0 z-[200] shadow-sm">
           <div className="flex items-center gap-4">
             <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Navigation className="h-5 w-5 text-primary" />
@@ -439,7 +459,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
             <div>
                 <DialogTitle className="text-lg">Automation Flow Builder</DialogTitle>
                 <DialogDescription className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                    Recursive Conversation Tree • Drag & Zoom to Navigate
+                    Recursive Conversation Tree • Graph View
                 </DialogDescription>
             </div>
           </div>
@@ -472,8 +492,9 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
             <>
               {/* Canvas Area */}
               <div className="flex-1 bg-[#090909] bg-[radial-gradient(#1a1a1a_1px,transparent_1px)] [background-size:24px_24px] overflow-auto relative flex flex-col items-center">
+                {/* Large viewport container to allow extensive panning */}
                 <div 
-                    className="inline-block transition-transform duration-300 ease-out origin-top py-24"
+                    className="p-[2000px] inline-block transition-transform duration-300 ease-out origin-top"
                     style={{ transform: `scale(${zoom})` }}
                 >
                     {/* Welcome Hint */}
@@ -520,7 +541,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
 
               {/* Contextual Sidebar */}
               {selectedNodeId && (
-                <aside className="absolute right-0 top-0 bottom-0 w-[420px] bg-background border-l z-[100] flex flex-col shadow-[-10px_0_30px_rgba(0,0,0,0.5)] animate-in slide-in-from-right duration-300">
+                <aside className="absolute right-0 top-0 bottom-0 w-[420px] bg-background border-l z-[250] flex flex-col shadow-[-10px_0_30px_rgba(0,0,0,0.5)] animate-in slide-in-from-right duration-300">
                     <div className="p-6 border-b flex items-center justify-between bg-muted/20">
                         <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
