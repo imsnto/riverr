@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -24,9 +23,27 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Bot as BotData, User, HelpCenter } from '@/lib/data';
-import { Bot as BotIcon, X, Check, ChevronsUpDown, Upload, Loader2, Send, MessageSquare, ChevronDown, Copy, Terminal, ShieldCheck, Smartphone, Info } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Bot as BotData, User, HelpCenter, ChatMessage } from '@/lib/data';
+import { 
+  Bot as BotIcon, 
+  X, 
+  Check, 
+  ChevronsUpDown, 
+  Upload, 
+  Loader2, 
+  Send, 
+  MessageSquare, 
+  ChevronDown, 
+  Copy, 
+  Terminal, 
+  ShieldCheck, 
+  Smartphone, 
+  Info, 
+  Globe, 
+  Code,
+  Wand2
+} from 'lucide-react';
+import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -41,8 +58,8 @@ import { marked } from 'marked';
 import { handleIncomingMessage, AgentAdapters, BotConfig as AgentConfig, Conversation as AgentConversation, IncomingMessage } from '@/lib/agent';
 import { searchHelpCenterAction, searchSupportAction } from '@/app/actions/chat';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getInitials } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '../ui/separator';
 
 function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
     const [open, setOpen] = React.useState(false);
@@ -1020,7 +1037,7 @@ export default function RootLayout({ children }) {
                              <p className="text-xs text-zinc-500">AI Agent • Just now</p>
 
                             {previewMessages.map(msg => {
-                                const isAgent = msg.senderType === 'agent';
+                                const isAgent = msg.senderType === 'agent' || msg.senderType === 'bot';
                                 const contentHtml = isAgent ? marked(msg.content) : msg.content;
                                 
                                 return (
