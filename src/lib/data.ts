@@ -603,7 +603,7 @@ export interface ChatMessage {
   recordingUrl?: string;
 }
 
-// --- Help Center Interfaces ---
+// --- Help Center ---
 export interface HelpCenter {
   id: string;
   name: string;
