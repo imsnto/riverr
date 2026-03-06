@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AutomationFlow, AutomationNode, AutomationNodeType, ChatMessage, User } from '@/lib/data';
 import {
   Dialog,
@@ -50,6 +50,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -546,7 +547,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                     <div className="space-y-4 pt-4 border-t">
                                         <div className="space-y-2">
                                             <Label className="text-emerald-500 font-bold text-[10px] uppercase tracking-widest">Match (True)</Label>
-                                            <Select value={selectedNode.data.matchNextStepId || 'none'} onValueChange={(v) => updateNodeData(selectedNode.id, { matchNextStepId: v === 'none' ? undefined : v })}>
+                                            <Select value={selectedNode.data.matchNextStepId || 'none'} onValueChange={(v) => updateNodeLink(selectedNode.id, v === 'none' ? undefined : v)}>
                                                 <SelectTrigger className="bg-background h-9 text-xs"><SelectValue placeholder="Stop" /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="none">Stop Flow</SelectItem>
