@@ -284,8 +284,8 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
       type,
       position,
       data: type === 'message' ? { text: 'Bot: Hi there!' } :
-            type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email', inputType: 'email', saveToProfile: true, validation: { retryAttempts: 2, errorMessage: 'Invalid email' } } :
-            type === 'ai_classifier' ? { text: 'Analyze the visitor’s response and classify it into one of the following intents.', intents: [{ id: `i_${Date.now()}`, label: 'Support', description: 'Visitor needs technical help or reports a bug' }] } :
+            type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email', inputType: 'email', saveToProfile: true, validation: { retryAttempts: 2, errorMessage: 'Please enter a valid email.' } } :
+            type === 'ai_classifier' ? { text: 'Classify the visitor’s response into one of the following intents.', intents: [{ id: `i_${Date.now()}`, label: 'Support', description: 'Visitor needs technical help or reports a bug' }] } :
             type === 'quick_reply' ? { text: 'Choose an option:', buttons: [{ id: `b_${Date.now()}`, label: 'Pricing' }] } :
             type === 'condition' ? { conditionField: 'email', operator: 'exists' } :
             type === 'handoff' ? { text: 'Connecting you to an agent...', teamId: 'support', priority: 'medium' } :
@@ -353,7 +353,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
           { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi there! How can we help you today?' } },
           { id: 'wait_input', type: 'end', position: { x: 120, y: 320 }, data: { waitBehavior: 'pause' } },
           { id: 'router', type: 'ai_classifier', position: { x: 420, y: 320 }, data: { 
-              text: 'Analyze the visitor’s response and classify it into one of the following intents.', 
+              text: 'Classify the visitor’s response into one of the following intents.', 
               intents: [
                 { id: 'i1', label: 'Support', description: 'Visitor needs technical help or reports a bug' },
                 { id: 'i2', label: 'Pricing', description: 'Visitor asks about costs, plans, or billing' },
@@ -519,7 +519,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
                             <Textarea 
                             value={selectedNode.data.text || ''} 
                             onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                            placeholder="e.g. Analyze the visitor’s response and classify it into one of the following intents."
+                            placeholder="e.g. Classify the visitor’s response into one of the following intents."
                             className="border-2 bg-muted/30 font-medium"
                             rows={4}
                             />
@@ -1006,16 +1006,37 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
 
     setCurrentNodeId(nodeId);
 
-    if (node.type === 'message' || node.type === 'start') {
+    // SILENT LOGIC NODES (Don't render anything, just move along)
+    if (node.type === 'start') {
+      const nextEdge = edges.find(e => e.source === nodeId && (!e.sourceHandle || e.sourceHandle === 'next'));
+      if (nextEdge) handleStep(nextEdge.target);
+      return;
+    }
+
+    if (node.type === 'ai_classifier') {
+      // AI Classifier is silent logic. It stays as currentNodeId waiting for handleInput.
+      return;
+    }
+
+    if (node.type === 'condition') {
+      // Simple random evaluation for simulation
+      const met = Math.random() > 0.5;
+      const targetHandle = met ? 'true' : 'false';
+      const nextEdge = edges.find(e => e.source === nodeId && e.sourceHandle === targetHandle);
+      if (nextEdge) handleStep(nextEdge.target);
+      return;
+    }
+
+    // VISIBLE MESSAGE NODES
+    if (node.type === 'message') {
       if (node.data.text) {
         setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text, type: 'automation' }]);
       }
       const nextEdge = edges.find(e => e.source === nodeId && (!e.sourceHandle || e.sourceHandle === 'next'));
       if (nextEdge) setTimeout(() => handleStep(nextEdge.target), 800);
-    } else if (node.type === 'quick_reply' || node.type === 'ai_classifier') {
-      const intents = node.data.intents || [];
-      const buttons = node.type === 'quick_reply' ? node.data.buttons : intents;
-      setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text || node.data.prompt || 'How can I help?', type: 'automation', buttons }]);
+    } else if (node.type === 'quick_reply') {
+      const buttons = node.data.buttons || [];
+      setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text || 'How can I help?', type: 'automation', buttons }]);
     } else if (node.type === 'capture_input') {
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt, type: 'automation' }]);
     } else if (node.type === 'handoff') {
@@ -1035,13 +1056,8 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
           if (nextEdge) handleStep(nextEdge.target);
         }
       }, 1500);
-    } else if (node.type === 'condition') {
-        const met = Math.random() > 0.5;
-        const targetHandle = met ? 'true' : 'false';
-        const nextEdge = edges.find(e => e.source === nodeId && e.sourceHandle === targetHandle);
-        if (nextEdge) handleStep(nextEdge.target);
     } else if (node.type === 'end') {
-        // Wait node, stop simulation
+        // Wait node, stop simulation until input
     }
   }, [nodes, edges]);
 
@@ -1059,12 +1075,31 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
 
   const handleInput = (text: string, buttonId?: string) => {
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', text }]);
-    const currentEdge = edges.find(e => {
-      if (e.source !== currentNodeId) return false;
-      if (buttonId) return e.sourceHandle === `intent:${buttonId}`;
-      return e.sourceHandle === 'next' || !e.sourceHandle;
-    });
-    if (currentEdge) handleStep(currentEdge.target);
+    
+    const currentNode = nodes.find(n => n.id === currentNodeId);
+    
+    let targetEdge;
+    if (buttonId) {
+        // Quick Reply button click
+        targetEdge = edges.find(e => e.source === currentNodeId && e.sourceHandle === `intent:${buttonId}`);
+    } else if (currentNode?.type === 'ai_classifier') {
+        // MOCK AI CLASSIFICATION
+        const intents = currentNode.data.intents || [];
+        const matchedIntent = intents.find((i: any) => text.toLowerCase().includes(i.label.toLowerCase()));
+        
+        if (matchedIntent) {
+            targetEdge = edges.find(e => e.source === currentNodeId && e.sourceHandle === `intent:${matchedIntent.id}`);
+        } else {
+            targetEdge = edges.find(e => e.source === currentNodeId && e.sourceHandle === 'fallback');
+        }
+    } else {
+        // Normal linear progression (e.g. after a Wait node or Capture input)
+        targetEdge = edges.find(e => e.source === currentNodeId && (e.sourceHandle === 'next' || !e.sourceHandle));
+    }
+
+    if (targetEdge) {
+        handleStep(targetEdge.target);
+    }
     setUserInput('');
   };
 
