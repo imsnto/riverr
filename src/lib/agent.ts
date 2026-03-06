@@ -293,11 +293,11 @@ export async function handleIncomingMessage(args: {
         const steps = extractSteps(best);
         let answerText = `I found some information in **${botName}** knowledge base:\n`;
         if (steps.length) {
-            text += "\nSteps:\n";
-            steps.forEach((s, i) => { text += `${i + 1}. ${s}\n`; });
+            answerText += "\nSteps:\n";
+            steps.forEach((s, i) => { answerText += `${i + 1}. ${s}\n`; });
         } else {
-            text += "\nSummary:\n";
-            best.forEach(c => { text += `- ${c.chunkText.slice(0, 140)}...\n`; });
+            answerText += "\nSummary:\n";
+            best.forEach(c => { answerText += `- ${c.chunkText.slice(0, 140)}...\n`; });
         }
 
         await adapters.persistAssistantMessage({
