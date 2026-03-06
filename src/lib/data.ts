@@ -444,6 +444,7 @@ export type AutomationNodeType = 'start' | 'message' | 'quick_reply' | 'capture_
 export interface AutomationNode {
   id: string;
   type: AutomationNodeType;
+  position: { x: number; y: number };
   data: {
     text?: string;
     buttons?: { id: string; label: string; nextStepId?: string }[];
@@ -456,11 +457,19 @@ export interface AutomationNode {
     fallbackNextStepId?: string;
     intents?: { id: string; label: string; nextStepId?: string }[];
   };
-  nextStepId?: string;
+}
+
+export interface AutomationEdge {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string;
+  targetHandle?: string;
 }
 
 export interface AutomationFlow {
   nodes: AutomationNode[];
+  edges: AutomationEdge[];
 }
 
 // --- Chatbot / Inbox Interfaces ---

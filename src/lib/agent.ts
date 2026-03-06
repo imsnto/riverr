@@ -1,11 +1,10 @@
-
 /**
  * agent.ts (Hybrid Intelligence & Intent Routing Engine)
  *
  * Implements conversational AI reasoning + deterministic subflow execution.
  */
 
-import type { Conversation as ImportedConversation, SupportIntentNode, ConversationStatus, ResponderType, AutomationNode, Bot } from "./data";
+import type { Conversation as ImportedConversation, SupportIntentNode, ConversationStatus, ResponderType, AutomationNode, AutomationEdge, Bot } from "./data";
 
 export type MessageRole = "user" | "assistant" | "internal";
 
@@ -17,7 +16,7 @@ export interface BotConfig {
   aiEnabled?: boolean; 
   handoffKeywords?: string[];
   quickReplies?: string[];
-  flow?: { nodes: AutomationNode[] };
+  flow?: { nodes: AutomationNode[], edges: AutomationEdge[] };
 }
 
 export type Conversation = ImportedConversation & {
@@ -178,46 +177,66 @@ async function executeHybridFlow(args: {
 }) {
   const { bot, conversation, message, adapters } = args;
   const nodes = bot.flow!.nodes;
+  const edges = bot.flow!.edges || [];
   let currentStepId = conversation.meta?.currentFlowStepId;
 
   // 1. Initial State Resolution
   if (!currentStepId) {
     const startNode = nodes.find(n => n.type === 'start');
-    currentStepId = startNode?.nextStepId;
+    currentStepId = startNode?.id;
   } else {
     // Handling interaction with existing state
     const currentNode = nodes.find(n => n.id === currentStepId);
-    
-    if (currentNode?.type === 'quick_reply' || currentNode?.type === 'intent_router') {
+    if (!currentNode) return;
+
+    if (currentNode.type === 'quick_reply' || currentNode.type === 'intent_router') {
       const selectedButtonId = message.meta?.buttonId;
-      const buttons = currentNode.type === 'quick_reply' ? currentNode.data.buttons : currentNode.data.intents;
-      const button = buttons?.find(b => b.id === selectedButtonId);
       
-      if (button?.nextStepId) {
-        currentStepId = button.nextStepId;
+      // Look for explicit edge from this button/intent
+      const targetEdge = edges.find(e => 
+        e.source === currentStepId && 
+        e.sourceHandle === `intent:${selectedButtonId}`
+      );
+
+      if (targetEdge) {
+        currentStepId = targetEdge.target;
       } else if (currentNode.type === 'intent_router') {
-        // AI INTENT CLASSIFICATION for Intent Router free-text
-        const classification = await classifyIntent(message.text, buttons || []);
-        if (classification) {
-            currentStepId = classification;
+        // AI INTENT CLASSIFICATION for free-text
+        const intents = currentNode.data.intents || [];
+        const classification = await classifyIntent(message.text, intents);
+        
+        const intentEdge = edges.find(e => 
+          e.source === currentStepId && 
+          e.sourceHandle === `intent:${classification}`
+        );
+
+        if (intentEdge) {
+          currentStepId = intentEdge.target;
         } else {
-            // Fallback path for Intent Router (Unknown)
-            currentStepId = currentNode.data.fallbackNextStepId || currentNode.nextStepId;
+          // Fallback path
+          const fallbackEdge = edges.find(e => e.source === currentStepId && e.sourceHandle === 'unknown');
+          currentStepId = fallbackEdge?.target;
         }
       } else {
-        currentStepId = currentNode.data.defaultNextStepId || currentNode.nextStepId;
+        const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+        currentStepId = nextEdge?.target;
       }
-    } else if (currentNode?.type === 'capture_input') {
-      currentStepId = currentNode.nextStepId;
-    } else if (currentNode?.type === 'condition') {
+    } else if (currentNode.type === 'capture_input') {
+      const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+      currentStepId = nextEdge?.target;
+    } else if (currentNode.type === 'condition') {
         const field = currentNode.data.conditionField;
         let valExists = false;
         if (field === 'email') valExists = !!(conversation.visitorEmail || conversation.meta?.email);
         if (field === 'name') valExists = !!(conversation.visitorName || conversation.meta?.name);
         if (field === 'identified') valExists = !!conversation.contactId;
-        currentStepId = valExists ? currentNode.data.matchNextStepId : currentNode.data.fallbackNextStepId;
+        
+        const targetHandle = valExists ? 'true' : 'false';
+        const branchEdge = edges.find(e => e.source === currentStepId && e.sourceHandle === targetHandle);
+        currentStepId = branchEdge?.target;
     } else {
-      currentStepId = currentNode?.nextStepId;
+      const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+      currentStepId = nextEdge?.target;
     }
   }
 
@@ -233,6 +252,12 @@ async function executeHybridFlow(args: {
       patch: { meta: { ...conversation.meta, currentFlowStepId: currentStepId } }
     });
 
+    if (node.type === 'start') {
+      const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+      currentStepId = nextEdge?.target;
+      continue;
+    }
+
     if (node.type === 'message') {
       await adapters.persistAssistantMessage({
         conversationId: conversation.id,
@@ -240,7 +265,8 @@ async function executeHybridFlow(args: {
         text: node.data.text || "",
         responderType: 'automation',
       });
-      currentStepId = node.nextStepId;
+      const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+      currentStepId = nextEdge?.target;
       continue;
     }
 
@@ -249,11 +275,11 @@ async function executeHybridFlow(args: {
       await adapters.persistAssistantMessage({
         conversationId: conversation.id,
         hubId: conversation.hubId,
-        text: node.data.text || "How can I help you?",
+        text: node.data.text || node.data.prompt || "How can I help you?",
         responderType: 'automation',
         meta: { buttons }
       });
-      return; // Wait for user choice (button or free-text for router)
+      return; // Wait for input
     }
 
     if (node.type === 'capture_input') {
@@ -273,17 +299,23 @@ async function executeHybridFlow(args: {
       if (field === 'name') valExists = !!(conversation.visitorName || conversation.meta?.name);
       if (field === 'identified') valExists = !!conversation.contactId;
 
-      currentStepId = valExists ? node.data.matchNextStepId : node.data.fallbackNextStepId;
+      const targetHandle = valExists ? 'true' : 'false';
+      const branchEdge = edges.find(e => e.source === currentStepId && e.sourceHandle === targetHandle);
+      currentStepId = branchEdge?.target;
       continue;
     }
 
     if (node.type === 'ai_step') {
       const resolved = await executeAiPhase(args);
-      if (!resolved && node.data.fallbackNextStepId) {
-        currentStepId = node.data.fallbackNextStepId;
-        continue;
+      if (resolved) {
+        const resolvedEdge = edges.find(e => e.source === currentStepId && e.sourceHandle === 'resolved');
+        currentStepId = resolvedEdge?.target;
+      } else {
+        const unresolvedEdge = edges.find(e => e.source === currentStepId && e.sourceHandle === 'unresolved');
+        currentStepId = unresolvedEdge?.target;
       }
-      return; // AI handles the rest conversationally or waits
+      if (!currentStepId) return; // AI handled it or path ends
+      continue;
     }
 
     if (node.type === 'handoff') {
@@ -306,7 +338,6 @@ async function executeHybridFlow(args: {
 
 /**
  * Conversational Reasoning logic.
- * AI attempts to answer using knowledge, clarifies if info is missing, or falls back.
  */
 async function executeAiPhase(args: {
   bot: BotConfig;
@@ -323,43 +354,6 @@ async function executeAiPhase(args: {
       hubId: conversation.hubId,
       patch: { aiAttempted: true, status: 'ai_active' }
   });
-
-  // Intent-based Knowledge Lookup
-  const supportSearchResults = await adapters.searchSupport({
-      hubId: bot.hubId,
-      userId: conversation.userId ?? null,
-      query: text,
-      topK: 1
-  });
-
-  if (supportSearchResults.intents?.[0]?._searchScore! > 0.6) {
-      const intent = supportSearchResults.intents[0];
-      
-      // Auto-clarification: check for required context keys
-      if (intent.requiredContext?.length) {
-          const missing = intent.requiredContext.filter(c => !conversation.meta?.[c.key]);
-          if (missing.length > 0) {
-              await adapters.persistAssistantMessage({
-                  conversationId: conversation.id,
-                  hubId: conversation.hubId,
-                  text: missing[0].question,
-                  responderType: 'automation',
-                  meta: { pendingIntent: intent.intentKey, missingKey: missing[0].key }
-              });
-              return true; // Wait for clarification
-          }
-      }
-
-      await adapters.persistAssistantMessage({
-          conversationId: conversation.id,
-          hubId: conversation.hubId,
-          text: intent.answerVariants[0]?.template || "I found an answer for you.",
-          responderType: 'ai',
-          meta: { intent: intent.intentKey, from: 'SupportIntent' },
-      });
-      await adapters.updateConversation({ conversationId: conversation.id, hubId: conversation.hubId, patch: { aiResolved: true } });
-      return true;
-  }
 
   // Knowledge Base Search
   const search = await adapters.searchHelpCenter({
@@ -389,7 +383,7 @@ async function executeAiPhase(args: {
       return true;
   }
 
-  return false; // Fallback to automation path
+  return false;
 }
 
 // -------------------------
@@ -399,13 +393,13 @@ async function executeAiPhase(args: {
 /**
  * Categorize free-text input against defined intent paths.
  */
-async function classifyIntent(text: string, intentPaths: { id: string; label: string; nextStepId?: string }[]): Promise<string | null> {
+async function classifyIntent(text: string, intentPaths: { id: string; label: string }[]): Promise<string | null> {
     if (!text || intentPaths.length === 0) return null;
     
     const normalizedText = text.toLowerCase();
     for (const path of intentPaths) {
         if (normalizedText.includes(path.label.toLowerCase())) {
-            return path.nextStepId || null;
+            return path.id;
         }
     }
     return null;
