@@ -63,11 +63,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea } from '../ui/scroll-area';
 import { cn, getInitials } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '../ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -76,8 +76,8 @@ import {
   DropdownMenuSeparator 
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Separator } from '../ui/separator';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 
 const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; color: string; description: string; category: 'conversation' | 'ai' | 'logic' | 'human' }> = {
   start: { label: 'Conversation Start', icon: PlayCircle, color: 'bg-emerald-500', description: 'Triggered when a new chat begins.', category: 'conversation' },
@@ -120,52 +120,56 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
               <Plus className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="bottom" align="center" className="w-72 p-2 shadow-2xl border-2">
-            <p className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Connect to Step</p>
-            
-            <div className="space-y-4 py-2">
-                {[
-                    { key: 'conversation', label: 'Conversation' },
-                    { key: 'ai', label: 'AI' },
-                    { key: 'logic', label: 'Logic' },
-                    { key: 'human', label: 'Human' }
-                ].map(cat => (
-                    <div key={cat.key}>
-                        <p className="px-2 mb-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{cat.label}</p>
-                        <div className="grid gap-1">
-                            {Object.entries(NODE_TYPES_META)
-                                .filter(([t, m]) => t !== 'start' && m.category === cat.key)
-                                .map(([t, m]) => (
-                                    <DropdownMenuItem key={t} onClick={(e) => {
-                                        e.stopPropagation();
-                                        data.onAddNodeAndConnect?.(t as AutomationNodeType, id, handleId);
-                                    }} className="gap-3 p-2 cursor-pointer">
-                                        <div className={cn("h-6 w-6 rounded flex items-center justify-center text-white", m.color)}>
-                                            {React.createElement(m.icon, { className: 'h-3 w-3' })}
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[11px] font-bold">{m.label}</span>
-                                        </div>
-                                    </DropdownMenuItem>
-                                ))}
+          <DropdownMenuContent side="bottom" align="center" className="w-72 p-0 shadow-2xl border-2">
+            <ScrollArea className="max-h-[450px]">
+              <div className="p-2">
+                <p className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Connect to Step</p>
+                
+                <div className="space-y-4 py-2">
+                    {[
+                        { key: 'conversation', label: 'Conversation' },
+                        { key: 'ai', label: 'AI' },
+                        { key: 'logic', label: 'Logic' },
+                        { key: 'human', label: 'Human' }
+                    ].map(cat => (
+                        <div key={cat.key}>
+                            <p className="px-2 mb-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{cat.label}</p>
+                            <div className="grid gap-1">
+                                {Object.entries(NODE_TYPES_META)
+                                    .filter(([t, m]) => t !== 'start' && m.category === cat.key)
+                                    .map(([t, m]) => (
+                                        <DropdownMenuItem key={t} onClick={(e) => {
+                                            e.stopPropagation();
+                                            data.onAddNodeAndConnect?.(t as AutomationNodeType, id, handleId);
+                                        }} className="gap-3 p-2 cursor-pointer">
+                                            <div className={cn("h-6 w-6 rounded flex items-center justify-center text-white", m.color)}>
+                                                {React.createElement(m.icon, { className: 'h-3 w-3' })}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-[11px] font-bold">{m.label}</span>
+                                            </div>
+                                        </DropdownMenuItem>
+                                    ))}
+                            </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
 
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={(e) => {
-              e.stopPropagation();
-              data.onPickExisting?.(id, handleId);
-            }} className="gap-3 p-2.5 cursor-pointer">
-              <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-zinc-700 text-white">
-                <Link className="h-4 w-4" />
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation();
+                  data.onPickExisting?.(id, handleId);
+                }} className="gap-3 p-2.5 cursor-pointer">
+                  <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-zinc-700 text-white">
+                    <Link className="h-4 w-4" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold">Connect Existing Step...</span>
+                    <span className="text-[9px] text-muted-foreground">Link to a node already on the map.</span>
+                  </div>
+                </DropdownMenuItem>
               </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-bold">Connect Existing Step...</span>
-                <span className="text-[9px] text-muted-foreground">Link to a node already on the map.</span>
-              </div>
-            </DropdownMenuItem>
+            </ScrollArea>
           </DropdownMenuContent>
         </DropdownMenu>
         {label && <span className="mt-1 text-[8px] font-black uppercase text-muted-foreground/50 tracking-tighter whitespace-nowrap">{label}</span>}
