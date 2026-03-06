@@ -13,6 +13,7 @@ import admin from 'firebase-admin';
 import { isWhimsical, generateWhimsicalName, normalizePhoneFallback } from '@/lib/utils';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
+import { getMessagingProvider } from '@/lib/comms/providerFactory';
 
 const typesense = getTypesenseSearch();
 
@@ -511,7 +512,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
                       deliveryStatus: 'created',
                   });
 
-                  const { getMessagingProvider } = require('../comms/providerFactory');
                   const provider = getMessagingProvider('twilio');
                   
                   try {
@@ -584,4 +584,80 @@ export async function createConversationAndLinkCrm(args: {
 
   const snap = await convoRef.get();
   return { id: convoRef.id, ...(snap.data() as any) };
+}
+
+export async function exportLibraryAction(helpCenterId: string) {
+  const hcDoc = await adminDB.collection('help_centers').doc(helpCenterId).get();
+  const collectionsSnap = await adminDB.collection('help_center_collections').where('helpCenterId', '==', helpCenterId).get();
+  const articlesSnap = await adminDB.collection('help_center_articles').where('helpCenterId', '==', helpCenterId).get();
+
+  return {
+    helpCenter: { id: hcDoc.id, ...hcDoc.data() },
+    collections: collectionsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+    articles: articlesSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+  };
+}
+
+export async function importLibraryAction(hubId: string, spaceId: string, authorId: string, data: any) {
+  const batch = adminDB.batch();
+  
+  // 1. Create HC
+  const hcRef = adminDB.collection('help_centers').doc();
+  const newHcId = hcRef.id;
+  const { id: oldHcId, ...hcData } = data.helpCenter;
+  batch.set(hcRef, { ...hcData, id: newHcId, hubId, spaceId });
+
+  // 2. Collections (need to map old IDs to new IDs for parentId)
+  const idMap: Record<string, string> = {};
+  data.collections.forEach((c: any) => {
+    const ref = adminDB.collection('help_center_collections').doc();
+    idMap[c.id] = ref.id;
+  });
+
+  data.collections.forEach((c: any) => {
+    const newId = idMap[c.id];
+    const { id: oldId, ...collectionData } = c;
+    batch.set(adminDB.collection('help_center_collections').doc(newId), {
+      ...collectionData,
+      id: newId,
+      hubId,
+      helpCenterId: newHcId,
+      parentId: c.parentId ? (idMap[c.parentId] || null) : null
+    });
+  });
+
+  // 3. Articles
+  data.articles.forEach((a: any) => {
+    const ref = adminDB.collection('help_center_articles').doc();
+    const { id: oldId, ...articleData } = a;
+    batch.set(ref, {
+      ...articleData,
+      id: ref.id,
+      hubId,
+      spaceId,
+      helpCenterId: newHcId,
+      folderId: a.folderId ? (idMap[a.folderId] || null) : null,
+      authorId
+    });
+  });
+
+  await batch.commit();
+}
+
+export async function reindexArticleAction(articleId: string) {
+  const docSnap = await adminDB.collection("help_center_articles").doc(articleId).get();
+  if (!docSnap.exists) return;
+  const article = { id: docSnap.id, ...docSnap.data() };
+  
+  const hubDoc = await adminDB.collection("hubs").doc(article.hubId).get();
+  const spaceId = hubDoc.data()?.spaceId;
+  
+  if (!spaceId) return;
+
+  return indexHelpCenterArticleToChunks({
+    adminDB,
+    article,
+    spaceId,
+    publicHelpBaseUrl: process.env.PUBLIC_HELP_BASE_URL || "https://app.manowar.cloud",
+  });
 }
