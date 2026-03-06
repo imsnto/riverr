@@ -1,10 +1,10 @@
 /**
- * agent.ts (CLEANUP UPGRADE)
+ * agent.ts (Standardized Automation Flow execution)
  *
- * Standardizes the response pipeline: Automation -> AI -> Human
+ * Handles logic for structured automation flows before/during AI and human phases.
  */
 
-import type { Conversation as ImportedConversation, SupportIntentNode, ConversationStatus, ResponderType } from "./data";
+import type { Conversation as ImportedConversation, SupportIntentNode, ConversationStatus, ResponderType, AutomationNode, Bot } from "./data";
 
 export type MessageRole = "user" | "assistant" | "internal";
 
@@ -16,6 +16,7 @@ export interface BotConfig {
   aiEnabled?: boolean; 
   handoffKeywords?: string[];
   quickReplies?: string[];
+  flow?: { nodes: AutomationNode[] };
 }
 
 interface PlaybookStep {
@@ -56,6 +57,7 @@ export type Conversation = ImportedConversation & {
     attemptCount?: number;
     intentHistory?: string[];
     activePlaybook?: ActivePlaybookInfo;
+    currentFlowStepId?: string; // New: Tracks position in structured flow
     [key: string]: any;
   };
 };
@@ -65,6 +67,9 @@ export interface IncomingMessage {
   role: MessageRole;
   text: string;
   createdAt: string; // ISO
+  meta?: {
+    buttonId?: string; // If message was triggered by a button click
+  };
 }
 
 export interface HelpChunk {
@@ -151,173 +156,22 @@ export async function handleIncomingMessage(args: {
     return;
   }
 
-  // ---- 2. AUTOMATION CHECK: HANDOFF RESPONSE ----
-  if (conversation.handoff?.status === "offered") {
-    const isAffirmative = containsAny(text, ["yes", "ok", "please", "sure", "that would be great", "yep", "alright"]);
-    const isNegative = containsAny(text, ["no", "nope", "not yet", "stop", "just answer", "i said no", "answer me", "it's ok", "that's ok", "im good", "i'm good"]);
-
-    if (isAffirmative) {
-      await adapters.updateConversation({
-        conversationId: conversation.id,
-        hubId: conversation.hubId,
-        patch: { status: 'waiting_human', lastResponderType: 'system' }
-      });
-      await adapters.escalateToHuman({
-        conversationId: conversation.id,
-        hubId: conversation.hubId,
-        reason: "User accepted handoff offer.",
-      });
-      await adapters.persistAssistantMessage({
-        conversationId: conversation.id,
-        hubId: conversation.hubId,
-        text: `A support ticket has been created. Our team will respond shortly.`,
-        responderType: 'automation',
-        meta: { handoff: "completed" },
-      });
-      return;
-    }
-
-    if (isNegative) {
-      await adapters.updateConversation({
-        conversationId: conversation.id,
-        hubId: conversation.hubId,
-        patch: {
-          handoff: { status: "none", reason: "Offer declined by user" },
-          status: 'automated'
-        },
-      });
-      await adapters.persistAssistantMessage({
-        conversationId: conversation.id,
-        hubId: conversation.hubId,
-        text: `Ok, sounds good. How else can I help?`,
-        responderType: 'automation',
-        meta: { handoff: "declined" },
-      });
-      return;
-    }
-  }
-
-  // ---- 2.5 AUTOMATION CHECK: KEYWORD TRIGGER ----
+  // ---- 2. AUTOMATION CHECK: KEYWORD TRIGGER ----
   if (bot.handoffKeywords?.length && containsAny(text, bot.handoffKeywords)) {
       await offerHuman(adapters, conversation, botName, "User requested agent via keyword.");
       return;
   }
 
-  // ---- 3. AUTOMATION CHECK: PLAYBOOKS ----
-  const activePlaybookInfo = conversation.meta?.activePlaybook;
-  if (activePlaybookInfo?.content) {
-    const playbookContent = activePlaybookInfo.content;
-    const currentStepIndex = activePlaybookInfo.currentStep;
-    const userMessage = (text ?? "").trim().toLowerCase();
-    const confirmationKeywords = ['ok', 'done', 'next', 'yes', 'yep', 'alright'];
-
-    if (confirmationKeywords.includes(userMessage)) {
-      const nextStepIndex = currentStepIndex + 1;
-      if (nextStepIndex < playbookContent.steps.length) {
-        const nextStep = playbookContent.steps[nextStepIndex];
-        await adapters.persistAssistantMessage({
-          conversationId: conversation.id,
-          hubId: conversation.hubId,
-          text: `Great. The next step is: ${nextStep.description}`,
-          responderType: 'automation',
-          meta: { playbook: playbookContent.intent, step: nextStepIndex, fromPlaybook: true }
-        });
-
-        await adapters.updateConversation({
-          conversationId: conversation.id,
-          hubId: conversation.hubId,
-          patch: {
-            status: 'automated',
-            meta: {
-              ...conversation.meta,
-              activePlaybook: { ...activePlaybookInfo, currentStep: nextStepIndex },
-            }
-          }
-        });
-        return;
-      } else {
-        await adapters.persistAssistantMessage({
-          conversationId: conversation.id,
-          hubId: conversation.hubId,
-          text: `Awesome! You've completed all the steps. Is there anything else I can help with?`,
-          responderType: 'automation',
-          meta: { playbook: playbookContent.intent, step: 'completed' }
-        });
-
-        const newMeta = { ...conversation.meta };
-        delete newMeta.activePlaybook;
-        await adapters.updateConversation({
-          conversationId: conversation.id,
-          hubId: conversation.hubId,
-          patch: { meta: newMeta, status: 'automated' }
-        });
-        return;
-      }
-    }
+  // ---- 3. STRUCTURED FLOW EXECUTION ----
+  if (bot.flow?.nodes?.length) {
+    await executeFlow(args);
+    return;
   }
 
-  // ---- 4. AI HANDLING (IF ENABLED) ----
+  // ---- 4. AI HANDLING (IF ENABLED) - FALLBACK FOR LEGACY WITHOUT FLOW ----
   if (bot.aiEnabled !== false) {
-    await adapters.updateConversation({
-        conversationId: conversation.id,
-        hubId: conversation.hubId,
-        patch: { aiAttempted: true, status: 'ai_active' }
-    });
-
-    // A. Support Intent Lookup
-    const supportSearchResults = await adapters.searchSupport({
-        hubId: bot.hubId,
-        userId: conversation.userId ?? null,
-        query: text,
-        topK: 1
-    });
-
-    if (supportSearchResults.intents?.[0]?._searchScore! > 0.55) {
-        const intent = supportSearchResults.intents[0];
-        await adapters.persistAssistantMessage({
-            conversationId: conversation.id,
-            hubId: conversation.hubId,
-            text: intent.answerVariants[0]?.template || "I found something.",
-            responderType: 'ai',
-            meta: { intent: intent.intentKey, from: 'SupportIntentNode' },
-        });
-        return;
-    }
-
-    // B. Help Center Search
-    const search = await adapters.searchHelpCenter({
-        hubId: bot.hubId,
-        allowedHelpCenterIds: bot.allowedHelpCenterIds,
-        userId: conversation.userId ?? null,
-        query: text,
-        topK: 5,
-    });
-
-    const chunks = search.chunks ?? [];
-    const topScore = chunks.length ? Math.max(...chunks.map(c => c.score)) : 0;
-
-    if (topScore >= 0.55) {
-        const best = [...chunks].sort((a, b) => b.score - a.score).slice(0, 3);
-        const steps = extractSteps(best);
-        let answerText = `I found some information in **${botName}** knowledge base:\n`;
-        if (steps.length) {
-            answerText += "\nSteps:\n";
-            steps.forEach((s, i) => { answerText += `${i + 1}. ${s}\n`; });
-        } else {
-            answerText += "\nSummary:\n";
-            best.forEach(c => { answerText += `- ${c.chunkText.slice(0, 140)}...\n`; });
-        }
-
-        await adapters.persistAssistantMessage({
-            conversationId: conversation.id,
-            hubId: conversation.hubId,
-            text: answerText,
-            responderType: 'ai',
-            sources: best.map(c => ({ articleId: c.articleId, title: c.title, url: c.url, score: c.score })),
-            meta: { topScore },
-        });
-        return;
-    }
+    await executeAiPhase(args);
+    return;
   }
 
   // ---- 5. HUMAN ESCALATION FALLBACK ----
@@ -337,6 +191,190 @@ export async function handleIncomingMessage(args: {
           responderType: 'automation'
       });
   }
+}
+
+// -------------------------
+// Flow Logic
+// -------------------------
+
+async function executeFlow(args: {
+  bot: BotConfig;
+  conversation: Conversation;
+  message: IncomingMessage;
+  adapters: AgentAdapters;
+}) {
+  const { bot, conversation, message, adapters } = args;
+  const nodes = bot.flow!.nodes;
+  let currentStepId = conversation.meta?.currentFlowStepId;
+
+  // 1. Resolve current node based on input or start
+  if (!currentStepId) {
+    const startNode = nodes.find(n => n.type === 'start');
+    currentStepId = startNode?.nextStepId;
+  } else {
+    // We are responding to an active interactive node
+    const currentNode = nodes.find(n => n.id === currentStepId);
+    if (currentNode?.type === 'quick_reply') {
+      const selectedButtonId = message.meta?.buttonId;
+      const button = currentNode.data.buttons?.find(b => b.id === selectedButtonId);
+      if (button?.nextStepId) {
+        currentStepId = button.nextStepId;
+      } else {
+        // Fallback or specific phrase match
+        currentStepId = currentNode.nextStepId;
+      }
+    } else {
+      // Default: move to next step
+      currentStepId = currentNode?.nextStepId;
+    }
+  }
+
+  // 2. Step through non-blocking nodes
+  let limit = 10;
+  while (currentStepId && limit-- > 0) {
+    const node = nodes.find(n => n.id === currentStepId);
+    if (!node) break;
+
+    // Persist position
+    await adapters.updateConversation({
+      conversationId: conversation.id,
+      hubId: conversation.hubId,
+      patch: { meta: { ...conversation.meta, currentFlowStepId: currentStepId } }
+    });
+
+    if (node.type === 'message') {
+      await adapters.persistAssistantMessage({
+        conversationId: conversation.id,
+        hubId: conversation.hubId,
+        text: node.data.text || "",
+        responderType: 'automation',
+      });
+      currentStepId = node.nextStepId;
+      continue;
+    }
+
+    if (node.type === 'quick_reply') {
+      await adapters.persistAssistantMessage({
+        conversationId: conversation.id,
+        hubId: conversation.hubId,
+        text: node.data.text || "Choose an option:",
+        responderType: 'automation',
+        meta: { buttons: node.data.buttons }
+      });
+      return; // Stop and wait for click
+    }
+
+    if (node.type === 'ai_step') {
+      await executeAiPhase(args);
+      return; // AI phase handles its own next steps or terminal state
+    }
+
+    if (node.type === 'handoff') {
+      await adapters.updateConversation({
+        conversationId: conversation.id,
+        hubId: conversation.hubId,
+        patch: { status: 'waiting_human', lastResponderType: 'system' }
+      });
+      await adapters.escalateToHuman({
+        conversationId: conversation.id,
+        hubId: conversation.hubId,
+        reason: "Escalated by flow step.",
+      });
+      await adapters.persistAssistantMessage({
+        conversationId: conversation.id,
+        hubId: conversation.hubId,
+        text: node.data.text || `A support ticket has been created. Our team will respond shortly.`,
+        responderType: 'automation',
+      });
+      return;
+    }
+
+    if (node.type === 'end') {
+      await adapters.updateConversation({
+        conversationId: conversation.id,
+        hubId: conversation.hubId,
+        patch: { status: 'resolved', meta: { ...conversation.meta, currentFlowStepId: undefined } }
+      });
+      return;
+    }
+
+    break;
+  }
+}
+
+async function executeAiPhase(args: {
+  bot: BotConfig;
+  conversation: Conversation;
+  message: IncomingMessage;
+  adapters: AgentAdapters;
+}) {
+  const { bot, adapters, conversation, message } = args;
+  const text = message.text || "";
+  const botName = bot.name || "Support";
+
+  await adapters.updateConversation({
+      conversationId: conversation.id,
+      hubId: conversation.hubId,
+      patch: { aiAttempted: true, status: 'ai_active' }
+  });
+
+  // A. Support Intent Lookup
+  const supportSearchResults = await adapters.searchSupport({
+      hubId: bot.hubId,
+      userId: conversation.userId ?? null,
+      query: text,
+      topK: 1
+  });
+
+  if (supportSearchResults.intents?.[0]?._searchScore! > 0.55) {
+      const intent = supportSearchResults.intents[0];
+      await adapters.persistAssistantMessage({
+          conversationId: conversation.id,
+          hubId: conversation.hubId,
+          text: intent.answerVariants[0]?.template || "I found something.",
+          responderType: 'ai',
+          meta: { intent: intent.intentKey, from: 'SupportIntentNode' },
+      });
+      return;
+  }
+
+  // B. Help Center Search
+  const search = await adapters.searchHelpCenter({
+      hubId: bot.hubId,
+      allowedHelpCenterIds: bot.allowedHelpCenterIds,
+      userId: conversation.userId ?? null,
+      query: text,
+      topK: 5,
+  });
+
+  const chunks = search.chunks ?? [];
+  const topScore = chunks.length ? Math.max(...chunks.map(c => c.score)) : 0;
+
+  if (topScore >= 0.55) {
+      const best = [...chunks].sort((a, b) => b.score - a.score).slice(0, 3);
+      const steps = extractSteps(best);
+      let answerText = `I found some information in **${botName}** knowledge base:\n`;
+      if (steps.length) {
+          answerText += "\nSteps:\n";
+          steps.forEach((s, i) => { answerText += `${i + 1}. ${s}\n`; });
+      } else {
+          answerText += "\nSummary:\n";
+          best.forEach(c => { answerText += `- ${c.chunkText.slice(0, 140)}...\n`; });
+      }
+
+      await adapters.persistAssistantMessage({
+          conversationId: conversation.id,
+          hubId: conversation.hubId,
+          text: answerText,
+          responderType: 'ai',
+          sources: best.map(c => ({ articleId: c.articleId, title: c.title, url: c.url, score: c.score })),
+          meta: { topScore },
+      });
+      return;
+  }
+
+  // If AI fails, offer human
+  await offerHuman(adapters, conversation, botName, "AI unable to resolve request");
 }
 
 // -------------------------

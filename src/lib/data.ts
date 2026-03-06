@@ -438,6 +438,29 @@ export interface TaskTemplate {
     subtaskTemplates?: JobFlowSubtaskTemplate[];
 }
 
+// --- Automation Flows ---
+export type AutomationNodeType = 'start' | 'message' | 'quick_reply' | 'capture_input' | 'condition' | 'ai_step' | 'handoff' | 'end';
+
+export interface AutomationNode {
+  id: string;
+  type: AutomationNodeType;
+  data: {
+    text?: string;
+    buttons?: { id: string; label: string; nextStepId?: string }[];
+    variableName?: string;
+    prompt?: string;
+    conditionField?: string;
+    conditionValue?: string;
+    matchNextStepId?: string;
+    fallbackNextStepId?: string;
+  };
+  nextStepId?: string;
+}
+
+export interface AutomationFlow {
+  nodes: AutomationNode[];
+}
+
 // --- Chatbot / Inbox Interfaces ---
 export interface Bot {
   id: string;
@@ -469,6 +492,7 @@ export interface Bot {
     handoffKeywords?: string[];
     quickReplies?: string[];
   };
+  flow?: AutomationFlow; // Replaces simple quickReplies string
   escalationTriggers: {
     billingKeywords?: string[];
     sentimentThreshold?: number;
@@ -544,7 +568,7 @@ export interface ChatMessage {
   authorId: string; // Can be a Visitor ID or a User ID
   type: 'message' | 'note' | 'event';
   responderType?: ResponderType;
-  eventType?: 'call_started' | 'call_ringing' | 'call_answered' | 'call_missed' | 'call_ended' | 'voicemail_recorded';
+  eventType?: 'call_started' | 'call_started' | 'call_ringing' | 'call_answered' | 'call_missed' | 'call_ended' | 'voicemail_recorded';
   content: string;
   timestamp: string; // ISO String
   senderType?: 'visitor' | 'agent' | 'bot' | 'contact';

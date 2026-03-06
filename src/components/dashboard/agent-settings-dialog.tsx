@@ -23,7 +23,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Bot as BotData, User, HelpCenter, ChatMessage } from '@/lib/data';
+import { Bot as BotData, User, HelpCenter, ChatMessage, AutomationFlow } from '@/lib/data';
 import { 
   Bot as BotIcon, 
   X, 
@@ -42,7 +42,9 @@ import {
   Globe, 
   Code,
   Wand2,
-  Zap
+  Zap,
+  Split,
+  ChevronRight
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
@@ -61,6 +63,7 @@ import { searchHelpCenterAction, searchSupportAction } from '@/app/actions/chat'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
+import AutomationFlowBuilder from './automation-flow-builder';
 
 function ShieldAlertIcon(props: any) {
   return (
@@ -204,6 +207,7 @@ const agentSettingsSchema = z.object({
   identityCaptureMessage: z.string().optional(),
   handoffKeywords: z.string().optional(),
   quickReplies: z.string().optional(),
+  flow: z.any().optional(),
 });
 
 type AgentSettingsFormValues = z.infer<typeof agentSettingsSchema>;
@@ -231,6 +235,7 @@ export default function AgentSettingsDialog({
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [isPreviewMinimized, setIsPreviewMinimized] = useState(false);
   const [previewConversation, setPreviewConversation] = useState<AgentConversation | null>(null);
+  const [isFlowBuilderOpen, setIsFlowBuilderOpen] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { appUser, activeHub } = useAuth();
@@ -260,6 +265,7 @@ export default function AgentSettingsDialog({
       identityCaptureMessage: 'Before we start, could I get your name and email?',
       handoffKeywords: 'agent, human, help, speak to person',
       quickReplies: '',
+      flow: { nodes: [] },
     },
   });
   
@@ -299,6 +305,7 @@ export default function AgentSettingsDialog({
         identityCaptureMessage: agent.identityCapture?.captureMessage || 'Before we start, could I get your name and email?',
         handoffKeywords: agent.automations?.handoffKeywords?.join(', ') || 'agent, human, help, speak to person',
         quickReplies: agent.automations?.quickReplies?.join(', ') || '',
+        flow: agent.flow || { nodes: [] },
       });
     }
   }, [agent, form]);
@@ -361,6 +368,7 @@ export default function AgentSettingsDialog({
             handoffKeywords: values.handoffKeywords?.split(',').map(k => k.trim()).filter(Boolean) || [],
             quickReplies: values.quickReplies?.split(',').map(k => k.trim()).filter(Boolean) || [],
         },
+        flow: values.flow,
         escalationTriggers: {
             billingKeywords: [
                 'refund', 'charge', 'charged', 'billing', 'invoice', 
@@ -409,6 +417,7 @@ export default function AgentSettingsDialog({
             allowedHelpCenterIds: watchedValues.allowedHelpCenterIds || [],
             aiEnabled: watchedValues.aiEnabled,
             handoffKeywords: watchedValues.handoffKeywords?.split(',').map(k => k.trim()).filter(Boolean),
+            flow: watchedValues.flow,
         };
         
         const mockAdapters: AgentAdapters = {
@@ -519,6 +528,7 @@ export default function RootLayout({ children }) {
 }`;
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl h-[90vh] grid-cols-1 md:grid-cols-2 p-0 overflow-hidden">
         {/* Form Section */}
@@ -622,7 +632,27 @@ export default function RootLayout({ children }) {
                         />
 
                         <div className="space-y-4 pt-2">
-                            <h4 className="text-sm font-semibold flex items-center gap-2"><Zap className="h-4 w-4 text-amber-400" /> Automation Rules</h4>
+                            <h4 className="text-sm font-semibold flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    <Zap className="h-4 w-4 text-amber-400" /> 
+                                    Automation Flow
+                                </div>
+                                <Button type="button" variant="outline" size="sm" onClick={() => setIsFlowBuilderOpen(true)}>
+                                    <Split className="h-3 w-3 mr-2" />
+                                    Edit Flow
+                                </Button>
+                            </h4>
+                            <Card className="bg-muted/30">
+                                <CardContent className="p-4 flex items-center justify-between text-xs text-muted-foreground italic">
+                                    <div className="flex items-center gap-2">
+                                        Greeting <ChevronRight className="h-3 w-3" /> 
+                                        Quick Replies <ChevronRight className="h-3 w-3" /> 
+                                        AI / Handoff
+                                    </div>
+                                    <span className="font-bold text-[10px] uppercase">Preview</span>
+                                </CardContent>
+                            </Card>
+                            
                             <FormField
                                 control={form.control}
                                 name="handoffKeywords"
@@ -633,20 +663,6 @@ export default function RootLayout({ children }) {
                                         <Input placeholder="agent, help, human, speak to person" {...field} />
                                     </FormControl>
                                     <FormDescription className="text-xs">Comma separated words that immediately trigger a request for a human agent.</FormDescription>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="quickReplies"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Quick Reply Buttons</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Check Order, Pricing, Features" {...field} />
-                                    </FormControl>
-                                    <FormDescription className="text-xs">Buttons to show after the greeting (comma separated).</FormDescription>
                                     <FormMessage />
                                     </FormItem>
                                 )}
@@ -1231,5 +1247,13 @@ export default function RootLayout({ children }) {
         </div>
       </DialogContent>
     </Dialog>
+
+    <AutomationFlowBuilder 
+        isOpen={isFlowBuilderOpen}
+        onOpenChange={setIsFlowBuilderOpen}
+        flow={watchedValues.flow || { nodes: [] }}
+        onSave={(newFlow) => form.setValue('flow', newFlow)}
+    />
+    </>
   );
 }

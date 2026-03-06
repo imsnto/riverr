@@ -7,7 +7,7 @@ import * as db from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Plus, X, Loader2, Paperclip, ImageIcon, File as FileIcon, Bot } from 'lucide-react';
+import { Send, Plus, X, Loader2, Paperclip, ImageIcon, File as FileIcon, Bot, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -366,8 +366,9 @@ export default function ChatbotWidgetPage() {
         }
     }
 
-  const handleSendMessage = async () => {
-    if (!messageText.trim() && attachments.length === 0) return;
+  const handleSendMessage = async (customText?: string, meta?: any) => {
+    const textToSend = customText ?? messageText;
+    if (!textToSend.trim() && attachments.length === 0) return;
     if (!visitor || !spaceId || !bot) return;
 
     let currentConversation = conversation;
@@ -383,7 +384,7 @@ export default function ChatbotWidgetPage() {
             hubId,
             visitorId: visitor.id,
             assigneeId,
-            lastMessage: messageText || "Sent an attachment",
+            lastMessage: textToSend || "Sent an attachment",
             lastMessageAuthor: visitor.name || null,
         });
         currentConversation = newConvo;
@@ -405,19 +406,19 @@ export default function ChatbotWidgetPage() {
 
     if (identityCaptureStep === 'prompting') {
         const affirmative = ['yes', 'sure', 'ok', 'alright', 'yeah', 'yep', 'fine', 'of course', 'no problem'];
-        const userResponse = messageText.trim().toLowerCase();
+        const userResponse = textToSend.trim().toLowerCase();
 
         const userReplyMessage: Omit<ChatMessage, 'id'> = {
             conversationId: currentConversation.id,
             authorId: visitor.id,
             type: 'message',
             senderType: 'visitor',
-            content: messageText,
+            content: textToSend,
             timestamp: new Date().toISOString(),
         };
         await addChatMessageAction(userReplyMessage);
         
-        setMessageText('');
+        if (!customText) setMessageText('');
 
         if (affirmative.some(w => userResponse.includes(w))) {
             await addChatMessageAction({
@@ -431,10 +432,10 @@ export default function ChatbotWidgetPage() {
             });
             setIdentityCaptureStep('collecting');
         } else {
-            const emailMatch = messageText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+            const emailMatch = textToSend.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
             if (emailMatch) {
                 const email = emailMatch[0];
-                const namePart = messageText.replace(email, '').replace(/my name is|i am|im|i'm|is/gi, '').replace(/[.,]/g, '').trim();
+                const namePart = textToSend.replace(email, '').replace(/my name is|i am|im|i'm|is/gi, '').replace(/[.,]/g, '').trim();
                 const name = namePart || null;
                 
                 await db.updateVisitor(visitor.id, { name, email });
@@ -472,7 +473,6 @@ export default function ChatbotWidgetPage() {
         return;
     }
 
-    const userMessageContent = messageText;
     const messageAttachments: Attachment[] = [];
 
     for (const file of attachments) {
@@ -494,13 +494,13 @@ export default function ChatbotWidgetPage() {
       authorId: visitor.id,
       type: 'message',
       senderType: 'visitor',
-      content: userMessageContent,
+      content: textToSend,
       timestamp: new Date().toISOString(),
       attachments: messageAttachments,
     };
     await addChatMessageAction(newMessageData);
     
-    setMessageText('');
+    if (!customText) setMessageText('');
     setAttachments([]);
 
     const needsIdentityCapture = !appUser && bot?.identityCapture.enabled && (!visitor.name || (bot?.identityCapture.required && !visitor.email));
@@ -526,8 +526,9 @@ export default function ChatbotWidgetPage() {
         const incomingMessage: any = {
             id: `msg-${Date.now()}`,
             role: 'user',
-            text: userMessageContent,
-            createdAt: newMessageData.timestamp
+            text: textToSend,
+            createdAt: newMessageData.timestamp,
+            meta: meta,
         }
 
         const botConfig = {
@@ -535,6 +536,9 @@ export default function ChatbotWidgetPage() {
             hubId: bot.hubId,
             name: bot.name,
             allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
+            aiEnabled: bot.aiEnabled,
+            handoffKeywords: bot.automations?.handoffKeywords,
+            flow: bot.flow,
         };
 
         try {
@@ -549,7 +553,7 @@ export default function ChatbotWidgetPage() {
   const url = `/space/${spaceId}/hub/${hubId}/inbox`;
   const visitorName = visitor?.name || 'Visitor';
   const notificationTitle = `New message from ${visitorName}`;
-  const content = userMessageContent || '';
+  const content = textToSend || '';
   const notificationBody = content.length > 100
       ? content.substring(0, 100) + '...'
       : content;
@@ -609,6 +613,10 @@ export default function ChatbotWidgetPage() {
     if (window.parent) {
       window.parent.postMessage('close-manowar-chat', '*');
     }
+  };
+
+  const handleQuickReply = (btn: { id: string; label: string }) => {
+    handleSendMessage(btn.label, { buttonId: btn.id });
   };
 
   if (isLoading || !bot) {
@@ -697,6 +705,9 @@ export default function ChatbotWidgetPage() {
             const isSystem = msg.responderType === 'system' || msg.type === 'event';
             const contentHtml = isAI ? marked.parse(msg.content) : msg.content;
 
+            const meta = (msg as any).meta;
+            const buttons = meta?.buttons as { id: string; label: string }[];
+
             if (isSystem) {
                 return (
                     <div key={msg.id} className="flex justify-center py-2">
@@ -708,25 +719,41 @@ export default function ChatbotWidgetPage() {
             }
 
             return (
-              <div
-                key={msg.id}
-                className={cn('flex items-end gap-2 min-w-0', isAgent ? 'justify-start' : 'justify-end')}
-              >
-                {isAgent ? (
-                  <div className="min-w-0">
-                    <div className="p-3 rounded-xl rounded-bl-sm max-w-xs" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
-                      {msg.content && <div className="text-sm prose prose-sm prose-invert max-w-none break-words overflow-hidden [&_a]:break-all [&_a]:whitespace-normal [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:overflow-x-auto [&_code]:break-words" style={{ color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }} dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
-                      {renderAttachments(msg)}
+              <div key={msg.id} className="space-y-2">
+                <div
+                    className={cn('flex items-end gap-2 min-w-0', isAgent ? 'justify-start' : 'justify-end')}
+                >
+                    {isAgent ? (
+                    <div className="min-w-0">
+                        <div className="p-3 rounded-xl rounded-bl-sm max-w-xs" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
+                        {msg.content && <div className="text-sm prose prose-sm prose-invert max-w-none break-words overflow-hidden [&_a]:break-all [&_a]:whitespace-normal [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:overflow-x-auto [&_code]:break-words" style={{ color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }} dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
+                        {renderAttachments(msg)}
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-2">
+                            {isAI ? 'Manowar Assistant (AI)' : isAutomation ? 'Support Assistant' : (agent?.name || 'Team member')}
+                        </p>
                     </div>
-                    <p className="text-xs text-zinc-500 mt-2">
-                        {isAI ? 'Manowar Assistant (AI)' : isAutomation ? 'Support Assistant' : (agent?.name || 'Team member')}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-all" style={{ backgroundColor: primary, color: bot.styleSettings?.customerTextColor || '#ffffff' }}>
-                    {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
-                    {renderAttachments(msg)}
-                  </div>
+                    ) : (
+                    <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-all" style={{ backgroundColor: primary, color: bot.styleSettings?.customerTextColor || '#ffffff' }}>
+                        {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+                        {renderAttachments(msg)}
+                    </div>
+                    )}
+                </div>
+                {isAgent && buttons && buttons.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pl-2">
+                        {buttons.map(btn => (
+                            <Button
+                                key={btn.id}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleQuickReply(btn)}
+                                className="bg-transparent border-white/20 text-white hover:bg-white/10 hover:text-white rounded-full text-xs font-semibold h-8"
+                            >
+                                {btn.label} <ChevronRight className="h-3 w-3 ml-1 opacity-50" />
+                            </Button>
+                        ))}
+                    </div>
                 )}
               </div>
             );
@@ -823,7 +850,7 @@ export default function ChatbotWidgetPage() {
           <Button
             size="icon"
             variant="ghost"
-            onClick={handleSendMessage}
+            onClick={() => handleSendMessage()}
             disabled={(!messageText.trim() && attachments.length === 0) || loading || identityCaptureStep === 'collecting'}
             className="absolute right-1 bottom-1 h-8 w-8 hover:bg-zinc-700"
           >
