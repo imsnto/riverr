@@ -255,6 +255,17 @@ async function executeHybridFlow(args: {
         });
         return;
       }
+    } else if (currentNode.type === 'identity_form') {
+      // The widget will handle the actual identity capture.
+      // We wait for the conversation state to be 'identified' or similar.
+      // Actually, we can check if visitorEmail and visitorName are now present.
+      if (conversation.visitorEmail && conversation.visitorName) {
+        const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+        currentStepId = nextEdge?.target;
+      } else {
+        // Form not yet submitted
+        return;
+      }
     } else if (currentNode.type === 'condition') {
         const field = currentNode.data.conditionField;
         const operator = currentNode.data.operator || 'exists';
@@ -325,6 +336,17 @@ async function executeHybridFlow(args: {
         responderType: 'automation',
       });
       return; 
+    }
+
+    if (node.type === 'identity_form') {
+      await adapters.persistAssistantMessage({
+        conversationId: conversation.id,
+        hubId: conversation.hubId,
+        text: node.data.prompt || "Before we continue, could I get your name and email?",
+        responderType: 'automation',
+        meta: { type: 'identity_form' }
+      });
+      return; // The widget detects meta.type === 'identity_form' and shows the form
     }
 
     if (node.type === 'condition') {

@@ -1,4 +1,4 @@
-
+// src/components/dashboard/automation-flow-builder.tsx
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
@@ -60,6 +60,7 @@ import {
   ArrowLeft,
   Clock,
   Users,
+  UserPlus,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -86,8 +87,9 @@ const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; co
   start: { label: 'Start', icon: PlayCircle, color: 'bg-emerald-500', description: 'Triggered when a new chat begins.', category: 'conversation' },
   message: { label: 'Send Message', icon: MessageSquare, color: 'bg-blue-500', description: 'Sends a static text message to the visitor.', category: 'conversation' },
   quick_reply: { label: 'Quick Replies', icon: MousePointerClick, color: 'bg-purple-500', description: 'Offers buttons for the visitor to click.', category: 'conversation' },
-  ai_classifier: { label: 'AI Classifier', icon: Navigation, color: 'bg-indigo-600', description: 'Analyzes the visitor’s response and routes to the best path.', category: 'ai' },
+  ai_classifier: { label: 'Understand Intent', icon: Navigation, color: 'bg-indigo-600', description: 'Classifies what the visitor is asking and routes the conversation.', category: 'ai' },
   capture_input: { label: 'Capture Input', icon: Database, color: 'bg-teal-500', description: 'Asks a question and saves the response.', category: 'conversation' },
+  identity_form: { label: 'Identity Form', icon: UserPlus, color: 'bg-teal-600', description: 'Shows an inline form for Name and Email capture.', category: 'conversation' },
   ai_step: { label: 'AI Reasoning', icon: Bot, color: 'bg-violet-500', description: 'Conversational reasoning with knowledge base.', category: 'ai' },
   condition: { label: 'Condition', icon: Split, color: 'bg-amber-500', description: 'Branch based on data or identified state.', category: 'logic' },
   handoff: { label: 'Human Handoff', icon: UserCheck, color: 'bg-orange-500', description: 'Transfers the chat to a team member.', category: 'human' },
@@ -112,17 +114,15 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
         className="absolute -bottom-10 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <Button 
-          variant="outline" 
-          size="icon" 
-          className="h-7 w-7 rounded-full bg-background shadow-lg hover:bg-primary hover:text-primary-foreground border-primary/20 p-0"
+        <button 
+          className="h-7 w-7 rounded-full bg-background shadow-lg hover:bg-primary hover:text-primary-foreground border-2 border-primary/20 p-0 flex items-center justify-center transition-all"
           onClick={(e) => {
             e.stopPropagation();
             data.onOpenNodePicker?.(id, handleId);
           }}
         >
           <Plus className="h-4 w-4" />
-        </Button>
+        </button>
         {label && <span className="mt-1 text-[8px] font-black uppercase text-muted-foreground/50 tracking-tighter whitespace-nowrap">{label}</span>}
       </div>
     );
@@ -237,6 +237,7 @@ const nodeTypes = {
   quick_reply: CustomNodeComponent,
   ai_classifier: CustomNodeComponent,
   capture_input: CustomNodeComponent,
+  identity_form: CustomNodeComponent,
   ai_step: CustomNodeComponent,
   condition: CustomNodeComponent,
   handoff: CustomNodeComponent,
@@ -284,8 +285,9 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
       type,
       position,
       data: type === 'message' ? { text: 'Bot: Hi there!' } :
-            type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email', inputType: 'email', saveToProfile: true, validation: { retryAttempts: 2, errorMessage: 'Please enter a valid email.' } } :
-            type === 'ai_classifier' ? { text: '', intents: [{ id: `i_${Date.now()}`, label: 'Support', description: 'Visitor needs technical help or reports a bug' }] } :
+            type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email', inputType: 'email', saveToProfile: true } :
+            type === 'identity_form' ? { prompt: 'Before we start, could we get your details?', variableName: 'identity' } :
+            type === 'ai_classifier' ? { text: 'Analyze response', intents: [{ id: `i_${Date.now()}`, label: 'Support', description: 'Help needed' }] } :
             type === 'quick_reply' ? { text: '', buttons: [{ id: `b_${Date.now()}`, label: 'Pricing' }] } :
             type === 'condition' ? { conditionField: 'email', operator: 'exists' } :
             type === 'handoff' ? { text: 'Connecting you to an agent...', teamId: 'support', priority: 'medium' } :
@@ -352,13 +354,13 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
         let defaultEdges: any[] = [];
 
         if (aiEnabled) {
-          // AI DRIVEN DEFAULT FLOW WITH IDENTITY CAPTURE BEFORE HANDOFF
+          // AI DRIVEN DEFAULT FLOW WITH IDENTITY FORM BEFORE HANDOFF
           defaultNodes = [
             { id: 'start', type: 'start', position: { x: 120, y: 40 }, data: {} },
             { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi! Welcome to our site. How can we help you today?' } },
             { id: 'wait_input', type: 'end', position: { x: 120, y: 320 }, data: { waitBehavior: 'pause' } },
             { id: 'router', type: 'ai_classifier', position: { x: 420, y: 320 }, data: { 
-                text: 'Analyze the visitor’s response and classify it into one of the following intents.', 
+                text: 'Classify the visitor’s response into one of the following intents.', 
                 intents: [
                   { id: 'i1', label: 'Support', description: 'Visitor needs technical help or reports a bug' },
                   { id: 'i2', label: 'Pricing', description: 'Visitor asks about costs, plans, or billing' },
@@ -369,12 +371,11 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             { id: 'ai', type: 'ai_step', position: { x: 820, y: 180 }, data: { knowledgeSources: ['default'], fallbackBehavior: 'escalate' } },
             { id: 'pricing_msg', type: 'message', position: { x: 820, y: 360 }, data: { text: "We'd be happy to help with pricing and plans.\n\nTell us what you're looking for, or ask to speak with sales." } },
             
-            // LEAD CAPTURE SEQUENCE
-            { id: 'capture_name', type: 'capture_input', position: { x: 1180, y: 360 }, data: { prompt: 'Could you please tell us your name?', variableName: 'name', inputType: 'text', saveToProfile: true } },
-            { id: 'capture_email', type: 'capture_input', position: { x: 1180, y: 540 }, data: { prompt: 'In case we are unavailable could you tell us your name and email', variableName: 'email', inputType: 'email', saveToProfile: true } },
+            // CONSOLIDATED IDENTITY FORM
+            { id: 'identity_form', type: 'identity_form', position: { x: 1180, y: 360 }, data: { prompt: 'In case we are unavailable could you tell us your name and email', variableName: 'identity' } },
             
-            { id: 'handoff', type: 'handoff', position: { x: 1540, y: 540 }, data: { text: 'Connecting you to our team now.', teamId: 'support', priority: 'high' } },
-            { id: 'terminal_wait', type: 'end', position: { x: 1900, y: 540 }, data: { waitBehavior: 'pause' } }
+            { id: 'handoff', type: 'handoff', position: { x: 1540, y: 360 }, data: { text: 'Connecting you to our team now.', teamId: 'support', priority: 'high' } },
+            { id: 'terminal_wait', type: 'end', position: { x: 1900, y: 360 }, data: { waitBehavior: 'pause' } }
           ];
 
           defaultEdges = [
@@ -384,17 +385,16 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             { id: 'e4', source: 'router', target: 'ai', sourceHandle: 'intent:i1', type: 'smoothstep' },
             { id: 'e5', source: 'router', target: 'pricing_msg', sourceHandle: 'intent:i2', type: 'smoothstep' },
             { id: 'e6', source: 'router', target: 'ai', sourceHandle: 'intent:i3', type: 'smoothstep' },
-            { id: 'e7', source: 'router', target: 'capture_name', sourceHandle: 'intent:i4', type: 'smoothstep' },
+            { id: 'e7', source: 'router', target: 'identity_form', sourceHandle: 'intent:i4', type: 'smoothstep' },
             { id: 'e8', source: 'router', target: 'ai', sourceHandle: 'fallback', type: 'smoothstep' },
             { id: 'e9', source: 'ai', target: 'terminal_wait', sourceHandle: 'resolved', type: 'smoothstep' },
-            { id: 'e10', source: 'ai', target: 'capture_name', sourceHandle: 'unresolved', type: 'smoothstep' },
+            { id: 'e10', source: 'ai', target: 'identity_form', sourceHandle: 'unresolved', type: 'smoothstep' },
             { id: 'e11', source: 'pricing_msg', target: 'wait_input', sourceHandle: 'next', type: 'smoothstep' },
-            { id: 'e12', source: 'capture_name', target: 'capture_email', sourceHandle: 'next', type: 'smoothstep' },
-            { id: 'e13', source: 'capture_email', target: 'handoff', sourceHandle: 'next', type: 'smoothstep' },
-            { id: 'e14', source: 'handoff', target: 'terminal_wait', sourceHandle: 'next', type: 'smoothstep' }
+            { id: 'e12', source: 'identity_form', target: 'handoff', sourceHandle: 'next', type: 'smoothstep' },
+            { id: 'e13', source: 'handoff', target: 'terminal_wait', sourceHandle: 'next', type: 'smoothstep' }
           ];
         } else {
-          // DETERMINISTIC DEFAULT FLOW WITH IDENTITY CAPTURE
+          // DETERMINISTIC DEFAULT FLOW WITH IDENTITY FORM
           defaultNodes = [
             { id: 'start', type: 'start', position: { x: 120, y: 40 }, data: {} },
             { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi! Welcome to our site. How can we help you today?' } },
@@ -406,22 +406,20 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
                   { id: 'b3', label: 'Other' }
                 ] 
             }},
-            { id: 'capture_name', type: 'capture_input', position: { x: 420, y: 320 }, data: { prompt: 'Could you please tell us your name?', variableName: 'name', inputType: 'text', saveToProfile: true } },
-            { id: 'capture_email', type: 'capture_input', position: { x: 720, y: 320 }, data: { prompt: 'In case we are unavailable could you tell us your name and email', variableName: 'email', inputType: 'email', saveToProfile: true } },
-            { id: 'handoff', type: 'handoff', position: { x: 1020, y: 320 }, data: { text: 'Transferring you to a specialist...', teamId: 'support', priority: 'medium' } },
-            { id: 'wait', type: 'end', position: { x: 1320, y: 320 }, data: { waitBehavior: 'pause' } }
+            { id: 'identity_form', type: 'identity_form', position: { x: 420, y: 320 }, data: { prompt: 'In case we are unavailable could you tell us your name and email', variableName: 'identity' } },
+            { id: 'handoff', type: 'handoff', position: { x: 720, y: 320 }, data: { text: 'Transferring you to a specialist...', teamId: 'support', priority: 'medium' } },
+            { id: 'wait', type: 'end', position: { x: 1020, y: 320 }, data: { waitBehavior: 'pause' } }
           ];
 
           defaultEdges = [
             { id: 'e1', source: 'start', target: 'greeting', sourceHandle: 'next', type: 'smoothstep' },
             { id: 'e2', source: 'greeting', target: 'options', sourceHandle: 'next', type: 'smoothstep' },
-            { id: 'e3', source: 'options', target: 'capture_name', sourceHandle: 'intent:b1', type: 'smoothstep' },
-            { id: 'e4', source: 'options', target: 'capture_name', sourceHandle: 'intent:b2', type: 'smoothstep' },
-            { id: 'e5', source: 'options', target: 'capture_name', sourceHandle: 'intent:b3', type: 'smoothstep' },
-            { id: 'e6', source: 'options', target: 'capture_name', sourceHandle: 'fallback', type: 'smoothstep' },
-            { id: 'e7', source: 'capture_name', target: 'capture_email', sourceHandle: 'next', type: 'smoothstep' },
-            { id: 'e8', source: 'capture_email', target: 'handoff', sourceHandle: 'next', type: 'smoothstep' },
-            { id: 'e9', source: 'handoff', target: 'wait', sourceHandle: 'next', type: 'smoothstep' }
+            { id: 'e3', source: 'options', target: 'identity_form', sourceHandle: 'intent:b1', type: 'smoothstep' },
+            { id: 'e4', source: 'options', target: 'identity_form', sourceHandle: 'intent:b2', type: 'smoothstep' },
+            { id: 'e5', source: 'options', target: 'identity_form', sourceHandle: 'intent:b3', type: 'smoothstep' },
+            { id: 'e6', source: 'options', target: 'identity_form', sourceHandle: 'fallback', type: 'smoothstep' },
+            { id: 'e7', source: 'identity_form', target: 'handoff', sourceHandle: 'next', type: 'smoothstep' },
+            { id: 'e8', source: 'handoff', target: 'wait', sourceHandle: 'next', type: 'smoothstep' }
           ];
         }
 
@@ -659,81 +657,83 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
                         </div>
                     )}
 
-                    {selectedNode.type === 'capture_input' && (
+                    {(selectedNode.type === 'capture_input' || selectedNode.type === 'identity_form') && (
                         <div className="space-y-6">
                         <div className="space-y-2">
                             <Label className="text-xs font-bold uppercase">Question Prompt</Label>
                             <Input 
                             value={selectedNode.data.prompt || ''} 
                             onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
-                            placeholder="e.g. What is your email address?"
+                            placeholder={selectedNode.type === 'identity_form' ? "Before we continue, could I get your name and email?" : "e.g. What is your email address?"}
                             className="border-2"
                             />
                         </div>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase">Input Type & Validation</Label>
-                            <Select 
-                              value={selectedNode.data.inputType} 
-                              onValueChange={(val) => updateNodeData(selectedNode.id, { inputType: val })}
-                            >
-                              <SelectTrigger className="border-2"><SelectValue placeholder="Select type..." /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="email">Email Address</SelectItem>
-                                <SelectItem value="phone">Phone Number</SelectItem>
-                                <SelectItem value="text">Free Text</SelectItem>
-                                <SelectItem value="number">Number</SelectItem>
-                                <SelectItem value="url">URL</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
+                        {selectedNode.type === 'capture_input' && (
                           <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold uppercase">Save As Variable</Label>
-                                <div className="flex items-center gap-3 p-3 border-2 rounded-xl bg-teal-500/5 border-teal-500/20">
-                                <Database className="h-4 w-4 text-teal-600" />
-                                <Input 
-                                    value={selectedNode.data.variableName || ''} 
-                                    onChange={(e) => updateNodeData(selectedNode.id, { variableName: e.target.value })}
-                                    placeholder="e.g. visitor_email"
-                                    className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-mono text-teal-700 bg-transparent p-0"
-                                />
-                                </div>
+                              <Label className="text-xs font-bold uppercase">Input Type & Validation</Label>
+                              <Select 
+                                value={selectedNode.data.inputType} 
+                                onValueChange={(val) => updateNodeData(selectedNode.id, { inputType: val })}
+                              >
+                                <SelectTrigger className="border-2"><SelectValue placeholder="Select type..." /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="email">Email Address</SelectItem>
+                                  <SelectItem value="phone">Phone Number</SelectItem>
+                                  <SelectItem value="text">Free Text</SelectItem>
+                                  <SelectItem value="number">Number</SelectItem>
+                                  <SelectItem value="url">URL</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
-                            <div className="flex items-center justify-between p-3 border-2 rounded-xl bg-muted/30">
-                                <div className="space-y-0.5">
-                                    <Label className="text-xs font-bold uppercase">Sync to CRM</Label>
-                                    <p className="text-[10px] text-muted-foreground">Save to contact profile</p>
-                                </div>
-                                <Switch 
-                                    checked={selectedNode.data.saveToProfile} 
-                                    onCheckedChange={(val) => updateNodeData(selectedNode.id, { saveToProfile: val })} 
-                                />
+                            
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                  <Label className="text-xs font-bold uppercase">Save As Variable</Label>
+                                  <div className="flex items-center gap-3 p-3 border-2 rounded-xl bg-teal-500/5 border-teal-500/20">
+                                  <Database className="h-4 w-4 text-teal-600" />
+                                  <Input 
+                                      value={selectedNode.data.variableName || ''} 
+                                      onChange={(e) => updateNodeData(selectedNode.id, { variableName: e.target.value })}
+                                      placeholder="e.g. visitor_email"
+                                      className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-mono text-teal-700 bg-transparent p-0"
+                                  />
+                                  </div>
+                              </div>
+                              <div className="flex items-center justify-between p-3 border-2 rounded-xl bg-muted/30">
+                                  <div className="space-y-0.5">
+                                      <Label className="text-xs font-bold uppercase">Sync to CRM</Label>
+                                      <p className="text-[10px] text-muted-foreground">Save to contact profile</p>
+                                  </div>
+                                  <Switch 
+                                      checked={selectedNode.data.saveToProfile} 
+                                      onCheckedChange={(val) => updateNodeData(selectedNode.id, { saveToProfile: val })} 
+                                  />
+                              </div>
                             </div>
-                          </div>
 
-                          <div className="space-y-2 border-t pt-4">
-                            <Label className="text-xs font-bold uppercase">Error Handling</Label>
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">Retry Attempts</span>
-                                <Input 
-                                  type="number" 
-                                  value={selectedNode.data.validation?.retryAttempts || 2} 
-                                  onChange={(e) => updateNodeData(selectedNode.id, { validation: { ...selectedNode.data.validation, retryAttempts: parseInt(e.target.value) } })}
-                                  className="w-16 h-8 text-xs"
+                            <div className="space-y-2 border-t pt-4">
+                              <Label className="text-xs font-bold uppercase">Error Handling</Label>
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-muted-foreground">Retry Attempts</span>
+                                  <Input 
+                                    type="number" 
+                                    value={selectedNode.data.validation?.retryAttempts || 2} 
+                                    onChange={(e) => updateNodeData(selectedNode.id, { validation: { ...selectedNode.data.validation, retryAttempts: parseInt(e.target.value) } })}
+                                    className="w-16 h-8 text-xs"
+                                  />
+                                </div>
+                                <Textarea 
+                                  value={selectedNode.data.validation?.errorMessage || ''} 
+                                  onChange={(e) => updateNodeData(selectedNode.id, { validation: { ...selectedNode.data.validation, errorMessage: e.target.value } })}
+                                  className="text-xs bg-muted/30"
+                                  placeholder="Message if validation fails..."
                                 />
                               </div>
-                              <Textarea 
-                                value={selectedNode.data.validation?.errorMessage || ''} 
-                                onChange={(e) => updateNodeData(selectedNode.id, { validation: { ...selectedNode.data.validation, errorMessage: e.target.value } })}
-                                className="text-xs bg-muted/30"
-                                placeholder="Message if validation fails..."
-                              />
                             </div>
                           </div>
-                        </div>
+                        )}
                         </div>
                     )}
 
@@ -1103,6 +1103,8 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
       }
     } else if (node.type === 'capture_input') {
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt, type: 'automation' }]);
+    } else if (node.type === 'identity_form') {
+      setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt || "Please tell us your details.", type: 'automation', isIdentityForm: true }]);
     } else if (node.type === 'handoff') {
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text || 'Transferring...', type: 'automation' }]);
       setMessages(prev => [...prev, { id: Date.now(), role: 'system', text: 'Escalated to human' }]);
@@ -1215,6 +1217,13 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
                             "bg-muted text-foreground rounded-bl-none"
                         )}>
                             <p className="whitespace-pre-wrap">{m.text}</p>
+                            {m.isIdentityForm && (
+                              <div className="mt-3 space-y-2 p-2 border-t border-black/5">
+                                <div className="h-8 bg-black/5 rounded animate-pulse" />
+                                <div className="h-8 bg-black/5 rounded animate-pulse" />
+                                <div className="h-8 bg-primary/20 rounded" />
+                              </div>
+                            )}
                         </div>
                     )}
                     {m.buttons && (

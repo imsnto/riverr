@@ -1,3 +1,4 @@
+// src/app/chatbot/[hubId]/[botId]/page.tsx
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -84,10 +85,18 @@ export default function ChatbotWidgetPage() {
   const convoUnsubRef = useRef<(() => void) | null>(null);
 
   const visibleMessages = useMemo(() => {
-    return messages
+    const list = messages
       .filter(isPublicForVisitor)
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-  }, [messages]);
+    
+    // Check if the last message triggers an identity form
+    const lastMsg = list[list.length - 1];
+    if (lastMsg && (lastMsg as any).meta?.type === 'identity_form' && identityCaptureStep === 'none') {
+        setTimeout(() => setIdentityCaptureStep('collecting'), 100);
+    }
+
+    return list;
+  }, [messages, identityCaptureStep]);
 
   useEffect(() => {
   const handleStorage = (e: StorageEvent) => {
@@ -330,6 +339,20 @@ export default function ChatbotWidgetPage() {
         timestamp: new Date().toISOString(),
     });
     
+    // Resume agent logic after identification
+    const incomingMessage: any = {
+        id: `ident-${Date.now()}`,
+        role: 'user',
+        text: `My name is ${capturedName} and my email is ${capturedEmail}`,
+        createdAt: new Date().toISOString()
+    }
+    
+    await invokeAgent({
+        bot: bot!,
+        conversation: { ...conversation, visitorName: capturedName, visitorEmail: capturedEmail },
+        message: incomingMessage,
+    });
+
     setCapturedName('');
     setCapturedEmail('');
   }
@@ -505,7 +528,7 @@ export default function ChatbotWidgetPage() {
 
     const needsIdentityCapture = !appUser && bot?.identityCapture.enabled && (!visitor.name || (bot?.identityCapture.required && !visitor.email));
 
-    if (needsIdentityCapture && isNewConversation) {
+    if (needsIdentityCapture && isNewConversation && bot.flow?.nodes.length === 0) {
         await addChatMessageAction({
             conversationId: currentConversation.id,
             authorId: 'ai_agent',

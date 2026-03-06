@@ -439,7 +439,7 @@ export interface TaskTemplate {
 }
 
 // --- Automation Flows ---
-export type AutomationNodeType = 'start' | 'message' | 'quick_reply' | 'capture_input' | 'condition' | 'ai_step' | 'handoff' | 'end' | 'ai_classifier';
+export type AutomationNodeType = 'start' | 'message' | 'quick_reply' | 'capture_input' | 'condition' | 'ai_step' | 'handoff' | 'end' | 'ai_classifier' | 'identity_form';
 
 export interface AutomationNode {
   id: string;
