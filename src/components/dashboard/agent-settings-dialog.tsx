@@ -42,8 +42,7 @@ import {
   Globe, 
   Code,
   Wand2,
-  Zap,
-  Activity
+  Zap
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
@@ -63,8 +62,29 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 
+function ShieldAlertIcon(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z" />
+      <path d="M12 8v4" />
+      <path d="M12 16h.01" />
+    </svg>
+  )
+}
+
 function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
-    const [open, setOpen] = React.useState(false);
+    const [open, setOpen] = useState(false);
   
     const handleSelect = (userId: string) => {
         const newSelected = selectedUsers.includes(userId)
@@ -74,14 +94,14 @@ function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[],
     };
 
     return (
-      <div>
+      <div className="w-full">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full justify-between h-auto min-h-10"
+              className="w-full justify-between h-auto min-h-10 text-left"
             >
              <div className="flex flex-wrap gap-1">
                  {selectedUsers.length > 0 ? selectedUsers.map(id => {
@@ -92,7 +112,7 @@ function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[],
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
             <Command>
               <CommandInput placeholder="Search users..." />
               <CommandList>
@@ -112,13 +132,54 @@ function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[],
                       />
                       {user.name}
                     </CommandItem>
-                  </CommandGroup>
-                </CommandList>
-              </Command>
+                  ))}
+                </CommandGroup>
+              </CommandList>
             </Command>
           </PopoverContent>
         </Popover>
       </div>
+    );
+}
+
+function MultiSelectPopover({ title, options, selected, onChange }: { title: string, options: { value: string, label: string }[], selected: string[], onChange: (selected: string[]) => void }) {
+    const [open, setOpen] = useState(false);
+
+    const handleSelect = (value: string) => {
+        const newSelected = selected.includes(value) ? selected.filter(v => v !== value) : [...selected, value];
+        onChange(newSelected);
+    }
+    
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between h-auto text-left">
+                    <div className="flex flex-wrap gap-1">
+                        {selected.length > 0 ? selected.map(value => {
+                            const option = options.find(o => o.value === value);
+                            return <Badge variant="secondary" key={value}>{option?.label || 'Unknown'}</Badge>;
+                        }) : `Select ${title}...`}
+                    </div>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                    <CommandInput placeholder={`Search ${title}...`} />
+                    <CommandList>
+                        <CommandEmpty>No options found.</CommandEmpty>
+                        <CommandGroup>
+                            {options.map((option) => (
+                                <CommandItem key={option.value} value={option.label} onSelect={() => handleSelect(option.value)}>
+                                    <Check className={cn("mr-2 h-4 w-4", selected.includes(option.value) ? "opacity-100" : "opacity-0")} />
+                                    {option.label}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
     );
 }
 
@@ -459,9 +520,9 @@ export default function RootLayout({ children }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[90vh] grid-cols-1 md:grid-cols-2 p-0">
+      <DialogContent className="max-w-5xl h-[90vh] grid-cols-1 md:grid-cols-2 p-0 overflow-hidden">
         {/* Form Section */}
-        <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex flex-col h-full overflow-hidden border-r">
           <DialogHeader className="p-6 pb-4 border-b shrink-0">
             <DialogTitle>{agent ? `Agent Settings: ${agent.name}` : 'Create New Agent'}</DialogTitle>
             <DialogDescription>
@@ -1054,7 +1115,7 @@ export default function RootLayout({ children }) {
              <>
                 <div className="w-80 h-[450px] text-white rounded-2xl shadow-2xl flex flex-col overflow-hidden mb-4" style={{ backgroundColor: watchedValues.backgroundColor }}>
                     {/* Header */}
-                    <div className="p-3 border-b flex items-center justify-between gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                    <div className="p-3 border-b flex justify-between items-center gap-3 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
                       <div className="flex items-center gap-3">
                         {watchedValues.logoUrl && (
                           <img src={watchedValues.logoUrl} alt="Logo" className="h-8 w-8 object-contain rounded-full" />
@@ -1171,45 +1232,4 @@ export default function RootLayout({ children }) {
       </DialogContent>
     </Dialog>
   );
-}
-
-function MultiSelectPopover({ title, options, selected, onChange }: { title: string, options: { value: string, label: string }[], selected: string[], onChange: (selected: string[]) => void }) {
-    const [open, setOpen] = useState(false);
-
-    const handleSelect = (value: string) => {
-        const newSelected = selected.includes(value) ? selected.filter(v => v !== value) : [...selected, value];
-        onChange(newSelected);
-    }
-    
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between h-auto">
-                    <div className="flex flex-wrap gap-1">
-                        {selected.length > 0 ? selected.map(value => {
-                            const option = options.find(o => o.value === value);
-                            return <Badge variant="secondary" key={value}>{option?.label || 'Unknown'}</Badge>;
-                        }) : `Select ${title}...`}
-                    </div>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                <Command>
-                    <CommandInput placeholder={`Search ${title}...`} />
-                    <CommandList>
-                        <CommandEmpty>No options found.</CommandEmpty>
-                        <CommandGroup>
-                            {options.map((option) => (
-                                <CommandItem key={option.value} value={option.label} onSelect={() => handleSelect(option.value)}>
-                                    <Check className={cn("mr-2 h-4 w-4", selected.includes(option.value) ? "opacity-100" : "opacity-0")} />
-                                    {option.label}
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
-    );
 }

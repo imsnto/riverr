@@ -334,7 +334,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
         .where("primaryPhone", "==", fromE164)
         .limit(1)
         .get();
-      if (!byRaw.empty) contactId = byRaw.docs[0].id;
+      if (!byRaw.empty) contactId = bRaw.docs[0].id;
     }
 
     const now = new Date();
