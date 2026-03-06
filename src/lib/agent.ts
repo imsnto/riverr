@@ -1,3 +1,4 @@
+
 /**
  * agent.ts (Hybrid Intelligence & Intent Routing Engine)
  *
@@ -320,10 +321,21 @@ async function executeHybridFlow(args: {
 
     if (node.type === 'handoff') {
       await escalateNow(adapters, conversation, "Handoff step triggered.", node.data.text);
+      const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+      if (nextEdge) {
+          currentStepId = nextEdge.target;
+          continue;
+      }
       return;
     }
 
     if (node.type === 'end') {
+      const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+      if (nextEdge) {
+          // It's a "Wait for visitor" but with a path forward. 
+          // Stop this turn and let the next interaction pick up from here.
+          return;
+      }
       await adapters.updateConversation({
         conversationId: conversation.id,
         hubId: conversation.hubId,

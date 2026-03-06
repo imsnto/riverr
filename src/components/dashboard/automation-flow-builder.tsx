@@ -63,9 +63,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '../ui/scroll-area';
+import { cn, getInitials } from '@/lib/utils';
+import { Badge } from '../ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { 
@@ -87,7 +87,7 @@ const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; co
   ai_step: { label: 'AI Reasoning Node', icon: Bot, color: 'bg-violet-500', description: 'Conversational reasoning with knowledge base.' },
   condition: { label: 'Condition', icon: Split, color: 'bg-amber-500', description: 'Branch based on data or identified state.' },
   handoff: { label: 'Human Handoff', icon: UserCheck, color: 'bg-orange-500', description: 'Transfers the chat to a team member.' },
-  end: { label: 'Wait for Visitor', icon: CircleStop, color: 'bg-gray-500', description: 'Resets flow or waits for free-text reply.' },
+  end: { label: 'Wait for Visitor', icon: CircleStop, color: 'bg-gray-500', description: 'Pauses the flow or resolves the conversation.' },
 };
 
 const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
@@ -95,7 +95,8 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
   const edges = getEdges();
   const meta = NODE_TYPES_META[type as AutomationNodeType];
   const Icon = meta.icon;
-  const hasOutputs = !['handoff', 'end'].includes(type);
+  // All nodes can now have outputs to support universal continuity
+  const hasOutputs = true;
 
   const isHandleConnected = (handleId: string) => 
     edges.some(e => e.source === id && e.sourceHandle === handleId);
@@ -260,7 +261,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
   const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'builder' | 'preview'>('builder');
-  const { fitView, screenToFlowPosition, getNode } = useReactFlow();
+  const { fitView, getNode } = useReactFlow();
 
   const deleteNode = useCallback((id: string) => {
     if (id === 'start') return;
@@ -274,7 +275,6 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
     if (!parentNode) return;
 
     const id = `node_${Date.now()}`;
-    // Position below parent
     const position = { 
       x: parentNode.position.x, 
       y: parentNode.position.y + 200 
@@ -306,7 +306,6 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
     setSelectedNodeId(id);
   }, [getNode, setNodes, setEdges]);
 
-  // Inject functions into node data
   const nodesWithActions = useMemo(() => 
     nodes.map(n => ({
       ...n,
