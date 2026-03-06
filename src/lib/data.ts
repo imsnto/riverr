@@ -450,7 +450,7 @@ export interface AutomationNode {
     defaultNextStepId?: string; // For "free text" or fallback
     variableName?: string;
     prompt?: string;
-    conditionField?: string;
+    conditionField?: 'email' | 'name' | 'identified';
     conditionValue?: string;
     matchNextStepId?: string;
     fallbackNextStepId?: string;

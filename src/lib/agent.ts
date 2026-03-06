@@ -259,8 +259,12 @@ async function executeHybridFlow(args: {
 
     if (node.type === 'condition') {
       const field = node.data.conditionField;
-      const val = (conversation as any)[field!] || (conversation.visitorName && field === 'name') || (conversation.visitorEmail && field === 'email');
-      currentStepId = val ? node.data.matchNextStepId : node.data.fallbackNextStepId;
+      let valExists = false;
+      if (field === 'email') valExists = !!(conversation.visitorEmail || conversation.meta?.email);
+      if (field === 'name') valExists = !!(conversation.visitorName || conversation.meta?.name);
+      if (field === 'identified') valExists = !!conversation.contactId;
+
+      currentStepId = valExists ? node.data.matchNextStepId : node.data.fallbackNextStepId;
       continue;
     }
 
