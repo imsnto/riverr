@@ -57,9 +57,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Badge } from '@/components/ui/badge';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '../ui/badge';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Checkbox } from '../ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
@@ -448,7 +448,7 @@ export default function AgentSettingsDialog({
                                   <div className="flex items-center justify-center gap-2 italic">
                                       Start <ChevronRight className="h-3 w-3" /> 
                                       Greeting <ChevronRight className="h-3 w-3" /> 
-                                      Intent Router <ChevronRight className="h-3 w-3" /> 
+                                      AI Classifier <ChevronRight className="h-3 w-3" /> 
                                       (Branching paths)
                                   </div>
                                   <p className="mt-4 opacity-70">

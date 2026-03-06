@@ -86,7 +86,7 @@ const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; co
   start: { label: 'Start', icon: PlayCircle, color: 'bg-emerald-500', description: 'Triggered when a new chat begins.', category: 'conversation' },
   message: { label: 'Send Message', icon: MessageSquare, color: 'bg-blue-500', description: 'Sends a static text message to the visitor.', category: 'conversation' },
   quick_reply: { label: 'Quick Replies', icon: MousePointerClick, color: 'bg-purple-500', description: 'Offers buttons for the visitor to click.', category: 'conversation' },
-  intent_router: { label: 'Intent Router', icon: Navigation, color: 'bg-indigo-600', description: 'AI classifies text and routes to specific paths.', category: 'ai' },
+  ai_classifier: { label: 'AI Classifier', icon: Navigation, color: 'bg-indigo-600', description: 'Classifies what the visitor is asking and routes the conversation.', category: 'ai' },
   capture_input: { label: 'Capture Input', icon: Database, color: 'bg-teal-500', description: 'Asks a question and saves the response.', category: 'conversation' },
   ai_step: { label: 'AI Reasoning', icon: Bot, color: 'bg-violet-500', description: 'Conversational reasoning with knowledge base.', category: 'ai' },
   condition: { label: 'Condition', icon: Split, color: 'bg-amber-500', description: 'Branch based on data or identified state.', category: 'logic' },
@@ -169,8 +169,9 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
         )}
 
         {type === 'capture_input' && data.variableName && (
-          <div className="mt-2 p-1.5 bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded text-[10px] font-mono text-teal-700 dark:text-teal-400">
-            {data.inputType?.toUpperCase() || 'TEXT'}: {data.variableName}
+          <div className="mt-2 p-1.5 bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded text-[10px] font-mono text-teal-700 dark:text-teal-400 flex items-center justify-between">
+            <span>{data.inputType?.toUpperCase() || 'TEXT'}: {data.variableName}</span>
+            {data.saveToProfile && <Users className="h-2.5 w-2.5 opacity-50" />}
           </div>
         )}
 
@@ -201,9 +202,9 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
                 <AddStepButton handleId="unresolved" label="Fallback" />
               </div>
             </>
-          ) : type === 'intent_router' || type === 'quick_reply' ? (
+          ) : type === 'ai_classifier' || type === 'quick_reply' ? (
             <div className="flex gap-2">
-              {(type === 'intent_router' ? (data.intents || []) : (data.buttons || [])).map((btn: any) => (
+              {(type === 'ai_classifier' ? (data.intents || []) : (data.buttons || [])).map((btn: any) => (
                 <div key={btn.id} className="relative pointer-events-auto">
                   <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[8px] h-5 px-1.5 whitespace-nowrap">
                     {btn.label}
@@ -234,7 +235,7 @@ const nodeTypes = {
   start: CustomNodeComponent,
   message: CustomNodeComponent,
   quick_reply: CustomNodeComponent,
-  intent_router: CustomNodeComponent,
+  ai_classifier: CustomNodeComponent,
   capture_input: CustomNodeComponent,
   ai_step: CustomNodeComponent,
   condition: CustomNodeComponent,
@@ -282,8 +283,8 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
       type,
       position,
       data: type === 'message' ? { text: 'Bot: Hi there!' } :
-            type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email', inputType: 'email', validation: { retryAttempts: 2, errorMessage: 'Invalid email' } } :
-            type === 'intent_router' ? { text: 'How can we help?', intents: [{ id: `i_${Date.now()}`, label: 'Support', description: 'User needs help or has a technical issue' }] } :
+            type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email', inputType: 'email', saveToProfile: true, validation: { retryAttempts: 2, errorMessage: 'Invalid email' } } :
+            type === 'ai_classifier' ? { text: 'How can we help?', intents: [{ id: `i_${Date.now()}`, label: 'Support', description: 'User needs help or has a technical issue' }] } :
             type === 'quick_reply' ? { text: 'Choose an option:', buttons: [{ id: `b_${Date.now()}`, label: 'Pricing' }] } :
             type === 'condition' ? { conditionField: 'email', operator: 'exists' } :
             type === 'handoff' ? { text: 'Connecting you to an agent...', teamId: 'support', priority: 'medium' } :
@@ -349,7 +350,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
         const defaultNodes: any[] = [
           { id: 'start', type: 'start', position: { x: 120, y: 40 }, data: {} },
           { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi there! How can we help you today?' } },
-          { id: 'router', type: 'intent_router', position: { x: 420, y: 180 }, data: { 
+          { id: 'router', type: 'ai_classifier', position: { x: 420, y: 180 }, data: { 
               text: 'How can we help today?', 
               intents: [
                 { id: 'i1', label: 'Support', description: 'User needs technical help or reports a bug' },
@@ -508,7 +509,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
                         </div>
                     )}
 
-                    {selectedNode.type === 'intent_router' && (
+                    {selectedNode.type === 'ai_classifier' && (
                         <div className="space-y-6">
                         <div className="space-y-2">
                             <Label className="text-xs font-bold uppercase">Classification Question</Label>
@@ -638,16 +639,28 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
                             </Select>
                           </div>
                           
-                          <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase">Save As Variable</Label>
-                            <div className="flex items-center gap-3 p-3 border-2 rounded-xl bg-teal-500/5 border-teal-500/20">
-                            <Database className="h-4 w-4 text-teal-600" />
-                            <Input 
-                                value={selectedNode.data.variableName || ''} 
-                                onChange={(e) => updateNodeData(selectedNode.id, { variableName: e.target.value })}
-                                placeholder="e.g. visitor_email"
-                                className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-mono text-teal-700 bg-transparent p-0"
-                            />
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold uppercase">Save As Variable</Label>
+                                <div className="flex items-center gap-3 p-3 border-2 rounded-xl bg-teal-500/5 border-teal-500/20">
+                                <Database className="h-4 w-4 text-teal-600" />
+                                <Input 
+                                    value={selectedNode.data.variableName || ''} 
+                                    onChange={(e) => updateNodeData(selectedNode.id, { variableName: e.target.value })}
+                                    placeholder="e.g. visitor_email"
+                                    className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-mono text-teal-700 bg-transparent p-0"
+                                />
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between p-3 border-2 rounded-xl bg-muted/30">
+                                <div className="space-y-0.5">
+                                    <Label className="text-xs font-bold uppercase">Sync to CRM</Label>
+                                    <p className="text-[10px] text-muted-foreground">Save to contact profile</p>
+                                </div>
+                                <Switch 
+                                    checked={selectedNode.data.saveToProfile} 
+                                    onCheckedChange={(val) => updateNodeData(selectedNode.id, { saveToProfile: val })} 
+                                />
                             </div>
                           </div>
 
@@ -994,7 +1007,7 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
       }
       const nextEdge = edges.find(e => e.source === nodeId && (!e.sourceHandle || e.sourceHandle === 'next'));
       if (nextEdge) setTimeout(() => handleStep(nextEdge.target), 800);
-    } else if (node.type === 'quick_reply' || node.type === 'intent_router') {
+    } else if (node.type === 'quick_reply' || node.type === 'ai_classifier') {
       const intents = node.data.intents || [];
       const buttons = node.type === 'quick_reply' ? node.data.buttons : intents;
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text || node.data.prompt || 'How can I help?', type: 'automation', buttons }]);

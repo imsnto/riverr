@@ -189,7 +189,7 @@ async function executeHybridFlow(args: {
     const currentNode = nodes.find(n => n.id === currentStepId);
     if (!currentNode) return;
 
-    if (currentNode.type === 'quick_reply' || currentNode.type === 'intent_router') {
+    if (currentNode.type === 'quick_reply' || currentNode.type === 'ai_classifier') {
       const selectedButtonId = message.meta?.buttonId;
       
       // Look for explicit edge from this button/intent
@@ -200,7 +200,7 @@ async function executeHybridFlow(args: {
 
       if (targetEdge) {
         currentStepId = targetEdge.target;
-      } else if (currentNode.type === 'intent_router') {
+      } else if (currentNode.type === 'ai_classifier') {
         // AI INTENT CLASSIFICATION for free-text
         const intents = currentNode.data.intents || [];
         const classification = await classifyIntent(message.text, intents);
@@ -227,6 +227,22 @@ async function executeHybridFlow(args: {
       const isValid = validateInput(message.text, inputType);
       
       if (isValid) {
+        // --- CRM SYNC LOGIC ---
+        if (currentNode.data.saveToProfile) {
+          const varName = currentNode.data.variableName?.toLowerCase();
+          const patch: Partial<Conversation> = {};
+          if (varName === 'email') patch.visitorEmail = message.text.trim().toLowerCase();
+          if (varName === 'name') patch.visitorName = message.text.trim();
+          
+          if (Object.keys(patch).length > 0) {
+            await adapters.updateConversation({
+              conversationId: conversation.id,
+              hubId: conversation.hubId,
+              patch
+            });
+          }
+        }
+
         const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
         currentStepId = nextEdge?.target;
       } else {
@@ -289,7 +305,7 @@ async function executeHybridFlow(args: {
       continue;
     }
 
-    if (node.type === 'quick_reply' || node.type === 'intent_router') {
+    if (node.type === 'quick_reply' || node.type === 'ai_classifier') {
       const buttons = node.type === 'quick_reply' ? node.data.buttons : node.data.intents;
       await adapters.persistAssistantMessage({
         conversationId: conversation.id,

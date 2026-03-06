@@ -439,7 +439,7 @@ export interface TaskTemplate {
 }
 
 // --- Automation Flows ---
-export type AutomationNodeType = 'start' | 'message' | 'quick_reply' | 'capture_input' | 'condition' | 'ai_step' | 'handoff' | 'end' | 'intent_router';
+export type AutomationNodeType = 'start' | 'message' | 'quick_reply' | 'capture_input' | 'condition' | 'ai_step' | 'handoff' | 'end' | 'ai_classifier';
 
 export interface AutomationNode {
   id: string;
@@ -455,7 +455,13 @@ export interface AutomationNode {
     conditionValue?: string;
     matchNextStepId?: string;
     fallbackNextStepId?: string;
-    intents?: { id: string; label: string; nextStepId?: string }[];
+    intents?: { id: string; label: string; nextStepId?: string; description?: string }[];
+    saveToProfile?: boolean;
+    inputType?: 'text' | 'email' | 'phone' | 'number' | 'url';
+    validation?: {
+      errorMessage?: string;
+      retryAttempts?: number;
+    };
   };
 }
 
