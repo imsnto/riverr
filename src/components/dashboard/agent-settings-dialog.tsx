@@ -41,7 +41,9 @@ import {
   Info, 
   Globe, 
   Code,
-  Wand2
+  Wand2,
+  Zap,
+  Activity
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
@@ -110,9 +112,9 @@ function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[],
                       />
                       {user.name}
                     </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
+                  </CommandGroup>
+                </CommandList>
+              </Command>
             </Command>
           </PopoverContent>
         </Popover>
@@ -123,6 +125,7 @@ function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[],
 const agentSettingsSchema = z.object({
   name: z.string().min(1, 'Agent name is required.'),
   isEnabled: z.boolean().default(true),
+  aiEnabled: z.boolean().default(true),
   welcomeMessage: z.string().optional(),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.'),
   backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.'),
@@ -138,6 +141,8 @@ const agentSettingsSchema = z.object({
   identityCaptureEnabled: z.boolean().default(true),
   identityCaptureRequired: z.boolean().default(false),
   identityCaptureMessage: z.string().optional(),
+  handoffKeywords: z.string().optional(),
+  quickReplies: z.string().optional(),
 });
 
 type AgentSettingsFormValues = z.infer<typeof agentSettingsSchema>;
@@ -176,6 +181,7 @@ export default function AgentSettingsDialog({
     defaultValues: {
       name: '',
       isEnabled: true,
+      aiEnabled: true,
       welcomeMessage: 'Hi there',
       primaryColor: '#3b82f6',
       backgroundColor: '#111827',
@@ -191,6 +197,8 @@ export default function AgentSettingsDialog({
       identityCaptureEnabled: true,
       identityCaptureRequired: false,
       identityCaptureMessage: 'Before we start, could I get your name and email?',
+      handoffKeywords: 'agent, human, help, speak to person',
+      quickReplies: '',
     },
   });
   
@@ -212,6 +220,7 @@ export default function AgentSettingsDialog({
       form.reset({
         name: agent.name,
         isEnabled: agent.isEnabled ?? true,
+        aiEnabled: agent.aiEnabled ?? true,
         welcomeMessage: agent.welcomeMessage || 'Hi there',
         primaryColor: agent.styleSettings?.primaryColor || '#3b82f6',
         backgroundColor: agent.styleSettings?.backgroundColor || '#111827',
@@ -227,27 +236,9 @@ export default function AgentSettingsDialog({
         identityCaptureEnabled: agent.identityCapture?.enabled ?? true,
         identityCaptureRequired: agent.identityCapture?.required ?? false,
         identityCaptureMessage: agent.identityCapture?.captureMessage || 'Before we start, could I get your name and email?',
+        handoffKeywords: agent.automations?.handoffKeywords?.join(', ') || 'agent, human, help, speak to person',
+        quickReplies: agent.automations?.quickReplies?.join(', ') || '',
       });
-    } else {
-        form.reset({
-            name: 'New AI Agent',
-            isEnabled: true,
-            welcomeMessage: 'Hi there! How can we help you today?',
-            primaryColor: '#3b82f6',
-            backgroundColor: '#111827',
-            headerTextColor: '#ffffff',
-            agentMessageBackgroundColor: '#374151',
-            agentMessageTextColor: '#ffffff',
-            customerTextColor: '#ffffff',
-            chatbotIconsColor: '#ffffff',
-            chatbotIconsTextColor: '#000000',
-            logoUrl: '',
-            agentIds: [],
-            allowedHelpCenterIds: [],
-            identityCaptureEnabled: true,
-            identityCaptureRequired: false,
-            identityCaptureMessage: 'Before we start, could I get your name and email?',
-        });
     }
   }, [agent, form]);
   
@@ -284,6 +275,7 @@ export default function AgentSettingsDialog({
     const commonData = {
         name: values.name,
         isEnabled: values.isEnabled,
+        aiEnabled: values.aiEnabled,
         welcomeMessage: values.welcomeMessage,
         layout: 'default' as const,
         styleSettings: {
@@ -303,6 +295,10 @@ export default function AgentSettingsDialog({
             enabled: values.identityCaptureEnabled,
             required: values.identityCaptureRequired,
             captureMessage: values.identityCaptureMessage,
+        },
+        automations: {
+            handoffKeywords: values.handoffKeywords?.split(',').map(k => k.trim()).filter(Boolean) || [],
+            quickReplies: values.quickReplies?.split(',').map(k => k.trim()).filter(Boolean) || [],
         },
         escalationTriggers: {
             billingKeywords: [
@@ -350,6 +346,8 @@ export default function AgentSettingsDialog({
             hubId: activeHub.id,
             name: watchedValues.name || 'Support Agent',
             allowedHelpCenterIds: watchedValues.allowedHelpCenterIds || [],
+            aiEnabled: watchedValues.aiEnabled,
+            handoffKeywords: watchedValues.handoffKeywords?.split(',').map(k => k.trim()).filter(Boolean),
         };
         
         const mockAdapters: AgentAdapters = {
@@ -365,6 +363,7 @@ export default function AgentSettingsDialog({
                     authorId: 'ai_agent',
                     type: 'message',
                     senderType: 'agent',
+                    responderType: args.responderType,
                     content: args.text,
                     timestamp: new Date().toISOString(),
                 };
@@ -519,34 +518,91 @@ export default function RootLayout({ children }) {
                         )}
                     />
                     
-                    <Tabs defaultValue="behavior" className="w-full">
-                      <TabsList className="grid w-full grid-cols-4">
-                        <TabsTrigger value="behavior">Behavior</TabsTrigger>
+                    <Tabs defaultValue="workflow" className="w-full">
+                      <TabsList className="grid w-full grid-cols-5">
+                        <TabsTrigger value="workflow">Workflow</TabsTrigger>
+                        <TabsTrigger value="identity">Identity</TabsTrigger>
                         <TabsTrigger value="knowledge">Knowledge</TabsTrigger>
                         <TabsTrigger value="branding">Branding</TabsTrigger>
                         <TabsTrigger value="installation">Install</TabsTrigger>
                       </TabsList>
                       
-                      <TabsContent value="behavior" className="pt-6 space-y-6">
+                      <TabsContent value="workflow" className="pt-6 space-y-6">
                          <FormField
                             control={form.control}
                             name="welcomeMessage"
                             render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>Welcome Message</FormLabel>
+                                <FormLabel>Greeting Message</FormLabel>
                                 <FormControl>
-                                    <Textarea placeholder="Hi there" {...field} />
+                                    <Textarea placeholder="Hi there! How can we help you today?" {...field} />
                                 </FormControl>
+                                <FormDescription>This message is shown as soon as a visitor opens the chat.</FormDescription>
                                 <FormMessage />
                                 </FormItem>
                             )}
                         />
+
+                        <FormField
+                            control={form.control}
+                            name="aiEnabled"
+                            render={({ field }) => (
+                                <FormItem className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-indigo-500/5 border-indigo-500/20">
+                                    <div className="space-y-0.5">
+                                        <FormLabel className="flex items-center gap-2">
+                                            <BotIcon className="h-4 w-4 text-indigo-400" />
+                                            Enable AI Response Phase
+                                        </FormLabel>
+                                        <FormDescription className="text-xs">Attempt to resolve queries using knowledge before escalating.</FormDescription>
+                                    </div>
+                                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                </FormItem>
+                            )}
+                        />
+
+                        <div className="space-y-4 pt-2">
+                            <h4 className="text-sm font-semibold flex items-center gap-2"><Zap className="h-4 w-4 text-amber-400" /> Automation Rules</h4>
+                            <FormField
+                                control={form.control}
+                                name="handoffKeywords"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Handoff Triggers</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="agent, help, human, speak to person" {...field} />
+                                    </FormControl>
+                                    <FormDescription className="text-xs">Comma separated words that immediately trigger a request for a human agent.</FormDescription>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="quickReplies"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Quick Reply Buttons</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Check Order, Pricing, Features" {...field} />
+                                    </FormControl>
+                                    <FormDescription className="text-xs">Buttons to show after the greeting (comma separated).</FormDescription>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="identity" className="pt-6 space-y-6">
                          <FormField
                             control={form.control}
                             name="identityCaptureEnabled"
                             render={({ field }) => (
                                 <FormItem className="flex items-center justify-between rounded-lg border p-3">
-                                    <FormLabel>Enable Identity Capture</FormLabel>
+                                    <div className="space-y-0.5">
+                                        <FormLabel>Lead Capture Automation</FormLabel>
+                                        <FormDescription>Ask for name and email from unknown visitors.</FormDescription>
+                                    </div>
                                     <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                                 </FormItem>
                             )}
@@ -558,7 +614,7 @@ export default function RootLayout({ children }) {
                                     name="identityCaptureMessage"
                                     render={({ field }) => (
                                         <FormItem>
-                                        <FormLabel>Capture Message</FormLabel>
+                                        <FormLabel>Capture Prompt</FormLabel>
                                         <FormControl><Textarea placeholder="Before we start..." {...field} value={field.value || ''} /></FormControl>
                                         </FormItem>
                                     )}
@@ -569,7 +625,7 @@ export default function RootLayout({ children }) {
                                     render={({ field }) => (
                                         <FormItem className="flex items-center space-x-2">
                                             <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                            <FormLabel>Is providing an email required?</FormLabel>
+                                            <FormLabel className="text-sm">Require email before starting conversation</FormLabel>
                                         </FormItem>
                                     )}
                                 />
@@ -1034,20 +1090,28 @@ export default function RootLayout({ children }) {
                                     <p className="text-sm whitespace-pre-wrap">{watchedValues.welcomeMessage}</p>
                                 </div>
                             </div>
-                             <p className="text-xs text-zinc-500">AI Agent • Just now</p>
+                             <p className="text-xs text-zinc-500">Support Assistant • Just now</p>
 
                             {previewMessages.map(msg => {
-                                const isAgent = msg.senderType === 'agent' || msg.senderType === 'bot';
-                                const contentHtml = isAgent ? marked(msg.content) : msg.content;
+                                const isCustomer = msg.senderType === 'contact' || msg.senderType === 'visitor';
+                                const isAI = msg.responderType === 'ai';
+                                const isAutomation = msg.responderType === 'automation';
+                                
+                                const contentHtml = (isAI || isAutomation) ? marked(msg.content) : msg.content;
                                 
                                 return (
                                 <div
                                     key={msg.id}
-                                    className={cn('flex items-end gap-2', isAgent ? 'justify-start' : 'justify-end')}
+                                    className={cn('flex items-end gap-2', !isCustomer ? 'justify-start' : 'justify-end')}
                                 >
-                                    {isAgent ? (
-                                        <div className="p-3 rounded-xl rounded-bl-sm max-w-xs break-words" style={{ backgroundColor: watchedValues.agentMessageBackgroundColor, color: watchedValues.agentMessageTextColor }}>
-                                        {msg.content && <div className="text-sm prose prose-sm prose-invert break-words" style={{ color: watchedValues.agentMessageTextColor }} dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
+                                    {!isCustomer ? (
+                                        <div className="min-w-0">
+                                            <div className="p-3 rounded-xl rounded-bl-sm max-w-xs break-words" style={{ backgroundColor: watchedValues.agentMessageBackgroundColor, color: watchedValues.agentMessageTextColor }}>
+                                                {msg.content && <div className="text-sm prose prose-sm prose-invert break-words" style={{ color: watchedValues.agentMessageTextColor }} dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
+                                            </div>
+                                            <p className="text-[10px] text-zinc-500 mt-1 uppercase font-bold tracking-tight">
+                                                {isAI ? 'Manowar Assistant (AI)' : isAutomation ? 'Support Assistant' : 'Team Member'}
+                                            </p>
                                         </div>
                                     ) : (
                                         <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-words" style={{ backgroundColor: watchedValues.primaryColor, color: watchedValues.customerTextColor || '#ffffff' }}>

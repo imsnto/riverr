@@ -477,10 +477,11 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
   }
   
   export async function invokeAgent(args: {
-      bot: BotConfig;
+      bot: any;
       conversation: Conversation;
       message: IncomingMessage;
   }) {
+      const { bot } = args;
       const adapters: AgentAdapters = {
           searchHelpCenter,
           searchSupport,
@@ -544,8 +545,18 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
               await updateConversation(conversationId, patch);
           },
       };
+
+      const botConfig: BotConfig = {
+          id: bot.id,
+          hubId: bot.hubId,
+          name: bot.name,
+          allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
+          aiEnabled: bot.aiEnabled,
+          handoffKeywords: bot.automations?.handoffKeywords,
+          quickReplies: bot.automations?.quickReplies,
+      };
   
-      await handleIncomingMessage({ ...args, adapters });
+      await handleIncomingMessage({ ...args, bot: botConfig, adapters });
   }
 
 export async function searchHelpCenterAction(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {

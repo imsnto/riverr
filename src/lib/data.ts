@@ -173,7 +173,7 @@ export interface Deal {
   nextStepAt: string | null; // ISO String
   assignedTo: string | null; // userId
   contactId: string | null;
-  source: 'Inbound Chat' | 'Referral' | 'Website' | 'Manual' | 'Import' | null;
+  source: 'Inbound Chat' | 'Referral' | 'Website' | 'Manual' | 'Inbound Chat' | 'Referral' | 'Website' | 'Manual' | 'Import' | null;
   tags?: string[];
   isStale?: boolean;
   createdAt: string; // ISO String
@@ -444,6 +444,7 @@ export interface Bot {
   hubId: string;
   name: string;
   isEnabled?: boolean;
+  aiEnabled?: boolean;
   welcomeMessage?: string;
   layout: 'default' | 'compact';
   styleSettings?: {
@@ -463,6 +464,10 @@ export interface Bot {
     enabled: boolean;
     required: boolean;
     captureMessage?: string;
+  };
+  automations?: {
+    handoffKeywords?: string[];
+    quickReplies?: string[];
   };
   escalationTriggers: {
     billingKeywords?: string[];

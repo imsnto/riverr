@@ -13,7 +13,9 @@ export interface BotConfig {
   hubId: string;
   name: string;
   allowedHelpCenterIds: string[];
-  aiEnabled?: boolean; // New: Master toggle for AI phase
+  aiEnabled?: boolean; 
+  handoffKeywords?: string[];
+  quickReplies?: string[];
 }
 
 interface PlaybookStep {
@@ -180,7 +182,7 @@ export async function handleIncomingMessage(args: {
         conversationId: conversation.id,
         hubId: conversation.hubId,
         patch: {
-          handoff: { status: "declined", reason: conversation.handoff.reason },
+          handoff: { status: "none", reason: "Offer declined by user" },
           status: 'automated'
         },
       });
@@ -193,6 +195,12 @@ export async function handleIncomingMessage(args: {
       });
       return;
     }
+  }
+
+  // ---- 2.5 AUTOMATION CHECK: KEYWORD TRIGGER ----
+  if (bot.handoffKeywords?.length && containsAny(text, bot.handoffKeywords)) {
+      await offerHuman(adapters, conversation, botName, "User requested agent via keyword.");
+      return;
   }
 
   // ---- 3. AUTOMATION CHECK: PLAYBOOKS ----
