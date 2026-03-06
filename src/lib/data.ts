@@ -439,7 +439,7 @@ export interface TaskTemplate {
 }
 
 // --- Automation Flows ---
-export type AutomationNodeType = 'start' | 'message' | 'quick_reply' | 'capture_input' | 'condition' | 'ai_step' | 'handoff' | 'end';
+export type AutomationNodeType = 'start' | 'message' | 'quick_reply' | 'capture_input' | 'condition' | 'ai_step' | 'handoff' | 'end' | 'intent_router';
 
 export interface AutomationNode {
   id: string;
@@ -454,6 +454,7 @@ export interface AutomationNode {
     conditionValue?: string;
     matchNextStepId?: string;
     fallbackNextStepId?: string;
+    intents?: { id: string; label: string; nextStepId?: string }[];
   };
   nextStepId?: string;
 }

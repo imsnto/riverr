@@ -1,7 +1,7 @@
 /**
- * agent.ts (Standardized Automation Flow execution)
+ * agent.ts (Hybrid Intelligence & Intent Routing Engine)
  *
- * Handles logic for structured automation flows before/during AI and human phases.
+ * Implements conversational AI reasoning + deterministic subflow execution.
  */
 
 import type { Conversation as ImportedConversation, SupportIntentNode, ConversationStatus, ResponderType, AutomationNode, Bot } from "./data";
@@ -19,25 +19,7 @@ export interface BotConfig {
   flow?: { nodes: AutomationNode[] };
 }
 
-interface PlaybookStep {
-  step: string;
-  description: string;
-}
-
-interface PlaybookContent {
-  intent: string;
-  description: string;
-  steps: PlaybookStep[];
-}
-
-interface ActivePlaybookInfo {
-  intent: string;
-  content: PlaybookContent;
-  currentStep: number;
-}
-
 export type Conversation = ImportedConversation & {
-  // standardized metadata from PRD
   status: ConversationStatus;
   lastResponderType?: ResponderType;
   aiAttempted?: boolean;
@@ -57,7 +39,7 @@ export type Conversation = ImportedConversation & {
     attemptCount?: number;
     intentHistory?: string[];
     activePlaybook?: ActivePlaybookInfo;
-    currentFlowStepId?: string; // Tracks position in structured flow
+    currentFlowStepId?: string; // Tracks position in hybrid flow
     [key: string]: any;
   };
 };
@@ -68,7 +50,7 @@ export interface IncomingMessage {
   text: string;
   createdAt: string; // ISO
   meta?: {
-    buttonId?: string; // If message was triggered by a button click
+    buttonId?: string; // If message was triggered by a specific button mapping
   };
 }
 
@@ -137,7 +119,7 @@ export interface AgentAdapters {
 }
 
 // -------------------------
-// Standard Pipeline
+// Standard Hybrid Pipeline
 // -------------------------
 
 export async function handleIncomingMessage(args: {
@@ -151,53 +133,43 @@ export async function handleIncomingMessage(args: {
   const text = args.message.text ?? "";
   const botName = bot.name || "Support";
 
-  // ---- 1. HARD STOP: HUMAN ASSIGNED ----
+  // ---- 1. ESCALATION GUARD ----
   if (conversation.status === 'waiting_human' || conversation.status === 'resolved') {
     return;
   }
 
-  // ---- 2. AUTOMATION CHECK: KEYWORD TRIGGER ----
+  // ---- 2. GLOBAL HANDOFF TRIGGERS ----
   if (bot.handoffKeywords?.length && containsAny(text, bot.handoffKeywords)) {
-      await escalateNow(adapters, conversation, "User requested agent via keyword.");
+      await escalateNow(adapters, conversation, "Requested via global trigger.");
       return;
   }
 
-  // ---- 3. STRUCTURED FLOW EXECUTION ----
+  // ---- 3. HYBRID FLOW EXECUTION ----
   if (bot.flow?.nodes?.length) {
-    await executeFlow(args);
+    await executeHybridFlow(args);
     return;
   }
 
-  // ---- 4. AI HANDLING (IF ENABLED) - FALLBACK FOR LEGACY WITHOUT FLOW ----
+  // ---- 4. LEGACY AI FALLBACK ----
   if (bot.aiEnabled !== false) {
     await executeAiPhase(args);
     return;
   }
 
-  // ---- 5. HUMAN ESCALATION FALLBACK ----
-  const attemptCount = (conversation.meta?.attemptCount ?? 0) + 1;
-  if (attemptCount >= 2) {
-      await escalateNow(adapters, conversation, "Automated limits reached.");
-  } else {
-      await adapters.updateConversation({
-          conversationId: conversation.id,
-          hubId: conversation.hubId,
-          patch: { meta: { ...conversation.meta, attemptCount } }
-      });
-      await adapters.persistAssistantMessage({
-          conversationId: conversation.id,
-          hubId: conversation.hubId,
-          text: `I'm not quite sure I follow. Could you rephrase your question or describe what you're trying to achieve in **${botName}**?`,
-          responderType: 'automation'
-      });
-  }
+  // ---- 5. DEFAULT CLARIFICATION ----
+  await adapters.persistAssistantMessage({
+      conversationId: conversation.id,
+      hubId: conversation.hubId,
+      text: `I'm not quite sure how to help. Could you tell me more about what you're looking for in **${botName}**?`,
+      responderType: 'automation'
+  });
 }
 
 // -------------------------
-// Flow Logic
+// Hybrid Flow Logic
 // -------------------------
 
-async function executeFlow(args: {
+async function executeHybridFlow(args: {
   bot: BotConfig;
   conversation: Conversation;
   message: IncomingMessage;
@@ -207,39 +179,45 @@ async function executeFlow(args: {
   const nodes = bot.flow!.nodes;
   let currentStepId = conversation.meta?.currentFlowStepId;
 
-  // 1. Resolve current node based on input or start
+  // 1. Initial State Resolution
   if (!currentStepId) {
     const startNode = nodes.find(n => n.type === 'start');
     currentStepId = startNode?.nextStepId;
   } else {
-    // We are responding to an active interactive node
+    // Handling interaction with existing state
     const currentNode = nodes.find(n => n.id === currentStepId);
     
-    if (currentNode?.type === 'quick_reply') {
+    if (currentNode?.type === 'quick_reply' || currentNode?.type === 'intent_router') {
       const selectedButtonId = message.meta?.buttonId;
-      const button = currentNode.data.buttons?.find(b => b.id === selectedButtonId);
+      const buttons = currentNode.type === 'quick_reply' ? currentNode.data.buttons : currentNode.data.intents;
+      const button = buttons?.find(b => b.id === selectedButtonId);
+      
       if (button?.nextStepId) {
         currentStepId = button.nextStepId;
+      } else if (currentNode.type === 'intent_router') {
+        // AI INTENT CLASSIFICATION for Intent Router free-text
+        const classification = await classifyIntent(message.text, buttons || []);
+        if (classification) {
+            currentStepId = classification;
+        } else {
+            currentStepId = currentNode.data.fallbackNextStepId || currentNode.nextStepId;
+        }
       } else {
-        // Fallback for "Free Text" input on a quick reply step
         currentStepId = currentNode.data.defaultNextStepId || currentNode.nextStepId;
       }
     } else if (currentNode?.type === 'capture_input') {
-      // Input was captured, move forward
       currentStepId = currentNode.nextStepId;
     } else {
-      // Default: move to next step
       currentStepId = currentNode?.nextStepId;
     }
   }
 
-  // 2. Step through non-blocking nodes
-  let limit = 10;
-  while (currentStepId && limit-- > 0) {
+  // 2. Traversal Loop
+  let safetyLimit = 15;
+  while (currentStepId && safetyLimit-- > 0) {
     const node = nodes.find(n => n.id === currentStepId);
     if (!node) break;
 
-    // Persist position
     await adapters.updateConversation({
       conversationId: conversation.id,
       hubId: conversation.hubId,
@@ -257,47 +235,46 @@ async function executeFlow(args: {
       continue;
     }
 
-    if (node.type === 'quick_reply') {
+    if (node.type === 'quick_reply' || node.type === 'intent_router') {
+      const buttons = node.type === 'quick_reply' ? node.data.buttons : node.data.intents;
       await adapters.persistAssistantMessage({
         conversationId: conversation.id,
         hubId: conversation.hubId,
-        text: node.data.text || "Choose an option:",
+        text: node.data.text || "How can I help you?",
         responderType: 'automation',
-        meta: { buttons: node.data.buttons }
+        meta: { buttons }
       });
-      return; // Stop and wait for click
+      return; // Wait for user choice (button or free-text for router)
     }
 
     if (node.type === 'capture_input') {
       await adapters.persistAssistantMessage({
         conversationId: conversation.id,
         hubId: conversation.hubId,
-        text: node.data.prompt || "Please enter information:",
+        text: node.data.prompt || "Please enter details:",
         responderType: 'automation',
       });
-      return; // Stop and wait for input
+      return; 
     }
 
     if (node.type === 'condition') {
       const field = node.data.conditionField;
       const val = (conversation as any)[field!] || (conversation.visitorName && field === 'name') || (conversation.visitorEmail && field === 'email');
-      
       currentStepId = val ? node.data.matchNextStepId : node.data.fallbackNextStepId;
       continue;
     }
 
     if (node.type === 'ai_step') {
       const resolved = await executeAiPhase(args);
-      // Explicitly follow the fallback branch only if AI fails to find an answer
       if (!resolved && node.data.fallbackNextStepId) {
         currentStepId = node.data.fallbackNextStepId;
         continue;
       }
-      return; 
+      return; // AI handles the rest conversationally or waits
     }
 
     if (node.type === 'handoff') {
-      await escalateNow(adapters, conversation, "Escalated by flow step.", node.data.text);
+      await escalateNow(adapters, conversation, "Handoff step triggered.", node.data.text);
       return;
     }
 
@@ -314,6 +291,10 @@ async function executeFlow(args: {
   }
 }
 
+/**
+ * Conversational Reasoning logic.
+ * AI attempts to answer using knowledge, clarifies if info is missing, or falls back.
+ */
 async function executeAiPhase(args: {
   bot: BotConfig;
   conversation: Conversation;
@@ -330,7 +311,7 @@ async function executeAiPhase(args: {
       patch: { aiAttempted: true, status: 'ai_active' }
   });
 
-  // A. Support Intent Lookup
+  // Intent-based Knowledge Lookup
   const supportSearchResults = await adapters.searchSupport({
       hubId: bot.hubId,
       userId: conversation.userId ?? null,
@@ -338,20 +319,36 @@ async function executeAiPhase(args: {
       topK: 1
   });
 
-  if (supportSearchResults.intents?.[0]?._searchScore! > 0.55) {
+  if (supportSearchResults.intents?.[0]?._searchScore! > 0.6) {
       const intent = supportSearchResults.intents[0];
+      
+      // Auto-clarification: check for required context keys
+      if (intent.requiredContext?.length) {
+          const missing = intent.requiredContext.filter(c => !conversation.meta?.[c.key]);
+          if (missing.length > 0) {
+              await adapters.persistAssistantMessage({
+                  conversationId: conversation.id,
+                  hubId: conversation.hubId,
+                  text: missing[0].question,
+                  responderType: 'automation',
+                  meta: { pendingIntent: intent.intentKey, missingKey: missing[0].key }
+              });
+              return true; // Wait for clarification
+          }
+      }
+
       await adapters.persistAssistantMessage({
           conversationId: conversation.id,
           hubId: conversation.hubId,
-          text: intent.answerVariants[0]?.template || "I found something.",
+          text: intent.answerVariants[0]?.template || "I found an answer for you.",
           responderType: 'ai',
-          meta: { intent: intent.intentKey, from: 'SupportIntentNode' },
+          meta: { intent: intent.intentKey, from: 'SupportIntent' },
       });
       await adapters.updateConversation({ conversationId: conversation.id, hubId: conversation.hubId, patch: { aiResolved: true } });
       return true;
   }
 
-  // B. Help Center Search
+  // Knowledge Base Search
   const search = await adapters.searchHelpCenter({
       hubId: bot.hubId,
       allowedHelpCenterIds: bot.allowedHelpCenterIds,
@@ -365,15 +362,8 @@ async function executeAiPhase(args: {
 
   if (topScore >= 0.55) {
       const best = [...chunks].sort((a, b) => b.score - a.score).slice(0, 3);
-      const steps = extractSteps(best);
-      let answerText = `I found some information in **${botName}** knowledge base:\n`;
-      if (steps.length) {
-          answerText += "\nSteps:\n";
-          steps.forEach((s, i) => { answerText += `${i + 1}. ${s}\n`; });
-      } else {
-          answerText += "\nSummary:\n";
-          best.forEach(c => { answerText += `- ${c.chunkText.slice(0, 140)}...\n`; });
-      }
+      let answerText = `I found some information in **${botName}** knowledge base:\n\n`;
+      best.forEach(c => { answerText += `- ${c.chunkText.slice(0, 180)}...\n`; });
 
       await adapters.persistAssistantMessage({
           conversationId: conversation.id,
@@ -381,27 +371,39 @@ async function executeAiPhase(args: {
           text: answerText,
           responderType: 'ai',
           sources: best.map(c => ({ articleId: c.articleId, title: c.title, url: c.url, score: c.score })),
-          meta: { topScore },
       });
       await adapters.updateConversation({ conversationId: conversation.id, hubId: conversation.hubId, patch: { aiResolved: true } });
       return true;
   }
 
-  return false;
+  return false; // Fallback to automation path
 }
 
 // -------------------------
 // Helpers
 // -------------------------
 
+/**
+ * Categorize free-text input against defined intent paths.
+ */
+async function classifyIntent(text: string, intentPaths: { id: string; label: string; nextStepId?: string }[]): Promise<string | null> {
+    if (!text || intentPaths.length === 0) return null;
+    
+    // Phase 1: Simple fuzzy matching
+    const normalizedText = text.toLowerCase();
+    for (const path of intentPaths) {
+        if (normalizedText.includes(path.label.toLowerCase())) {
+            return path.nextStepId || null;
+        }
+    }
+    
+    // In production, this would invoke a lightweight LLM classifier
+    return null;
+}
+
 function containsAny(haystack: string, needles: string[]) {
   const h = (haystack ?? "").toLowerCase();
   return needles.some((n) => h.includes(n.toLowerCase()));
-}
-
-function extractSteps(chunks: HelpChunk[]) {
-  const lines = chunks.flatMap(c => c.chunkText.split("\n"));
-  return lines.map(l => l.trim()).filter(l => /^\d+\.|^step\s+/i.test(l)).slice(0, 6);
 }
 
 async function escalateNow(adapters: AgentAdapters, conversation: Conversation, reason: string, customMessage?: string) {
@@ -424,7 +426,7 @@ async function escalateNow(adapters: AgentAdapters, conversation: Conversation, 
   await adapters.persistAssistantMessage({
     conversationId: conversation.id,
     hubId: conversation.hubId,
-    text: customMessage || `Connecting you to a member of our team... they will reply here shortly.`,
+    text: customMessage || `Connecting you to our team. They will reply here shortly.`,
     responderType: 'automation',
   });
 }

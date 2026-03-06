@@ -8,6 +8,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { 
@@ -31,6 +32,7 @@ import {
   Terminal,
   HelpCircle,
   CheckCircle2,
+  Navigation,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -68,8 +70,9 @@ interface AutomationFlowBuilderProps {
 const NODE_TYPES: { type: AutomationNodeType; label: string; icon: any; description: string; color: string }[] = [
   { type: 'message', label: 'Send Message', icon: MessageSquare, description: 'Send a static message to the visitor.', color: 'border-blue-500 bg-blue-500/5' },
   { type: 'quick_reply', label: 'Quick Replies', icon: MousePointerClick, description: 'Offer buttons for the visitor to click.', color: 'border-purple-500 bg-purple-500/5' },
+  { type: 'intent_router', label: 'Intent Router', icon: Navigation, description: 'Classify user request and route to specific path.', color: 'border-indigo-600 bg-indigo-600/5' },
   { type: 'capture_input', label: 'Capture Input', icon: Database, description: 'Ask a question and save the response.', color: 'border-teal-500 bg-teal-500/5' },
-  { type: 'ai_step', label: 'AI Resolution', icon: Bot, description: 'Attempt to resolve using knowledge base.', color: 'border-violet-500 bg-violet-500/5' },
+  { type: 'ai_step', label: 'AI Response', icon: Bot, description: 'Attempt to resolve using AI and knowledge base.', color: 'border-violet-500 bg-violet-500/5' },
   { type: 'condition', label: 'Condition', icon: Split, description: 'Branch based on user data or input.', color: 'border-indigo-500 bg-indigo-500/5' },
   { type: 'handoff', label: 'Human Handoff', icon: UserCheck, description: 'Escalate to a human support agent.', color: 'border-orange-500 bg-orange-500/5' },
   { type: 'end', label: 'End Conversation', icon: CircleStop, description: 'Mark the conversation as resolved.', color: 'border-gray-500 bg-gray-500/5' },
@@ -98,6 +101,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
       data: type === 'quick_reply' ? { text: 'How can I help?', buttons: [{ id: `btn_${Date.now()}`, label: 'Option 1' }] } : 
             type === 'message' ? { text: 'New message' } :
             type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email' } : 
+            type === 'intent_router' ? { text: 'What are you looking for?', intents: [{ id: `intent_${Date.now()}`, label: 'Order Help' }] } :
             type === 'condition' ? { conditionField: 'email', conditionValue: '', matchNextStepId: '', fallbackNextStepId: '' } : {},
     };
     
@@ -142,7 +146,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
             </div>
             <div>
                 <DialogTitle>Automation Flow Builder</DialogTitle>
-                <DialogDescription className="text-xs">Define execution paths for your chatbot.</DialogDescription>
+                <DialogDescription className="text-xs">Define intelligence and execution paths.</DialogDescription>
             </div>
           </div>
           
@@ -174,6 +178,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                         const typeInfo = NODE_TYPES.find(t => t.type === node.type);
                         const hasDeadEnd = !node.nextStepId && !['end', 'handoff'].includes(node.type) && 
                                           !(node.type === 'quick_reply' && node.data.buttons?.some(b => b.nextStepId)) &&
+                                          !(node.type === 'intent_router' && node.data.intents?.some(i => i.nextStepId)) &&
                                           !(node.type === 'ai_step' && node.data.fallbackNextStepId) &&
                                           !(node.type === 'condition' && node.data.matchNextStepId && node.data.fallbackNextStepId);
 
@@ -204,27 +209,26 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                                 </p>
                                                 {hasDeadEnd && (
                                                     <Badge variant="destructive" className="h-4 px-1 text-[8px] animate-pulse">
-                                                        <AlertCircle className="h-2 w-2 mr-1" /> Missing Connection
+                                                        <AlertCircle className="h-2 w-2 mr-1" /> Path Missing
                                                     </Badge>
                                                 )}
                                             </div>
                                             <h4 className="font-bold truncate text-sm">
                                                 {node.type === 'message' ? (node.data.text || 'Empty message...') : 
                                                  node.type === 'quick_reply' ? (node.data.text || 'Choose option...') :
+                                                 node.type === 'intent_router' ? (node.data.text || 'Categorize intent...') :
                                                  node.type === 'capture_input' ? (node.data.prompt || 'Ask question...') :
                                                  node.type === 'start' ? 'Conversation Started' :
-                                                 node.type === 'ai_step' ? 'AI Resolution' :
+                                                 node.type === 'ai_step' ? 'AI Reasoning Node' :
                                                  node.type === 'condition' ? `Check: ${node.data.conditionField}` :
                                                  node.type === 'handoff' ? 'Connect to Agent' :
                                                  node.type === 'end' ? 'Resolve Case' : 'New Step'}
                                             </h4>
                                             
-                                            {node.type === 'capture_input' && node.data.variableName && (
-                                                <div className="flex items-center gap-1.5 mt-1">
-                                                    <Badge variant="outline" className="text-[9px] h-4 py-0 font-mono bg-background/50">
-                                                        <Terminal className="h-2.5 w-2.5 mr-1" /> save as: {node.data.variableName}
-                                                    </Badge>
-                                                </div>
+                                            {node.type === 'ai_step' && (
+                                                <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1 italic">
+                                                    AI automatically clarifies if details are missing.
+                                                </p>
                                             )}
                                         </div>
                                         {node.id !== 'start' && (
@@ -265,21 +269,44 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                                     </div>
                                                 );
                                             })}
+                                        </div>
+                                    )}
+
+                                    {node.type === 'intent_router' && node.data.intents && (
+                                        <div className="px-4 pb-4 space-y-2 border-t pt-3 bg-indigo-600/5">
+                                            {node.data.intents.map(intent => {
+                                                const targetNode = nodes.find(n => n.id === intent.nextStepId);
+                                                return (
+                                                    <div key={intent.id} className="flex items-center justify-between text-xs">
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <Badge variant="outline" className="h-5 bg-indigo-600/10 text-indigo-600 border-indigo-600/20 px-1.5 text-[9px] uppercase font-bold tracking-tight shrink-0">INTENT</Badge>
+                                                            <span className="font-semibold truncate">{intent.label}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-muted-foreground shrink-0 pl-4">
+                                                            <ArrowRight className="h-3 w-3" />
+                                                            {targetNode ? (
+                                                                <Badge variant="secondary" className="text-[9px] h-4 max-w-[120px] truncate">{getNodeTitle(targetNode)}</Badge>
+                                                            ) : (
+                                                                <span className="text-[10px] text-destructive italic font-medium">Not set</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                             
-                                            {/* Free Text Path */}
                                             <div className="flex items-center justify-between text-xs pt-1 border-t border-dashed">
                                                 <div className="flex items-center gap-2 text-muted-foreground italic">
-                                                    <MessageSquare className="h-3 w-3" />
-                                                    <span>Visitor types message...</span>
+                                                    <HelpCircle className="h-3 w-3" />
+                                                    <span>Unknown Intent</span>
                                                 </div>
                                                 <div className="flex items-center gap-2 text-muted-foreground shrink-0 pl-4">
                                                     <ArrowRight className="h-3 w-3" />
-                                                    {node.data.defaultNextStepId ? (
+                                                    {node.data.fallbackNextStepId ? (
                                                         <Badge variant="secondary" className="text-[9px] h-4">
-                                                            {getNodeTitle(nodes.find(n => n.id === node.data.defaultNextStepId)!)}
+                                                            {getNodeTitle(nodes.find(n => n.id === node.data.fallbackNextStepId)!)}
                                                         </Badge>
                                                     ) : (
-                                                        <span className="text-[10px] italic">Stop & wait</span>
+                                                        <span className="text-[10px] italic">AI Clarification</span>
                                                     )}
                                                 </div>
                                             </div>
@@ -291,14 +318,14 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                             <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 font-bold text-[10px] uppercase tracking-tighter">
                                                 <div className="flex items-center gap-1.5">
                                                     <CheckCircle2 className="h-3 w-3" />
-                                                    <span>Answer Found</span>
+                                                    <span>Answered / Resolved</span>
                                                 </div>
-                                                <span className="opacity-60">Continue Chat</span>
+                                                <span className="opacity-60">Wait for visitor</span>
                                             </div>
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-1.5 text-rose-500 font-bold text-[10px] uppercase tracking-tighter">
                                                     <HelpCircle className="h-3 w-3" />
-                                                    <span>Unresolved</span>
+                                                    <span>Unresolved / Fallback</span>
                                                 </div>
                                                 <div className="flex items-center gap-1 text-muted-foreground">
                                                     <ArrowRight className="h-2.5 w-2.5" />
@@ -306,33 +333,6 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                                         <Badge variant="secondary" className="text-[9px] h-4 px-1 bg-rose-500/10 text-rose-500 border-rose-500/20">{getNodeTitle(nodes.find(n => n.id === node.data.fallbackNextStepId)!)}</Badge>
                                                     ) : (
                                                         <span className="text-[10px] text-destructive italic font-medium">No fallback</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {node.type === 'condition' && (
-                                        <div className="px-4 pb-3 pt-2 border-t bg-indigo-500/5 text-[10px] space-y-2">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-emerald-500 font-bold uppercase">Matches</span>
-                                                <div className="flex items-center gap-1 text-muted-foreground">
-                                                    <ArrowRight className="h-2.5 w-2.5" />
-                                                    {node.data.matchNextStepId ? (
-                                                        <span className="font-bold text-foreground">{getNodeTitle(nodes.find(n => n.id === node.data.matchNextStepId)!)}</span>
-                                                    ) : (
-                                                        <span className="italic">End</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-rose-500 font-bold uppercase">Fallback</span>
-                                                <div className="flex items-center gap-1 text-muted-foreground">
-                                                    <ArrowRight className="h-2.5 w-2.5" />
-                                                    {node.data.fallbackNextStepId ? (
-                                                        <span className="font-bold text-foreground">{getNodeTitle(nodes.find(n => n.id === node.data.fallbackNextStepId)!)}</span>
-                                                    ) : (
-                                                        <span className="italic">End</span>
                                                     )}
                                                 </div>
                                             </div>
@@ -358,10 +358,10 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-72 p-2">
-                                <p className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Communication</p>
-                                {NODE_TYPES.filter(t => ['message', 'quick_reply'].includes(t.type)).map(t => (
+                                <p className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Intelligence & Routing</p>
+                                {NODE_TYPES.filter(t => ['intent_router', 'ai_step', 'quick_reply'].includes(t.type)).map(t => (
                                     <DropdownMenuItem key={t.type} onClick={() => handleAddNode(t.type)} className="p-3 gap-3">
-                                        <t.icon className="h-5 w-5 text-primary shrink-0" />
+                                        <t.icon className="h-5 w-5 text-indigo-600 shrink-0" />
                                         <div className="space-y-0.5">
                                             <p className="font-semibold text-sm">{t.label}</p>
                                             <p className="text-[10px] text-muted-foreground">{t.description}</p>
@@ -369,8 +369,8 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                     </DropdownMenuItem>
                                 ))}
                                 <DropdownMenuSeparator />
-                                <p className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Logic & AI</p>
-                                {NODE_TYPES.filter(t => !['message', 'quick_reply', 'start'].includes(t.type)).map(t => (
+                                <p className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Business Logic</p>
+                                {NODE_TYPES.filter(t => !['intent_router', 'ai_step', 'quick_reply', 'start'].includes(t.type)).map(t => (
                                     <DropdownMenuItem key={t.type} onClick={() => handleAddNode(t.type)} className="p-3 gap-3">
                                         <t.icon className="h-5 w-5 text-primary shrink-0" />
                                         <div className="space-y-0.5">
@@ -432,6 +432,85 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                 </div>
                             )}
 
+                            {selectedNode.type === 'intent_router' && (
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <Label>Message / Question</Label>
+                                        <Input 
+                                            value={selectedNode.data.text || ''} 
+                                            onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
+                                            placeholder="e.g. How can we help today?"
+                                        />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <Label>Defined Intents</Label>
+                                        {selectedNode.data.intents?.map((intent, iIndex) => (
+                                            <div key={intent.id} className="space-y-3 p-4 border-2 rounded-xl bg-muted/20 relative group/intent-edit">
+                                                <div className="flex items-center gap-2">
+                                                    <Input 
+                                                        value={intent.label} 
+                                                        onChange={(e) => {
+                                                            const newIntents = [...(selectedNode.data.intents || [])];
+                                                            newIntents[iIndex].label = e.target.value;
+                                                            updateNodeData(selectedNode.id, { intents: newIntents });
+                                                        }}
+                                                        placeholder="Intent name (e.g. Pricing)"
+                                                        className="h-9 font-medium"
+                                                    />
+                                                    <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive opacity-0 group-hover/intent-edit:opacity-100 transition-opacity" onClick={() => {
+                                                        updateNodeData(selectedNode.id, { intents: selectedNode.data.intents?.filter(i => i.id !== intent.id) });
+                                                    }}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">Route to step:</Label>
+                                                    <Select value={intent.nextStepId || 'none'} onValueChange={(val) => {
+                                                        const newIntents = [...(selectedNode.data.intents || [])];
+                                                        newIntents[iIndex].nextStepId = val === 'none' ? undefined : val;
+                                                        updateNodeData(selectedNode.id, { intents: newIntents });
+                                                    }}>
+                                                        <SelectTrigger className="h-9 text-xs bg-background">
+                                                            <SelectValue placeholder="End path" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="none">End Flow</SelectItem>
+                                                            {nodes.filter(n => n.id !== selectedNode.id).map(n => (
+                                                                <SelectItem key={n.id} value={n.id}>{getNodeTitle(n)}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <Button variant="outline" className="w-full border-dashed" onClick={() => {
+                                            const newIntents = [...(selectedNode.data.intents || []), { id: `intent_${Date.now()}`, label: 'New Intent' }];
+                                            updateNodeData(selectedNode.id, { intents: newIntents });
+                                        }}>
+                                            <Plus className="h-4 w-4 mr-2" /> Add Intent Path
+                                        </Button>
+                                    </div>
+                                    
+                                    <div className="space-y-3 pt-4 border-t">
+                                        <Label className="flex items-center gap-2">
+                                            <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                                            If intent is unknown...
+                                        </Label>
+                                        <Select value={selectedNode.data.fallbackNextStepId || 'none'} onValueChange={(val) => updateNodeData(selectedNode.id, { fallbackNextStepId: val === 'none' ? undefined : val })}>
+                                            <SelectTrigger className="h-9 text-xs bg-background">
+                                                <SelectValue placeholder="AI Clarification" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none">AI Clarification (Automatic)</SelectItem>
+                                                {nodes.filter(n => n.id !== selectedNode.id).map(n => (
+                                                    <SelectItem key={n.id} value={n.id}>{getNodeTitle(n)}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            )}
+
                             {selectedNode.type === 'quick_reply' && (
                                 <div className="space-y-6">
                                     <div className="space-y-2">
@@ -443,7 +522,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                         />
                                     </div>
                                     <div className="space-y-4">
-                                        <Label>Option Branches</Label>
+                                        <Label>Button Mappings</Label>
                                         {selectedNode.data.buttons?.map((btn, bIndex) => (
                                             <div key={btn.id} className="space-y-3 p-4 border-2 rounded-xl bg-muted/20 relative group/btn-edit">
                                                 <div className="flex items-center gap-2">
@@ -464,7 +543,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                                     </Button>
                                                 </div>
                                                 <div className="space-y-1.5">
-                                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">If selected, continue to:</Label>
+                                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">On click, continue to:</Label>
                                                     <Select value={btn.nextStepId || 'none'} onValueChange={(val) => {
                                                         const newButtons = [...(selectedNode.data.buttons || [])];
                                                         newButtons[bIndex].nextStepId = val === 'none' ? undefined : val;
@@ -474,7 +553,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                                             <SelectValue placeholder="End path" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectItem value="none">End Path (Wait for Reply)</SelectItem>
+                                                            <SelectItem value="none">End / Wait for Reply</SelectItem>
                                                             {nodes.filter(n => n.id !== selectedNode.id).map(n => (
                                                                 <SelectItem key={n.id} value={n.id}>{getNodeTitle(n)}</SelectItem>
                                                             ))}
@@ -487,57 +566,8 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                             const newButtons = [...(selectedNode.data.buttons || []), { id: `btn_${Date.now()}`, label: 'New Option' }];
                                             updateNodeData(selectedNode.id, { buttons: newButtons });
                                         }}>
-                                            <Plus className="h-4 w-4 mr-2" /> Add Option Branch
+                                            <Plus className="h-4 w-4 mr-2" /> Add Button Path
                                         </Button>
-                                    </div>
-                                    
-                                    <div className="space-y-3 pt-4 border-t">
-                                        <Label className="flex items-center gap-2">
-                                            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                                            If visitor types message...
-                                        </Label>
-                                        <Select value={selectedNode.data.defaultNextStepId || 'none'} onValueChange={(val) => updateNodeData(selectedNode.id, { defaultNextStepId: val === 'none' ? undefined : val })}>
-                                            <SelectTrigger className="h-9 text-xs bg-background">
-                                                <SelectValue placeholder="Stop & Wait" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="none">Stop & Wait for Reply</SelectItem>
-                                                {nodes.filter(n => n.id !== selectedNode.id).map(n => (
-                                                    <SelectItem key={n.id} value={n.id}>{getNodeTitle(n)}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                            )}
-
-                            {selectedNode.type === 'capture_input' && (
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <Label>Question text</Label>
-                                        <Input 
-                                            value={selectedNode.data.prompt || ''} 
-                                            onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
-                                            placeholder="e.g. What is your email address?"
-                                        />
-                                    </div>
-                                    <div className="space-y-3">
-                                        <Label>Store response as</Label>
-                                        <Select value={selectedNode.data.variableName || 'custom'} onValueChange={(val) => updateNodeData(selectedNode.id, { variableName: val })}>
-                                            <SelectTrigger className="bg-background">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="email">Email Address</SelectItem>
-                                                <SelectItem value="name">Full Name</SelectItem>
-                                                <SelectItem value="phone">Phone Number</SelectItem>
-                                                <SelectItem value="order_number">Order Number</SelectItem>
-                                                <SelectItem value="custom">General Metadata</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <p className="text-[10px] text-muted-foreground leading-relaxed italic">
-                                            Storing this data allows subsequent nodes (like Conditions or AI) to use this information.
-                                        </p>
                                     </div>
                                 </div>
                             )}
@@ -547,87 +577,39 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                     <div className="bg-violet-500/10 border-2 border-violet-500/20 rounded-xl p-4 flex gap-3">
                                         <Bot className="h-5 w-5 text-violet-500 shrink-0" />
                                         <div className="space-y-1">
-                                            <p className="text-xs font-bold text-violet-700 dark:text-violet-300">Intelligent Resolution</p>
+                                            <p className="text-xs font-bold text-violet-700 dark:text-violet-300">Conversational Reasoning</p>
                                             <p className="text-[10px] text-violet-600/70 dark:text-violet-400/70 leading-relaxed">
-                                                The AI will attempt to answer the user&apos;s query using connected knowledge. If it needs more info, it will ask automatically.
+                                                AI automatically handles clarifications using connected knowledge. If it cannot resolve the request, it triggers the fallback branch.
                                             </p>
                                         </div>
                                     </div>
                                     <div className="space-y-3">
-                                        <Label className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">If Unresolved, follow fallback path:</Label>
+                                        <Label className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">If Unresolved, route to:</Label>
                                         <Select value={selectedNode.data.fallbackNextStepId || 'none'} onValueChange={(val) => updateNodeData(selectedNode.id, { fallbackNextStepId: val === 'none' ? undefined : val })}>
                                             <SelectTrigger className="bg-background h-10 ring-2 ring-rose-500/20">
-                                                <SelectValue placeholder="No fallback set" />
+                                                <SelectValue placeholder="End conversation" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="none">End Path</SelectItem>
+                                                <SelectItem value="none">Wait for Visitor</SelectItem>
                                                 {nodes.filter(n => n.id !== selectedNode.id).map(n => (
                                                     <SelectItem key={n.id} value={n.id}>{getNodeTitle(n)}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        <p className="text-[10px] text-muted-foreground leading-relaxed italic">
-                                            Typical fallback actions include &quot;Human Handoff&quot; or a specialized capture step.
-                                        </p>
                                     </div>
                                 </div>
                             )}
 
-                            {selectedNode.type === 'condition' && (
-                                <div className="space-y-6">
-                                    <div className="space-y-4">
-                                        <Label>Condition Rule</Label>
-                                        <div className="flex items-center gap-2 text-sm">
-                                            <span className="text-muted-foreground">If</span>
-                                            <Select value={selectedNode.data.conditionField || 'email'} onValueChange={(v) => updateNodeData(selectedNode.id, { conditionField: v })}>
-                                                <SelectTrigger className="h-8 py-0"><SelectValue /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="email">Email</SelectItem>
-                                                    <SelectItem value="name">Name</SelectItem>
-                                                    <SelectItem value="is_authenticated">Is Authenticated</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <span className="text-muted-foreground">is known...</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-4 pt-4 border-t">
-                                        <div className="space-y-2">
-                                            <Label className="text-emerald-500 font-bold text-[10px] uppercase tracking-widest">Match (True)</Label>
-                                            <Select value={selectedNode.data.matchNextStepId || 'none'} onValueChange={(v) => updateNodeLink(selectedNode.id, v === 'none' ? undefined : v)}>
-                                                <SelectTrigger className="bg-background h-9 text-xs border-emerald-500/30"><SelectValue placeholder="Stop" /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="none">Stop Path</SelectItem>
-                                                    {nodes.filter(n => n.id !== selectedNode.id).map(n => (
-                                                        <SelectItem key={n.id} value={n.id}>{getNodeTitle(n)}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-rose-500 font-bold text-[10px] uppercase tracking-widest">Fallback (False)</Label>
-                                            <Select value={selectedNode.data.fallbackNextStepId || 'none'} onValueChange={(v) => updateNodeData(selectedNode.id, { fallbackNextStepId: v === 'none' ? undefined : v })}>
-                                                <SelectTrigger className="bg-background h-9 text-xs border-rose-500/30"><SelectValue placeholder="Stop" /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="none">Stop Path</SelectItem>
-                                                    {nodes.filter(n => n.id !== selectedNode.id).map(n => (
-                                                        <SelectItem key={n.id} value={n.id}>{getNodeTitle(n)}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
+                            {/* Standard Step Transitions */}
                             {(['message', 'capture_input', 'start'].includes(selectedNode.type)) && (
                                 <div className="space-y-3 pt-4 border-t">
                                     <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Continue to next step:</Label>
                                     <Select value={selectedNode.nextStepId || 'none'} onValueChange={(val) => updateNodeLink(selectedNode.id, val === 'none' ? undefined : val)}>
                                         <SelectTrigger className="h-10 bg-background">
-                                            <SelectValue placeholder="Stop and wait for reply" />
+                                            <SelectValue placeholder="Wait for visitor response" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="none">Stop and Wait for Visitor Reply</SelectItem>
+                                            <SelectItem value="none">End / Wait for Visitor</SelectItem>
                                             {nodes.filter(n => n.id !== selectedNode.id).map(n => (
                                                 <SelectItem key={n.id} value={n.id}>{getNodeTitle(n)}</SelectItem>
                                             ))}
@@ -643,7 +625,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                         <Textarea 
                                             value={selectedNode.data.text || ''} 
                                             onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                                            placeholder="e.g. Connecting you with a team member. They will reply here shortly..."
+                                            placeholder="e.g. Connecting you with a team member..."
                                             rows={4}
                                         />
                                     </div>
@@ -656,7 +638,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                 <Plus className="h-8 w-8 opacity-20" />
                             </div>
                             <h4 className="font-bold text-foreground mb-2">No Step Selected</h4>
-                            <p className="text-sm">Click a step on the canvas to configure its behavior and connections.</p>
+                            <p className="text-sm">Select a node on the canvas to configure its routing and behavior.</p>
                         </div>
                     )}
                 </ScrollArea>
@@ -704,31 +686,29 @@ function PreviewArea({ nodes, allUsers }: { nodes: AutomationNode[], allUsers: U
             if (node.nextStepId) {
                 setTimeout(() => handleStep(node.nextStepId!), 800);
             }
-        } else if (node.type === 'quick_reply') {
-            setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text, type: 'automation', buttons: node.data.buttons }]);
+        } else if (node.type === 'quick_reply' || node.type === 'intent_router') {
+            const buttons = node.type === 'quick_reply' ? node.data.buttons : node.data.intents;
+            setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text, type: 'automation', buttons: buttons }]);
         } else if (node.type === 'capture_input') {
             setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt, type: 'automation' }]);
         } else if (node.type === 'ai_step') {
             setIsThinking(true);
             setTimeout(() => {
                 setIsThinking(false);
-                // Simulate random success for preview
                 const resolved = Math.random() > 0.4;
                 if (resolved) {
-                    setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: "I found an answer in our knowledge base: You can update your payment method in the Billing section of Settings.", type: 'ai' }]);
+                    setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: "I found an answer using our knowledge base. Is there anything else I can help with?", type: 'ai' }]);
                 } else {
-                    setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: "I'm not quite sure about that one.", type: 'ai' }]);
                     if (node.data.fallbackNextStepId) {
-                        setTimeout(() => handleStep(node.data.fallbackNextStepId!), 800);
+                        handleStep(node.data.fallbackNextStepId!);
+                    } else {
+                        setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: "I'm not sure about that. Let me connect you to a human.", type: 'ai' }]);
                     }
                 }
             }, 1500);
         } else if (node.type === 'handoff') {
             setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text || "Connecting you to an agent...", type: 'automation' }]);
-            setMessages(prev => [...prev, { id: Date.now(), role: 'system', text: "Conversation escalated to human agent" }]);
-        } else if (node.type === 'condition') {
-            const next = Math.random() > 0.5 ? node.data.matchNextStepId : node.data.fallbackNextStepId;
-            handleStep(next || null);
+            setMessages(prev => [...prev, { id: Date.now(), role: 'system', text: "Escalated to human" }]);
         } else if (node.type === 'end') {
             setMessages(prev => [...prev, { id: Date.now(), role: 'system', text: "Conversation resolved" }]);
         }
@@ -738,12 +718,13 @@ function PreviewArea({ nodes, allUsers }: { nodes: AutomationNode[], allUsers: U
         setMessages(prev => [...prev, { id: Date.now(), role: 'user', text }]);
         
         const currentNode = nodes.find(n => n.id === currentNodeId);
-        if (currentNode?.type === 'quick_reply') {
-            const btn = currentNode.data.buttons?.find(b => b.id === buttonId);
+        if (currentNode?.type === 'quick_reply' || currentNode?.type === 'intent_router') {
+            const buttons = currentNode.type === 'quick_reply' ? currentNode.data.buttons : currentNode.data.intents;
+            const btn = buttons?.find(b => b.id === buttonId);
             if (btn?.nextStepId) {
                 handleStep(btn.nextStepId);
-            } else if (currentNode.data.defaultNextStepId) {
-                handleStep(currentNode.data.defaultNextStepId);
+            } else if (currentNode.data.fallbackNextStepId) {
+                handleStep(currentNode.data.fallbackNextStepId);
             }
         } else if (currentNode?.type === 'capture_input') {
             if (currentNode.nextStepId) {
@@ -761,7 +742,7 @@ function PreviewArea({ nodes, allUsers }: { nodes: AutomationNode[], allUsers: U
                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                             <Bot className="h-5 w-5 text-primary" />
                         </div>
-                        <span className="font-bold text-sm">Interaction Preview</span>
+                        <span className="font-bold text-sm">Flow Preview</span>
                     </div>
                     <Button variant="ghost" size="sm" className="h-8 text-[10px] uppercase font-bold" onClick={() => {
                         setMessages([]);
@@ -772,10 +753,6 @@ function PreviewArea({ nodes, allUsers }: { nodes: AutomationNode[], allUsers: U
 
                 <ScrollArea className="flex-1" ref={scrollRef}>
                     <div className="p-6 space-y-6">
-                        <div className="flex justify-center">
-                            <Badge variant="outline" className="text-[10px] uppercase tracking-widest bg-muted/50 border-none">Preview Active</Badge>
-                        </div>
-                        
                         {messages.map((m) => (
                             <div key={m.id} className={cn("flex flex-col gap-2", m.role === 'user' ? "items-end" : "items-start")}>
                                 {m.role === 'system' ? (
