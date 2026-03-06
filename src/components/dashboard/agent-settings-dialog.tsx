@@ -1,3 +1,4 @@
+// src/components/dashboard/agent-settings-dialog.tsx
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -689,6 +690,7 @@ export default function AgentSettingsDialog({
         onOpenChange={setIsFlowBuilderOpen}
         flow={watchedValues.flow || { nodes: [], edges: [] }}
         onSave={(newFlow) => form.setValue('flow', newFlow)}
+        aiEnabled={watchedValues.aiEnabled}
     />
     </>
   );

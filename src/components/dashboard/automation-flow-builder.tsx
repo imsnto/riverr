@@ -70,17 +70,14 @@ import { Badge } from '../ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger, 
-  DropdownMenuSeparator 
-} from '@/components/ui/dropdown-menu';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '../ui/separator';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
+  Command, 
+  CommandEmpty, 
+  CommandGroup, 
+  CommandInput, 
+  CommandItem, 
+  CommandList 
+} from '@/components/ui/command';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Switch } from '../ui/switch';
 
 const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; color: string; description: string; category: 'conversation' | 'ai' | 'logic' | 'human' }> = {
@@ -249,9 +246,10 @@ interface AutomationFlowBuilderProps {
   onOpenChange: (open: boolean) => void;
   flow: AutomationFlow;
   onSave: (flow: AutomationFlow) => void;
+  aiEnabled?: boolean;
 }
 
-function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: AutomationFlowBuilderProps) {
+function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiEnabled = true }: AutomationFlowBuilderProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -348,39 +346,75 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
   useEffect(() => {
     if (isOpen && !initializedRef.current) {
       if (!initialFlow.nodes || initialFlow.nodes.length === 0) {
-        const defaultNodes: any[] = [
-          { id: 'start', type: 'start', position: { x: 120, y: 40 }, data: {} },
-          { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi there! How can we help you today?' } },
-          { id: 'wait_input', type: 'end', position: { x: 120, y: 320 }, data: { waitBehavior: 'pause' } },
-          { id: 'router', type: 'ai_classifier', position: { x: 420, y: 320 }, data: { 
-              text: 'Classify the visitor’s response into one of the following intents.', 
-              intents: [
-                { id: 'i1', label: 'Support', description: 'Visitor needs technical help or reports a bug' },
-                { id: 'i2', label: 'Pricing', description: 'Visitor asks about costs, plans, or billing' },
-                { id: 'i3', label: 'Features', description: 'Visitor wants to know what the product does' },
-                { id: 'i4', label: 'Human', description: 'Visitor explicitly asks to speak to a person' }
-              ] 
-          }},
-          { id: 'ai', type: 'ai_step', position: { x: 820, y: 220 }, data: { knowledgeSources: ['default'], fallbackBehavior: 'escalate' } },
-          { id: 'pricing_msg', type: 'message', position: { x: 820, y: 400 }, data: { text: "We'd be happy to help with pricing and plans.\n\nTell us what you're looking for, or ask to speak with sales." } },
-          { id: 'handoff', type: 'handoff', position: { x: 820, y: 580 }, data: { text: 'Connecting you to our team. Someone will be with you shortly.', teamId: 'support', priority: 'high' } },
-          { id: 'terminal_wait', type: 'end', position: { x: 1180, y: 360 }, data: { waitBehavior: 'pause' } }
-        ];
+        let defaultNodes: any[] = [];
+        let defaultEdges: any[] = [];
 
-        const defaultEdges: any[] = [
-          { id: 'e1', source: 'start', target: 'greeting', sourceHandle: 'next', type: 'smoothstep' },
-          { id: 'e2', source: 'greeting', target: 'wait_input', sourceHandle: 'next', type: 'smoothstep' },
-          { id: 'e3', source: 'wait_input', target: 'router', sourceHandle: 'next', type: 'smoothstep' },
-          { id: 'e4', source: 'router', target: 'ai', sourceHandle: 'intent:i1', type: 'smoothstep' },
-          { id: 'e5', source: 'router', target: 'pricing_msg', sourceHandle: 'intent:i2', type: 'smoothstep' },
-          { id: 'e6', source: 'router', target: 'ai', sourceHandle: 'intent:i3', type: 'smoothstep' },
-          { id: 'e7', source: 'router', target: 'handoff', sourceHandle: 'intent:i4', type: 'smoothstep' },
-          { id: 'e8', source: 'router', target: 'ai', sourceHandle: 'fallback', type: 'smoothstep' },
-          { id: 'e9', source: 'ai', target: 'terminal_wait', sourceHandle: 'resolved', type: 'smoothstep' },
-          { id: 'e10', source: 'ai', target: 'handoff', sourceHandle: 'unresolved', type: 'smoothstep' },
-          { id: 'e11', source: 'pricing_msg', target: 'terminal_wait', sourceHandle: 'next', type: 'smoothstep' },
-          { id: 'e12', source: 'handoff', target: 'terminal_wait', sourceHandle: 'next', type: 'smoothstep' }
-        ];
+        if (aiEnabled) {
+          // AI DRIVEN DEFAULT FLOW
+          defaultNodes = [
+            { id: 'start', type: 'start', position: { x: 120, y: 40 }, data: {} },
+            { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi there! How can we help you today?' } },
+            { id: 'wait_input', type: 'end', position: { x: 120, y: 320 }, data: { waitBehavior: 'pause' } },
+            { id: 'router', type: 'ai_classifier', position: { x: 420, y: 320 }, data: { 
+                text: 'Classify the visitor’s response into one of the following intents.', 
+                intents: [
+                  { id: 'i1', label: 'Support', description: 'Visitor needs technical help or reports a bug' },
+                  { id: 'i2', label: 'Pricing', description: 'Visitor asks about costs, plans, or billing' },
+                  { id: 'i3', label: 'Features', description: 'Visitor wants to know what the product does' },
+                  { id: 'i4', label: 'Human', description: 'Visitor explicitly asks to speak to a person' }
+                ] 
+            }},
+            { id: 'ai', type: 'ai_step', position: { x: 820, y: 220 }, data: { knowledgeSources: ['default'], fallbackBehavior: 'escalate' } },
+            { id: 'pricing_msg', type: 'message', position: { x: 820, y: 400 }, data: { text: "We'd be happy to help with pricing and plans.\n\nTell us what you're looking for, or ask to speak with sales." } },
+            { id: 'handoff', type: 'handoff', position: { x: 820, y: 580 }, data: { text: 'Connecting you to our team. Someone will be with you shortly.', teamId: 'support', priority: 'high' } },
+            { id: 'terminal_wait', type: 'end', position: { x: 1180, y: 360 }, data: { waitBehavior: 'pause' } }
+          ];
+
+          defaultEdges = [
+            { id: 'e1', source: 'start', target: 'greeting', sourceHandle: 'next', type: 'smoothstep' },
+            { id: 'e2', source: 'greeting', target: 'wait_input', sourceHandle: 'next', type: 'smoothstep' },
+            { id: 'e3', source: 'wait_input', target: 'router', sourceHandle: 'next', type: 'smoothstep' },
+            { id: 'e4', source: 'router', target: 'ai', sourceHandle: 'intent:i1', type: 'smoothstep' },
+            { id: 'e5', source: 'router', target: 'pricing_msg', sourceHandle: 'intent:i2', type: 'smoothstep' },
+            { id: 'e6', source: 'router', target: 'ai', sourceHandle: 'intent:i3', type: 'smoothstep' },
+            { id: 'e7', source: 'router', target: 'handoff', sourceHandle: 'intent:i4', type: 'smoothstep' },
+            { id: 'e8', source: 'router', target: 'ai', sourceHandle: 'fallback', type: 'smoothstep' },
+            { id: 'e9', source: 'ai', target: 'terminal_wait', sourceHandle: 'resolved', type: 'smoothstep' },
+            { id: 'e10', source: 'ai', target: 'handoff', sourceHandle: 'unresolved', type: 'smoothstep' },
+            { id: 'e11', source: 'pricing_msg', target: 'terminal_wait', sourceHandle: 'next', type: 'smoothstep' },
+            { id: 'e12', source: 'handoff', target: 'terminal_wait', sourceHandle: 'next', type: 'smoothstep' }
+          ];
+        } else {
+          // DETERMINISTIC DEFAULT FLOW (BUTTON BASED)
+          defaultNodes = [
+            { id: 'start', type: 'start', position: { x: 120, y: 40 }, data: {} },
+            { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi! Welcome to our site. How can we help you today?' } },
+            { id: 'options', type: 'quick_reply', position: { x: 120, y: 320 }, data: { 
+                text: 'Please select an option below:', 
+                buttons: [
+                  { id: 'b1', label: 'Support' },
+                  { id: 'b2', label: 'Sales' },
+                  { id: 'b3', label: 'Other' }
+                ] 
+            }},
+            { id: 'handoff_support', type: 'handoff', position: { x: 420, y: 180 }, data: { text: 'Connecting you to technical support...', teamId: 'support', priority: 'medium' } },
+            { id: 'handoff_sales', type: 'handoff', position: { x: 420, y: 360 }, data: { text: 'Sending you to our sales team...', teamId: 'sales', priority: 'medium' } },
+            { id: 'other_msg', type: 'message', position: { x: 420, y: 540 }, data: { text: "Tell us a bit more about what you're looking for, or just wait for an agent." } },
+            { id: 'wait', type: 'end', position: { x: 720, y: 360 }, data: { waitBehavior: 'pause' } }
+          ];
+
+          defaultEdges = [
+            { id: 'e1', source: 'start', target: 'greeting', sourceHandle: 'next', type: 'smoothstep' },
+            { id: 'e2', source: 'greeting', target: 'options', sourceHandle: 'next', type: 'smoothstep' },
+            { id: 'e3', source: 'options', target: 'handoff_support', sourceHandle: 'intent:b1', type: 'smoothstep' },
+            { id: 'e4', source: 'options', target: 'handoff_sales', sourceHandle: 'intent:b2', type: 'smoothstep' },
+            { id: 'e5', source: 'options', target: 'other_msg', sourceHandle: 'intent:b3', type: 'smoothstep' },
+            { id: 'e6', source: 'options', target: 'other_msg', sourceHandle: 'fallback', type: 'smoothstep' },
+            { id: 'e7', source: 'handoff_support', target: 'wait', sourceHandle: 'next', type: 'smoothstep' },
+            { id: 'e8', source: 'handoff_sales', target: 'wait', sourceHandle: 'next', type: 'smoothstep' },
+            { id: 'e9', source: 'other_msg', target: 'wait', sourceHandle: 'next', type: 'smoothstep' }
+          ];
+        }
 
         setNodes(defaultNodes);
         setEdges(defaultEdges);
@@ -395,7 +429,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
     if (!isOpen) {
       initializedRef.current = false;
     }
-  }, [isOpen, fitView, initialFlow, setNodes, setEdges]);
+  }, [isOpen, fitView, initialFlow, setNodes, setEdges, aiEnabled]);
 
   const onConnect = useCallback((params: Connection) => {
     setEdges((eds) => addEdge({ 
