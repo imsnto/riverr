@@ -6,18 +6,16 @@ import {
   ReactFlow,
   Background,
   Controls,
-  Panel,
   useNodesState,
   useEdgesState,
   addEdge,
   Handle,
   Position,
-  Connection,
-  Edge,
-  NodeProps,
   MarkerType,
   useReactFlow,
   ReactFlowProvider,
+  type NodeProps,
+  type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -54,20 +52,19 @@ import {
   Eye,
   Navigation,
   Check,
-  Maximize,
-  AlertCircle,
+  ChevronRight,
+  Edit,
   Search,
-  ArrowRight,
-  Edit
+  Link
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '../ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn, getInitials } from '@/lib/utils';
-import { Badge } from '../ui/badge';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -76,7 +73,8 @@ import {
   DropdownMenuSeparator 
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '../ui/separator';
+import { Separator } from '@/components/ui/separator';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; color: string; description: string }> = {
   start: { label: 'Conversation Start', icon: PlayCircle, color: 'bg-emerald-500', description: 'Triggered when a new chat begins.' },
@@ -95,8 +93,6 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
   const edges = getEdges();
   const meta = NODE_TYPES_META[type as AutomationNodeType];
   const Icon = meta.icon;
-  // All nodes can now have outputs to support universal continuity
-  const hasOutputs = true;
 
   const isHandleConnected = (handleId: string) => 
     edges.some(e => e.source === id && e.sourceHandle === handleId);
@@ -107,7 +103,7 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
 
     return (
       <div 
-        className="absolute -bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center"
+        className="absolute -bottom-10 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <DropdownMenu>
@@ -115,13 +111,13 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
             <Button 
               variant="outline" 
               size="icon" 
-              className="h-6 w-6 rounded-full bg-background shadow-sm hover:bg-primary hover:text-primary-foreground border-primary/20 p-0"
+              className="h-7 w-7 rounded-full bg-background shadow-lg hover:bg-primary hover:text-primary-foreground border-primary/20 p-0"
               onClick={(e) => e.stopPropagation()}
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="bottom" align="center" className="w-64 p-2 shadow-2xl border-2">
+          <DropdownMenuContent side="bottom" align="center" className="w-72 p-2 shadow-2xl border-2">
             <p className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Connect to Step</p>
             {Object.entries(NODE_TYPES_META).filter(([t]) => t !== 'start').map(([t, m]) => (
               <DropdownMenuItem key={t} onClick={(e) => {
@@ -137,6 +133,19 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
                 </div>
               </DropdownMenuItem>
             ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              data.onPickExisting?.(id, handleId);
+            }} className="gap-3 p-2.5 cursor-pointer">
+              <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-zinc-700 text-white">
+                <Link className="h-4 w-4" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold">Connect Existing Step...</span>
+                <span className="text-[9px] text-muted-foreground">Choose a node already on the map.</span>
+              </div>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         {label && <span className="mt-1 text-[8px] font-black uppercase text-muted-foreground/50 tracking-tighter whitespace-nowrap">{label}</span>}
@@ -181,7 +190,7 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
         </div>
 
         {type !== 'start' && (
-          <Handle type="target" position={Position.Top} className="w-3 h-3 bg-border border-2 border-background" />
+          <Handle type="target" position={Position.Top} className="w-3 h-3 bg-zinc-400 border-2 border-background" />
         )}
 
         {type === 'capture_input' && data.variableName && (
@@ -190,59 +199,57 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
           </div>
         )}
 
-        {hasOutputs && (
-          <div className="absolute -bottom-3 left-0 right-0 flex justify-center gap-12 px-4 pointer-events-none">
-            {type === 'condition' ? (
-              <>
-                <div className="relative pointer-events-auto">
-                  <Badge className="bg-emerald-500 hover:bg-emerald-500 text-[9px] h-5 px-2 uppercase font-black">True</Badge>
-                  <Handle type="source" position={Position.Bottom} id="true" className="w-2 h-2 opacity-0" />
-                  <AddStepButton handleId="true" label="If True" />
-                </div>
-                <div className="relative pointer-events-auto">
-                  <Badge className="bg-rose-500 hover:bg-rose-500 text-[9px] h-5 px-2 uppercase font-black">False</Badge>
-                  <Handle type="source" position={Position.Bottom} id="false" className="w-2 h-2 opacity-0" />
-                  <AddStepButton handleId="false" label="If False" />
-                </div>
-              </>
-            ) : type === 'ai_step' ? (
-              <>
-                <div className="relative pointer-events-auto">
-                  <Badge className="bg-emerald-500 hover:bg-emerald-500 text-[9px] h-5 px-2 uppercase font-black">Resolved</Badge>
-                  <Handle type="source" position={Position.Bottom} id="resolved" className="w-2 h-2 opacity-0" />
-                  <AddStepButton handleId="resolved" label="Answered" />
-                </div>
-                <div className="relative pointer-events-auto">
-                  <Badge className="bg-orange-500 hover:bg-orange-500 text-[9px] h-5 px-2 uppercase font-black">Unresolved</Badge>
-                  <Handle type="source" position={Position.Bottom} id="unresolved" className="w-2 h-2 opacity-0" />
-                  <AddStepButton handleId="unresolved" label="Fallback" />
-                </div>
-              </>
-            ) : type === 'intent_router' ? (
-              <div className="flex gap-2">
-                {(data.intents || []).map((intent: any) => (
-                  <div key={intent.id} className="relative pointer-events-auto">
-                    <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 border-indigo-200 text-[8px] h-5 px-1.5 whitespace-nowrap">
-                      {intent.label}
-                    </Badge>
-                    <Handle type="source" position={Position.Bottom} id={`intent:${intent.id}`} className="w-2 h-2 opacity-0" />
-                    <AddStepButton handleId={`intent:${intent.id}`} label={intent.label} />
-                  </div>
-                ))}
-                <div className="relative pointer-events-auto">
-                  <Badge variant="outline" className="bg-muted text-muted-foreground text-[8px] h-5 px-1.5">UNKNOWN</Badge>
-                  <Handle type="source" position={Position.Bottom} id="unknown" className="w-2 h-2 opacity-0" />
-                  <AddStepButton handleId="unknown" label="Unknown" />
-                </div>
-              </div>
-            ) : (
+        <div className="absolute -bottom-3 left-0 right-0 flex justify-center gap-12 px-4 pointer-events-none">
+          {type === 'condition' ? (
+            <>
               <div className="relative pointer-events-auto">
-                <Handle type="source" position={Position.Bottom} id="next" className="w-3 h-3 bg-primary border-2 border-background" />
-                <AddStepButton handleId="next" label="Next Step" />
+                <Badge className="bg-emerald-500 hover:bg-emerald-500 text-[9px] h-5 px-2 uppercase font-black">True</Badge>
+                <Handle type="source" position={Position.Bottom} id="true" className="w-3 h-3 bg-emerald-500 border-2 border-background" />
+                <AddStepButton handleId="true" label="If True" />
               </div>
-            )}
-          </div>
-        )}
+              <div className="relative pointer-events-auto">
+                <Badge className="bg-rose-500 hover:bg-rose-500 text-[9px] h-5 px-2 uppercase font-black">False</Badge>
+                <Handle type="source" position={Position.Bottom} id="false" className="w-3 h-3 bg-rose-500 border-2 border-background" />
+                <AddStepButton handleId="false" label="If False" />
+              </div>
+            </>
+          ) : type === 'ai_step' ? (
+            <>
+              <div className="relative pointer-events-auto">
+                <Badge className="bg-emerald-500 hover:bg-emerald-500 text-[9px] h-5 px-2 uppercase font-black">Resolved</Badge>
+                <Handle type="source" position={Position.Bottom} id="resolved" className="w-3 h-3 bg-emerald-500 border-2 border-background" />
+                <AddStepButton handleId="resolved" label="Answered" />
+              </div>
+              <div className="relative pointer-events-auto">
+                <Badge className="bg-orange-500 hover:bg-orange-500 text-[9px] h-5 px-2 uppercase font-black">Unresolved</Badge>
+                <Handle type="source" position={Position.Bottom} id="unresolved" className="w-3 h-3 bg-orange-500 border-2 border-background" />
+                <AddStepButton handleId="unresolved" label="Fallback" />
+              </div>
+            </>
+          ) : type === 'intent_router' ? (
+            <div className="flex gap-2">
+              {(data.intents || []).map((intent: any) => (
+                <div key={intent.id} className="relative pointer-events-auto">
+                  <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 border-indigo-200 text-[8px] h-5 px-1.5 whitespace-nowrap">
+                    {intent.label}
+                  </Badge>
+                  <Handle type="source" position={Position.Bottom} id={`intent:${intent.id}`} className="w-2.5 h-2.5 bg-indigo-500 border-2 border-background" />
+                  <AddStepButton handleId={`intent:${intent.id}`} label={intent.label} />
+                </div>
+              ))}
+              <div className="relative pointer-events-auto">
+                <Badge variant="outline" className="bg-muted text-muted-foreground text-[8px] h-5 px-1.5">UNKNOWN</Badge>
+                <Handle type="source" position={Position.Bottom} id="unknown" className="w-2.5 h-2.5 bg-zinc-400 border-2 border-background" />
+                <AddStepButton handleId="unknown" label="Unknown" />
+              </div>
+            </div>
+          ) : (
+            <div className="relative pointer-events-auto">
+              <Handle type="source" position={Position.Bottom} id="next" className="w-3 h-3 bg-primary border-2 border-background" />
+              <AddStepButton handleId="next" label="Next Step" />
+            </div>
+          )}
+        </div>
       </div>
     </Card>
   );
@@ -272,7 +279,10 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
   const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'builder' | 'preview'>('builder');
+  const [pickingTarget, setPickingTarget] = useState<{ sourceId: string, sourceHandle: string } | null>(null);
   const { fitView, getNode } = useReactFlow();
+  
+  const initializedRef = useRef(false);
 
   const deleteNode = useCallback((id: string) => {
     if (id === 'start') return;
@@ -288,7 +298,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
     const id = `node_${Date.now()}`;
     const position = { 
       x: parentNode.position.x, 
-      y: parentNode.position.y + 200 
+      y: parentNode.position.y + 250 
     };
 
     const newNode = {
@@ -317,19 +327,42 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
     setSelectedNodeId(id);
   }, [getNode, setNodes, setEdges]);
 
+  const onPickExisting = useCallback((sourceId: string, sourceHandle: string) => {
+    setPickingTarget({ sourceId, sourceHandle });
+  }, []);
+
+  const handlePickTargetNode = (targetId: string) => {
+    if (!pickingTarget) return;
+    
+    const newEdge = {
+      id: `e_${pickingTarget.sourceId}_${targetId}`,
+      source: pickingTarget.sourceId,
+      target: targetId,
+      sourceHandle: pickingTarget.sourceHandle,
+      type: 'smoothstep',
+      animated: true,
+      markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
+      style: { strokeWidth: 2, stroke: '#3b82f6' }
+    };
+
+    setEdges((eds) => addEdge(newEdge, eds));
+    setPickingTarget(null);
+  };
+
   const nodesWithActions = useMemo(() => 
     nodes.map(n => ({
       ...n,
       data: { 
         ...n.data, 
         onDelete: deleteNode,
-        onAddNodeAndConnect: onAddNodeAndConnect
+        onAddNodeAndConnect: onAddNodeAndConnect,
+        onPickExisting: onPickExisting
       }
-    })), [nodes, deleteNode, onAddNodeAndConnect]
+    })), [nodes, deleteNode, onAddNodeAndConnect, onPickExisting]
   );
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !initializedRef.current) {
       if (!initialFlow.nodes || initialFlow.nodes.length === 0) {
         const defaultNodes: any[] = [
           { id: 'start', type: 'start', position: { x: 120, y: 40 }, data: {} },
@@ -367,10 +400,14 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
         setEdges(defaultEdges);
       } else {
         setNodes(initialFlow.nodes.map(n => ({ ...n, id: n.id, data: { ...n.data }, position: n.position || { x: 0, y: 0 } })));
-        setEdges((initialFlow as any).edges || []);
+        setEdges(initialFlow.edges || []);
       }
-      
+      initializedRef.current = true;
       setTimeout(() => fitView({ padding: 0.15, duration: 400 }), 100);
+    }
+    
+    if (!isOpen) {
+      initializedRef.current = false;
     }
   }, [isOpen, fitView, initialFlow, setNodes, setEdges]);
 
@@ -457,156 +494,198 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave }: A
                 </ReactFlow>
               </div>
 
-              {selectedNodeId && selectedNode && (
+              {(selectedNodeId && selectedNode) || pickingTarget ? (
                 <aside className="w-[420px] bg-background border-l flex flex-col shadow-2xl animate-in slide-in-from-right duration-300">
                   <div className="p-4 border-b flex items-center justify-between bg-muted/20 shrink-0">
                     <div className="flex items-center gap-3">
-                      <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center text-white", NODE_TYPES_META[selectedNode.type as AutomationNodeType].color)}>
-                        {React.createElement(NODE_TYPES_META[selectedNode.type as AutomationNodeType].icon, { className: 'h-4 w-4' })}
-                      </div>
-                      <div>
-                        <h3 className="text-xs font-bold uppercase tracking-widest">{NODE_TYPES_META[selectedNode.type as AutomationNodeType].label}</h3>
-                        <p className="text-[10px] text-muted-foreground">ID: {selectedNode.id.substring(0, 8)}</p>
-                      </div>
+                      {pickingTarget ? (
+                        <>
+                          <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-zinc-700 text-white">
+                            <Link className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h3 className="text-xs font-bold uppercase tracking-widest">Pick Target Node</h3>
+                            <p className="text-[10px] text-muted-foreground">Select a node to connect to</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center text-white", NODE_TYPES_META[selectedNode!.type as AutomationNodeType].color)}>
+                            {React.createElement(NODE_TYPES_META[selectedNode!.type as AutomationNodeType].icon, { className: 'h-4 w-4' })}
+                          </div>
+                          <div>
+                            <h3 className="text-xs font-bold uppercase tracking-widest">{NODE_TYPES_META[selectedNode!.type as AutomationNodeType].label}</h3>
+                            <p className="text-[10px] text-muted-foreground">ID: {selectedNode!.id.substring(0, 8)}</p>
+                          </div>
+                        </>
+                      )}
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setSelectedNodeId(null)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => { setSelectedNodeId(null); setPickingTarget(null); }}>
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
 
                   <ScrollArea className="flex-1">
-                    <div className="p-6 space-y-8 pb-32">
-                      {selectedNode.type === 'message' && (
-                        <div className="space-y-4">
-                          <Label className="text-xs font-bold uppercase">Bot Message</Label>
-                          <Textarea 
-                            value={selectedNode.data.text || ''} 
-                            onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                            placeholder="What should the bot say?"
-                            rows={10}
-                            className="bg-muted/30 border-2 font-medium"
-                          />
-                        </div>
-                      )}
-
-                      {selectedNode.type === 'intent_router' && (
-                        <div className="space-y-6">
-                          <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase">Classification Question</Label>
-                            <Input 
+                    {pickingTarget ? (
+                      <div className="p-4">
+                        <Command className="border rounded-md shadow-sm">
+                          <CommandInput placeholder="Search existing nodes..." />
+                          <CommandList>
+                            <CommandEmpty>No nodes found.</CommandEmpty>
+                            <CommandGroup heading="Nodes on Map">
+                              {nodes.filter(n => n.id !== pickingTarget.sourceId).map(n => {
+                                const meta = NODE_TYPES_META[n.type as AutomationNodeType];
+                                return (
+                                  <CommandItem key={n.id} onSelect={() => handlePickTargetNode(n.id)} className="gap-3 p-3 cursor-pointer">
+                                    <div className={cn("h-6 w-6 rounded flex items-center justify-center text-white shrink-0", meta.color)}>
+                                      {React.createElement(meta.icon, { className: 'h-3 w-3' })}
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="text-xs font-bold truncate">{n.data.text || n.data.prompt || n.data.name || meta.label}</span>
+                                      <span className="text-[10px] text-muted-foreground">{meta.label}</span>
+                                    </div>
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                        <Button variant="ghost" className="w-full mt-4" onClick={() => setPickingTarget(null)}>Cancel</Button>
+                      </div>
+                    ) : selectedNode && (
+                      <div className="p-6 space-y-8 pb-32">
+                        {selectedNode.type === 'message' && (
+                          <div className="space-y-4">
+                            <Label className="text-xs font-bold uppercase">Bot Message</Label>
+                            <Textarea 
                               value={selectedNode.data.text || ''} 
                               onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                              placeholder="e.g. How can we help today?"
-                              className="border-2"
+                              placeholder="What should the bot say?"
+                              rows={10}
+                              className="bg-muted/30 border-2 font-medium"
                             />
                           </div>
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-xs font-bold uppercase text-indigo-500">Intents (Routes)</Label>
-                              <Button variant="outline" size="sm" className="h-7 px-3 text-[10px] font-bold" onClick={() => {
-                                const newIntents = [...(selectedNode.data.intents || []), { id: `intent_${Date.now()}`, label: 'New Intent' }];
-                                updateNodeData(selectedNode.id, { intents: newIntents });
-                              }}><Plus className="h-3 w-3 mr-1" /> Add Route</Button>
-                            </div>
-                            <div className="space-y-2">
-                              {(selectedNode.data.intents || []).map((intent: any, idx: number) => (
-                                <div key={intent.id} className="flex items-center gap-2 p-2 border-2 rounded-xl bg-background group">
-                                  <Navigation className="h-3 w-3 text-muted-foreground opacity-40 shrink-0" />
-                                  <Input 
-                                    value={intent.label} 
-                                    onChange={(e) => {
-                                      const newIntents = [...selectedNode.data.intents];
-                                      newIntents[idx].label = e.target.value;
-                                      updateNodeData(selectedNode.id, { intents: newIntents });
-                                    }}
-                                    className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-bold p-0"
-                                  />
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => {
-                                    updateNodeData(selectedNode.id, { intents: selectedNode.data.intents.filter((i: any) => i.id !== intent.id) });
-                                  }}>
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                        )}
 
-                      {selectedNode.type === 'capture_input' && (
-                        <div className="space-y-6">
-                          <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase">Bot Question</Label>
-                            <Input 
-                              value={selectedNode.data.prompt || ''} 
-                              onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
-                              placeholder="e.g. What is your email?"
-                              className="border-2"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-teal-600">Storage Variable</Label>
-                            <div className="flex items-center gap-3 p-3 border-2 rounded-xl bg-teal-500/5 border-teal-500/20">
-                              <Database className="h-4 w-4 text-teal-600" />
+                        {selectedNode.type === 'intent_router' && (
+                          <div className="space-y-6">
+                            <div className="space-y-2">
+                              <Label className="text-xs font-bold uppercase">Classification Question</Label>
                               <Input 
-                                value={selectedNode.data.variableName || ''} 
-                                onChange={(e) => updateNodeData(selectedNode.id, { variableName: e.target.value })}
-                                placeholder="e.g. user_email"
-                                className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-mono text-teal-700 bg-transparent p-0"
+                                value={selectedNode.data.text || ''} 
+                                onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
+                                placeholder="e.g. How can we help today?"
+                                className="border-2"
                               />
                             </div>
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs font-bold uppercase text-indigo-500">Intents (Routes)</Label>
+                                <Button variant="outline" size="sm" className="h-7 px-3 text-[10px] font-bold" onClick={() => {
+                                  const newIntents = [...(selectedNode.data.intents || []), { id: `intent_${Date.now()}`, label: 'New Intent' }];
+                                  updateNodeData(selectedNode.id, { intents: newIntents });
+                                }}><Plus className="h-3 w-3 mr-1" /> Add Route</Button>
+                              </div>
+                              <div className="space-y-2">
+                                {(selectedNode.data.intents || []).map((intent: any, idx: number) => (
+                                  <div key={intent.id} className="flex items-center gap-2 p-2 border-2 rounded-xl bg-background group">
+                                    <Navigation className="h-3 w-3 text-muted-foreground opacity-40 shrink-0" />
+                                    <Input 
+                                      value={intent.label} 
+                                      onChange={(e) => {
+                                        const newIntents = [...selectedNode.data.intents];
+                                        newIntents[idx].label = e.target.value;
+                                        updateNodeData(selectedNode.id, { intents: newIntents });
+                                      }}
+                                      className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-bold p-0"
+                                    />
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => {
+                                      updateNodeData(selectedNode.id, { intents: selectedNode.data.intents.filter((i: any) => i.id !== intent.id) });
+                                    }}>
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {selectedNode.type === 'condition' && (
+                        {selectedNode.type === 'capture_input' && (
+                          <div className="space-y-6">
+                            <div className="space-y-2">
+                              <Label className="text-xs font-bold uppercase">Bot Question</Label>
+                              <Input 
+                                value={selectedNode.data.prompt || ''} 
+                                onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
+                                placeholder="e.g. What is your email?"
+                                className="border-2"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs font-bold uppercase text-teal-600">Storage Variable</Label>
+                              <div className="flex items-center gap-3 p-3 border-2 rounded-xl bg-teal-500/5 border-teal-500/20">
+                                <Database className="h-4 w-4 text-teal-600" />
+                                <Input 
+                                  value={selectedNode.data.variableName || ''} 
+                                  onChange={(e) => updateNodeData(selectedNode.id, { variableName: e.target.value })}
+                                  placeholder="e.g. user_email"
+                                  className="h-7 text-xs border-none shadow-none focus-visible:ring-0 font-mono text-teal-700 bg-transparent p-0"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {selectedNode.type === 'condition' && (
+                          <div className="space-y-4">
+                            <Label className="text-xs font-bold uppercase">If this data is present:</Label>
+                            <Select 
+                              value={selectedNode.data.conditionField} 
+                              onValueChange={(val) => updateNodeData(selectedNode.id, { conditionField: val })}
+                            >
+                              <SelectTrigger className="h-11 border-2 rounded-xl"><SelectValue placeholder="Select property..." /></SelectTrigger>
+                              <SelectContent className="rounded-xl">
+                                <SelectItem value="email">Visitor Email</SelectItem>
+                                <SelectItem value="name">Visitor Name</SelectItem>
+                                <SelectItem value="identified">Secure Identity Token</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        {selectedNode.type === 'handoff' && (
+                          <div className="space-y-4">
+                            <Label className="text-xs font-bold uppercase">Handoff Message</Label>
+                            <Textarea 
+                              value={selectedNode.data.text || ''} 
+                              onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
+                              placeholder="e.g. Connecting you to our team..."
+                              className="bg-muted/30 border-2 font-medium"
+                              rows={6}
+                            />
+                          </div>
+                        )}
+
+                        <Separator />
+                        
                         <div className="space-y-4">
-                          <Label className="text-xs font-bold uppercase">If this data is present:</Label>
-                          <Select 
-                            value={selectedNode.data.conditionField} 
-                            onValueChange={(val) => updateNodeData(selectedNode.id, { conditionField: val })}
+                          <Label className="text-xs font-bold uppercase text-destructive">Advanced Actions</Label>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full text-destructive border-destructive/20 hover:bg-destructive/5" 
+                            onClick={() => deleteNode(selectedNode!.id)}
+                            disabled={selectedNode!.id === 'start'}
                           >
-                            <SelectTrigger className="h-11 border-2 rounded-xl"><SelectValue placeholder="Select property..." /></SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                              <SelectItem value="email">Visitor Email</SelectItem>
-                              <SelectItem value="name">Visitor Name</SelectItem>
-                              <SelectItem value="identified">Secure Identity Token</SelectItem>
-                            </SelectContent>
-                          </Select>
+                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete This Step
+                          </Button>
                         </div>
-                      )}
-
-                      {selectedNode.type === 'handoff' && (
-                        <div className="space-y-4">
-                          <Label className="text-xs font-bold uppercase">Handoff Message</Label>
-                          <Textarea 
-                            value={selectedNode.data.text || ''} 
-                            onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                            placeholder="e.g. Connecting you to our team..."
-                            className="bg-muted/30 border-2 font-medium"
-                            rows={6}
-                          />
-                        </div>
-                      )}
-
-                      <Separator />
-                      
-                      <div className="space-y-4">
-                        <Label className="text-xs font-bold uppercase text-destructive">Advanced Actions</Label>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="w-full text-destructive border-destructive/20 hover:bg-destructive/5" 
-                          onClick={() => deleteNode(selectedNode.id)}
-                          disabled={selectedNode.id === 'start'}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete This Step
-                        </Button>
                       </div>
-                    </div>
+                    )}
                   </ScrollArea>
                 </aside>
-              )}
+              ) : null}
             </>
           ) : (
             <PreviewArea nodes={nodes} edges={edges} />
@@ -664,6 +743,7 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
   }, [nodes, edges]);
 
   useEffect(() => {
+    setMessages([]);
     handleStep('start');
   }, [handleStep]);
 
@@ -685,6 +765,11 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
     setUserInput('');
   };
 
+  const handleReset = () => {
+    setMessages([]);
+    handleStep('start');
+  };
+
   return (
     <div className="flex-1 bg-muted/30 flex flex-col items-center justify-center p-8">
       <div className="w-[450px] h-[750px] bg-background rounded-[3rem] shadow-2xl border-8 border-muted flex flex-col overflow-hidden relative">
@@ -695,7 +780,7 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
             </div>
             <span className="font-bold text-sm">Conversation Preview</span>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setMessages([])}>Reset</Button>
+          <Button variant="ghost" size="sm" onClick={handleReset}>Reset</Button>
         </div>
 
         <ScrollArea className="flex-1" ref={scrollRef}>
