@@ -225,7 +225,7 @@ async function executeFlow(args: {
         currentStepId = currentNode.data.defaultNextStepId || currentNode.nextStepId;
       }
     } else if (currentNode?.type === 'capture_input') {
-      // Input was captured (handled by client or action), now move forward
+      // Input was captured, move forward
       currentStepId = currentNode.nextStepId;
     } else {
       // Default: move to next step
@@ -279,7 +279,6 @@ async function executeFlow(args: {
     }
 
     if (node.type === 'condition') {
-      // Evaluation logic: checking if variable exists
       const field = node.data.conditionField;
       const val = (conversation as any)[field!] || (conversation.visitorName && field === 'name') || (conversation.visitorEmail && field === 'email');
       
@@ -289,6 +288,7 @@ async function executeFlow(args: {
 
     if (node.type === 'ai_step') {
       const resolved = await executeAiPhase(args);
+      // Explicitly follow the fallback branch only if AI fails to find an answer
       if (!resolved && node.data.fallbackNextStepId) {
         currentStepId = node.data.fallbackNextStepId;
         continue;
