@@ -707,7 +707,7 @@ export interface SupportIntentNode {
   requiredContext: { key: string; question: string }[];
   safeAnswerPolicy: { mustNot: string[]; requiresHumanIf: string[] };
   answerVariants: { variantId: string; style: string; template: string; whenToUse: string }[];
-  escalationRule: { maxAttempts: number; escalateIfMissingContextKeys?: string[]; escalateIfSentimentBelow?: number };
+  escalationRule: { maxAttempts: number; escalateIfMissingContextKeys?: string[]; escalateIfsentimentBelow?: number };
   learnedFromNodeIds: string[];
   confidence: number;
   freshnessHalfLifeDays: number;

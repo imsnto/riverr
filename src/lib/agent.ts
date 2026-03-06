@@ -38,7 +38,7 @@ export type Conversation = ImportedConversation & {
   meta?: {
     attemptCount?: number;
     intentHistory?: string[];
-    activePlaybook?: ActivePlaybookInfo;
+    activePlaybook?: any;
     currentFlowStepId?: string; // Tracks position in hybrid flow
     [key: string]: any;
   };
@@ -200,6 +200,7 @@ async function executeHybridFlow(args: {
         if (classification) {
             currentStepId = classification;
         } else {
+            // Fallback path for Intent Router (Unknown)
             currentStepId = currentNode.data.fallbackNextStepId || currentNode.nextStepId;
         }
       } else {
@@ -207,6 +208,13 @@ async function executeHybridFlow(args: {
       }
     } else if (currentNode?.type === 'capture_input') {
       currentStepId = currentNode.nextStepId;
+    } else if (currentNode?.type === 'condition') {
+        const field = currentNode.data.conditionField;
+        let valExists = false;
+        if (field === 'email') valExists = !!(conversation.visitorEmail || conversation.meta?.email);
+        if (field === 'name') valExists = !!(conversation.visitorName || conversation.meta?.name);
+        if (field === 'identified') valExists = !!conversation.contactId;
+        currentStepId = valExists ? currentNode.data.matchNextStepId : currentNode.data.fallbackNextStepId;
     } else {
       currentStepId = currentNode?.nextStepId;
     }
@@ -393,15 +401,12 @@ async function executeAiPhase(args: {
 async function classifyIntent(text: string, intentPaths: { id: string; label: string; nextStepId?: string }[]): Promise<string | null> {
     if (!text || intentPaths.length === 0) return null;
     
-    // Phase 1: Simple fuzzy matching
     const normalizedText = text.toLowerCase();
     for (const path of intentPaths) {
         if (normalizedText.includes(path.label.toLowerCase())) {
             return path.nextStepId || null;
         }
     }
-    
-    // In production, this would invoke a lightweight LLM classifier
     return null;
 }
 

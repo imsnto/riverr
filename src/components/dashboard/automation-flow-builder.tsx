@@ -77,7 +77,7 @@ const NODE_TYPES: { type: AutomationNodeType; label: string; icon: any; descript
   { type: 'ai_step', label: 'AI Reasoning Node', icon: Bot, description: 'Conversational logic using Knowledge Base.', color: 'border-violet-500 bg-violet-500/5', category: 'core' },
   { type: 'condition', label: 'Condition', icon: Split, description: 'Branch based on user data or input.', color: 'border-amber-500 bg-amber-500/5', category: 'advanced' },
   { type: 'handoff', label: 'Human Handoff', icon: UserCheck, description: 'Escalate to a human support agent.', color: 'border-orange-500 bg-orange-500/5', category: 'core' },
-  { type: 'end', label: 'End Conversation', icon: CircleStop, description: 'Resolve the case or wait for reply.', color: 'border-gray-500 bg-gray-500/5', category: 'core' },
+  { type: 'end', label: 'Wait for Visitor', icon: CircleStop, description: 'Resolve the case or wait for reply.', color: 'border-gray-500 bg-gray-500/5', category: 'core' },
 ];
 
 export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: initialFlow, onSave, allUsers = [] }: AutomationFlowBuilderProps) {
@@ -154,8 +154,8 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
     if (!node) return 'End Path';
     if (node.type === 'start') return 'Start';
     
-    if (node.type === 'message') return `Message: ${node.data.text?.slice(0, 20)}...`;
-    if (node.type === 'capture_input') return `Capture: ${node.data.variableName}`;
+    if (node.type === 'message') return `Msg: ${node.data.text?.slice(0, 15)}...`;
+    if (node.type === 'capture_input') return `Cap: ${node.data.variableName}`;
     
     const typeInfo = NODE_TYPES.find(t => t.type === node.type);
     return typeInfo?.label || node.type;
@@ -201,8 +201,8 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
               <div className="flex-1 bg-muted/20 overflow-y-auto p-12 scroll-smooth">
                 <div className="max-w-2xl mx-auto space-y-0">
                     <div className="mb-12 p-4 rounded-xl border-2 border-dashed border-primary/20 bg-primary/5 text-center">
-                        <p className="text-sm font-semibold text-primary">How to build:</p>
-                        <p className="text-xs text-primary/70 mt-1">Connect steps to determine the conversation path. Sidebar controls step behavior.</p>
+                        <p className="text-sm font-semibold text-primary">Build your chatbot by connecting steps together.</p>
+                        <p className="text-xs text-primary/70 mt-1">Connections determine where the conversation goes next. Step settings control what each step says or does.</p>
                     </div>
 
                     {nodes.map((node, index) => {
@@ -272,7 +272,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                         )}
                                     </div>
                                     
-                                    {/* BRANCH VISUALIZATION */}
+                                    {/* VISUAL BRANCHING UI */}
                                     {node.type === 'quick_reply' && node.data.buttons && (
                                         <div className="px-4 pb-4 space-y-2 border-t pt-3 bg-white/50 dark:bg-black/5">
                                             {node.data.buttons.map((btn, bIdx) => (
@@ -334,6 +334,13 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                                     </div>
                                                 </div>
                                             ))}
+                                            <div className="flex items-center justify-between text-xs pt-1 mt-1 border-t border-indigo-600/10 opacity-60">
+                                                <div className="flex items-center gap-2">
+                                                    <HelpCircle className="h-3 w-3" />
+                                                    <span className="font-semibold italic">Unknown (AI Clarify)</span>
+                                                </div>
+                                                <span className="text-[10px]">Continues to AI Reasoning</span>
+                                            </div>
                                         </div>
                                     )}
 
@@ -389,7 +396,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                                     <CheckCircle2 className="h-3 w-3" />
                                                     <span>RESOLVED / ANSWERED</span>
                                                 </div>
-                                                <span className="opacity-60">Continues Conversation</span>
+                                                <span className="opacity-60 italic">Continues naturally</span>
                                             </div>
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-1.5 text-rose-500 font-bold text-[10px] uppercase tracking-tighter">
@@ -414,7 +421,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                         </div>
                                     )}
 
-                                    {/* LINEAR CONNECTOR UI */}
+                                    {/* LINEAR CONNECTOR */}
                                     {!isBranching && !['end', 'handoff'].includes(node.type) && (
                                         <div className="px-4 py-2 border-t bg-muted/10 flex items-center justify-between text-xs">
                                             <span className="text-muted-foreground font-medium uppercase tracking-widest text-[9px]">Connect to:</span>
@@ -436,7 +443,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                     )}
                                 </Card>
                                 
-                                {/* Visual Trunk Line */}
+                                {/* Visual Connector Segment */}
                                 <div className="h-10 w-px bg-border group-last/node:hidden relative" />
                             </div>
                         );
@@ -622,7 +629,7 @@ export default function AutomationFlowBuilder({ isOpen, onOpenChange, flow: init
                                         <div className="space-y-1">
                                             <p className="text-xs font-bold text-violet-700 dark:text-violet-300">Implicit AI Reasoning</p>
                                             <p className="text-[10px] text-violet-600/70 dark:text-violet-400/70 leading-relaxed">
-                                                The agent automatically asks clarifying questions if information is missing from the query. It only triggers the visual fallback path if it cannot resolve the issue.
+                                                AI automatically answers using knowledge or asks clarifying questions. FALLBACK path only triggers if it cannot help.
                                             </p>
                                         </div>
                                     </div>
@@ -724,7 +731,7 @@ function PreviewArea({ nodes, allUsers }: { nodes: AutomationNode[], allUsers: U
             setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text || "Connecting you to an agent...", type: 'automation' }]);
             setMessages(prev => [...prev, { id: Date.now(), role: 'system', text: "Escalated to human" }]);
         } else if (node.type === 'end') {
-            setMessages(prev => [...prev, { id: Date.now(), role: 'system', text: "Wait for visitor" }]);
+            setMessages(prev => [...prev, { id: Date.now(), role: 'system', text: "Waiting for visitor response" }]);
         }
     };
 
@@ -754,7 +761,7 @@ function PreviewArea({ nodes, allUsers }: { nodes: AutomationNode[], allUsers: U
                 <div className="p-4 border-b bg-card flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Bot className="h-5 w-5 text-primary" />
+                            <Bot className="h-4 w-4 text-primary" />
                         </div>
                         <span className="font-bold text-sm">Flow Preview</span>
                     </div>
