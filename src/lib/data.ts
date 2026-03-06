@@ -55,6 +55,9 @@ export interface Space {
   };
 }
 
+export type ConversationStatus = 'new' | 'automated' | 'ai_active' | 'waiting_human' | 'resolved';
+export type ResponderType = 'automation' | 'ai' | 'human' | 'system';
+
 export type ConversationState =
   | "ai_active"
   | "escalation_offered"
@@ -493,7 +496,11 @@ export interface Conversation {
   visitorId?: string | null;
   assigneeId: string | null;
   assignedAgentIds?: string[];
-  status: 'bot' | 'human' | 'closed' | 'unassigned' | 'open';
+  status: ConversationStatus;
+  lastResponderType?: ResponderType;
+  aiAttempted?: boolean;
+  aiResolved?: boolean;
+  customerIdentified?: boolean;
   lastMessage: string;
   lastMessageAt: string; // ISO String
   lastMessageAuthor: string | null;
@@ -531,6 +538,7 @@ export interface ChatMessage {
   conversationId: string;
   authorId: string; // Can be a Visitor ID or a User ID
   type: 'message' | 'note' | 'event';
+  responderType?: ResponderType;
   eventType?: 'call_started' | 'call_ringing' | 'call_answered' | 'call_missed' | 'call_ended' | 'voicemail_recorded';
   content: string;
   timestamp: string; // ISO String

@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -7,7 +6,7 @@ import * as db from '@/lib/db';
 import type { Firestore } from "firebase-admin/firestore";
 import { getTypesenseAdmin, getTypesenseSearch } from '@/lib/typesense';
 import { indexHelpCenterArticleToChunks } from '@/lib/knowledge/indexer';
-import { LeadStateNode, Contact, SalesPersonaSegmentNode, ChatMessage, Visitor, HelpCenter, HelpCenterCollection, HelpCenterArticle } from '@/lib/data';
+import { LeadStateNode, Contact, SalesPersonaSegmentNode, ChatMessage, Visitor, HelpCenter, HelpCenterCollection, HelpCenterArticle, ResponderType } from '@/lib/data';
 import { draftSalesEmail, type DraftSalesEmailInput, type DraftSalesEmailOutput } from '@/ai/flows/draft-sales-email';
 import { serverTimestamp } from 'firebase-admin/firestore';
 import admin from 'firebase-admin';
@@ -58,7 +57,7 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
                 articleId: doc.sourceId,
                 title: doc.title,
                 url: doc.url,
-                helpCenterId: doc.helpCenterId,
+                helpCenterIds: doc.helpCenterIds || [doc.helpCenterId],
                 updatedAt: new Date(doc.sourceUpdatedAt).toISOString(),
                 articleType: doc.articleType,
                 articleContent: doc.content || null,
@@ -107,52 +106,6 @@ async function searchSupport(params: SearchSupportParams): Promise<SearchSupport
             return { intents: [] };
         }
         console.error("Typesense search failed in searchSupport:", error);
-        throw error;
-    }
-}
-
-export interface SearchSalesExtractionsParams {
-    query: string;
-    spaceId: string;
-    topK?: number;
-}
-export interface SalesExtractionResult {
-    id: string;
-    [key: string]: any;
-}
-export interface SearchSalesExtractionsResult {
-    extractions: SalesExtractionResult[];
-}
-
-async function searchSalesExtractions(params: SearchSalesExtractionsParams): Promise<SearchSalesExtractionsResult> {
-    const { query, spaceId, topK = 25 } = params;
-
-    const searchParameters = {
-        'q': query,
-        'query_by': 'recommendedPersonaClusterText,pains,objections,buyingSignals',
-        'filter_by': `spaceId:=${spaceId}`,
-        'per_page': topK,
-        'sort_by': '_text_match:desc',
-    };
-    
-    try {
-        const results = await typesense.collections('sales_extractions').documents().search(searchParameters);
-
-        const extractions: SalesExtractionResult[] = (results.hits || []).map(hit => {
-            return {
-                id: hit.document.id,
-                ...(hit.document as any),
-                _searchScore: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
-            };
-        });
-
-        return { extractions };
-    } catch (error: any) {
-        if (error.httpStatus === 404) {
-            console.warn("Typesense search failed: 'sales_extractions' collection not found. Returning empty results.");
-            return { extractions: [] };
-        }
-        console.error("Typesense search failed in searchSalesExtractions:", error);
         throw error;
     }
 }
@@ -324,6 +277,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
       visitorName: vName,
       visitorEmail: vEmail,
       visitorPhone: vPhone,
+      customerIdentified: true,
       updatedAt: new Date().toISOString(),
     };
 
@@ -456,6 +410,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
     await convoRef.update({
       contactId,
       visitorPhone: fromE164,
+      customerIdentified: true,
       updatedAt: new Date().toISOString(),
       lastMessageAuthor: convo.lastMessageAuthor && !isWhimsical(convo.lastMessageAuthor)
         ? convo.lastMessageAuthor
@@ -475,7 +430,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
       let authorName = "Visitor";
   
       if (message.authorId === 'ai_agent') {
-          authorName = 'AI Agent';
+          authorName = message.responderType === 'ai' ? 'Manowar Assistant' : 'Support Assistant';
       } else if (message.senderType === 'agent') {
         const userDoc = await adminDB.collection('users').doc(message.authorId).get();
         if (userDoc.exists) authorName = userDoc.data()?.name || 'Agent';
@@ -495,6 +450,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
           lastMessageAt: message.timestamp,
           lastMessage: preview,
           lastMessageAuthor: authorName,
+          lastResponderType: message.responderType,
           updatedAt: timestamp as any,
         }),
         adminDB.collection("tickets")
@@ -525,17 +481,15 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
       const adapters: AgentAdapters = {
           searchHelpCenter,
           searchSupport,
-          searchSalesExtractions,
           escalateToHuman: async ({ conversationId, reason }) => {
               await updateConversation(conversationId, {
-                  status: 'human',
+                  status: 'waiting_human',
                   escalated: true,
                   escalationReason: reason,
                   state: 'human_assigned',
               });
           },
-          persistAssistantMessage: async ({ conversationId, text }) => {
-              // SMS-aware delivery
+          persistAssistantMessage: async ({ conversationId, text, responderType }) => {
               const convo = await adminDB.collection('conversations').doc(conversationId).get();
               const convoData = convo.data() as Conversation;
 
@@ -544,12 +498,12 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
                   authorId: 'ai_agent',
                   type: 'message',
                   senderType: 'agent',
+                  responderType,
                   content: text,
                   timestamp: new Date().toISOString(),
               };
 
               if (convoData?.channel === 'sms') {
-                  // Direct bypass to internal logic of sendCommsMessage
                   const msgRef = await adminDB.collection("chat_messages").add({
                       ...messageData,
                       channel: 'sms',
@@ -557,8 +511,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
                       deliveryStatus: 'created',
                   });
 
-                  // Call the provider directly since we are already server-side
-                  const { getMessagingProvider } = getApp().functions('us-central1');
+                  const { getMessagingProvider } = require('../comms/providerFactory');
                   const provider = getMessagingProvider('twilio');
                   
                   try {
@@ -585,9 +538,6 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
                   await addChatMessage(messageData);
               }
           },
-          onChatMessage: async (message) => {
-              await addChatMessage(message);
-          },
           updateConversation: async ({ conversationId, patch }) => {
               await updateConversation(conversationId, patch);
           },
@@ -602,77 +552,6 @@ export async function searchHelpCenterAction(params: SearchHelpCenterParams): Pr
 
 export async function searchSupportAction(params: SearchSupportParams): Promise<SearchSupportResult> {
   return searchSupport(params);
-}
-
-export async function searchSalesExtractionsAction(params: SearchSalesExtractionsParams): Promise<SearchSalesExtractionsResult> {
-  return searchSalesExtractions(params);
-}
-
-const PUBLIC_HELP_BASE_URL = process.env.PUBLIC_HELP_BASE_URL || "https://6000-firebase-studio-1753688090358.cluster-ys234awlzbhwoxmkkse6qo3fz6.cloudworkstations.dev";
-
-async function deleteChunksForArticle(articleId: string) {
-  const typesenseAdmin = getTypesenseAdmin();
-  try {
-    await typesenseAdmin.collections('memory_nodes').documents().delete({
-      filter_by: `sourceId:=${articleId}`,
-    });
-  } catch (error: any) {
-    if (error.httpStatus === 404) {
-      console.log(`No chunks found to delete for article ${articleId} (or collection doesn't exist).`);
-    } else {
-      console.error(`Error deleting chunks for article ${articleId}:`, error);
-      throw error;
-    }
-  }
-}
-
-export async function reindexArticleAction(articleId: string) {
-    try {
-        const articleRef = adminDB.collection("help_center_articles").doc(articleId);
-        const docSnap = await articleRef.get();
-
-        await deleteChunksForArticle(articleId);
-
-        if (!docSnap.exists) {
-            console.log(`Article ${articleId} not found, deleted from index.`);
-            return { ok: true, message: `Article ${articleId} deleted from index.` };
-        }
-        
-        const article = { id: docSnap.id, ...docSnap.data() };
-
-        if (article.status !== 'published') {
-            console.log(`Article ${articleId} is a draft, removed from index.`);
-            return { ok: true, message: `Article ${articleId} is a draft and was removed from the index.` };
-        }
-
-        const hubId = article.hubId;
-        if (!hubId) {
-            throw new Error(`Article ${articleId} is missing a hubId.`);
-        }
-
-        const hubDoc = await adminDB.collection("hubs").doc(hubId).get();
-        if (!hubDoc.exists) {
-            throw new Error(`Hub ${hubId} not found.`);
-        }
-        const spaceId = hubDoc.data()?.spaceId;
-        if (!spaceId) {
-            throw new Error(`Hub ${hubId} is missing a spaceId.`);
-        }
-        
-        const res = await indexHelpCenterArticleToChunks({
-            adminDB,
-            article,
-            spaceId,
-            publicHelpBaseUrl: PUBLIC_HELP_BASE_URL,
-        });
-
-        console.log(`Successfully re-indexed article ${articleId}. Total chunks: ${res.chunkCount}`);
-        return { ok: true, totalChunks: res.chunkCount };
-
-    } catch (error: any) {
-        console.error(`Failed to re-index article ${articleId}:`, error);
-        throw new Error(error.message || 'Unknown error occurred during re-indexing.');
-    }
 }
 
 export async function ensureConversationCrmLinkedAction(conversationId: string) {
@@ -692,7 +571,7 @@ export async function createConversationAndLinkCrm(args: {
     visitorId: args.visitorId,
     assigneeId: args.assigneeId,
     assignedAgentIds: args.assigneeId ? [args.assigneeId] : [], 
-    status: "bot",
+    status: "new",
     state: "ai_active",
     lastMessage: args.lastMessage,
     lastMessageAt: new Date().toISOString(),
@@ -705,79 +584,4 @@ export async function createConversationAndLinkCrm(args: {
 
   const snap = await convoRef.get();
   return { id: convoRef.id, ...(snap.data() as any) };
-}
-
-export async function exportLibraryAction(helpCenterId: string) {
-  const hcDoc = await adminDB.collection("help_centers").doc(helpCenterId).get();
-  if (!hcDoc.exists) throw new Error("Library not found");
-
-  const collectionsSnap = await adminDB
-    .collection("help_center_collections")
-    .where("helpCenterId", "==", helpCenterId)
-    .get();
-
-  const articlesSnap = await adminDB
-    .collection("help_center_articles")
-    .where("helpCenterId", "==", helpCenterId)
-    .get();
-
-  return {
-    helpCenter: { id: hcDoc.id, ...hcDoc.data() },
-    collections: collectionsSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-    articles: articlesSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-  };
-}
-
-export async function importLibraryAction(
-  hubId: string,
-  spaceId: string,
-  userId: string,
-  data: any
-) {
-  const batch = adminDB.batch();
-  const idMap: Record<string, string> = {};
-
-  const newHcRef = adminDB.collection("help_centers").doc();
-  const oldHcId = data.helpCenter.id;
-  idMap[oldHcId] = newHcRef.id;
-
-  const { id: _, ...hcData } = data.helpCenter;
-  batch.set(newHcRef, {
-    ...hcData,
-    hubId,
-  });
-
-  for (const coll of data.collections) {
-    const newRef = adminDB.collection("help_center_collections").doc();
-    idMap[coll.id] = newRef.id;
-  }
-
-  for (const coll of data.collections) {
-    const newId = idMap[coll.id];
-    const { id: _, ...collData } = coll;
-    batch.set(adminDB.collection("help_center_collections").doc(newId), {
-      ...collData,
-      hubId,
-      helpCenterId: newHcRef.id,
-      parentId: coll.parentId ? idMap[coll.parentId] || null : null,
-    });
-  }
-
-  for (const art of data.articles) {
-    const newRef = adminDB.collection("help_center_articles").doc();
-    const { id: _, ...artData } = art;
-    batch.set(newRef, {
-      ...artData,
-      hubId,
-      spaceId,
-      authorId: userId,
-      helpCenterId: newHcRef.id,
-      folderId: art.folderId ? idMap[art.folderId] || null : null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-  }
-
-  await batch.commit();
-  return { ok: true };
 }

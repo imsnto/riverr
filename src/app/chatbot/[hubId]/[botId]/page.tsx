@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -326,6 +325,7 @@ export default function ChatbotWidgetPage() {
         authorId: 'ai_agent',
         type: 'message',
         senderType: 'agent',
+        responderType: 'automation',
         content: `Thanks ${capturedName}! I've updated your info. How can I help?`,
         timestamp: new Date().toISOString(),
     });
@@ -425,6 +425,7 @@ export default function ChatbotWidgetPage() {
                 authorId: 'ai_agent',
                 type: 'message',
                 senderType: 'agent',
+                responderType: 'automation',
                 content: "Great! Please fill out the form below.",
                 timestamp: new Date().toISOString(),
             });
@@ -445,6 +446,7 @@ export default function ChatbotWidgetPage() {
                     authorId: 'ai_agent',
                     type: 'message',
                     senderType: 'agent',
+                    responderType: 'automation',
                     content: `Thanks${name ? ' ' + name : ''}! I've updated your info. How can I help?`,
                     timestamp: new Date().toISOString(),
                 });
@@ -456,6 +458,7 @@ export default function ChatbotWidgetPage() {
                         authorId: 'ai_agent',
                         type: 'message',
                         senderType: 'agent',
+                        responderType: 'automation',
                         content: "No problem. How can I help you today?",
                         timestamp: new Date().toISOString(),
                     });
@@ -508,7 +511,8 @@ export default function ChatbotWidgetPage() {
             authorId: 'ai_agent',
             type: 'message',
             senderType: 'agent',
-            content: bot.identityCapture.captureMessage || "Before we continue, would you be ok with sharing your name and email so we can reach out if needed?",
+            responderType: 'automation',
+            content: bot.identityCapture.captureMessage || "Before we continue, could you share your email so we can follow up if needed?",
             timestamp: new Date().toISOString(),
         });
         setIdentityCaptureStep('prompting');
@@ -683,13 +687,25 @@ export default function ChatbotWidgetPage() {
               <p className="text-sm whitespace-pre-wrap">{bot.welcomeMessage}</p>
             </div>
           </div>
-          <p className="text-xs text-zinc-500">AI Agent</p>
+          <p className="text-xs text-zinc-500">Support Assistant</p>
 
           {(visibleMessages.length > 0) && visibleMessages.map(msg => {
             const isAgent = msg.senderType === 'agent' || msg.senderType === 'bot';
             const agent = isAgent ? bot.agents?.find(u => u.id === msg.authorId) : null;
-            const isAI = isAgent && msg.authorId === 'ai_agent';
+            const isAI = msg.responderType === 'ai';
+            const isAutomation = msg.responderType === 'automation';
+            const isSystem = msg.responderType === 'system' || msg.type === 'event';
             const contentHtml = isAI ? marked.parse(msg.content) : msg.content;
+
+            if (isSystem) {
+                return (
+                    <div key={msg.id} className="flex justify-center py-2">
+                        <span className="text-[10px] text-zinc-500 font-medium px-2 py-1 rounded bg-white/5 border border-white/5">
+                            {msg.content}
+                        </span>
+                    </div>
+                )
+            }
 
             return (
               <div
@@ -702,7 +718,9 @@ export default function ChatbotWidgetPage() {
                       {msg.content && <div className="text-sm prose prose-sm prose-invert max-w-none break-words overflow-hidden [&_a]:break-all [&_a]:whitespace-normal [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:overflow-x-auto [&_code]:break-words" style={{ color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }} dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
                       {renderAttachments(msg)}
                     </div>
-                    <p className="text-xs text-zinc-500 mt-2">{agent?.name || 'AI Agent'}</p>
+                    <p className="text-xs text-zinc-500 mt-2">
+                        {isAI ? 'Manowar Assistant (AI)' : isAutomation ? 'Support Assistant' : (agent?.name || 'Team member')}
+                    </p>
                   </div>
                 ) : (
                   <div className="rounded-xl p-3 max-w-xs text-white rounded-br-sm break-all" style={{ backgroundColor: primary, color: bot.styleSettings?.customerTextColor || '#ffffff' }}>

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Conversation, ChatMessage, Visitor, User, Ticket, Hub, Space, EscalationIntakeRule, Project, Task, Contact } from '@/lib/data';
+import { useRouter } from 'next/navigation';
+import { Conversation, ChatMessage, Visitor, User, Ticket, Hub, Space, EscalationIntakeRule, Project, Task, Contact, ResponderType } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
@@ -160,6 +161,7 @@ export default function InboxConversationView({
         authorId: appUser.id,
         type: isNote ? 'note' : 'message',
         senderType: 'agent',
+        responderType: isNote ? 'human' : 'human', // explicit human action
         content: messageText,
         timestamp: new Date().toISOString(),
       };
@@ -218,57 +220,19 @@ export default function InboxConversationView({
   const renderMessageBubble = (msg: ChatMessage) => {
     const isCustomer = msg.senderType === 'contact' || msg.senderType === 'visitor';
     const agent = isCustomer ? null : users.find(u => u.id === msg.authorId);
-    const isAI = msg.authorId === 'ai_agent';
+    
+    const isAI = msg.responderType === 'ai';
+    const isAutomation = msg.responderType === 'automation';
+    const isSystem = msg.responderType === 'system' || msg.type === 'event';
 
-    if (msg.type === 'event') {
-        const eventAuthor = users.find(u => u.id === msg.authorId);
-        
-        if (msg.eventType?.startsWith('call_') || msg.eventType === 'voicemail_recorded') {
-            const Icon = msg.eventType === 'call_missed' ? PhoneMissed : msg.eventType === 'call_ended' ? PhoneOutgoing : msg.eventType === 'voicemail_recorded' ? Mic : PhoneIncoming;
-            
-            let label = 'Call event';
-            if (msg.eventType === 'call_started') label = 'Call started';
-            else if (msg.eventType === 'call_ringing') label = 'Call ringing';
-            else if (msg.eventType === 'call_answered') label = 'Call answered';
-            else if (msg.eventType === 'call_missed') label = 'Call missed';
-            else if (msg.eventType === 'call_ended') {
-                const secs = msg.durationSeconds || 0;
-                const mm = Math.floor(secs / 60);
-                const ss = secs % 60;
-                label = `Call ended (${mm}:${ss.toString().padStart(2, '0')})`;
-            } else if (msg.eventType === 'voicemail_recorded') label = 'Voicemail received';
-
-            return (
-                <div key={msg.id} className="flex justify-center py-2">
-                    <Card className="bg-muted/50 border-none shadow-none px-4 py-2 flex items-center gap-3">
-                        <Icon className={cn("h-4 w-4", msg.eventType === 'call_missed' ? 'text-destructive' : 'text-primary')} />
-                        <div className="flex flex-col">
-                            <span className="text-xs font-semibold">{label}</span>
-                            {msg.recordingUrl && (
-                                <audio controls className="h-8 mt-2 max-w-[200px]">
-                                    <source src={msg.recordingUrl} />
-                                </audio>
-                            )}
-                        </div>
-                        <span className="text-[10px] text-muted-foreground ml-2">
-                            {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}
-                        </span>
-                    </Card>
-                </div>
-            )
-        }
-
+    if (isSystem) {
         return (
             <div key={msg.id} className="flex justify-center py-2">
-                <div className="text-xs text-muted-foreground flex items-center gap-2">
-                    <TicketIcon className="h-4 w-4" />
-                    <span className="font-semibold">{eventAuthor?.name}</span>
-                    <span>{msg.content}</span>
-                    <span>·</span>
-                    <span>{formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}</span>
-                </div>
+                <span className="text-[10px] text-muted-foreground font-semibold px-2 py-1 rounded bg-muted/50 border border-border/50 uppercase tracking-tight">
+                    {msg.content}
+                </span>
             </div>
-        );
+        )
     }
 
     if (msg.type === 'note') {
@@ -312,10 +276,13 @@ export default function InboxConversationView({
             )}
           </div>
           <div className={cn("flex items-center gap-2 text-[11px] mt-1 opacity-70", isCustomer ? "" : "justify-end")}>
+            <span className="font-bold uppercase tracking-tight">
+                {isAI ? 'Manowar Assistant (AI)' : isAutomation ? 'Support Assistant' : (isCustomer ? displayName : agent?.name || 'You')}
+            </span>
             {msg.deliveryStatus && (
-              <span className="capitalize">{msg.deliveryStatus}</span>
+              <span className="capitalize text-primary font-bold">· {msg.deliveryStatus}</span>
             )}
-            <span>{formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}</span>
+            <span>· {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}</span>
           </div>
         </div>
          {!isCustomer && agent && (
@@ -415,10 +382,15 @@ export default function InboxConversationView({
 
             <div className="flex flex-col justify-center min-w-0 leading-tight">
               <div className="flex items-center gap-3">
-                {conversation.status === 'bot' ? (
+                {conversation.status === 'ai_active' ? (
                   <div className="flex items-center gap-1.5">
                     <Bot className="h-3.5 w-3.5 text-indigo-400" />
                     <span className="text-sm font-semibold text-indigo-400">Handled by AI Agent</span>
+                  </div>
+                ) : conversation.status === 'automated' ? (
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-3.5 w-3.5 rounded-full border-2 border-zinc-400" />
+                    <span className="text-sm font-semibold text-zinc-400">Automated</span>
                   </div>
                 ) : (
                   <span className="text-sm font-semibold truncate">
