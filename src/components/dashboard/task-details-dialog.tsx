@@ -10,7 +10,7 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
-import { Calendar, CircleDot, Clock, Flag, Folder, Tag, Users, X, Paperclip, MoreHorizontal, Send, CalendarRange } from 'lucide-react';
+import { Calendar, CircleDot, Clock, Flag, Folder, Tag, Users, X, Paperclip, MoreHorizontal, Send, CalendarRange, ChevronRight } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
