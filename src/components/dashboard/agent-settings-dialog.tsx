@@ -59,7 +59,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Badge } from '../ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Checkbox } from '../ui/checkbox';
@@ -542,6 +542,23 @@ export default function AgentSettingsDialog({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                         {/* Branding Options */}
                         <div className="space-y-8">
+                          <FormField
+                              control={form.control}
+                              name="name"
+                              render={({ field }) => (
+                                  <FormItem>
+                                      <FormLabel className="flex items-center gap-2">
+                                          <Edit className="h-4 w-4" /> Agent Display Name
+                                      </FormLabel>
+                                      <FormControl>
+                                          <Input placeholder="Support Agent" {...field} />
+                                      </FormControl>
+                                      <FormDescription className="text-xs">This name will be visible to visitors in the chat header.</FormDescription>
+                                      <FormMessage />
+                                  </FormItem>
+                              )}
+                          />
+
                           <FormField
                               control={form.control}
                               name="logoUrl"
