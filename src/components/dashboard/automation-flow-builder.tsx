@@ -392,32 +392,111 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             { id: 'e13', source: 'handoff', target: 'terminal_wait', sourceHandle: 'next', type: 'smoothstep' }
           ];
         } else {
-          // DETERMINISTIC DEFAULT FLOW
+          // DETERMINISTIC DEFAULT FLOW (OVERHAULED)
           defaultNodes = [
-            { id: 'start', type: 'start', position: { x: 120, y: 40 }, data: {} },
-            { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi! Welcome to our site. How can we help you today?' } },
-            { id: 'options', type: 'quick_reply', position: { x: 120, y: 320 }, data: { 
+            { id: 'start', type: 'start', position: { x: 0, y: 0 }, data: {} },
+            { id: 'greeting', type: 'message', position: { x: 0, y: 150 }, data: { text: 'Hi there! 👋\nHow can we help you today?' } },
+            { id: 'main_menu', type: 'quick_reply', position: { x: 0, y: 350 }, data: { 
                 text: '', 
                 buttons: [
-                  { id: 'b1', label: 'Support' },
-                  { id: 'b2', label: 'Sales' },
-                  { id: 'b3', label: 'Other' }
+                  { id: 'b_support', label: 'Technical Support' },
+                  { id: 'b_sales', label: 'Talk to Sales' },
+                  { id: 'b_billing', label: 'Billing / Pricing' },
+                  { id: 'b_other', label: 'Something Else' }
                 ] 
             }},
-            { id: 'identity_form', type: 'identity_form', position: { x: 420, y: 320 }, data: { prompt: 'In case we are unavailable could you tell us your name and email', variableName: 'identity' } },
-            { id: 'handoff', type: 'handoff', position: { x: 720, y: 320 }, data: { text: 'Transferring you to a specialist...', teamId: 'support', priority: 'medium' } },
-            { id: 'wait', type: 'end', position: { x: 1020, y: 320 }, data: { waitBehavior: 'pause' } }
+            
+            // Support Branch
+            { id: 'support_menu', type: 'quick_reply', position: { x: -600, y: 550 }, data: { 
+                text: 'What kind of technical issue are you having?',
+                buttons: [
+                  { id: 's_login', label: 'Login Issue' },
+                  { id: 's_bug', label: 'Bug Report' },
+                  { id: 's_account', label: 'Account Access' },
+                  { id: 's_other', label: 'Other Issue' }
+                ]
+            }},
+            { id: 'support_login_msg', type: 'message', position: { x: -800, y: 750 }, data: { text: 'Try resetting your password using the link below.\n\n[Reset Password Link]' } },
+            { id: 'support_res_check', type: 'quick_reply', position: { x: -800, y: 950 }, data: { 
+                text: 'Did that fix the issue?',
+                buttons: [
+                  { id: 'res_yes', label: 'Yes' },
+                  { id: 'res_no', label: 'No' }
+                ]
+            }},
+            { id: 'support_handoff', type: 'handoff', position: { x: -600, y: 1150 }, data: { text: 'Let me connect you with someone from our team.', teamId: 'support' } },
+            { id: 'support_end', type: 'message', position: { x: -1000, y: 1150 }, data: { text: 'Glad we could help! 👍\nIf you need anything else, just send a message.' } },
+
+            // Sales Branch
+            { id: 'sales_capture_email', type: 'capture_input', position: { x: -200, y: 550 }, data: { prompt: 'Can we grab your email so our sales team can follow up?', variableName: 'email', inputType: 'email', saveToProfile: true } },
+            { id: 'sales_topic', type: 'quick_reply', position: { x: -200, y: 750 }, data: { 
+                text: 'What would you like to discuss?',
+                buttons: [
+                  { id: 'sl_demo', label: 'Product Demo' },
+                  { id: 'sl_pricing', label: 'Pricing Information' },
+                  { id: 'sl_custom', label: 'Custom Solution' }
+                ]
+            }},
+            { id: 'sales_handoff', type: 'handoff', position: { x: -200, y: 950 }, data: { text: "I'll connect you with someone from our sales team.", teamId: 'sales' } },
+
+            // Billing Branch
+            { id: 'billing_menu', type: 'quick_reply', position: { x: 200, y: 550 }, data: { 
+                text: 'How can we help with billing?',
+                buttons: [
+                  { id: 'bl_plans', label: 'View Pricing Plans' },
+                  { id: 'bl_payment', label: 'Update Payment Method' },
+                  { id: 'bl_cancel', label: 'Cancel Subscription' },
+                  { id: 'bl_other', label: 'Other Billing Question' }
+                ]
+            }},
+            { id: 'billing_handoff', type: 'handoff', position: { x: 200, y: 750 }, data: { text: 'Transferring you to our billing department...', teamId: 'billing' } },
+
+            // Other Branch
+            { id: 'other_capture_msg', type: 'capture_input', position: { x: 600, y: 550 }, data: { prompt: 'Could you briefly describe what you need help with?', variableName: 'visitor_message', inputType: 'text' } },
+            { id: 'other_capture_email', type: 'capture_input', position: { x: 600, y: 750 }, data: { prompt: "What's the best email to reach you?", variableName: 'email', inputType: 'email', saveToProfile: true } },
+            { id: 'other_handoff', type: 'handoff', position: { x: 600, y: 950 }, data: { text: 'Connecting you now...', teamId: 'support' } },
+
+            // Final Wait
+            { id: 'terminal_wait', type: 'end', position: { x: 0, y: 1400 }, data: { waitBehavior: 'pause' } }
           ];
 
           defaultEdges = [
-            { id: 'e1', source: 'start', target: 'greeting', sourceHandle: 'next', type: 'smoothstep' },
-            { id: 'e2', source: 'greeting', target: 'options', sourceHandle: 'next', type: 'smoothstep' },
-            { id: 'e3', source: 'options', target: 'identity_form', sourceHandle: 'intent:b1', type: 'smoothstep' },
-            { id: 'e4', source: 'options', target: 'identity_form', sourceHandle: 'intent:b2', type: 'smoothstep' },
-            { id: 'e5', source: 'options', target: 'identity_form', sourceHandle: 'intent:b3', type: 'smoothstep' },
-            { id: 'e6', source: 'options', target: 'identity_form', sourceHandle: 'fallback', type: 'smoothstep' },
-            { id: 'e7', source: 'identity_form', target: 'handoff', sourceHandle: 'next', type: 'smoothstep' },
-            { id: 'e8', source: 'handoff', target: 'wait', sourceHandle: 'next', type: 'smoothstep' }
+            { id: 'e_start', source: 'start', target: 'greeting', sourceHandle: 'next' },
+            { id: 'e_greet', source: 'greeting', target: 'main_menu', sourceHandle: 'next' },
+            
+            // Main menu connections
+            { id: 'e_m_support', source: 'main_menu', target: 'support_menu', sourceHandle: 'intent:b_support' },
+            { id: 'e_m_sales', source: 'main_menu', target: 'sales_capture_email', sourceHandle: 'intent:b_sales' },
+            { id: 'e_m_billing', source: 'main_menu', target: 'billing_menu', sourceHandle: 'intent:b_billing' },
+            { id: 'e_m_other', source: 'main_menu', target: 'other_capture_msg', sourceHandle: 'intent:b_other' },
+            { id: 'e_m_fallback', source: 'main_menu', target: 'other_capture_msg', sourceHandle: 'fallback' },
+
+            // Support path
+            { id: 'e_s_login', source: 'support_menu', target: 'support_login_msg', sourceHandle: 'intent:s_login' },
+            { id: 'e_s_bug', source: 'support_menu', target: 'support_handoff', sourceHandle: 'intent:s_bug' },
+            { id: 'e_s_acc', source: 'support_menu', target: 'support_handoff', sourceHandle: 'intent:s_account' },
+            { id: 'e_s_other', source: 'support_menu', target: 'support_handoff', sourceHandle: 'intent:s_other' },
+            { id: 'e_s_fall', source: 'support_menu', target: 'support_handoff', sourceHandle: 'fallback' },
+            { id: 'e_s_log_next', source: 'support_login_msg', target: 'support_res_check', sourceHandle: 'next' },
+            { id: 'e_s_res_yes', source: 'support_res_check', target: 'support_end', sourceHandle: 'intent:res_yes' },
+            { id: 'e_s_res_no', source: 'support_res_check', target: 'support_handoff', sourceHandle: 'intent:res_no' },
+            { id: 'e_s_res_fall', source: 'support_res_check', target: 'support_handoff', sourceHandle: 'fallback' },
+            { id: 'e_s_hand_next', source: 'support_handoff', target: 'terminal_wait', sourceHandle: 'next' },
+            { id: 'e_s_end_next', source: 'support_end', target: 'terminal_wait', sourceHandle: 'next' },
+
+            // Sales path
+            { id: 'e_sl_cap', source: 'sales_capture_email', target: 'sales_topic', sourceHandle: 'next' },
+            { id: 'e_sl_top_next', source: 'sales_topic', target: 'sales_handoff', sourceHandle: 'next' },
+            { id: 'e_sl_hand_next', source: 'sales_handoff', target: 'terminal_wait', sourceHandle: 'next' },
+
+            // Billing path
+            { id: 'e_bl_menu_next', source: 'billing_menu', target: 'billing_handoff', sourceHandle: 'next' },
+            { id: 'e_bl_hand_next', source: 'billing_handoff', target: 'terminal_wait', sourceHandle: 'next' },
+
+            // Other path
+            { id: 'e_ot_msg', source: 'other_capture_msg', target: 'other_capture_email', sourceHandle: 'next' },
+            { id: 'e_ot_email', source: 'other_capture_email', target: 'other_handoff', sourceHandle: 'next' },
+            { id: 'e_ot_hand', source: 'other_handoff', target: 'terminal_wait', sourceHandle: 'next' },
           ];
         }
 
@@ -939,10 +1018,10 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
                                 <>
                                     {[
                                         { key: 'conversation', label: 'Conversation' },
-                                        { key: 'ai', label: 'Intelligence' },
+                                        { key: 'ai', label: 'Intelligence', hidden: !aiEnabled },
                                         { key: 'logic', label: 'Logic' },
                                         { key: 'human', label: 'Human' }
-                                    ].map(cat => (
+                                    ].filter(c => !c.hidden).map(cat => (
                                         <div key={cat.key} className="space-y-3">
                                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider pl-1 opacity-60">{cat.label}</p>
                                             <div className="grid gap-2">
