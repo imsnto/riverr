@@ -56,7 +56,7 @@ import {
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -232,8 +232,8 @@ export default function AgentSettingsDialog({
       agentMessageBackgroundColor: '#374151',
       agentMessageTextColor: '#ffffff',
       customerTextColor: '#ffffff',
-      chatbotIconsColor: '#ffffff',
-      chatbotIconsTextColor: '#000000',
+      chatbotIconsColor: '#3b82f6',
+      chatbotIconsTextColor: '#ffffff',
       logoUrl: '',
       agentIds: [],
       allowedHelpCenterIds: [],
@@ -261,8 +261,8 @@ export default function AgentSettingsDialog({
         agentMessageBackgroundColor: agent.styleSettings?.agentMessageBackgroundColor || '#374151',
         agentMessageTextColor: agent.styleSettings?.agentMessageTextColor || '#ffffff',
         customerTextColor: agent.styleSettings?.customerTextColor || '#ffffff',
-        chatbotIconsColor: agent.styleSettings?.chatbotIconsColor || '#ffffff',
-        chatbotIconsTextColor: agent.styleSettings?.chatbotIconsTextColor || '#000000',
+        chatbotIconsColor: agent.styleSettings?.chatbotIconsColor || '#3b82f6',
+        chatbotIconsTextColor: agent.styleSettings?.chatbotIconsTextColor || '#ffffff',
         logoUrl: agent.styleSettings?.logoUrl || '',
         agentIds: agent.agentIds || [],
         allowedHelpCenterIds: agent.allowedHelpCenterIds || [],
@@ -290,8 +290,8 @@ export default function AgentSettingsDialog({
             agentMessageBackgroundColor: values.agentMessageBackgroundColor || '#374151',
             agentMessageTextColor: values.agentMessageTextColor || '#ffffff',
             customerTextColor: values.customerTextColor || '#ffffff',
-            chatbotIconsTextColor: values.chatbotIconsTextColor || '#000000',
-            chatbotIconsColor: values.chatbotIconsColor || '#ffffff',
+            chatbotIconsTextColor: values.chatbotIconsTextColor || '#ffffff',
+            chatbotIconsColor: values.chatbotIconsColor || '#3b82f6',
             logoUrl: values.logoUrl || '',
         },
         agentIds: values.agentIds,
@@ -538,10 +538,10 @@ export default function AgentSettingsDialog({
                       />
                     </TabsContent>
 
-                    <TabsContent value="branding" className="pt-6 space-y-8">
+                    <TabsContent value="branding" className="pt-6 space-y-8 pb-20">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                         {/* Branding Options */}
-                        <div className="space-y-6">
+                        <div className="space-y-8">
                           <FormField
                               control={form.control}
                               name="logoUrl"
@@ -552,7 +552,7 @@ export default function AgentSettingsDialog({
                                       </FormLabel>
                                       <FormControl>
                                           <div className="flex items-center gap-4">
-                                              <Avatar className="h-16 w-16 rounded-md">
+                                              <Avatar className="h-16 w-16 rounded-md border bg-muted/30">
                                                   <AvatarImage src={field.value || undefined} alt="Logo preview" className="object-contain" />
                                                   <AvatarFallback className="rounded-md bg-muted">
                                                       <BotIcon className="h-8 w-8 text-muted-foreground" />
@@ -592,8 +592,8 @@ export default function AgentSettingsDialog({
                               )}
                           />
 
-                          <div className="space-y-4">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Colors</Label>
+                          <div className="space-y-6">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">General Colors</Label>
                             
                             <div className="grid grid-cols-1 gap-4">
                               <FormField
@@ -652,149 +652,207 @@ export default function AgentSettingsDialog({
                                 </FormItem>
                                 )}
                               />
+                            </div>
+                          </div>
 
-                              <div className="pt-2">
-                                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Bubbles</Label>
-                                <div className="grid grid-cols-1 gap-4 mt-4">
-                                  <FormField
-                                    control={form.control}
-                                    name="agentMessageBackgroundColor"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-xs">Bot Bubble BG</FormLabel>
-                                        <FormControl>
-                                        <div className="flex items-center gap-2">
-                                            <Input placeholder="#374151" {...field} className="h-8 text-xs font-mono" />
-                                            <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
-                                                <div className="w-full h-full" style={{ backgroundColor: field.value }} />
-                                                <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                            </div>
+                          <div className="space-y-6">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Message Bubbles</Label>
+                            <div className="grid grid-cols-1 gap-4">
+                              <FormField
+                                control={form.control}
+                                name="agentMessageBackgroundColor"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Agent Bubble BG</FormLabel>
+                                    <FormControl>
+                                    <div className="flex items-center gap-2">
+                                        <Input placeholder="#374151" {...field} className="h-8 text-xs font-mono" />
+                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
+                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
+                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                         </div>
-                                        </FormControl>
-                                    </FormItem>
-                                    )}
-                                  />
-                                  <FormField
-                                    control={form.control}
-                                    name="agentMessageTextColor"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-xs">Bot Bubble Text</FormLabel>
-                                        <FormControl>
-                                        <div className="flex items-center gap-2">
-                                            <Input placeholder="#ffffff" {...field} className="h-8 text-xs font-mono" />
-                                            <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
-                                                <div className="w-full h-full" style={{ backgroundColor: field.value }} />
-                                                <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                            </div>
+                                    </div>
+                                    </FormControl>
+                                </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name="agentMessageTextColor"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Agent Bubble Text</FormLabel>
+                                    <FormControl>
+                                    <div className="flex items-center gap-2">
+                                        <Input placeholder="#ffffff" {...field} className="h-8 text-xs font-mono" />
+                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
+                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
+                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                         </div>
-                                        </FormControl>
-                                    </FormItem>
-                                    )}
-                                  />
-                                  <FormField
-                                    control={form.control}
-                                    name="customerTextColor"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-xs">Visitor Bubble Text</FormLabel>
-                                        <FormControl>
-                                        <div className="flex items-center gap-2">
-                                            <Input placeholder="#ffffff" {...field} className="h-8 text-xs font-mono" />
-                                            <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
-                                                <div className="w-full h-full" style={{ backgroundColor: field.value }} />
-                                                <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                            </div>
+                                    </div>
+                                    </FormControl>
+                                </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name="customerTextColor"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Visitor Bubble Text</FormLabel>
+                                    <FormControl>
+                                    <div className="flex items-center gap-2">
+                                        <Input placeholder="#ffffff" {...field} className="h-8 text-xs font-mono" />
+                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
+                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
+                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                         </div>
-                                        </FormControl>
-                                    </FormItem>
-                                    )}
-                                  />
-                                </div>
-                              </div>
+                                    </div>
+                                    </FormControl>
+                                </FormItem>
+                                )}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-6">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Launcher Button</Label>
+                            <div className="grid grid-cols-1 gap-4">
+                              <FormField
+                                control={form.control}
+                                name="chatbotIconsColor"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Launcher Background</FormLabel>
+                                    <FormControl>
+                                    <div className="flex items-center gap-2">
+                                        <Input placeholder="#3b82f6" {...field} className="h-8 text-xs font-mono" />
+                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
+                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
+                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                        </div>
+                                    </div>
+                                    </FormControl>
+                                </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name="chatbotIconsTextColor"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Launcher Icon Color</FormLabel>
+                                    <FormControl>
+                                    <div className="flex items-center gap-2">
+                                        <Input placeholder="#ffffff" {...field} className="h-8 text-xs font-mono" />
+                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
+                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
+                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                        </div>
+                                    </div>
+                                    </FormControl>
+                                </FormItem>
+                                )}
+                              />
                             </div>
                           </div>
                         </div>
 
                         {/* Live Branding Preview */}
-                        <div className="space-y-4 sticky top-0">
+                        <div className="space-y-6 sticky top-0 pb-10">
                           <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                             <Palette className="h-3 w-3" /> Live Branding Preview
                           </Label>
                           
-                          <div 
-                            className="w-full h-[540px] rounded-3xl shadow-2xl border-8 border-muted overflow-hidden flex flex-col transition-all duration-500"
-                            style={{ backgroundColor: watchedValues.backgroundColor }}
-                          >
-                            {/* Mock Header */}
-                            <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8 rounded-full shadow-md bg-white/10">
-                                  <AvatarImage src={watchedValues.logoUrl} className="object-contain" />
-                                  <AvatarFallback className="bg-transparent"><BotIcon className="h-4 w-4 text-white/50" /></AvatarFallback>
-                                </Avatar>
-                                <span className="font-bold text-sm" style={{ color: watchedValues.headerTextColor }}>{watchedValues.name || 'AI Assistant'}</span>
-                              </div>
-                              <X className="h-4 w-4 opacity-50" style={{ color: watchedValues.headerTextColor }} />
+                          <div className="relative">
+                            <div 
+                                className="w-full h-[540px] rounded-[2.5rem] shadow-2xl border-8 border-muted overflow-hidden flex flex-col transition-all duration-500"
+                                style={{ backgroundColor: watchedValues.backgroundColor }}
+                            >
+                                {/* Mock Header */}
+                                <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                                <div className="flex items-center gap-3">
+                                    <Avatar className="h-9 w-9 rounded-full shadow-md bg-white/5 border border-white/10">
+                                    <AvatarImage src={watchedValues.logoUrl} className="object-contain" />
+                                    <AvatarFallback className="bg-transparent"><BotIcon className="h-5 w-5 text-white/50" /></AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex flex-col">
+                                        <span className="font-bold text-sm" style={{ color: watchedValues.headerTextColor }}>{watchedValues.name || 'AI Assistant'}</span>
+                                        <span className="text-[10px] uppercase font-bold opacity-50" style={{ color: watchedValues.headerTextColor }}>Online</span>
+                                    </div>
+                                </div>
+                                <X className="h-5 w-5 opacity-50" style={{ color: watchedValues.headerTextColor }} />
+                                </div>
+
+                                {/* Mock Chat Area */}
+                                <div className="flex-1 p-6 space-y-6 overflow-y-auto bg-transparent">
+                                {/* Bot Welcome */}
+                                <div className="flex flex-col gap-1.5 items-start">
+                                    <div 
+                                    className="max-w-[85%] p-3.5 rounded-2xl rounded-bl-none text-sm shadow-sm"
+                                    style={{ 
+                                        backgroundColor: watchedValues.agentMessageBackgroundColor,
+                                        color: watchedValues.agentMessageTextColor 
+                                    }}
+                                    >
+                                    {watchedValues.welcomeMessage || 'Hi there! How can I help you?'}
+                                    </div>
+                                    <span className="text-[9px] uppercase font-black opacity-30 ml-1" style={{ color: watchedValues.agentMessageTextColor }}>Assistant</span>
+                                </div>
+
+                                {/* User Message */}
+                                <div className="flex flex-col gap-1.5 items-end">
+                                    <div 
+                                    className="max-w-[85%] p-3.5 rounded-2xl rounded-br-none text-sm shadow-md"
+                                    style={{ 
+                                        backgroundColor: watchedValues.primaryColor,
+                                        color: watchedValues.customerTextColor 
+                                    }}
+                                    >
+                                    I'd like to learn more about your platform.
+                                    </div>
+                                    <span className="text-[9px] uppercase font-black opacity-30 mr-1" style={{ color: watchedValues.customerTextColor }}>You</span>
+                                </div>
+
+                                {/* AI Response */}
+                                <div className="flex flex-col gap-1.5 items-start">
+                                    <div 
+                                    className="max-w-[85%] p-4 rounded-2xl rounded-bl-none text-sm border-2 shadow-sm"
+                                    style={{ 
+                                        backgroundColor: 'rgba(255,255,255,0.02)',
+                                        borderColor: watchedValues.primaryColor + '22',
+                                        color: watchedValues.agentMessageTextColor 
+                                    }}
+                                    >
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <BotIcon className="h-3 w-3" style={{ color: watchedValues.primaryColor }} />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: watchedValues.primaryColor }}>AI Logic</span>
+                                    </div>
+                                    Great! Our platform is a comprehensive business command center...
+                                    </div>
+                                </div>
+                                </div>
+
+                                {/* Mock Footer */}
+                                <div className="p-4 border-t flex items-center gap-3" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                                <div className="h-11 flex-1 rounded-full bg-white/5 border border-white/10 flex items-center px-4">
+                                    <span className="text-xs text-white/20 italic">Type something...</span>
+                                </div>
+                                <div className="h-10 w-10 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: watchedValues.primaryColor }}>
+                                    <Send className="h-4 w-4" style={{ color: watchedValues.customerTextColor }} />
+                                </div>
+                                </div>
                             </div>
 
-                            {/* Mock Chat Area */}
-                            <div className="flex-1 p-6 space-y-6 overflow-y-auto">
-                              {/* Bot Welcome */}
-                              <div className="flex flex-col gap-1.5 items-start">
+                            {/* Floating Launcher Button Preview */}
+                            <div className="absolute -bottom-16 right-0 flex flex-col items-center gap-2">
+                                <span className="text-[10px] font-bold uppercase text-muted-foreground/50 tracking-tighter">Widget Launcher</span>
                                 <div 
-                                  className="max-w-[85%] p-3 rounded-2xl rounded-bl-none text-sm shadow-sm"
-                                  style={{ 
-                                    backgroundColor: watchedValues.agentMessageBackgroundColor,
-                                    color: watchedValues.agentMessageTextColor 
-                                  }}
+                                    className="h-16 w-16 rounded-full shadow-2xl flex items-center justify-center border-4 border-background transition-all hover:scale-110 cursor-pointer"
+                                    style={{ backgroundColor: watchedValues.chatbotIconsColor }}
                                 >
-                                  {watchedValues.welcomeMessage || 'Hi there! How can I help you?'}
+                                    <MessageSquare className="h-7 w-7" style={{ color: watchedValues.chatbotIconsTextColor }} />
                                 </div>
-                                <span className="text-[10px] uppercase font-bold opacity-40 ml-1" style={{ color: watchedValues.agentMessageTextColor }}>Bot</span>
-                              </div>
-
-                              {/* User Message */}
-                              <div className="flex flex-col gap-1.5 items-end">
-                                <div 
-                                  className="max-w-[85%] p-3 rounded-2xl rounded-br-none text-sm shadow-md"
-                                  style={{ 
-                                    backgroundColor: watchedValues.primaryColor,
-                                    color: watchedValues.customerTextColor 
-                                  }}
-                                >
-                                  I have a question about pricing.
-                                </div>
-                                <span className="text-[10px] uppercase font-bold opacity-40 mr-1" style={{ color: watchedValues.customerTextColor || '#fff' }}>Visitor</span>
-                              </div>
-
-                              {/* AI Response */}
-                              <div className="flex flex-col gap-1.5 items-start">
-                                <div 
-                                  className="max-w-[85%] p-3 rounded-2xl rounded-bl-none text-sm border-2 shadow-sm"
-                                  style={{ 
-                                    backgroundColor: 'rgba(255,255,255,0.03)',
-                                    borderColor: watchedValues.primaryColor + '33',
-                                    color: watchedValues.agentMessageTextColor 
-                                  }}
-                                >
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <BotIcon className="h-3 w-3" style={{ color: watchedValues.primaryColor }} />
-                                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: watchedValues.primaryColor }}>AI Knowledge</span>
-                                  </div>
-                                  I can certainly help with that! We have several plans available...
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Mock Footer */}
-                            <div className="p-4 border-t flex items-center gap-3" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                              <div className="h-10 flex-1 rounded-full bg-white/5 border border-white/10 flex items-center px-4">
-                                <span className="text-xs text-white/30 italic">Type a message...</span>
-                              </div>
-                              <div className="h-10 w-10 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: watchedValues.primaryColor }}>
-                                <Send className="h-4 w-4" style={{ color: watchedValues.customerTextColor }} />
-                              </div>
                             </div>
                           </div>
                         </div>
