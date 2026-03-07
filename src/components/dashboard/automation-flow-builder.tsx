@@ -493,19 +493,18 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             // Other Branch
             { id: 'other_capture_msg', type: 'capture_input', position: { x: 600, y: 550 }, data: { prompt: 'Could you briefly describe what you need help with?', variableName: 'visitor_message', inputType: 'text' } },
 
-            // SHARED MANDATORY ID CAPTURE BRIDGE
-            { id: 'capture_name', type: 'capture_input', position: { x: 0, y: 1200 }, data: { prompt: 'Before I connect you to someone, could you tell me your name?', variableName: 'visitor_name', inputType: 'text' } },
-            { id: 'capture_email', type: 'capture_input', position: { x: 0, y: 1400 }, data: { prompt: 'And what email can we reach you at if we get disconnected?', variableName: 'email', inputType: 'email', saveToProfile: true } },
+            // SHARED MANDATORY ID CAPTURE BRIDGE (RESTORED FORM)
+            { id: 'identity_form', type: 'identity_form', position: { x: 0, y: 1300 }, data: { prompt: 'Before I connect you to someone, could I get your name and email?', variableName: 'identity' } },
             
             // Handoff Sequence
-            { id: 'handoff_msg', type: 'message', position: { x: 0, y: 1600 }, data: { text: "Thanks! I'm connecting you with someone from our team now." } },
-            { id: 'shared_handoff', type: 'handoff', position: { x: 0, y: 1800 }, data: { text: 'Connecting you now...', teamId: 'support' } },
+            { id: 'handoff_msg', type: 'message', position: { x: 0, y: 1500 }, data: { text: "Thanks! I'm connecting you with someone from our team now." } },
+            { id: 'shared_handoff', type: 'handoff', position: { x: 0, y: 1700 }, data: { text: 'Connecting you now...', teamId: 'support' } },
 
             // Resolved End
             { id: 'resolved_msg', type: 'message', position: { x: -400, y: 1200 }, data: { text: 'Glad we could help! 👍\n\nIf you need anything else, just send another message.' } },
             
             // Final Wait
-            { id: 'terminal_wait', type: 'end', position: { x: 0, y: 2000 }, data: { waitBehavior: 'pause' } }
+            { id: 'terminal_wait', type: 'end', position: { x: 0, y: 1900 }, data: { waitBehavior: 'pause' } }
           ];
 
           defaultEdges = [
@@ -521,32 +520,31 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
 
             // Support path
             { id: 'e_s_login', source: 'support_menu', target: 'support_login_msg', sourceHandle: 'intent:s_login' },
-            { id: 'e_s_bug', source: 'support_menu', target: 'capture_name', sourceHandle: 'intent:s_bug' },
-            { id: 'e_s_acc', source: 'support_menu', target: 'capture_name', sourceHandle: 'intent:s_account' },
-            { id: 'e_s_other', source: 'support_menu', target: 'capture_name', sourceHandle: 'intent:s_other' },
-            { id: 'e_s_fall', source: 'support_menu', target: 'capture_name', sourceHandle: 'fallback' },
+            { id: 'e_s_bug', source: 'support_menu', target: 'identity_form', sourceHandle: 'intent:s_bug' },
+            { id: 'e_s_acc', source: 'support_menu', target: 'identity_form', sourceHandle: 'intent:s_account' },
+            { id: 'e_s_other', source: 'support_menu', target: 'identity_form', sourceHandle: 'intent:s_other' },
+            { id: 'e_s_fall', source: 'support_menu', target: 'identity_form', sourceHandle: 'fallback' },
             { id: 'e_s_log_next', source: 'support_login_msg', target: 'support_res_check', sourceHandle: 'next' },
             { id: 'e_s_res_yes', source: 'support_res_check', target: 'resolved_msg', sourceHandle: 'intent:res_yes' },
-            { id: 'e_s_res_no', source: 'support_res_check', target: 'capture_name', sourceHandle: 'intent:res_no' },
-            { id: 'e_s_res_fall', source: 'support_res_check', target: 'capture_name', sourceHandle: 'fallback' },
+            { id: 'e_s_res_no', source: 'support_res_check', target: 'identity_form', sourceHandle: 'intent:res_no' },
+            { id: 'e_s_res_fall', source: 'support_res_check', target: 'identity_form', sourceHandle: 'fallback' },
 
             // Sales path
             { id: 'e_sl_greet', source: 'sales_greet', target: 'sales_interest', sourceHandle: 'next' },
-            { id: 'e_sl_topic', source: 'sales_interest', target: 'capture_name', sourceHandle: 'next' },
+            { id: 'e_sl_topic', source: 'sales_interest', target: 'identity_form', sourceHandle: 'next' },
 
             // Billing path
             { id: 'e_bl_menu', source: 'billing_menu', target: 'billing_price_msg', sourceHandle: 'next' },
             { id: 'e_bl_price_next', source: 'billing_price_msg', target: 'billing_res_check', sourceHandle: 'next' },
             { id: 'e_bl_res_yes', source: 'billing_res_check', target: 'resolved_msg', sourceHandle: 'intent:bl_res_yes' },
-            { id: 'e_bl_res_no', source: 'billing_res_check', target: 'capture_name', sourceHandle: 'intent:bl_res_no' },
-            { id: 'e_bl_res_fall', source: 'billing_res_check', target: 'capture_name', sourceHandle: 'fallback' },
+            { id: 'e_bl_res_no', source: 'billing_res_check', target: 'identity_form', sourceHandle: 'intent:res_no' },
+            { id: 'e_bl_res_fall', source: 'billing_res_check', target: 'identity_form', sourceHandle: 'fallback' },
 
             // Other path
-            { id: 'e_ot_msg', source: 'other_capture_msg', target: 'capture_name', sourceHandle: 'next' },
+            { id: 'e_ot_msg', source: 'other_capture_msg', target: 'identity_form', sourceHandle: 'next' },
 
             // SHARED ID CAPTURE & HANDOFF
-            { id: 'e_cap_name', source: 'capture_name', target: 'capture_email', sourceHandle: 'next' },
-            { id: 'e_cap_email', source: 'capture_email', target: 'handoff_msg', sourceHandle: 'next' },
+            { id: 'e_ident_next', source: 'identity_form', target: 'handoff_msg', sourceHandle: 'next' },
             { id: 'e_hand_msg', source: 'handoff_msg', target: 'shared_handoff', sourceHandle: 'next' },
             { id: 'e_hand_next', source: 'shared_handoff', target: 'terminal_wait', sourceHandle: 'next' },
             { id: 'e_res_next', source: 'resolved_msg', target: 'terminal_wait', sourceHandle: 'next' },
