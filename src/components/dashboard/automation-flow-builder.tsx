@@ -1,3 +1,4 @@
+
 // src/components/dashboard/automation-flow-builder.tsx
 'use client';
 
@@ -62,6 +63,7 @@ import {
   Users,
   UserPlus,
   Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -98,13 +100,39 @@ const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; co
 };
 
 const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
-  const { getEdges } = useReactFlow();
+  const { getEdges, getNodes } = useReactFlow();
   const edges = getEdges();
+  const nodes = getNodes();
   const meta = NODE_TYPES_META[type as AutomationNodeType];
   const Icon = meta.icon;
 
   const isHandleConnected = (handleId: string) => 
     edges.some(e => e.source === id && e.sourceHandle === handleId);
+
+  // Simple heuristic: check if path to this handoff contains an email capture
+  const hasIdentityInPath = useMemo(() => {
+    if (type !== 'handoff') return true;
+    
+    const checkPredecessors = (nodeId: string, visited = new Set<string>()): boolean => {
+        if (visited.has(nodeId)) return false;
+        visited.add(nodeId);
+
+        const incomingEdges = edges.filter(e => e.target === nodeId);
+        for (const edge of incomingEdges) {
+            const sourceNode = nodes.find(n => n.id === edge.source);
+            if (!sourceNode) continue;
+            
+            // Success if we hit an identity node or email capture
+            if (sourceNode.type === 'identity_form') return true;
+            if (sourceNode.type === 'capture_input' && sourceNode.data.inputType === 'email') return true;
+            
+            if (checkPredecessors(sourceNode.id, visited)) return true;
+        }
+        return false;
+    };
+
+    return checkPredecessors(id);
+  }, [type, id, edges, nodes]);
 
   const AddStepButton = ({ handleId, label }: { handleId: string, label?: string }) => {
     const connected = isHandleConnected(handleId);
@@ -167,6 +195,13 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
 
         {type !== 'start' && (
           <Handle type="target" position={Position.Top} className="w-3 h-3 bg-zinc-400 border-2 border-background" />
+        )}
+
+        {type === 'handoff' && !hasIdentityInPath && (
+            <div className="mt-2 flex items-center gap-2 p-1.5 bg-amber-500/10 border border-amber-500/20 rounded text-[10px] text-amber-500 font-bold">
+                <AlertCircle className="h-3 w-3" />
+                REQUIRES ID CAPTURE
+            </div>
         )}
 
         {type === 'capture_input' && data.variableName && (
@@ -371,8 +406,8 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             }},
             { id: 'ai', type: 'ai_step', position: { x: 820, y: 180 }, data: { knowledgeSources: ['default'], fallbackBehavior: 'escalate' } },
             { id: 'pricing_msg', type: 'message', position: { x: 820, y: 360 }, data: { text: "We'd be happy to help with pricing and plans.\n\nTell us what you're looking for, or ask to speak with sales." } },
-            { id: 'identity_form', type: 'identity_form', position: { x: 1180, y: 360 }, data: { prompt: 'In case we are unavailable could you tell us your name and email', variableName: 'identity' } },
-            { id: 'handoff', type: 'handoff', position: { x: 1540, y: 360 }, data: { text: 'Connecting you to our team now.', teamId: 'support', priority: 'high' } },
+            { id: 'identity_form', type: 'identity_form', position: { x: 1180, y: 360 }, data: { prompt: 'Before I connect you to someone, could I get your name and email?', variableName: 'identity' } },
+            { id: 'handoff', type: 'handoff', position: { x: 1540, y: 360 }, data: { text: 'Thanks! I\'m connecting you with someone from our team now.', teamId: 'support', priority: 'high' } },
             { id: 'terminal_wait', type: 'end', position: { x: 1900, y: 360 }, data: { waitBehavior: 'pause' } }
           ];
 
@@ -392,7 +427,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             { id: 'e13', source: 'handoff', target: 'terminal_wait', sourceHandle: 'next', type: 'smoothstep' }
           ];
         } else {
-          // DETERMINISTIC DEFAULT FLOW (OVERHAULED)
+          // DETERMINISTIC DEFAULT FLOW (OVERHAULED - ENFORCING ID CAPTURE)
           defaultNodes = [
             { id: 'start', type: 'start', position: { x: 0, y: 0 }, data: {} },
             { id: 'greeting', type: 'message', position: { x: 0, y: 150 }, data: { text: 'Hi there! 👋\nHow can we help you today?' } },
@@ -421,15 +456,13 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
                 text: 'Did that fix the issue?',
                 buttons: [
                   { id: 'res_yes', label: 'Yes' },
-                  { id: 'res_no', label: 'No' }
+                  { id: 'res_no', label: 'Still need help' }
                 ]
             }},
-            { id: 'support_handoff', type: 'handoff', position: { x: -600, y: 1150 }, data: { text: 'Let me connect you with someone from our team.', teamId: 'support' } },
-            { id: 'support_end', type: 'message', position: { x: -1000, y: 1150 }, data: { text: 'Glad we could help! 👍\nIf you need anything else, just send a message.' } },
 
             // Sales Branch
-            { id: 'sales_capture_email', type: 'capture_input', position: { x: -200, y: 550 }, data: { prompt: 'Can we grab your email so our sales team can follow up?', variableName: 'email', inputType: 'email', saveToProfile: true } },
-            { id: 'sales_topic', type: 'quick_reply', position: { x: -200, y: 750 }, data: { 
+            { id: 'sales_greet', type: 'message', position: { x: -200, y: 550 }, data: { text: "Great! We'd love to help with that." } },
+            { id: 'sales_interest', type: 'quick_reply', position: { x: -200, y: 750 }, data: { 
                 text: 'What would you like to discuss?',
                 buttons: [
                   { id: 'sl_demo', label: 'Product Demo' },
@@ -437,7 +470,6 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
                   { id: 'sl_custom', label: 'Custom Solution' }
                 ]
             }},
-            { id: 'sales_handoff', type: 'handoff', position: { x: -200, y: 950 }, data: { text: "I'll connect you with someone from our sales team.", teamId: 'sales' } },
 
             // Billing Branch
             { id: 'billing_menu', type: 'quick_reply', position: { x: 200, y: 550 }, data: { 
@@ -449,15 +481,31 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
                   { id: 'bl_other', label: 'Other Billing Question' }
                 ]
             }},
-            { id: 'billing_handoff', type: 'handoff', position: { x: 200, y: 750 }, data: { text: 'Transferring you to our billing department...', teamId: 'billing' } },
+            { id: 'billing_price_msg', type: 'message', position: { x: 200, y: 750 }, data: { text: 'Here are our pricing plans.\n\n[Link to Pricing]' } },
+            { id: 'billing_res_check', type: 'quick_reply', position: { x: 200, y: 950 }, data: { 
+                text: 'Did this answer your question?',
+                buttons: [
+                  { id: 'bl_res_yes', label: 'Yes' },
+                  { id: 'bl_res_no', label: 'Still need help' }
+                ]
+            }},
 
             // Other Branch
             { id: 'other_capture_msg', type: 'capture_input', position: { x: 600, y: 550 }, data: { prompt: 'Could you briefly describe what you need help with?', variableName: 'visitor_message', inputType: 'text' } },
-            { id: 'other_capture_email', type: 'capture_input', position: { x: 600, y: 750 }, data: { prompt: "What's the best email to reach you?", variableName: 'email', inputType: 'email', saveToProfile: true } },
-            { id: 'other_handoff', type: 'handoff', position: { x: 600, y: 950 }, data: { text: 'Connecting you now...', teamId: 'support' } },
 
+            // SHARED MANDATORY ID CAPTURE BRIDGE
+            { id: 'capture_name', type: 'capture_input', position: { x: 0, y: 1200 }, data: { prompt: 'Before I connect you to someone, could you tell me your name?', variableName: 'visitor_name', inputType: 'text' } },
+            { id: 'capture_email', type: 'capture_input', position: { x: 0, y: 1400 }, data: { prompt: 'And what email can we reach you at if we get disconnected?', variableName: 'email', inputType: 'email', saveToProfile: true } },
+            
+            // Handoff Sequence
+            { id: 'handoff_msg', type: 'message', position: { x: 0, y: 1600 }, data: { text: "Thanks! I'm connecting you with someone from our team now." } },
+            { id: 'shared_handoff', type: 'handoff', position: { x: 0, y: 1800 }, data: { text: 'Connecting you now...', teamId: 'support' } },
+
+            // Resolved End
+            { id: 'resolved_msg', type: 'message', position: { x: -400, y: 1200 }, data: { text: 'Glad we could help! 👍\n\nIf you need anything else, just send another message.' } },
+            
             // Final Wait
-            { id: 'terminal_wait', type: 'end', position: { x: 0, y: 1400 }, data: { waitBehavior: 'pause' } }
+            { id: 'terminal_wait', type: 'end', position: { x: 0, y: 2000 }, data: { waitBehavior: 'pause' } }
           ];
 
           defaultEdges = [
@@ -466,37 +514,42 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             
             // Main menu connections
             { id: 'e_m_support', source: 'main_menu', target: 'support_menu', sourceHandle: 'intent:b_support' },
-            { id: 'e_m_sales', source: 'main_menu', target: 'sales_capture_email', sourceHandle: 'intent:b_sales' },
+            { id: 'e_m_sales', source: 'main_menu', target: 'sales_greet', sourceHandle: 'intent:b_sales' },
             { id: 'e_m_billing', source: 'main_menu', target: 'billing_menu', sourceHandle: 'intent:b_billing' },
             { id: 'e_m_other', source: 'main_menu', target: 'other_capture_msg', sourceHandle: 'intent:b_other' },
             { id: 'e_m_fallback', source: 'main_menu', target: 'other_capture_msg', sourceHandle: 'fallback' },
 
             // Support path
             { id: 'e_s_login', source: 'support_menu', target: 'support_login_msg', sourceHandle: 'intent:s_login' },
-            { id: 'e_s_bug', source: 'support_menu', target: 'support_handoff', sourceHandle: 'intent:s_bug' },
-            { id: 'e_s_acc', source: 'support_menu', target: 'support_handoff', sourceHandle: 'intent:s_account' },
-            { id: 'e_s_other', source: 'support_menu', target: 'support_handoff', sourceHandle: 'intent:s_other' },
-            { id: 'e_s_fall', source: 'support_menu', target: 'support_handoff', sourceHandle: 'fallback' },
+            { id: 'e_s_bug', source: 'support_menu', target: 'capture_name', sourceHandle: 'intent:s_bug' },
+            { id: 'e_s_acc', source: 'support_menu', target: 'capture_name', sourceHandle: 'intent:s_account' },
+            { id: 'e_s_other', source: 'support_menu', target: 'capture_name', sourceHandle: 'intent:s_other' },
+            { id: 'e_s_fall', source: 'support_menu', target: 'capture_name', sourceHandle: 'fallback' },
             { id: 'e_s_log_next', source: 'support_login_msg', target: 'support_res_check', sourceHandle: 'next' },
-            { id: 'e_s_res_yes', source: 'support_res_check', target: 'support_end', sourceHandle: 'intent:res_yes' },
-            { id: 'e_s_res_no', source: 'support_res_check', target: 'support_handoff', sourceHandle: 'intent:res_no' },
-            { id: 'e_s_res_fall', source: 'support_res_check', target: 'support_handoff', sourceHandle: 'fallback' },
-            { id: 'e_s_hand_next', source: 'support_handoff', target: 'terminal_wait', sourceHandle: 'next' },
-            { id: 'e_s_end_next', source: 'support_end', target: 'terminal_wait', sourceHandle: 'next' },
+            { id: 'e_s_res_yes', source: 'support_res_check', target: 'resolved_msg', sourceHandle: 'intent:res_yes' },
+            { id: 'e_s_res_no', source: 'support_res_check', target: 'capture_name', sourceHandle: 'intent:res_no' },
+            { id: 'e_s_res_fall', source: 'support_res_check', target: 'capture_name', sourceHandle: 'fallback' },
 
             // Sales path
-            { id: 'e_sl_cap', source: 'sales_capture_email', target: 'sales_topic', sourceHandle: 'next' },
-            { id: 'e_sl_top_next', source: 'sales_topic', target: 'sales_handoff', sourceHandle: 'next' },
-            { id: 'e_sl_hand_next', source: 'sales_handoff', target: 'terminal_wait', sourceHandle: 'next' },
+            { id: 'e_sl_greet', source: 'sales_greet', target: 'sales_interest', sourceHandle: 'next' },
+            { id: 'e_sl_topic', source: 'sales_interest', target: 'capture_name', sourceHandle: 'next' },
 
             // Billing path
-            { id: 'e_bl_menu_next', source: 'billing_menu', target: 'billing_handoff', sourceHandle: 'next' },
-            { id: 'e_bl_hand_next', source: 'billing_handoff', target: 'terminal_wait', sourceHandle: 'next' },
+            { id: 'e_bl_menu', source: 'billing_menu', target: 'billing_price_msg', sourceHandle: 'next' },
+            { id: 'e_bl_price_next', source: 'billing_price_msg', target: 'billing_res_check', sourceHandle: 'next' },
+            { id: 'e_bl_res_yes', source: 'billing_res_check', target: 'resolved_msg', sourceHandle: 'intent:bl_res_yes' },
+            { id: 'e_bl_res_no', source: 'billing_res_check', target: 'capture_name', sourceHandle: 'intent:bl_res_no' },
+            { id: 'e_bl_res_fall', source: 'billing_res_check', target: 'capture_name', sourceHandle: 'fallback' },
 
             // Other path
-            { id: 'e_ot_msg', source: 'other_capture_msg', target: 'other_capture_email', sourceHandle: 'next' },
-            { id: 'e_ot_email', source: 'other_capture_email', target: 'other_handoff', sourceHandle: 'next' },
-            { id: 'e_ot_hand', source: 'other_handoff', target: 'terminal_wait', sourceHandle: 'next' },
+            { id: 'e_ot_msg', source: 'other_capture_msg', target: 'capture_name', sourceHandle: 'next' },
+
+            // SHARED ID CAPTURE & HANDOFF
+            { id: 'e_cap_name', source: 'capture_name', target: 'capture_email', sourceHandle: 'next' },
+            { id: 'e_cap_email', source: 'capture_email', target: 'handoff_msg', sourceHandle: 'next' },
+            { id: 'e_hand_msg', source: 'handoff_msg', target: 'shared_handoff', sourceHandle: 'next' },
+            { id: 'e_hand_next', source: 'shared_handoff', target: 'terminal_wait', sourceHandle: 'next' },
+            { id: 'e_res_next', source: 'resolved_msg', target: 'terminal_wait', sourceHandle: 'next' },
           ];
         }
 
@@ -1118,7 +1171,7 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
   const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [userInput, setUserInput] = useState('');
-  // New state for form fields in preview
+  // State for form fields in preview
   const [previewName, setPreviewName] = useState('');
   const [previewEmail, setPreviewEmail] = useState('');
   
