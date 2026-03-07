@@ -1,4 +1,3 @@
-
 // src/components/dashboard/automation-flow-builder.tsx
 'use client';
 
@@ -396,7 +395,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi! Welcome to our site. How can we help you today?' } },
             { id: 'wait_input', type: 'end', position: { x: 120, y: 320 }, data: { waitBehavior: 'pause' } },
             { id: 'router', type: 'ai_classifier', position: { x: 420, y: 320 }, data: { 
-                text: 'Classify the visitor’s response into one of the following intents.', 
+                text: 'Analyze the visitor’s message and classify it into one of the following intents.', 
                 intents: [
                   { id: 'i1', label: 'Support', description: 'Visitor needs technical help or reports a bug' },
                   { id: 'i2', label: 'Pricing', description: 'Visitor asks about costs, plans, or billing' },
@@ -427,7 +426,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             { id: 'e13', source: 'handoff', target: 'terminal_wait', sourceHandle: 'next', type: 'smoothstep' }
           ];
         } else {
-          // DETERMINISTIC DEFAULT FLOW (OVERHAULED - ENFORCING ID CAPTURE)
+          // DETERMINISTIC DEFAULT FLOW (ENFORCING ID CAPTURE)
           defaultNodes = [
             { id: 'start', type: 'start', position: { x: 0, y: 0 }, data: {} },
             { id: 'greeting', type: 'message', position: { x: 0, y: 150 }, data: { text: 'Hi there! 👋\nHow can we help you today?' } },
@@ -493,7 +492,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             // Other Branch
             { id: 'other_capture_msg', type: 'capture_input', position: { x: 600, y: 550 }, data: { prompt: 'Could you briefly describe what you need help with?', variableName: 'visitor_message', inputType: 'text' } },
 
-            // SHARED MANDATORY ID CAPTURE BRIDGE (RESTORED FORM)
+            // SHARED MANDATORY ID CAPTURE BRIDGE (IDENTITY FORM)
             { id: 'identity_form', type: 'identity_form', position: { x: 0, y: 1300 }, data: { prompt: 'Before I connect you to someone, could I get your name and email?', variableName: 'identity' } },
             
             // Handoff Sequence
@@ -537,7 +536,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             { id: 'e_bl_menu', source: 'billing_menu', target: 'billing_price_msg', sourceHandle: 'next' },
             { id: 'e_bl_price_next', source: 'billing_price_msg', target: 'billing_res_check', sourceHandle: 'next' },
             { id: 'e_bl_res_yes', source: 'billing_res_check', target: 'resolved_msg', sourceHandle: 'intent:bl_res_yes' },
-            { id: 'e_bl_res_no', source: 'billing_res_check', target: 'identity_form', sourceHandle: 'intent:res_no' },
+            { id: 'e_bl_res_no', source: 'billing_res_check', target: 'identity_form', sourceHandle: 'intent:bl_res_no' },
             { id: 'e_bl_res_fall', source: 'billing_res_check', target: 'identity_form', sourceHandle: 'fallback' },
 
             // Other path
@@ -792,7 +791,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
                             <Input 
                             value={selectedNode.data.prompt || ''} 
                             onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
-                            placeholder={selectedNode.type === 'identity_form' ? "Before we continue, could I get your name and email?" : "e.g. What is your email address?"}
+                            placeholder={selectedNode.type === 'identity_form' ? "Before we start, could I get your name and email?" : "e.g. What is your email address?"}
                             className="border-2"
                             />
                         </div>
@@ -1172,6 +1171,7 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
   // State for form fields in preview
   const [previewName, setPreviewName] = useState('');
   const [previewEmail, setPreviewEmail] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1279,6 +1279,25 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
     const targetNodeId = forceNodeId || currentNodeId;
     const currentNode = nodes.find(n => n.id === targetNodeId);
 
+    // If it's the identity form, validate the email before proceeding
+    if (currentNode?.type === 'identity_form' && forceNodeId) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const email = previewEmail.trim();
+      const name = previewName.trim();
+
+      if (!name || !email) {
+        setFormError("Both name and email are required.");
+        return;
+      }
+
+      if (!emailRegex.test(email)) {
+        setFormError("Please enter a valid email address.");
+        return;
+      }
+      
+      setFormError(null);
+    }
+
     if (!forceNodeId) {
         setMessages(prev => [...prev, { id: Date.now(), role: 'user', text: text || 'Click' }]);
         setUserInput('');
@@ -1322,6 +1341,7 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
     setMessages([]);
     setPreviewName('');
     setPreviewEmail('');
+    setFormError(null);
     handleStep('start');
   };
 
@@ -1368,6 +1388,7 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
                                   value={previewEmail}
                                   onChange={(e) => setPreviewEmail(e.target.value)}
                                 />
+                                {formError && <p className="text-[10px] text-destructive font-bold">{formError}</p>}
                                 <Button size="sm" className="w-full h-8 text-xs font-bold" onClick={() => handleInput(`Name: ${previewName}, Email: ${previewEmail}`, undefined, m.nodeId)}>
                                     Submit Details
                                 </Button>

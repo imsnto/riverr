@@ -312,7 +312,10 @@ export default function ChatbotWidgetPage() {
 
   const handleIdentitySubmit = async () => {
     const isEmailRequired = bot?.identityCapture.required;
-    if (!capturedName.trim() || (isEmailRequired && !capturedEmail.trim())) {
+    const email = capturedEmail.trim();
+    const name = capturedName.trim();
+
+    if (!name || (isEmailRequired && !email)) {
       toast({
           variant: 'destructive',
           title: "Incomplete Information",
@@ -320,10 +323,22 @@ export default function ChatbotWidgetPage() {
       });
       return;
     }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email && !emailRegex.test(email)) {
+      toast({
+        variant: 'destructive',
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+      });
+      return;
+    }
+
     let visitorId = localStorage.getItem('manowar_chat_visitor_id');
     if (!visitorId || !conversation) return;
 
-    await db.updateVisitor(visitorId, { name: capturedName, email: capturedEmail });
+    await db.updateVisitor(visitorId, { name, email });
     setIdentityCaptureStep('none');
     
     await ensureConversationCrmLinkedAction(conversation.id);
@@ -335,7 +350,7 @@ export default function ChatbotWidgetPage() {
         type: 'message',
         senderType: 'agent',
         responderType: 'automation',
-        content: `Thanks ${capturedName}! I've updated your info. How can I help?`,
+        content: `Thanks ${name}! I've updated your info. How can I help?`,
         timestamp: new Date().toISOString(),
     });
     
@@ -343,13 +358,13 @@ export default function ChatbotWidgetPage() {
     const incomingMessage: any = {
         id: `ident-${Date.now()}`,
         role: 'user',
-        text: `My name is ${capturedName} and my email is ${capturedEmail}`,
+        text: `My name is ${name} and my email is ${email}`,
         createdAt: new Date().toISOString()
     }
     
     await invokeAgent({
         bot: bot!,
-        conversation: { ...conversation, visitorName: capturedName, visitorEmail: capturedEmail },
+        conversation: { ...conversation, visitorName: name, visitorEmail: email },
         message: incomingMessage,
     });
 
