@@ -88,7 +88,7 @@ const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; co
   start: { label: 'Start', icon: PlayCircle, color: 'bg-emerald-500', description: 'Triggered when a new chat begins.', category: 'conversation' },
   message: { label: 'Send Message', icon: MessageSquare, color: 'bg-blue-500', description: 'Sends a static text message to the visitor.', category: 'conversation' },
   quick_reply: { label: 'Quick Replies', icon: MousePointerClick, color: 'bg-purple-500', description: 'Offers buttons for the visitor to click.', category: 'conversation' },
-  ai_classifier: { label: 'Understand Intent', icon: Navigation, color: 'bg-indigo-600', description: 'Classifies what the visitor is asking and routes the conversation.', category: 'ai' },
+  ai_classifier: { label: 'AI Classifier', icon: Navigation, color: 'bg-indigo-600', description: 'Classifies what the visitor is asking and routes the conversation.', category: 'ai' },
   capture_input: { label: 'Capture Input', icon: Database, color: 'bg-teal-500', description: 'Asks a question and saves the response.', category: 'conversation' },
   identity_form: { label: 'Identity Form', icon: UserPlus, color: 'bg-teal-600', description: 'Shows an inline form for Name and Email capture.', category: 'conversation' },
   ai_step: { label: 'AI Reasoning', icon: Bot, color: 'bg-violet-500', description: 'Conversational reasoning with knowledge base.', category: 'ai' },
@@ -288,7 +288,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
       data: type === 'message' ? { text: 'Bot: Hi there!' } :
             type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email', inputType: 'email', saveToProfile: true } :
             type === 'identity_form' ? { prompt: 'Before we start, could we get your details?', variableName: 'identity' } :
-            type === 'ai_classifier' ? { text: 'Analyze response', intents: [{ id: `i_${Date.now()}`, label: 'Support', description: 'Help needed' }] } :
+            type === 'ai_classifier' ? { text: 'Classify response', intents: [{ id: `i_${Date.now()}`, label: 'Support', description: 'Help needed' }] } :
             type === 'quick_reply' ? { text: '', buttons: [{ id: `b_${Date.now()}`, label: 'Pricing' }] } :
             type === 'condition' ? { conditionField: 'email', operator: 'exists' } :
             type === 'handoff' ? { text: 'Connecting you to an agent...', teamId: 'support', priority: 'medium' } :
@@ -355,7 +355,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
         let defaultEdges: any[] = [];
 
         if (aiEnabled) {
-          // AI DRIVEN DEFAULT FLOW WITH IDENTITY FORM BEFORE HANDOFF
+          // AI DRIVEN DEFAULT FLOW
           defaultNodes = [
             { id: 'start', type: 'start', position: { x: 120, y: 40 }, data: {} },
             { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi! Welcome to our site. How can we help you today?' } },
@@ -371,10 +371,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             }},
             { id: 'ai', type: 'ai_step', position: { x: 820, y: 180 }, data: { knowledgeSources: ['default'], fallbackBehavior: 'escalate' } },
             { id: 'pricing_msg', type: 'message', position: { x: 820, y: 360 }, data: { text: "We'd be happy to help with pricing and plans.\n\nTell us what you're looking for, or ask to speak with sales." } },
-            
-            // CONSOLIDATED IDENTITY FORM
             { id: 'identity_form', type: 'identity_form', position: { x: 1180, y: 360 }, data: { prompt: 'In case we are unavailable could you tell us your name and email', variableName: 'identity' } },
-            
             { id: 'handoff', type: 'handoff', position: { x: 1540, y: 360 }, data: { text: 'Connecting you to our team now.', teamId: 'support', priority: 'high' } },
             { id: 'terminal_wait', type: 'end', position: { x: 1900, y: 360 }, data: { waitBehavior: 'pause' } }
           ];
@@ -395,7 +392,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             { id: 'e13', source: 'handoff', target: 'terminal_wait', sourceHandle: 'next', type: 'smoothstep' }
           ];
         } else {
-          // DETERMINISTIC DEFAULT FLOW WITH IDENTITY FORM
+          // DETERMINISTIC DEFAULT FLOW
           defaultNodes = [
             { id: 'start', type: 'start', position: { x: 120, y: 40 }, data: {} },
             { id: 'greeting', type: 'message', position: { x: 120, y: 180 }, data: { text: 'Hi! Welcome to our site. How can we help you today?' } },
@@ -1042,6 +1039,10 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
   const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [userInput, setUserInput] = useState('');
+  // New state for form fields in preview
+  const [previewName, setPreviewName] = useState('');
+  const [previewEmail, setPreviewEmail] = useState('');
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -1053,7 +1054,7 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setCurrentNodeId(nodeId);
 
-    // SILENT LOGIC NODES (Don't render anything, just move along)
+    // SILENT LOGIC NODES
     if (node.type === 'start') {
       const nextEdge = edges.find(e => e.source === nodeId && (!e.sourceHandle || e.sourceHandle === 'next'));
       if (nextEdge) handleStep(nextEdge.target);
@@ -1086,7 +1087,6 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
       const text = node.data.text;
       
       if (!text) {
-          // GHOST MODE: Attach to last message if it's a bot message
           setMessages(prev => {
               if (prev.length > 0) {
                   const last = prev[prev.length - 1];
@@ -1096,7 +1096,6 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
                       return updated;
                   }
               }
-              // Fallback if no previous bot message
               return [...prev, { id: Date.now(), role: 'bot', text: '', type: 'automation', buttons }];
           });
       } else {
@@ -1106,7 +1105,6 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt, type: 'automation' }]);
     } else if (node.type === 'identity_form') {
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt || "Please tell us your details.", type: 'automation', isIdentityForm: true, nodeId: node.id }]);
-      // STOP HERE and wait for interaction
       return;
     } else if (node.type === 'handoff') {
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text || 'Transferring...', type: 'automation' }]);
@@ -1151,7 +1149,6 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
     const targetNodeId = forceNodeId || currentNodeId;
     const currentNode = nodes.find(n => n.id === targetNodeId);
 
-    // Don't show "user message" for form submission, just advance
     if (!forceNodeId) {
         setMessages(prev => [...prev, { id: Date.now(), role: 'user', text: text || 'Click' }]);
         setUserInput('');
@@ -1160,13 +1157,10 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
     let targetEdge;
 
     if (buttonId) {
-        // Direct button click
         targetEdge = edges.find(e => e.source === targetNodeId && e.sourceHandle === `intent:${buttonId}`);
     } else if (currentNode?.type === 'identity_form') {
-        // Form simulation always advances via 'next' or default handle
         targetEdge = edges.find(e => e.source === targetNodeId && (e.sourceHandle === 'next' || !e.sourceHandle));
     } else if (currentNode?.type === 'quick_reply') {
-        // Type matching for buttons
         const buttons = currentNode.data.buttons || [];
         const matchedButton = buttons.find((b: any) => text.toLowerCase().includes(b.label.toLowerCase()));
         
@@ -1196,6 +1190,8 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
   const handleReset = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setMessages([]);
+    setPreviewName('');
+    setPreviewEmail('');
     handleStep('start');
   };
 
@@ -1230,9 +1226,19 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
                             <p className="whitespace-pre-wrap">{m.text}</p>
                             {m.isIdentityForm && (
                               <div className="mt-3 space-y-3 p-3 border-t border-black/5 bg-background/50 rounded-xl">
-                                <Input placeholder="Name" className="h-8 text-xs bg-background" disabled />
-                                <Input placeholder="Email" className="h-8 text-xs bg-background" disabled />
-                                <Button size="sm" className="w-full h-8 text-xs font-bold" onClick={() => handleInput("Simulated Form Submission", undefined, m.nodeId)}>
+                                <Input 
+                                  placeholder="Name" 
+                                  className="h-8 text-xs bg-background" 
+                                  value={previewName}
+                                  onChange={(e) => setPreviewName(e.target.value)}
+                                />
+                                <Input 
+                                  placeholder="Email" 
+                                  className="h-8 text-xs bg-background" 
+                                  value={previewEmail}
+                                  onChange={(e) => setPreviewEmail(e.target.value)}
+                                />
+                                <Button size="sm" className="w-full h-8 text-xs font-bold" onClick={() => handleInput(`Name: ${previewName}, Email: ${previewEmail}`, undefined, m.nodeId)}>
                                     Submit Details
                                 </Button>
                               </div>
