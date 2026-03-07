@@ -1,3 +1,4 @@
+
 import {
   collection,
   doc,
@@ -373,6 +374,13 @@ export const addConversation = async (convo: Omit<Conversation, 'id'>): Promise<
 export const updateConversation = async (convoId: string, data: Partial<Conversation>) => {
   const docRef = doc(db, 'conversations', convoId);
   await updateDoc(docRef, data);
+};
+
+export const setTypingStatus = async (conversationId: string, userId: string, isTyping: boolean) => {
+  const docRef = doc(db, 'conversations', conversationId);
+  await updateDoc(docRef, {
+    [`typing.${userId}`]: isTyping
+  });
 };
 
 export const updateAgentSeenAt = async (conversationId: string, userId: string) => {

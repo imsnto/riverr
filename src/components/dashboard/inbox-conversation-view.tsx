@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -54,6 +55,19 @@ const defaultTicketStatuses = [
     { name: 'Closed', color: '#22c55e' },
 ];
 
+const TypingBubble = ({ align = 'start' }: { align?: 'start' | 'end' }) => (
+  <div className={cn("flex items-end gap-2 mb-4", align === 'end' ? 'justify-end' : 'justify-start')}>
+    <div className={cn(
+      "p-3 rounded-xl flex items-center gap-1 shadow-sm", 
+      align === 'start' ? "bg-muted rounded-bl-none" : "bg-primary rounded-br-none"
+    )}>
+      <div className={cn("w-1.5 h-1.5 rounded-full bg-current typing-dot", align === 'end' ? 'text-primary-foreground' : 'text-foreground')} />
+      <div className={cn("w-1.5 h-1.5 rounded-full bg-current typing-dot", align === 'end' ? 'text-primary-foreground' : 'text-foreground')} />
+      <div className={cn("w-1.5 h-1.5 rounded-full bg-current typing-dot", align === 'end' ? 'text-primary-foreground' : 'text-foreground')} />
+    </div>
+  </div>
+);
+
 export default function InboxConversationView({ 
     conversation, 
     messages, 
@@ -83,10 +97,12 @@ export default function InboxConversationView({
   const [isNote, setIsNote] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isVisitorTyping, setIsVisitorTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const [isCreateTicketOpen, setIsCreateTicketOpen] = useState(false);
   const [isTicketDetailsOpen, setIsTicketDetailsOpen] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const assignedAgents = useMemo(() => {
     if (!conversation) return [];
@@ -109,7 +125,7 @@ export default function InboxConversationView({
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, conversation?.id]);
+  }, [messages, conversation?.id, isVisitorTyping]);
 
   useEffect(() => {
     if (conversation && appUser) {
@@ -129,6 +145,13 @@ export default function InboxConversationView({
       return () => window.removeEventListener('focus', onFocus);
     }
   }, [conversation?.id, conversation?.lastMessageAt, appUser]);
+
+  // Sync Typing Status from Firestore
+  useEffect(() => {
+    if (!conversation || !contact) return;
+    const isTyping = conversation.typing?.[contact.id] || conversation.typing?.[conversation.visitorId || 'visitor'] || false;
+    setIsVisitorTyping(isTyping);
+  }, [conversation?.typing, contact, conversation?.visitorId]);
 
   if (!conversation || !contact) {
     return (
@@ -151,6 +174,7 @@ export default function InboxConversationView({
           content: messageText
         });
         setMessageText('');
+        db.setTypingStatus(conversation.id, appUser.id, false);
       } catch (e: any) {
         console.error("SMS send failed", e);
       } finally {
@@ -168,8 +192,22 @@ export default function InboxConversationView({
       onSendMessage(conversation.id, newMessage);
       setMessageText('');
       setIsNote(false);
+      db.setTypingStatus(conversation.id, appUser.id, false);
     }
   }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessageText(e.target.value);
+    
+    if (conversation && !isNote) {
+      db.setTypingStatus(conversation.id, appUser.id, true);
+      
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        db.setTypingStatus(conversation.id, appUser.id, false);
+      }, 3000);
+    }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -434,6 +472,7 @@ export default function InboxConversationView({
         <ScrollArea className="h-full min-h-0">
           <div className="p-4 space-y-6">
             {conversationMessages.map(renderMessageBubble)}
+            {isVisitorTyping && <TypingBubble align="start" />}
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
@@ -490,7 +529,7 @@ export default function InboxConversationView({
                 minRows={1}
                 maxRows={5}
                 value={messageText}
-                onChange={e => setMessageText(e.target.value)}
+                onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 style={{ fontSize: '16px' }}
                 />

@@ -1,3 +1,4 @@
+
 // src/app/chatbot/[hubId]/[botId]/page.tsx
 'use client';
 
@@ -42,6 +43,16 @@ const isPublicForVisitor = (msg: ChatMessage) => {
   return true;
 };
 
+const TypingBubble = ({ color, textColor, align = 'start' }: { color: string, textColor: string, align?: 'start' | 'end' }) => (
+  <div className={cn("flex items-end gap-2 mb-4", align === 'end' ? 'justify-end' : 'justify-start')}>
+    <div className="p-3 rounded-xl flex items-center gap-1 shadow-sm" style={{ backgroundColor: color, borderBottomLeftRadius: align === 'start' ? '2px' : undefined, borderBottomRightRadius: align === 'end' ? '2px' : undefined }}>
+      <div className="w-1.5 h-1.5 rounded-full bg-current typing-dot" style={{ color: textColor }} />
+      <div className="w-1.5 h-1.5 rounded-full bg-current typing-dot" style={{ color: textColor }} />
+      <div className="w-1.5 h-1.5 rounded-full bg-current typing-dot" style={{ color: textColor }} />
+    </div>
+  </div>
+);
+
 export default function ChatbotWidgetPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -70,7 +81,8 @@ export default function ChatbotWidgetPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [messageText, setMessageText] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isAiThinking, setIsAiThinking] = useState(false);
+  const [isBotTyping, setIsBotTyping] = useState(false);
+  const [isAgentTyping, setIsAgentTyping] = useState(false);
   
   const [identityCaptureStep, setIdentityCaptureStep] = useState<'none' | 'prompting' | 'collecting'>('none');
   const [capturedName, setCapturedName] = useState('');
@@ -79,6 +91,7 @@ export default function ChatbotWidgetPage() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const unsubRef = useRef<(() => void) | null>(null);
@@ -113,7 +126,7 @@ export default function ChatbotWidgetPage() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [visibleMessages, isAiThinking, identityCaptureStep]);
+  }, [visibleMessages, isBotTyping, isAgentTyping, identityCaptureStep]);
 
   // Seen Tracking Logic
   const markAsSeen = async () => {
@@ -171,6 +184,15 @@ export default function ChatbotWidgetPage() {
       window.parent.postMessage({ type: 'manowar-unread-count', count: unreadMessages.length }, parentOrigin);
     }
   }, [visibleMessages, conversation?.lastVisitorSeenAt, parentOrigin]);
+
+  // Sync Typing Status from Firestore
+  useEffect(() => {
+    if (!conversation) return;
+    const isHumanTyping = Object.entries(conversation.typing || {}).some(([uid, isTyping]) => 
+      isTyping && uid !== (visitor?.id || 'visitor') && uid !== 'ai_agent'
+    );
+    setIsAgentTyping(isHumanTyping);
+  }, [conversation?.typing, visitor?.id]);
 
   useEffect(() => {
     const handleIncomingMessage = async (event: MessageEvent) => {
@@ -365,11 +387,15 @@ export default function ChatbotWidgetPage() {
         createdAt: new Date().toISOString()
     }
     
-    await invokeAgent({
-        bot: bot!,
-        conversation: { ...conversation, visitorName: name, visitorEmail: email },
-        message: incomingMessage,
-    });
+    setIsBotTyping(true);
+    setTimeout(async () => {
+      await invokeAgent({
+          bot: bot!,
+          conversation: { ...conversation, visitorName: name, visitorEmail: email },
+          message: incomingMessage,
+      });
+      setIsBotTyping(false);
+    }, 2000);
 
     setCapturedName('');
     setCapturedEmail('');
@@ -462,16 +488,20 @@ export default function ChatbotWidgetPage() {
         if (!customText) setMessageText('');
 
         if (affirmative.some(w => userResponse.includes(w))) {
-            await addChatMessageAction({
-                conversationId: currentConversation.id,
-                authorId: 'ai_agent',
-                type: 'message',
-                senderType: 'agent',
-                responderType: 'automation',
-                content: "Great! Please fill out the form below.",
-                timestamp: new Date().toISOString(),
-            });
-            setIdentityCaptureStep('collecting');
+            setIsBotTyping(true);
+            setTimeout(async () => {
+              await addChatMessageAction({
+                  conversationId: currentConversation.id,
+                  authorId: 'ai_agent',
+                  type: 'message',
+                  senderType: 'agent',
+                  responderType: 'automation',
+                  content: "Great! Please fill out the form below.",
+                  timestamp: new Date().toISOString(),
+              });
+              setIsBotTyping(false);
+              setIdentityCaptureStep('collecting');
+            }, 1500);
         } else {
             const emailMatch = textToSend.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
             if (emailMatch) {
@@ -483,28 +513,36 @@ export default function ChatbotWidgetPage() {
                 await ensureConversationCrmLinkedAction(currentConversation.id);
                 await loadVisitorAndConversation(visitor.id);
 
-                await addChatMessageAction({
-                    conversationId: currentConversation.id,
-                    authorId: 'ai_agent',
-                    type: 'message',
-                    senderType: 'agent',
-                    responderType: 'automation',
-                    content: `Thanks${name ? ' ' + name : ''}! I've updated your info. How can I help?`,
-                    timestamp: new Date().toISOString(),
-                });
-                setIdentityCaptureStep('none');
+                setIsBotTyping(true);
+                setTimeout(async () => {
+                  await addChatMessageAction({
+                      conversationId: currentConversation.id,
+                      authorId: 'ai_agent',
+                      type: 'message',
+                      senderType: 'agent',
+                      responderType: 'automation',
+                      content: `Thanks${name ? ' ' + name : ''}! I've updated your info. How can I help?`,
+                      timestamp: new Date().toISOString(),
+                  });
+                  setIsBotTyping(false);
+                  setIdentityCaptureStep('none');
+                }, 1500);
             } else {
                 if (!bot.identityCapture.required) {
-                    await addChatMessageAction({
-                        conversationId: currentConversation.id,
-                        authorId: 'ai_agent',
-                        type: 'message',
-                        senderType: 'agent',
-                        responderType: 'automation',
-                        content: "No problem. How can I help you today?",
-                        timestamp: new Date().toISOString(),
-                    });
-                    setIdentityCaptureStep('none');
+                    setIsBotTyping(true);
+                    setTimeout(async () => {
+                      await addChatMessageAction({
+                          conversationId: currentConversation.id,
+                          authorId: 'ai_agent',
+                          type: 'message',
+                          senderType: 'agent',
+                          responderType: 'automation',
+                          content: "No problem. How can I help you today?",
+                          timestamp: new Date().toISOString(),
+                      });
+                      setIsBotTyping(false);
+                      setIdentityCaptureStep('none');
+                    }, 1500);
                 } else {
                     setIdentityCaptureStep('collecting');
                 }
@@ -547,16 +585,20 @@ export default function ChatbotWidgetPage() {
     const needsIdentityCapture = !appUser && bot?.identityCapture.enabled && (!visitor.name || (bot?.identityCapture.required && !visitor.email));
 
     if (needsIdentityCapture && isNewConversation && bot.flow?.nodes.length === 0) {
-        await addChatMessageAction({
-            conversationId: currentConversation.id,
-            authorId: 'ai_agent',
-            type: 'message',
-            senderType: 'agent',
-            responderType: 'automation',
-            content: bot.identityCapture.captureMessage || "Before we continue, could I get your name and email?",
-            timestamp: new Date().toISOString(),
-        });
-        setIdentityCaptureStep('prompting');
+        setIsBotTyping(true);
+        setTimeout(async () => {
+          await addChatMessageAction({
+              conversationId: currentConversation.id,
+              authorId: 'ai_agent',
+              type: 'message',
+              senderType: 'agent',
+              responderType: 'automation',
+              content: bot.identityCapture.captureMessage || "Before we continue, could I get your name and email?",
+              timestamp: new Date().toISOString(),
+          });
+          setIsBotTyping(false);
+          setIdentityCaptureStep('prompting');
+        }, 1500);
         setLoading(false);
         return;
     }
@@ -583,12 +625,16 @@ export default function ChatbotWidgetPage() {
         };
 
         try {
-            // setIsAiThinking(true);
-            await invokeAgent({
-                bot: botConfig,
-                conversation: JSON.parse(JSON.stringify(currentConversation)),
-                message: incomingMessage,
-            });
+            setIsBotTyping(true);
+            // Artificial delay for realism
+            setTimeout(async () => {
+              await invokeAgent({
+                  bot: botConfig,
+                  conversation: JSON.parse(JSON.stringify(currentConversation)),
+                  message: incomingMessage,
+              });
+              setIsBotTyping(false);
+            }, 2500);
 
             if(spaceId && hubId && visitor && bot) {
   const url = `/space/${spaceId}/hub/${hubId}/inbox`;
@@ -638,9 +684,21 @@ export default function ChatbotWidgetPage() {
 
         } catch (e) {
             console.error("Agent failed to answer:", e);
-        } finally {
-            // setIsAiThinking(false);
+            setIsBotTyping(false);
         }
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessageText(e.target.value);
+    
+    if (conversation) {
+      db.setTypingStatus(conversation.id, visitor?.id || 'visitor', true);
+      
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        db.setTypingStatus(conversation.id, visitor?.id || 'visitor', false);
+      }, 3000);
     }
   };
 
@@ -825,13 +883,11 @@ export default function ChatbotWidgetPage() {
               </div>
            )}
 
-          {isAiThinking && (
-              <div className="flex items-end gap-2">
-                <div className="p-3 rounded-xl rounded-bl-sm max-w-xs flex items-center gap-2" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
-                  <Bot className="h-4 w-4 animate-pulse" />
-                  <p className="text-sm">Thinking...</p>
-                </div>
-              </div>
+          {(isBotTyping || isAgentTyping) && (
+              <TypingBubble 
+                color={bot.styleSettings?.agentMessageBackgroundColor || '#374151'} 
+                textColor={bot.styleSettings?.agentMessageTextColor || '#ffffff'} 
+              />
             )}
         </div>
         <div ref={messagesEndRef} />
@@ -878,7 +934,7 @@ export default function ChatbotWidgetPage() {
             placeholder={identityCaptureStep === 'collecting' ? 'Please use the form above...' : 'Message...'}
             value={messageText}
             disabled={identityCaptureStep === 'collecting'}
-            onChange={(e) => setMessageText(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -895,7 +951,7 @@ export default function ChatbotWidgetPage() {
             disabled={(!messageText.trim() && attachments.length === 0) || loading || identityCaptureStep === 'collecting'}
             className="absolute right-1 bottom-1 h-8 w-8 hover:bg-zinc-700"
           >
-            {loading ? <Loader2 className='h-4 w-4 animate-spin' /> : <Send className="h-4 w-4" />}
+            <Send className="h-4 w-4" />
           </Button>
         </div>
       </div>
