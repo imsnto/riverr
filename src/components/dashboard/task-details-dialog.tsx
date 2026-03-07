@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -11,7 +10,7 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
-import { Calendar, CircleDot, Clock, Flag, Folder, Tag, Users, X, Paperclip, MoreHorizontal, Send } from 'lucide-react';
+import { Calendar, CircleDot, Clock, Flag, Folder, Tag, Users, X, Paperclip, MoreHorizontal, Send, CalendarRange } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
@@ -324,6 +323,29 @@ export default function TaskDetailsDialog({ task: initialTask, timeEntries = [],
                                             <DetailRow icon={Users} label="Assignees">
                                                 <Select value={task.assigned_to || ''} onValueChange={(v) => handleFieldChange('assigned_to', v)}><SelectTrigger className="h-8"><SelectValue>{assignee ? <div className="flex items-center gap-2"><Avatar className="h-6 w-6"><AvatarImage src={assignee.avatarUrl} /><AvatarFallback>{getInitials(assignee.name)}</AvatarFallback></Avatar>{assignee.name}</div> : 'Select user'}</SelectValue></SelectTrigger><SelectContent>{allUsers.map(u => <SelectItem key={u.id} value={u.id}><div className="flex items-center gap-2"><Avatar className="h-6 w-6"><AvatarImage src={u.avatarUrl} /><AvatarFallback>{getInitials(u.name)}</AvatarFallback></Avatar>{u.name}</div></SelectItem>)}</SelectContent></Select>
                                             </DetailRow>
+                                            
+                                            <DetailRow icon={CalendarRange} label="Dates">
+                                                <div className="flex items-center gap-2">
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button variant="outline" className={cn("h-8 flex-1 justify-start text-left font-normal", !task.startDate && "text-muted-foreground")}>
+                                                                {task.startDate ? format(parseISO(task.startDate), "MMM d") : <span>Start</span>}
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0"><CalendarPicker mode="single" selected={task.startDate ? parseISO(task.startDate) : undefined} onSelect={(d) => handleFieldChange('startDate', d?.toISOString())} initialFocus /></PopoverContent>
+                                                    </Popover>
+                                                    <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button variant="outline" className={cn("h-8 flex-1 justify-start text-left font-normal", !task.endDate && "text-muted-foreground")}>
+                                                                {task.endDate ? format(parseISO(task.endDate), "MMM d") : <span>End</span>}
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0"><CalendarPicker mode="single" selected={task.endDate ? parseISO(task.endDate) : undefined} onSelect={(d) => handleFieldChange('endDate', d?.toISOString())} initialFocus /></PopoverContent>
+                                                    </Popover>
+                                                </div>
+                                            </DetailRow>
+
                                             <DetailRow icon={Calendar} label="Due Date">
                                                 <Popover><PopoverTrigger asChild><Button variant="outline" className={cn("h-8 w-full justify-start text-left font-normal", !task.due_date && "text-muted-foreground")}>{task.due_date ? format(parseISO(task.due_date), "PPP") : <span>Pick a date</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><CalendarPicker mode="single" selected={task.due_date ? parseISO(task.due_date) : undefined} onSelect={(d) => handleFieldChange('due_date', d?.toISOString())} initialFocus /></PopoverContent></Popover>
                                             </DetailRow>

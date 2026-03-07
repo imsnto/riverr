@@ -94,7 +94,7 @@ export interface Project {
   members: string[]; // array of user IDs
   status: 'Active' | 'On Hold' | 'Archived';
   createdBy?: string;
-  defaultView?: 'board' | 'list' | 'table';
+  defaultView?: 'board' | 'list' | 'table' | 'timeline';
 }
 
 export interface Task {
@@ -110,6 +110,9 @@ export interface Task {
   createdBy?: string; // user ID
   assigned_to?: string | null; // user ID
   due_date?: string | null; // ISO string
+  startDate?: string | null; // ISO string for Timeline
+  endDate?: string | null; // ISO string for Timeline
+  sortOrder?: number | null;
   priority?: 'Low' | 'Medium' | 'High' | 'Urgent' | null;
   sprint_points?: number | null;
   tags?: string[];

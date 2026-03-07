@@ -21,6 +21,7 @@ import {
   Table as TableIcon,
   ChevronUp,
   ArrowLeft,
+  GanttChart,
 } from 'lucide-react';
 import { Button, buttonVariants } from '../ui/button';
 import { cn, getInitials } from '@/lib/utils';
@@ -52,11 +53,12 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '../ui/calendar';
-import { Input } from '../ui/input';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { format, parseISO } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import TimelineView from './timeline-view';
 
 const STATUS_COLORS = [
   { name: 'Gray', color: '#6b7280' },
@@ -172,7 +174,7 @@ export default function ProjectBoard({
   onEditProject,
   onDeleteProject,
 }: ProjectBoardProps) {
-  const [viewMode, setViewMode] = useState<'board' | 'list' | 'table'>(project.defaultView || 'board');
+  const [viewMode, setViewMode] = useState<'board' | 'list' | 'table' | 'timeline'>(project.defaultView || 'board');
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState('');
@@ -600,6 +602,17 @@ export default function ProjectBoard({
     );
   };
 
+  const renderTimelineView = () => {
+    return (
+      <TimelineView 
+        tasks={allTasks.filter(t => t.project_id === project.id)}
+        allUsers={allUsers}
+        statuses={statuses}
+        onTaskClick={onTaskClick}
+      />
+    );
+  };
+
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
       <div className="flex flex-col border-b border-[#2a2a2a] shrink-0">
@@ -636,6 +649,7 @@ export default function ProjectBoard({
             <button onClick={() => setViewMode('list')} className={cn("flex items-center gap-2 py-3 text-xs font-medium border-b-2 transition-all", viewMode === 'list' ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}><LayoutList className="h-4 w-4" />List</button>
             <button onClick={() => setViewMode('board')} className={cn("flex items-center gap-2 py-3 text-xs font-medium border-b-2 transition-all", viewMode === 'board' ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}><LayoutGrid className="h-4 w-4" />Board</button>
             <button onClick={() => setViewMode('table')} className={cn("flex items-center gap-2 py-3 text-xs font-medium border-b-2 transition-all", viewMode === 'table' ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}><TableIcon className="h-4 w-4" />Table</button>
+            <button onClick={() => setViewMode('timeline')} className={cn("flex items-center gap-2 py-3 text-xs font-medium border-b-2 transition-all", viewMode === 'timeline' ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}><GanttChart className="h-4 w-4" />Timeline</button>
           </div>
           <div className="flex items-center gap-2">
             <DropdownMenu>
@@ -659,8 +673,12 @@ export default function ProjectBoard({
           </div>
         ) : viewMode === 'list' ? (
           <div className="h-full w-full overflow-hidden flex flex-col"><div className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden overscroll-x-contain"><div className="p-4 md:p-6 h-full flex flex-col"><div className="flex-1 overflow-y-auto">{renderListView()}</div></div></div></div>
-        ) : (
+        ) : viewMode === 'table' ? (
           <div className="h-full w-full overflow-hidden flex flex-col"><div className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-auto overscroll-x-contain"><div className="p-4 md:p-6 h-full flex flex-col"><div className="flex-1">{renderTableView()}</div></div></div></div>
+        ) : (
+          <div className="h-full w-full p-4 md:p-6 overflow-hidden">
+            {renderTimelineView()}
+          </div>
         )}
       </div>
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
