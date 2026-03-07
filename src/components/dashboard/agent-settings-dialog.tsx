@@ -49,7 +49,9 @@ import {
   ChevronRight,
   Edit,
   MoreHorizontal,
-  Trash2
+  Trash2,
+  Palette,
+  Layout
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -67,6 +69,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import AutomationFlowBuilder from './automation-flow-builder';
+import { Separator } from '../ui/separator';
 
 function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
     const [open, setOpen] = useState(false);
@@ -332,7 +335,7 @@ export default function AgentSettingsDialog({
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-4 border-b shrink-0">
           <DialogTitle>{agent ? `Agent Settings: ${agent.name}` : 'Create New Agent'}</DialogTitle>
           <DialogDescription>
@@ -535,79 +538,267 @@ export default function AgentSettingsDialog({
                       />
                     </TabsContent>
 
-                    <TabsContent value="branding" className="pt-6 space-y-4">
-                      <FormField
-                          control={form.control}
-                          name="logoUrl"
-                          render={({ field }) => (
-                              <FormItem>
-                                  <FormLabel>Logo</FormLabel>
-                                  <FormControl>
-                                      <div className="flex items-center gap-4">
-                                          <Avatar className="h-16 w-16 rounded-md">
-                                              <AvatarImage src={field.value || undefined} alt="Logo preview" className="object-contain" />
-                                              <AvatarFallback className="rounded-md">
-                                                  <BotIcon />
-                                              </AvatarFallback>
-                                          </Avatar>
-                                          <input
-                                              type="file"
-                                              accept="image/*"
-                                              className="hidden"
-                                              ref={fileInputRef}
-                                              onChange={(e) => {
-                                                  if (e.target.files && e.target.files[0]) {
-                                                      const file = e.target.files[0];
-                                                      const reader = new FileReader();
-                                                      reader.onloadend = () => {
-                                                          field.onChange(reader.result as string);
-                                                      };
-                                                      reader.readAsDataURL(file);
-                                                  }
-                                              }}
-                                          />
-                                          <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                                              <Upload className="mr-2 h-4 w-4" />
-                                              Upload Logo
-                                          </Button>
-                                          {field.value && (
-                                              <Button type="button" variant="ghost" size="sm" onClick={() => field.onChange('')}>
-                                                  Remove
-                                              </Button>
-                                          )}
-                                      </div>
-                                  </FormControl>
-                                  <FormMessage />
-                              </FormItem>
-                          )}
-                      />
-                       <FormField
-                          control={form.control}
-                          name="backgroundColor"
-                          render={({ field }) => (
-                          <FormItem>
-                              <FormLabel>Background Color</FormLabel>
-                              <FormControl>
-                              <div className="flex items-center gap-2">
-                                  <Input placeholder="#111827" {...field} />
-                                  <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer">
-                                      <div
-                                          className="w-full h-full"
-                                          style={{ backgroundColor: field.value }}
-                                      ></div>
-                                      <input
-                                          type="color"
-                                          value={field.value}
-                                          onChange={field.onChange}
-                                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                      />
-                                  </div>
+                    <TabsContent value="branding" className="pt-6 space-y-8">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                        {/* Branding Options */}
+                        <div className="space-y-6">
+                          <FormField
+                              control={form.control}
+                              name="logoUrl"
+                              render={({ field }) => (
+                                  <FormItem>
+                                      <FormLabel className="flex items-center gap-2">
+                                          <Layout className="h-4 w-4" /> Logo
+                                      </FormLabel>
+                                      <FormControl>
+                                          <div className="flex items-center gap-4">
+                                              <Avatar className="h-16 w-16 rounded-md">
+                                                  <AvatarImage src={field.value || undefined} alt="Logo preview" className="object-contain" />
+                                                  <AvatarFallback className="rounded-md bg-muted">
+                                                      <BotIcon className="h-8 w-8 text-muted-foreground" />
+                                                  </AvatarFallback>
+                                              </Avatar>
+                                              <div className="flex flex-col gap-2">
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    ref={fileInputRef}
+                                                    onChange={(e) => {
+                                                        if (e.target.files && e.target.files[0]) {
+                                                            const file = e.target.files[0];
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => {
+                                                                field.onChange(reader.result as string);
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                />
+                                                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                                                    <Upload className="mr-2 h-4 w-4" />
+                                                    Upload
+                                                </Button>
+                                                {field.value && (
+                                                    <Button type="button" variant="ghost" size="sm" onClick={() => field.onChange('')}>
+                                                        Remove
+                                                    </Button>
+                                                )}
+                                              </div>
+                                          </div>
+                                      </FormControl>
+                                      <FormMessage />
+                                  </FormItem>
+                              )}
+                          />
+
+                          <div className="space-y-4">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Colors</Label>
+                            
+                            <div className="grid grid-cols-1 gap-4">
+                              <FormField
+                                control={form.control}
+                                name="primaryColor"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Primary Brand Color</FormLabel>
+                                    <FormControl>
+                                    <div className="flex items-center gap-2">
+                                        <Input placeholder="#3b82f6" {...field} className="h-8 text-xs font-mono" />
+                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
+                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
+                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                        </div>
+                                    </div>
+                                    </FormControl>
+                                </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="backgroundColor"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Widget Background</FormLabel>
+                                    <FormControl>
+                                    <div className="flex items-center gap-2">
+                                        <Input placeholder="#111827" {...field} className="h-8 text-xs font-mono" />
+                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
+                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
+                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                        </div>
+                                    </div>
+                                    </FormControl>
+                                </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="headerTextColor"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Header Text Color</FormLabel>
+                                    <FormControl>
+                                    <div className="flex items-center gap-2">
+                                        <Input placeholder="#ffffff" {...field} className="h-8 text-xs font-mono" />
+                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
+                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
+                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                        </div>
+                                    </div>
+                                    </FormControl>
+                                </FormItem>
+                                )}
+                              />
+
+                              <div className="pt-2">
+                                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Bubbles</Label>
+                                <div className="grid grid-cols-1 gap-4 mt-4">
+                                  <FormField
+                                    control={form.control}
+                                    name="agentMessageBackgroundColor"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-xs">Bot Bubble BG</FormLabel>
+                                        <FormControl>
+                                        <div className="flex items-center gap-2">
+                                            <Input placeholder="#374151" {...field} className="h-8 text-xs font-mono" />
+                                            <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
+                                                <div className="w-full h-full" style={{ backgroundColor: field.value }} />
+                                                <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                            </div>
+                                        </div>
+                                        </FormControl>
+                                    </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={form.control}
+                                    name="agentMessageTextColor"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-xs">Bot Bubble Text</FormLabel>
+                                        <FormControl>
+                                        <div className="flex items-center gap-2">
+                                            <Input placeholder="#ffffff" {...field} className="h-8 text-xs font-mono" />
+                                            <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
+                                                <div className="w-full h-full" style={{ backgroundColor: field.value }} />
+                                                <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                            </div>
+                                        </div>
+                                        </FormControl>
+                                    </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={form.control}
+                                    name="customerTextColor"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-xs">Visitor Bubble Text</FormLabel>
+                                        <FormControl>
+                                        <div className="flex items-center gap-2">
+                                            <Input placeholder="#ffffff" {...field} className="h-8 text-xs font-mono" />
+                                            <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
+                                                <div className="w-full h-full" style={{ backgroundColor: field.value }} />
+                                                <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                            </div>
+                                        </div>
+                                        </FormControl>
+                                    </FormItem>
+                                    )}
+                                  />
+                                </div>
                               </div>
-                              </FormControl>
-                              <FormMessage />
-                          </FormItem>
-                          )}
-                      />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Live Branding Preview */}
+                        <div className="space-y-4 sticky top-0">
+                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <Palette className="h-3 w-3" /> Live Branding Preview
+                          </Label>
+                          
+                          <div 
+                            className="w-full h-[540px] rounded-3xl shadow-2xl border-8 border-muted overflow-hidden flex flex-col transition-all duration-500"
+                            style={{ backgroundColor: watchedValues.backgroundColor }}
+                          >
+                            {/* Mock Header */}
+                            <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8 rounded-full shadow-md bg-white/10">
+                                  <AvatarImage src={watchedValues.logoUrl} className="object-contain" />
+                                  <AvatarFallback className="bg-transparent"><BotIcon className="h-4 w-4 text-white/50" /></AvatarFallback>
+                                </Avatar>
+                                <span className="font-bold text-sm" style={{ color: watchedValues.headerTextColor }}>{watchedValues.name || 'AI Assistant'}</span>
+                              </div>
+                              <X className="h-4 w-4 opacity-50" style={{ color: watchedValues.headerTextColor }} />
+                            </div>
+
+                            {/* Mock Chat Area */}
+                            <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+                              {/* Bot Welcome */}
+                              <div className="flex flex-col gap-1.5 items-start">
+                                <div 
+                                  className="max-w-[85%] p-3 rounded-2xl rounded-bl-none text-sm shadow-sm"
+                                  style={{ 
+                                    backgroundColor: watchedValues.agentMessageBackgroundColor,
+                                    color: watchedValues.agentMessageTextColor 
+                                  }}
+                                >
+                                  {watchedValues.welcomeMessage || 'Hi there! How can I help you?'}
+                                </div>
+                                <span className="text-[10px] uppercase font-bold opacity-40 ml-1" style={{ color: watchedValues.agentMessageTextColor }}>Bot</span>
+                              </div>
+
+                              {/* User Message */}
+                              <div className="flex flex-col gap-1.5 items-end">
+                                <div 
+                                  className="max-w-[85%] p-3 rounded-2xl rounded-br-none text-sm shadow-md"
+                                  style={{ 
+                                    backgroundColor: watchedValues.primaryColor,
+                                    color: watchedValues.customerTextColor 
+                                  }}
+                                >
+                                  I have a question about pricing.
+                                </div>
+                                <span className="text-[10px] uppercase font-bold opacity-40 mr-1" style={{ color: watchedValues.customerTextColor || '#fff' }}>Visitor</span>
+                              </div>
+
+                              {/* AI Response */}
+                              <div className="flex flex-col gap-1.5 items-start">
+                                <div 
+                                  className="max-w-[85%] p-3 rounded-2xl rounded-bl-none text-sm border-2 shadow-sm"
+                                  style={{ 
+                                    backgroundColor: 'rgba(255,255,255,0.03)',
+                                    borderColor: watchedValues.primaryColor + '33',
+                                    color: watchedValues.agentMessageTextColor 
+                                  }}
+                                >
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <BotIcon className="h-3 w-3" style={{ color: watchedValues.primaryColor }} />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: watchedValues.primaryColor }}>AI Knowledge</span>
+                                  </div>
+                                  I can certainly help with that! We have several plans available...
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Mock Footer */}
+                            <div className="p-4 border-t flex items-center gap-3" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                              <div className="h-10 flex-1 rounded-full bg-white/5 border border-white/10 flex items-center px-4">
+                                <span className="text-xs text-white/30 italic">Type a message...</span>
+                              </div>
+                              <div className="h-10 w-10 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: watchedValues.primaryColor }}>
+                                <Send className="h-4 w-4" style={{ color: watchedValues.customerTextColor }} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </TabsContent>
                     
                     <TabsContent value="installation" className="pt-6">
