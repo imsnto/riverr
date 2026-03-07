@@ -1,4 +1,3 @@
-// src/components/dashboard/agent-settings-dialog.tsx
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -22,7 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
+} from '@/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Bot as BotData, User, HelpCenter } from '@/lib/data';
@@ -843,7 +842,7 @@ export default function AgentSettingsDialog({
                                     >
                                     <div className="flex items-center gap-2 mb-2">
                                         <BotIcon className="h-3 w-3" style={{ color: watchedValues.primaryColor }} />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: watchedValues.primaryColor }}>AI Logic</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: watchedValues.primaryColor }}>AI Assistant</span>
                                     </div>
                                     Great! Our platform is a comprehensive business command center...
                                     </div>
