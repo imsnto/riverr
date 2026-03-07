@@ -92,11 +92,14 @@ export default function ChatbotWidgetPage() {
     // Check if the last message triggers an identity form
     const lastMsg = list[list.length - 1];
     if (lastMsg && (lastMsg as any).meta?.type === 'identity_form' && identityCaptureStep === 'none') {
-        setTimeout(() => setIdentityCaptureStep('collecting'), 100);
+        // Only trigger form if we DON'T have the email already
+        if (!visitor?.email && !conversation?.visitorEmail) {
+            setTimeout(() => setIdentityCaptureStep('collecting'), 100);
+        }
     }
 
     return list;
-  }, [messages, identityCaptureStep]);
+  }, [messages, identityCaptureStep, visitor?.email, conversation?.visitorEmail]);
 
   useEffect(() => {
   const handleStorage = (e: StorageEvent) => {
@@ -550,7 +553,7 @@ export default function ChatbotWidgetPage() {
             type: 'message',
             senderType: 'agent',
             responderType: 'automation',
-            content: bot.identityCapture.captureMessage || "Before we continue, could you share your email so we can follow up if needed?",
+            content: bot.identityCapture.captureMessage || "Before we continue, could I get your name and email?",
             timestamp: new Date().toISOString(),
         });
         setIdentityCaptureStep('prompting');

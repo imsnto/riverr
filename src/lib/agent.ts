@@ -257,9 +257,8 @@ async function executeHybridFlow(args: {
       }
     } else if (currentNode.type === 'identity_form') {
       // The widget will handle the actual identity capture.
-      // We wait for the conversation state to be 'identified' or similar.
-      // Actually, we can check if visitorEmail and visitorName are now present.
-      if (conversation.visitorEmail && conversation.visitorName) {
+      // If we are already identified, handleInput should advance.
+      if (conversation.visitorEmail || conversation.contactId) {
         const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
         currentStepId = nextEdge?.target;
       } else {
@@ -339,6 +338,13 @@ async function executeHybridFlow(args: {
     }
 
     if (node.type === 'identity_form') {
+      // SKIP if already identified
+      if (conversation.visitorEmail || conversation.contactId) {
+        const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+        currentStepId = nextEdge?.target;
+        continue;
+      }
+
       await adapters.persistAssistantMessage({
         conversationId: conversation.id,
         hubId: conversation.hubId,

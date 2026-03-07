@@ -687,7 +687,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
                             <Textarea 
                             value={selectedNode.data.text || ''} 
                             onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                            placeholder="e.g. Classify the visitor’s response into one of the following intents."
+                            placeholder="e.g. Classify the visitor’s message into one of the following intents."
                             className="border-2 bg-muted/30 font-medium"
                             rows={4}
                             />
@@ -982,7 +982,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
                               value={selectedNode.data.priority || 'medium'} 
                               onValueChange={(val) => updateNodeData(selectedNode.id, { priority: val })}
                             >
-                              <SelectTrigger className="border-2"><SelectValue /></SelectTrigger>
+                              <SelectTrigger className="border-2"><SelectValue placeholder="Set priority" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="low">Low</SelectItem>
                                 <SelectItem value="medium">Medium</SelectItem>
@@ -1234,6 +1234,13 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
     } else if (node.type === 'capture_input') {
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt, type: 'automation' }]);
     } else if (node.type === 'identity_form') {
+      // SKIP in preview if already "submitted" in this session
+      if (previewEmail && previewName) {
+        const nextEdge = edges.find(e => e.source === nodeId && (!e.sourceHandle || e.sourceHandle === 'next'));
+        if (nextEdge) handleStep(nextEdge.target);
+        return;
+      }
+
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt || "Please tell us your details.", type: 'automation', isIdentityForm: true, nodeId: node.id }]);
       return;
     } else if (node.type === 'handoff') {
@@ -1254,7 +1261,7 @@ function PreviewArea({ nodes, edges }: { nodes: any[], edges: any[] }) {
         }
       }, 1500);
     }
-  }, [nodes, edges]);
+  }, [nodes, edges, previewEmail, previewName]);
 
   useEffect(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
