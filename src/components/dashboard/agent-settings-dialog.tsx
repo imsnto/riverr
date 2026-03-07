@@ -21,7 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/form';
+} from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Bot as BotData, User, HelpCenter } from '@/lib/data';
@@ -91,10 +91,7 @@ function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[],
               className="w-full justify-between h-auto min-h-10 text-left"
             >
              <div className="flex flex-wrap gap-1">
-                 {selectedUsers.length > 0 ? selectedUsers.map(id => {
-                     const user = allUsers.find(u => u.id === id);
-                     return <Badge variant="secondary" key={id}>{user?.name || 'Unknown'}</Badge>;
-                 }) : "Select agents..."}
+                 {selectedUsers.length > 0 ? selectedUsers.length + " agents selected" : "Select agents..."}
              </div>
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
@@ -142,10 +139,7 @@ function MultiSelectPopover({ title, options, selected, onChange }: { title: str
             <PopoverTrigger asChild>
                 <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between h-auto text-left">
                     <div className="flex flex-wrap gap-1">
-                        {selected.length > 0 ? selected.map(value => {
-                            const option = options.find(o => o.value === value);
-                            return <Badge variant="secondary" key={value}>{option?.label || 'Unknown'}</Badge>;
-                        }) : `Select ${title}...`}
+                        {selected.length > 0 ? selected.length + " selected" : `Select ${title}...`}
                     </div>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -364,7 +358,7 @@ export default function AgentSettingsDialog({
                       name="name"
                       render={({ field }) => (
                           <FormItem>
-                          <FormLabel>Agent Name</FormLabel>
+                          <FormLabel>Internal Name</FormLabel>
                           <FormControl>
                               <Input placeholder="Support Agent" {...field} />
                           </FormControl>
