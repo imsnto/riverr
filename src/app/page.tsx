@@ -14,10 +14,16 @@ export default function RootPage() {
         if (status === 'unauthenticated') {
             router.push('/login');
         } else if (status === 'authenticated') {
-            const realSpaces = userSpaces.filter(s => !s.isSystem);
-            const onboardingSpace = userSpaces.find(s => s.isOnboarding);
+            // Priority 1: If onboarding is strictly NOT complete, always try to send them to /onboarding.
+            // This flag is the source of truth for the onboarding lifecycle.
+            if (!appUser?.onboardingComplete) {
+                router.push('/onboarding');
+                return;
+            }
 
-            // If they have real spaces, they don't need onboarding, even if an onboarding space exists.
+            // Priority 2: Onboarding is complete, handle normal navigation to selection or last active hub.
+            const realSpaces = userSpaces.filter(s => !s.isSystem);
+
             if (realSpaces.length > 0) {
                 const lastSpace = localStorage.getItem('timeflow_active_space_v2');
                 const lastHub = localStorage.getItem('timeflow_active_hub_v2');
@@ -47,16 +53,10 @@ export default function RootPage() {
                 return;
             }
 
-            // Only show onboarding if they have an onboarding space and no real ones.
-            if (onboardingSpace && !appUser?.onboardingComplete) {
-                router.push('/onboarding');
-                return;
-            }
-
-            // Fallback for edge cases
+            // Fallback for edge cases (e.g. user has onboarding complete but no spaces left)
             router.push('/space-selection');
         }
-    }, [status, router, activeSpace, activeHub, userSpaces, appUser]);
+    }, [status, router, activeSpace, activeHub, userSpaces, appUser?.onboardingComplete]);
 
     return <DashboardSkeleton />;
 }

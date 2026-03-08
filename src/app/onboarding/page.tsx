@@ -8,12 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeft, ArrowRight, Building2, Check, FolderKanban, Plus, Rocket, Star, Users, Headset } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { Hub, Space, User } from '@/lib/data';
+import { Hub, Space, User, SpaceMember } from '@/lib/data';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import HubComponentEditor from '@/components/dashboard/hub-component-editor';
-import { SpaceMember } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
@@ -47,7 +46,7 @@ const knowledgeFeatureSummary = (
 
 
 export default function OnboardingPage() {
-    const { appUser, userSpaces, setUserSpaces, setActiveSpace, setActiveHub, status, activeHub } = useAuth();
+    const { appUser, setAppUser, userSpaces, setUserSpaces, setActiveSpace, setActiveHub, status, activeHub } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
     
@@ -71,10 +70,10 @@ export default function OnboardingPage() {
         }
 
         if (status === 'authenticated') {
-            const realSpaces = userSpaces.filter(s => !s.isSystem);
-            
-            // If they already have real spaces (e.g. from an invite), they should skip onboarding.
-            if (appUser?.onboardingComplete || realSpaces.length > 0) {
+            // ONLY redirect if onboarding is strictly complete.
+            // We ignore the number of real spaces here because naming the space 
+            // in step 2 promotes the onboarding space to a "real" space.
+            if (appUser?.onboardingComplete) {
                 router.push('/space-selection');
                 return;
             }
@@ -88,7 +87,7 @@ export default function OnboardingPage() {
             setIsLoading(false);
         }
 
-    }, [status, appUser, userSpaces, router]);
+    }, [status, appUser?.onboardingComplete, userSpaces.length, router]);
 
 
     useEffect(() => {
@@ -102,7 +101,7 @@ export default function OnboardingPage() {
 
 
     if (isLoading) {
-        return <div>Loading...</div>;
+        return <div className="flex items-center justify-center min-h-screen">Loading setup...</div>;
     }
 
 
@@ -112,7 +111,9 @@ export default function OnboardingPage() {
     const handleIntentSelect = async (selectedIntent: string) => {
         if (!appUser) return;
         setIntent(selectedIntent);
-        await db.updateUser(appUser.id, { onboardingIntent: selectedIntent });
+        // We don't await the user update to keep the UI snappy
+        db.updateUser(appUser.id, { onboardingIntent: selectedIntent });
+        
         const template = hubTemplates[selectedIntent];
         if (template) {
             setHubName(template.name);
@@ -126,15 +127,18 @@ export default function OnboardingPage() {
         const currentSystemSpace = userSpaces.find(s => s.isOnboarding);
         if (!currentSystemSpace || !spaceName.trim() || !appUser) return;
 
-        const membersMap: Record<string, SpaceMember> = { [appUser.id]: { role: 'Admin' } };
+        const membersMap: Record<string, { role: string }> = { [appUser.id]: { role: 'Admin' } };
+        
         await db.updateSpace(currentSystemSpace.id, {
             name: spaceName,
             isSystem: false,
             isOnboarding: false,
-            members: membersMap
+            members: membersMap as any
         });
+        
         const updatedSpaces = await db.getSpacesForUser(appUser.id);
         setUserSpaces(updatedSpaces);
+        
         const newSpace = updatedSpaces.find(s => s.id === currentSystemSpace.id);
         if (newSpace) setActiveSpace(newSpace);
 
@@ -165,7 +169,12 @@ export default function OnboardingPage() {
 
     const handleLaunch = async () => {
         if (!activeSpace || !appUser) return;
+        
+        // Mark onboarding as complete
         await db.updateUser(appUser.id, { onboardingComplete: true });
+        
+        // IMPORTANT: Update local state immediately so the AuthProvider and page redirects see the change
+        setAppUser(prev => prev ? { ...prev, onboardingComplete: true } : null);
         
         const hubToLaunch = activeHub;
         
@@ -214,6 +223,7 @@ export default function OnboardingPage() {
                             onChange={e => setSpaceName(e.target.value)}
                             placeholder="e.g., Marketing Team"
                             className="text-lg h-12 text-center"
+                            autoFocus
                         />
                          <div className="flex justify-between mt-8">
                             <Button type="button" variant="ghost" onClick={() => setStep(step - 1)}><ArrowLeft className="mr-2 h-4 w-4"/> Back</Button>
