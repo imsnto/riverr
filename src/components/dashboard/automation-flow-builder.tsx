@@ -393,72 +393,61 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
       let finalNodes = initialFlow?.nodes ? [...initialFlow.nodes] : [];
       let finalEdges = initialFlow?.edges ? [...initialFlow.edges] : [];
 
-      // Logic: If the flow is empty, initialize with a functional standard starter template
+      // Logic: If the flow is empty, initialize based on AI status
       if (finalNodes.length === 0) {
         const startId = 'start';
         const greetingId = 'greeting';
-        const classifierId = 'classifier';
-        const supportAiId = 'support_ai';
-        const salesIdId = 'sales_identity';
         const handoffId = 'human_handoff';
 
-        const starterNodes = [
-          {
-            id: startId,
-            type: 'start',
-            position: { x: 300, y: 50 },
-            data: { label: 'Start' }
-          },
-          {
-            id: greetingId,
-            type: 'message',
-            position: { x: 300, y: 200 },
-            data: { text: botData.welcomeMessage || 'Hi! Welcome to our workspace. How can I help you today?' }
-          },
-          {
-            id: classifierId,
-            type: 'ai_classifier',
-            position: { x: 300, y: 400 },
-            data: { 
-              text: '', // Classifier is silent logic, it waits for the reply to the message above
-              intents: [
-                { id: 'support', label: 'Support', description: 'Technical issues, product questions, or documentation' },
-                { id: 'sales', label: 'Sales', description: 'Pricing, demos, or partnership requests' }
-              ]
-            }
-          },
-          {
-            id: supportAiId,
-            type: 'ai_step',
-            position: { x: 50, y: 650 },
-            data: { prompt: 'Help the user with their support query using the knowledge base.' }
-          },
-          {
-            id: salesIdId,
-            type: 'identity_form',
-            position: { x: 550, y: 650 },
-            data: { prompt: 'I would love to help you with that! Could you please share your name and email first?' }
-          },
-          {
-            id: handoffId,
-            type: 'handoff',
-            position: { x: 300, y: 950 },
-            data: { text: 'I am connecting you to one of our team members now.' }
-          }
-        ];
+        if (aiEnabled) {
+          // AI HYBRID FLOW
+          const classifierId = 'classifier';
+          const supportAiId = 'support_ai';
+          const salesIdId = 'sales_identity';
 
-        const starterEdges = [
-          { id: 'e1', source: startId, target: greetingId, sourceHandle: 'next', type: 'smoothstep', animated: true },
-          { id: 'e2', source: greetingId, target: classifierId, sourceHandle: 'next', type: 'smoothstep', animated: true },
-          { id: 'e3', source: classifierId, target: supportAiId, sourceHandle: 'intent:support', type: 'smoothstep', animated: true },
-          { id: 'e4', source: classifierId, target: salesIdId, sourceHandle: 'intent:sales', type: 'smoothstep', animated: true },
-          { id: 'e5', source: classifierId, target: handoffId, sourceHandle: 'fallback', type: 'smoothstep', animated: true },
-          { id: 'e6', source: supportAiId, target: handoffId, sourceHandle: 'unresolved', type: 'smoothstep', animated: true },
-          { id: 'e7', source: salesIdId, target: handoffId, sourceHandle: 'next', type: 'smoothstep', animated: true }
-        ];
+          finalNodes = [
+            { id: startId, type: 'start', position: { x: 300, y: 50 }, data: { label: 'Start' } },
+            { id: greetingId, type: 'message', position: { x: 300, y: 200 }, data: { text: botData.welcomeMessage || 'Hi! Welcome. How can I help you today?' } },
+            { id: classifierId, type: 'ai_classifier', position: { x: 300, y: 400 }, data: { text: '', intents: [{ id: 'support', label: 'Support', description: 'Help needed' }, { id: 'sales', label: 'Sales', description: 'Buying signals' }] } },
+            { id: supportAiId, type: 'ai_step', position: { x: 50, y: 650 }, data: { prompt: 'Help the user using the knowledge base.' } },
+            { id: salesIdId, type: 'identity_form', position: { x: 550, y: 650 }, data: { prompt: 'Could you please share your name and email?' } },
+            { id: handoffId, type: 'handoff', position: { x: 300, y: 950 }, data: { text: 'Connecting you to an agent now.' } }
+          ];
 
-        finalNodes = starterNodes;
-        finalEdges = starterEdges;
+          finalEdges = [
+            { id: 'e1', source: startId, target: greetingId, sourceHandle: 'next', type: 'smoothstep', animated: true },
+            { id: 'e2', source: greetingId, target: classifierId, sourceHandle: 'next', type: 'smoothstep', animated: true },
+            { id: 'e3', source: classifierId, target: supportAiId, sourceHandle: 'intent:support', type: 'smoothstep', animated: true },
+            { id: 'e4', source: classifierId, target: salesIdId, sourceHandle: 'intent:sales', type: 'smoothstep', animated: true },
+            { id: 'e5', source: classifierId, target: handoffId, sourceHandle: 'fallback', type: 'smoothstep', animated: true },
+            { id: 'e6', source: supportAiId, target: handoffId, sourceHandle: 'unresolved', type: 'smoothstep', animated: true },
+            { id: 'e7', source: salesIdId, target: handoffId, sourceHandle: 'next', type: 'smoothstep', animated: true }
+          ];
+        } else {
+          // DETERMINISTIC QUICK REPLY FLOW
+          const quickReplyId = 'quick_replies';
+          const supportIdId = 'support_identity';
+          const salesIdId = 'sales_identity';
+
+          finalNodes = [
+            { id: startId, type: 'start', position: { x: 300, y: 50 }, data: { label: 'Start' } },
+            { id: greetingId, type: 'message', position: { x: 300, y: 200 }, data: { text: botData.welcomeMessage || 'Hi! Welcome. How can we help you?' } },
+            { id: quickReplyId, type: 'quick_reply', position: { x: 300, y: 400 }, data: { text: 'What are you looking for?', buttons: [{ id: 'support', label: 'Support' }, { id: 'sales', label: 'Sales' }] } },
+            { id: supportIdId, type: 'identity_form', position: { x: 50, y: 650 }, data: { prompt: 'Please provide details so we can help.' } },
+            { id: salesIdId, type: 'identity_form', position: { x: 550, y: 650 }, data: { prompt: 'We would love to talk! Please leave your info.' } },
+            { id: handoffId, type: 'handoff', position: { x: 300, y: 950 }, data: { text: 'One of our agents will be with you shortly.' } }
+          ];
+
+          finalEdges = [
+            { id: 'e1', source: startId, target: greetingId, sourceHandle: 'next', type: 'smoothstep', animated: true },
+            { id: 'e2', source: greetingId, target: quickReplyId, sourceHandle: 'next', type: 'smoothstep', animated: true },
+            { id: 'e3', source: quickReplyId, target: supportIdId, sourceHandle: 'intent:support', type: 'smoothstep', animated: true },
+            { id: 'e4', source: quickReplyId, target: salesIdId, sourceHandle: 'intent:sales', type: 'smoothstep', animated: true },
+            { id: 'e5', source: quickReplyId, target: handoffId, sourceHandle: 'fallback', type: 'smoothstep', animated: true },
+            { id: 'e6', source: supportIdId, target: handoffId, sourceHandle: 'next', type: 'smoothstep', animated: true },
+            { id: 'e7', source: salesIdId, target: handoffId, sourceHandle: 'next', type: 'smoothstep', animated: true }
+          ];
+        }
       }
 
       setNodes(finalNodes.map(n => ({ 
@@ -476,7 +465,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
     if (!isOpen) {
       initializedRef.current = false;
     }
-  }, [isOpen, initialFlow, setNodes, setEdges, fitView, botData.welcomeMessage]);
+  }, [isOpen, initialFlow, setNodes, setEdges, fitView, botData.welcomeMessage, aiEnabled]);
 
   const onConnect = useCallback((params: Connection) => {
     setEdges((eds) => addEdge({ 
@@ -593,57 +582,61 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
                     </div>
                 )}
 
-                {selectedNode.type === 'ai_classifier' && (
+                {(selectedNode.type === 'quick_reply' || selectedNode.type === 'ai_classifier') && (
                     <div className="space-y-6">
                         <div className="space-y-4">
                             <Label className="text-xs font-bold uppercase">Intro Text (Optional)</Label>
                             <Input 
-                                value={selectedNode.data.text || ''} 
-                                onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                                placeholder="Leave empty for silent background routing"
+                                value={selectedNode.data.text || selectedNode.data.prompt || ''} 
+                                onChange={(e) => updateNodeData(selectedNode.id, selectedNode.type === 'quick_reply' ? { text: e.target.value } : { text: e.target.value })}
+                                placeholder={selectedNode.type === 'quick_reply' ? "Choose an option:" : "Leave empty for background routing"}
                                 className="bg-muted/30 border-2"
                             />
-                            <p className="text-[10px] text-muted-foreground">If left empty, the bot will silently wait for the visitor to reply to the previous message before routing.</p>
+                            {selectedNode.type === 'ai_classifier' && <p className="text-[10px] text-muted-foreground">If left empty, the bot will silently wait for the visitor to reply to the previous message before routing.</p>}
                         </div>
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <Label className="text-xs font-bold uppercase">Intent Paths</Label>
+                                <Label className="text-xs font-bold uppercase">{selectedNode.type === 'quick_reply' ? 'Buttons' : 'Intent Paths'}</Label>
                                 <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => {
-                                    const newIntents = [...(selectedNode.data.intents || []), { id: `i_${Date.now()}`, label: 'New Intent', description: '' }];
-                                    updateNodeData(selectedNode.id, { intents: newIntents });
+                                    const items = selectedNode.type === 'quick_reply' ? (selectedNode.data.buttons || []) : (selectedNode.data.intents || []);
+                                    const newItem = { id: `i_${Date.now()}`, label: 'New Item', description: '' };
+                                    updateNodeData(selectedNode.id, selectedNode.type === 'quick_reply' ? { buttons: [...items, newItem] } : { intents: [...items, newItem] });
                                 }}>
-                                    <Plus className="h-3 w-3 mr-1" /> Add Path
+                                    <Plus className="h-3 w-3 mr-1" /> Add {selectedNode.type === 'quick_reply' ? 'Button' : 'Path'}
                                 </Button>
                             </div>
                             <div className="space-y-3">
-                                {(selectedNode.data.intents || []).map((intent: any, idx: number) => (
-                                    <div key={intent.id} className="p-3 rounded-lg border bg-muted/20 space-y-2 relative group/intent">
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 absolute -top-2 -right-2 opacity-0 group-hover/intent:opacity-100 transition-opacity" onClick={() => {
-                                            const newIntents = selectedNode.data.intents.filter((_: any, i: number) => i !== idx);
-                                            updateNodeData(selectedNode.id, { intents: newIntents });
+                                {(selectedNode.type === 'quick_reply' ? (selectedNode.data.buttons || []) : (selectedNode.data.intents || [])).map((item: any, idx: number) => (
+                                    <div key={item.id} className="p-3 rounded-lg border bg-muted/20 space-y-2 relative group/item">
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 absolute -top-2 -right-2 opacity-0 group-hover/item:opacity-100 transition-opacity" onClick={() => {
+                                            const items = selectedNode.type === 'quick_reply' ? selectedNode.data.buttons : selectedNode.data.intents;
+                                            const newItems = items.filter((_: any, i: number) => i !== idx);
+                                            updateNodeData(selectedNode.id, selectedNode.type === 'quick_reply' ? { buttons: newItems } : { intents: newItems });
                                         }}>
                                             <X className="h-3 w-3" />
                                         </Button>
                                         <Input 
-                                            value={intent.label} 
+                                            value={item.label} 
                                             onChange={(e) => {
-                                                const newIntents = [...selectedNode.data.intents];
-                                                newIntents[idx].label = e.target.value;
-                                                updateNodeData(selectedNode.id, { intents: newIntents });
+                                                const items = [...(selectedNode.type === 'quick_reply' ? selectedNode.data.buttons : selectedNode.data.intents)];
+                                                items[idx].label = e.target.value;
+                                                updateNodeData(selectedNode.id, selectedNode.type === 'quick_reply' ? { buttons: items } : { intents: items });
                                             }}
-                                            placeholder="Label (e.g. Sales)"
+                                            placeholder="Label"
                                             className="h-8 text-xs font-bold"
                                         />
-                                        <Textarea 
-                                            value={intent.description} 
-                                            onChange={(e) => {
-                                                const newIntents = [...selectedNode.data.intents];
-                                                newIntents[idx].description = e.target.value;
-                                                updateNodeData(selectedNode.id, { intents: newIntents });
-                                            }}
-                                            placeholder="Description for AI..."
-                                            className="text-[10px] h-12 min-h-0 bg-transparent"
-                                        />
+                                        {selectedNode.type === 'ai_classifier' && (
+                                            <Textarea 
+                                                value={item.description} 
+                                                onChange={(e) => {
+                                                    const items = [...selectedNode.data.intents];
+                                                    items[idx].description = e.target.value;
+                                                    updateNodeData(selectedNode.id, { intents: items });
+                                                }}
+                                                placeholder="Description for AI..."
+                                                className="text-[10px] h-12 min-h-0 bg-transparent"
+                                            />
+                                        )}
                                     </div>
                                 ))}
                             </div>
