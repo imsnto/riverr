@@ -125,13 +125,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         spacesUnsubRef.current = subscribeToUserSpaces(user.uid, (spaces) => {
             setUserSpaces(spaces);
             
-            // Sync with current active space if its metadata changed
-            let updatedActiveSpace: Space | null = null;
+            // Sync with current active space if its metadata changed, but preserve ID-based context
             _setActiveSpace(prev => {
                 if (!prev) return null;
                 const updated = spaces.find(s => s.id === prev.id);
-                updatedActiveSpace = updated || null;
-                return updatedActiveSpace;
+                // If we find the space in the list, keep it active (with updated metadata)
+                if (updated) {
+                    localStorage.setItem(LOCAL_STORAGE_KEY_ACTIVE_SPACE, JSON.stringify(updated));
+                    return updated;
+                }
+                return prev; // Fallback to current memory if list is empty or pending
             });
 
             // Update admin status
@@ -139,18 +142,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const isAdminInAnySpace = realSpaces.some(s => s.members[userProfile!.id]?.role === 'Admin');
             setIsUserAdmin(isAdminInAnySpace);
 
-            // CRITICAL: Synchronize localStorage with real-time state to prevent stale data after refresh
+            // Synchronize localStorage
             localStorage.setItem(LOCAL_STORAGE_KEY_USER, JSON.stringify({ 
                 appUser: userProfile, 
                 firebaseUser: user, 
                 userSpaces: spaces 
             }));
-            
-            if (updatedActiveSpace) {
-                localStorage.setItem(LOCAL_STORAGE_KEY_ACTIVE_SPACE, JSON.stringify(updatedActiveSpace));
-            } else {
-                localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_SPACE);
-            }
         });
 
         setStatus('authenticated');

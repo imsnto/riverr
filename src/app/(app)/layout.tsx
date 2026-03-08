@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
@@ -19,7 +18,7 @@ import NotificationPermission from '@/components/dashboard/NotificationPermissio
 import SpaceFormDialog, { HubFormValues } from '@/components/dashboard/space-form-dialog';
 import { useToast } from '@/hooks/use-toast';
 
-function AppLayoutContent({ children }: { children: React.ReactNode }) {
+function AppLayoutContent({ children }: { children: React.Node }) {
     const { appUser, activeSpace, userSpaces, setUserSpaces, setActiveSpace, activeHub, setActiveHub } = useAuth();
     const router = useRouter();
     const params = useParams();
@@ -35,6 +34,30 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
     
     const currentView = (params.view as AppView) || 'overview';
     const isChatActive = isMobile && searchParams.has('conversationId');
+
+    // SYNC: Ensure global context matches the URL on refresh/navigation
+    useEffect(() => {
+        if (!userSpaces.length) return;
+
+        const spaceIdFromUrl = params.spaceId as string;
+        const hubIdFromUrl = params.hubId as string;
+
+        if (spaceIdFromUrl && activeSpace?.id !== spaceIdFromUrl) {
+            const targetSpace = userSpaces.find(s => s.id === spaceIdFromUrl);
+            if (targetSpace) {
+                setActiveSpace(targetSpace);
+            }
+        }
+
+        if (hubIdFromUrl && activeHub?.id !== hubIdFromUrl) {
+            db.getHubsForSpace(spaceIdFromUrl || activeSpace?.id || '').then(hubs => {
+                const targetHub = hubs.find(h => h.id === hubIdFromUrl);
+                if (targetHub) {
+                    setActiveHub(targetHub);
+                }
+            });
+        }
+    }, [params.spaceId, params.hubId, userSpaces, activeSpace?.id, activeHub?.id]);
     
     useEffect(() => {
         if (activeSpace) {
