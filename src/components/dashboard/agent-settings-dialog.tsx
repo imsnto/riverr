@@ -4,12 +4,11 @@ import React, { useEffect, useState, useRef } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -22,7 +21,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Bot as BotData, User, HelpCenter } from '@/lib/data';
 import { 
@@ -34,23 +33,21 @@ import {
   Loader2, 
   Send, 
   MessageSquare, 
-  ChevronDown, 
   Copy, 
   Terminal, 
   ShieldCheck, 
   Smartphone, 
-  Info, 
   Globe, 
-  Code,
-  Wand2,
-  Zap,
-  Split,
-  ChevronRight,
-  Edit,
-  MoreHorizontal,
-  Trash2,
-  Palette,
-  Layout
+  Wand2, 
+  Zap, 
+  ChevronRight, 
+  Edit, 
+  Trash2, 
+  Palette, 
+  Layout, 
+  Settings, 
+  Plug,
+  BookOpen
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -61,14 +58,11 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Badge } from '../ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import { Checkbox } from '../ui/checkbox';
-import { useAuth } from '@/hooks/use-auth';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AutomationFlowBuilder from './automation-flow-builder';
 import { Separator } from '../ui/separator';
+import Link from 'next/link';
 
 function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
     const [open, setOpen] = useState(false);
@@ -88,7 +82,7 @@ function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[],
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full justify-between h-auto min-h-10 text-left"
+              className="w-full justify-between h-auto min-h-10 text-left bg-muted/20 border-white/10"
             >
              <div className="flex flex-wrap gap-1">
                  {selectedUsers.length > 0 ? selectedUsers.length + " agents selected" : "Select agents..."}
@@ -126,44 +120,6 @@ function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[],
     );
 }
 
-function MultiSelectPopover({ title, options, selected, onChange }: { title: string, options: { value: string, label: string }[], selected: string[], onChange: (selected: string[]) => void }) {
-    const [open, setOpen] = useState(false);
-
-    const handleSelect = (value: string) => {
-        const newSelected = selected.includes(value) ? selected.filter(v => v !== value) : [...selected, value];
-        onChange(newSelected);
-    }
-    
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between h-auto text-left">
-                    <div className="flex flex-wrap gap-1">
-                        {selected.length > 0 ? selected.length + " selected" : `Select ${title}...`}
-                    </div>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <Command>
-                    <CommandInput placeholder={`Search ${title}...`} />
-                    <CommandList>
-                        <CommandEmpty>No options found.</CommandEmpty>
-                        <CommandGroup>
-                            {options.map((option) => (
-                                <CommandItem key={option.value} value={option.label} onSelect={() => handleSelect(option.value)}>
-                                    <Check className={cn("mr-2 h-4 w-4", selected.includes(option.value) ? "opacity-100" : "opacity-0")} />
-                                    {option.label}
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
-    );
-}
-
 const agentSettingsSchema = z.object({
   name: z.string().min(1, 'Agent name is required.'),
   isEnabled: z.boolean().default(true),
@@ -180,8 +136,7 @@ const agentSettingsSchema = z.object({
   logoUrl: z.string().url().optional().or(z.literal('')),
   agentIds: z.array(z.string()).min(1, 'Please select at least one agent.'),
   allowedHelpCenterIds: z.array(z.string()).optional(),
-  handoffKeywords: z.string().optional(),
-  quickReplies: z.string().optional(),
+  handoffKeywords: z.array(z.string()).default([]),
   flow: z.any().optional(),
 });
 
@@ -205,7 +160,9 @@ export default function AgentSettingsDialog({
   allUsers,
   helpCenters,
 }: AgentSettingsDialogProps) {
+  const [activeTab, setActiveTab] = useState('workflow');
   const [isFlowBuilderOpen, setIsFlowBuilderOpen] = useState(false);
+  const [newKeyword, setNewKeyword] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -215,7 +172,7 @@ export default function AgentSettingsDialog({
       name: '',
       isEnabled: true,
       aiEnabled: true,
-      welcomeMessage: 'Hi there',
+      welcomeMessage: 'Hi there! How can we help you today?',
       primaryColor: '#3b82f6',
       backgroundColor: '#111827',
       headerTextColor: '#ffffff',
@@ -227,8 +184,7 @@ export default function AgentSettingsDialog({
       logoUrl: '',
       agentIds: [],
       allowedHelpCenterIds: [],
-      handoffKeywords: 'agent, human, help, speak to person',
-      quickReplies: '',
+      handoffKeywords: ['agent', 'human', 'help', 'speak to person'],
       flow: { nodes: [], edges: [] },
     },
   });
@@ -241,7 +197,7 @@ export default function AgentSettingsDialog({
         name: agent.name,
         isEnabled: agent.isEnabled ?? true,
         aiEnabled: agent.aiEnabled ?? true,
-        welcomeMessage: agent.welcomeMessage || 'Hi there',
+        welcomeMessage: agent.welcomeMessage || 'Hi there! How can we help you today?',
         primaryColor: agent.styleSettings?.primaryColor || '#3b82f6',
         backgroundColor: agent.styleSettings?.backgroundColor || '#111827',
         headerTextColor: agent.styleSettings?.headerTextColor || '#ffffff',
@@ -253,8 +209,7 @@ export default function AgentSettingsDialog({
         logoUrl: agent.styleSettings?.logoUrl || '',
         agentIds: agent.agentIds || [],
         allowedHelpCenterIds: agent.allowedHelpCenterIds || [],
-        handoffKeywords: agent.automations?.handoffKeywords?.join(', ') || 'agent, human, help, speak to person',
-        quickReplies: agent.automations?.quickReplies?.join(', ') || '',
+        handoffKeywords: agent.automations?.handoffKeywords || ['agent', 'human', 'help', 'speak to person'],
         flow: agent.flow || { nodes: [], edges: [] },
       });
     }
@@ -280,20 +235,14 @@ export default function AgentSettingsDialog({
         },
         agentIds: values.agentIds,
         allowedHelpCenterIds: values.allowedHelpCenterIds || [],
-        identityCapture: {
-            enabled: false, // Now handled via flow nodes
-            required: false,
-        },
+        identityCapture: { enabled: false, required: false }, // Handled in flow
         automations: {
-            handoffKeywords: values.handoffKeywords?.split(',').map(k => k.trim()).filter(Boolean) || [],
-            quickReplies: values.quickReplies?.split(',').map(k => k.trim()).filter(Boolean) || [],
+            handoffKeywords: values.handoffKeywords,
+            quickReplies: [],
         },
         flow: values.flow,
         escalationTriggers: {
-            billingKeywords: [
-                'refund', 'charge', 'charged', 'billing', 'invoice', 
-                'payment', 'credit card', 'overcharged', 'subscription', 'pricing error'
-            ],
+            billingKeywords: ['refund', 'charge', 'invoice'],
             sentimentThreshold: -0.5,
         }
     };
@@ -311,583 +260,410 @@ export default function AgentSettingsDialog({
     toast({ title: 'Copied to clipboard' });
   };
 
+  const addKeyword = () => {
+    const kw = newKeyword.trim().toLowerCase();
+    if (kw && !watchedValues.handoffKeywords.includes(kw)) {
+        form.setValue('handoffKeywords', [...watchedValues.handoffKeywords, kw]);
+        setNewKeyword('');
+    }
+  };
+
+  const removeKeyword = (kw: string) => {
+    form.setValue('handoffKeywords', watchedValues.handoffKeywords.filter(k => k !== kw));
+  };
+
   const basicSnippet = agent ? `<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${agent.id}" data-hub-id="${agent.hubId}" async></script>`.trim() : '';
 
-  const identifiedSnippet = agent ? `<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${agent.id}" data-hub-id="${agent.hubId}" data-provider-id="YOUR_PROVIDER_ID" async></script>`.trim() : '';
+  const navItems = [
+    { id: 'general', label: 'General', icon: Settings },
+    { id: 'workflow', label: 'Workflow', icon: Zap },
+    { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
+    { id: 'branding', label: 'Branding', icon: Palette },
+    { id: 'installation', label: 'Install', icon: Plug },
+  ];
 
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-4 border-b shrink-0">
-          <DialogTitle>{agent ? `Agent Settings: ${agent.name}` : 'Create New Agent'}</DialogTitle>
-          <DialogDescription>
-              {agent ? 'Customize the appearance and behavior of your AI agent.' : 'Create a new AI agent to embed on your website.'}
-          </DialogDescription>
-        </DialogHeader>
-
+      <DialogContent className="max-w-6xl w-[95vw] h-[85vh] p-0 flex flex-col overflow-hidden bg-[#0d1117] border-white/10">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} id="agent-settings-form" className="flex flex-col flex-1 overflow-hidden">
-              <div className="flex-1 overflow-y-auto px-6 py-4">
-                <div className="space-y-6">
-                  <FormField
-                      control={form.control}
-                      name="isEnabled"
-                      render={({ field }) => (
-                          <FormItem className="flex items-center justify-between rounded-lg border p-3">
-                              <div className="space-y-0.5">
-                                  <FormLabel>Agent Enabled</FormLabel>
-                                  <FormDescription>If disabled, this agent will not respond.</FormDescription>
-                              </div>
-                              <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                          </FormItem>
-                      )}
-                  />
-                  <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                          <FormItem>
-                          <FormLabel>Internal Name</FormLabel>
-                          <FormControl>
-                              <Input placeholder="Support Agent" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                          </FormItem>
-                      )}
-                  />
-
-                  <FormField
-                      control={form.control}
-                      name="agentIds"
-                      render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                          <FormLabel>Live Agents</FormLabel>
-                          <FormControl>
-                              <MemberSelect 
-                                  allUsers={allUsers} 
-                                  selectedUsers={field.value || []} 
-                                  onChange={field.onChange}
-                              />
-                          </FormControl>
-                          <FormMessage />
-                          </FormItem>
-                      )}
-                  />
-                  
-                  <Tabs defaultValue="workflow" className="w-full">
-                    <TabsList className="grid w-full grid-cols-4">
-                      <TabsTrigger value="workflow">Workflow</TabsTrigger>
-                      <TabsTrigger value="knowledge">Knowledge</TabsTrigger>
-                      <TabsTrigger value="branding">Branding</TabsTrigger>
-                      <TabsTrigger value="installation">Install</TabsTrigger>
-                    </TabsList>
-                    
-                    <TabsContent value="workflow" className="pt-6 space-y-6">
-                       <FormField
-                          control={form.control}
-                          name="welcomeMessage"
-                          render={({ field }) => (
-                              <FormItem>
-                              <FormLabel>Greeting Message</FormLabel>
-                              <FormControl>
-                                  <Textarea placeholder="Hi there! How can we help you today?" {...field} />
-                              </FormControl>
-                              <FormDescription>This message is shown as soon as a visitor opens the chat.</FormDescription>
-                              <FormMessage />
-                              </FormItem>
-                          )}
-                      />
-
-                      <FormField
-                          control={form.control}
-                          name="aiEnabled"
-                          render={({ field }) => (
-                              <FormItem className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-indigo-500/5 border-indigo-500/20">
-                                  <div className="space-y-0.5">
-                                      <FormLabel className="flex items-center gap-2">
-                                          <BotIcon className="h-4 w-4 text-indigo-400" />
-                                          AI Classification & Reasoning
-                                      </FormLabel>
-                                      <FormDescription className="text-xs">Allow AI to identify intent and answer questions automatically.</FormDescription>
-                                  </div>
-                                  <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                              </FormItem>
-                          )}
-                      />
-
-                      <div className="space-y-4 pt-2">
-                          <div className="flex items-center justify-between">
-                              <Label className="font-bold flex items-center gap-2">
-                                  <Zap className="h-4 w-4 text-amber-400" /> 
-                                  Automation Map
-                              </Label>
-                              <Button type="button" variant="outline" size="sm" onClick={() => setIsFlowBuilderOpen(true)}>
-                                  <Edit className="h-3 w-3 mr-2" />
-                                  Edit Flow
-                              </Button>
-                          </div>
-                          
-                          <Card className="bg-muted/30 border-dashed">
-                              <CardContent className="p-6 text-center text-xs text-muted-foreground">
-                                  <p className="mb-3 font-semibold text-foreground uppercase tracking-wider">Visual Flow Summary</p>
-                                  <div className="flex items-center justify-center gap-2 italic">
-                                      Start <ChevronRight className="h-3 w-3" /> 
-                                      Greeting <ChevronRight className="h-3 w-3" /> 
-                                      AI Classifier <ChevronRight className="h-3 w-3" /> 
-                                      (Branching paths)
-                                  </div>
-                                  <p className="mt-4 opacity-70">
-                                      Configure complex branching, lead capture, and escalation rules in the visual builder.
-                                  </p>
-                              </CardContent>
-                          </Card>
-                          
-                          <FormField
-                              control={form.control}
-                              name="handoffKeywords"
-                              render={({ field }) => (
-                                  <FormItem>
-                                  <FormLabel>Global Handoff Keywords</FormLabel>
-                                  <FormControl>
-                                      <Input placeholder="agent, help, human, speak to person" {...field} />
-                                  </FormControl>
-                                  <FormDescription className="text-xs">Keywords that immediately request a human, bypassing automation.</FormDescription>
-                                  <FormMessage />
-                                  </FormItem>
-                              )}
-                          />
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="knowledge" className="pt-6">
-                        <FormField
-                          control={form.control}
-                          name="allowedHelpCenterIds"
-                          render={({ field }) => (
-                              <FormItem className="flex flex-col">
-                              <FormLabel>Knowledge Sources</FormLabel>
-                              <p className="text-sm text-muted-foreground mb-4">Select which libraries this agent can use to answer questions.</p>
-                              <MultiSelectPopover 
-                                  title="Libraries"
-                                  options={helpCenters.map(hc => ({ value: hc.id, label: hc.name }))}
-                                  selected={field.value || []}
-                                  onChange={field.onChange}
-                              />
-                              <FormMessage />
-                              </FormItem>
-                          )}
-                      />
-                    </TabsContent>
-
-                    <TabsContent value="branding" className="pt-6 space-y-8 pb-20">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                        {/* Branding Options */}
-                        <div className="space-y-8">
-                          <FormField
-                              control={form.control}
-                              name="name"
-                              render={({ field }) => (
-                                  <FormItem>
-                                      <FormLabel className="flex items-center gap-2">
-                                          <Edit className="h-4 w-4" /> Agent Display Name
-                                      </FormLabel>
-                                      <FormControl>
-                                          <Input placeholder="Support Agent" {...field} />
-                                      </FormControl>
-                                      <FormDescription className="text-xs">This name will be visible to visitors in the chat header.</FormDescription>
-                                      <FormMessage />
-                                  </FormItem>
-                              )}
-                          />
-
-                          <FormField
-                              control={form.control}
-                              name="logoUrl"
-                              render={({ field }) => (
-                                  <FormItem>
-                                      <FormLabel className="flex items-center gap-2">
-                                          <Layout className="h-4 w-4" /> Logo
-                                      </FormLabel>
-                                      <FormControl>
-                                          <div className="flex items-center gap-4">
-                                              <Avatar className="h-16 w-16 rounded-md border bg-muted/30">
-                                                  <AvatarImage src={field.value || undefined} alt="Logo preview" className="object-contain" />
-                                                  <AvatarFallback className="rounded-md bg-muted">
-                                                      <BotIcon className="h-8 w-8 text-muted-foreground" />
-                                                  </AvatarFallback>
-                                              </Avatar>
-                                              <div className="flex flex-col gap-2">
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    className="hidden"
-                                                    ref={fileInputRef}
-                                                    onChange={(e) => {
-                                                        if (e.target.files && e.target.files[0]) {
-                                                            const file = e.target.files[0];
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => {
-                                                                field.onChange(reader.result as string);
-                                                            };
-                                                            reader.readAsDataURL(file);
-                                                        }
-                                                    }}
-                                                />
-                                                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                                                    <Upload className="mr-2 h-4 w-4" />
-                                                    Upload
-                                                </Button>
-                                                {field.value && (
-                                                    <Button type="button" variant="ghost" size="sm" onClick={() => field.onChange('')}>
-                                                        Remove
-                                                    </Button>
-                                                )}
-                                              </div>
-                                          </div>
-                                      </FormControl>
-                                      <FormMessage />
-                                  </FormItem>
-                              )}
-                          />
-
-                          <div className="space-y-6">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">General Colors</Label>
-                            
-                            <div className="grid grid-cols-1 gap-4">
-                              <FormField
-                                control={form.control}
-                                name="primaryColor"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-xs">Primary Brand Color</FormLabel>
-                                    <FormControl>
-                                    <div className="flex items-center gap-2">
-                                        <Input placeholder="#3b82f6" {...field} className="h-8 text-xs font-mono" />
-                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
-                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
-                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                        </div>
-                                    </div>
-                                    </FormControl>
-                                </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={form.control}
-                                name="backgroundColor"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-xs">Widget Background</FormLabel>
-                                    <FormControl>
-                                    <div className="flex items-center gap-2">
-                                        <Input placeholder="#111827" {...field} className="h-8 text-xs font-mono" />
-                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
-                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
-                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                        </div>
-                                    </div>
-                                    </FormControl>
-                                </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={form.control}
-                                name="headerTextColor"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-xs">Header Text Color</FormLabel>
-                                    <FormControl>
-                                    <div className="flex items-center gap-2">
-                                        <Input placeholder="#ffffff" {...field} className="h-8 text-xs font-mono" />
-                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
-                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
-                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                        </div>
-                                    </div>
-                                    </FormControl>
-                                </FormItem>
-                                )}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-6">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Message Bubbles</Label>
-                            <div className="grid grid-cols-1 gap-4">
-                              <FormField
-                                control={form.control}
-                                name="agentMessageBackgroundColor"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-xs">Agent Bubble BG</FormLabel>
-                                    <FormControl>
-                                    <div className="flex items-center gap-2">
-                                        <Input placeholder="#374151" {...field} className="h-8 text-xs font-mono" />
-                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
-                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
-                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                        </div>
-                                    </div>
-                                    </FormControl>
-                                </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name="agentMessageTextColor"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-xs">Agent Bubble Text</FormLabel>
-                                    <FormControl>
-                                    <div className="flex items-center gap-2">
-                                        <Input placeholder="#ffffff" {...field} className="h-8 text-xs font-mono" />
-                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
-                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
-                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                        </div>
-                                    </div>
-                                    </FormControl>
-                                </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name="customerTextColor"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-xs">Visitor Bubble Text</FormLabel>
-                                    <FormControl>
-                                    <div className="flex items-center gap-2">
-                                        <Input placeholder="#ffffff" {...field} className="h-8 text-xs font-mono" />
-                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
-                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
-                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                        </div>
-                                    </div>
-                                    </FormControl>
-                                </FormItem>
-                                )}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-6">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Launcher Button</Label>
-                            <div className="grid grid-cols-1 gap-4">
-                              <FormField
-                                control={form.control}
-                                name="chatbotIconsColor"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-xs">Launcher Background</FormLabel>
-                                    <FormControl>
-                                    <div className="flex items-center gap-2">
-                                        <Input placeholder="#3b82f6" {...field} className="h-8 text-xs font-mono" />
-                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
-                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
-                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                        </div>
-                                    </div>
-                                    </FormControl>
-                                </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name="chatbotIconsTextColor"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-xs">Launcher Icon Color</FormLabel>
-                                    <FormControl>
-                                    <div className="flex items-center gap-2">
-                                        <Input placeholder="#ffffff" {...field} className="h-8 text-xs font-mono" />
-                                        <div className="relative h-8 w-8 rounded-md border overflow-hidden cursor-pointer shadow-inner">
-                                            <div className="w-full h-full" style={{ backgroundColor: field.value }} />
-                                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                        </div>
-                                    </div>
-                                    </FormControl>
-                                </FormItem>
-                                )}
-                              />
-                            </div>
-                          </div>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex h-full overflow-hidden">
+            {/* Sidebar Navigation */}
+            <aside className="w-64 border-r border-white/10 flex flex-col bg-[#090c10] shrink-0">
+                <div className="p-6 pb-4">
+                    <div className="flex items-center gap-3">
+                        <div className={cn("h-2 w-2 rounded-full", watchedValues.isEnabled ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-zinc-600")} />
+                        <div>
+                            <h3 className="font-bold text-white leading-tight">{watchedValues.name || 'New Agent'}</h3>
+                            <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground opacity-50">AI Agent</p>
                         </div>
-
-                        {/* Live Branding Preview */}
-                        <div className="space-y-6 sticky top-0 pb-10">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                            <Palette className="h-3 w-3" /> Live Branding Preview
-                          </Label>
-                          
-                          <div className="relative">
-                            <div 
-                                className="w-full h-[540px] rounded-[2.5rem] shadow-2xl border-8 border-muted overflow-hidden flex flex-col transition-all duration-500"
-                                style={{ backgroundColor: watchedValues.backgroundColor }}
-                            >
-                                {/* Mock Header */}
-                                <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                                <div className="flex items-center gap-3">
-                                    <Avatar className="h-9 w-9 rounded-full shadow-md bg-white/5 border border-white/10">
-                                    <AvatarImage src={watchedValues.logoUrl} className="object-contain" />
-                                    <AvatarFallback className="bg-transparent"><BotIcon className="h-5 w-5 text-white/50" /></AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex flex-col">
-                                        <span className="font-bold text-sm" style={{ color: watchedValues.headerTextColor }}>{watchedValues.name || 'AI Assistant'}</span>
-                                        <span className="text-[10px] uppercase font-bold opacity-50" style={{ color: watchedValues.headerTextColor }}>Online</span>
-                                    </div>
-                                </div>
-                                <X className="h-5 w-5 opacity-50" style={{ color: watchedValues.headerTextColor }} />
-                                </div>
-
-                                {/* Mock Chat Area */}
-                                <div className="flex-1 p-6 space-y-6 overflow-y-auto bg-transparent">
-                                {/* Bot Welcome */}
-                                <div className="flex flex-col gap-1.5 items-start">
-                                    <div 
-                                    className="max-w-[85%] p-3.5 rounded-2xl rounded-bl-none text-sm shadow-sm"
-                                    style={{ 
-                                        backgroundColor: watchedValues.agentMessageBackgroundColor,
-                                        color: watchedValues.agentMessageTextColor 
-                                    }}
-                                    >
-                                    {watchedValues.welcomeMessage || 'Hi there! How can I help you?'}
-                                    </div>
-                                    <span className="text-[9px] uppercase font-black opacity-30 ml-1" style={{ color: watchedValues.agentMessageTextColor }}>Assistant</span>
-                                </div>
-
-                                {/* User Message */}
-                                <div className="flex flex-col gap-1.5 items-end">
-                                    <div 
-                                    className="max-w-[85%] p-3.5 rounded-2xl rounded-br-none text-sm shadow-md"
-                                    style={{ 
-                                        backgroundColor: watchedValues.primaryColor,
-                                        color: watchedValues.customerTextColor 
-                                    }}
-                                    >
-                                    I'd like to learn more about your platform.
-                                    </div>
-                                    <span className="text-[9px] uppercase font-black opacity-30 mr-1" style={{ color: watchedValues.customerTextColor }}>You</span>
-                                </div>
-
-                                {/* AI Response */}
-                                <div className="flex flex-col gap-1.5 items-start">
-                                    <div 
-                                    className="max-w-[85%] p-4 rounded-2xl rounded-bl-none text-sm border-2 shadow-sm"
-                                    style={{ 
-                                        backgroundColor: 'rgba(255,255,255,0.02)',
-                                        borderColor: watchedValues.primaryColor + '22',
-                                        color: watchedValues.agentMessageTextColor 
-                                    }}
-                                    >
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <BotIcon className="h-3 w-3" style={{ color: watchedValues.primaryColor }} />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: watchedValues.primaryColor }}>AI Assistant</span>
-                                    </div>
-                                    Great! Our platform is a comprehensive business command center...
-                                    </div>
-                                </div>
-                                </div>
-
-                                {/* Mock Footer */}
-                                <div className="p-4 border-t flex items-center gap-3" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                                <div className="h-11 flex-1 rounded-full bg-white/5 border border-white/10 flex items-center px-4">
-                                    <span className="text-xs text-white/20 italic">Type something...</span>
-                                </div>
-                                <div className="h-10 w-10 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: watchedValues.primaryColor }}>
-                                    <Send className="h-4 w-4" style={{ color: watchedValues.customerTextColor }} />
-                                </div>
-                                </div>
-                            </div>
-
-                            {/* Floating Launcher Button Preview */}
-                            <div className="absolute -bottom-16 right-0 flex flex-col items-center gap-2">
-                                <span className="text-[10px] font-bold uppercase text-muted-foreground/50 tracking-tighter">Widget Launcher</span>
-                                <div 
-                                    className="h-16 w-16 rounded-full shadow-2xl flex items-center justify-center border-4 border-background transition-all hover:scale-110 cursor-pointer"
-                                    style={{ backgroundColor: watchedValues.chatbotIconsColor }}
-                                >
-                                    <MessageSquare className="h-7 w-7" style={{ color: watchedValues.chatbotIconsTextColor }} />
-                                </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </TabsContent>
-                    
-                    <TabsContent value="installation" className="pt-6">
-                      {agent ? (
-                          <Tabs defaultValue="basic" className="w-full">
-                              <TabsList className="grid w-full grid-cols-2 mb-6">
-                                  <TabsTrigger value="basic">Basic Install</TabsTrigger>
-                                  <TabsTrigger value="identify">Identify Users</TabsTrigger>
-                              </TabsList>
-                              
-                              <ScrollArea className="h-[400px] pr-4">
-                                  <TabsContent value="basic" className="mt-0 space-y-6">
-                                      <div>
-                                          <h4 className="font-bold flex items-center gap-2 mb-2"><Globe className="h-4 w-4"/> Web Install</h4>
-                                          <p className="text-xs text-muted-foreground mb-4">
-                                              Best for simple websites. Copy this script into your HTML `head` or `body`.
-                                          </p>
-                                          <div className="relative">
-                                              <pre className="bg-muted p-4 rounded-md text-xs overflow-x-auto font-mono text-foreground border">
-                                                  <code>{basicSnippet}</code>
-                                              </pre>
-                                              <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={() => handleCopy(basicSnippet)}>
-                                                  <Copy className="h-4 w-4" />
-                                              </Button>
-                                          </div>
-                                      </div>
-                                  </TabsContent>
-
-                                  <TabsContent value="identify" className="mt-0 space-y-8 pb-10">
-                                      <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-4 flex items-start gap-3">
-                                          <ShieldCheck className="h-5 w-5 text-indigo-400 shrink-0 mt-0.5" />
-                                          <div className="space-y-1">
-                                              <p className="text-sm font-bold text-indigo-300">Secure Identity Linking</p>
-                                              <p className="text-xs text-indigo-300/70">
-                                                  Link chat sessions to your app's logged-in users using a secure HMAC hash.
-                                              </p>
-                                          </div>
-                                      </div>
-
-                                      <div className="space-y-4">
-                                          <h5 className="text-sm font-bold flex items-center gap-2"><Terminal className="h-4 w-4"/> identified script</h5>
-                                          <div className="relative">
-                                              <pre className="bg-muted p-4 rounded-md text-xs overflow-x-auto font-mono text-foreground border">
-                                                  <code>{identifiedSnippet}</code>
-                                              </pre>
-                                              <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={() => handleCopy(identifiedSnippet)}>
-                                                  <Copy className="h-4 w-4" />
-                                              </Button>
-                                          </div>
-                                      </div>
-                                  </TabsContent>
-                              </ScrollArea>
-                          </Tabs>
-                      ) : (
-                          <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                              <Smartphone className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                              <h3 className="text-lg font-semibold text-foreground">Save Agent to Install</h3>
-                              <p className="text-sm text-muted-foreground px-10">
-                                  Once you save this agent, you will get the installation code snippets.
-                              </p>
-                          </div>
-                      )}
-                    </TabsContent>
-
-                  </Tabs>
+                    </div>
                 </div>
-              </div>
 
-              <DialogFooter className="p-6 pt-4 border-t shrink-0">
-                  <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                  <Button type="submit" form="agent-settings-form">Save Changes</Button>
-              </DialogFooter>
+                <nav className="flex-1 p-2 space-y-1">
+                    {navItems.map((item) => (
+                        <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setActiveTab(item.id)}
+                            className={cn(
+                                "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all group",
+                                activeTab === item.id 
+                                    ? "bg-white/5 text-white border-l-2 border-primary" 
+                                    : "text-muted-foreground hover:bg-white/[0.02] hover:text-white"
+                            )}
+                        >
+                            <item.icon className={cn("h-4 w-4 shrink-0 transition-colors", activeTab === item.id ? "text-primary" : "text-muted-foreground group-hover:text-white")} />
+                            {item.label}
+                        </button>
+                    ))}
+                </nav>
+
+                <div className="p-4 border-t border-white/10">
+                    <FormField
+                        control={form.control}
+                        name="isEnabled"
+                        render={({ field }) => (
+                            <div className="flex items-center justify-between px-2">
+                                <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Status</span>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </div>
+                        )}
+                    />
+                </div>
+            </aside>
+
+            {/* Content Area */}
+            <div className="flex-1 flex flex-col min-w-0">
+                <ScrollArea className="flex-1">
+                    <div className="p-8 max-w-3xl mx-auto space-y-10">
+                        {activeTab === 'general' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white mb-1">General</h2>
+                                    <p className="text-muted-foreground text-sm">Identity and access settings for your agent.</p>
+                                </div>
+                                <FormField
+                                    control={form.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Internal Name</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Support Agent" {...field} className="bg-muted/20 border-white/10 h-11" />
+                                            </FormControl>
+                                            <FormDescription className="text-xs">Only visible to your team.</FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="agentIds"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Live Agents</FormLabel>
+                                            <FormControl>
+                                                <MemberSelect 
+                                                    allUsers={allUsers} 
+                                                    selectedUsers={field.value || []} 
+                                                    onChange={field.onChange}
+                                                />
+                                            </FormControl>
+                                            <FormDescription className="text-xs">Teammates who can jump in to help when AI escalates.</FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        )}
+
+                        {activeTab === 'workflow' && (
+                            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white mb-1">Workflow</h2>
+                                    <p className="text-muted-foreground text-sm">Configure how your agent greets and routes visitors.</p>
+                                </div>
+
+                                <FormField
+                                    control={form.control}
+                                    name="welcomeMessage"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Greeting Message</FormLabel>
+                                            <FormControl>
+                                                <Textarea 
+                                                    placeholder="Hi there! How can we help you today?" 
+                                                    {...field} 
+                                                    className="bg-[#161b22] border-white/10 min-h-[120px] text-base leading-relaxed"
+                                                />
+                                            </FormControl>
+                                            <FormDescription className="text-xs">Shown immediately when a visitor opens the chat.</FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="aiEnabled"
+                                    render={({ field }) => (
+                                        <div className="rounded-2xl border border-white/10 bg-[#161b22] p-6 flex items-center justify-between shadow-sm">
+                                            <div className="space-y-1">
+                                                <h4 className="font-bold text-white flex items-center gap-2">
+                                                    AI Classification & Reasoning
+                                                </h4>
+                                                <p className="text-xs text-muted-foreground">Allow AI to identify visitor intent and answer questions automatically.</p>
+                                            </div>
+                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                        </div>
+                                    )}
+                                />
+
+                                <div className="space-y-4">
+                                    <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Automation Flow</Label>
+                                    <div className="p-6 rounded-2xl border-2 border-dashed border-white/5 bg-[#0d1117] flex flex-col items-center gap-6">
+                                        <div className="flex items-center gap-2 flex-wrap justify-center">
+                                            <Badge variant="outline" className="bg-white/5 border-white/10 h-8 px-3 font-medium">Start</Badge>
+                                            <ChevronRight className="h-3 w-3 text-muted-foreground opacity-30" />
+                                            <Badge variant="outline" className="bg-white/5 border-white/10 h-8 px-3 font-medium">Greeting</Badge>
+                                            <ChevronRight className="h-3 w-3 text-muted-foreground opacity-30" />
+                                            <Badge variant="outline" className="bg-white/5 border-white/10 h-8 px-3 font-medium">AI Classifier</Badge>
+                                            <ChevronRight className="h-3 w-3 text-muted-foreground opacity-30" />
+                                            <span className="text-xs text-muted-foreground italic">(Branching paths)</span>
+                                        </div>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => setIsFlowBuilderOpen(true)} className="rounded-lg h-9 bg-white/5 hover:bg-white/10 border-white/10 text-xs font-bold gap-2">
+                                            <Edit className="h-3.5 w-3.5" />
+                                            Edit Flow
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Global Handoff Keywords</Label>
+                                    <div className="rounded-2xl border border-white/10 bg-[#161b22] p-4 space-y-4">
+                                        <div className="flex flex-wrap gap-2">
+                                            {watchedValues.handoffKeywords.map((kw) => (
+                                                <Badge key={kw} variant="secondary" className="bg-white/5 hover:bg-white/10 text-white border-white/10 h-8 px-3 rounded-lg gap-2 text-xs">
+                                                    {kw}
+                                                    <button type="button" onClick={() => removeKeyword(kw)} className="text-muted-foreground hover:text-white">
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Input 
+                                                value={newKeyword} 
+                                                onChange={(e) => setNewKeyword(e.target.value)} 
+                                                onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); addKeyword(); } }}
+                                                placeholder="Add keyword..." 
+                                                className="bg-[#0d1117] border-white/10 h-10"
+                                            />
+                                            <Button type="button" variant="secondary" size="sm" onClick={addKeyword} className="h-10 px-4">Add</Button>
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground italic">When visitors send these words, they’re immediately routed to a human agent.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'knowledge' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white mb-1">Knowledge</h2>
+                                    <p className="text-muted-foreground text-sm">Select libraries this agent uses to find answers.</p>
+                                </div>
+                                <FormField
+                                    control={form.control}
+                                    name="allowedHelpCenterIds"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Sources</FormLabel>
+                                            <div className="space-y-4">
+                                                {helpCenters.map(hc => (
+                                                    <div key={hc.id} className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                                                <BookOpen className="h-4 w-4 text-primary" />
+                                                            </div>
+                                                            <span className="font-semibold text-white">{hc.name}</span>
+                                                        </div>
+                                                        <Switch 
+                                                            checked={field.value?.includes(hc.id)} 
+                                                            onCheckedChange={(checked) => {
+                                                                const newVal = checked 
+                                                                    ? [...(field.value || []), hc.id]
+                                                                    : (field.value || []).filter(id => id !== hc.id);
+                                                                field.onChange(newVal);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        )}
+
+                        {activeTab === 'branding' && (
+                            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+                                    <div className="space-y-8">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-white mb-1">Branding</h2>
+                                            <p className="text-muted-foreground text-sm">Customize your agent's look and feel.</p>
+                                        </div>
+
+                                        <FormField
+                                            control={form.control}
+                                            name="logoUrl"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Bot Avatar</FormLabel>
+                                                    <div className="flex items-center gap-4">
+                                                        <Avatar className="h-16 w-16 border border-white/10 bg-white/5 rounded-2xl">
+                                                            <AvatarImage src={field.value} className="object-contain" />
+                                                            <AvatarFallback className="bg-transparent"><BotIcon className="h-8 w-8 opacity-20" /></AvatarFallback>
+                                                        </Avatar>
+                                                        <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => {
+                                                            if (e.target.files?.[0]) {
+                                                                const reader = new FileReader();
+                                                                reader.onloadend = () => field.onChange(reader.result as string);
+                                                                reader.readAsDataURL(e.target.files[0]);
+                                                            }
+                                                        }} />
+                                                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="border-white/10 bg-white/5">Upload Image</Button>
+                                                    </div>
+                                                </FormItem>
+                                            )}
+                                        />
+
+                                        <div className="space-y-4">
+                                            <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Colors</Label>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="primaryColor"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-xs">Primary Action</FormLabel>
+                                                            <div className="flex items-center gap-2">
+                                                                <Input {...field} className="bg-muted/20 border-white/10 h-9 font-mono text-[10px]" />
+                                                                <input type="color" value={field.value} onChange={field.onChange} className="h-9 w-9 rounded-md border-none p-0 cursor-pointer" />
+                                                            </div>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="backgroundColor"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-xs">Window Background</FormLabel>
+                                                            <div className="flex items-center gap-2">
+                                                                <Input {...field} className="bg-muted/20 border-white/10 h-9 font-mono text-[10px]" />
+                                                                <input type="color" value={field.value} onChange={field.onChange} className="h-9 w-9 rounded-md border-none p-0 cursor-pointer" />
+                                                            </div>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Real Branding Preview */}
+                                    <div className="sticky top-0 bg-[#161b22] border border-white/10 rounded-[2.5rem] h-[500px] w-full flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
+                                        <div className="p-5 border-b border-white/5 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="h-9 w-9 rounded-full border border-white/10">
+                                                    <AvatarImage src={watchedValues.logoUrl} className="object-contain" />
+                                                    <AvatarFallback className="bg-white/5"><BotIcon className="h-5 w-5 opacity-50" /></AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-white">{watchedValues.name || 'Agent'}</span>
+                                                    <span className="text-[9px] uppercase font-black text-green-500 tracking-tighter">Online</span>
+                                                </div>
+                                            </div>
+                                            <X className="h-4 w-4 text-white/30" />
+                                        </div>
+                                        <div className="flex-1 p-6 space-y-6" style={{ backgroundColor: watchedValues.backgroundColor }}>
+                                            <div className="flex flex-col gap-1 items-start">
+                                                <div className="p-3.5 rounded-2xl rounded-bl-none text-sm text-white shadow-sm max-w-[85%]" style={{ backgroundColor: watchedValues.agentMessageBackgroundColor || '#374151' }}>
+                                                    {watchedValues.welcomeMessage}
+                                                </div>
+                                                <span className="text-[8px] uppercase font-black text-white/30 ml-1">Assistant</span>
+                                            </div>
+                                            <div className="flex flex-col gap-1 items-end">
+                                                <div className="p-3.5 rounded-2xl rounded-br-none text-sm text-white shadow-sm max-w-[85%]" style={{ backgroundColor: watchedValues.primaryColor }}>
+                                                    I'd like some help!
+                                                </div>
+                                                <span className="text-[8px] uppercase font-black text-white/30 mr-1">You</span>
+                                            </div>
+                                        </div>
+                                        <div className="p-4 border-t border-white/5 bg-background/20 flex items-center gap-3">
+                                            <div className="flex-1 h-10 rounded-full border border-white/10 bg-white/5 px-4 flex items-center">
+                                                <span className="text-xs text-white/20 italic">Type a message...</span>
+                                            </div>
+                                            <div className="h-10 w-10 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: watchedValues.primaryColor }}>
+                                                <Send className="h-4 w-4 text-white" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'installation' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white mb-1">Install</h2>
+                                    <p className="text-muted-foreground text-sm">Add the chatbot to your website with a single line of code.</p>
+                                </div>
+                                
+                                <div className="rounded-2xl border border-white/10 bg-[#161b22] p-6 space-y-6">
+                                    <div className="flex items-start gap-4">
+                                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                                            <Globe className="h-5 w-5 text-primary" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <h4 className="font-bold text-white">Embed Script</h4>
+                                            <p className="text-xs text-muted-foreground">Copy and paste this script into your HTML's `head` or `body` tag.</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="relative group">
+                                        <pre className="bg-[#0d1117] border border-white/10 p-5 rounded-xl text-xs font-mono text-primary leading-relaxed overflow-x-auto">
+                                            <code>{basicSnippet}</code>
+                                        </pre>
+                                        <Button 
+                                            type="button" 
+                                            size="icon" 
+                                            variant="secondary" 
+                                            className="absolute top-3 right-3 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                            onClick={() => handleCopy(basicSnippet)}
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
+
+                <div className="p-6 border-t border-white/10 bg-[#090c10] shrink-0 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="border-white/5 bg-white/5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">Draft saved locally</Badge>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-white">Cancel</Button>
+                        <Button type="submit" className="rounded-xl px-8 shadow-lg shadow-primary/20">Save Changes</Button>
+                    </div>
+                </div>
+            </div>
           </form>
         </Form>
       </DialogContent>
