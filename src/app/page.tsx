@@ -15,16 +15,23 @@ export default function RootPage() {
             router.push('/login');
         } else if (status === 'authenticated') {
             // Priority 1: If onboarding is strictly NOT complete, always try to send them to /onboarding.
-            // This flag is the source of truth for the onboarding lifecycle.
             if (!appUser?.onboardingComplete) {
                 router.push('/onboarding');
                 return;
             }
 
-            // Priority 2: Onboarding is complete, handle normal navigation to selection or last active hub.
+            // Priority 2: Onboarding is complete, handle normal navigation
             const realSpaces = userSpaces.filter(s => !s.isSystem);
 
             if (realSpaces.length > 0) {
+                // First, check for explicitly set active context in the hook (which onboarding sets)
+                if (activeSpace && activeHub) {
+                    const defaultView = activeHub.settings?.defaultView || 'overview';
+                    router.push(`/space/${activeSpace.id}/hub/${activeHub.id}/${defaultView}`);
+                    return;
+                }
+
+                // Second, check for cached persistence
                 const lastSpace = localStorage.getItem('timeflow_active_space_v2');
                 const lastHub = localStorage.getItem('timeflow_active_hub_v2');
 
@@ -33,27 +40,22 @@ export default function RootPage() {
                         const space = JSON.parse(lastSpace);
                         const hub = JSON.parse(lastHub);
                         
-                        // Verify the cached space still exists in their list
                         if (realSpaces.some(s => s.id === space.id)) {
                             const defaultView = hub.settings?.defaultView || 'overview';
                             router.push(`/space/${space.id}/hub/${hub.id}/${defaultView}`);
                             return;
                         }
                     } catch (e) {
-                        // fallback to selection
+                        // fallback
                     }
                 }
                 
-                if (activeSpace && activeHub) {
-                    const defaultView = activeHub.settings?.defaultView || 'overview';
-                    router.push(`/space/${activeSpace.id}/hub/${activeHub.id}/${defaultView}`);
-                } else {
-                    router.push('/space-selection');
-                }
+                // Fallback to selection if no clear context exists
+                router.push('/space-selection');
                 return;
             }
 
-            // Fallback for edge cases (e.g. user has onboarding complete but no spaces left)
+            // Fallback for edge cases
             router.push('/space-selection');
         }
     }, [status, router, activeSpace, activeHub, userSpaces, appUser?.onboardingComplete]);

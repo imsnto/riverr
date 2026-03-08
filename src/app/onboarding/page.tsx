@@ -46,7 +46,7 @@ const knowledgeFeatureSummary = (
 
 
 export default function OnboardingPage() {
-    const { appUser, setAppUser, userSpaces, setUserSpaces, setActiveSpace, setActiveHub, status, activeHub } = useAuth();
+    const { appUser, setAppUser, userSpaces, setUserSpaces, setActiveSpace, setActiveHub, status, activeHub, activeSpace } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
     
@@ -71,10 +71,8 @@ export default function OnboardingPage() {
 
         if (status === 'authenticated') {
             // ONLY redirect if onboarding is strictly complete.
-            // We ignore the number of real spaces here because naming the space 
-            // in step 2 promotes the onboarding space to a "real" space.
             if (appUser?.onboardingComplete) {
-                router.push('/space-selection');
+                router.push('/');
                 return;
             }
 
@@ -96,7 +94,6 @@ export default function OnboardingPage() {
         }
     }, [appUser]);
 
-    const activeSpace = useAuth().activeSpace;
     const hubFormValues = { name: hubName, components: hubComponents };
 
 
@@ -179,7 +176,8 @@ export default function OnboardingPage() {
         const hubToLaunch = activeHub;
         
         if (hubToLaunch) {
-            router.push(`/space/${activeSpace.id}/hub/${hubToLaunch.id}/${hubToLaunch.settings.defaultView || 'overview'}`);
+            const view = hubToLaunch.settings?.defaultView || 'overview';
+            router.push(`/space/${activeSpace.id}/hub/${hubToLaunch.id}/${view}`);
         } else {
             const fetchedHub = await db.getHubsForSpace(activeSpace.id).then(hubs => hubs[0]);
              if (fetchedHub) {
