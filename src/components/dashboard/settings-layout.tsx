@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -20,6 +19,7 @@ import {
   EscalationIntakeRule,
   Ticket,
   Conversation,
+  HelpCenter,
 } from '@/lib/data';
 import InboxSettings from './inbox-settings';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -61,6 +61,7 @@ interface SettingsLayoutProps {
   escalationRules: EscalationIntakeRule[];
   tickets: Ticket[];
   conversations: Conversation[];
+  helpCenters: HelpCenter[];
 }
 
 // Sub-component for sidebar buttons, moved outside to prevent recreation on re-render
@@ -194,7 +195,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
                 onBotUpdate={props.onBotUpdate}
                 onBotAdd={props.onBotAdd}
                 onBotDelete={props.onBotDelete}
-                helpCenters={[]}
+                helpCenters={props.helpCenters}
                 tickets={props.tickets}
                 conversations={props.conversations}
                 activeHub={props.activeHub}

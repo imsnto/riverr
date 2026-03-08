@@ -505,7 +505,7 @@ export default function Dashboard({ view }: { view: string }) {
     }
 
     const op = { projects, tasks, timeEntries, activeSpace, activeHub, allUsers, appUser, unreadMentions, onTaskSelect: setSelectedTask, jobs, jobFlowTemplates, jobFlowTasks, onUpdateTask: handleUpdateTask, onDataRefresh: fetchData };
-    const sp = { allUsers, allSpaces: userSpaces, allHubs, onSave: handleSpaceSave, onDelete: db.deleteSpace, appUser, onInvite: fetchData, handleInvite: async (i: any) => { await db.addInvite(i); fetchData(); }, projects, tasks, timeEntries, activeHub, onUpdateActiveHub: handleUpdateActiveHub, bots, onBotUpdate: handleBotUpdate, onBotAdd: handleBotAdd, onBotDelete: handleBotDelete, escalationRules, tickets, conversations: chatConversations, activeSpace };
+    const sp = { allUsers, allSpaces: userSpaces, allHubs, onSave: handleSpaceSave, onDelete: db.deleteSpace, appUser, onInvite: fetchData, handleInvite: async (i: any) => { await db.addInvite(i); fetchData(); }, projects, tasks, timeEntries, activeHub, onUpdateActiveHub: handleUpdateActiveHub, bots, onBotUpdate: handleBotUpdate, onBotAdd: handleBotAdd, onBotDelete: handleBotDelete, escalationRules, tickets, conversations: chatConversations, activeSpace, helpCenters };
     const cv = view as AppView;
     switch (cv) {
       case 'overview': return <div className="overflow-y-auto p-8"><Overview {...op} /></div>;

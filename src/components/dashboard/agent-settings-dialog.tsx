@@ -481,7 +481,7 @@ export default function AgentSettingsDialog({
                                         <FormItem className="flex flex-col">
                                             <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Sources</FormLabel>
                                             <div className="space-y-4">
-                                                {helpCenters.map(hc => (
+                                                {helpCenters && helpCenters.length > 0 ? helpCenters.map(hc => (
                                                     <div key={hc.id} className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/[0.02]">
                                                         <div className="flex items-center gap-3">
                                                             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -499,7 +499,13 @@ export default function AgentSettingsDialog({
                                                             }}
                                                         />
                                                     </div>
-                                                ))}
+                                                )) : (
+                                                    <div className="p-12 border-2 border-dashed border-white/5 rounded-2xl text-center">
+                                                        <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-20" />
+                                                        <p className="text-sm font-semibold text-white">No libraries available</p>
+                                                        <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto">Create a library in the Knowledge tab to use it as a source for your AI agent.</p>
+                                                    </div>
+                                                )}
                                             </div>
                                             <FormMessage />
                                         </FormItem>
