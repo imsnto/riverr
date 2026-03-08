@@ -1,4 +1,3 @@
-
 // src/components/dashboard/AppSidebar.tsx
 "use client";
 
@@ -36,7 +35,7 @@ import { AppView } from "@/lib/routes";
 import { getInitials } from "@/lib/utils";
 import * as db from '@/lib/db';
 import { messaging } from "@/lib/firebase";
-import { deleteToken, getToken } from "firebase/messaging";
+import { getToken } from "firebase/messaging";
 import { arrayRemove, doc, updateDoc } from "firebase/firestore";
 import { db as firestore } from "@/lib/firebase";
 
@@ -234,28 +233,37 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
   const handleLogout = async () => {
     try {
+      let token = null;
+      
+      // Safeguard: Only attempt to retrieve token if notification permission is granted
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          token = await getToken(messaging);
+        } catch (err) {
+          console.warn("FCM token retrieval skipped during logout (permission blocked or failed)");
+        }
+      }
 
-      const token = await getToken(messaging)
       const userId = appUser?.id;
 
-      if(token && userId){
+      if (token && userId) {
         const userTokensRef = doc(firestore, "fcmTokens", userId);
-
-      // 2. Remove ONLY this token from the array
-      await updateDoc(userTokensRef, {
-        tokens: arrayRemove(token)
-      });
+        // Remove ONLY this token from the array
+        await updateDoc(userTokensRef, {
+          tokens: arrayRemove(token)
+        });
       }
-      console.log(token)
   
-      // 4. Perform standard sign out
+      // Perform standard sign out
       await signOut();
       
-      // 5. Redirect to login
+      // Redirect to login
       window.location.replace('/login');
     } catch (error) {
       console.error("Error during logout:", error);
-      // Still sign out even if worker cleanup fails
+      // ensure we still redirect/cleanup local state if possible
+      await signOut();
+      window.location.replace('/login');
     }
   };
 
