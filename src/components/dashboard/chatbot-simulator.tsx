@@ -9,6 +9,7 @@ import { Send, X, Bot, Loader2, Smartphone, CheckCircle2, ChevronRight, Navigati
 import { cn, getInitials } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface ChatbotSimulatorProps {
   isOpen: boolean;
