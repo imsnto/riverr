@@ -64,6 +64,7 @@ import {
   UserPlus,
   Loader2,
   AlertCircle,
+  MessageCircle,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -394,58 +395,66 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
 
       // Logic: If the flow is empty, initialize with a functional standard starter template
       if (finalNodes.length === 0) {
-        const startNodeId = 'start';
-        const greetingNodeId = 'greeting_msg';
-        const classifierNodeId = 'classifier';
+        const startId = 'start';
+        const greetingId = 'greeting';
+        const classifierId = 'classifier';
+        const supportAiId = 'support_ai';
+        const salesIdId = 'sales_identity';
+        const handoffId = 'human_handoff';
 
         const starterNodes = [
           {
-            id: startNodeId,
+            id: startId,
             type: 'start',
-            position: { x: 300, y: 100 },
+            position: { x: 300, y: 50 },
             data: { label: 'Start' }
           },
           {
-            id: greetingNodeId,
+            id: greetingId,
             type: 'message',
-            position: { x: 300, y: 300 },
-            data: { text: botData.welcomeMessage || 'Hi there! Welcome to Rivr. How can I help you today?' }
+            position: { x: 300, y: 200 },
+            data: { text: botData.welcomeMessage || 'Hi! Welcome to our workspace. How can I help you today?' }
           },
           {
-            id: classifierNodeId,
+            id: classifierId,
             type: 'ai_classifier',
-            position: { x: 300, y: 550 },
+            position: { x: 300, y: 400 },
             data: { 
-              text: 'Categorize your request',
+              text: 'What brings you here today?',
               intents: [
-                { id: 'intent_support', label: 'Support', description: 'Technical help or product questions' },
-                { id: 'intent_sales', label: 'Sales', description: 'Pricing or demo requests' }
+                { id: 'support', label: 'Support', description: 'Technical issues, product questions, or documentation' },
+                { id: 'sales', label: 'Sales', description: 'Pricing, demos, or partnership requests' }
               ]
             }
+          },
+          {
+            id: supportAiId,
+            type: 'ai_step',
+            position: { x: 50, y: 650 },
+            data: { prompt: 'Help the user with their support query using the knowledge base.' }
+          },
+          {
+            id: salesIdId,
+            type: 'identity_form',
+            position: { x: 550, y: 650 },
+            data: { prompt: 'I would love to help you with that! Could you please share your name and email first?' }
+          },
+          {
+            id: handoffId,
+            type: 'handoff',
+            position: { x: 300, y: 950 },
+            data: { text: 'I am connecting you to one of our team members now.' }
           }
         ];
 
         const starterEdges = [
-          {
-            id: `e_${startNodeId}_${greetingNodeId}`,
-            source: startNodeId,
-            target: greetingNodeId,
-            sourceHandle: 'next',
-            type: 'smoothstep',
-            animated: true,
-            markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
-            style: { strokeWidth: 2, stroke: '#3b82f6' }
-          },
-          {
-            id: `e_${greetingNodeId}_${classifierNodeId}`,
-            source: greetingNodeId,
-            target: classifierNodeId,
-            sourceHandle: 'next',
-            type: 'smoothstep',
-            animated: true,
-            markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
-            style: { strokeWidth: 2, stroke: '#3b82f6' }
-          }
+          { id: 'e1', source: startId, target: greetingId, sourceHandle: 'next', type: 'smoothstep', animated: true },
+          { id: 'e2', source: greetingId, target: classifierId, sourceHandle: 'next', type: 'smoothstep', animated: true },
+          { id: 'e3', source: classifierId, target: supportAiId, sourceHandle: 'intent:support', type: 'smoothstep', animated: true },
+          { id: 'e4', source: classifierId, target: salesIdId, sourceHandle: 'intent:sales', type: 'smoothstep', animated: true },
+          { id: 'e5', source: classifierId, target: handoffId, sourceHandle: 'fallback', type: 'smoothstep', animated: true },
+          { id: 'e6', source: supportAiId, target: handoffId, sourceHandle: 'unresolved', type: 'smoothstep', animated: true },
+          { id: 'e7', source: salesIdId, target: handoffId, sourceHandle: 'next', type: 'smoothstep', animated: true }
         ];
 
         finalNodes = starterNodes;
@@ -569,14 +578,14 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
 
               <ScrollArea className="flex-1">
                 <div className="p-6 space-y-8 pb-32">
-                {(selectedNode.type === 'message' || selectedNode.type === 'capture_input' || selectedNode.type === 'identity_form') && (
+                {(selectedNode.type === 'message' || selectedNode.type === 'capture_input' || selectedNode.type === 'identity_form' || selectedNode.type === 'handoff') && (
                     <div className="space-y-4">
                     <Label className="text-xs font-bold uppercase">
-                        {selectedNode.type === 'message' ? 'Bot Message' : 'Prompt'}
+                        {selectedNode.type === 'message' || selectedNode.type === 'handoff' ? 'Bot Message' : 'Prompt'}
                     </Label>
                     <Textarea 
                         value={selectedNode.data.text || selectedNode.data.prompt || ''} 
-                        onChange={(e) => updateNodeData(selectedNode.id, selectedNode.type === 'message' ? { text: e.target.value } : { prompt: e.target.value })}
+                        onChange={(e) => updateNodeData(selectedNode.id, (selectedNode.type === 'message' || selectedNode.type === 'handoff') ? { text: e.target.value } : { prompt: e.target.value })}
                         placeholder={selectedNode.type === 'message' ? "Bot: Hi there!" : "How can I help?"}
                         rows={6}
                         className="bg-muted/30 border-2 font-medium"
