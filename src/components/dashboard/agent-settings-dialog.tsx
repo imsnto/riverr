@@ -48,7 +48,8 @@ import {
   Settings, 
   Plug,
   BookOpen,
-  Eye
+  Eye,
+  MessageCircle
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -344,20 +345,6 @@ export default function AgentSettingsDialog({
 
             {/* Content Area */}
             <div className="flex-1 flex flex-col min-w-0 relative">
-                {/* Global Preview Button */}
-                <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-                    <Button 
-                        type="button" 
-                        variant={isPreviewOpen ? "secondary" : "outline"} 
-                        size="sm" 
-                        onClick={() => setIsPreviewOpen(!isPreviewOpen)}
-                        className="rounded-full bg-white/5 border-white/10 h-9 px-4 text-xs font-bold gap-2"
-                    >
-                        <Eye className="h-3.5 w-3.5" />
-                        {isPreviewOpen ? "Hide Preview" : "Preview Agent"}
-                    </Button>
-                </div>
-
                 <ScrollArea className="flex-1">
                     <div className="p-8 max-w-full mx-auto space-y-10">
                         {activeTab === 'general' && (
@@ -642,9 +629,26 @@ export default function AgentSettingsDialog({
                     </div>
                 </ScrollArea>
 
-                <div className="p-4 border-t border-white/10 bg-[#090c10] shrink-0 flex justify-end items-center gap-3">
-                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-white">Cancel</Button>
-                    <Button type="submit" className="rounded-xl px-8 shadow-lg shadow-primary/20">Save Changes</Button>
+                <div className="p-4 border-t border-white/10 bg-[#090c10] shrink-0 flex justify-between items-center gap-3">
+                    <div className="flex-1">
+                        {/* Interactive Launcher Preview */}
+                        <button
+                            type="button"
+                            onClick={() => setIsPreviewOpen(!isPreviewOpen)}
+                            className="h-12 w-12 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-110 active:scale-95"
+                            style={{ 
+                                backgroundColor: watchedValues.chatbotIconsColor || style.chatbotIconsColor,
+                                color: watchedValues.chatbotIconsTextColor || style.chatbotIconsTextColor
+                            }}
+                            title="Preview Chatbot"
+                        >
+                            <MessageCircle className="h-6 w-6" />
+                        </button>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-white">Cancel</Button>
+                        <Button type="submit" className="rounded-xl px-8 shadow-lg shadow-primary/20">Save Changes</Button>
+                    </div>
                 </div>
 
                 <ChatbotSimulator 
