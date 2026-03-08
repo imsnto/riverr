@@ -81,9 +81,9 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
       const text = node.data.text;
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: text || '', type: 'automation', buttons }]);
     } else if (node.type === 'ai_classifier') {
-        const intents = node.data.intents || [];
-        const text = node.data.text || node.data.prompt || "How can I help you today?";
-        setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text, type: 'automation', buttons: intents }]);
+        // AI Classifier is "Silent" - it just waits for user input to route the conversation
+        // We do NOT send a message or buttons here.
+        return; 
     } else if (node.type === 'capture_input') {
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt, type: 'automation' }]);
     } else if (node.type === 'identity_form') {
@@ -222,15 +222,6 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
         {/* Body */}
         <ScrollArea className="flex-1" ref={scrollRef}>
           <div className="p-6 space-y-6">
-            <div className="flex items-end gap-2">
-                <div 
-                    className="p-3.5 rounded-2xl rounded-bl-none text-sm shadow-sm max-w-[85%] whitespace-pre-wrap"
-                    style={{ backgroundColor: style.agentMessageBackgroundColor, color: style.agentMessageTextColor }}
-                >
-                    {botData.welcomeMessage || 'Hi there! How can we help you today?'}
-                </div>
-            </div>
-
             {messages.map((m) => (
               <div key={m.id} className={cn("flex flex-col gap-2", m.role === 'user' ? "items-end" : "items-start")}>
                 {m.role === 'system' ? (

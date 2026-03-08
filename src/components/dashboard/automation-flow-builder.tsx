@@ -328,7 +328,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
       data: type === 'message' ? { text: 'Bot: Hi there!' } :
             type === 'capture_input' ? { prompt: 'What is your email?', variableName: 'email', inputType: 'email', saveToProfile: true } :
             type === 'identity_form' ? { prompt: 'Before we start, could we get your details?', variableName: 'identity' } :
-            type === 'ai_classifier' ? { text: 'Classify response', intents: [{ id: `i_${Date.now()}`, label: 'Support', description: 'Help needed' }] } :
+            type === 'ai_classifier' ? { text: '', intents: [{ id: `i_${Date.now()}`, label: 'Support', description: 'Help needed' }] } :
             type === 'quick_reply' ? { text: '', buttons: [{ id: `b_${Date.now()}`, label: 'Pricing' }] } :
             type === 'condition' ? { conditionField: 'email', operator: 'exists' } :
             type === 'handoff' ? { text: 'Connecting you to an agent...', teamId: 'support', priority: 'medium' } :
@@ -420,7 +420,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             type: 'ai_classifier',
             position: { x: 300, y: 400 },
             data: { 
-              text: 'What brings you here today?',
+              text: '', // Classifier is silent logic, it waits for the reply to the message above
               intents: [
                 { id: 'support', label: 'Support', description: 'Technical issues, product questions, or documentation' },
                 { id: 'sales', label: 'Sales', description: 'Pricing, demos, or partnership requests' }
@@ -596,13 +596,14 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
                 {selectedNode.type === 'ai_classifier' && (
                     <div className="space-y-6">
                         <div className="space-y-4">
-                            <Label className="text-xs font-bold uppercase">Intro Text</Label>
+                            <Label className="text-xs font-bold uppercase">Intro Text (Optional)</Label>
                             <Input 
                                 value={selectedNode.data.text || ''} 
                                 onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                                placeholder="How can I help you today?"
+                                placeholder="Leave empty for silent background routing"
                                 className="bg-muted/30 border-2"
                             />
+                            <p className="text-[10px] text-muted-foreground">If left empty, the bot will silently wait for the visitor to reply to the previous message before routing.</p>
                         </div>
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
