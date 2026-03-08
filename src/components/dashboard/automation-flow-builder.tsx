@@ -392,15 +392,64 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
       let finalNodes = initialFlow?.nodes ? [...initialFlow.nodes] : [];
       let finalEdges = initialFlow?.edges ? [...initialFlow.edges] : [];
 
-      // Logic: If the flow is empty or has no start node, ensure we have one
-      if (finalNodes.length === 0 || !finalNodes.some(n => n.type === 'start')) {
-        const startNode = {
-          id: 'start',
-          type: 'start',
-          position: { x: 250, y: 100 },
-          data: { label: 'Start' }
-        };
-        finalNodes = [startNode, ...finalNodes];
+      // Logic: If the flow is empty, initialize with a functional standard starter template
+      if (finalNodes.length === 0) {
+        const startNodeId = 'start';
+        const greetingNodeId = 'greeting_msg';
+        const classifierNodeId = 'classifier';
+
+        const starterNodes = [
+          {
+            id: startNodeId,
+            type: 'start',
+            position: { x: 300, y: 100 },
+            data: { label: 'Start' }
+          },
+          {
+            id: greetingNodeId,
+            type: 'message',
+            position: { x: 300, y: 300 },
+            data: { text: botData.welcomeMessage || 'Hi there! Welcome to Rivr. How can I help you today?' }
+          },
+          {
+            id: classifierNodeId,
+            type: 'ai_classifier',
+            position: { x: 300, y: 550 },
+            data: { 
+              text: 'Categorize your request',
+              intents: [
+                { id: 'intent_support', label: 'Support', description: 'Technical help or product questions' },
+                { id: 'intent_sales', label: 'Sales', description: 'Pricing or demo requests' }
+              ]
+            }
+          }
+        ];
+
+        const starterEdges = [
+          {
+            id: `e_${startNodeId}_${greetingNodeId}`,
+            source: startNodeId,
+            target: greetingNodeId,
+            sourceHandle: 'next',
+            type: 'smoothstep',
+            animated: true,
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
+            style: { strokeWidth: 2, stroke: '#3b82f6' }
+          },
+          {
+            id: `e_${greetingNodeId}_${classifierNodeId}`,
+            source: greetingNodeId,
+            target: classifierNodeId,
+            sourceHandle: 'next',
+            type: 'smoothstep',
+            animated: true,
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
+            style: { strokeWidth: 2, stroke: '#3b82f6' }
+          }
+        ];
+
+        finalNodes = starterNodes;
+        finalEdges = starterEdges;
       }
 
       setNodes(finalNodes.map(n => ({ 
@@ -418,7 +467,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
     if (!isOpen) {
       initializedRef.current = false;
     }
-  }, [isOpen, initialFlow, setNodes, setEdges, fitView]);
+  }, [isOpen, initialFlow, setNodes, setEdges, fitView, botData.welcomeMessage]);
 
   const onConnect = useCallback((params: Connection) => {
     setEdges((eds) => addEdge({ 
@@ -520,16 +569,75 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
 
               <ScrollArea className="flex-1">
                 <div className="p-6 space-y-8 pb-32">
-                {selectedNode.type === 'message' && (
+                {(selectedNode.type === 'message' || selectedNode.type === 'capture_input' || selectedNode.type === 'identity_form') && (
                     <div className="space-y-4">
-                    <Label className="text-xs font-bold uppercase">Bot Message</Label>
+                    <Label className="text-xs font-bold uppercase">
+                        {selectedNode.type === 'message' ? 'Bot Message' : 'Prompt'}
+                    </Label>
                     <Textarea 
-                        value={selectedNode.data.text || ''} 
-                        onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
-                        placeholder="Bot: Hi there!"
-                        rows={10}
+                        value={selectedNode.data.text || selectedNode.data.prompt || ''} 
+                        onChange={(e) => updateNodeData(selectedNode.id, selectedNode.type === 'message' ? { text: e.target.value } : { prompt: e.target.value })}
+                        placeholder={selectedNode.type === 'message' ? "Bot: Hi there!" : "How can I help?"}
+                        rows={6}
                         className="bg-muted/30 border-2 font-medium"
                     />
+                    </div>
+                )}
+
+                {selectedNode.type === 'ai_classifier' && (
+                    <div className="space-y-6">
+                        <div className="space-y-4">
+                            <Label className="text-xs font-bold uppercase">Intro Text</Label>
+                            <Input 
+                                value={selectedNode.data.text || ''} 
+                                onChange={(e) => updateNodeData(selectedNode.id, { text: e.target.value })}
+                                placeholder="How can I help you today?"
+                                className="bg-muted/30 border-2"
+                            />
+                        </div>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-bold uppercase">Intent Paths</Label>
+                                <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => {
+                                    const newIntents = [...(selectedNode.data.intents || []), { id: `i_${Date.now()}`, label: 'New Intent', description: '' }];
+                                    updateNodeData(selectedNode.id, { intents: newIntents });
+                                }}>
+                                    <Plus className="h-3 w-3 mr-1" /> Add Path
+                                </Button>
+                            </div>
+                            <div className="space-y-3">
+                                {(selectedNode.data.intents || []).map((intent: any, idx: number) => (
+                                    <div key={intent.id} className="p-3 rounded-lg border bg-muted/20 space-y-2 relative group/intent">
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 absolute -top-2 -right-2 opacity-0 group-hover/intent:opacity-100 transition-opacity" onClick={() => {
+                                            const newIntents = selectedNode.data.intents.filter((_: any, i: number) => i !== idx);
+                                            updateNodeData(selectedNode.id, { intents: newIntents });
+                                        }}>
+                                            <X className="h-3 w-3" />
+                                        </Button>
+                                        <Input 
+                                            value={intent.label} 
+                                            onChange={(e) => {
+                                                const newIntents = [...selectedNode.data.intents];
+                                                newIntents[idx].label = e.target.value;
+                                                updateNodeData(selectedNode.id, { intents: newIntents });
+                                            }}
+                                            placeholder="Label (e.g. Sales)"
+                                            className="h-8 text-xs font-bold"
+                                        />
+                                        <Textarea 
+                                            value={intent.description} 
+                                            onChange={(e) => {
+                                                const newIntents = [...selectedNode.data.intents];
+                                                newIntents[idx].description = e.target.value;
+                                                updateNodeData(selectedNode.id, { intents: newIntents });
+                                            }}
+                                            placeholder="Description for AI..."
+                                            className="text-[10px] h-12 min-h-0 bg-transparent"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 )}
                 </div>
