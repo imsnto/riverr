@@ -105,6 +105,9 @@ const CustomNodeComponent = ({ type, data, selected, id }: NodeProps) => {
   const edges = getEdges();
   const nodes = getNodes();
   const meta = NODE_TYPES_META[type as AutomationNodeType];
+  
+  if (!meta) return null;
+  
   const Icon = meta.icon;
 
   const isHandleConnected = (handleId: string) => 
@@ -386,21 +389,36 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
 
   useEffect(() => {
     if (isOpen && !initializedRef.current) {
-      if (!initialFlow.nodes || initialFlow.nodes.length === 0) {
-        setNodes(initialFlow.nodes || []);
-        setEdges(initialFlow.edges || []);
-      } else {
-        setNodes(initialFlow.nodes.map(n => ({ ...n, id: n.id, data: { ...n.data }, position: n.position || { x: 0, y: 0 } })));
-        setEdges(initialFlow.edges || []);
+      let finalNodes = initialFlow?.nodes ? [...initialFlow.nodes] : [];
+      let finalEdges = initialFlow?.edges ? [...initialFlow.edges] : [];
+
+      // Logic: If the flow is empty or has no start node, ensure we have one
+      if (finalNodes.length === 0 || !finalNodes.some(n => n.type === 'start')) {
+        const startNode = {
+          id: 'start',
+          type: 'start',
+          position: { x: 250, y: 100 },
+          data: { label: 'Start' }
+        };
+        finalNodes = [startNode, ...finalNodes];
       }
+
+      setNodes(finalNodes.map(n => ({ 
+        ...n, 
+        id: n.id, 
+        data: { ...n.data }, 
+        position: n.position || { x: 0, y: 0 } 
+      })));
+      setEdges(finalEdges);
+      
       initializedRef.current = true;
-      setTimeout(() => fitView({ padding: 0.15, duration: 400 }), 100);
+      setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 150);
     }
     
     if (!isOpen) {
       initializedRef.current = false;
     }
-  }, [isOpen, fitView, initialFlow, setNodes, setEdges]);
+  }, [isOpen, initialFlow, setNodes, setEdges, fitView]);
 
   const onConnect = useCallback((params: Connection) => {
     setEdges((eds) => addEdge({ 
@@ -433,7 +451,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[100vw] w-screen h-screen p-0 flex flex-col overflow-hidden rounded-none border-none">
         <header className="flex items-center justify-between p-3 border-b bg-background shrink-0 z-[200] shadow-sm">
-          <DialogHeader className="flex flex-row items-center gap-4 space-y-0">
+          <div className="flex flex-row items-center gap-4 space-y-0 pl-2">
             <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
               <Navigation className="h-5 w-5 text-primary" />
             </div>
@@ -441,9 +459,9 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
               <DialogTitle className="text-sm font-bold">Automation Flow</DialogTitle>
               <DialogDescription className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Visual Logic Map</DialogDescription>
             </div>
-          </DialogHeader>
+          </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 pr-2">
             <Button 
                 type="button" 
                 variant={isPreviewOpen ? "secondary" : "outline"} 
@@ -487,11 +505,11 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             <aside className="w-[420px] bg-background border-l flex flex-col shadow-2xl animate-in slide-in-from-right duration-300">
               <div className="p-4 border-b flex items-center justify-between bg-muted/20 shrink-0">
                 <div className="flex items-center gap-3">
-                    <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center text-white", NODE_TYPES_META[selectedNode!.type as AutomationNodeType].color)}>
-                    {React.createElement(NODE_TYPES_META[selectedNode!.type as AutomationNodeType].icon, { className: 'h-4 w-4' })}
+                    <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center text-white", (NODE_TYPES_META[selectedNode!.type as AutomationNodeType] || NODE_TYPES_META.start).color)}>
+                    {React.createElement((NODE_TYPES_META[selectedNode!.type as AutomationNodeType] || NODE_TYPES_META.start).icon, { className: 'h-4 w-4' })}
                     </div>
                     <div>
-                    <h3 className="text-xs font-bold uppercase tracking-widest">{NODE_TYPES_META[selectedNode!.type as AutomationNodeType].label}</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-widest">{(NODE_TYPES_META[selectedNode!.type as AutomationNodeType] || NODE_TYPES_META.start).label}</h3>
                     <p className="text-[10px] text-muted-foreground">ID: {selectedNode!.id.substring(0, 8)}</p>
                     </div>
                 </div>
@@ -580,7 +598,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
                                         <CommandEmpty>No steps found.</CommandEmpty>
                                         <CommandGroup heading="Nodes on Canvas">
                                             {nodes.filter(n => n.id !== nodePickerInfo?.sourceId).map(n => {
-                                                const m = NODE_TYPES_META[n.type as AutomationNodeType];
+                                                const m = NODE_TYPES_META[n.type as AutomationNodeType] || NODE_TYPES_META.start;
                                                 return (
                                                     <CommandItem key={n.id} onSelect={() => onPickExisting(n.id)} className="gap-4 p-3 cursor-pointer">
                                                         <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center text-white shrink-0", m.color)}>{React.createElement(m.icon, { className: 'h-4 w-4' })}</div>
