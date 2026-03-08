@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { updateUser } from '@/lib/db';
 import { getInitials } from '@/lib/utils';
+import { Key, Copy } from 'lucide-react';
 
 export default function ProfilePage() {
     const { appUser, setAppUser, firebaseUser } = useAuth();
@@ -61,50 +62,87 @@ export default function ProfilePage() {
         }
     }
 
+    const handleCopyToken = async () => {
+        if (firebaseUser) {
+            try {
+                const token = await firebaseUser.getIdToken(true); // force refresh
+                await navigator.clipboard.writeText(token);
+                toast({
+                    title: 'Token Copied',
+                    description: 'Your Firebase ID token has been copied to the clipboard.',
+                });
+            } catch (err) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Copy Failed',
+                    description: 'Could not retrieve or copy the token.',
+                });
+            }
+        }
+    }
+
 
     return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
              <Button variant="ghost" onClick={() => router.push('/')} className="absolute top-4 left-4">
                 &larr; Back to Dashboard
             </Button>
-            <Card className="w-full max-w-md">
-                <CardHeader>
-                    <CardTitle>Your Profile</CardTitle>
-                    <CardDescription>Manage your account settings and profile information.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="flex flex-col items-center space-y-4">
-                        <Avatar className="h-24 w-24">
-                            <AvatarImage src={avatar} alt={name} />
-                            <AvatarFallback>{getInitials(name)}</AvatarFallback>
-                        </Avatar>
-                        <input 
-                            type="file" 
-                            accept="image/*" 
-                            ref={fileInputRef} 
-                            onChange={handleAvatarChange} 
-                            className="hidden" 
-                        />
-                        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                            Change Picture
+            <div className="w-full max-w-md space-y-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Your Profile</CardTitle>
+                        <CardDescription>Manage your account settings and profile information.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="flex flex-col items-center space-y-4">
+                            <Avatar className="h-24 w-24">
+                                <AvatarImage src={avatar} alt={name} />
+                                <AvatarFallback>{getInitials(name)}</AvatarFallback>
+                            </Avatar>
+                            <input 
+                                type="file" 
+                                accept="image/*" 
+                                ref={fileInputRef} 
+                                onChange={handleAvatarChange} 
+                                className="hidden" 
+                            />
+                            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                Change Picture
+                            </Button>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Name</Label>
+                            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input id="email" type="email" value={appUser.email} disabled />
+                            <p className="text-xs text-muted-foreground">You cannot change your email address.</p>
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                        <Button onClick={handleSaveChanges} className="w-full">Save Changes</Button>
+                    </CardFooter>
+                </Card>
+
+                <Card className="border-primary/20 bg-primary/5">
+                    <CardHeader>
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                            <Key className="h-4 w-4" />
+                            Developer Tools
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                            Access your authentication token for API testing.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button variant="outline" size="sm" className="w-full gap-2" onClick={handleCopyToken}>
+                            <Copy className="h-3.5 w-3.5" />
+                            Copy Auth Token
                         </Button>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="name">Name</Label>
-                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input id="email" type="email" value={appUser.email} disabled />
-                        <p className="text-xs text-muted-foreground">You cannot change your email address.</p>
-                    </div>
-                </CardContent>
-                <CardFooter>
-                    <Button onClick={handleSaveChanges} className="w-full">Save Changes</Button>
-                </CardFooter>
-            </Card>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }
-
-    
