@@ -654,14 +654,9 @@ export default function AgentSettingsDialog({
                     </div>
                 </ScrollArea>
 
-                <div className="p-6 border-t border-white/10 bg-[#090c10] shrink-0 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="border-white/5 bg-white/5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">Draft saved locally</Badge>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-white">Cancel</Button>
-                        <Button type="submit" className="rounded-xl px-8 shadow-lg shadow-primary/20">Save Changes</Button>
-                    </div>
+                <div className="p-4 border-t border-white/10 bg-[#090c10] shrink-0 flex justify-end items-center gap-3">
+                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-white">Cancel</Button>
+                    <Button type="submit" className="rounded-xl px-8 shadow-lg shadow-primary/20">Save Changes</Button>
                 </div>
             </div>
           </form>
