@@ -64,7 +64,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AutomationFlowBuilder from './automation-flow-builder';
 import { Separator } from '../ui/separator';
 import Link from 'next/link';
-import ChatbotSimulator from './chatbot-preview-panel';
+import ChatbotSimulator from './chatbot-simulator';
 
 function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
     const [open, setOpen] = useState(false);

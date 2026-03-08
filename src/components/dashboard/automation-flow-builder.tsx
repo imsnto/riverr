@@ -85,7 +85,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Switch } from '../ui/switch';
 import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import ChatbotSimulator from './chatbot-preview-panel';
+import ChatbotSimulator from './chatbot-simulator';
 
 const NODE_TYPES_META: Record<AutomationNodeType, { label: string; icon: any; color: string; description: string; category: 'conversation' | 'ai' | 'logic' | 'human' }> = {
   start: { label: 'Start', icon: PlayCircle, color: 'bg-emerald-500', description: 'Triggered when a new chat begins.', category: 'conversation' },
