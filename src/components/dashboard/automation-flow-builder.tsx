@@ -387,7 +387,6 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
   useEffect(() => {
     if (isOpen && !initializedRef.current) {
       if (!initialFlow.nodes || initialFlow.nodes.length === 0) {
-        // ... (existing default flow logic remains same)
         setNodes(initialFlow.nodes || []);
         setEdges(initialFlow.edges || []);
       } else {
@@ -434,7 +433,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[100vw] w-screen h-screen p-0 flex flex-col overflow-hidden rounded-none border-none">
         <header className="flex items-center justify-between p-3 border-b bg-background shrink-0 z-[200] shadow-sm">
-          <div className="flex items-center gap-4">
+          <DialogHeader className="flex flex-row items-center gap-4 space-y-0">
             <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
               <Navigation className="h-5 w-5 text-primary" />
             </div>
@@ -442,7 +441,7 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
               <DialogTitle className="text-sm font-bold">Automation Flow</DialogTitle>
               <DialogDescription className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Visual Logic Map</DialogDescription>
             </div>
-          </div>
+          </DialogHeader>
 
           <div className="flex items-center gap-3">
             <Button 
@@ -503,7 +502,6 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
 
               <ScrollArea className="flex-1">
                 <div className="p-6 space-y-8 pb-32">
-                {/* Node editors remain same... */}
                 {selectedNode.type === 'message' && (
                     <div className="space-y-4">
                     <Label className="text-xs font-bold uppercase">Bot Message</Label>
@@ -516,13 +514,11 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
                     />
                     </div>
                 )}
-                {/* ... other node types ... */}
                 </div>
               </ScrollArea>
             </aside>
           ) : null}
 
-          {/* Node Picker Side Drawer */}
           <Sheet open={!!nodePickerInfo} onOpenChange={(open) => !open && setNodePickerInfo(null)}>
             <SheetContent side="right" className="w-[440px] p-0 flex flex-col sm:max-w-[440px]">
                 <SheetHeader className="p-6 pb-4 border-b shrink-0 text-left">
@@ -602,7 +598,6 @@ function FlowBuilderInner({ isOpen, onOpenChange, flow: initialFlow, onSave, aiE
             </SheetContent>
           </Sheet>
 
-          {/* Unified Simulator Panel */}
           <ChatbotSimulator 
             isOpen={isPreviewOpen}
             onClose={() => setIsPreviewOpen(false)}

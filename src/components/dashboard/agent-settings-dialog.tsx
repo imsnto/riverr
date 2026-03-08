@@ -294,13 +294,19 @@ export default function AgentSettingsDialog({
             {/* Sidebar Navigation */}
             <aside className="w-64 border-r border-white/10 flex flex-col bg-[#090c10] shrink-0">
                 <div className="p-6 pb-4">
-                    <div className="flex items-center gap-3">
-                        <div className={cn("h-2 w-2 rounded-full", watchedValues.isEnabled ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-zinc-600")} />
-                        <div>
-                            <h3 className="font-bold text-white leading-tight">{watchedValues.name || 'New Agent'}</h3>
-                            <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground opacity-50">AI Agent</p>
+                    <DialogHeader className="text-left space-y-0">
+                        <div className="flex items-center gap-3">
+                            <div className={cn("h-2 w-2 rounded-full", watchedValues.isEnabled ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-zinc-600")} />
+                            <div>
+                                <DialogTitle className="text-base font-bold text-white leading-tight">
+                                    {watchedValues.name || 'New Agent'}
+                                </DialogTitle>
+                                <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-muted-foreground opacity-50">
+                                    AI Agent Configuration
+                                </DialogDescription>
+                            </div>
                         </div>
-                    </div>
+                    </DialogHeader>
                 </div>
 
                 <nav className="flex-1 p-2 space-y-1">
