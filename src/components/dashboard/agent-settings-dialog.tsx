@@ -336,9 +336,9 @@ export default function AgentSettingsDialog({
             {/* Content Area */}
             <div className="flex-1 flex flex-col min-w-0">
                 <ScrollArea className="flex-1">
-                    <div className="p-8 max-w-3xl mx-auto space-y-10">
+                    <div className="p-8 max-w-full mx-auto space-y-10">
                         {activeTab === 'general' && (
-                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">General</h2>
                                     <p className="text-muted-foreground text-sm">Identity and access settings for your agent.</p>
@@ -379,7 +379,7 @@ export default function AgentSettingsDialog({
                         )}
 
                         {activeTab === 'workflow' && (
-                            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="max-w-3xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">Workflow</h2>
                                     <p className="text-muted-foreground text-sm">Configure how your agent greets and routes visitors.</p>
@@ -469,7 +469,7 @@ export default function AgentSettingsDialog({
                         )}
 
                         {activeTab === 'knowledge' && (
-                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">Knowledge</h2>
                                     <p className="text-muted-foreground text-sm">Select libraries this agent uses to find answers.</p>
@@ -516,8 +516,8 @@ export default function AgentSettingsDialog({
 
                         {activeTab === 'branding' && (
                             <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
-                                    <div className="space-y-8">
+                                <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-12 items-start">
+                                    <div className="space-y-10">
                                         <div>
                                             <h2 className="text-2xl font-bold text-white mb-1">Branding</h2>
                                             <p className="text-muted-foreground text-sm">Customize your agent's look and feel.</p>
@@ -547,74 +547,76 @@ export default function AgentSettingsDialog({
                                             )}
                                         />
 
-                                        <div className="space-y-4">
-                                            <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Colors</Label>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <FormField
-                                                    control={form.control}
-                                                    name="primaryColor"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-xs">Primary Action</FormLabel>
-                                                            <div className="flex items-center gap-2">
-                                                                <Input {...field} className="bg-muted/20 border-white/10 h-9 font-mono text-[10px]" />
-                                                                <input type="color" value={field.value} onChange={field.onChange} className="h-9 w-9 rounded-md border-none p-0 cursor-pointer" />
-                                                            </div>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <FormField
-                                                    control={form.control}
-                                                    name="backgroundColor"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-xs">Window Background</FormLabel>
-                                                            <div className="flex items-center gap-2">
-                                                                <Input {...field} className="bg-muted/20 border-white/10 h-9 font-mono text-[10px]" />
-                                                                <input type="color" value={field.value} onChange={field.onChange} className="h-9 w-9 rounded-md border-none p-0 cursor-pointer" />
-                                                            </div>
-                                                        </FormItem>
-                                                    )}
-                                                />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Theme Colors</Label>
+                                                <div className="space-y-4">
+                                                    <ColorField name="primaryColor" label="Primary Action" form={form} />
+                                                    <ColorField name="backgroundColor" label="Window Background" form={form} />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Header</Label>
+                                                <div className="space-y-4">
+                                                    <ColorField name="headerTextColor" label="Header Text" form={form} />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Messages</Label>
+                                                <div className="space-y-4">
+                                                    <ColorField name="agentMessageBackgroundColor" label="Agent Bubble" form={form} />
+                                                    <ColorField name="agentMessageTextColor" label="Agent Text" form={form} />
+                                                    <ColorField name="customerTextColor" label="Visitor Text" form={form} />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Interface</Label>
+                                                <div className="space-y-4">
+                                                    <ColorField name="chatbotIconsColor" label="Launcher Background" form={form} />
+                                                    <ColorField name="chatbotIconsTextColor" label="Launcher Icon" form={form} />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Real Branding Preview */}
-                                    <div className="sticky top-0 bg-[#161b22] border border-white/10 rounded-[2.5rem] h-[500px] w-full flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
-                                        <div className="p-5 border-b border-white/5 flex items-center justify-between">
+                                    <div className="sticky top-0 bg-[#161b22] border border-white/10 rounded-[2.5rem] h-[550px] w-full flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
+                                        <div className="p-5 border-b border-white/5 flex items-center justify-between" style={{ backgroundColor: watchedValues.backgroundColor }}>
                                             <div className="flex items-center gap-3">
                                                 <Avatar className="h-9 w-9 rounded-full border border-white/10">
                                                     <AvatarImage src={watchedValues.logoUrl} className="object-contain" />
                                                     <AvatarFallback className="bg-white/5"><BotIcon className="h-5 w-5 opacity-50" /></AvatarFallback>
                                                 </Avatar>
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-white">{watchedValues.name || 'Agent'}</span>
+                                                    <span className="text-sm font-bold" style={{ color: watchedValues.headerTextColor }}>{watchedValues.name || 'Agent'}</span>
                                                     <span className="text-[9px] uppercase font-black text-green-500 tracking-tighter">Online</span>
                                                 </div>
                                             </div>
-                                            <X className="h-4 w-4 text-white/30" />
+                                            <X className="h-4 w-4" style={{ color: watchedValues.headerTextColor, opacity: 0.3 }} />
                                         </div>
                                         <div className="flex-1 p-6 space-y-6" style={{ backgroundColor: watchedValues.backgroundColor }}>
                                             <div className="flex flex-col gap-1 items-start">
-                                                <div className="p-3.5 rounded-2xl rounded-bl-none text-sm text-white shadow-sm max-w-[85%]" style={{ backgroundColor: watchedValues.agentMessageBackgroundColor || '#374151' }}>
+                                                <div className="p-3.5 rounded-2xl rounded-bl-none text-sm shadow-sm max-w-[85%]" style={{ backgroundColor: watchedValues.agentMessageBackgroundColor, color: watchedValues.agentMessageTextColor }}>
                                                     {watchedValues.welcomeMessage}
                                                 </div>
-                                                <span className="text-[8px] uppercase font-black text-white/30 ml-1">Assistant</span>
+                                                <span className="text-[8px] uppercase font-black ml-1" style={{ color: watchedValues.agentMessageTextColor, opacity: 0.3 }}>Assistant</span>
                                             </div>
                                             <div className="flex flex-col gap-1 items-end">
-                                                <div className="p-3.5 rounded-2xl rounded-br-none text-sm text-white shadow-sm max-w-[85%]" style={{ backgroundColor: watchedValues.primaryColor }}>
+                                                <div className="p-3.5 rounded-2xl rounded-br-none text-sm shadow-sm max-w-[85%]" style={{ backgroundColor: watchedValues.primaryColor, color: watchedValues.customerTextColor }}>
                                                     I'd like some help!
                                                 </div>
-                                                <span className="text-[8px] uppercase font-black text-white/30 mr-1">You</span>
+                                                <span className="text-[8px] uppercase font-black mr-1" style={{ color: watchedValues.customerTextColor, opacity: 0.3 }}>You</span>
                                             </div>
                                         </div>
-                                        <div className="p-4 border-t border-white/5 bg-background/20 flex items-center gap-3">
+                                        <div className="p-4 border-t border-white/5 bg-black/20 flex items-center gap-3">
                                             <div className="flex-1 h-10 rounded-full border border-white/10 bg-white/5 px-4 flex items-center">
                                                 <span className="text-xs text-white/20 italic">Type a message...</span>
                                             </div>
-                                            <div className="h-10 w-10 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: watchedValues.primaryColor }}>
-                                                <Send className="h-4 w-4 text-white" />
+                                            <div className="h-10 w-10 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: watchedValues.chatbotIconsColor }}>
+                                                <Send className="h-4 w-4" style={{ color: watchedValues.chatbotIconsTextColor }} />
                                             </div>
                                         </div>
                                     </div>
@@ -623,7 +625,7 @@ export default function AgentSettingsDialog({
                         )}
 
                         {activeTab === 'installation' && (
-                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">Install</h2>
                                     <p className="text-muted-foreground text-sm">Add the chatbot to your website with a single line of code.</p>
@@ -679,4 +681,29 @@ export default function AgentSettingsDialog({
     />
     </>
   );
+}
+
+function ColorField({ name, label, form }: { name: string, label: string, form: any }) {
+    return (
+        <FormField
+            control={form.control}
+            name={name}
+            render={({ field }) => (
+                <FormItem className="space-y-1.5">
+                    <FormLabel className="text-[10px] font-bold text-muted-foreground/70">{label}</FormLabel>
+                    <div className="flex items-center gap-2">
+                        <Input {...field} className="bg-muted/20 border-white/10 h-9 font-mono text-[10px] uppercase" />
+                        <div className="relative h-9 w-9 shrink-0 rounded-md border border-white/10 overflow-hidden">
+                            <input 
+                                type="color" 
+                                value={field.value} 
+                                onChange={field.onChange} 
+                                className="absolute inset-[-5px] h-[calc(100%+10px)] w-[calc(100%+10px)] cursor-pointer" 
+                            />
+                        </div>
+                    </div>
+                </FormItem>
+            )}
+        />
+    );
 }
