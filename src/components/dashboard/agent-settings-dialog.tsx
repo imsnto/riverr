@@ -180,9 +180,6 @@ const agentSettingsSchema = z.object({
   logoUrl: z.string().url().optional().or(z.literal('')),
   agentIds: z.array(z.string()).min(1, 'Please select at least one agent.'),
   allowedHelpCenterIds: z.array(z.string()).optional(),
-  identityCaptureEnabled: z.boolean().default(true),
-  identityCaptureRequired: z.boolean().default(false),
-  identityCaptureMessage: z.string().optional(),
   handoffKeywords: z.string().optional(),
   quickReplies: z.string().optional(),
   flow: z.any().optional(),
@@ -230,9 +227,6 @@ export default function AgentSettingsDialog({
       logoUrl: '',
       agentIds: [],
       allowedHelpCenterIds: [],
-      identityCaptureEnabled: true,
-      identityCaptureRequired: false,
-      identityCaptureMessage: 'Before we start, could I get your name and email?',
       handoffKeywords: 'agent, human, help, speak to person',
       quickReplies: '',
       flow: { nodes: [], edges: [] },
@@ -259,9 +253,6 @@ export default function AgentSettingsDialog({
         logoUrl: agent.styleSettings?.logoUrl || '',
         agentIds: agent.agentIds || [],
         allowedHelpCenterIds: agent.allowedHelpCenterIds || [],
-        identityCaptureEnabled: agent.identityCapture?.enabled ?? true,
-        identityCaptureRequired: agent.identityCapture?.required ?? false,
-        identityCaptureMessage: agent.identityCapture?.captureMessage || 'Before we start, could I get your name and email?',
         handoffKeywords: agent.automations?.handoffKeywords?.join(', ') || 'agent, human, help, speak to person',
         quickReplies: agent.automations?.quickReplies?.join(', ') || '',
         flow: agent.flow || { nodes: [], edges: [] },
@@ -290,9 +281,8 @@ export default function AgentSettingsDialog({
         agentIds: values.agentIds,
         allowedHelpCenterIds: values.allowedHelpCenterIds || [],
         identityCapture: {
-            enabled: values.identityCaptureEnabled,
-            required: values.identityCaptureRequired,
-            captureMessage: values.identityCaptureMessage,
+            enabled: false, // Now handled via flow nodes
+            required: false,
         },
         automations: {
             handoffKeywords: values.handoffKeywords?.split(',').map(k => k.trim()).filter(Boolean) || [],
@@ -386,9 +376,8 @@ export default function AgentSettingsDialog({
                   />
                   
                   <Tabs defaultValue="workflow" className="w-full">
-                    <TabsList className="grid w-full grid-cols-5">
+                    <TabsList className="grid w-full grid-cols-4">
                       <TabsTrigger value="workflow">Workflow</TabsTrigger>
-                      <TabsTrigger value="identity">Identity</TabsTrigger>
                       <TabsTrigger value="knowledge">Knowledge</TabsTrigger>
                       <TabsTrigger value="branding">Branding</TabsTrigger>
                       <TabsTrigger value="installation">Install</TabsTrigger>
@@ -469,46 +458,6 @@ export default function AgentSettingsDialog({
                               )}
                           />
                       </div>
-                    </TabsContent>
-
-                    <TabsContent value="identity" className="pt-6 space-y-6">
-                       <FormField
-                          control={form.control}
-                          name="identityCaptureEnabled"
-                          render={({ field }) => (
-                              <FormItem className="flex items-center justify-between rounded-lg border p-3">
-                                  <div className="space-y-0.5">
-                                      <FormLabel>Lead Capture Automation</FormLabel>
-                                      <FormDescription>Ask for name and email from unknown visitors.</FormDescription>
-                                  </div>
-                                  <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                              </FormItem>
-                          )}
-                      />
-                       {watchedValues.identityCaptureEnabled && (
-                          <>
-                              <FormField
-                                  control={form.control}
-                                  name="identityCaptureMessage"
-                                  render={({ field }) => (
-                                      <FormItem>
-                                      <FormLabel>Capture Prompt</FormLabel>
-                                      <FormControl><Textarea placeholder="Before we start..." {...field} value={field.value || ''} /></FormControl>
-                                      </FormItem>
-                                  )}
-                              />
-                               <FormField
-                                  control={form.control}
-                                  name="identityCaptureRequired"
-                                  render={({ field }) => (
-                                      <FormItem className="flex items-center space-x-2">
-                                          <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                          <FormLabel className="text-sm">Require email before starting conversation</FormLabel>
-                                      </FormItem>
-                                  )}
-                              />
-                          </>
-                       )}
                     </TabsContent>
 
                     <TabsContent value="knowledge" className="pt-6">
