@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Bot as BotIcon, Edit, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -17,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Bot as BotData, User, HelpCenter, Conversation, Ticket, Hub } from '@/lib/data';
+import { Bot as BotData, User, HelpCenter, Conversation, Ticket, Hub, Space } from '@/lib/data';
 import AgentSettingsDialog from './agent-settings-dialog';
 import {
   AlertDialog,
@@ -43,6 +42,7 @@ interface InboxSettingsProps {
   tickets: Ticket[];
   conversations: Conversation[];
   activeHub: Hub | null;
+  activeSpace: Space | null;
 }
 
 export default function InboxSettings({
@@ -56,11 +56,27 @@ export default function InboxSettings({
   tickets,
   conversations,
   activeHub,
+  activeSpace,
 }: InboxSettingsProps) {
   const [selectedAgent, setSelectedAgent] = useState<BotData | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [agentToDelete, setAgentToDelete] = useState<BotData | null>(null);
   const { toast } = useToast();
+
+  const hubMembers = useMemo(() => {
+    if (!activeHub || !activeSpace) return [];
+    
+    // If the hub is private, only allow users who are members of that hub.
+    // If public, allow all members of the space.
+    let allowedUserIds: string[];
+    if (activeHub.isPrivate && activeHub.memberIds) {
+      allowedUserIds = activeHub.memberIds;
+    } else {
+      allowedUserIds = Object.keys(activeSpace.members || {});
+    }
+    
+    return allUsers.filter(u => allowedUserIds.includes(u.id));
+  }, [allUsers, activeHub, activeSpace]);
 
   const handleEditAgent = (bot: BotData) => {
     setSelectedAgent(bot);
@@ -227,7 +243,7 @@ export default function InboxSettings({
         bot={selectedAgent}
         onSave={handleSaveAgent}
         appUser={appUser}
-        allUsers={allUsers}
+        allUsers={hubMembers}
         helpCenters={helpCenters}
       />
       <AlertDialog open={!!agentToDelete} onOpenChange={() => setAgentToDelete(null)}>

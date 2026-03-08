@@ -195,6 +195,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
                 tickets={props.tickets}
                 conversations={props.conversations}
                 activeHub={props.activeHub}
+                activeSpace={activeSpace}
             />
         ) : null;
       case 'deal-automation':
