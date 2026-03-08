@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -30,7 +31,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import BrainSettings from './brain-settings';
 import PhoneSettings from './phone-settings';
-import { deleteToken, getToken } from "firebase/messaging";
+import { getToken } from "firebase/messaging";
 import { messaging } from '@/lib/firebase';
 import { ScrollArea } from '../ui/scroll-area';
 import TeamTimesheets from './team-timesheets';
@@ -94,28 +95,30 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
 
   const handleLogout = async () => {
     try {
+      // 1. Safely check for notification permissions before calling getToken
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && messaging) {
+        try {
+          const token = await getToken(messaging);
+          const userId = props?.appUser?.id;
 
-      const token = await getToken(messaging)
-      const userId = props?.appUser?.id;
-
-      if(token && userId){
-        const userTokensRef = doc(db, "fcmTokens", userId);
-
-      // 2. Remove ONLY this token from the array
-      await updateDoc(userTokensRef, {
-        tokens: arrayRemove(token)
-      });
+          if (token && userId) {
+            const userTokensRef = doc(db, "fcmTokens", userId);
+            // Remove the token from the user's list in Firestore
+            await updateDoc(userTokensRef, {
+              tokens: arrayRemove(token)
+            });
+          }
+        } catch (tokenErr) {
+          // Token cleanup failed, but we shouldn't block the logout
+          console.warn("FCM token cleanup skipped or failed during logout:", tokenErr);
+        }
       }
-      console.log(token)
-  
-      // 4. Perform standard sign out
-      await signOut();
-      
-      // 5. Redirect to login
-      window.location.replace('/login');
     } catch (error) {
-      console.error("Error during logout:", error);
-      // Still sign out even if worker cleanup fails
+      console.error("General error during logout cleanup:", error);
+    } finally {
+      // 2. ALWAYS sign out and redirect, regardless of messaging success
+      await signOut();
+      window.location.replace('/login');
     }
   };
 

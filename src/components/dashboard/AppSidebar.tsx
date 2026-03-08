@@ -1,3 +1,4 @@
+
 // src/components/dashboard/AppSidebar.tsx
 "use client";
 
@@ -233,35 +234,28 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
   const handleLogout = async () => {
     try {
-      let token = null;
-      
-      // Safeguard: Only attempt to retrieve token if notification permission is granted
-      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      // 1. Safely check for notification permissions before calling getToken
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && messaging) {
         try {
-          token = await getToken(messaging);
-        } catch (err) {
-          console.warn("FCM token retrieval skipped during logout (permission blocked or failed)");
+          const token = await getToken(messaging);
+          const userId = appUser?.id;
+
+          if (token && userId) {
+            const userTokensRef = doc(firestore, "fcmTokens", userId);
+            // Remove ONLY this token from the array
+            await updateDoc(userTokensRef, {
+              tokens: arrayRemove(token)
+            });
+          }
+        } catch (tokenErr) {
+          // Skip token cleanup if messaging fails, allowing the logout to continue
+          console.warn("FCM token retrieval or update skipped during logout:", tokenErr);
         }
       }
-
-      const userId = appUser?.id;
-
-      if (token && userId) {
-        const userTokensRef = doc(firestore, "fcmTokens", userId);
-        // Remove ONLY this token from the array
-        await updateDoc(userTokensRef, {
-          tokens: arrayRemove(token)
-        });
-      }
-  
-      // Perform standard sign out
-      await signOut();
-      
-      // Redirect to login
-      window.location.replace('/login');
     } catch (error) {
-      console.error("Error during logout:", error);
-      // ensure we still redirect/cleanup local state if possible
+      console.error("General error during logout cleanup:", error);
+    } finally {
+      // 2. Perform standard sign out and redirect regardless of messaging status
       await signOut();
       window.location.replace('/login');
     }
