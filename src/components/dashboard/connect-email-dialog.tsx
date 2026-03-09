@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -9,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { Mail, Loader2, AlertCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface ConnectEmailDialogProps {
   isOpen: boolean;
