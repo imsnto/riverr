@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
@@ -59,7 +58,8 @@ import {
   Mail,
   Sparkles,
   User as UserIcon,
-  Forward
+  Forward,
+  Plus
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
