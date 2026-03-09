@@ -49,6 +49,22 @@ export class EmailService {
     return { authUrl, emailConfigId: emailConfigRef.id };
   }
 
+  async initiateAgentConnection(userId: string, providerName: EmailProviderName): Promise<{ authUrl: string; emailConfigId: string }> {
+    const provider = getEmailProvider(providerName);
+    const emailConfigRef = adminDB.collection("users").doc(userId).collection("emailConfigs").doc();
+    // Using 'agent' as state hint
+    const authUrl = provider.getAuthUrl('agent', emailConfigRef.id);
+    
+    await emailConfigRef.set({
+      id: emailConfigRef.id,
+      provider: providerName,
+      connected: false,
+      createdAt: new Date().toISOString(),
+    });
+
+    return { authUrl, emailConfigId: emailConfigRef.id };
+  }
+
   async completeConnection(spaceId: string, hubId: string, emailConfigId: string, code: string, userId: string): Promise<void> {
     const configRef = adminDB.doc(`spaces/${spaceId}/hubs/${hubId}/emailConfigs/${emailConfigId}`);
     const configSnap = await configRef.get();
@@ -57,23 +73,19 @@ export class EmailService {
     const configData = configSnap.data() as EmailConfig;
     const provider = getEmailProvider(configData.provider);
 
-    // 1. Exchange code
     const tokens = await provider.exchangeCodeForTokens(code);
     const emailAddress = await provider.getConnectedAddress(tokens);
 
-    // 2. Check uniqueness index
     const indexRef = adminDB.collection("emailIndex").doc(emailAddress);
     const indexSnap = await indexRef.get();
     if (indexSnap.exists) {
       const existing = indexSnap.data();
-      await configRef.delete(); // Cleanup pending
-      throw new Error(`This email address is already connected to hub ${existing?.hubId} in space ${existing?.spaceId}`);
+      await configRef.delete();
+      throw new Error(`This email address is already connected to another hub in space ${existing?.spaceId}`);
     }
 
-    // 3. Setup Watch
     const watchConfig = await provider.setupWatch(tokens, "");
 
-    // 4. Encrypt and save
     await configRef.update({
       emailAddress,
       connected: true,
@@ -86,10 +98,49 @@ export class EmailService {
       aiMode: "off"
     });
 
-    // 5. Write to index
     await indexRef.set({
+      type: 'hub',
       spaceId,
       hubId,
+      emailConfigId,
+      connectedAt: new Date().toISOString(),
+    });
+  }
+
+  async completeAgentEmailConnection(userId: string, emailConfigId: string, code: string): Promise<void> {
+    const configRef = adminDB.doc(`users/${userId}/emailConfigs/${emailConfigId}`);
+    const configSnap = await configRef.get();
+    if (!configSnap.exists) throw new Error("Pending email configuration not found");
+
+    const configData = configSnap.data() as EmailConfig;
+    const provider = getEmailProvider(configData.provider);
+
+    const tokens = await provider.exchangeCodeForTokens(code);
+    const emailAddress = await provider.getConnectedAddress(tokens);
+
+    const indexRef = adminDB.collection("emailIndex").doc(emailAddress);
+    const indexSnap = await indexRef.get();
+    if (indexSnap.exists) {
+      await configRef.delete();
+      throw new Error(`This address is already connected as a shared support inbox or another agent's personal email.`);
+    }
+
+    const watchConfig = await provider.setupWatch(tokens, "");
+
+    await configRef.update({
+      emailAddress,
+      connected: true,
+      accessToken: encrypt(tokens.accessToken),
+      refreshToken: encrypt(tokens.refreshToken),
+      tokenExpiry: tokens.tokenExpiry,
+      watchConfig,
+      connectedBy: userId,
+      connectedAt: new Date().toISOString(),
+    });
+
+    await indexRef.set({
+      type: 'agent',
+      userId,
       emailConfigId,
       connectedAt: new Date().toISOString(),
     });
@@ -99,44 +150,46 @@ export class EmailService {
     const provider = getEmailProvider(providerName);
     const { emailAddress } = await provider.parseWebhookPayload(payload);
 
-    // 1. Lookup address
     const indexSnap = await adminDB.collection("emailIndex").doc(emailAddress).get();
     if (!indexSnap.exists) return;
-    const { spaceId, hubId, emailConfigId } = indexSnap.data()!;
+    const indexData = indexSnap.data()!;
 
-    // 2. Load Config
-    const configRef = adminDB.doc(`spaces/${spaceId}/hubs/${hubId}/emailConfigs/${emailConfigId}`);
+    if (indexData.type === 'hub') {
+      await this.handleHubInboundEmail(indexData.spaceId, indexData.hubId, indexData.emailConfigId, provider, tokens);
+    } else if (indexData.type === 'agent') {
+      await this.handleAgentInboundEmail(indexData.userId, indexData.emailConfigId, provider);
+    }
+  }
+
+  private async handleAgentInboundEmail(userId: string, emailConfigId: string, provider: any) {
+    const configRef = adminDB.doc(`users/${userId}/emailConfigs/${emailConfigId}`);
     const configSnap = await configRef.get();
     if (!configSnap.exists) return;
     const configData = configSnap.data() as EmailConfig;
 
-    // 3. Tokens
-    const tokens = await this.getFreshTokens(configData);
-    
-    // 4. Fetch
+    const tokens = await this.getFreshTokens(configData, `users/${userId}/emailConfigs/${emailConfigId}`);
     const newEmails = await provider.fetchNewMessages(tokens, configData.watchConfig!);
 
-    // 5. Process Each
     for (const email of newEmails) {
       if (email.isAutoReply) continue;
 
-      // Deduplicate
       const existingMsgQuery = await adminDB.collection("chat_messages").where("providerMessageId", "==", email.providerMessageId).limit(1).get();
       if (!existingMsgQuery.empty) continue;
 
-      // Match or Create Conversation
-      const conversationId = await this.matchOrCreateConversation(spaceId, hubId, email, emailConfigId);
+      // Handle Sent Folder Sync
+      const isSentByAgent = email.fromAddress.toLowerCase() === configData.emailAddress.toLowerCase();
 
-      // Add Message
+      const conversationId = await this.matchOrCreateAgentConversation(userId, email, emailConfigId);
+
       const messageData: Omit<ChatMessage, "id"> = {
         conversationId,
-        authorId: "visitor", // Logic to map to Contact if needed
+        authorId: isSentByAgent ? userId : "visitor",
         type: "message",
         content: email.bodyText || "No message body",
         timestamp: email.receivedAt.toISOString(),
-        senderType: "visitor",
+        senderType: isSentByAgent ? "agent" : "visitor",
         channel: "email",
-        provider: providerName,
+        provider: provider.providerName,
         providerMessageId: email.providerMessageId,
         emailHeaders: email.headers,
         hasAttachments: email.hasAttachments,
@@ -144,24 +197,47 @@ export class EmailService {
       };
       await adminDB.collection("chat_messages").add(messageData);
 
-      // Update Conversation metadata
       await adminDB.collection("conversations").doc(conversationId).update({
         lastMessageAt: messageData.timestamp,
         lastMessage: email.bodyText.slice(0, 140),
         lastMessageAuthor: email.fromName || email.fromAddress,
         updatedAt: new Date().toISOString()
       });
-
-      // 6. Trigger AI Draft (Stubs for now)
-      if (configData.aiMode !== "off") {
-        // await triggerAiDraft(...)
-      }
     }
+  }
 
-    // 7. Update historyId
-    if (newEmails.length > 0) {
-        // provider.historyId logic...
-    }
+  private async matchOrCreateAgentConversation(userId: string, email: ParsedEmail, emailConfigId: string): Promise<string> {
+    const byThread = await adminDB.collection("conversations")
+      .where("ownerAgentId", "==", userId)
+      .where("channel", "==", "email")
+      .where("emailThreadId", "==", email.providerThreadId)
+      .limit(1)
+      .get();
+
+    if (!byThread.empty) return byThread.docs[0].id;
+
+    // Create New
+    const convoRef = await adminDB.collection("conversations").add({
+      hubId: 'personal', // placeholder for queries
+      spaceId: 'personal',
+      ownerType: 'user',
+      ownerAgentId: userId,
+      sharedWithTeam: false,
+      crmContactId: null,
+      channel: "email",
+      emailConfigId,
+      emailThreadId: email.providerThreadId,
+      emailSubject: email.subject,
+      emailFromAddress: email.fromAddress,
+      emailFromName: email.fromName,
+      status: "new",
+      lastMessage: email.bodyText.slice(0, 140),
+      lastMessageAt: email.receivedAt.toISOString(),
+      lastMessageAuthor: email.fromName || email.fromAddress,
+      updatedAt: new Date().toISOString()
+    });
+
+    return convoRef.id;
   }
 
   async sendReply(spaceId: string, hubId: string, conversationId: string, replyText: string, agentId: string): Promise<void> {
@@ -169,14 +245,20 @@ export class EmailService {
     const convo = convoSnap.data() as Conversation;
     if (!convo || convo.channel !== "email") throw new Error("Invalid email conversation");
 
-    const configRef = adminDB.doc(`spaces/${spaceId}/hubs/${hubId}/emailConfigs/${convo.emailConfigId!}`);
+    let configPath = '';
+    if (convo.ownerType === 'user') {
+      configPath = `users/${convo.ownerAgentId}/emailConfigs/${convo.emailConfigId!}`;
+    } else {
+      configPath = `spaces/${convo.spaceId}/hubs/${convo.hubId}/emailConfigs/${convo.emailConfigId!}`;
+    }
+
+    const configRef = adminDB.doc(configPath);
     const configSnap = await configRef.get();
     const configData = configSnap.data() as EmailConfig;
 
     const provider = getEmailProvider(configData.provider);
-    const tokens = await this.getFreshTokens(configData);
+    const tokens = await this.getFreshTokens(configData, configPath);
 
-    // Get most recent customer message for headers
     const lastCustomerMsg = await adminDB.collection("chat_messages")
       .where("conversationId", "==", conversationId)
       .where("senderType", "==", "visitor")
@@ -197,7 +279,6 @@ export class EmailService {
 
     const result = await provider.sendReply(tokens, reply);
 
-    // Write to Firestore
     await adminDB.collection("chat_messages").add({
       conversationId,
       authorId: agentId,
@@ -212,7 +293,7 @@ export class EmailService {
     });
   }
 
-  private async getFreshTokens(config: EmailConfig): Promise<EmailTokens> {
+  private async getFreshTokens(config: EmailConfig, path: string): Promise<EmailTokens> {
     const tokens: EmailTokens = {
       accessToken: decrypt(config.accessToken),
       refreshToken: decrypt(config.refreshToken),
@@ -223,48 +304,14 @@ export class EmailService {
       const provider = getEmailProvider(config.provider);
       const newTokens = await provider.refreshTokens(tokens.refreshToken);
       
-      const configRef = adminDB.doc(`spaces/${config.id}`); // This path might need mapping fix depending on where config ID comes from
-      // We actually need the full path from the config lookup
-      // Simplified here: update Firestore with new tokens
+      await adminDB.doc(path).update({
+        accessToken: encrypt(newTokens.accessToken),
+        refreshToken: encrypt(newTokens.refreshToken),
+        tokenExpiry: newTokens.tokenExpiry
+      });
       return newTokens;
     }
     return tokens;
-  }
-
-  private async matchOrCreateConversation(spaceId: string, hubId: string, email: ParsedEmail, emailConfigId: string): Promise<string> {
-    // Strategy 1: Provider Thread ID
-    const byThread = await adminDB.collection("conversations")
-      .where("hubId", "==", hubId)
-      .where("channel", "==", "email")
-      .where("emailThreadId", "==", email.providerThreadId)
-      .limit(1)
-      .get();
-
-    if (!byThread.empty) return byThread.docs[0].id;
-
-    // Strategy 2: Headers (Fallback for cross-service threads)
-    if (email.headers.inReplyTo) {
-        // Query by messageId...
-    }
-
-    // Strategy 3: Create New
-    const convoRef = await adminDB.collection("conversations").add({
-      spaceId,
-      hubId,
-      channel: "email",
-      emailConfigId,
-      emailThreadId: email.providerThreadId,
-      emailSubject: email.subject,
-      emailFromAddress: email.fromAddress,
-      emailFromName: email.fromName,
-      status: "new",
-      lastMessage: email.bodyText.slice(0, 140),
-      lastMessageAt: email.receivedAt.toISOString(),
-      lastMessageAuthor: email.fromName || email.fromAddress,
-      updatedAt: new Date().toISOString()
-    });
-
-    return convoRef.id;
   }
 }
 

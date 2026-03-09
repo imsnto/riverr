@@ -2,18 +2,20 @@
 // src/components/dashboard/inbox-conversation-list.tsx
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Conversation, Visitor, User } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { Search, MapPin, Bot, MessageSquare, Filter, Smartphone } from 'lucide-react';
+import { Search, MapPin, Bot, MessageSquare, Filter, Smartphone, User as UserIcon, Users } from 'lucide-react';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { getInitials } from '@/lib/utils';
 import { Badge } from '../ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
+import { updateUser } from '@/lib/db';
 
 interface InboxSidebarProps {
   conversations: Conversation[];
@@ -31,31 +33,50 @@ export default function InboxConversationList({
   appUser,
 }: InboxSidebarProps) {
   const [filter, setFilter] = useState<'me' | 'unassigned' | 'all'>('all');
+  const [inboxView, setInboxView] = useState<'team' | 'mine'>(appUser.preferences?.inboxView || 'team');
 
   const filteredConversations = useMemo(() => {
-    switch (filter) {
-      case 'me':
-        return conversations.filter(c => c.assigneeId === appUser.id);
-      case 'unassigned':
-        return conversations.filter(c => c.assigneeId === null);
-      case 'all':
-      default:
-        return conversations;
+    // 1. Filter by ownership
+    const viewBase = inboxView === 'mine' 
+      ? conversations.filter(c => c.ownerAgentId === appUser.id)
+      : conversations.filter(c => c.ownerType === 'hub');
+
+    // 2. Apply inbox sub-filters (Team view only)
+    if (inboxView === 'team') {
+      switch (filter) {
+        case 'me':
+          return viewBase.filter(c => c.assigneeId === appUser.id);
+        case 'unassigned':
+          return viewBase.filter(c => c.assigneeId === null);
+        case 'all':
+        default:
+          return viewBase;
+      }
     }
-  }, [conversations, filter, appUser.id]);
+    
+    return viewBase;
+  }, [conversations, filter, inboxView, appUser.id]);
 
   const counts = useMemo(() => ({
-    me: conversations.filter(c => c.assigneeId === appUser.id).length,
-    unassigned: conversations.filter(c => c.assigneeId === null).length,
-    all: conversations.length,
+    me: conversations.filter(c => c.ownerType === 'hub' && c.assigneeId === appUser.id).length,
+    unassigned: conversations.filter(c => c.ownerType === 'hub' && c.assigneeId === null).length,
+    all: conversations.filter(c => c.ownerType === 'hub').length,
+    mine: conversations.filter(c => c.ownerAgentId === appUser.id).length,
   }), [conversations, appUser.id]);
+
+  const handleViewChange = async (view: 'team' | 'mine') => {
+    setInboxView(view);
+    await updateUser(appUser.id, { preferences: { ...appUser.preferences, inboxView: view } });
+  };
 
   const conversationListContent = (
     <ScrollArea className="flex-1">
       {filteredConversations.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 p-8 text-center text-muted-foreground">
           <MessageSquare className="h-8 w-8 mb-2 opacity-20" />
-          <p className="text-sm italic">No conversations found</p>
+          <p className="text-sm italic">
+            {inboxView === 'mine' ? 'No personal conversations yet' : 'No team conversations found'}
+          </p>
         </div>
       ) : (
         filteredConversations.map(convo => {
@@ -94,9 +115,14 @@ export default function InboxConversationList({
                       isUnread ? 'font-bold' : ''
                     )}
                     >{displayName}</p>
-                    {convo.channel === 'sms' && (
-                      <Badge variant="outline" className="h-3 px-1 text-[8px] w-fit ml-1">SMS</Badge>
-                    )}
+                    <div className="flex gap-1 pl-1">
+                      {convo.channel === 'sms' && (
+                        <Badge variant="outline" className="h-3 px-1 text-[8px] w-fit">SMS</Badge>
+                      )}
+                      {convo.channel === 'email' && (
+                        <Badge variant="outline" className="h-3 px-1 text-[8px] w-fit">EMAIL</Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
@@ -139,20 +165,36 @@ export default function InboxConversationList({
 
   return (
     <div className="flex flex-col h-full border-r bg-card">
-      <div className="p-4 border-b shrink-0 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Inbox</h2>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Filter className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => setFilter('all')}>All ({counts.all})</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setFilter('me')}>Me ({counts.me})</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setFilter('unassigned')}>Unassigned ({counts.unassigned})</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div className="p-4 border-b shrink-0 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Inbox</h2>
+          {inboxView === 'team' && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Filter className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setFilter('all')}>All ({counts.all})</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setFilter('me')}>Me ({counts.me})</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setFilter('unassigned')}>Unassigned ({counts.unassigned})</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+
+        <Tabs value={inboxView} onValueChange={(v) => handleViewChange(v as 'team' | 'mine')}>
+          <TabsList className="grid w-full grid-cols-2 h-9">
+            <TabsTrigger value="team" className="text-xs gap-2">
+              <Users className="h-3.5 w-3.5" /> Team
+            </TabsTrigger>
+            <TabsTrigger value="mine" className="text-xs gap-2">
+              <UserIcon className="h-3.5 w-3.5" /> Mine
+              {counts.mine > 0 && <Badge variant="secondary" className="h-4 px-1 ml-auto text-[10px]">{counts.mine}</Badge>}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
       {conversationListContent}
     </div>

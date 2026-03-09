@@ -11,6 +11,9 @@ export interface User {
   onboardingComplete?: boolean;
   onboardingIntent?: string;
   notificationPrefs?: NotificationPrefs;
+  preferences?: {
+    inboxView?: 'team' | 'mine';
+  };
 }
 
 export interface NotificationPrefs {
@@ -115,6 +118,7 @@ export interface EmailConfig {
   aiGreeting?: string;
   connectedAt: string; // ISO
   connectedBy: string; // userId
+  lastSyncedAt?: string; // ISO
 }
 
 export interface Project {
@@ -518,6 +522,7 @@ export interface AutomationFlow {
 export interface Bot {
   id: string;
   hubId: string;
+  spaceId: string;
   name: string;
   isEnabled?: boolean;
   aiEnabled?: boolean;
@@ -575,6 +580,9 @@ export interface Bot {
       }> 
     };
   };
+  ownerType: 'hub' | 'user';
+  ownerId: string;
+  escalateToTeamInbox?: boolean;
 }
 
 export interface Visitor {
@@ -643,6 +651,10 @@ export interface Conversation {
   emailSubject?: string;
   emailFromAddress?: string;
   emailFromName?: string;
+  ownerType: 'hub' | 'user';
+  ownerAgentId: string | null;
+  sharedWithTeam: boolean;
+  crmContactId: string | null;
 }
 
 export interface ChatMessage {

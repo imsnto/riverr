@@ -787,6 +787,13 @@ export const deleteBot = async (botId: string) => {
   await deleteDoc(docRef);
 };
 
+export const getPersonalAgent = async (userId: string): Promise<Bot | null> => {
+  const q = query(collection(db, 'bots'), where('ownerType', '==', 'user'), where('ownerId', '==', userId), limit(1));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return { id: snap.docs[0].id, ...snap.docs[0].data() } as Bot;
+};
+
 // --- Push Notifications ---
 export const savePushToken = async (userId: string, token: string, userAgent: string) => {
   const tokenHash = btoa(token).substring(0, 20);
@@ -849,6 +856,25 @@ export const updateEmailConfig = async (spaceId: string, hubId: string, configId
 export const deleteEmailConfig = async (spaceId: string, hubId: string, configId: string) => {
   const docRef = doc(db, `spaces/${spaceId}/hubs/${hubId}/emailConfigs`, configId);
   await deleteDoc(docRef);
+};
+
+// --- Agent Personal Email Configs ---
+export const getAgentEmailConfigs = async (userId: string): Promise<EmailConfig[]> => {
+  const q = query(collection(db, `users/${userId}/emailConfigs`));
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmailConfig));
+};
+
+export const subscribeToAgentEmailConfigs = (userId: string, callback: (configs: EmailConfig[]) => void) => {
+  const q = query(collection(db, `users/${userId}/emailConfigs`), where('connected', '==', true));
+  return onSnapshot(q, (snapshot) => {
+    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmailConfig)));
+  });
+};
+
+export const updateAgentEmailConfig = async (userId: string, configId: string, data: Partial<EmailConfig>) => {
+  const docRef = doc(db, `users/${userId}/emailConfigs`, configId);
+  await updateDoc(docRef, data);
 };
 
 // --- Seeding ---

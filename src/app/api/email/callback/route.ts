@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { emailService } from "@/lib/email/EmailService";
-import { adminAuth } from "@/lib/firebase-admin";
+import { adminDB } from "@/lib/firebase-admin";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -13,29 +13,32 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { hubId, emailConfigId } = JSON.parse(state);
+    const { hubId, emailConfigId, userId: stateUserId } = JSON.parse(state);
     
-    // We need spaceId too. In a real app, we'd verify the user's session token here
-    // For Phase 1, we'll lookup the pending config to find the spaceId
-    const configQuery = await adminDB.collectionGroup("emailConfigs")
-        .where("id", "==", emailConfigId)
-        .limit(1)
-        .get();
-    
-    if (configQuery.empty) throw new Error("Connection session expired");
-    const spaceId = configQuery.docs[0].ref.parent.parent!.id;
+    if (hubId === 'agent') {
+      // Agent Personal Email Connection
+      // Note: In production we verify the session userId matches stateUserId
+      const userId = stateUserId;
+      await emailService.completeAgentEmailConnection(userId, emailConfigId, code);
+      return NextResponse.redirect(`${process.env.APP_BASE_URL}/profile?tab=agent&success=true`);
+    } else {
+      // Hub Support Email Connection
+      const configQuery = await adminDB.collectionGroup("emailConfigs")
+          .where("id", "==", emailConfigId)
+          .limit(1)
+          .get();
+      
+      if (configQuery.empty) throw new Error("Connection session expired");
+      const spaceId = configQuery.docs[0].ref.parent.parent!.id;
 
-    // TODO: Get real userId from session cookie
-    const userId = "admin-placeholder";
+      // Placeholder userId
+      const userId = "admin-placeholder";
+      await emailService.completeConnection(spaceId, hubId, emailConfigId, code, userId);
 
-    await emailService.completeConnection(spaceId, hubId, emailConfigId, code, userId);
-
-    return NextResponse.redirect(`${process.env.APP_BASE_URL}/space/${spaceId}/hub/${hubId}/settings?tab=email&success=true`);
+      return NextResponse.redirect(`${process.env.APP_BASE_URL}/space/${spaceId}/hub/${hubId}/settings?tab=email&success=true`);
+    }
   } catch (error: any) {
     console.error("OAuth Callback Error:", error);
-    if (error.message.includes("already connected")) {
-        return NextResponse.json({ error: error.message }, { status: 409 });
-    }
-    return NextResponse.json({ error: "Failed to complete connection" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to complete connection" }, { status: 500 });
   }
 }

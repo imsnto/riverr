@@ -58,7 +58,8 @@ import {
   ChevronDown,
   Mail,
   Sparkles,
-  User as UserIcon
+  User as UserIcon,
+  Forward
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -79,6 +80,7 @@ import * as db from '@/lib/db';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Slider } from '../ui/slider';
+import ConnectEmailDialog from './connect-email-dialog';
 
 function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
     const [open, setOpen] = useState(false);
@@ -150,7 +152,8 @@ const agentSettingsSchema = z.object({
   chatbotIconsTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
   chatbotIconsColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
   logoUrl: z.string().url().optional().or(z.literal('')),
-  agentIds: z.array(z.string()).min(1, 'Please select at least one agent.'),
+  agentIds: z.array(z.string()).optional(),
+  escalateToTeamInbox: z.boolean().optional(),
   allowedHelpCenterIds: z.array(z.string()).optional(),
   handoffKeywords: z.array(z.string()).default([]),
   flow: z.any().optional(),
@@ -171,10 +174,10 @@ const agentSettingsSchema = z.object({
         handoffRouteTo: z.enum(['any', 'assigned', 'team']),
         handoffTimeoutSeconds: z.number(),
         handoffFallback: z.enum(['voicemail', 'ai_resolve', 'callback']),
-        aiGreeting: z.boolean(),
-        transcribe: z.boolean(),
-        afterHoursAiOnly: z.boolean(),
-        voicemailFallback: z.boolean(),
+        aiGreeting: boolean,
+        transcribe: boolean,
+        afterHoursAiOnly: boolean,
+        voicemailFallback: boolean,
         greetingScript: z.string()
       })) 
     })
@@ -198,17 +201,21 @@ export default function AgentSettingsDialog({
   onOpenChange,
   bot: agent,
   onSave,
+  appUser,
   allUsers,
   helpCenters,
 }: AgentSettingsDialogProps) {
-  const [activeTab, setActiveTab] = useState('workflow');
+  const [activeTab, setActiveTab] = useState('general');
   const [isFlowBuilderOpen, setIsFlowBuilderOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isConnectEmailOpen, setIsConnectEmailOpen] = useState(false);
   const [newKeyword, setNewKeyword] = useState('');
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneChannelLookup[]>([]);
   const [emailConfigs, setEmailConfigs] = useState<EmailConfig[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const isPersonal = agent?.ownerType === 'user';
 
   const form = useForm<AgentSettingsFormValues>({
     resolver: zodResolver(agentSettingsSchema),
@@ -227,6 +234,7 @@ export default function AgentSettingsDialog({
       chatbotIconsTextColor: '#ffffff',
       logoUrl: '',
       agentIds: [],
+      escalateToTeamInbox: true,
       allowedHelpCenterIds: [],
       handoffKeywords: ['agent', 'human', 'speak to person'],
       flow: { nodes: [], edges: [] },
@@ -243,10 +251,14 @@ export default function AgentSettingsDialog({
 
   useEffect(() => {
     if (isOpen && agent) {
-      db.getPhoneLookupsForHub(agent.hubId).then(setPhoneNumbers);
-      db.getEmailConfigs(agent.spaceId, agent.hubId).then(setEmailConfigs);
+      if (isPersonal) {
+        db.getAgentEmailConfigs(agent.ownerId).then(setEmailConfigs);
+      } else {
+        db.getPhoneLookupsForHub(agent.hubId).then(setPhoneNumbers);
+        db.getEmailConfigs(agent.spaceId, agent.hubId).then(setEmailConfigs);
+      }
     }
-  }, [isOpen, agent]);
+  }, [isOpen, agent, isPersonal]);
 
   useEffect(() => {
     if (agent) {
@@ -265,6 +277,7 @@ export default function AgentSettingsDialog({
         chatbotIconsTextColor: agent.styleSettings?.chatbotIconsTextColor || '#ffffff',
         logoUrl: agent.styleSettings?.logoUrl || '',
         agentIds: agent.agentIds || [],
+        escalateToTeamInbox: agent.escalateToTeamInbox ?? true,
         allowedHelpCenterIds: agent.allowedHelpCenterIds || [],
         handoffKeywords: agent.automations?.handoffKeywords || ['agent', 'human', 'speak to person'],
         flow: agent.flow || { nodes: [], edges: [] },
@@ -296,7 +309,8 @@ export default function AgentSettingsDialog({
             chatbotIconsColor: values.chatbotIconsColor || '#3b82f6',
             logoUrl: values.logoUrl || '',
         },
-        agentIds: values.agentIds,
+        agentIds: values.agentIds || [],
+        escalateToTeamInbox: values.escalateToTeamInbox,
         allowedHelpCenterIds: values.allowedHelpCenterIds || [],
         identityCapture: { enabled: false, required: false }, 
         automations: {
@@ -314,6 +328,7 @@ export default function AgentSettingsDialog({
     if (agent) {
         onSave({ ...agent, ...commonData });
     } else {
+        // @ts-ignore
         onSave(commonData);
     }
     onOpenChange(false);
@@ -356,7 +371,7 @@ export default function AgentSettingsDialog({
     { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
     { id: 'branding', label: 'Branding', icon: Palette },
     { id: 'channels', label: 'Channels', icon: Globe },
-    { id: 'installation', label: 'Install', icon: Plug },
+    { id: 'installation', label: 'Install', icon: Plug, hidden: isPersonal },
   ];
 
   return (
@@ -375,7 +390,7 @@ export default function AgentSettingsDialog({
                                     {watchedValues.name || 'New Agent'}
                                 </DialogTitle>
                                 <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-muted-foreground opacity-50">
-                                    AI Agent Configuration
+                                    {isPersonal ? 'Personal Assistant' : 'AI Agent Configuration'}
                                 </DialogDescription>
                             </div>
                         </div>
@@ -383,7 +398,7 @@ export default function AgentSettingsDialog({
                 </div>
 
                 <nav className="flex-1 p-2 space-y-1">
-                    {navItems.map((item) => (
+                    {navItems.filter(i => !i.hidden).map((item) => (
                         <button
                             key={item.id}
                             type="button"
@@ -429,33 +444,52 @@ export default function AgentSettingsDialog({
                                     name="name"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Internal Name</FormLabel>
+                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Agent Name</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Support Agent" {...field} className="bg-muted/20 border-white/10 h-11" />
+                                                <Input placeholder="My Assistant" {...field} className="bg-muted/20 border-white/10 h-11" />
                                             </FormControl>
-                                            <FormDescription className="text-xs">Only visible to your team.</FormDescription>
+                                            <FormDescription className="text-xs">The display name for this assistant.</FormDescription>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
-                                <FormField
-                                    control={form.control}
-                                    name="agentIds"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-col">
-                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Live Agents</FormLabel>
-                                            <FormControl>
-                                                <MemberSelect 
-                                                    allUsers={allUsers} 
-                                                    selectedUsers={field.value || []} 
-                                                    onChange={field.onChange}
-                                                />
-                                            </FormControl>
-                                            <FormDescription className="text-xs">Teammates who can jump in to help when AI escalates.</FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                {!isPersonal ? (
+                                    <FormField
+                                        control={form.control}
+                                        name="agentIds"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-col">
+                                                <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Live Agents</FormLabel>
+                                                <FormControl>
+                                                    <MemberSelect 
+                                                        allUsers={allUsers} 
+                                                        selectedUsers={field.value || []} 
+                                                        onChange={field.onChange}
+                                                    />
+                                                </FormControl>
+                                                <FormDescription className="text-xs">Teammates who can jump in to help when AI escalates.</FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                ) : (
+                                    <FormField
+                                        control={form.control}
+                                        name="escalateToTeamInbox"
+                                        render={({ field }) => (
+                                            <div className="rounded-2xl border border-white/10 bg-[#161b22] p-6 flex items-center justify-between shadow-sm">
+                                                <div className="space-y-1">
+                                                    <h4 className="font-bold text-white flex items-center gap-2">
+                                                        <Forward className="h-4 w-4 text-primary" />
+                                                        Escalate to Team Inbox
+                                                    </h4>
+                                                    <p className="text-xs text-muted-foreground">When you can't be reached or the AI gets stuck, move conversations to the shared Team Inbox.</p>
+                                                </div>
+                                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                            </div>
+                                        )}
+                                    />
+                                )}
                             </div>
                         )}
 
@@ -479,7 +513,7 @@ export default function AgentSettingsDialog({
                                                     className="bg-[#161b22] border-white/10 min-h-[120px] text-base leading-relaxed"
                                                 />
                                             </FormControl>
-                                            <FormDescription className="text-xs">Shown immediately when a visitor opens the chat.</FormDescription>
+                                            <FormDescription className="text-xs">Shown immediately when a conversation begins.</FormDescription>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -543,7 +577,7 @@ export default function AgentSettingsDialog({
                                             />
                                             <Button type="button" variant="secondary" size="sm" onClick={addKeyword} className="h-10 px-4">Add</Button>
                                         </div>
-                                        <p className="text-[10px] text-muted-foreground italic">When visitors send these words, they’re immediately routed to a human agent.</p>
+                                        <p className="text-[10px] text-muted-foreground italic">When visitors send these words, they’re immediately routed to {isPersonal ? 'the shared Team Inbox' : 'a human agent'}.</p>
                                     </div>
                                 </div>
                             </div>
@@ -556,27 +590,29 @@ export default function AgentSettingsDialog({
                                     <p className="text-muted-foreground text-sm">Configure how this agent handles intelligence across different platforms.</p>
                                 </div>
 
-                                {/* WEB CHAT */}
-                                <section className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
-                                                <MessageSquare className="h-4 w-4" />
+                                {/* WEB CHAT - Hidden for Personal for now per directive */}
+                                {!isPersonal && (
+                                    <section className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                                                    <MessageSquare className="h-4 w-4" />
+                                                </div>
+                                                <h3 className="font-bold text-white">Web Chat</h3>
                                             </div>
-                                            <h3 className="font-bold text-white">Web Chat</h3>
+                                            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">Always Active</Badge>
                                         </div>
-                                        <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">Always Active</Badge>
-                                    </div>
-                                    <Card className="bg-[#161b22] border-white/10">
-                                        <CardContent className="p-6 flex items-center justify-between">
-                                            <div className="space-y-1">
-                                                <p className="text-sm font-medium text-white">Standard Widget</p>
-                                                <p className="text-xs text-muted-foreground">The AI assistant will handle traffic from your embedded web widget.</p>
-                                            </div>
-                                            <Switch checked={watchedValues.channelConfig?.web?.enabled ?? true} onCheckedChange={(val) => form.setValue('channelConfig.web.enabled', val)} />
-                                        </CardContent>
-                                    </Card>
-                                </section>
+                                        <Card className="bg-[#161b22] border-white/10">
+                                            <CardContent className="p-6 flex items-center justify-between">
+                                                <div className="space-y-1">
+                                                    <p className="text-sm font-medium text-white">Standard Widget</p>
+                                                    <p className="text-xs text-muted-foreground">The AI assistant will handle traffic from your embedded web widget.</p>
+                                                </div>
+                                                <Switch checked={watchedValues.channelConfig?.web?.enabled ?? true} onCheckedChange={(val) => form.setValue('channelConfig.web.enabled', val)} />
+                                            </CardContent>
+                                        </Card>
+                                    </section>
+                                )}
 
                                 {/* SMS */}
                                 <section className="space-y-4">
@@ -620,7 +656,9 @@ export default function AgentSettingsDialog({
                                             </Card>
                                         ))}
                                         {phoneNumbers.length === 0 && (
-                                            <p className="text-xs text-center text-muted-foreground italic py-4">No phone numbers assigned to this Hub.</p>
+                                            <p className="text-xs text-center text-muted-foreground italic py-4">
+                                                {isPersonal ? 'Direct SMS number assignment is managed by the hub admin.' : 'No phone numbers assigned to this Hub.'}
+                                            </p>
                                         )}
                                     </div>
                                 </section>
@@ -634,7 +672,14 @@ export default function AgentSettingsDialog({
                                             </div>
                                             <h3 className="font-bold text-white">Email</h3>
                                         </div>
-                                        <Switch checked={watchedValues.channelConfig?.email?.enabled ?? true} onCheckedChange={(val) => form.setValue('channelConfig.email.enabled', val)} />
+                                        <div className="flex items-center gap-3">
+                                            {isPersonal && (
+                                                <Button type="button" variant="outline" size="sm" onClick={() => setIsConnectEmailOpen(true)} className="h-8 rounded-lg bg-white/5 border-white/10 text-[10px] font-bold uppercase">
+                                                    <Plus className="h-3 w-3 mr-1" /> Connect My Email
+                                                </Button>
+                                            )}
+                                            <Switch checked={watchedValues.channelConfig?.email?.enabled ?? true} onCheckedChange={(val) => form.setValue('channelConfig.email.enabled', val)} />
+                                        </div>
                                     </div>
                                     <div className="grid gap-3">
                                         {emailConfigs.map(config => (
@@ -678,7 +723,7 @@ export default function AgentSettingsDialog({
                                             </Card>
                                         ))}
                                         {emailConfigs.length === 0 && (
-                                            <p className="text-xs text-center text-muted-foreground italic py-4">No email addresses connected to this Hub.</p>
+                                            <p className="text-xs text-center text-muted-foreground italic py-4">No email addresses connected.</p>
                                         )}
                                     </div>
                                 </section>
@@ -690,7 +735,7 @@ export default function AgentSettingsDialog({
                                             <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500">
                                                 <Phone className="h-4 w-4" />
                                             </div>
-                                            <h3 className="font-bold text-white">Voice</h3>
+                                            <h3 className="font-bold text-white">Phone</h3>
                                         </div>
                                         <Switch checked={watchedValues.channelConfig?.voice?.enabled ?? true} onCheckedChange={(val) => form.setValue('channelConfig.voice.enabled', val)} />
                                     </div>
@@ -831,6 +876,11 @@ export default function AgentSettingsDialog({
                                                 </Card>
                                             );
                                         })}
+                                        {phoneNumbers.length === 0 && (
+                                            <p className="text-xs text-center text-muted-foreground italic py-4">
+                                                {isPersonal ? 'Direct phone number assignment is managed by the hub admin.' : 'No phone numbers assigned to this Hub.'}
+                                            </p>
+                                        )}
                                     </div>
                                 </section>
                             </div>
@@ -1040,7 +1090,7 @@ export default function AgentSettingsDialog({
                     onClose={() => setIsPreviewOpen(false)}
                     botData={watchedValues}
                     flow={watchedValues.flow || { nodes: [], edges: [] }}
-                    agents={allUsers.filter(u => watchedValues.agentIds?.includes(u.id))}
+                    agents={isPersonal && appUser ? [appUser] : allUsers.filter(u => watchedValues.agentIds?.includes(u.id))}
                 />
             </div>
           </form>
@@ -1055,8 +1105,18 @@ export default function AgentSettingsDialog({
         onSave={(newFlow) => form.setValue('flow', newFlow)}
         aiEnabled={watchedValues.aiEnabled}
         botData={watchedValues}
-        allUsers={allUsers}
+        allUsers={isPersonal && appUser ? [appUser] : allUsers}
     />
+
+    {isPersonal && appUser && (
+        <ConnectEmailDialog
+            isOpen={isConnectEmailOpen}
+            onOpenChange={setIsConnectEmailOpen}
+            userId={appUser.id}
+            hubId="agent"
+            spaceId={agent?.spaceId || 'default'}
+        />
+    )}
     </>
   );
 }

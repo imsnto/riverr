@@ -10,7 +10,7 @@ import { Textarea } from '../ui/textarea';
 import { cn, getInitials } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
-import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check, Bot, Smartphone, Phone, PhoneMissed, PhoneIncoming, PhoneOutgoing, Mic } from 'lucide-react';
+import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check, Bot, Smartphone, Phone, PhoneMissed, PhoneIncoming, PhoneOutgoing, Mic, Share2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card } from '../ui/card';
@@ -21,6 +21,7 @@ import { marked } from 'marked';
 import * as db from '@/lib/db';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
+import { useToast } from '@/hooks/use-toast';
 
 interface InboxConversationViewProps {
   conversation: Conversation | null;
@@ -94,6 +95,7 @@ export default function InboxConversationView({
     allTasks,
     onTaskSelect,
 }: InboxConversationViewProps) {
+  const { toast } = useToast();
   const [isNote, setIsNote] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -131,13 +133,14 @@ export default function InboxConversationView({
     if (conversation && appUser) {
       const markSeen = async () => {
         const lastSeen = conversation.lastAgentSeenAtByAgent?.[appUser.id] ? new Date(conversation.lastAgentSeenAtByAgent[appUser.id]).getTime() : 0;
-        const lastMessageAt = new Date(conversation.lastMessageAt).getTime();
+        const lastMessageAt = new Date(convoLastMessageAt).getTime();
         
         if (lastMessageAt > lastSeen) {
           await db.updateAgentSeenAt(conversation.id, appUser.id);
         }
       };
       
+      const convoLastMessageAt = conversation.lastMessageAt;
       markSeen();
       
       const onFocus = () => markSeen();
@@ -185,7 +188,7 @@ export default function InboxConversationView({
         authorId: appUser.id,
         type: isNote ? 'note' : 'message',
         senderType: 'agent',
-        responderType: isNote ? 'human' : 'human', // explicit human action
+        responderType: isNote ? 'human' : 'human',
         content: messageText,
         timestamp: new Date().toISOString(),
       };
@@ -228,6 +231,17 @@ export default function InboxConversationView({
         : [...currentIds, userId];
         
     onAssignConversation(conversation.id, newIds);
+  };
+
+  const handleShareWithTeam = async () => {
+    await db.updateConversation(conversation.id, {
+      sharedWithTeam: true,
+      ownerType: 'hub',
+      ownerAgentId: null,
+      status: 'unassigned'
+    });
+    toast({ title: 'Shared with Team', description: 'Conversation is now in the Team Inbox.' });
+    if (onBack) onBack();
   };
 
   const conversationMessages = messages.filter(m => m.conversationId === conversation.id);
@@ -365,6 +379,11 @@ export default function InboxConversationView({
                             <Phone className="h-2 w-2" /> Voice
                         </Badge>
                         )}
+                        {conversation.channel === 'email' && (
+                        <Badge variant="outline" className="h-4 px-1 text-[9px] gap-1">
+                            <Mail className="h-2 w-2" /> Email
+                        </Badge>
+                        )}
                     </div>
                   </div>
                 </Button>
@@ -374,53 +393,63 @@ export default function InboxConversationView({
                     <Info className="mr-2 h-4 w-4"/>
                     View Contact Details
                 </DropdownMenuItem>
+                {conversation.ownerType === 'user' && (
+                  <DropdownMenuItem onSelect={handleShareWithTeam}>
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Share with Team
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <UserIcon className="mr-2 h-4 w-4" />
-                    <span>Assign to...</span>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent className="min-w-[240px] p-0 overflow-hidden">
-                      <DropdownMenuItem 
-                        onSelect={() => handleToggleAssignee(null)}
-                        className={cn("m-1", (conversation.assignedAgentIds || []).length === 0 && "bg-accent")}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span>Unassigned</span>
-                          {(conversation.assignedAgentIds || []).length === 0 && <Check className="h-4 w-4" />}
-                        </div>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <div className="max-h-[300px] overflow-y-auto p-1">
-                        {users.map(user => {
-                          const isSelected = (conversation.assignedAgentIds || []).includes(user.id);
-                          return (
-                            <DropdownMenuItem 
-                              key={user.id} 
-                              onSelect={() => handleToggleAssignee(user.id)}
-                              className={cn(isSelected && "bg-accent font-medium")}
-                            >
-                              <div className="flex items-center justify-between w-full gap-4">
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-sm truncate">{user.name}</span>
-                                  <span className="text-[10px] text-muted-foreground truncate">{user.email}</span>
+                {conversation.ownerType === 'hub' && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <UserIcon className="mr-2 h-4 w-4" />
+                      <span>Assign to...</span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent className="min-w-[240px] p-0 overflow-hidden">
+                        <DropdownMenuItem 
+                          onSelect={() => handleToggleAssignee(null)}
+                          className={cn("m-1", (conversation.assignedAgentIds || []).length === 0 && "bg-accent")}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span>Unassigned</span>
+                            {(conversation.assignedAgentIds || []).length === 0 && <Check className="h-4 w-4" />}
+                          </div>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <div className="max-h-[300px] overflow-y-auto p-1">
+                          {users.map(user => {
+                            const isSelected = (conversation.assignedAgentIds || []).includes(user.id);
+                            return (
+                              <DropdownMenuItem 
+                                key={user.id} 
+                                onSelect={() => handleToggleAssignee(user.id)}
+                                className={cn(isSelected && "bg-accent font-medium")}
+                              >
+                                <div className="flex items-center justify-between w-full gap-4">
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-sm truncate">{user.name}</span>
+                                    <span className="text-[10px] text-muted-foreground truncate">{user.email}</span>
+                                  </div>
+                                  {isSelected && <Check className="h-4 w-4 shrink-0" />}
                                 </div>
-                                {isSelected && <Check className="h-4 w-4 shrink-0" />}
-                              </div>
-                            </DropdownMenuItem>
-                          );
-                        })}
-                      </div>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
+                              </DropdownMenuItem>
+                            );
+                          })}
+                        </div>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
             <div className="flex flex-col justify-center min-w-0 leading-tight">
               <div className="flex items-center gap-3">
-                {conversation.status === 'ai_active' ? (
+                {conversation.ownerType === 'user' ? (
+                  <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 text-[10px] uppercase font-black tracking-tighter h-5">Personal</Badge>
+                ) : conversation.status === 'ai_active' ? (
                   <div className="flex items-center gap-1.5">
                     <Bot className="h-3.5 w-3.5 text-indigo-400" />
                     <span className="text-sm font-semibold text-indigo-400">Handled by AI Agent</span>
@@ -438,7 +467,7 @@ export default function InboxConversationView({
                   </span>
                 )}
                 
-                {assignedAgents.length > 0 && (
+                {assignedAgents.length > 0 && conversation.ownerType === 'hub' && (
                   <div className="flex -space-x-2 overflow-hidden">
                     {assignedAgents.map(agent => (
                       <Avatar key={agent.id} className="h-5 w-5 border-2 border-background">
@@ -449,12 +478,6 @@ export default function InboxConversationView({
                   </div>
                 )}
               </div>
-              
-              {assignedAgents.length > 0 && (
-                <span className="text-[10px] text-muted-foreground truncate">
-                  {assignedAgents.map(a => a.email).join(', ')}
-                </span>
-              )}
             </div>
 
           </div>

@@ -46,6 +46,13 @@ service cloud.firestore {
 
     function hasAccessToConversation(conversationId) {
       let conversationDoc = get(/databases/$(database)/documents/conversations/$(conversationId));
+      
+      // Personal conversation access
+      if (conversationDoc.data.ownerType == 'user') {
+        return conversationDoc.data.ownerAgentId == request.auth.uid || conversationDoc.data.sharedWithTeam == true;
+      }
+      
+      // Hub conversation access
       let hubId = conversationDoc.data.hubId;
       let hubDoc = get(/databases/$(database)/documents/hubs/$(hubId));
       let spaceId = hubDoc.data.spaceId;
@@ -55,6 +62,10 @@ service cloud.firestore {
     match /users/{userId} {
       allow update, delete: if isAuthenticated() && isOwner(userId);
       allow create, read: if isAuthenticated();
+      
+      match /emailConfigs/{configId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
     }
     
     match /spaces/{spaceId} {
@@ -148,8 +159,11 @@ service cloud.firestore {
     
     match /bots/{botId} {
       allow read: if true;
-      allow create: if isAuthenticated() && isHubAdmin(get(/databases/$(database)/documents/hubs/$(request.resource.data.hubId)).data.spaceId, request.resource.data.hubId);
-      allow update, delete: if isAuthenticated() && isHubAdmin(get(/databases/$(database)/documents/hubs/$(resource.data.hubId)).data.spaceId, resource.data.hubId);
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (
+        (resource.data.ownerType == 'user' && resource.data.ownerId == request.auth.uid) ||
+        (resource.data.ownerType == 'hub' && isHubAdmin(get(/databases/$(database)/documents/hubs/$(resource.data.hubId)).data.spaceId, resource.data.hubId))
+      );
     }
     
     match /contacts/{contactId} {
@@ -169,7 +183,7 @@ service cloud.firestore {
     match /conversations/{conversationId} {
       allow read: if true; 
       allow create: if true 
-        && request.resource.data.channel in ['webchat', 'sms', 'voice'];
+        && request.resource.data.channel in ['webchat', 'sms', 'voice', 'email'];
       allow update: if isAuthenticated() && hasAccessToConversation(conversationId)
         || (request.resource.data.diff(resource.data).changedKeys().hasOnly(['lastVisitorSeenAt', 'lastVisitorActiveAt', 'visitorName', 'visitorEmail', 'visitorPhone']));
       allow delete: if isAuthenticated() && hasAccessToConversation(conversationId);
@@ -211,6 +225,11 @@ service cloud.firestore {
     match /providers/{providerId} {
       allow read: if false; // Admin SDK only (sensitive secrets)
       allow write: if false; // Manual/Admin setup
+    }
+    
+    match /emailIndex/{address} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Cloud Functions only
     }
   }
 }

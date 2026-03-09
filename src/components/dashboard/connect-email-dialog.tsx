@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -15,9 +16,10 @@ interface ConnectEmailDialogProps {
   onOpenChange: (open: boolean) => void;
   hubId: string;
   spaceId: string;
+  userId?: string; // Scoped to user if provided
 }
 
-export default function ConnectEmailDialog({ isOpen, onOpenChange, hubId, spaceId }: ConnectEmailDialogProps) {
+export default function ConnectEmailDialog({ isOpen, onOpenChange, hubId, spaceId, userId }: ConnectEmailDialogProps) {
   const [label, setLabel] = useState('Support Inbox');
   const [provider, setProvider] = useState<'google' | 'microsoft' | 'imap'>('google');
   const [isConnecting, setIsConnecting] = useState(false);
@@ -25,7 +27,11 @@ export default function ConnectEmailDialog({ isOpen, onOpenChange, hubId, spaceI
   const handleConnect = () => {
     setIsConnecting(true);
     // Redirect to the connect API route which handles OAuth initiation
-    const url = `/api/email/connect?spaceId=${spaceId}&hubId=${hubId}&provider=${provider}&label=${encodeURIComponent(label)}`;
+    const baseUrl = `/api/email/connect?provider=${provider}&label=${encodeURIComponent(label)}`;
+    const url = userId 
+      ? `${baseUrl}&userId=${userId}&hubId=agent`
+      : `${baseUrl}&spaceId=${spaceId}&hubId=${hubId}`;
+      
     window.location.href = url;
   };
 
@@ -33,9 +39,11 @@ export default function ConnectEmailDialog({ isOpen, onOpenChange, hubId, spaceI
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Connect Support Email</DialogTitle>
+          <DialogTitle>Connect {userId ? 'Personal' : 'Support'} Email</DialogTitle>
           <DialogDescription>
-            All inbound emails to this address will become conversations in this Hub.
+            {userId 
+              ? "All emails to this address will become conversations in your personal 'Mine' inbox."
+              : "All inbound emails to this address will become conversations in this Hub."}
           </DialogDescription>
         </DialogHeader>
 
@@ -46,7 +54,7 @@ export default function ConnectEmailDialog({ isOpen, onOpenChange, hubId, spaceI
               id="email-label"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="e.g. Returns & Support"
+              placeholder="e.g. My Work Email"
             />
             <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">Visible only to your team</p>
           </div>
