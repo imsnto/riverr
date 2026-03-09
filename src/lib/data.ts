@@ -83,6 +83,7 @@ export interface Hub {
   closingStatusName?: string;
   ticketClosingStatusName?: string;
   dealClosingStatusName?: string;
+  smsAiBehavior?: 'off' | 'draft' | 'auto'; // Deprecated in favor of Bot.channelConfig
 }
 
 // --- Email Configs (Support Email) ---
@@ -548,6 +549,31 @@ export interface Bot {
   escalationTriggers: {
     billingKeywords?: string[];
     sentimentThreshold?: number;
+  };
+  channelConfig?: {
+    web?: { enabled: boolean };
+    sms?: { 
+      enabled: boolean; 
+      numberConfigs: Record<string, { aiMode: 'off' | 'draft' | 'auto' }> 
+    };
+    email?: { 
+      enabled: boolean; 
+      emailConfigs: Record<string, { aiMode: 'off' | 'draft' | 'auto'; aiGreetingScript: string }> 
+    };
+    voice?: { 
+      enabled: boolean; 
+      numberConfigs: Record<string, { 
+        aiCallMode: 'agent_only' | 'warm_handoff' | 'full_ai';
+        handoffRouteTo: 'any' | 'assigned' | 'team';
+        handoffTimeoutSeconds: number;
+        handoffFallback: 'voicemail' | 'ai_resolve' | 'callback';
+        aiGreeting: boolean;
+        transcribe: boolean;
+        afterHoursAiOnly: boolean;
+        voicemailFallback: boolean;
+        greetingScript: string;
+      }> 
+    };
   };
 }
 

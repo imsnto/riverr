@@ -3,14 +3,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { Hub, EmailConfig } from '@/lib/data';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Mail, Settings, Loader2, Sparkles, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Plus, Mail, Loader2, ArrowRight, BrainCircuit } from 'lucide-react';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import ConnectEmailDialog from './connect-email-dialog';
 import EmailConfigDrawer from './email-config-drawer';
+import { Alert, AlertDescription } from '../ui/alert';
 
 interface HubEmailSettingsProps {
   activeHub: Hub;
@@ -79,6 +80,15 @@ export default function HubEmailSettings({ activeHub, spaceId }: HubEmailSetting
         </Button>
       </header>
 
+      <Alert className="bg-primary/5 border-primary/10 rounded-2xl p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <BrainCircuit className="h-5 w-5 text-primary" />
+          <AlertDescription className="text-xs font-medium">
+            AI behavior and greeting scripts for these email addresses are now managed in your Agent settings.
+          </AlertDescription>
+        </div>
+      </Alert>
+
       <section className="space-y-4">
         <div className="grid grid-cols-1 gap-4">
           {configs.map(config => (
@@ -100,17 +110,7 @@ export default function HubEmailSettings({ activeHub, spaceId }: HubEmailSetting
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-6">
-                    <div className="text-right hidden sm:block">
-                      <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest mb-1">AI Status</p>
-                      <Badge variant="secondary" className="capitalize">
-                        {config.aiMode === 'auto' ? (
-                          <span className="flex items-center gap-1.5"><Bot className="h-3 w-3" /> Auto-Respond</span>
-                        ) : config.aiMode === 'draft' ? (
-                          <span className="flex items-center gap-1.5"><Sparkles className="h-3 w-3" /> Draft Approvals</span>
-                        ) : 'Off'}
-                      </Badge>
-                    </div>
+                  <div className="flex items-center gap-4">
                     <Button variant="outline" size="sm" onClick={() => handleConfigure(config)}>
                       Configure
                     </Button>

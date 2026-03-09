@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Bot as BotIcon, Edit, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import { Bot as BotIcon, Edit, MoreHorizontal, Plus, Trash2, Globe, Smartphone, Phone, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -66,8 +67,6 @@ export default function InboxSettings({
   const hubMembers = useMemo(() => {
     if (!activeHub || !activeSpace) return [];
     
-    // If the hub is private, only allow users who are members of that hub.
-    // If public, allow all members of the space.
     let allowedUserIds: string[];
     if (activeHub.isPrivate && activeHub.memberIds) {
       allowedUserIds = activeHub.memberIds;
@@ -149,14 +148,15 @@ export default function InboxSettings({
 
             const ticketsForBotHub = tickets.filter(t => t.hubId === bot.hubId);
             const totalTicketsForBot = ticketsForBotHub.length;
-            
             const closingStatusName = activeHub?.ticketClosingStatusName || 'Closed';
-            
             const resolvedTicketsForBot = ticketsForBotHub.filter(t => t.status === closingStatusName).length;
-            
-            const resolutionRate = totalTicketsForBot > 0
-                ? Math.round((resolvedTicketsForBot / totalTicketsForBot) * 100)
-                : 0;
+            const resolutionRate = totalTicketsForBot > 0 ? Math.round((resolvedTicketsForBot / totalTicketsForBot) * 100) : 0;
+
+            const activeChannels = [];
+            if (bot.channelConfig?.web?.enabled !== false) activeChannels.push('Web');
+            if (bot.channelConfig?.sms?.enabled) activeChannels.push('SMS');
+            if (bot.channelConfig?.voice?.enabled) activeChannels.push('Voice');
+            if (bot.channelConfig?.email?.enabled) activeChannels.push('Email');
 
             return (
               <Card key={bot.id}>
@@ -170,7 +170,17 @@ export default function InboxSettings({
                           (bot.isEnabled ?? true) ? 'bg-green-500' : 'bg-gray-400'
                         )}></span>
                       </span>
-                      {bot.name}
+                      <div className="space-y-1">
+                        <span>{bot.name}</span>
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase font-black tracking-widest leading-none">
+                          {activeChannels.map((ch, i) => (
+                            <React.Fragment key={ch}>
+                              {i > 0 && <span className="opacity-30">·</span>}
+                              <span>{ch}</span>
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      </div>
                     </CardTitle>
                     <div className="flex items-center gap-1">
                       <Button variant="outline" size="sm" onClick={() => handleEditAgent(bot)}>
@@ -201,7 +211,12 @@ export default function InboxSettings({
                  <CardContent className="grid grid-cols-2 text-sm md:grid-cols-4 gap-x-4 gap-y-2">
                     <div>
                         <dt className="text-muted-foreground">Channels</dt>
-                        <dd className="font-medium">Web</dd>
+                        <dd className="font-medium flex gap-1 mt-1">
+                          {bot.channelConfig?.web?.enabled !== false && <Globe className="h-3 w-3" />}
+                          {bot.channelConfig?.sms?.enabled && <Smartphone className="h-3 w-3" />}
+                          {bot.channelConfig?.voice?.enabled && <Phone className="h-3 w-3" />}
+                          {bot.channelConfig?.email?.enabled && <Mail className="h-3 w-3" />}
+                        </dd>
                     </div>
                     <div>
                         <dt className="text-muted-foreground">Knowledge</dt>
