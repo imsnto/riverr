@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
@@ -174,10 +173,10 @@ const agentSettingsSchema = z.object({
         handoffRouteTo: z.enum(['any', 'assigned', 'team']),
         handoffTimeoutSeconds: z.number(),
         handoffFallback: z.enum(['voicemail', 'ai_resolve', 'callback']),
-        aiGreeting: boolean,
-        transcribe: boolean,
-        afterHoursAiOnly: boolean,
-        voicemailFallback: boolean,
+        aiGreeting: z.boolean(),
+        transcribe: z.boolean(),
+        afterHoursAiOnly: z.boolean(),
+        voicemailFallback: z.boolean(),
         greetingScript: z.string()
       })) 
     })
