@@ -62,6 +62,45 @@ export default function PersonalAccountSettings() {
         }
     }
 
+    const copyToClipboard = async (text: string) => {
+        try {
+            // Attempt modern Clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                toast({ title: 'Token Copied' });
+            } else {
+                throw new Error('Clipboard API unavailable');
+            }
+        } catch (err) {
+            // Fallback for restricted contexts (like iframes without permissions)
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                // Ensure textarea is not visible but part of the document
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                textArea.style.top = "0";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                if (successful) {
+                    toast({ title: 'Token Copied' });
+                } else {
+                    throw new Error('Fallback copy failed');
+                }
+            } catch (fallbackErr) {
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Copy Failed', 
+                    description: 'Your browser blocked the copy action. Please select and copy the text manually.' 
+                });
+            }
+        }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div>
@@ -130,8 +169,7 @@ export default function PersonalAccountSettings() {
                     <Button variant="outline" size="sm" className="w-full gap-2 h-10 border-primary/20 hover:bg-primary/10 bg-background" onClick={async () => {
                         if (firebaseUser) {
                             const token = await firebaseUser.getIdToken(true);
-                            await navigator.clipboard.writeText(token);
-                            toast({ title: 'Token Copied' });
+                            await copyToClipboard(token);
                         }
                     }}>
                         <Copy className="h-3.5 w-3.5" />
