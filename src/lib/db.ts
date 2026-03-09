@@ -47,6 +47,7 @@ import {
   DealAutomationRule,
   Conversation,
   PhoneChannelLookup,
+  EmailConfig,
 } from './data';
 import { ContactEvent } from './contacts-types';
 import { generateWhimsicalName, normalizePhoneFallback } from './utils';
@@ -824,6 +825,30 @@ export const getPhoneLookupsForHub = async (hubId: string): Promise<PhoneChannel
 export const savePhoneChannelLookup = async (id: string, data: Partial<PhoneChannelLookup>) => {
   const ref = doc(db, 'phone_channel_lookups', id);
   await setDoc(ref, { ...data, updatedAt: serverTimestamp() }, { merge: true });
+};
+
+// --- Support Email Configs ---
+export const getEmailConfigs = async (spaceId: string, hubId: string): Promise<EmailConfig[]> => {
+  const q = query(collection(db, `spaces/${spaceId}/hubs/${hubId}/emailConfigs`));
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmailConfig));
+};
+
+export const subscribeToEmailConfigs = (spaceId: string, hubId: string, callback: (configs: EmailConfig[]) => void) => {
+  const q = query(collection(db, `spaces/${spaceId}/hubs/${hubId}/emailConfigs`), where('connected', '==', true));
+  return onSnapshot(q, (snapshot) => {
+    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmailConfig)));
+  });
+};
+
+export const updateEmailConfig = async (spaceId: string, hubId: string, configId: string, data: Partial<EmailConfig>) => {
+  const docRef = doc(db, `spaces/${spaceId}/hubs/${hubId}/emailConfigs`, configId);
+  await updateDoc(docRef, data);
+};
+
+export const deleteEmailConfig = async (spaceId: string, hubId: string, configId: string) => {
+  const docRef = doc(db, `spaces/${spaceId}/hubs/${hubId}/emailConfigs`, configId);
+  await deleteDoc(docRef);
 };
 
 // --- Seeding ---
