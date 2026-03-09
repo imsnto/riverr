@@ -11,6 +11,7 @@ import { Badge } from '../ui/badge';
 import { Label } from '../ui/label';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import PhoneNumberConfigureDrawer from './phone-number-configure-drawer';
+import { cn } from '@/lib/utils';
 
 interface HubPhoneSettingsProps {
   activeHub: Hub;
@@ -108,7 +109,7 @@ export default function HubPhoneSettings({ activeHub }: HubPhoneSettingsProps) {
                     </div>
                   )}
                   {num.aiCallMode === 'triage' && (
-                    <div className="flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
                       <Sparkles className="h-3 w-3" /> TRIAGE + WARM HANDOFF
                     </div>
                   )}
