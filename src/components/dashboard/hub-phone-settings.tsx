@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Hub, PhoneChannelLookup } from '@/lib/data';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Phone, MessageSquare, Bot, Settings, Loader2, Sparkles } from 'lucide-react';
+import { Phone, MessageSquare, Bot, Settings, Loader2, Sparkles, Edit } from 'lucide-react';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '../ui/badge';

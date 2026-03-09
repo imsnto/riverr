@@ -8,12 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Bot, UserCheck, Phone, Zap, Clock, Mic, ShieldAlert, CheckCircle2, Loader2 } from 'lucide-react';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 
@@ -189,7 +191,7 @@ export default function PhoneNumberConfigureDrawer({ isOpen, onOpenChange, looku
               <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Behavior & Transcriptions</Label>
               <div className="grid grid-cols-1 gap-2">
                 <ToggleRow 
-                  icon={MessageCircle} 
+                  icon={MessageSquare} 
                   label="AI Greeting" 
                   desc="AI will speak an initial greeting script when connected."
                   checked={formData.aiGreetingEnabled}
