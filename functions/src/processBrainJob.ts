@@ -1,4 +1,3 @@
-
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import { genkit } from "genkit";
@@ -8,6 +7,7 @@ import { extractSalesConversation } from "../../src/ai/flows/distill-sales-intel
 import { summarizeSalesCluster } from "../../src/ai/flows/summarize-sales-cluster";
 import { recommendNextSalesAction } from "../../src/ai/flows/recommend-next-sales-action";
 import { RawConversationNode, SupportIntentNode, SalesPersonaSegmentNode, LeadStateNode } from "../../src/lib/data";
+import { gmailAdapter } from "../../src/lib/brain/adapters/gmail";
 
 if (!admin.apps.length) admin.initializeApp();
 
@@ -29,6 +29,47 @@ export const processBrainJob = onDocumentCreated("brain_jobs/{jobId}", async (ev
 
   try {
     switch (job.type) {
+      case "ingest_conversations": {
+        console.log(`Starting conversation ingestion for source: ${job.params.source}`);
+        if (job.params.source !== 'gmail') {
+            throw new Error(`Unsupported ingestion source: ${job.params.source}`);
+        }
+
+        const rawThreads = await gmailAdapter.fetchBatch({ query: job.params.query, maxResults: 50 });
+        const batch = admin.firestore().batch();
+        let processedCount = 0;
+
+        for (const rawThread of rawThreads) {
+            const normalizedThread = gmailAdapter.normalize(rawThread);
+            const rawNode = gmailAdapter.toRawNode(normalizedThread);
+
+            // --- REAL EMBEDDING STEP ---
+            const { embedding } = await ai.embed({
+                model: 'googleai/embedding-004',
+                content: rawNode.textForEmbedding,
+            });
+            const embeddedAt = new Date().toISOString();
+            const embeddingModel = "embedding-004";
+            // --- END REAL EMBEDDING ---
+
+            const finalNode: Omit<RawConversationNode, 'id'> = {
+                ...(rawNode as Omit<RawConversationNode, 'id'>),
+                spaceId: job.params.spaceId,
+                embedding: embedding,
+                embeddingModel: embeddingModel,
+                embeddedAt: embeddedAt,
+            };
+            
+            const nodeRef = admin.firestore().collection('memory_nodes').doc();
+            batch.set(nodeRef, finalNode);
+            processedCount++;
+        }
+        
+        await batch.commit();
+        console.log(`Ingested and embedded ${processedCount} conversation(s).`);
+        break;
+      }
+
       case "distill_support_intents": {
         const rawNodesSnap = await admin.firestore().collection("memory_nodes")
           .where("type", "==", "raw_conversation")

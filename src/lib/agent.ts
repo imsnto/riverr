@@ -95,6 +95,12 @@ export interface SearchSupportResult {
 export interface AgentAdapters {
   searchHelpCenter: (params: SearchHelpCenterParams) => Promise<SearchHelpCenterResult>;
   searchSupport: (params: SearchSupportParams) => Promise<SearchSupportResult>;
+  generateAnswer: (args: {
+    query: string;
+    botName: string;
+    context: Array<{ title: string; text: string; url?: string }>;
+    greetingScript?: string;
+  }) => Promise<string>;
   escalateToHuman: (args: {
     conversationId: string;
     hubId: string;
@@ -439,8 +445,29 @@ async function executeAiPhase(args: {
       patch: { aiAttempted: true, status: 'open' }
   });
 
-  // Knowledge Base Search
-  const search = await adapters.searchHelpCenter({
+  // 1. Check Distilled Support Intents (Learned Intelligence)
+  const supportSearch = await adapters.searchSupport({
+      hubId: bot.hubId,
+      userId: conversation.userId ?? null,
+      query: text,
+      topK: 3,
+  });
+
+  const topIntent = supportSearch.intents?.[0];
+  if (topIntent && topIntent._searchScore && topIntent._searchScore > 0.7) {
+      // Direct hit on learned knowledge
+      await adapters.persistAssistantMessage({
+          conversationId: conversation.id,
+          hubId: conversation.hubId,
+          text: topIntent.description,
+          responderType: 'ai',
+      });
+      await adapters.updateConversation({ conversationId: conversation.id, hubId: conversation.hubId, patch: { aiResolved: true } });
+      return true;
+  }
+
+  // 2. Search Documentation (RAG)
+  const docSearch = await adapters.searchHelpCenter({
       hubId: bot.hubId,
       allowedHelpCenterIds: bot.allowedHelpCenterIds,
       userId: conversation.userId ?? null,
@@ -448,20 +475,25 @@ async function executeAiPhase(args: {
       topK: 5,
   });
 
-  const chunks = search.chunks ?? [];
+  const chunks = docSearch.chunks ?? [];
   const topScore = chunks.length ? Math.max(...chunks.map(c => c.score)) : 0;
 
-  if (topScore >= 0.55) {
-      const best = [...chunks].sort((a, b) => b.score - a.score).slice(0, 3);
-      let answerText = `I found some information in **${botName}** knowledge base:\n\n`;
-      best.forEach(c => { answerText += `- ${c.chunkText.slice(0, 180)}...\n`; });
+  if (topScore >= 0.5) {
+      const context = chunks.map(c => ({ title: c.title, text: c.chunkText, url: c.url }));
+      
+      // Use Genkit to generate a natural, grounded answer
+      const answer = await adapters.generateAnswer({
+          query: text,
+          botName,
+          context,
+      });
 
       await adapters.persistAssistantMessage({
           conversationId: conversation.id,
           hubId: conversation.hubId,
-          text: answerText,
+          text: answer,
           responderType: 'ai',
-          sources: best.map(c => ({ articleId: c.articleId, title: c.title, url: c.url, score: c.score })),
+          sources: chunks.slice(0, 3).map(c => ({ articleId: c.articleId, title: c.title, url: c.url, score: c.score })),
       });
       await adapters.updateConversation({ conversationId: conversation.id, hubId: conversation.hubId, patch: { aiResolved: true } });
       return true;

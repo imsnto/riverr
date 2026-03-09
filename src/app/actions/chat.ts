@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -9,6 +8,7 @@ import { getTypesenseAdmin, getTypesenseSearch } from '@/lib/typesense';
 import { indexHelpCenterArticleToChunks } from '@/lib/knowledge/indexer';
 import { LeadStateNode, Contact, SalesPersonaSegmentNode, ChatMessage, Visitor, HelpCenter, HelpCenterCollection, HelpCenterArticle, ResponderType } from '@/lib/data';
 import { draftSalesEmail, type DraftSalesEmailInput, type DraftSalesEmailOutput } from '@/ai/flows/draft-sales-email';
+import { agentResponse } from '@/ai/flows/agent-response';
 import { serverTimestamp } from 'firebase-admin/firestore';
 import admin from 'firebase-admin';
 import { isWhimsical, generateWhimsicalName, normalizePhoneFallback } from '@/lib/utils';
@@ -486,6 +486,10 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
       const adapters: AgentAdapters = {
           searchHelpCenter,
           searchSupport,
+          generateAnswer: async (params) => {
+              const result = await agentResponse(params);
+              return result.answer;
+          },
           escalateToHuman: async ({ conversationId, reason }) => {
               await updateConversation(conversationId, {
                   status: 'waiting_human',
@@ -555,6 +559,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
           aiEnabled: bot.aiEnabled,
           handoffKeywords: bot.automations?.handoffKeywords,
           quickReplies: bot.automations?.quickReplies,
+          flow: bot.flow,
       };
   
       await handleIncomingMessage({ ...args, bot: botConfig, adapters });
