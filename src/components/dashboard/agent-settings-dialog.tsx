@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
@@ -863,7 +864,7 @@ export default function AgentSettingsDialog({
 
                                                         {/* Script */}
                                                         <div className="space-y-3">
-                                                            <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">AI Greeting Script</Label>
+                                                            <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">AI Greeting Script</Label>
                                                             <Textarea 
                                                                 value={config.greetingScript}
                                                                 onChange={(e) => updateVoice({ greetingScript: e.target.value })}
