@@ -436,7 +436,7 @@ async function executeAiPhase(args: {
   await adapters.updateConversation({
       conversationId: conversation.id,
       hubId: conversation.hubId,
-      patch: { aiAttempted: true, status: 'ai_active' }
+      patch: { aiAttempted: true, status: 'open' }
   });
 
   // Knowledge Base Search

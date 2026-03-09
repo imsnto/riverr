@@ -188,7 +188,7 @@ export default function AgentSettingsDialog({
       logoUrl: '',
       agentIds: [],
       allowedHelpCenterIds: [],
-      handoffKeywords: ['agent', 'human', 'help', 'speak to person'],
+      handoffKeywords: ['agent', 'human', 'speak to person'],
       flow: { nodes: [], edges: [] },
     },
   });
@@ -213,7 +213,7 @@ export default function AgentSettingsDialog({
         logoUrl: agent.styleSettings?.logoUrl || '',
         agentIds: agent.agentIds || [],
         allowedHelpCenterIds: agent.allowedHelpCenterIds || [],
-        handoffKeywords: agent.automations?.handoffKeywords || ['agent', 'human', 'help', 'speak to person'],
+        handoffKeywords: agent.automations?.handoffKeywords || ['agent', 'human', 'speak to person'],
         flow: agent.flow || { nodes: [], edges: [] },
       });
     }
@@ -637,8 +637,8 @@ export default function AgentSettingsDialog({
                             onClick={() => setIsPreviewOpen(!isPreviewOpen)}
                             className="h-12 w-12 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-110 active:scale-95"
                             style={{ 
-                                backgroundColor: watchedValues.chatbotIconsColor || style.chatbotIconsColor,
-                                color: watchedValues.chatbotIconsTextColor || style.chatbotIconsTextColor
+                                backgroundColor: watchedValues.chatbotIconsColor || '#3b82f6',
+                                color: watchedValues.chatbotIconsTextColor || '#ffffff'
                             }}
                             title="Preview Chatbot"
                         >
