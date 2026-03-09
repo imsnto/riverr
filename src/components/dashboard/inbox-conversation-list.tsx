@@ -37,9 +37,10 @@ export default function InboxConversationList({
 
   const filteredConversations = useMemo(() => {
     // 1. Filter by ownership
+    // Resilience: If ownerType is missing, it's a legacy hub conversation
     const viewBase = inboxView === 'mine' 
       ? conversations.filter(c => c.ownerAgentId === appUser.id)
-      : conversations.filter(c => c.ownerType === 'hub');
+      : conversations.filter(c => !c.ownerType || c.ownerType === 'hub');
 
     // 2. Apply inbox sub-filters (Team view only)
     if (inboxView === 'team') {
@@ -58,9 +59,9 @@ export default function InboxConversationList({
   }, [conversations, filter, inboxView, appUser.id]);
 
   const counts = useMemo(() => ({
-    me: conversations.filter(c => c.ownerType === 'hub' && c.assigneeId === appUser.id).length,
-    unassigned: conversations.filter(c => c.ownerType === 'hub' && c.assigneeId === null).length,
-    all: conversations.filter(c => c.ownerType === 'hub').length,
+    me: conversations.filter(c => (!c.ownerType || c.ownerType === 'hub') && c.assigneeId === appUser.id).length,
+    unassigned: conversations.filter(c => (!c.ownerType || c.ownerType === 'hub') && c.assigneeId === null).length,
+    all: conversations.filter(c => !c.ownerType || c.ownerType === 'hub').length,
     mine: conversations.filter(c => c.ownerAgentId === appUser.id).length,
   }), [conversations, appUser.id]);
 

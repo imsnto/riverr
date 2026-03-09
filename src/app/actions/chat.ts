@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -590,7 +591,10 @@ export async function createConversationAndLinkCrm(args: {
     lastMessageAt: new Date().toISOString(),
     lastMessageAuthor: args.lastMessageAuthor,
     updatedAt: new Date().toISOString(),
-    channel: 'webchat'
+    channel: 'webchat',
+    ownerType: 'hub',
+    ownerAgentId: null,
+    sharedWithTeam: false,
   });
 
   await ensureCrmLinkedForConversationAdmin(convoRef.id);

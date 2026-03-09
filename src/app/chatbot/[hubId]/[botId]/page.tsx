@@ -650,12 +650,8 @@ export default function ChatbotWidgetPage() {
     const tokens: string[] = [];
 
     // Firestore in-query max 10, so split into chunks
-    const chunks = [];
     for (let i = 0; i < assignedAgentIds.length; i += 10) {
-      chunks.push(assignedAgentIds.slice(i, i + 10));
-    }
-
-    for (const chunk of chunks) {
+      const chunk = assignedAgentIds.slice(i, i + 10);
       const tokenQuery = query(
         collection(firestore, "fcmTokens"),
         where("id", "in", chunk)
