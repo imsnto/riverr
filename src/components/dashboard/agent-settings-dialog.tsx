@@ -57,11 +57,12 @@ import {
   ShieldAlert,
   ChevronDown,
   Mail,
-  Sparkles
+  Sparkles,
+  User as UserIcon
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -336,6 +337,18 @@ export default function AgentSettingsDialog({
   };
 
   const basicSnippet = agent ? `<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${agent.id}" data-hub-id="${agent.hubId}" async></script>`.trim() : '';
+
+  const userAwareSnippet = agent ? `
+<script>
+  window.Manowar = window.Manowar || function() { (window.Manowar.q = window.Manowar.q || []).push(arguments) };
+  Manowar('update', {
+    user_id: 'REPLACE_WITH_USER_ID',
+    email: 'REPLACE_WITH_USER_EMAIL',
+    name: 'REPLACE_WITH_USER_NAME'
+  });
+</script>
+<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${agent.id}" data-hub-id="${agent.hubId}" async></script>
+`.trim() : '';
 
   const navItems = [
     { id: 'general', label: 'General', icon: Settings },
@@ -937,7 +950,7 @@ export default function AgentSettingsDialog({
                         )}
 
                         {activeTab === 'installation' && (
-                            <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="max-w-3xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">Install</h2>
                                     <p className="text-muted-foreground text-sm">Add the chatbot to your website with a single line of code.</p>
@@ -949,13 +962,13 @@ export default function AgentSettingsDialog({
                                             <Globe className="h-5 w-5 text-primary" />
                                         </div>
                                         <div className="space-y-1">
-                                            <h4 className="font-bold text-white">Embed Script</h4>
+                                            <h4 className="font-bold text-white">Standard Embed Script</h4>
                                             <p className="text-xs text-muted-foreground">Copy and paste this script into your HTML's `head` or `body` tag.</p>
                                         </div>
                                     </div>
 
                                     <div className="relative group">
-                                        <pre className="bg-[#0d1117] border border-white/10 p-5 rounded-xl text-xs font-mono text-primary leading-relaxed overflow-x-auto">
+                                        <pre className="bg-[#0d1117] border border-white/10 p-5 rounded-xl text-xs font-mono text-primary leading-relaxed overflow-x-auto whitespace-pre-wrap break-all">
                                             <code>{basicSnippet}</code>
                                         </pre>
                                         <Button 
@@ -964,6 +977,33 @@ export default function AgentSettingsDialog({
                                             variant="secondary" 
                                             className="absolute top-3 right-3 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" 
                                             onClick={() => handleCopy(basicSnippet)}
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="rounded-2xl border border-white/10 bg-[#161b22] p-6 space-y-6">
+                                    <div className="flex items-start gap-4">
+                                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                                            <ShieldCheck className="h-5 w-5 text-primary" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <h4 className="font-bold text-white">Identity-Aware Script</h4>
+                                            <p className="text-xs text-muted-foreground">Use this version if your website already has authenticated users to track them across sessions.</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="relative group">
+                                        <pre className="bg-[#0d1117] border border-white/10 p-5 rounded-xl text-xs font-mono text-primary leading-relaxed overflow-x-auto whitespace-pre-wrap break-all">
+                                            <code>{userAwareSnippet}</code>
+                                        </pre>
+                                        <Button 
+                                            type="button" 
+                                            size="icon" 
+                                            variant="secondary" 
+                                            className="absolute top-3 right-3 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                            onClick={() => handleCopy(userAwareSnippet)}
                                         >
                                             <Copy className="h-4 w-4" />
                                         </Button>
