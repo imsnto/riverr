@@ -1,4 +1,4 @@
-
+// src/components/dashboard/inbox-conversation-view.tsx
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -10,7 +10,7 @@ import { Textarea } from '../ui/textarea';
 import { cn, getInitials } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
-import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check, Bot, Smartphone, Phone, PhoneMissed, PhoneIncoming, PhoneOutgoing, Mic, Share2 } from 'lucide-react';
+import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check, Bot, Smartphone, Phone, PhoneMissed, PhoneIncoming, PhoneOutgoing, Mic, Share2, Mail } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card } from '../ui/card';
@@ -367,24 +367,33 @@ export default function InboxConversationView({
                     <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col items-start min-w-0">
-                    <span className="font-semibold truncate max-w-[120px]">{displayName}</span>
-                    <div className="flex items-center gap-1 mt-0.5">
-                        {conversation.channel === 'sms' && (
-                        <Badge variant="outline" className="h-4 px-1 text-[9px] gap-1">
-                            <Smartphone className="h-2 w-2" /> SMS
-                        </Badge>
-                        )}
-                        {conversation.channel === 'voice' && (
-                        <Badge variant="outline" className="h-4 px-1 text-[9px] gap-1">
-                            <Phone className="h-2 w-2" /> Voice
-                        </Badge>
-                        )}
-                        {conversation.channel === 'email' && (
-                        <Badge variant="outline" className="h-4 px-1 text-[9px] gap-1">
-                            <Mail className="h-2 w-2" /> Email
-                        </Badge>
+                    <div className="flex items-center gap-2">
+                        <span className="font-semibold truncate max-w-[120px]">{displayName}</span>
+                        {conversation.ownerType === 'user' && (
+                            <Badge variant="secondary" className="h-4 px-1 text-[8px] bg-primary/10 text-primary border-primary/20 uppercase tracking-tighter">
+                                Personal · {conversation.channel === 'sms' ? '📱 SMS' : conversation.channel === 'voice' ? '📞 Voice' : '✉️ Email'}
+                            </Badge>
                         )}
                     </div>
+                    {conversation.ownerType === 'hub' && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                            {conversation.channel === 'sms' && (
+                            <Badge variant="outline" className="h-4 px-1 text-[9px] gap-1">
+                                <Smartphone className="h-2 w-2" /> SMS
+                            </Badge>
+                            )}
+                            {conversation.channel === 'voice' && (
+                            <Badge variant="outline" className="h-4 px-1 text-[9px] gap-1">
+                                <Phone className="h-2 w-2" /> Voice
+                            </Badge>
+                            )}
+                            {conversation.channel === 'email' && (
+                            <Badge variant="outline" className="h-4 px-1 text-[9px] gap-1">
+                                <Mail className="h-2 w-2" /> Email
+                            </Badge>
+                            )}
+                        </div>
+                    )}
                   </div>
                 </Button>
               </DropdownMenuTrigger>

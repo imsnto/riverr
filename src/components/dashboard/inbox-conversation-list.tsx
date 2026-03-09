@@ -1,4 +1,3 @@
-
 // src/components/dashboard/inbox-conversation-list.tsx
 'use client';
 
@@ -178,7 +177,7 @@ export default function InboxConversationList({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={() => setFilter('all')}>All ({counts.all})</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setFilter('me')}>Me ({counts.me})</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setFilter('me')}>Assigned to me ({counts.me})</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setFilter('unassigned')}>Unassigned ({counts.unassigned})</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -188,10 +187,10 @@ export default function InboxConversationList({
         <Tabs value={inboxView} onValueChange={(v) => handleViewChange(v as 'team' | 'mine')}>
           <TabsList className="grid w-full grid-cols-2 h-9">
             <TabsTrigger value="team" className="text-xs gap-2">
-              <Users className="h-3.5 w-3.5" /> Team
+              <Users className="h-3.5 w-3.5" /> Team Inbox
             </TabsTrigger>
             <TabsTrigger value="mine" className="text-xs gap-2">
-              <UserIcon className="h-3.5 w-3.5" /> Mine
+              <UserIcon className="h-3.5 w-3.5" /> Personal
               {counts.mine > 0 && <Badge variant="secondary" className="h-4 px-1 ml-auto text-[10px]">{counts.mine}</Badge>}
             </TabsTrigger>
           </TabsList>
