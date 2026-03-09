@@ -1,3 +1,4 @@
+
 // src/lib/data.ts
 
 // --- Core Entities ---
@@ -84,6 +85,37 @@ export interface Hub {
   dealClosingStatusName?: string;
 }
 
+// --- Email Configs (Support Email) ---
+export type EmailProviderName = "google" | "microsoft" | "imap";
+
+export interface EmailTokens {
+  accessToken: string;
+  refreshToken: string;
+  tokenExpiry: string; // ISO string
+}
+
+export interface WatchConfig {
+  historyId?: string;           // Gmail
+  subscriptionId?: string;      // Microsoft
+  expiresAt: string;            // ISO string
+}
+
+export interface EmailConfig {
+  id: string;
+  provider: EmailProviderName;
+  emailAddress: string;
+  label: string;
+  connected: boolean;
+  accessToken: string; // Encrypted
+  refreshToken: string; // Encrypted
+  tokenExpiry: string; // ISO
+  watchConfig?: WatchConfig;
+  aiMode: "draft" | "auto" | "off";
+  aiGreeting?: string;
+  connectedAt: string; // ISO
+  connectedBy: string; // userId
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -140,7 +172,7 @@ export interface Ticket {
   assignedTo: string | null;
   contactId: string | null;
   conversationId: string | null;
-  channel: 'Widget' | 'OpenPhone' | 'Order' | 'Manual' | null;
+  channel: 'Widget' | 'OpenPhone' | 'Order' | 'Manual' | 'email' | null;
   lastMessageAt: string | null;
   lastMessagePreview: string | null;
   lastMessageAuthor: string | null;
@@ -176,7 +208,7 @@ export interface Deal {
   nextStepAt: string | null; // ISO String
   assignedTo: string | null; // userId
   contactId: string | null;
-  source: 'Inbound Chat' | 'Referral' | 'Website' | 'Manual' | 'Inbound Chat' | 'Referral' | 'Website' | 'Manual' | 'Import' | null;
+  source: 'Inbound Chat' | 'Referral' | 'Website' | 'Manual' | 'Import' | null;
   tags?: string[];
   isStale?: boolean;
   createdAt: string; // ISO String
@@ -575,11 +607,16 @@ export interface Conversation {
     reason?: string;
     offeredAt?: string; // ISO
   } | null;
-  channel: 'webchat' | 'sms' | 'voice';
-  channelProvider?: 'twilio';
-  channelAddress?: string; // Twilio number E.164
-  externalAddress?: string; // Customer phone E.164
+  channel: 'webchat' | 'sms' | 'voice' | 'email';
+  channelProvider?: 'twilio' | 'google' | 'microsoft' | 'imap';
+  channelAddress?: string; // E.164 or Email
+  externalAddress?: string; // Phone or Email
   twilioSubaccountSid?: string;
+  emailConfigId?: string;
+  emailThreadId?: string;
+  emailSubject?: string;
+  emailFromAddress?: string;
+  emailFromName?: string;
 }
 
 export interface ChatMessage {
@@ -588,7 +625,7 @@ export interface ChatMessage {
   authorId: string; // Can be a Visitor ID or a User ID
   type: 'message' | 'note' | 'event';
   responderType?: ResponderType;
-  eventType?: 'call_started' | 'call_started' | 'call_ringing' | 'call_answered' | 'call_missed' | 'call_ended' | 'voicemail_recorded';
+  eventType?: 'call_started' | 'call_ringing' | 'call_answered' | 'call_missed' | 'call_ended' | 'voicemail_recorded';
   content: string;
   timestamp: string; // ISO String
   senderType?: 'visitor' | 'agent' | 'bot' | 'contact';
@@ -600,8 +637,8 @@ export interface ChatMessage {
   attachments?: Attachment[];
   visibility?: 'public' | 'internal';
   isInternal?: boolean;
-  channel?: 'webchat' | 'sms' | 'voice';
-  provider?: 'internal' | 'twilio';
+  channel?: 'webchat' | 'sms' | 'voice' | 'email';
+  provider?: 'internal' | 'twilio' | 'google' | 'microsoft' | 'imap';
   providerMessageId?: string;
   providerCallId?: string;
   deliveryStatus?: 'created'|'queued'|'sent'|'delivered'|'failed'|'undelivered';
@@ -610,6 +647,13 @@ export interface ChatMessage {
   media?: { url: string; contentType?: string }[];
   durationSeconds?: number;
   recordingUrl?: string;
+  emailHeaders?: {
+    messageId: string;
+    inReplyTo?: string;
+    references?: string;
+  };
+  emptyBody?: boolean;
+  hasAttachments?: boolean;
 }
 
 // --- Comms Config (Lookups) ---
@@ -852,7 +896,7 @@ export interface Contact {
   primaryPhoneE164?: string | null;
   primaryPhoneNormalized?: string | null;
   phoneNormalizationStatus?: 'e164'|'fallback'|'unknown';
-  source: 'webchat' | 'sms' | 'manual' | 'order' | 'call' | 'chat' | 'voice';
+  source: 'webchat' | 'sms' | 'manual' | 'order' | 'call' | 'chat' | 'voice' | 'email';
   externalIds: Record<string, string>;
   customAttributes?: Record<string, any>;
   tags: string[];
