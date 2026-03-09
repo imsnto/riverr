@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -32,7 +31,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import BrainSettings from './brain-settings';
 import PhoneSettings from './phone-settings';
-import HubPhoneSettings from './hub-phone-settings';
 import HubEmailSettings from './hub-email-settings';
 import { getToken } from "firebase/messaging";
 import { messaging } from '@/lib/firebase';
@@ -41,7 +39,7 @@ import TeamTimesheets from './team-timesheets';
 import { arrayRemove, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-type SettingsView = 'users' | 'space-general' | 'hub-general' | 'phone' | 'hub-phone' | 'email' | 'agents' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'brain' | 'notifications';
+type SettingsView = 'users' | 'space-general' | 'hub-general' | 'phone' | 'email' | 'agents' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'brain' | 'notifications';
 
 interface SettingsLayoutProps {
   allUsers: User[];
@@ -135,7 +133,6 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
   const hubNavItems = [
     { key: 'hub-general' as SettingsView, label: 'General', icon: LayoutGrid },
     { key: 'email' as SettingsView, label: 'Support Email', icon: Mail, hidden: !hubHasInbox },
-    { key: 'hub-phone' as SettingsView, label: 'Phone & SMS', icon: Phone, hidden: !hubHasInbox },
     { key: 'agents' as SettingsView, label: 'Agents', icon: BrainCircuit, hidden: !hubHasInbox },
     { key: 'deal-automation' as SettingsView, label: 'Deal Automation', icon: LayoutGrid, hidden: !hubHasDeals },
     { key: 'escalation-intake' as SettingsView, label: 'Escalation Intake', icon: LayoutGrid, hidden: !(hubHasTickets && hubHasTasks) },
@@ -183,8 +180,6 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             allUsers={props.allUsers}
           />
         ) : null;
-      case 'hub-phone':
-        return props.activeHub ? <HubPhoneSettings activeHub={props.activeHub} /> : null;
       case 'email':
         return props.activeHub ? <HubEmailSettings activeHub={props.activeHub} spaceId={activeSpace.id} /> : null;
        case 'agents':
@@ -259,7 +254,6 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
                             <>
                                 <SelectItem value="hub-general">Hub: General</SelectItem>
                                 {hubHasInbox && <SelectItem value="email">Hub: Support Email</SelectItem>}
-                                {hubHasInbox && <SelectItem value="hub-phone">Hub: Phone & SMS</SelectItem>}
                                 {hubHasInbox && <SelectItem value="agents">Hub: Agents</SelectItem>}
                                 {hubHasDeals && <SelectItem value="deal-automation">Hub: Deal Automation</SelectItem>}
                                 {(hubHasTickets && hubHasTasks) && <SelectItem value="escalation-intake">Hub: Escalation Intake</SelectItem>}
