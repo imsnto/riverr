@@ -46,6 +46,7 @@ import {
   MemoryNode,
   DealAutomationRule,
   Conversation,
+  PhoneChannelLookup,
 } from './data';
 import { ContactEvent } from './contacts-types';
 import { generateWhimsicalName, normalizePhoneFallback } from './utils';
@@ -804,16 +805,25 @@ export const savePushToken = async (userId: string, token: string, userAgent: st
 export const getCommsNumbersForSpace = (spaceId: string, callback: (numbers: any[]) => void) => {
   const q = query(collection(db, `spaces/${spaceId}/commsNumbers`));
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    callback(snapshot.docs.map(d => ({ id: doc.id, ...d.data() })));
   });
 };
 
-// DIRECT WRITES TO phone_channel_lookups ARE NOW FORBIDDEN BY RULES.
-// Use assignNumberToHub callable function instead.
+export const getAllPhoneLookupsForSpace = async (spaceId: string): Promise<PhoneChannelLookup[]> => {
+  const q = query(collection(db, 'phone_channel_lookups'), where('spaceId', '==', spaceId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as PhoneChannelLookup));
+};
 
-export const releaseNumberFromHub = async (type: 'sms' | 'voice', e164: string) => {
-  // Logic moved to server or needs to be adapted to callable if direct delete is forbidden.
-  // For now, we leave as a reminder that direct writes are blocked.
+export const getPhoneLookupsForHub = async (hubId: string): Promise<PhoneChannelLookup[]> => {
+  const q = query(collection(db, 'phone_channel_lookups'), where('hubId', '==', hubId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as PhoneChannelLookup));
+};
+
+export const savePhoneChannelLookup = async (id: string, data: Partial<PhoneChannelLookup>) => {
+  const ref = doc(db, 'phone_channel_lookups', id);
+  await setDoc(ref, { ...data, updatedAt: serverTimestamp() }, { merge: true });
 };
 
 // --- Seeding ---

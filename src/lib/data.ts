@@ -612,6 +612,32 @@ export interface ChatMessage {
   recordingUrl?: string;
 }
 
+// --- Comms Config (Lookups) ---
+export interface PhoneChannelLookup {
+  id: string; // twilio_{type}_{normalized_number}
+  spaceId: string;
+  hubId: string;
+  channelAddress: string;
+  isActive: boolean;
+  twilioSubaccountSid: string;
+  label?: string;
+  
+  // Voice Behavior
+  aiCallMode: 'full_ai' | 'triage' | 'agent_only';
+  handoffTarget: 'any' | 'assigned' | 'team';
+  handoffTeamId?: string;
+  handoffTimeout: number;
+  handoffFallback: 'voicemail' | 'ai_attempt' | 'callback';
+  
+  aiGreetingEnabled: boolean;
+  transcriptionEnabled: boolean;
+  afterHoursAiOnly: boolean;
+  voicemailFallback: boolean;
+  greetingScript: string;
+  
+  updatedAt: any;
+}
+
 // --- Help Center ---
 export interface HelpCenter {
   id: string;

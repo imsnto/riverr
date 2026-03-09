@@ -31,6 +31,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import BrainSettings from './brain-settings';
 import PhoneSettings from './phone-settings';
+import HubPhoneSettings from './hub-phone-settings';
 import { getToken } from "firebase/messaging";
 import { messaging } from '@/lib/firebase';
 import { ScrollArea } from '../ui/scroll-area';
@@ -38,7 +39,7 @@ import TeamTimesheets from './team-timesheets';
 import { arrayRemove, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-type SettingsView = 'users' | 'space-general' | 'hub-general' | 'phone' | 'agents' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'brain' | 'notifications';
+type SettingsView = 'users' | 'space-general' | 'hub-general' | 'phone' | 'hub-phone' | 'agents' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'brain' | 'notifications';
 
 interface SettingsLayoutProps {
   allUsers: User[];
@@ -64,7 +65,6 @@ interface SettingsLayoutProps {
   helpCenters: HelpCenter[];
 }
 
-// Sub-component for sidebar buttons, moved outside to prevent recreation on re-render
 const NavButton = ({ 
   item, 
   activeView, 
@@ -96,28 +96,21 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
 
   const handleLogout = async () => {
     try {
-      // 1. Safely check for notification permissions before calling getToken
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && messaging) {
         try {
           const token = await getToken(messaging);
           const userId = props?.appUser?.id;
-
           if (token && userId) {
             const userTokensRef = doc(db, "fcmTokens", userId);
-            // Remove the token from the user's list in Firestore
-            await updateDoc(userTokensRef, {
-              tokens: arrayRemove(token)
-            });
+            await updateDoc(userTokensRef, { tokens: arrayRemove(token) });
           }
         } catch (tokenErr) {
-          // Token cleanup failed, but we shouldn't block the logout
           console.warn("FCM token cleanup skipped or failed during logout:", tokenErr);
         }
       }
     } catch (error) {
       console.error("General error during logout cleanup:", error);
     } finally {
-      // 2. ALWAYS sign out and redirect, regardless of messaging success
       await signOut();
       window.location.replace('/login');
     }
@@ -139,6 +132,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
 
   const hubNavItems = [
     { key: 'hub-general' as SettingsView, label: 'General', icon: LayoutGrid },
+    { key: 'hub-phone' as SettingsView, label: 'Phone & SMS', icon: Phone, hidden: !hubHasInbox },
     { key: 'agents' as SettingsView, label: 'Agents', icon: BrainCircuit, hidden: !hubHasInbox },
     { key: 'deal-automation' as SettingsView, label: 'Deal Automation', icon: LayoutGrid, hidden: !hubHasDeals },
     { key: 'escalation-intake' as SettingsView, label: 'Escalation Intake', icon: LayoutGrid, hidden: !(hubHasTickets && hubHasTasks) },
@@ -186,6 +180,8 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             allUsers={props.allUsers}
           />
         ) : null;
+      case 'hub-phone':
+        return props.activeHub ? <HubPhoneSettings activeHub={props.activeHub} /> : null;
        case 'agents':
         return props.activeHub ? (
             <InboxSettings 
@@ -257,6 +253,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
                         {props.activeHub && (
                             <>
                                 <SelectItem value="hub-general">Hub: General</SelectItem>
+                                {hubHasInbox && <SelectItem value="hub-phone">Hub: Phone & SMS</SelectItem>}
                                 {hubHasInbox && <SelectItem value="agents">Hub: Agents</SelectItem>}
                                 {hubHasDeals && <SelectItem value="deal-automation">Hub: Deal Automation</SelectItem>}
                                 {(hubHasTickets && hubHasTasks) && <SelectItem value="escalation-intake">Hub: Escalation Intake</SelectItem>}
