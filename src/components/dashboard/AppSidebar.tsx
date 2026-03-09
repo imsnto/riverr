@@ -422,9 +422,12 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                       </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <DropdownMenuItem onClick={() => router.push('/profile')}>
+                    <DropdownMenuItem onClick={() => {
+                        handleNavigation('settings');
+                        router.push('/settings?view=profile');
+                    }}>
                       <UserIcon className="mr-2 h-4 w-4" />
-                      <span>Profile</span>
+                      <span>My Profile</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>

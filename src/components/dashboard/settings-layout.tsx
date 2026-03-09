@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import UserSettings from './user-settings';
@@ -26,8 +27,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import DealAutomationSettings from './deal-automation-settings';
 import EscalationIntakeSettings from './escalation-intake-settings';
-import { LogOut, Phone, User as UserIcon, Building2, LayoutGrid, Bell, BrainCircuit, Clock, Mail } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { LogOut, Phone, User as UserIcon, Building2, LayoutGrid, Bell, BrainCircuit, Clock, Mail, Sparkles } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import BrainSettings from './brain-settings';
 import PhoneSettings from './phone-settings';
@@ -38,8 +39,10 @@ import { ScrollArea } from '../ui/scroll-area';
 import TeamTimesheets from './team-timesheets';
 import { arrayRemove, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import PersonalAccountSettings from './personal-account-settings';
+import PersonalAgentSettings from './personal-agent-settings';
 
-type SettingsView = 'users' | 'space-general' | 'hub-general' | 'phone' | 'email' | 'agents' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'brain' | 'notifications';
+type SettingsView = 'profile' | 'personal-agent' | 'users' | 'space-general' | 'hub-general' | 'phone' | 'email' | 'agents' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'brain' | 'notifications';
 
 interface SettingsLayoutProps {
   allUsers: User[];
@@ -89,10 +92,19 @@ const NavButton = ({
 };
 
 export default function SettingsLayout(props: SettingsLayoutProps) {
-  const [activeView, setActiveView] = useState<SettingsView>('users');
+  const searchParams = useSearchParams();
+  const initialView = (searchParams.get('view') as SettingsView) || 'profile';
+  const [activeView, setActiveView] = useState<SettingsView>(initialView);
   const isMobile = useIsMobile();
   const { signOut, activeSpace } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    const viewFromUrl = searchParams.get('view') as SettingsView;
+    if (viewFromUrl && viewFromUrl !== activeView) {
+      setActiveView(viewFromUrl);
+    }
+  }, [searchParams, activeView]);
 
   const handleLogout = async () => {
     try {
@@ -123,6 +135,11 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
   const hubHasTickets = props.activeHub?.settings?.components?.includes('tickets');
   const hubHasTasks = props.activeHub?.settings?.components?.includes('tasks');
 
+  const personalNavItems = [
+    { key: 'profile' as SettingsView, label: 'My Profile', icon: UserIcon },
+    { key: 'personal-agent' as SettingsView, label: 'My AI Agent', icon: Sparkles },
+  ];
+
   const spaceNavItems = [
     { key: 'users' as SettingsView, label: 'Members', icon: UserIcon },
     { key: 'space-general' as SettingsView, label: 'Space Settings', icon: Building2 },
@@ -144,11 +161,13 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
   ];
 
   const renderContent = () => {
-    if (!activeSpace) return <div className="text-center p-8">No active workspace context.</div>;
-
     switch (activeView) {
+      case 'profile':
+        return <PersonalAccountSettings />;
+      case 'personal-agent':
+        return <PersonalAgentSettings helpCenters={props.helpCenters} />;
       case 'users':
-        return (
+        return activeSpace ? (
           <UserSettings
             activeSpace={activeSpace}
             allUsers={props.allUsers}
@@ -157,9 +176,9 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             onInvite={props.onInvite}
             allHubs={props.allHubs.filter(h => h.spaceId === activeSpace.id)}
           />
-        );
+        ) : null;
       case 'space-general':
-        return (
+        return activeSpace ? (
           <SpaceSettings
             activeSpace={activeSpace}
             allUsers={props.allUsers}
@@ -167,11 +186,11 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
             onDelete={props.onDelete}
             appUser={props.appUser}
           />
-        );
+        ) : null;
       case 'brain':
         return <BrainSettings />;
       case 'phone':
-        return <PhoneSettings space={activeSpace} allHubs={props.allHubs.filter(h => h.spaceId === activeSpace.id)} />;
+        return activeSpace ? <PhoneSettings space={activeSpace} allHubs={props.allHubs.filter(h => h.spaceId === activeSpace.id)} /> : null;
       case 'hub-general':
         return props.activeHub ? (
           <HubSettings
@@ -181,7 +200,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
           />
         ) : null;
       case 'email':
-        return props.activeHub ? <HubEmailSettings activeHub={props.activeHub} spaceId={activeSpace.id} /> : null;
+        return (props.activeHub && activeSpace) ? <HubEmailSettings activeHub={props.activeHub} spaceId={activeSpace.id} /> : null;
        case 'agents':
         return props.activeHub ? (
             <InboxSettings 
@@ -246,6 +265,8 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
                         <SelectValue placeholder="Select a setting" />
                     </SelectTrigger>
                     <SelectContent>
+                        <SelectItem value="profile">Personal: My Profile</SelectItem>
+                        <SelectItem value="personal-agent">Personal: My AI Agent</SelectItem>
                         <SelectItem value="users">Space: Members</SelectItem>
                         <SelectItem value="space-general">Space: Settings</SelectItem>
                         <SelectItem value="brain">Space: Business Brain</SelectItem>
@@ -282,6 +303,18 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
         </div>
         <ScrollArea className="flex-1">
             <div className="p-3 space-y-6">
+                <div className="space-y-1">
+                    <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50">Personal</p>
+                    {personalNavItems.map(item => (
+                      <NavButton 
+                        key={item.key} 
+                        item={item} 
+                        activeView={activeView} 
+                        setActiveView={setActiveView} 
+                      />
+                    ))}
+                </div>
+
                 <div className="space-y-1">
                     <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50">Space: {activeSpace?.name}</p>
                     {spaceNavItems.map(item => (
