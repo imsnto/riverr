@@ -120,6 +120,7 @@ export async function updateConversation(conversationId: string, data: Partial<C
     const cleanData = Object.fromEntries(
         Object.entries(data).filter(([_, v]) => v !== undefined)
     );
+    console.log('cleaData', cleanData, data)
 
     await convRef.update(cleanData as any);
   

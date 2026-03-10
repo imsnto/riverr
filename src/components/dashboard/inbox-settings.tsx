@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Bot as BotIcon, Edit, MoreHorizontal, Plus, Trash2, Globe, Smartphone, Phone, Mail } from 'lucide-react';
+import { Bot as BotIcon, Edit, MoreHorizontal, Plus, Trash2, Globe, Smartphone, Phone, Mail, Copy } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -85,6 +85,16 @@ export default function InboxSettings({
   const handleNewAgent = () => {
     setSelectedAgent(null);
     setIsDialogOpen(true);
+  };
+
+  const handleDuplicateAgent = (bot: BotData) => {
+    const { id, ...rest } = bot;
+    const duplicatedData: Omit<BotData, 'id'> = {
+      ...rest,
+      name: `${bot.name} (Copy)`,
+    };
+    onBotAdd(duplicatedData);
+    toast({ title: 'Agent Duplicated', description: `Created a copy of ${bot.name}.` });
   };
 
   const handleSaveAgent = (agentData: BotData | Omit<BotData, 'id' | 'hubId'>) => {
@@ -187,6 +197,10 @@ export default function InboxSettings({
                         <DropdownMenuContent>
                           <DropdownMenuItem onClick={() => handleToggleAgentStatus(bot)}>
                             {(bot.isEnabled ?? true) ? 'Disable' : 'Enable'}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicateAgent(bot)}>
+                            <Copy className="mr-2 h-4 w-4" />
+                            Duplicate
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onSelect={(e) => { e.preventDefault(); handleDeleteClick(bot); }}

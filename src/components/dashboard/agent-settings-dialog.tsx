@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
@@ -21,7 +22,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Bot as BotData, User, HelpCenter, PhoneChannelLookup, EmailConfig } from '@/lib/data';
 import { 
@@ -216,6 +217,7 @@ export default function AgentSettingsDialog({
   const { toast } = useToast();
 
   const isPersonal = agent?.ownerType === 'user';
+  const MAX_CHANNELS = 2;
 
   const form = useForm<AgentSettingsFormValues>({
     resolver: zodResolver(agentSettingsSchema),
@@ -283,9 +285,9 @@ export default function AgentSettingsDialog({
         flow: agent.flow || { nodes: [], edges: [] },
         channelConfig: agent.channelConfig || {
           web: { enabled: true },
-          sms: { enabled: true, numberConfigs: {} },
-          email: { enabled: true, emailConfigs: {} },
-          voice: { enabled: true, numberConfigs: {} }
+          sms: { enabled: false, numberConfigs: {} },
+          email: { enabled: false, emailConfigs: {} },
+          voice: { enabled: false, numberConfigs: {} }
         }
       });
     }
@@ -349,6 +351,27 @@ export default function AgentSettingsDialog({
 
   const removeKeyword = (kw: string) => {
     form.setValue('handoffKeywords', watchedValues.handoffKeywords.filter(k => k !== kw));
+  };
+
+  const handleToggleChannel = (path: any, checked: boolean) => {
+    if (checked) {
+      const enabledCount = [
+        watchedValues.channelConfig?.web?.enabled,
+        watchedValues.channelConfig?.sms?.enabled,
+        watchedValues.channelConfig?.email?.enabled,
+        watchedValues.channelConfig?.voice?.enabled
+      ].filter(Boolean).length;
+
+      if (enabledCount >= MAX_CHANNELS) {
+        toast({
+          variant: "destructive",
+          title: "Channel limit reached",
+          description: `You can only enable a maximum of ${MAX_CHANNELS} channels per agent.`
+        });
+        return;
+      }
+    }
+    form.setValue(path, checked);
   };
 
   const basicSnippet = agent ? `<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${agent.id}" data-hub-id="${agent.hubId}" async></script>`.trim() : '';
@@ -587,7 +610,7 @@ export default function AgentSettingsDialog({
                             <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">Channels</h2>
-                                    <p className="text-muted-foreground text-sm">Configure how this agent handles intelligence across different platforms.</p>
+                                    <p className="text-muted-foreground text-sm">Configure how this agent handles intelligence across different platforms. <span className="font-bold text-primary">(Max {MAX_CHANNELS} active)</span></p>
                                 </div>
 
                                 {/* WEB CHAT - Hidden for Personal for now per directive */}
@@ -600,7 +623,6 @@ export default function AgentSettingsDialog({
                                                 </div>
                                                 <h3 className="font-bold text-white">Web Chat</h3>
                                             </div>
-                                            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">Always Active</Badge>
                                         </div>
                                         <Card className="bg-[#161b22] border-white/10">
                                             <CardContent className="p-6 flex items-center justify-between">
@@ -608,7 +630,7 @@ export default function AgentSettingsDialog({
                                                     <p className="text-sm font-medium text-white">Standard Widget</p>
                                                     <p className="text-xs text-muted-foreground">The AI assistant will handle traffic from your embedded web widget.</p>
                                                 </div>
-                                                <Switch checked={watchedValues.channelConfig?.web?.enabled ?? true} onCheckedChange={(val) => form.setValue('channelConfig.web.enabled', val)} />
+                                                <Switch checked={watchedValues.channelConfig?.web?.enabled ?? true} onCheckedChange={(val) => handleToggleChannel('channelConfig.web.enabled', val)} />
                                             </CardContent>
                                         </Card>
                                     </section>
@@ -623,7 +645,7 @@ export default function AgentSettingsDialog({
                                             </div>
                                             <h3 className="font-bold text-white">SMS</h3>
                                         </div>
-                                        <Switch checked={watchedValues.channelConfig?.sms?.enabled ?? true} onCheckedChange={(val) => form.setValue('channelConfig.sms.enabled', val)} />
+                                        <Switch checked={watchedValues.channelConfig?.sms?.enabled ?? false} onCheckedChange={(val) => handleToggleChannel('channelConfig.sms.enabled', val)} />
                                     </div>
                                     <div className="grid gap-3">
                                         {phoneNumbers.map(num => (
@@ -678,7 +700,7 @@ export default function AgentSettingsDialog({
                                                     <Plus className="h-3 w-3 mr-1" /> Connect My Email
                                                 </Button>
                                             )}
-                                            <Switch checked={watchedValues.channelConfig?.email?.enabled ?? true} onCheckedChange={(val) => form.setValue('channelConfig.email.enabled', val)} />
+                                            <Switch checked={watchedValues.channelConfig?.email?.enabled ?? false} onCheckedChange={(val) => handleToggleChannel('channelConfig.email.enabled', val)} />
                                         </div>
                                     </div>
                                     <div className="grid gap-3">
@@ -737,7 +759,7 @@ export default function AgentSettingsDialog({
                                             </div>
                                             <h3 className="font-bold text-white">Phone</h3>
                                         </div>
-                                        <Switch checked={watchedValues.channelConfig?.voice?.enabled ?? true} onCheckedChange={(val) => form.setValue('channelConfig.voice.enabled', val)} />
+                                        <Switch checked={watchedValues.channelConfig?.voice?.enabled ?? false} onCheckedChange={(val) => handleToggleChannel('channelConfig.voice.enabled', val)} />
                                     </div>
                                     <div className="grid gap-4">
                                         {phoneNumbers.map(num => {

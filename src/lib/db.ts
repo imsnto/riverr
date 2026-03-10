@@ -794,6 +794,12 @@ export const getPersonalAgent = async (userId: string): Promise<Bot | null> => {
   return { id: snap.docs[0].id, ...snap.docs[0].data() } as Bot;
 };
 
+export const getPersonalAgents = async (userId: string): Promise<Bot[]> => {
+  const q = query(collection(db, 'bots'), where('ownerType', '==', 'user'), where('ownerId', '==', userId));
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bot));
+};
+
 // --- Push Notifications ---
 export const savePushToken = async (userId: string, token: string, userAgent: string) => {
   const tokenHash = btoa(token).substring(0, 20);
