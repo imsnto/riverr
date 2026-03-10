@@ -60,7 +60,8 @@ import {
   Sparkles,
   User as UserIcon,
   Forward,
-  Plus
+  Plus,
+  Info
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -183,6 +184,20 @@ const agentSettingsSchema = z.object({
       })) 
     })
   }).optional(),
+  workflowConfig: z.object({
+    supportEmail: z.object({
+      tone: z.enum(['formal', 'professional', 'friendly']),
+      signOff: z.string(),
+      alwaysAddress: z.string(),
+      escalationTriggers: z.array(z.string())
+    }).optional(),
+    personalEmail: z.object({
+      writingStyle: z.string(),
+      responseLength: z.enum(['short', 'medium', 'match']),
+      signOff: z.string(),
+      contextAwareness: z.boolean()
+    }).optional()
+  }).optional()
 });
 
 type AgentSettingsFormValues = z.infer<typeof agentSettingsSchema>;
@@ -206,7 +221,7 @@ export default function AgentSettingsDialog({
   allUsers,
   helpCenters,
 }: AgentSettingsDialogProps) {
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState('channels');
   const [isFlowBuilderOpen, setIsFlowBuilderOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isConnectEmailOpen, setIsConnectEmailOpen] = useState(false);
@@ -242,14 +257,38 @@ export default function AgentSettingsDialog({
       flow: { nodes: [], edges: [] },
       channelConfig: {
         web: { enabled: true },
-        sms: { enabled: true, numberConfigs: {} },
-        email: { enabled: true, emailConfigs: {} },
-        voice: { enabled: true, numberConfigs: {} }
+        sms: { enabled: false, numberConfigs: {} },
+        email: { enabled: false, emailConfigs: {} },
+        voice: { enabled: false, numberConfigs: {} }
+      },
+      workflowConfig: {
+        supportEmail: {
+          tone: 'professional',
+          signOff: 'Best regards, The Support Team',
+          alwaysAddress: '',
+          escalationTriggers: []
+        },
+        personalEmail: {
+          writingStyle: 'Write as if you are a senior professional who is direct and warm but never pushy. Mirror the tone of previous emails in the thread.',
+          responseLength: 'match',
+          signOff: appUser ? `Thanks, ${appUser.name.split(' ')[0]}` : 'Best regards',
+          contextAwareness: true
+        }
       }
     },
   });
   
   const watchedValues = form.watch();
+
+  useEffect(() => {
+    if (isOpen) {
+        if (agent) {
+            setActiveTab('channels'); // Default to settings
+        } else {
+            setActiveTab('channels'); // Force channel choice first for new
+        }
+    }
+  }, [isOpen, agent]);
 
   useEffect(() => {
     if (isOpen && agent) {
@@ -288,10 +327,24 @@ export default function AgentSettingsDialog({
           sms: { enabled: false, numberConfigs: {} },
           email: { enabled: false, emailConfigs: {} },
           voice: { enabled: false, numberConfigs: {} }
+        },
+        workflowConfig: agent.workflowConfig || {
+          supportEmail: {
+            tone: 'professional',
+            signOff: 'Best regards, The Support Team',
+            alwaysAddress: '',
+            escalationTriggers: []
+          },
+          personalEmail: {
+            writingStyle: 'Write as if you are a senior professional who is direct and warm but never pushy. Mirror the tone of previous emails in the thread.',
+            responseLength: 'match',
+            signOff: appUser ? `Thanks, ${appUser.name.split(' ')[0]}` : 'Best regards',
+            contextAwareness: true
+          }
         }
       });
     }
-  }, [agent, form]);
+  }, [agent, form, appUser]);
 
   const onSubmit = (values: AgentSettingsFormValues) => {
     const commonData = {
@@ -321,6 +374,7 @@ export default function AgentSettingsDialog({
         },
         flow: values.flow,
         channelConfig: values.channelConfig,
+        workflowConfig: values.workflowConfig,
         escalationTriggers: {
             billingKeywords: ['refund', 'charge', 'invoice'],
             sentimentThreshold: -0.5,
@@ -389,11 +443,11 @@ export default function AgentSettingsDialog({
 `.trim() : '';
 
   const navItems = [
+    { id: 'channels', label: 'Channels', icon: Globe },
     { id: 'general', label: 'General', icon: Settings },
     { id: 'workflow', label: 'Workflow', icon: Zap },
     { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
     { id: 'branding', label: 'Branding', icon: Palette },
-    { id: 'channels', label: 'Channels', icon: Globe },
     { id: 'installation', label: 'Install', icon: Plug, hidden: isPersonal },
   ];
 
@@ -517,92 +571,246 @@ export default function AgentSettingsDialog({
                         )}
 
                         {activeTab === 'workflow' && (
-                            <div className="max-w-3xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="max-w-3xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">Workflow</h2>
-                                    <p className="text-muted-foreground text-sm">Configure how your agent greets and routes visitors.</p>
+                                    <p className="text-muted-foreground text-sm">Configure AI behavior tailored to each active channel.</p>
                                 </div>
 
-                                <FormField
-                                    control={form.control}
-                                    name="welcomeMessage"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Greeting Message</FormLabel>
-                                            <FormControl>
-                                                <Textarea 
-                                                    placeholder="Hi there! How can we help you today?" 
-                                                    {...field} 
-                                                    className="bg-[#161b22] border-white/10 min-h-[120px] text-base leading-relaxed"
-                                                />
-                                            </FormControl>
-                                            <FormDescription className="text-xs">Shown immediately when a conversation begins.</FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <FormField
-                                    control={form.control}
-                                    name="aiEnabled"
-                                    render={({ field }) => (
-                                        <div className="rounded-2xl border border-white/10 bg-[#161b22] p-6 flex items-center justify-between shadow-sm">
-                                            <div className="space-y-1">
-                                                <h4 className="font-bold text-white flex items-center gap-2">
-                                                    AI Classification & Reasoning
-                                                </h4>
-                                                <p className="text-xs text-muted-foreground">Allow AI to identify visitor intent and answer questions automatically.</p>
+                                {/* WEB CHAT WORKFLOW */}
+                                {(watchedValues.channelConfig?.web?.enabled !== false && !isPersonal) && (
+                                    <section className="space-y-8 p-6 rounded-2xl border border-white/10 bg-[#161b22]">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                                                <MessageSquare className="h-4 w-4" />
                                             </div>
-                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                            <h3 className="font-bold text-white uppercase tracking-tight text-sm">Web Chat Workflow</h3>
                                         </div>
-                                    )}
-                                />
 
-                                <div className="space-y-4">
-                                    <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Automation Flow</Label>
-                                    <div className="p-6 rounded-2xl border-2 border-dashed border-white/5 bg-[#0d1117] flex flex-col items-center gap-6">
-                                        <div className="flex items-center gap-2 flex-wrap justify-center">
-                                            <Badge variant="outline" className="bg-white/5 border-white/10 h-8 px-3 font-medium">Start</Badge>
-                                            <ChevronRight className="h-3 w-3 text-muted-foreground opacity-30" />
-                                            <Badge variant="outline" className="bg-white/5 border-white/10 h-8 px-3 font-medium">Greeting</Badge>
-                                            <ChevronRight className="h-3 w-3 text-muted-foreground opacity-30" />
-                                            <Badge variant="outline" className="bg-white/5 border-white/10 h-8 px-3 font-medium">AI Classifier</Badge>
-                                            <ChevronRight className="h-3 w-3 text-muted-foreground opacity-30" />
-                                            <span className="text-xs text-muted-foreground italic">(Branching paths)</span>
-                                        </div>
-                                        <Button type="button" variant="outline" size="sm" onClick={() => setIsFlowBuilderOpen(true)} className="rounded-lg h-9 bg-white/5 hover:bg-white/10 border-white/10 text-xs font-bold gap-2">
-                                            <Edit className="h-3.5 w-3.5" />
-                                            Edit Flow
-                                        </Button>
-                                    </div>
-                                </div>
+                                        <FormField
+                                            control={form.control}
+                                            name="welcomeMessage"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Greeting Message</FormLabel>
+                                                    <FormControl>
+                                                        <Textarea 
+                                                            placeholder="Hi there! How can we help you today?" 
+                                                            {...field} 
+                                                            className="bg-[#0d1117] border-white/10 min-h-[100px] text-sm"
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
 
-                                <div className="space-y-4">
-                                    <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Global Handoff Keywords</Label>
-                                    <div className="rounded-2xl border border-white/10 bg-[#161b22] p-4 space-y-4">
-                                        <div className="flex flex-wrap gap-2">
-                                            {watchedValues.handoffKeywords.map((kw) => (
-                                                <Badge key={kw} variant="secondary" className="bg-white/5 hover:bg-white/10 text-white border-white/10 h-8 px-3 rounded-lg gap-2 text-xs">
-                                                    {kw}
-                                                    <button type="button" onClick={() => removeKeyword(kw)} className="text-muted-foreground hover:text-white">
-                                                        <X className="h-3 w-3" />
-                                                    </button>
-                                                </Badge>
-                                            ))}
+                                        <FormField
+                                            control={form.control}
+                                            name="aiEnabled"
+                                            render={({ field }) => (
+                                                <div className="rounded-xl border border-white/5 bg-[#0d1117] p-4 flex items-center justify-between">
+                                                    <div className="space-y-0.5">
+                                                        <h4 className="text-xs font-bold text-white">AI Classification</h4>
+                                                        <p className="text-[10px] text-muted-foreground">Identify visitor intent and answer grounded questions.</p>
+                                                    </div>
+                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                </div>
+                                            )}
+                                        />
+
+                                        <div className="space-y-4">
+                                            <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Handoff Keywords</Label>
+                                            <div className="rounded-xl border border-white/5 bg-[#0d1117] p-4 space-y-4">
+                                                <div className="flex flex-wrap gap-2">
+                                                    {watchedValues.handoffKeywords.map((kw) => (
+                                                        <Badge key={kw} variant="secondary" className="bg-white/5 hover:bg-white/10 text-white border-white/10 h-7 px-2 rounded-lg gap-2 text-[10px]">
+                                                            {kw}
+                                                            <button type="button" onClick={() => removeKeyword(kw)} className="text-muted-foreground hover:text-white">
+                                                                <X className="h-3 w-3" />
+                                                            </button>
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <Input 
+                                                        value={newKeyword} 
+                                                        onChange={(e) => setNewKeyword(e.target.value)} 
+                                                        onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); addKeyword(); } }}
+                                                        placeholder="Add keyword..." 
+                                                        className="bg-[#161b22] border-white/10 h-9 text-xs"
+                                                    />
+                                                    <Button type="button" variant="secondary" size="sm" onClick={addKeyword} className="h-9 px-4 text-xs">Add</Button>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <Input 
-                                                value={newKeyword} 
-                                                onChange={(e) => setNewKeyword(e.target.value)} 
-                                                onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); addKeyword(); } }}
-                                                placeholder="Add keyword..." 
-                                                className="bg-[#0d1117] border-white/10 h-10"
+                                    </section>
+                                )}
+
+                                {/* EMAIL WORKFLOW (SUPPORT) */}
+                                {(watchedValues.channelConfig?.email?.enabled && !isPersonal) && (
+                                    <section className="space-y-8 p-6 rounded-2xl border border-white/10 bg-[#161b22]">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                                <Mail className="h-4 w-4" />
+                                            </div>
+                                            <h3 className="font-bold text-white uppercase tracking-tight text-sm">Support Email Workflow</h3>
+                                        </div>
+
+                                        <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5 space-y-2">
+                                            <div className="flex items-center gap-2 text-primary">
+                                                <Info className="h-3.5 w-3.5" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">Default Behavior</span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                                The AI will analyze each inbound email and draft one complete, standalone response that addresses all customer questions at once.
+                                            </p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <FormField
+                                                control={form.control}
+                                                name="workflowConfig.supportEmail.tone"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Response Tone</FormLabel>
+                                                        <Select value={field.value} onValueChange={field.onChange}>
+                                                            <FormControl>
+                                                                <SelectTrigger className="bg-[#0d1117] border-white/10"><SelectValue /></SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="formal">Formal</SelectItem>
+                                                                <SelectItem value="professional">Professional</SelectItem>
+                                                                <SelectItem value="friendly">Friendly</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
                                             />
-                                            <Button type="button" variant="secondary" size="sm" onClick={addKeyword} className="h-10 px-4">Add</Button>
+                                            <FormField
+                                                control={form.control}
+                                                name="workflowConfig.supportEmail.signOff"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Default Sign-off</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="Best regards, The Support Team" {...field} className="bg-[#0d1117] border-white/10" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
                                         </div>
-                                        <p className="text-[10px] text-muted-foreground italic">When visitors send these words, they’re immediately routed to {isPersonal ? 'the shared Team Inbox' : 'a human agent'}.</p>
-                                    </div>
-                                </div>
+
+                                        <FormField
+                                            control={form.control}
+                                            name="workflowConfig.supportEmail.alwaysAddress"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Always Include</FormLabel>
+                                                    <FormControl>
+                                                        <Textarea 
+                                                            placeholder="e.g. Always reference the ticket number and link to our return policy docs." 
+                                                            {...field} 
+                                                            className="bg-[#0d1117] border-white/10 min-h-[80px] text-xs"
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription className="text-[10px]">Context added to every drafted response.</FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </section>
+                                )}
+
+                                {/* EMAIL WORKFLOW (PERSONAL / SALES) */}
+                                {(watchedValues.channelConfig?.email?.enabled && isPersonal) && (
+                                    <section className="space-y-8 p-6 rounded-2xl border border-white/10 bg-[#161b22]">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500">
+                                                <Sparkles className="h-4 w-4" />
+                                            </div>
+                                            <h3 className="font-bold text-white uppercase tracking-tight text-sm">Personal AI Voice</h3>
+                                        </div>
+
+                                        <div className="flex items-center justify-between p-4 rounded-xl bg-orange-500/5 border border-orange-500/10">
+                                            <div className="space-y-0.5">
+                                                <h4 className="text-xs font-bold text-orange-400">Policy: Draft Only</h4>
+                                                <p className="text-[10px] text-muted-foreground">Personal AI never auto-sends. You must review every draft.</p>
+                                            </div>
+                                            <Badge className="bg-orange-500 text-white border-none uppercase text-[9px] font-black h-5">Mandatory</Badge>
+                                        </div>
+
+                                        <FormField
+                                            control={form.control}
+                                            name="workflowConfig.personalEmail.writingStyle"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">My Writing Style</FormLabel>
+                                                    <FormControl>
+                                                        <Textarea 
+                                                            placeholder="Write like me: direct, using sentence fragments, never use the word 'delighted'..." 
+                                                            {...field} 
+                                                            className="bg-[#0d1117] border-white/10 min-h-[100px] text-xs leading-relaxed"
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <FormField
+                                                control={form.control}
+                                                name="workflowConfig.personalEmail.responseLength"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Response Length</FormLabel>
+                                                        <Select value={field.value} onValueChange={field.onChange}>
+                                                            <FormControl>
+                                                                <SelectTrigger className="bg-[#0d1117] border-white/10"><SelectValue /></SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="short">Short (1-2 sentences)</SelectItem>
+                                                                <SelectItem value="medium">Medium (standard)</SelectItem>
+                                                                <SelectItem value="match">Match Customer</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="workflowConfig.personalEmail.signOff"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Personal Sign-off</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="Thanks, [My Name]" {...field} className="bg-[#0d1117] border-white/10" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+
+                                        <FormField
+                                            control={form.control}
+                                            name="workflowConfig.personalEmail.contextAwareness"
+                                            render={({ field }) => (
+                                                <div className="rounded-xl border border-white/5 bg-[#0d1117] p-4 flex items-center justify-between">
+                                                    <div className="space-y-0.5">
+                                                        <h4 className="text-xs font-bold text-white">Relationship Context</h4>
+                                                        <p className="text-[10px] text-muted-foreground">Reference prior email history when drafting replies.</p>
+                                                    </div>
+                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                </div>
+                                            )}
+                                        />
+                                    </section>
+                                )}
                             </div>
                         )}
 
@@ -610,10 +818,10 @@ export default function AgentSettingsDialog({
                             <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">Channels</h2>
-                                    <p className="text-muted-foreground text-sm">Configure how this agent handles intelligence across different platforms. <span className="font-bold text-primary">(Max {MAX_CHANNELS} active)</span></p>
+                                    <p className="text-muted-foreground text-sm">Select up to **{MAX_CHANNELS} active channels** for this agent.</p>
                                 </div>
 
-                                {/* WEB CHAT - Hidden for Personal for now per directive */}
+                                {/* WEB CHAT */}
                                 {!isPersonal && (
                                     <section className="space-y-4">
                                         <div className="flex items-center justify-between">
@@ -727,19 +935,10 @@ export default function AgentSettingsDialog({
                                                                 <TabsList className="bg-black/20 h-8 p-0.5">
                                                                     <TabsTrigger value="off" className="h-7 text-[10px] px-3">Off</TabsTrigger>
                                                                     <TabsTrigger value="draft" className="h-7 text-[10px] px-3">Drafts</TabsTrigger>
-                                                                    <TabsTrigger value="auto" className="h-7 text-[10px] px-3">Auto</TabsTrigger>
+                                                                    {isPersonal ? null : <TabsTrigger value="auto" className="h-7 text-[10px] px-3">Auto</TabsTrigger>}
                                                                 </TabsList>
                                                             </Tabs>
                                                         </div>
-                                                    </div>
-                                                    <div className="p-4 bg-black/10">
-                                                        <Label className="text-[9px] uppercase font-black text-muted-foreground mb-2 block">Address-Specific AI Greeting</Label>
-                                                        <Textarea 
-                                                            placeholder="e.g. Always mention our holiday return policy for this mailbox..."
-                                                            value={watchedValues.channelConfig?.email?.emailConfigs?.[config.id]?.aiGreetingScript || ''}
-                                                            onChange={(e) => form.setValue(`channelConfig.email.emailConfigs.${config.id}.aiGreetingScript`, e.target.value)}
-                                                            className="bg-transparent border-white/5 text-xs min-h-[60px]"
-                                                        />
                                                     </div>
                                                 </CardContent>
                                             </Card>

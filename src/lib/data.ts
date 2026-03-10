@@ -580,6 +580,24 @@ export interface Bot {
       }> 
     };
   };
+  workflowConfig?: {
+    web?: {
+      welcomeMessage: string;
+      handoffKeywords: string[];
+    };
+    supportEmail?: {
+      tone: 'formal' | 'professional' | 'friendly';
+      signOff: string;
+      alwaysAddress: string;
+      escalationTriggers: string[];
+    };
+    personalEmail?: {
+      writingStyle: string;
+      responseLength: 'short' | 'medium' | 'match';
+      signOff: string;
+      contextAwareness: boolean;
+    };
+  };
   ownerType: 'hub' | 'user';
   ownerId: string;
   escalateToTeamInbox?: boolean;
