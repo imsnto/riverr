@@ -1,3 +1,4 @@
+
 /**
  * agent.ts (Hybrid Intelligence & Intent Routing Engine)
  *
@@ -12,11 +13,17 @@ export interface BotConfig {
   id: string;
   hubId: string;
   name: string;
+  webAgentName?: string;
   allowedHelpCenterIds: string[];
   aiEnabled?: boolean; 
   handoffKeywords?: string[];
   quickReplies?: string[];
   flow?: { nodes: AutomationNode[], edges: AutomationEdge[] };
+  conversationGoal?: string;
+  identityCapture?: {
+    timing: 'before' | 'after';
+    fields: { name: boolean; email: boolean; phone: boolean };
+  };
 }
 
 export type Conversation = ImportedConversation & {
@@ -137,7 +144,7 @@ export async function handleIncomingMessage(args: {
   const { bot, adapters } = args;
   let conversation = args.conversation;
   const text = args.message.text ?? "";
-  const botName = bot.name || "Support";
+  const botName = bot.webAgentName || bot.name || "Support";
 
   // ---- 1. ESCALATION GUARD ----
   if (conversation.status === 'waiting_human' || conversation.status === 'resolved') {
@@ -437,13 +444,35 @@ async function executeAiPhase(args: {
 }): Promise<boolean> {
   const { bot, adapters, conversation, message } = args;
   const text = message.text || "";
-  const botName = bot.name || "Support";
+  const botName = bot.webAgentName || bot.name || "Support";
 
   await adapters.updateConversation({
       conversationId: conversation.id,
       hubId: conversation.hubId,
       patch: { aiAttempted: true, status: 'open' }
   });
+
+  // Instruction augmentation based on Conversation Goal
+  let systemInstruction = `You are ${botName}, a helpful AI assistant.`;
+  if (bot.conversationGoal) {
+    systemInstruction += `\n\n**CONVERSATION GOAL:**\n${bot.conversationGoal}`;
+  }
+
+  // Identity Capture instructions
+  if (bot.identityCapture?.fields) {
+    const fieldsToAsk = [];
+    if (bot.identityCapture.fields.name && !conversation.visitorName) fieldsToAsk.push('name');
+    if (bot.identityCapture.fields.email && !conversation.visitorEmail) fieldsToAsk.push('email');
+    if (bot.identityCapture.fields.phone && !conversation.visitorPhone) fieldsToAsk.push('phone number');
+
+    if (fieldsToAsk.length > 0) {
+      if (bot.identityCapture.timing === 'before') {
+        systemInstruction += `\n\n**CRITICAL:** Before resolving the user's issue, you MUST ask for their ${fieldsToAsk.join(', ')}. Weave this naturally into your first response.`;
+      } else {
+        systemInstruction += `\n\n**CRITICAL:** While helping the user, you MUST eventually capture their ${fieldsToAsk.join(', ')}. Weave this naturally into the conversation contextually.`;
+      }
+    }
+  }
 
   // 1. Check Distilled Support Intents (Learned Intelligence)
   const supportSearch = await adapters.searchSupport({
@@ -484,8 +513,9 @@ async function executeAiPhase(args: {
       // Use Genkit to generate a natural, grounded answer
       const answer = await adapters.generateAnswer({
           query: text,
-          botName,
+          botName: botName,
           context,
+          greetingScript: systemInstruction
       });
 
       await adapters.persistAssistantMessage({

@@ -336,7 +336,7 @@ export default function ChatbotWidgetPage() {
   }
 
   const handleIdentitySubmit = async () => {
-    const isEmailRequired = bot?.identityCapture.required;
+    const isEmailRequired = bot?.identityCapture?.fields?.email !== false;
     const email = capturedEmail.trim();
     const name = capturedName.trim();
 
@@ -368,6 +368,8 @@ export default function ChatbotWidgetPage() {
     
     await ensureConversationCrmLinkedAction(conversation.id);
     await loadVisitorAndConversation(visitorId);
+
+    const agentDisplayName = bot?.webAgentName || bot?.name || 'AI Assistant';
 
     await addChatMessageAction({
         conversationId: conversation.id,
@@ -528,7 +530,7 @@ export default function ChatbotWidgetPage() {
                   setIdentityCaptureStep('none');
                 }, 1500);
             } else {
-                if (!bot.identityCapture.required) {
+                if (!bot.identityCapture?.required) {
                     setIsBotTyping(true);
                     setTimeout(async () => {
                       await addChatMessageAction({
@@ -582,9 +584,9 @@ export default function ChatbotWidgetPage() {
     if (!customText) setMessageText('');
     setAttachments([]);
 
-    const needsIdentityCapture = !appUser && bot?.identityCapture.enabled && (!visitor.name || (bot?.identityCapture.required && !visitor.email));
+    const needsIdentityCapture = !appUser && bot?.identityCapture?.enabled && (!visitor.name || (bot?.identityCapture?.required && !visitor.email));
 
-    if (needsIdentityCapture && isNewConversation && bot.flow?.nodes.length === 0) {
+    if (needsIdentityCapture && isNewConversation && bot.identityCapture.timing === 'before') {
         setIsBotTyping(true);
         setTimeout(async () => {
           await addChatMessageAction({
@@ -618,10 +620,13 @@ export default function ChatbotWidgetPage() {
             id: bot.id,
             hubId: bot.hubId,
             name: bot.name,
+            webAgentName: bot.webAgentName,
             allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
             aiEnabled: bot.aiEnabled,
             handoffKeywords: bot.automations?.handoffKeywords,
             flow: bot.flow,
+            conversationGoal: bot.conversationGoal,
+            identityCapture: bot.identityCapture,
         };
 
         try {
@@ -727,6 +732,7 @@ export default function ChatbotWidgetPage() {
 
   const bg = bot.styleSettings?.backgroundColor;
   const primary = bot.styleSettings?.primaryColor;
+  const agentDisplayName = bot.webAgentName || bot.name || 'AI Assistant';
 
   const renderAttachments = (msg: ChatMessage) => {
     if (!msg.attachments || msg.attachments.length === 0) return null;
@@ -761,7 +767,7 @@ export default function ChatbotWidgetPage() {
             <img src={bot.styleSettings.logoUrl} alt="Bot Logo" className="h-8 w-8 object-contain rounded-full" />
           )}
           <div className="flex items-center gap-3">
-            <h3 className="font-bold truncate text-base" style={{ color: bot.styleSettings?.headerTextColor || '#ffffff' }}>{bot.name}</h3>
+            <h3 className="font-bold truncate text-base" style={{ color: bot.styleSettings?.headerTextColor || '#ffffff' }}>{agentDisplayName}</h3>
             {bot.agents && bot.agents.length > 0 && (
               <div className="flex -space-x-2 overflow-hidden ml-2">
                 {bot.agents.map(agent => (
@@ -790,7 +796,7 @@ export default function ChatbotWidgetPage() {
               <p className="text-sm whitespace-pre-wrap">{bot.welcomeMessage}</p>
             </div>
           </div>
-          <p className="text-xs text-zinc-500">Support Assistant</p>
+          <p className="text-xs text-zinc-500">{agentDisplayName}</p>
 
           {(visibleMessages.length > 0) && visibleMessages.map(msg => {
             const isAgent = msg.senderType === 'agent' || msg.senderType === 'bot';
@@ -825,7 +831,7 @@ export default function ChatbotWidgetPage() {
                         {renderAttachments(msg)}
                         </div>
                         <p className="text-xs text-zinc-500 mt-2">
-                            {isAI ? 'Manowar Assistant (AI)' : isAutomation ? 'Support Assistant' : (agent?.name || 'Team member')}
+                            {isAI ? `${agentDisplayName} (AI)` : isAutomation ? agentDisplayName : (agent?.name || 'Team member')}
                         </p>
                     </div>
                     ) : (
@@ -858,18 +864,22 @@ export default function ChatbotWidgetPage() {
               <div className="flex items-end gap-2">
                 <div className="p-4 rounded-xl rounded-bl-sm max-w-xs break-words shadow-lg border border-white/10" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
                   <div className="space-y-3">
-                    <div className="space-y-1">
-                        <Label className="text-xs uppercase font-bold tracking-wider opacity-70">Name</Label>
-                        <Input type="text" placeholder="e.g. John Doe" value={capturedName} onChange={(e) => setCapturedName(e.target.value)} className="bg-zinc-800/50 border-white/10 text-white h-9 text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                        <Label className="text-xs uppercase font-bold tracking-wider opacity-70">Email {bot.identityCapture.required && '*'}</Label>
-                        <Input type="email" placeholder="e.g. john@example.com" value={capturedEmail} onChange={(e) => setCapturedEmail(e.target.value)} className="bg-zinc-800/50 border-white/10 text-white h-9 text-sm" />
-                    </div>
+                    {bot.identityCapture?.fields?.name !== false && (
+                      <div className="space-y-1">
+                          <Label className="text-xs uppercase font-bold tracking-wider opacity-70">Name</Label>
+                          <Input type="text" placeholder="e.g. John Doe" value={capturedName} onChange={(e) => setCapturedName(e.target.value)} className="bg-zinc-800/50 border-white/10 text-white h-9 text-sm" />
+                      </div>
+                    )}
+                    {bot.identityCapture?.fields?.email !== false && (
+                      <div className="space-y-1">
+                          <Label className="text-xs uppercase font-bold tracking-wider opacity-70">Email</Label>
+                          <Input type="email" placeholder="e.g. john@example.com" value={capturedEmail} onChange={(e) => setCapturedEmail(e.target.value)} className="bg-zinc-800/50 border-white/10 text-white h-9 text-sm" />
+                      </div>
+                    )}
                     <Button onClick={handleIdentitySubmit} size="sm" className="w-full mt-2 font-bold" style={{ backgroundColor: primary }}>
                         Submit Details
                     </Button>
-                    {!bot.identityCapture.required && (
+                    {!bot.identityCapture?.required && (
                         <Button variant="ghost" size="sm" className="w-full text-[10px] opacity-50 hover:bg-transparent hover:opacity-100" onClick={() => setIdentityCaptureStep('none')}>
                             Skip for now
                         </Button>

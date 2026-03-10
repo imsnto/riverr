@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -435,7 +436,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
       let authorName = "Visitor";
   
       if (message.authorId === 'ai_agent') {
-          authorName = message.responderType === 'ai' ? 'Manowar Assistant' : 'Support Assistant';
+          authorName = message.responderType === 'ai' ? 'Assistant' : 'Support Assistant';
       } else if (message.senderType === 'agent') {
         const userDoc = await adminDB.collection('users').doc(message.authorId).get();
         if (userDoc.exists) authorName = userDoc.data()?.name || 'Agent';
@@ -556,11 +557,14 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
           id: bot.id,
           hubId: bot.hubId,
           name: bot.name,
+          webAgentName: bot.webAgentName,
           allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
           aiEnabled: bot.aiEnabled,
           handoffKeywords: bot.automations?.handoffKeywords,
           quickReplies: bot.automations?.quickReplies,
           flow: bot.flow,
+          conversationGoal: bot.conversationGoal,
+          identityCapture: bot.identityCapture,
       };
   
       await handleIncomingMessage({ ...args, bot: botConfig, adapters });

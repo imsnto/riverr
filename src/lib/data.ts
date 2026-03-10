@@ -524,6 +524,7 @@ export interface Bot {
   hubId: string;
   spaceId: string;
   name: string;
+  webAgentName?: string; // Name for the web chatbot (e.g. "Finn")
   isEnabled?: boolean;
   aiEnabled?: boolean;
   welcomeMessage?: string;
@@ -544,8 +545,15 @@ export interface Bot {
   identityCapture: {
     enabled: boolean;
     required: boolean;
+    timing: 'before' | 'after';
     captureMessage?: string;
+    fields: {
+      name: boolean;
+      email: boolean;
+      phone: boolean;
+    };
   };
+  conversationGoal?: string; // Instruction for Claude
   automations?: {
     handoffKeywords?: string[];
     quickReplies?: string[];
@@ -583,7 +591,18 @@ export interface Bot {
   workflowConfig?: {
     web?: {
       welcomeMessage: string;
+      webAgentName?: string;
       handoffKeywords: string[];
+      afterHoursBehavior: 'ai_full' | 'take_message' | 'disabled';
+      conversationGoal: string;
+      identityCapture: {
+        timing: 'before' | 'after';
+        fields: {
+          name: boolean;
+          email: boolean;
+          phone: boolean;
+        };
+      };
     };
     supportEmail?: {
       tone: 'formal' | 'professional' | 'friendly';

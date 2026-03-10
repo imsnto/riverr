@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
@@ -63,7 +64,8 @@ import {
   Plus,
   Info,
   CheckCircle2,
-  Bell
+  Bell,
+  Target
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -85,6 +87,7 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Slider } from '../ui/slider';
 import ConnectEmailDialog from './connect-email-dialog';
+import { Checkbox } from '../ui/checkbox';
 
 function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
     const [open, setOpen] = useState(false);
@@ -189,7 +192,18 @@ const agentSettingsSchema = z.object({
   workflowConfig: z.object({
     web: z.object({
       welcomeMessage: z.string(),
-      handoffKeywords: z.array(z.string())
+      webAgentName: z.string().optional(),
+      handoffKeywords: z.array(z.string()),
+      afterHoursBehavior: z.enum(['ai_full', 'take_message', 'disabled']),
+      conversationGoal: z.string(),
+      identityCapture: z.object({
+        timing: z.enum(['before', 'after']),
+        fields: z.object({
+          name: z.boolean(),
+          email: z.boolean(),
+          phone: z.boolean(),
+        })
+      })
     }).optional(),
     supportEmail: z.object({
       tone: z.enum(['formal', 'professional', 'friendly']),
@@ -291,7 +305,17 @@ export default function AgentSettingsDialog({
         voice: { enabled: false, numberConfigs: {} }
       },
       workflowConfig: {
-        web: { welcomeMessage: 'Hi there! How can we help you today?', handoffKeywords: [] },
+        web: { 
+          welcomeMessage: 'Hi there! How can we help you today?', 
+          webAgentName: 'AI Assistant',
+          handoffKeywords: ['agent', 'human', 'speak to person'],
+          afterHoursBehavior: 'ai_full',
+          conversationGoal: 'Resolve the customer\'s issue in as few messages as possible and always collect their contact details before the conversation ends.',
+          identityCapture: {
+            timing: 'before',
+            fields: { name: true, email: true, phone: false }
+          }
+        },
         supportEmail: {
           tone: 'professional',
           signOff: 'Best regards, The Support Team',
@@ -378,7 +402,17 @@ export default function AgentSettingsDialog({
           voice: { enabled: false, numberConfigs: {} }
         },
         workflowConfig: agent.workflowConfig || {
-          web: { welcomeMessage: 'Hi there! How can we help you today?', handoffKeywords: [] },
+          web: { 
+            welcomeMessage: agent.welcomeMessage || 'Hi there! How can we help you today?',
+            webAgentName: agent.webAgentName || 'AI Assistant',
+            handoffKeywords: agent.automations?.handoffKeywords || ['agent', 'human', 'speak to person'],
+            afterHoursBehavior: 'ai_full',
+            conversationGoal: agent.conversationGoal || 'Resolve the customer\'s issue in as few messages as possible and always collect their contact details before the conversation ends.',
+            identityCapture: agent.identityCapture ? {
+              timing: agent.identityCapture.timing || 'before',
+              fields: agent.identityCapture.fields || { name: true, email: true, phone: false }
+            } : { timing: 'before', fields: { name: true, email: true, phone: false } }
+          },
           supportEmail: {
             tone: 'professional',
             signOff: 'Best regards, The Support Team',
@@ -422,9 +456,11 @@ export default function AgentSettingsDialog({
   const onSubmit = (values: AgentSettingsFormValues) => {
     const commonData = {
         name: values.name,
+        webAgentName: values.workflowConfig?.web?.webAgentName,
         isEnabled: values.isEnabled,
         aiEnabled: values.aiEnabled,
-        welcomeMessage: values.welcomeMessage,
+        welcomeMessage: values.workflowConfig?.web?.welcomeMessage || values.welcomeMessage,
+        conversationGoal: values.workflowConfig?.web?.conversationGoal,
         layout: 'default' as const,
         styleSettings: {
             primaryColor: values.primaryColor,
@@ -440,9 +476,14 @@ export default function AgentSettingsDialog({
         agentIds: values.agentIds || [],
         escalateToTeamInbox: values.escalateToTeamInbox,
         allowedHelpCenterIds: values.allowedHelpCenterIds || [],
-        identityCapture: { enabled: false, required: false }, 
+        identityCapture: values.workflowConfig?.web?.identityCapture ? {
+          enabled: true,
+          required: true,
+          timing: values.workflowConfig.web.identityCapture.timing,
+          fields: values.workflowConfig.web.identityCapture.fields,
+        } : { enabled: false, required: false, timing: 'before', fields: { name: true, email: true, phone: false } },
         automations: {
-            handoffKeywords: values.handoffKeywords,
+            handoffKeywords: values.workflowConfig?.web?.handoffKeywords || values.handoffKeywords,
             quickReplies: [],
         },
         flow: values.flow,
@@ -470,14 +511,16 @@ export default function AgentSettingsDialog({
 
   const addKeyword = () => {
     const kw = newKeyword.trim().toLowerCase();
-    if (kw && !watchedValues.handoffKeywords.includes(kw)) {
-        form.setValue('handoffKeywords', [...watchedValues.handoffKeywords, kw]);
+    if (kw && kw !== 'help' && !watchedValues.workflowConfig?.web?.handoffKeywords.includes(kw)) {
+        const currentKeywords = watchedValues.workflowConfig?.web?.handoffKeywords || [];
+        form.setValue('workflowConfig.web.handoffKeywords', [...currentKeywords, kw]);
         setNewKeyword('');
     }
   };
 
   const removeKeyword = (kw: string) => {
-    form.setValue('handoffKeywords', watchedValues.handoffKeywords.filter(k => k !== kw));
+    const currentKeywords = watchedValues.workflowConfig?.web?.handoffKeywords || [];
+    form.setValue('workflowConfig.web.handoffKeywords', currentKeywords.filter(k => k !== kw));
   };
 
   const handleToggleChannel = (path: any, checked: boolean) => {
@@ -740,11 +783,11 @@ export default function AgentSettingsDialog({
                                     name="name"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Agent Name</FormLabel>
+                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Agent Configuration Name</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="My Assistant" {...field} className="bg-muted/20 border-white/10 h-11" />
+                                                <Input placeholder="Support Agent Config" {...field} className="bg-muted/20 border-white/10 h-11" />
                                             </FormControl>
-                                            <FormDescription className="text-xs">The display name for this assistant.</FormDescription>
+                                            <FormDescription className="text-xs">Internal name for this configuration.</FormDescription>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -806,35 +849,162 @@ export default function AgentSettingsDialog({
                                             <h3 className="font-bold text-white uppercase tracking-tight text-sm">Web Chat Workflow</h3>
                                         </div>
 
-                                        <FormField
-                                            control={form.control}
-                                            name="workflowConfig.web.welcomeMessage"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Greeting Message</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea 
-                                                            placeholder="Hi there! How can we help you today?" 
-                                                            {...field} 
-                                                            className="bg-[#0d1117] border-white/10 min-h-[100px] text-sm"
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                          <FormField
+                                              control={form.control}
+                                              name="workflowConfig.web.webAgentName"
+                                              render={({ field }) => (
+                                                  <FormItem>
+                                                      <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Agent Name (Public)</FormLabel>
+                                                      <FormControl>
+                                                          <Input 
+                                                              placeholder="e.g. Finn" 
+                                                              {...field} 
+                                                              className="bg-[#0d1117] border-white/10 h-11"
+                                                          />
+                                                      </FormControl>
+                                                      <FormDescription className="text-[10px]">What the visitor sees (e.g. "Finn is typing...")</FormDescription>
+                                                      <FormMessage />
+                                                  </FormItem>
+                                              )}
+                                          />
+                                          <FormField
+                                              control={form.control}
+                                              name="workflowConfig.web.welcomeMessage"
+                                              render={({ field }) => (
+                                                  <FormItem>
+                                                      <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Greeting Message</FormLabel>
+                                                      <FormControl>
+                                                          <Input 
+                                                              placeholder="Hi there! How can we help you today?" 
+                                                              {...field} 
+                                                              className="bg-[#0d1117] border-white/10 h-11"
+                                                          />
+                                                      </FormControl>
+                                                      <FormMessage />
+                                                  </FormItem>
+                                              )}
+                                          />
+                                        </div>
+
+                                        <Separator className="bg-white/5" />
+
+                                        <div className="space-y-6">
+                                          <div className="flex items-center gap-2">
+                                            <Target className="h-4 w-4 text-primary" />
+                                            <Label className="text-[10px] uppercase font-black tracking-widest text-white">Conversation Goal</Label>
+                                          </div>
+                                          <FormField
+                                              control={form.control}
+                                              name="workflowConfig.web.conversationGoal"
+                                              render={({ field }) => (
+                                                  <FormItem>
+                                                      <FormControl>
+                                                          <Textarea 
+                                                              placeholder="Resolve the customer's issue in as few messages as possible and always collect their contact details before the conversation ends." 
+                                                              {...field} 
+                                                              className="bg-[#0d1117] border-white/10 min-h-[100px] text-sm italic"
+                                                          />
+                                                      </FormControl>
+                                                      <FormDescription className="text-[10px]">This instruction is passed directly to the AI as its "North Star" for every interaction.</FormDescription>
+                                                      <FormMessage />
+                                                  </FormItem>
+                                              )}
+                                          />
+                                        </div>
+
+                                        <Separator className="bg-white/5" />
+
+                                        <div className="space-y-6">
+                                          <div className="flex items-center gap-2">
+                                            <UserCheck className="h-4 w-4 text-primary" />
+                                            <Label className="text-[10px] uppercase font-black tracking-widest text-white">Identity Capture</Label>
+                                          </div>
+                                          
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <FormField
+                                              control={form.control}
+                                              name="workflowConfig.web.identityCapture.timing"
+                                              render={({ field }) => (
+                                                <FormItem className="space-y-3">
+                                                  <FormLabel className="text-xs text-muted-foreground">When should details be requested?</FormLabel>
+                                                  <FormControl>
+                                                    <RadioGroup
+                                                      onValueChange={field.onChange}
+                                                      defaultValue={field.value}
+                                                      className="flex flex-col space-y-1"
+                                                    >
+                                                      <div className="flex items-center space-x-2">
+                                                        <RadioGroupItem value="before" id="before" />
+                                                        <Label htmlFor="before" className="text-xs">Before first response</Label>
+                                                      </div>
+                                                      <div className="flex items-center space-x-2">
+                                                        <RadioGroupItem value="after" id="after" />
+                                                        <Label htmlFor="after" className="text-xs">After first response</Label>
+                                                      </div>
+                                                    </RadioGroup>
+                                                  </FormControl>
                                                 </FormItem>
-                                            )}
-                                        />
+                                              )}
+                                            />
+
+                                            <div className="space-y-3">
+                                              <Label className="text-xs text-muted-foreground">What details to capture?</Label>
+                                              <div className="flex flex-col gap-2">
+                                                <FormField
+                                                  control={form.control}
+                                                  name="workflowConfig.web.identityCapture.fields.name"
+                                                  render={({ field }) => (
+                                                    <div className="flex items-center space-x-2">
+                                                      <Checkbox id="field-name" checked={field.value} onCheckedChange={field.onChange} />
+                                                      <Label htmlFor="field-name" className="text-xs">Name</Label>
+                                                    </div>
+                                                  )}
+                                                />
+                                                <FormField
+                                                  control={form.control}
+                                                  name="workflowConfig.web.identityCapture.fields.email"
+                                                  render={({ field }) => (
+                                                    <div className="flex items-center space-x-2">
+                                                      <Checkbox id="field-email" checked={field.value} onCheckedChange={field.onChange} />
+                                                      <Label htmlFor="field-email" className="text-xs">Email</Label>
+                                                    </div>
+                                                  )}
+                                                />
+                                                <FormField
+                                                  control={form.control}
+                                                  name="workflowConfig.web.identityCapture.fields.phone"
+                                                  render={({ field }) => (
+                                                    <div className="flex items-center space-x-2">
+                                                      <Checkbox id="field-phone" checked={field.value} onCheckedChange={field.onChange} />
+                                                      <Label htmlFor="field-phone" className="text-xs">Phone Number</Label>
+                                                    </div>
+                                                  )}
+                                                />
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <p className="text-[10px] text-muted-foreground italic bg-white/5 p-2 rounded-lg">AI handles these requests naturally in conversation — no rigid forms will be shown unless the customer is silent.</p>
+                                        </div>
+
+                                        <Separator className="bg-white/5" />
 
                                         <FormField
                                             control={form.control}
-                                            name="aiEnabled"
+                                            name="workflowConfig.web.afterHoursBehavior"
                                             render={({ field }) => (
-                                                <div className="rounded-xl border border-white/5 bg-[#0d1117] p-4 flex items-center justify-between">
-                                                    <div className="space-y-0.5">
-                                                        <h4 className="text-xs font-bold text-white">AI Classification</h4>
-                                                        <p className="text-[10px] text-muted-foreground">Identify visitor intent and answer grounded questions.</p>
-                                                    </div>
-                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                                </div>
+                                                <FormItem>
+                                                    <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">After Hours Behavior</FormLabel>
+                                                    <Select value={field.value} onValueChange={field.onChange}>
+                                                        <FormControl><SelectTrigger className="bg-[#0d1117] border-white/10"><SelectValue /></SelectTrigger></FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="ai_full">AI handles everything</SelectItem>
+                                                            <SelectItem value="take_message">AI takes a message for follow-up</SelectItem>
+                                                            <SelectItem value="disabled">Widget disabled (hidden)</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormDescription className="text-[10px]">Inherited from global Space business hours.</FormDescription>
+                                                </FormItem>
                                             )}
                                         />
 
@@ -842,7 +1012,7 @@ export default function AgentSettingsDialog({
                                             <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Handoff Keywords</Label>
                                             <div className="rounded-xl border border-white/5 bg-[#0d1117] p-4 space-y-4">
                                                 <div className="flex flex-wrap gap-2">
-                                                    {(watchedValues.handoffKeywords || []).map((kw) => (
+                                                    {(watchedValues.workflowConfig?.web?.handoffKeywords || []).map((kw) => (
                                                         <Badge key={kw} variant="secondary" className="bg-white/5 hover:bg-white/10 text-white border-white/10 h-7 px-2 rounded-lg gap-2 text-[10px]">
                                                             {kw}
                                                             <button type="button" onClick={() => removeKeyword(kw)} className="text-muted-foreground hover:text-white">
@@ -856,7 +1026,7 @@ export default function AgentSettingsDialog({
                                                         value={newKeyword} 
                                                         onChange={(e) => setNewKeyword(e.target.value)} 
                                                         onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); addKeyword(); } }}
-                                                        placeholder="Add keyword..." 
+                                                        placeholder="Add keyword (e.g. human)..." 
                                                         className="bg-[#161b22] border-white/10 h-9 text-xs"
                                                     />
                                                     <Button type="button" variant="secondary" size="sm" onClick={addKeyword} className="h-9 px-4 text-xs">Add</Button>
