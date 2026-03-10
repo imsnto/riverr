@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -51,7 +50,8 @@ import {
   CheckCircle2,
   AlertCircle,
   ChevronRight,
-  ArrowRight
+  ArrowRight,
+  Info
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -68,6 +68,7 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Checkbox } from '../ui/checkbox';
 import { Slider } from '../ui/slider';
 import Link from 'next/link';
+import { Separator } from '../ui/separator';
 
 function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
     const [open, setOpen] = useState(false);
@@ -310,7 +311,7 @@ export default function AgentSettingsDialog({
                             <FormLabel className="text-xs text-muted-foreground font-normal">What should this agent try to achieve?</FormLabel>
                             <FormControl>
                                 <Textarea 
-                                    placeholder="Resolve the customer's issue in as few messages as possible and always collect their contact details before the conversation ends." 
+                                    placeholder="Resolve the customer's issue efficiently and collect contact details." 
                                     {...field} 
                                     className="bg-muted/20 border-white/10 min-h-[100px] text-sm italic"
                                 />
