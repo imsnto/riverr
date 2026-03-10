@@ -68,7 +68,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import Link from 'next/link';
-import { Separator } from '@/components/ui/separator';
+import { Separator } from '../ui/separator';
 
 const agentSettingsSchema = z.object({
   name: z.string().min(1, 'Name is required.'),
@@ -145,6 +145,7 @@ export default function AgentSettingsDialog({
       workflowConfig: {
         web: {
           webAgentName: 'AI Assistant',
+          welcomeMessage: 'Hi! How can I help?',
           handoffKeywords: ['agent', 'human', 'person'],
           conversationGoal: 'Resolve the customer\'s issue efficiently and collect contact details.',
           identityCapture: { timing: 'after', fields: { name: true, email: true, phone: false } },
@@ -230,10 +231,17 @@ export default function AgentSettingsDialog({
 
   const onSubmit = (values: AgentSettingsFormValues) => {
     // Firestore does not support 'undefined'.
-    const sanitize = (data: any) => {
-      return Object.fromEntries(
-        Object.entries(data).filter(([_, v]) => v !== undefined)
-      );
+    const deepSanitize = (obj: any): any => {
+      if (Array.isArray(obj)) {
+        return obj.map(deepSanitize);
+      } else if (obj !== null && typeof obj === 'object') {
+        return Object.fromEntries(
+          Object.entries(obj)
+            .filter(([_, v]) => v !== undefined)
+            .map(([k, v]) => [k, deepSanitize(v)])
+        );
+      }
+      return obj;
     };
 
     const styleSettings = mode === 'widget' ? {
@@ -250,10 +258,10 @@ export default function AgentSettingsDialog({
         chatbotIconsTextColor: '#ffffff',
     });
 
-    const commonData = {
-        ...sanitize(values),
+    const commonData = deepSanitize({
+        ...values,
         styleSettings
-    };
+    });
 
     onSave(commonData as any);
     onOpenChange(false);
@@ -909,6 +917,44 @@ export default function AgentSettingsDialog({
                                             )}
                                         </Card>
                                     ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'knowledge' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white mb-1">Knowledge</h2>
+                                    <p className="text-muted-foreground text-sm">Select libraries this agent can reference to answer questions.</p>
+                                </div>
+                                <div className="space-y-3">
+                                    {helpCenters.map(hc => (
+                                        <div key={hc.id} className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-all">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                                                    <BookOpen className="h-5 w-5" />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-white">{hc.name}</span>
+                                                    <span className="text-[10px] text-muted-foreground uppercase">{hc.visibility}</span>
+                                                </div>
+                                            </div>
+                                            <Checkbox 
+                                                checked={watchedValues.allowedHelpCenterIds?.includes(hc.id)} 
+                                                onCheckedChange={(checked) => {
+                                                    const current = watchedValues.allowedHelpCenterIds || [];
+                                                    const updated = checked ? [...current, hc.id] : current.filter(id => id !== hc.id);
+                                                    form.setValue('allowedHelpCenterIds', updated);
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
+                                    {helpCenters.length === 0 && (
+                                        <div className="p-12 border-2 border-dashed border-white/10 rounded-2xl text-center">
+                                            <Info className="h-8 w-8 text-muted-foreground mx-auto mb-3 opacity-20" />
+                                            <p className="text-xs text-muted-foreground">No libraries found. Create one in the Knowledge tab.</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}

@@ -99,9 +99,20 @@ export default function InboxSettings({
     const { id, ...rest } = bot;
     
     // Firestore does not allow 'undefined' values.
-    const sanitizedRest = Object.fromEntries(
-      Object.entries(rest).filter(([_, v]) => v !== undefined)
-    );
+    const deepSanitize = (obj: any): any => {
+      if (Array.isArray(obj)) {
+        return obj.map(deepSanitize);
+      } else if (obj !== null && typeof obj === 'object') {
+        return Object.fromEntries(
+          Object.entries(obj)
+            .filter(([_, v]) => v !== undefined)
+            .map(([k, v]) => [k, deepSanitize(v)])
+        );
+      }
+      return obj;
+    };
+
+    const sanitizedRest = deepSanitize(rest);
 
     const duplicatedData: Omit<BotData, 'id'> = {
       ...sanitizedRest,
@@ -114,9 +125,20 @@ export default function InboxSettings({
 
   const handleSaveBot = (botData: BotData | Omit<BotData, 'id' | 'hubId'>) => {
     // Firestore does not allow 'undefined' values.
-    const sanitizedData = Object.fromEntries(
-      Object.entries(botData).filter(([_, v]) => v !== undefined)
-    );
+    const deepSanitize = (obj: any): any => {
+      if (Array.isArray(obj)) {
+        return obj.map(deepSanitize);
+      } else if (obj !== null && typeof obj === 'object') {
+        return Object.fromEntries(
+          Object.entries(obj)
+            .filter(([_, v]) => v !== undefined)
+            .map(([k, v]) => [k, deepSanitize(v)])
+        );
+      }
+      return obj;
+    };
+
+    const sanitizedData = deepSanitize(botData);
 
     if ('id' in sanitizedData && sanitizedData.id) {
       const existing = bots.find(b => b.id === sanitizedData.id);
