@@ -891,7 +891,7 @@ export default function AgentSettingsDialog({
                                         { id: 'sms', label: 'SMS', icon: Smartphone, desc: 'Real-time text assistance.' },
                                         { id: 'voice', label: 'Phone', icon: Phone, desc: 'Voice-based AI handling.' },
                                         { id: 'email', label: 'Email', icon: Mail, desc: 'Sync and automate email threads.' }
-                                    ].map(channel => (
+                                    ].filter(c => !isPersonalAgent || c.id !== 'web').map(channel => (
                                         <Card key={channel.id} className="bg-[#161b22] border-white/10 overflow-hidden">
                                             <div className="p-6 flex items-center justify-between border-b border-white/5">
                                                 <div className="flex items-center gap-4">
