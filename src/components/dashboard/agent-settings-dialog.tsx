@@ -418,7 +418,7 @@ export default function AgentSettingsDialog({
                                 <div className="h-2 w-2 rounded-full bg-primary" />
                                 <span className="text-sm font-medium text-white">{w.name}</span>
                             </div>
-                            <Button variant="ghost" size="sm" asChild className="h-8 text-[10px] uppercase font-bold text-primary hover:text-primary hover:bg-primary/10">
+                            <Button type="button" variant="ghost" size="sm" asChild className="h-8 text-[10px] uppercase font-bold text-primary hover:text-primary hover:bg-primary/10">
                                 <Link href={`/space/${bot?.spaceId}/hub/${bot?.hubId}/settings?view=web-chat`}>
                                     Go to Widget <ArrowRight className="ml-1.5 h-3 w-3" />
                                 </Link>
@@ -903,9 +903,9 @@ export default function AgentSettingsDialog({
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                     {activeConfigPath === channel.id ? (
-                                                        <Button variant="ghost" size="sm" onClick={() => setActiveConfigPath(null)} className="text-muted-foreground h-8 text-[10px] uppercase font-black">Close Config</Button>
+                                                        <Button type="button" variant="ghost" size="sm" onClick={() => setActiveConfigPath(null)} className="text-muted-foreground h-8 text-[10px] uppercase font-black">Close Config</Button>
                                                     ) : (
-                                                        <Button variant="secondary" size="sm" onClick={() => setActiveConfigPath(channel.id)} className="h-8 text-[10px] uppercase font-black" disabled={!watchedValues.channelConfig?.[channel.id]?.enabled}>Configure</Button>
+                                                        <Button type="button" variant="secondary" size="sm" onClick={() => setActiveConfigPath(channel.id)} className="h-8 text-[10px] uppercase font-black" disabled={!watchedValues.channelConfig?.[channel.id]?.enabled}>Configure</Button>
                                                     )}
                                                     <Switch checked={watchedValues.channelConfig?.[channel.id]?.enabled} onCheckedChange={(val) => form.setValue(`channelConfig.${channel.id}.enabled`, val)} />
                                                 </div>
