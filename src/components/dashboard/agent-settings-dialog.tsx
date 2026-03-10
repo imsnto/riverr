@@ -51,15 +51,16 @@ import {
   ArrowRight, 
   Info,
   Trash2,
-  Target
+  Target,
+  Bell
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Badge } from '../ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useToast } from '@/hooks/use-toast';
@@ -711,7 +712,7 @@ export default function AgentSettingsDialog({
                                 <div className="flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.02]">
                                     <div className="flex items-center gap-3">
                                         <t.icon className="h-4 w-4 text-muted-foreground" />
-                                        <div className="flex flex-col">
+                                        <div className="flex flex-col text-left">
                                           <span className="text-xs font-bold">{t.label}</span>
                                           {t.key === 'callbackNotification' && <span className="text-[9px] text-muted-foreground">Notify me immediately when AI takes a message.</span>}
                                         </div>
@@ -971,7 +972,7 @@ export default function AgentSettingsDialog({
                             <div className="space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">Channels</h2>
-                                    <p className="text-muted-foreground text-sm">Channels route to the inbox by default. Enabling a channel here adds AI on top of your existing connections.</p>
+                                    <p className="text-muted-foreground text-sm text-left">Channels route to the inbox by default. Enabling a channel here adds AI on top of your existing connections.</p>
                                 </div>
 
                                 <div className="grid gap-4">
@@ -1074,7 +1075,7 @@ export default function AgentSettingsDialog({
                                     <p className="text-muted-foreground text-sm">Embed code for your website.</p>
                                 </div>
                                 <div className="p-6 rounded-2xl border border-white/10 bg-[#161b22] space-y-4">
-                                    <pre className="bg-[#0d1117] border border-white/10 p-5 rounded-xl text-xs font-mono text-primary leading-relaxed overflow-x-auto whitespace-pre-wrap">
+                                    <pre className="bg-[#0d1117] border border-white/10 p-5 rounded-xl text-xs font-mono text-primary leading-relaxed overflow-x-auto whitespace-pre-wrap text-left">
                                         <code>{`<script src="https://manowar.cloud/chatbot-loader.js" data-widget-id="${bot?.id}" async></script>`}</code>
                                     </pre>
                                     <Button type="button" onClick={() => handleCopy(`<script src="https://manowar.cloud/chatbot-loader.js" data-widget-id="${bot?.id}" async></script>`)} className="w-full h-11 rounded-xl">Copy Snippet</Button>
