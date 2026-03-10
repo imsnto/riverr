@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
@@ -282,13 +281,9 @@ export default function AgentSettingsDialog({
 
   useEffect(() => {
     if (isOpen) {
-        if (agent) {
-            setActiveTab('channels'); // Default to settings
-        } else {
-            setActiveTab('channels'); // Force channel choice first for new
-        }
+        setActiveTab('channels'); // Re-ordered foundational step
     }
-  }, [isOpen, agent]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && agent) {
@@ -510,6 +505,285 @@ export default function AgentSettingsDialog({
             <div className="flex-1 flex flex-col min-w-0 relative">
                 <ScrollArea className="flex-1">
                     <div className="p-8 max-w-full mx-auto space-y-10">
+                        {activeTab === 'channels' && (
+                            <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white mb-1">Channels</h2>
+                                    <p className="text-muted-foreground text-sm">Select up to **{MAX_CHANNELS} active channels** for this agent.</p>
+                                </div>
+
+                                {/* WEB CHAT */}
+                                {!isPersonal && (
+                                    <section className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                                                    <MessageSquare className="h-4 w-4" />
+                                                </div>
+                                                <h3 className="font-bold text-white">Web Chat</h3>
+                                            </div>
+                                        </div>
+                                        <Card className="bg-[#161b22] border-white/10">
+                                            <CardContent className="p-6 flex items-center justify-between">
+                                                <div className="space-y-1">
+                                                    <p className="text-sm font-medium text-white">Standard Widget</p>
+                                                    <p className="text-xs text-muted-foreground">The AI assistant will handle traffic from your embedded web widget.</p>
+                                                </div>
+                                                <Switch checked={watchedValues.channelConfig?.web?.enabled ?? true} onCheckedChange={(val) => handleToggleChannel('channelConfig.web.enabled', val)} />
+                                            </CardContent>
+                                        </Card>
+                                    </section>
+                                )}
+
+                                {/* SMS */}
+                                <section className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
+                                                <Smartphone className="h-4 w-4" />
+                                            </div>
+                                            <h3 className="font-bold text-white">SMS</h3>
+                                        </div>
+                                        <Switch checked={watchedValues.channelConfig?.sms?.enabled ?? false} onCheckedChange={(val) => handleToggleChannel('channelConfig.sms.enabled', val)} />
+                                    </div>
+                                    <div className="grid gap-3">
+                                        {phoneNumbers.map(num => (
+                                            <Card key={num.id} className="bg-[#161b22] border-white/10">
+                                                <CardContent className="p-4 flex items-center justify-between">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center text-muted-foreground">
+                                                            <Smartphone className="h-4 w-4" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-white">{num.channelAddress}</p>
+                                                            <p className="text-[10px] uppercase font-black text-muted-foreground tracking-tighter">{num.label || 'Support Line'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest mr-2">AI Mode</p>
+                                                        <Tabs 
+                                                            defaultValue={watchedValues.channelConfig?.sms?.numberConfigs?.[num.id]?.aiMode || 'off'} 
+                                                            onValueChange={(val) => form.setValue(`channelConfig.sms.numberConfigs.${num.id}.aiMode`, val as any)}
+                                                            className="h-8"
+                                                        >
+                                                            <TabsList className="bg-black/20 h-8 p-0.5">
+                                                                <TabsTrigger value="off" className="h-7 text-[10px] px-3">Off</TabsTrigger>
+                                                                <TabsTrigger value="draft" className="h-7 text-[10px] px-3">Drafts</TabsTrigger>
+                                                                <TabsTrigger value="auto" className="h-7 text-[10px] px-3">Auto</TabsTrigger>
+                                                            </TabsList>
+                                                        </Tabs>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                        {phoneNumbers.length === 0 && (
+                                            <p className="text-xs text-center text-muted-foreground italic py-4">
+                                                {isPersonal ? 'Direct SMS number assignment is managed by the hub admin.' : 'No phone numbers assigned to this Hub.'}
+                                            </p>
+                                        )}
+                                    </div>
+                                </section>
+
+                                {/* EMAIL */}
+                                <section className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                                <Mail className="h-4 w-4" />
+                                            </div>
+                                            <h3 className="font-bold text-white">Email</h3>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            {isPersonal && (
+                                                <Button type="button" variant="outline" size="sm" onClick={() => setIsConnectEmailOpen(true)} className="h-8 rounded-lg bg-white/5 border-white/10 text-[10px] font-bold uppercase">
+                                                    <Plus className="h-3 w-3 mr-1" /> Connect My Email
+                                                </Button>
+                                            )}
+                                            <Switch checked={watchedValues.channelConfig?.email?.enabled ?? false} onCheckedChange={(val) => handleToggleChannel('channelConfig.email.enabled', val)} />
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-3">
+                                        {emailConfigs.map(config => (
+                                            <Card key={config.id} className="bg-[#161b22] border-white/10 overflow-hidden">
+                                                <CardContent className="p-0">
+                                                    <div className="p-4 flex items-center justify-between border-b border-white/5">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center text-muted-foreground">
+                                                                <Mail className="h-4 w-4" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-bold text-white">{config.emailAddress}</p>
+                                                                <p className="text-[10px] uppercase font-black text-muted-foreground tracking-tighter">{config.label}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                        {emailConfigs.length === 0 && (
+                                            <p className="text-xs text-center text-muted-foreground italic py-4">No email addresses connected.</p>
+                                        )}
+                                    </div>
+                                </section>
+
+                                {/* VOICE */}
+                                <section className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500">
+                                                <Phone className="h-4 w-4" />
+                                            </div>
+                                            <h3 className="font-bold text-white">Phone</h3>
+                                        </div>
+                                        <Switch checked={watchedValues.channelConfig?.voice?.enabled ?? false} onCheckedChange={(val) => handleToggleChannel('channelConfig.voice.enabled', val)} />
+                                    </div>
+                                    <div className="grid gap-4">
+                                        {phoneNumbers.map(num => {
+                                            const config = watchedValues.channelConfig?.voice?.numberConfigs?.[num.id] || {
+                                                aiCallMode: 'agent_only',
+                                                handoffRouteTo: 'any',
+                                                handoffTimeoutSeconds: 30,
+                                                handoffFallback: 'voicemail',
+                                                aiGreeting: true,
+                                                transcribe: true,
+                                                afterHoursAiOnly: false,
+                                                voicemailFallback: true,
+                                                greetingScript: 'Hi! Thank you for calling. How can I help you today?'
+                                            };
+
+                                            const updateVoice = (patch: any) => {
+                                                form.setValue(`channelConfig.voice.numberConfigs.${num.id}`, { ...config, ...patch });
+                                            };
+
+                                            return (
+                                                <Card key={num.id} className="bg-[#161b22] border-white/10 overflow-hidden">
+                                                    <CardHeader className="p-4 border-b border-white/5 bg-white/[0.02]">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-3">
+                                                                <p className="text-sm font-bold text-white">{num.channelAddress}</p>
+                                                                <Badge variant="secondary" className="h-4 px-1.5 text-[8px] uppercase tracking-tighter">{num.label || 'Support Line'}</Badge>
+                                                            </div>
+                                                        </div>
+                                                    </CardHeader>
+                                                    <CardContent className="p-6 space-y-8">
+                                                        {/* AI Mode Selector */}
+                                                        <div className="space-y-3">
+                                                            <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Call Handling Mode</Label>
+                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                                <ModeCard 
+                                                                    id={`v-agent-${num.id}`}
+                                                                    title="Agent Only"
+                                                                    desc="Direct routing."
+                                                                    icon={UserIcon}
+                                                                    active={config.aiCallMode === 'agent_only'}
+                                                                    onClick={() => updateVoice({ aiCallMode: 'agent_only' })}
+                                                                />
+                                                                <ModeCard 
+                                                                    id={`v-triage-${num.id}`}
+                                                                    title="AI Triage"
+                                                                    desc="Warm handoff."
+                                                                    icon={Zap}
+                                                                    active={config.aiCallMode === 'warm_handoff'}
+                                                                    onClick={() => updateVoice({ aiCallMode: 'warm_handoff' })}
+                                                                />
+                                                                <ModeCard 
+                                                                    id={`v-ai-${num.id}`}
+                                                                    title="Full AI"
+                                                                    desc="Full resolution."
+                                                                    icon={BotIcon}
+                                                                    active={config.aiCallMode === 'full_ai'}
+                                                                    onClick={() => updateVoice({ aiCallMode: 'full_ai' })}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Warm Handoff Settings */}
+                                                        {config.aiCallMode === 'warm_handoff' && (
+                                                            <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 space-y-6 animate-in slide-in-from-top-2 duration-300">
+                                                                <div className="flex items-center gap-2 text-indigo-400">
+                                                                    <Zap className="h-4 w-4" />
+                                                                    <h4 className="text-xs font-black uppercase tracking-widest">Warm Handoff Config</h4>
+                                                                </div>
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                    <div className="space-y-2">
+                                                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Route to</Label>
+                                                                        <Select value={config.handoffRouteTo} onValueChange={(val) => updateVoice({ handoffRouteTo: val })}>
+                                                                            <SelectTrigger className="bg-black/20 border-white/10 h-10"><SelectValue /></SelectTrigger>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="any">Any Available Agent</SelectItem>
+                                                                                <SelectItem value="assigned">Account Owner</SelectItem>
+                                                                                <SelectItem value="team">Customer Success Team</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <div className="flex justify-between items-center">
+                                                                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Timeout</Label>
+                                                                            <span className="text-[10px] font-mono text-indigo-400 font-bold">{config.handoffTimeoutSeconds}s</span>
+                                                                        </div>
+                                                                        <Slider 
+                                                                            value={[config.handoffTimeoutSeconds]} 
+                                                                            max={120} min={10} step={5}
+                                                                            onValueChange={(val) => updateVoice({ handoffTimeoutSeconds: val[0] })}
+                                                                            className="py-4"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Behavioral Toggles */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                            <ToggleOption 
+                                                                icon={MessageSquare} 
+                                                                label="AI Greeting" 
+                                                                checked={config.aiGreeting} 
+                                                                onChange={(val) => updateVoice({ aiGreeting: val })}
+                                                            />
+                                                            <ToggleOption 
+                                                                icon={Mic} 
+                                                                label="Transcribe Calls" 
+                                                                checked={config.transcribe} 
+                                                                onChange={(val) => updateVoice({ transcribe: val })}
+                                                            />
+                                                            <ToggleOption 
+                                                                icon={Clock} 
+                                                                label="After-Hours AI" 
+                                                                checked={config.afterHoursAiOnly} 
+                                                                onChange={(val) => updateVoice({ afterHoursAiOnly: val })}
+                                                            />
+                                                            <ToggleOption 
+                                                                icon={ShieldAlert} 
+                                                                label="Voicemail Logic" 
+                                                                checked={config.voicemailFallback} 
+                                                                onChange={(val) => updateVoice({ voicemailFallback: val })}
+                                                            />
+                                                        </div>
+
+                                                        {/* Script */}
+                                                        <div className="space-y-3">
+                                                            <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">AI Greeting Script</Label>
+                                                            <Textarea 
+                                                                value={config.greetingScript}
+                                                                onChange={(e) => updateVoice({ greetingScript: e.target.value })}
+                                                                placeholder="Enter the script the AI should read..."
+                                                                className="bg-black/20 border-white/10 min-h-[80px] text-xs leading-relaxed"
+                                                            />
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
+                                        {phoneNumbers.length === 0 && (
+                                            <p className="text-xs text-center text-muted-foreground italic py-4">
+                                                {isPersonal ? 'Direct phone number assignment is managed by the hub admin.' : 'No phone numbers assigned to this Hub.'}
+                                            </p>
+                                        )}
+                                    </div>
+                                </section>
+                            </div>
+                        )}
+
                         {activeTab === 'general' && (
                             <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div>
@@ -713,7 +987,7 @@ export default function AgentSettingsDialog({
                                                         <Textarea 
                                                             placeholder="e.g. Always reference the ticket number and link to our return policy docs." 
                                                             {...field} 
-                                                            className="bg-[#0d1117] border-white/10 min-h-[80px] text-xs"
+                                                            className="bg-[#0d1117] border-white/10 min-h-[80px] text-xs leading-relaxed"
                                                         />
                                                     </FormControl>
                                                     <FormDescription className="text-[10px]">Context added to every drafted response.</FormDescription>
@@ -811,299 +1085,6 @@ export default function AgentSettingsDialog({
                                         />
                                     </section>
                                 )}
-                            </div>
-                        )}
-
-                        {activeTab === 'channels' && (
-                            <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div>
-                                    <h2 className="text-2xl font-bold text-white mb-1">Channels</h2>
-                                    <p className="text-muted-foreground text-sm">Select up to **{MAX_CHANNELS} active channels** for this agent.</p>
-                                </div>
-
-                                {/* WEB CHAT */}
-                                {!isPersonal && (
-                                    <section className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
-                                                    <MessageSquare className="h-4 w-4" />
-                                                </div>
-                                                <h3 className="font-bold text-white">Web Chat</h3>
-                                            </div>
-                                        </div>
-                                        <Card className="bg-[#161b22] border-white/10">
-                                            <CardContent className="p-6 flex items-center justify-between">
-                                                <div className="space-y-1">
-                                                    <p className="text-sm font-medium text-white">Standard Widget</p>
-                                                    <p className="text-xs text-muted-foreground">The AI assistant will handle traffic from your embedded web widget.</p>
-                                                </div>
-                                                <Switch checked={watchedValues.channelConfig?.web?.enabled ?? true} onCheckedChange={(val) => handleToggleChannel('channelConfig.web.enabled', val)} />
-                                            </CardContent>
-                                        </Card>
-                                    </section>
-                                )}
-
-                                {/* SMS */}
-                                <section className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
-                                                <Smartphone className="h-4 w-4" />
-                                            </div>
-                                            <h3 className="font-bold text-white">SMS</h3>
-                                        </div>
-                                        <Switch checked={watchedValues.channelConfig?.sms?.enabled ?? false} onCheckedChange={(val) => handleToggleChannel('channelConfig.sms.enabled', val)} />
-                                    </div>
-                                    <div className="grid gap-3">
-                                        {phoneNumbers.map(num => (
-                                            <Card key={num.id} className="bg-[#161b22] border-white/10">
-                                                <CardContent className="p-4 flex items-center justify-between">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center text-muted-foreground">
-                                                            <Smartphone className="h-4 w-4" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-bold text-white">{num.channelAddress}</p>
-                                                            <p className="text-[10px] uppercase font-black text-muted-foreground tracking-tighter">{num.label || 'Support Line'}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest mr-2">AI Mode</p>
-                                                        <Tabs 
-                                                            defaultValue={watchedValues.channelConfig?.sms?.numberConfigs?.[num.id]?.aiMode || 'off'} 
-                                                            onValueChange={(val) => form.setValue(`channelConfig.sms.numberConfigs.${num.id}.aiMode`, val as any)}
-                                                            className="h-8"
-                                                        >
-                                                            <TabsList className="bg-black/20 h-8 p-0.5">
-                                                                <TabsTrigger value="off" className="h-7 text-[10px] px-3">Off</TabsTrigger>
-                                                                <TabsTrigger value="draft" className="h-7 text-[10px] px-3">Drafts</TabsTrigger>
-                                                                <TabsTrigger value="auto" className="h-7 text-[10px] px-3">Auto</TabsTrigger>
-                                                            </TabsList>
-                                                        </Tabs>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
-                                        {phoneNumbers.length === 0 && (
-                                            <p className="text-xs text-center text-muted-foreground italic py-4">
-                                                {isPersonal ? 'Direct SMS number assignment is managed by the hub admin.' : 'No phone numbers assigned to this Hub.'}
-                                            </p>
-                                        )}
-                                    </div>
-                                </section>
-
-                                {/* EMAIL */}
-                                <section className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                                                <Mail className="h-4 w-4" />
-                                            </div>
-                                            <h3 className="font-bold text-white">Email</h3>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            {isPersonal && (
-                                                <Button type="button" variant="outline" size="sm" onClick={() => setIsConnectEmailOpen(true)} className="h-8 rounded-lg bg-white/5 border-white/10 text-[10px] font-bold uppercase">
-                                                    <Plus className="h-3 w-3 mr-1" /> Connect My Email
-                                                </Button>
-                                            )}
-                                            <Switch checked={watchedValues.channelConfig?.email?.enabled ?? false} onCheckedChange={(val) => handleToggleChannel('channelConfig.email.enabled', val)} />
-                                        </div>
-                                    </div>
-                                    <div className="grid gap-3">
-                                        {emailConfigs.map(config => (
-                                            <Card key={config.id} className="bg-[#161b22] border-white/10 overflow-hidden">
-                                                <CardContent className="p-0">
-                                                    <div className="p-4 flex items-center justify-between border-b border-white/5">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center text-muted-foreground">
-                                                                <Mail className="h-4 w-4" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-sm font-bold text-white">{config.emailAddress}</p>
-                                                                <p className="text-[10px] uppercase font-black text-muted-foreground tracking-tighter">{config.label}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest mr-2">AI Mode</p>
-                                                            <Tabs 
-                                                                defaultValue={watchedValues.channelConfig?.email?.emailConfigs?.[config.id]?.aiMode || 'off'} 
-                                                                onValueChange={(val) => form.setValue(`channelConfig.email.emailConfigs.${config.id}.aiMode`, val as any)}
-                                                                className="h-8"
-                                                            >
-                                                                <TabsList className="bg-black/20 h-8 p-0.5">
-                                                                    <TabsTrigger value="off" className="h-7 text-[10px] px-3">Off</TabsTrigger>
-                                                                    <TabsTrigger value="draft" className="h-7 text-[10px] px-3">Drafts</TabsTrigger>
-                                                                    {isPersonal ? null : <TabsTrigger value="auto" className="h-7 text-[10px] px-3">Auto</TabsTrigger>}
-                                                                </TabsList>
-                                                            </Tabs>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
-                                        {emailConfigs.length === 0 && (
-                                            <p className="text-xs text-center text-muted-foreground italic py-4">No email addresses connected.</p>
-                                        )}
-                                    </div>
-                                </section>
-
-                                {/* VOICE */}
-                                <section className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500">
-                                                <Phone className="h-4 w-4" />
-                                            </div>
-                                            <h3 className="font-bold text-white">Phone</h3>
-                                        </div>
-                                        <Switch checked={watchedValues.channelConfig?.voice?.enabled ?? false} onCheckedChange={(val) => handleToggleChannel('channelConfig.voice.enabled', val)} />
-                                    </div>
-                                    <div className="grid gap-4">
-                                        {phoneNumbers.map(num => {
-                                            const config = watchedValues.channelConfig?.voice?.numberConfigs?.[num.id] || {
-                                                aiCallMode: 'agent_only',
-                                                handoffRouteTo: 'any',
-                                                handoffTimeoutSeconds: 30,
-                                                handoffFallback: 'voicemail',
-                                                aiGreeting: true,
-                                                transcribe: true,
-                                                afterHoursAiOnly: false,
-                                                voicemailFallback: true,
-                                                greetingScript: 'Hi! Thank you for calling. How can I help you today?'
-                                            };
-
-                                            const updateVoice = (patch: any) => {
-                                                form.setValue(`channelConfig.voice.numberConfigs.${num.id}`, { ...config, ...patch });
-                                            };
-
-                                            return (
-                                                <Card key={num.id} className="bg-[#161b22] border-white/10 overflow-hidden">
-                                                    <CardHeader className="p-4 border-b border-white/5 bg-white/[0.02]">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center gap-3">
-                                                                <p className="text-sm font-bold text-white">{num.channelAddress}</p>
-                                                                <Badge variant="secondary" className="h-4 px-1.5 text-[8px] uppercase tracking-tighter">{num.label || 'Support Line'}</Badge>
-                                                            </div>
-                                                        </div>
-                                                    </CardHeader>
-                                                    <CardContent className="p-6 space-y-8">
-                                                        {/* AI Mode Selector */}
-                                                        <div className="space-y-3">
-                                                            <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Call Handling Mode</Label>
-                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                                <ModeCard 
-                                                                    id={`v-agent-${num.id}`}
-                                                                    title="Agent Only"
-                                                                    desc="Direct routing."
-                                                                    icon={UserIcon}
-                                                                    active={config.aiCallMode === 'agent_only'}
-                                                                    onClick={() => updateVoice({ aiCallMode: 'agent_only' })}
-                                                                />
-                                                                <ModeCard 
-                                                                    id={`v-triage-${num.id}`}
-                                                                    title="AI Triage"
-                                                                    desc="Warm handoff."
-                                                                    icon={Zap}
-                                                                    active={config.aiCallMode === 'warm_handoff'}
-                                                                    onClick={() => updateVoice({ aiCallMode: 'warm_handoff' })}
-                                                                />
-                                                                <ModeCard 
-                                                                    id={`v-ai-${num.id}`}
-                                                                    title="Full AI"
-                                                                    desc="Full resolution."
-                                                                    icon={BotIcon}
-                                                                    active={config.aiCallMode === 'full_ai'}
-                                                                    onClick={() => updateVoice({ aiCallMode: 'full_ai' })}
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Warm Handoff Settings */}
-                                                        {config.aiCallMode === 'warm_handoff' && (
-                                                            <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 space-y-6 animate-in slide-in-from-top-2 duration-300">
-                                                                <div className="flex items-center gap-2 text-indigo-400">
-                                                                    <Zap className="h-4 w-4" />
-                                                                    <h4 className="text-xs font-black uppercase tracking-widest">Warm Handoff Config</h4>
-                                                                </div>
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Route to</Label>
-                                                                        <Select value={config.handoffRouteTo} onValueChange={(val) => updateVoice({ handoffRouteTo: val })}>
-                                                                            <SelectTrigger className="bg-black/20 border-white/10 h-10"><SelectValue /></SelectTrigger>
-                                                                            <SelectContent>
-                                                                                <SelectItem value="any">Any Available Agent</SelectItem>
-                                                                                <SelectItem value="assigned">Account Owner</SelectItem>
-                                                                                <SelectItem value="team">Customer Success Team</SelectItem>
-                                                                            </SelectContent>
-                                                                        </Select>
-                                                                    </div>
-                                                                    <div className="space-y-2">
-                                                                        <div className="flex justify-between items-center">
-                                                                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Timeout</Label>
-                                                                            <span className="text-[10px] font-mono text-indigo-400 font-bold">{config.handoffTimeoutSeconds}s</span>
-                                                                        </div>
-                                                                        <Slider 
-                                                                            value={[config.handoffTimeoutSeconds]} 
-                                                                            max={120} min={10} step={5}
-                                                                            onValueChange={(val) => updateVoice({ handoffTimeoutSeconds: val[0] })}
-                                                                            className="py-4"
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Behavioral Toggles */}
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                            <ToggleOption 
-                                                                icon={MessageSquare} 
-                                                                label="AI Greeting" 
-                                                                checked={config.aiGreeting} 
-                                                                onChange={(val) => updateVoice({ aiGreeting: val })}
-                                                            />
-                                                            <ToggleOption 
-                                                                icon={Mic} 
-                                                                label="Transcribe Calls" 
-                                                                checked={config.transcribe} 
-                                                                onChange={(val) => updateVoice({ transcribe: val })}
-                                                            />
-                                                            <ToggleOption 
-                                                                icon={Clock} 
-                                                                label="After-Hours AI" 
-                                                                checked={config.afterHoursAiOnly} 
-                                                                onChange={(val) => updateVoice({ afterHoursAiOnly: val })}
-                                                            />
-                                                            <ToggleOption 
-                                                                icon={ShieldAlert} 
-                                                                label="Voicemail Logic" 
-                                                                checked={config.voicemailFallback} 
-                                                                onChange={(val) => updateVoice({ voicemailFallback: val })}
-                                                            />
-                                                        </div>
-
-                                                        {/* Script */}
-                                                        <div className="space-y-3">
-                                                            <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">AI Greeting Script</Label>
-                                                            <Textarea 
-                                                                value={config.greetingScript}
-                                                                onChange={(e) => updateVoice({ greetingScript: e.target.value })}
-                                                                placeholder="Enter the script the AI should read..."
-                                                                className="bg-black/20 border-white/10 min-h-[80px] text-xs leading-relaxed"
-                                                            />
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            );
-                                        })}
-                                        {phoneNumbers.length === 0 && (
-                                            <p className="text-xs text-center text-muted-foreground italic py-4">
-                                                {isPersonal ? 'Direct phone number assignment is managed by the hub admin.' : 'No phone numbers assigned to this Hub.'}
-                                            </p>
-                                        )}
-                                    </div>
-                                </section>
                             </div>
                         )}
 
