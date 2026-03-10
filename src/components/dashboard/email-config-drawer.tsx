@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -50,7 +49,12 @@ export default function EmailConfigDrawer({ isOpen, onOpenChange, config, spaceI
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await db.updateEmailConfig(spaceId, hubId, config.id, formData);
+      if (hubId === 'agent') {
+        // For personal configs, spaceId is the userId
+        await db.updateAgentEmailConfig(spaceId, config.id, formData);
+      } else {
+        await db.updateEmailConfig(spaceId, hubId, config.id, formData);
+      }
       onSave({ ...config, ...formData } as EmailConfig);
       toast({ title: "Configuration saved" });
     } catch (e) {
@@ -91,7 +95,7 @@ export default function EmailConfigDrawer({ isOpen, onOpenChange, config, spaceI
               <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   <span className="font-bold text-primary mr-1">Note:</span>
-                  AI behavior and greeting scripts for this email address are now managed globally in your **Agent Settings**.
+                  AI behavior and writing scripts for this email address are managed globally in your **Agent Settings**.
                 </p>
               </div>
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -27,7 +26,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import DealAutomationSettings from './deal-automation-settings';
 import EscalationIntakeSettings from './escalation-intake-settings';
-import { LogOut, Phone, User as UserIcon, Building2, LayoutGrid, Bell, BrainCircuit, Clock, Mail, Sparkles, MessageSquare } from 'lucide-react';
+import { LogOut, Phone, User as UserIcon, Building2, LayoutGrid, Bell, BrainCircuit, Clock, Mail, Sparkles, MessageSquare, Globe } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import BrainSettings from './brain-settings';
@@ -41,8 +40,9 @@ import { arrayRemove, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import PersonalAccountSettings from './personal-account-settings';
 import PersonalAgentSettings from './personal-agent-settings';
+import PersonalChannelsSettings from './personal-channels-settings';
 
-type SettingsView = 'profile' | 'personal-agent' | 'users' | 'space-general' | 'hub-general' | 'phone' | 'email' | 'web-chat' | 'agents' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'brain' | 'notifications';
+type SettingsView = 'profile' | 'personal-channels' | 'personal-agent' | 'users' | 'space-general' | 'hub-general' | 'phone' | 'email' | 'web-chat' | 'agents' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'brain' | 'notifications';
 
 interface SettingsLayoutProps {
   allUsers: User[];
@@ -137,6 +137,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
 
   const personalNavItems = [
     { key: 'profile' as SettingsView, label: 'My Profile', icon: UserIcon },
+    { key: 'personal-channels' as SettingsView, label: 'My Channels', icon: Globe },
     { key: 'personal-agent' as SettingsView, label: 'My AI Agent', icon: Sparkles },
   ];
 
@@ -165,6 +166,8 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
     switch (activeView) {
       case 'profile':
         return <PersonalAccountSettings />;
+      case 'personal-channels':
+        return <PersonalChannelsSettings />;
       case 'personal-agent':
         return <PersonalAgentSettings helpCenters={props.helpCenters} />;
       case 'users':
@@ -286,6 +289,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="profile">Personal: My Profile</SelectItem>
+                        <SelectItem value="personal-channels">Personal: My Channels</SelectItem>
                         <SelectItem value="personal-agent">Personal: My AI Agent</SelectItem>
                         <SelectItem value="users">Space: Members</SelectItem>
                         <SelectItem value="space-general">Space: Settings</SelectItem>

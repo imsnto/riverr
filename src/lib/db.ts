@@ -839,6 +839,12 @@ export const savePhoneChannelLookup = async (id: string, data: Partial<PhoneChan
   await setDoc(ref, { ...data, updatedAt: serverTimestamp() }, { merge: true });
 };
 
+export const getDirectPhoneNumbersForUser = async (userId: string): Promise<PhoneChannelLookup[]> => {
+  const q = query(collection(db, 'phone_channel_lookups'), where('userId', '==', userId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as PhoneChannelLookup));
+};
+
 // --- Support Email Configs ---
 export const getEmailConfigs = async (spaceId: string, hubId: string): Promise<EmailConfig[]> => {
   const q = query(collection(db, `spaces/${spaceId}/hubs/${hubId}/emailConfigs`));
@@ -880,6 +886,11 @@ export const subscribeToAgentEmailConfigs = (userId: string, callback: (configs:
 export const updateAgentEmailConfig = async (userId: string, configId: string, data: Partial<EmailConfig>) => {
   const docRef = doc(db, `users/${userId}/emailConfigs`, configId);
   await updateDoc(docRef, data);
+};
+
+export const deleteAgentEmailConfig = async (userId: string, configId: string) => {
+  const docRef = doc(db, `users/${userId}/emailConfigs`, configId);
+  await deleteDoc(docRef);
 };
 
 // --- Seeding ---
