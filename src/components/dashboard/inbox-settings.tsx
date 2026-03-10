@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Bot as BotIcon, Edit, MoreHorizontal, Plus, Trash2, Copy, ChevronRight, MessageSquare, Bot } from 'lucide-react';
+import { Bot as BotIcon, Edit, MoreHorizontal, Plus, Trash2, Copy, ChevronRight, MessageSquare, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -75,11 +74,15 @@ export default function InboxSettings({
 
   // Separate widgets from agents
   const displayBots = useMemo(() => {
-    return bots.filter(b => b.type === (isWebChatMode ? 'widget' : 'agent'));
+    return bots.filter(b => {
+      // Legacy fallback: if type is missing, treat as 'widget'
+      const type = b.type || 'widget';
+      return type === (isWebChatMode ? 'widget' : 'agent');
+    });
   }, [bots, isWebChatMode]);
 
   const agentsList = useMemo(() => {
-    return bots.filter(b => b.type === 'agent' && b.isEnabled);
+    return bots.filter(b => (b.type === 'agent' || !b.type) && b.isEnabled);
   }, [bots]);
 
   const handleEditBot = (bot: BotData) => {
@@ -105,7 +108,9 @@ export default function InboxSettings({
 
   const handleSaveBot = (botData: BotData | Omit<BotData, 'id' | 'hubId'>) => {
     if ('id' in botData && botData.id) {
-      onBotUpdate(botData.id, botData);
+      const existing = bots.find(b => b.id === botData.id);
+      const type = botData.type || existing?.type || (isWebChatMode ? 'widget' : 'agent');
+      onBotUpdate(botData.id, { ...botData, type });
     } else if (activeHub) {
       const dataWithDefaults = { 
         ...botData, 
@@ -274,7 +279,7 @@ export default function InboxSettings({
         allUsers={allUsers}
         helpCenters={helpCenters}
         mode={isWebChatMode ? 'widget' : 'agent'}
-        hubWidgets={isWebChatMode ? [] : bots.filter(b => b.type === 'widget')}
+        hubWidgets={isWebChatMode ? [] : bots.filter(b => b.type === 'widget' || !b.type)}
       />
 
       <AlertDialog open={!!botToDelete} onOpenChange={() => setBotToDelete(null)}>
