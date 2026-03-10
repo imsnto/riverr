@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
@@ -59,6 +58,7 @@ import {
   Mail,
   Sparkles,
   User as UserIcon,
+  UserCheck,
   Forward,
   Plus,
   Info,
@@ -719,7 +719,7 @@ export default function AgentSettingsDialog({
                                         ))}
                                         {phoneNumbers.length === 0 && (
                                             <p className="text-xs text-center text-muted-foreground italic py-4">
-                                                {isPersonal ? 'Direct phone number assignment is managed by the hub admin.' : 'No phone numbers assigned to this Hub.'}
+                                                {isPersonal ? 'Direct SMS number assignment is managed by the hub admin.' : 'No phone numbers assigned to this Hub.'}
                                             </p>
                                         )}
                                     </div>
