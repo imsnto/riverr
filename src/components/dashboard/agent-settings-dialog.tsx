@@ -60,8 +60,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Badge } from '@/components/ui/badge';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Badge } from '../ui/badge';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -158,12 +158,20 @@ export default function AgentSettingsDialog({
           escalationTriggers: [],
           escalateOnSentiment: true 
         },
+        personalEmail: {
+          writingStyle: 'Professional and warm.',
+          responseLength: 'match',
+          signOff: `Thanks, ${appUser?.name.split(' ')[0]}`,
+          contextAwareness: true,
+          alwaysAddress: '',
+        },
         sms: { 
           responseStyle: 'concise', 
           openingMessage: "Hi! You've reached support. How can I help?", 
           afterHoursBehavior: 'ai_full', 
           handoffKeywords: ['agent', 'human'], 
-          sentimentEscalation: true 
+          sentimentEscalation: true,
+          smartTiming: true
         },
         voice: { 
           greetingScript: 'Hi! Thank you for calling. How can I help?', 
@@ -174,7 +182,8 @@ export default function AgentSettingsDialog({
           voicemailEnabled: true, 
           transcriptionEnabled: true, 
           afterHoursBehavior: 'ai_full',
-          aiGreetingEnabled: true
+          aiGreetingEnabled: true,
+          callbackNotification: true
         }
       }
     },
@@ -230,7 +239,6 @@ export default function AgentSettingsDialog({
   }, [mode]);
 
   const onSubmit = (values: AgentSettingsFormValues) => {
-    // Firestore does not support 'undefined'.
     const deepSanitize = (obj: any): any => {
       if (Array.isArray(obj)) {
         return obj.map(deepSanitize);
@@ -278,12 +286,12 @@ export default function AgentSettingsDialog({
         return (
           <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
-                <p className="text-xs text-muted-foreground leading-relaxed">
+                <p className="text-xs text-muted-foreground leading-relaxed text-left">
                     Widget installation and appearance is managed in <Link href={`/space/${bot?.spaceId}/hub/${bot?.hubId}/settings?view=web-chat`} className="text-primary font-bold hover:underline">Web Chat settings</Link>.
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                 <FormField
                     control={form.control}
                     name="workflowConfig.web.webAgentName"
@@ -307,7 +315,7 @@ export default function AgentSettingsDialog({
                 />
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 text-left">
                 <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Conversation Goal</Label>
                 <FormField
                     control={form.control}
@@ -316,7 +324,7 @@ export default function AgentSettingsDialog({
                         <FormItem>
                             <FormControl>
                                 <Textarea 
-                                    placeholder="Resolve the customer's issue in as few messages as possible and always collect their contact details before the conversation ends." 
+                                    placeholder="Resolve the customer's issue efficiently..." 
                                     {...field} 
                                     className="bg-muted/20 border-white/10 min-h-[100px] text-sm italic"
                                 />
@@ -326,7 +334,7 @@ export default function AgentSettingsDialog({
                 />
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 text-left">
                 <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Handoff Keywords</Label>
                 <FormField
                     control={form.control}
@@ -335,7 +343,7 @@ export default function AgentSettingsDialog({
                         <FormItem>
                             <FormControl>
                                 <Input 
-                                    placeholder="Comma separated: agent, human, representative" 
+                                    placeholder="agent, human, person" 
                                     value={Array.isArray(field.value) ? field.value.join(', ') : field.value} 
                                     onChange={(e) => field.onChange(e.target.value.split(',').map(s => s.trim()))}
                                     className="bg-muted/20 border-white/10"
@@ -348,14 +356,14 @@ export default function AgentSettingsDialog({
 
             <Separator className="bg-white/5" />
 
-            <div className="space-y-6">
+            <div className="space-y-6 text-left">
                 <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Identity Capture</Label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <FormField
                         control={form.control}
                         name="workflowConfig.web.identityCapture.timing"
                         render={({ field }) => (
-                            <FormItem className="space-y-3">
+                            <FormItem className="space-y-3 text-left">
                                 <FormLabel className="text-xs text-muted-foreground">Timing</FormLabel>
                                 <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
                                     <div className="flex items-center space-x-2"><RadioGroupItem value="before" id="before" /><Label htmlFor="before" className="text-xs">Before first response</Label></div>
@@ -364,7 +372,7 @@ export default function AgentSettingsDialog({
                             </FormItem>
                         )}
                     />
-                    <div className="space-y-3">
+                    <div className="space-y-3 text-left">
                         <FormLabel className="text-xs text-muted-foreground">Fields</FormLabel>
                         <div className="flex flex-col gap-2">
                             {['name', 'email', 'phone'].map(f => (
@@ -385,7 +393,7 @@ export default function AgentSettingsDialog({
                 </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 text-left">
                 <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">After Hours Behavior</Label>
                 <FormField
                     control={form.control}
@@ -409,7 +417,7 @@ export default function AgentSettingsDialog({
                 />
             </div>
 
-            <div className="pt-6 border-t border-white/5">
+            <div className="pt-6 border-t border-white/5 text-left">
                 <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Active on Widgets</Label>
                 <div className="mt-4 space-y-2">
                     {widgetsUsingThisAgent.length > 0 ? widgetsUsingThisAgent.map(w => (
@@ -436,18 +444,20 @@ export default function AgentSettingsDialog({
         );
       case 'sms':
         return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
-            <FormField
-                control={form.control}
-                name="workflowConfig.sms.openingMessage"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Opening Message</FormLabel>
-                        <FormControl><Input placeholder="Hi! You've reached support. How can I help?" {...field} className="bg-muted/20 border-white/10" /></FormControl>
-                        <FormDescription className="text-[10px]">Fires on the first inbound from a new contact.</FormDescription>
-                    </FormItem>
-                )}
-            />
+          <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300 text-left">
+            {!isPersonalAgent && (
+              <FormField
+                  control={form.control}
+                  name="workflowConfig.sms.openingMessage"
+                  render={({ field }) => (
+                      <FormItem>
+                          <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Opening Message</FormLabel>
+                          <FormControl><Input placeholder="Hi! You've reached support. How can I help?" {...field} className="bg-muted/20 border-white/10" /></FormControl>
+                          <FormDescription className="text-[10px]">Fires on the first inbound from a new contact.</FormDescription>
+                      </FormItem>
+                  )}
+              />
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
@@ -456,33 +466,59 @@ export default function AgentSettingsDialog({
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Response Style</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value || (isPersonalAgent ? 'short' : 'concise')}>
                                 <FormControl><SelectTrigger className="bg-muted/20 border-white/10"><SelectValue /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                    <SelectItem value="concise">Concise</SelectItem>
-                                    <SelectItem value="conversational">Conversational</SelectItem>
+                                    {isPersonalAgent ? (
+                                      <>
+                                        <SelectItem value="short">Short</SelectItem>
+                                        <SelectItem value="medium">Medium</SelectItem>
+                                        <SelectItem value="match">Match</SelectItem>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <SelectItem value="concise">Concise</SelectItem>
+                                        <SelectItem value="conversational">Conversational</SelectItem>
+                                      </>
+                                    )}
                                 </SelectContent>
                             </Select>
                         </FormItem>
                     )}
                 />
-                <FormField
+                {!isPersonalAgent ? (
+                  <FormField
+                      control={form.control}
+                      name="workflowConfig.sms.afterHoursBehavior"
+                      render={({ field }) => (
+                          <FormItem>
+                              <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">After Hours</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl><SelectTrigger className="bg-muted/20 border-white/10"><SelectValue /></SelectTrigger></FormControl>
+                                  <SelectContent>
+                                      <SelectItem value="ai_full">AI handles everything</SelectItem>
+                                      <SelectItem value="notify_ticket">Notify customer & create ticket</SelectItem>
+                                      <SelectItem value="off">AI off</SelectItem>
+                                  </SelectContent>
+                              </Select>
+                          </FormItem>
+                      )}
+                  />
+                ) : (
+                  <FormField
                     control={form.control}
-                    name="workflowConfig.sms.afterHoursBehavior"
+                    name="workflowConfig.sms.smartTiming"
                     render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">After Hours</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger className="bg-muted/20 border-white/10"><SelectValue /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    <SelectItem value="ai_full">AI handles everything</SelectItem>
-                                    <SelectItem value="notify_ticket">Notify customer & create ticket</SelectItem>
-                                    <SelectItem value="off">AI off</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </FormItem>
+                        <div className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/[0.02] mt-6">
+                            <div className="space-y-0.5">
+                                <p className="text-sm font-bold text-white">Smart Timing</p>
+                                <p className="text-[10px] text-muted-foreground">Notify me instead of drafting outside my hours.</p>
+                            </div>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </div>
                     )}
-                />
+                  />
+                )}
             </div>
 
             <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02]">
@@ -495,52 +531,54 @@ export default function AgentSettingsDialog({
                 </div>
             </div>
 
-            <div className="space-y-6 pt-4 border-t border-white/5">
-                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Escalation Triggers</Label>
-                <FormField
-                    control={form.control}
-                    name="workflowConfig.sms.handoffKeywords"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-xs text-muted-foreground">Keywords</FormLabel>
-                            <FormControl>
-                                <Input 
-                                    placeholder="agent, human, person" 
-                                    value={Array.isArray(field.value) ? field.value.join(', ') : field.value} 
-                                    onChange={(e) => field.onChange(e.target.value.split(',').map(s => s.trim()))}
-                                    className="bg-muted/20 border-white/10"
-                                />
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="workflowConfig.sms.sentimentEscalation"
-                    render={({ field }) => (
-                        <div className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/[0.02]">
-                            <div className="space-y-0.5">
-                                <p className="text-sm font-bold text-white">Escalate on negative sentiment</p>
-                                <p className="text-xs text-muted-foreground">Route to human if customer is frustrated.</p>
-                            </div>
-                            <Switch checked={field.value} onCheckedChange={field.onChange} />
-                        </div>
-                    )}
-                />
-            </div>
+            {!isPersonalAgent && (
+              <div className="space-y-6 pt-4 border-t border-white/5">
+                  <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Escalation Triggers</Label>
+                  <FormField
+                      control={form.control}
+                      name="workflowConfig.sms.handoffKeywords"
+                      render={({ field }) => (
+                          <FormItem>
+                              <FormLabel className="text-xs text-muted-foreground">Keywords</FormLabel>
+                              <FormControl>
+                                  <Input 
+                                      placeholder="agent, human, person" 
+                                      value={Array.isArray(field.value) ? field.value.join(', ') : field.value} 
+                                      onChange={(e) => field.onChange(e.target.value.split(',').map(s => s.trim()))}
+                                      className="bg-muted/20 border-white/10"
+                                  />
+                              </FormControl>
+                          </FormItem>
+                      )}
+                  />
+                  <FormField
+                      control={form.control}
+                      name="workflowConfig.sms.sentimentEscalation"
+                      render={({ field }) => (
+                          <div className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/[0.02]">
+                              <div className="space-y-0.5">
+                                  <p className="text-sm font-bold text-white">Escalate on repeated negative sentiment</p>
+                                  <p className="text-xs text-muted-foreground">If a customer sends multiple frustrated messages in a row, flag for human review automatically.</p>
+                              </div>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          </div>
+                      )}
+                  />
+              </div>
+            )}
           </div>
         );
       case 'voice':
         return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300 text-left">
             <FormField
                 control={form.control}
                 name="workflowConfig.voice.greetingScript"
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">AI Greeting Script</FormLabel>
-                        <FormControl><Textarea placeholder="Hi! You've reached support. How can I help?" {...field} className="bg-muted/20 border-white/10 min-h-[100px]" /></FormControl>
-                        <FormDescription className="text-[10px]">What the AI says when the call connects. Use {"{hub_name}"} for dynamic insertion.</FormDescription>
+                        <FormControl><Textarea placeholder="Hi! Thank you for calling. How can I help?" {...field} className="bg-muted/20 border-white/10 min-h-[100px]" /></FormControl>
+                        <FormDescription className="text-[10px]">What the AI says when the call connects.</FormDescription>
                     </FormItem>
                 )}
             />
@@ -552,36 +590,50 @@ export default function AgentSettingsDialog({
                     name="workflowConfig.voice.callHandlingMode"
                     render={({ field }) => (
                         <RadioGroup onValueChange={field.onChange} value={field.value} className="grid grid-cols-1 gap-3">
-                            <label htmlFor="mode-full" className={cn("flex items-start gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer", field.value === 'full_ai' ? "bg-primary/10 border-primary shadow-md" : "bg-muted/20 border-white/5 hover:border-white/10")}>
-                                <RadioGroupItem value="full_ai" id="mode-full" className="sr-only" />
-                                <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center shrink-0", field.value === 'full_ai' ? "bg-primary text-primary-foreground" : "bg-card border")}><BotIcon className="h-5 w-5" /></div>
-                                <div className="flex-1">
-                                    <p className={cn("font-bold text-sm", field.value === 'full_ai' ? "text-primary" : "text-foreground")}>Full AI Resolution</p>
-                                    <p className="text-xs text-muted-foreground mt-0.5">AI owns the entire call, only escalates if stuck.</p>
-                                </div>
-                            </label>
-                            <label htmlFor="mode-triage" className={cn("flex items-start gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer", field.value === 'warm_handoff' ? "bg-primary/10 border-primary shadow-md" : "bg-muted/20 border-white/5 hover:border-white/10")}>
-                                <RadioGroupItem value="warm_handoff" id="mode-triage" className="sr-only" />
-                                <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center shrink-0", field.value === 'warm_handoff' ? "bg-primary text-primary-foreground" : "bg-card border")}><Zap className="h-5 w-5" /></div>
-                                <div className="flex-1">
-                                    <p className={cn("font-bold text-sm", field.value === 'warm_handoff' ? "text-primary" : "text-foreground")}>AI Triage + Warm Handoff</p>
-                                    <p className="text-xs text-muted-foreground mt-0.5">AI collects context then transfers to an agent with a summary.</p>
-                                </div>
-                            </label>
+                            {!isPersonalAgent && (
+                              <>
+                                <label htmlFor="mode-full" className={cn("flex items-start gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer", field.value === 'full_ai' ? "bg-primary/10 border-primary shadow-md" : "bg-muted/20 border-white/5 hover:border-white/10")}>
+                                    <RadioGroupItem value="full_ai" id="mode-full" className="sr-only" />
+                                    <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center shrink-0", field.value === 'full_ai' ? "bg-primary text-primary-foreground" : "bg-card border")}><BotIcon className="h-5 w-5" /></div>
+                                    <div className="flex-1">
+                                        <p className={cn("font-bold text-sm", field.value === 'full_ai' ? "text-primary" : "text-foreground")}>Full AI Resolution</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">AI owns the entire call, only escalates if stuck.</p>
+                                    </div>
+                                </label>
+                                <label htmlFor="mode-triage" className={cn("flex items-start gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer", field.value === 'warm_handoff' ? "bg-primary/10 border-primary shadow-md" : "bg-muted/20 border-white/5 hover:border-white/10")}>
+                                    <RadioGroupItem value="warm_handoff" id="mode-triage" className="sr-only" />
+                                    <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center shrink-0", field.value === 'warm_handoff' ? "bg-primary text-primary-foreground" : "bg-card border")}><Zap className="h-5 w-5" /></div>
+                                    <div className="flex-1">
+                                        <p className={cn("font-bold text-sm", field.value === 'warm_handoff' ? "text-primary" : "text-foreground")}>AI Triage + Warm Handoff</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">AI collects context then transfers to an agent with a summary.</p>
+                                    </div>
+                                </label>
+                              </>
+                            )}
                             <label htmlFor="mode-receptionist" className={cn("flex items-start gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer", field.value === 'receptionist_only' ? "bg-primary/10 border-primary shadow-md" : "bg-muted/20 border-white/5 hover:border-white/10")}>
                                 <RadioGroupItem value="receptionist_only" id="mode-receptionist" className="sr-only" />
                                 <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center shrink-0", field.value === 'receptionist_only' ? "bg-primary text-primary-foreground" : "bg-card border")}><UserCheck className="h-5 w-5" /></div>
                                 <div className="flex-1">
-                                    <p className={cn("font-bold text-sm", field.value === 'receptionist_only' ? "text-primary" : "text-foreground")}>Receptionist Only</p>
+                                    <p className={cn("font-bold text-sm", field.value === 'receptionist_only' ? "text-primary" : "text-foreground")}>{isPersonalAgent ? 'Receptionist' : 'Receptionist Only'}</p>
                                     <p className="text-xs text-muted-foreground mt-0.5">AI greets, takes a message, and ends the call.</p>
                                 </div>
                             </label>
+                            {isPersonalAgent && (
+                              <label htmlFor="mode-voicemail" className={cn("flex items-start gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer", field.value === 'voicemail_only' ? "bg-primary/10 border-primary shadow-md" : "bg-muted/20 border-white/5 hover:border-white/10")}>
+                                  <RadioGroupItem value="voicemail_only" id="mode-voicemail" className="sr-only" />
+                                  <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center shrink-0", field.value === 'voicemail_only' ? "bg-primary text-primary-foreground" : "bg-card border")}><Mic className="h-5 w-5" /></div>
+                                  <div className="flex-1">
+                                      <p className={cn("font-bold text-sm", field.value === 'voicemail_only' ? "text-primary" : "text-foreground")}>Voicemail Only</p>
+                                      <p className="text-xs text-muted-foreground mt-0.5">Direct callers straight to your personal voicemail.</p>
+                                  </div>
+                              </label>
+                            )}
                         </RadioGroup>
                     )}
                 />
             </div>
 
-            {watchedValues.workflowConfig?.voice?.callHandlingMode === 'warm_handoff' && (
+            {!isPersonalAgent && watchedValues.workflowConfig?.voice?.callHandlingMode === 'warm_handoff' && (
                 <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10 space-y-6 animate-in slide-in-from-top-2 duration-300">
                     <div className="flex items-center gap-2 text-primary">
                         <Zap className="h-4 w-4" />
@@ -646,10 +698,11 @@ export default function AgentSettingsDialog({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {[
                         { key: 'transcriptionEnabled', label: 'Transcribe all calls', icon: Mic, def: true },
-                        { key: 'afterHoursAiOnly', label: 'After-hours AI only', icon: Clock, def: false },
+                        { key: 'afterHoursAiOnly', label: 'After-hours AI only', icon: Clock, def: false, hide: isPersonalAgent },
                         { key: 'voicemailEnabled', label: 'Voicemail fallback', icon: ShieldAlert, def: true },
                         { key: 'aiGreetingEnabled', label: 'AI Greeting', icon: MessageSquare, def: true },
-                    ].map(t => (
+                        { key: 'callbackNotification', label: 'Callback Notification', icon: Bell, def: true, show: isPersonalAgent },
+                    ].filter(t => !t.hide && (t.show === undefined || t.show)).map(t => (
                         <FormField
                             key={t.key}
                             control={form.control}
@@ -658,7 +711,10 @@ export default function AgentSettingsDialog({
                                 <div className="flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.02]">
                                     <div className="flex items-center gap-3">
                                         <t.icon className="h-4 w-4 text-muted-foreground" />
-                                        <span className="text-xs font-bold">{t.label}</span>
+                                        <div className="flex flex-col">
+                                          <span className="text-xs font-bold">{t.label}</span>
+                                          {t.key === 'callbackNotification' && <span className="text-[9px] text-muted-foreground">Notify me immediately when AI takes a message.</span>}
+                                        </div>
                                     </div>
                                     <Switch checked={field.value ?? t.def} onCheckedChange={field.onChange} />
                                 </div>
@@ -668,61 +724,92 @@ export default function AgentSettingsDialog({
                 </div>
             </div>
 
-            <FormField
-                control={form.control}
-                name="workflowConfig.voice.afterHoursBehavior"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">After Hours Behavior</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger className="bg-muted/20 border-white/10"><SelectValue /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                <SelectItem value="ai_full">Full AI handles everything</SelectItem>
-                                <SelectItem value="receptionist_only">Receptionist only</SelectItem>
-                                <SelectItem value="voicemail_only">Voicemail only</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </FormItem>
-                )}
-            />
+            {!isPersonalAgent && (
+              <FormField
+                  control={form.control}
+                  name="workflowConfig.voice.afterHoursBehavior"
+                  render={({ field }) => (
+                      <FormItem>
+                          <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">After Hours Behavior</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl><SelectTrigger className="bg-muted/20 border-white/10"><SelectValue /></SelectTrigger></FormControl>
+                              <SelectContent>
+                                  <SelectItem value="ai_full">Full AI handles everything</SelectItem>
+                                  <SelectItem value="receptionist_only">Receptionist only</SelectItem>
+                                  <SelectItem value="voicemail_only">Voicemail only</SelectItem>
+                              </SelectContent>
+                          </Select>
+                      </FormItem>
+                  )}
+              />
+            )}
           </div>
         );
       case 'email':
         return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300 text-left">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
+                {!isPersonalAgent ? (
+                  <FormField
+                      control={form.control}
+                      name="workflowConfig.supportEmail.tone"
+                      render={({ field }) => (
+                          <FormItem>
+                              <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Response Tone</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl><SelectTrigger className="bg-muted/20 border-white/10"><SelectValue /></SelectTrigger></FormControl>
+                                  <SelectContent>
+                                      <SelectItem value="formal">Formal</SelectItem>
+                                      <SelectItem value="professional">Professional</SelectItem>
+                                      <SelectItem value="friendly">Friendly</SelectItem>
+                                  </SelectContent>
+                              </Select>
+                          </FormItem>
+                      )}
+                  />
+                ) : (
+                  <FormField
                     control={form.control}
-                    name="workflowConfig.supportEmail.tone"
+                    name="workflowConfig.personalEmail.writingStyle"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Response Tone</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger className="bg-muted/20 border-white/10"><SelectValue /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    <SelectItem value="formal">Formal</SelectItem>
-                                    <SelectItem value="professional">Professional</SelectItem>
-                                    <SelectItem value="friendly">Friendly</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Writing Style</FormLabel>
+                            <FormControl><Input placeholder="How should the AI write on your behalf?" {...field} className="bg-muted/20 border-white/10" /></FormControl>
                         </FormItem>
                     )}
-                />
+                  />
+                )}
                 <FormField
                     control={form.control}
-                    name="workflowConfig.supportEmail.signOff"
+                    name={isPersonalAgent ? "workflowConfig.personalEmail.signOff" : "workflowConfig.supportEmail.signOff"}
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Default Sign-off</FormLabel>
-                            <FormControl><Input placeholder="Best regards, The Support Team" {...field} className="bg-muted/20 border-white/10" /></FormControl>
+                            <FormControl><Input placeholder={isPersonalAgent ? `Thanks, ${bot?.name?.split(' ')[0]}` : "Best regards, The Support Team"} {...field} className="bg-muted/20 border-white/10" /></FormControl>
                         </FormItem>
                     )}
                 />
             </div>
 
+            {isPersonalAgent && (
+              <FormField
+                control={form.control}
+                name="workflowConfig.personalEmail.contextAwareness"
+                render={({ field }) => (
+                    <div className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/[0.02]">
+                        <div className="space-y-0.5">
+                            <p className="text-sm font-bold text-white">Context Awareness</p>
+                            <p className="text-xs text-muted-foreground">Reference previous email history with this contact when drafting.</p>
+                        </div>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </div>
+                )}
+              />
+            )}
+
             <FormField
                 control={form.control}
-                name="workflowConfig.supportEmail.alwaysAddress"
+                name={isPersonalAgent ? "workflowConfig.personalEmail.alwaysAddress" : "workflowConfig.supportEmail.alwaysAddress"}
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Always Include</FormLabel>
@@ -732,39 +819,41 @@ export default function AgentSettingsDialog({
                 )}
             />
 
-            <div className="space-y-6 pt-4 border-t border-white/5">
-                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Escalation Triggers</Label>
-                <FormField
-                    control={form.control}
-                    name="workflowConfig.supportEmail.escalationTriggers"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-xs text-muted-foreground">Keywords</FormLabel>
-                            <FormControl>
-                                <Input 
-                                    placeholder="agent, human, manager" 
-                                    value={Array.isArray(field.value) ? field.value.join(', ') : field.value} 
-                                    onChange={(e) => field.onChange(e.target.value.split(',').map(s => s.trim()))}
-                                    className="bg-muted/20 border-white/10"
-                                />
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="workflowConfig.supportEmail.escalateOnSentiment"
-                    render={({ field }) => (
-                        <div className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/[0.02]">
-                            <div className="space-y-0.5">
-                                <p className="text-sm font-bold text-white">Escalate emails showing negative sentiment</p>
-                                <p className="text-xs text-muted-foreground">Flags frustrated customers for human review.</p>
-                            </div>
-                            <Switch checked={field.value} onCheckedChange={field.onChange} />
-                        </div>
-                    )}
-                />
-            </div>
+            {!isPersonalAgent && (
+              <div className="space-y-6 pt-4 border-t border-white/5">
+                  <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Escalation Triggers</Label>
+                  <FormField
+                      control={form.control}
+                      name="workflowConfig.supportEmail.escalationTriggers"
+                      render={({ field }) => (
+                          <FormItem>
+                              <FormLabel className="text-xs text-muted-foreground">Keywords</FormLabel>
+                              <FormControl>
+                                  <Input 
+                                      placeholder="agent, human, manager" 
+                                      value={Array.isArray(field.value) ? field.value.join(', ') : field.value} 
+                                      onChange={(e) => field.onChange(e.target.value.split(',').map(s => s.trim()))}
+                                      className="bg-muted/20 border-white/10"
+                                  />
+                              </FormControl>
+                          </FormItem>
+                      )}
+                  />
+                  <FormField
+                      control={form.control}
+                      name="workflowConfig.supportEmail.escalateOnSentiment"
+                      render={({ field }) => (
+                          <div className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/[0.02]">
+                              <div className="space-y-0.5">
+                                  <p className="text-sm font-bold text-white">Escalate emails showing negative sentiment</p>
+                                  <p className="text-xs text-muted-foreground">Flags frustrated customers for human review.</p>
+                              </div>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          </div>
+                      )}
+                  />
+              </div>
+            )}
           </div>
         );
       default: return null;
@@ -782,10 +871,10 @@ export default function AgentSettingsDialog({
                         <div className="flex items-center gap-3">
                             <div className={cn("h-2 w-2 rounded-full", watchedValues.isEnabled ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-zinc-600")} />
                             <div>
-                                <DialogTitle className="text-base font-bold text-white leading-tight">
+                                <DialogTitle className="text-base font-bold text-white leading-tight text-left">
                                     {watchedValues.name || (mode === 'widget' ? 'New Widget' : 'New Agent')}
                                 </DialogTitle>
-                                <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-muted-foreground opacity-50">
+                                <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-muted-foreground opacity-50 text-left">
                                     {mode === 'widget' ? 'Widget Setup' : 'AI Intelligence'}
                                 </DialogDescription>
                             </div>
@@ -827,7 +916,7 @@ export default function AgentSettingsDialog({
             </aside>
 
             <div className="flex-1 flex flex-col min-w-0">
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1 text-left">
                     <div className="p-8 max-w-4xl mx-auto space-y-10">
                         {activeTab === 'general' && (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -896,7 +985,7 @@ export default function AgentSettingsDialog({
                                             <div className="p-6 flex items-center justify-between border-b border-white/5">
                                                 <div className="flex items-center gap-4">
                                                     <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary"><channel.icon className="h-5 w-5" /></div>
-                                                    <div>
+                                                    <div className="text-left">
                                                         <h3 className="font-bold text-white">{channel.label}</h3>
                                                         <p className="text-xs text-muted-foreground">{channel.desc}</p>
                                                     </div>
