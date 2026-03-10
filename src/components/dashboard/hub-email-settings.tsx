@@ -5,13 +5,17 @@ import React, { useState, useEffect } from 'react';
 import { Hub, EmailConfig } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Mail, Loader2, ArrowRight, BrainCircuit } from 'lucide-react';
+import { Plus, Mail, Loader2, ArrowRight, BrainCircuit, CheckCircle2, Edit } from 'lucide-react';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import ConnectEmailDialog from './connect-email-dialog';
 import EmailConfigDrawer from './email-config-drawer';
-import { Alert, AlertDescription } from '../ui/alert';
+import { Label } from '../ui/label';
+import { Switch } from '../ui/switch';
+import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
+import { Separator } from '../ui/separator';
 
 interface HubEmailSettingsProps {
   activeHub: Hub;
@@ -22,8 +26,7 @@ export default function HubEmailSettings({ activeHub, spaceId }: HubEmailSetting
   const { toast } = useToast();
   const [configs, setConfigs] = useState<EmailConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedConfig, setSelectedConfig] = useState<EmailConfig | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -37,26 +40,13 @@ export default function HubEmailSettings({ activeHub, spaceId }: HubEmailSetting
     }
   }, [activeHub, spaceId]);
 
-  const handleConfigure = (config: EmailConfig) => {
-    setSelectedConfig(config);
-    setIsDrawerOpen(true);
-  };
-
-  const handleConfigSave = (updated: EmailConfig) => {
-    setConfigs(prev => prev.map(c => c.id === updated.id ? updated : c));
-    setIsDrawerOpen(false);
-  };
-
-  const handleDisconnect = async (configId: string) => {
+  const handleUpdateConfig = async (id: string, data: Partial<EmailConfig>) => {
     try {
-      const res = await fetch(`/api/email/disconnect?spaceId=${spaceId}&hubId=${activeHub.id}&emailConfigId=${configId}`, {
-        method: 'POST'
-      });
-      if (!res.ok) throw new Error("Disconnect failed");
-      toast({ title: "Email address disconnected" });
-      setIsDrawerOpen(false);
+      await db.updateEmailConfig(spaceId, activeHub.id, id, data);
+      setConfigs(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+      toast({ title: "Settings updated" });
     } catch (e) {
-      toast({ variant: 'destructive', title: "Failed to disconnect" });
+      toast({ variant: 'destructive', title: "Failed to update settings" });
     }
   };
 
@@ -80,21 +70,12 @@ export default function HubEmailSettings({ activeHub, spaceId }: HubEmailSetting
         </Button>
       </header>
 
-      <Alert className="bg-primary/5 border-primary/10 rounded-2xl p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <BrainCircuit className="h-5 w-5 text-primary" />
-          <AlertDescription className="text-xs font-medium">
-            AI behavior and greeting scripts for these email addresses are now managed in your Agent settings.
-          </AlertDescription>
-        </div>
-      </Alert>
-
       <section className="space-y-4">
         <div className="grid grid-cols-1 gap-4">
           {configs.map(config => (
-            <Card key={config.id} className="relative group overflow-hidden border hover:border-primary/50 transition-all">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+            <Card key={config.id} className="overflow-hidden border hover:border-primary/20 transition-all">
+              <CardContent className="p-0">
+                <div className="p-6 flex items-center justify-between border-b border-white/5">
                   <div className="flex items-center gap-4">
                     <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                       <Mail className="h-6 w-6" />
@@ -109,13 +90,51 @@ export default function HubEmailSettings({ activeHub, spaceId }: HubEmailSetting
                       <p className="text-sm text-muted-foreground">{config.emailAddress}</p>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-4">
-                    <Button variant="outline" size="sm" onClick={() => handleConfigure(config)}>
-                      Configure
-                    </Button>
-                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setEditingId(editingId === config.id ? null : config.id)}>
+                    {editingId === config.id ? 'Close Settings' : 'Configure'}
+                  </Button>
                 </div>
+
+                {editingId === config.id && (
+                  <div className="p-6 space-y-8 bg-muted/20 animate-in slide-in-from-top-2 duration-300">
+                    {/* Auto-Ack Email */}
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[10px] uppercase font-black tracking-widest text-primary flex items-center gap-2">
+                          <CheckCircle2 className="h-3 w-3" /> Auto-Acknowledgment Email
+                        </Label>
+                        <Switch 
+                          checked={config.autoAckEnabled} 
+                          onCheckedChange={(val) => handleUpdateConfig(config.id, { autoAckEnabled: val })}
+                        />
+                      </div>
+                      
+                      {config.autoAckEnabled && (
+                        <div className="space-y-4 animate-in fade-in duration-300">
+                          <div className="space-y-2">
+                            <Label className="text-xs">Email Subject</Label>
+                            <Input 
+                              value={config.autoAckSubject || "We've received your message"}
+                              onChange={(e) => handleUpdateConfig(config.id, { autoAckSubject: e.target.value })}
+                              placeholder="We received your message"
+                              className="bg-background text-sm"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">Email Body</Label>
+                            <Textarea 
+                              value={config.autoAckBody}
+                              onChange={(e) => handleUpdateConfig(config.id, { autoAckBody: e.target.value })}
+                              placeholder="Thanks for reaching out! Our team will get back to you shortly."
+                              className="bg-background text-sm min-h-[120px]"
+                            />
+                          </div>
+                          <p className="text-[10px] text-muted-foreground italic">Fires once per new email thread. Static confirmation only.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -143,18 +162,6 @@ export default function HubEmailSettings({ activeHub, spaceId }: HubEmailSetting
         hubId={activeHub.id}
         spaceId={spaceId}
       />
-
-      {selectedConfig && (
-        <EmailConfigDrawer 
-          isOpen={isDrawerOpen}
-          onOpenChange={setIsDrawerOpen}
-          config={selectedConfig}
-          spaceId={spaceId}
-          hubId={activeHub.id}
-          onSave={handleConfigSave}
-          onDisconnect={handleDisconnect}
-        />
-      )}
     </div>
   );
 }

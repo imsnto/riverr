@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -30,42 +30,28 @@ import {
   X, 
   Check, 
   ChevronsUpDown, 
-  Upload, 
   Loader2, 
-  Send, 
   MessageSquare, 
   Copy, 
-  Terminal, 
-  ShieldCheck, 
-  Smartphone, 
   Globe, 
-  Wand2, 
-  Zap, 
-  ChevronRight, 
-  Edit, 
-  Trash2, 
-  Palette, 
-  Layout, 
+  Smartphone, 
+  Phone, 
+  Mail, 
   Settings, 
-  Plug,
-  BookOpen,
-  Eye,
-  MessageCircle,
-  Phone,
-  Mic,
-  Clock,
-  ShieldAlert,
-  ChevronDown,
-  Mail,
-  Sparkles,
-  User as UserIcon,
+  Palette, 
+  Plug, 
+  BookOpen, 
+  Zap,
+  Target,
   UserCheck,
-  Forward,
-  Plus,
-  Info,
-  CheckCircle2,
   Bell,
-  Target
+  Mic,
+  ShieldAlert,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  ChevronRight,
+  ArrowRight
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -77,17 +63,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Badge } from '../ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AutomationFlowBuilder from './automation-flow-builder';
-import { Separator } from '../ui/separator';
-import Link from 'next/link';
-import ChatbotSimulator from './chatbot-simulator';
-import * as db from '@/lib/db';
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Slider } from '../ui/slider';
-import ConnectEmailDialog from './connect-email-dialog';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Checkbox } from '../ui/checkbox';
+import { Slider } from '../ui/slider';
+import Link from 'next/link';
 
 function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[], selectedUsers: string[], onChange: (users: string[]) => void }) {
     const [open, setOpen] = useState(false);
@@ -146,101 +126,23 @@ function MemberSelect({ allUsers, selectedUsers, onChange }: { allUsers: User[],
 }
 
 const agentSettingsSchema = z.object({
-  name: z.string().min(1, 'Agent name is required.'),
+  name: z.string().min(1, 'Name is required.'),
   isEnabled: z.boolean().default(true),
   aiEnabled: z.boolean().default(true),
+  // Widget Specific (if mode === 'widget')
   welcomeMessage: z.string().optional(),
-  primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.'),
-  backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.'),
-  headerTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
-  customerTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
-  agentMessageBackgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
-  agentMessageTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
-  chatbotIconsTextColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
-  chatbotIconsColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color.').optional(),
-  logoUrl: z.string().url().optional().or(z.literal('')),
+  noAgentFallbackMessage: z.string().optional(),
+  assignedAgentId: z.string().optional().nullable(),
+  primaryColor: z.string().optional(),
+  backgroundColor: z.string().optional(),
+  logoUrl: z.string().optional(),
+  chatbotIconsColor: z.string().optional(),
+  chatbotIconsTextColor: z.string().optional(),
+  // Agent Specific (if mode === 'agent')
   agentIds: z.array(z.string()).optional(),
-  escalateToTeamInbox: z.boolean().optional(),
   allowedHelpCenterIds: z.array(z.string()).optional(),
-  handoffKeywords: z.array(z.string()).default([]),
-  flow: z.any().optional(),
-  channelConfig: z.object({
-    web: z.object({ enabled: z.boolean() }),
-    sms: z.object({ 
-      enabled: z.boolean(), 
-      numberConfigs: z.record(z.object({ aiMode: z.enum(['off', 'draft', 'auto']) })) 
-    }),
-    email: z.object({ 
-      enabled: z.boolean(), 
-      emailConfigs: z.record(z.object({ aiMode: z.enum(['off', 'draft', 'auto']), aiGreetingScript: z.string() })) 
-    }),
-    voice: z.object({ 
-      enabled: z.boolean(), 
-      numberConfigs: z.record(z.object({ 
-        aiCallMode: z.enum(['agent_only', 'warm_handoff', 'full_ai']),
-        handoffRouteTo: z.enum(['any', 'assigned', 'team']),
-        handoffTimeoutSeconds: z.number(),
-        handoffFallback: z.enum(['voicemail', 'ai_resolve', 'callback']),
-        aiGreeting: z.boolean(),
-        transcribe: z.boolean(),
-        afterHoursAiOnly: z.boolean(),
-        voicemailFallback: z.boolean(),
-        greetingScript: z.string()
-      })) 
-    })
-  }).optional(),
-  workflowConfig: z.object({
-    web: z.object({
-      welcomeMessage: z.string(),
-      webAgentName: z.string().optional(),
-      handoffKeywords: z.array(z.string()),
-      afterHoursBehavior: z.enum(['ai_full', 'take_message', 'disabled']),
-      conversationGoal: z.string(),
-      identityCapture: z.object({
-        timing: z.enum(['before', 'after']),
-        fields: z.object({
-          name: z.boolean(),
-          email: z.boolean(),
-          phone: z.boolean(),
-        })
-      })
-    }).optional(),
-    supportEmail: z.object({
-      tone: z.enum(['formal', 'professional', 'friendly']),
-      signOff: z.string(),
-      alwaysAddress: z.string(),
-      escalationTriggers: z.array(z.string())
-    }).optional(),
-    personalEmail: z.object({
-      writingStyle: z.string(),
-      responseLength: z.enum(['short', 'medium', 'match']),
-      signOff: z.string(),
-      contextAwareness: z.boolean()
-    }).optional(),
-    sms: z.object({
-      responseStyle: z.enum(['conversational', 'concise']).optional(),
-      openingMessage: z.string().optional(),
-      afterHoursBehavior: z.enum(['ai_full', 'notify_ticket', 'off']).optional(),
-      handoffKeywords: z.array(z.string()).optional(),
-      sentimentEscalation: z.boolean().optional(),
-      writingStyle: z.string().optional(),
-      smartTiming: z.boolean().optional(),
-    }).optional(),
-    voice: z.object({
-      greetingScript: z.string().optional(),
-      callHandlingMode: z.enum(['full_ai', 'warm_handoff', 'receptionist_only']).optional(),
-      handoffTarget: z.enum(['any', 'assigned', 'team']).optional(),
-      handoffTimeoutSeconds: z.number().optional(),
-      handoffFallback: z.enum(['voicemail', 'ai_resolve', 'callback']).optional(),
-      voicemailEnabled: z.boolean().optional(),
-      transcriptionEnabled: z.boolean().optional(),
-      afterHoursBehavior: z.enum(['ai_full', 'receptionist_only', 'voicemail_only']).optional(),
-      role: z.enum(['receptionist', 'voicemail_only']).optional(),
-      receptionistScript: z.string().optional(),
-      callbackNotification: z.boolean().optional(),
-      voicemailTranscription: z.boolean().optional(),
-    }).optional()
-  }).optional()
+  channelConfig: z.any().optional(),
+  workflowConfig: z.any().optional(),
 });
 
 type AgentSettingsFormValues = z.infer<typeof agentSettingsSchema>;
@@ -249,35 +151,29 @@ interface AgentSettingsDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   bot: BotData | null;
-  onSave: (agentData: BotData | Omit<BotData, 'id' | 'hubId'>) => void;
+  onSave: (data: BotData | Omit<BotData, 'id' | 'hubId'>) => void;
   appUser: User | null;
   allUsers: User[];
   helpCenters: HelpCenter[];
-  hiddenTabs?: string[];
+  mode: 'agent' | 'widget';
+  hubWidgets?: BotData[]; // For showing active assignments in Agent mode
 }
 
 export default function AgentSettingsDialog({
   isOpen,
   onOpenChange,
-  bot: agent,
+  bot,
   onSave,
   appUser,
   allUsers,
   helpCenters,
-  hiddenTabs = [],
+  mode,
+  hubWidgets = [],
 }: AgentSettingsDialogProps) {
-  const [activeTab, setActiveTab] = useState('channels');
-  const [isFlowBuilderOpen, setIsFlowBuilderOpen] = useState(false);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [isConnectEmailOpen, setIsConnectEmailOpen] = useState(false);
-  const [newKeyword, setNewKeyword] = useState('');
-  const [phoneNumbers, setPhoneNumbers] = useState<PhoneChannelLookup[]>([]);
-  const [emailConfigs, setEmailConfigs] = useState<EmailConfig[]>([]);
+  const [activeTab, setActiveTab] = useState(mode === 'agent' ? 'general' : 'general');
+  const [activeConfigPath, setActiveConfigPath] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-
-  const isPersonal = agent?.ownerType === 'user';
-  const MAX_CHANNELS = 2;
 
   const form = useForm<AgentSettingsFormValues>({
     resolver: zodResolver(agentSettingsSchema),
@@ -286,295 +182,213 @@ export default function AgentSettingsDialog({
       isEnabled: true,
       aiEnabled: true,
       welcomeMessage: 'Hi there! How can we help you today?',
+      noAgentFallbackMessage: 'Our team will be with you shortly.',
+      assignedAgentId: null,
       primaryColor: '#3b82f6',
       backgroundColor: '#111827',
-      headerTextColor: '#ffffff',
-      agentMessageBackgroundColor: '#374151',
-      agentMessageTextColor: '#ffffff',
-      customerTextColor: '#ffffff',
+      logoUrl: '',
       chatbotIconsColor: '#3b82f6',
       chatbotIconsTextColor: '#ffffff',
-      logoUrl: '',
       agentIds: [],
-      escalateToTeamInbox: true,
       allowedHelpCenterIds: [],
-      handoffKeywords: ['agent', 'human', 'speak to person'],
-      flow: { nodes: [], edges: [] },
       channelConfig: {
-        web: { enabled: !isPersonal },
-        sms: { enabled: false, numberConfigs: {} },
-        email: { enabled: false, emailConfigs: {} },
-        voice: { enabled: false, numberConfigs: {} }
+        web: { enabled: true },
+        sms: { enabled: false },
+        email: { enabled: false },
+        voice: { enabled: false }
       },
       workflowConfig: {
-        web: { 
-          welcomeMessage: 'Hi there! How can we help you today?', 
+        web: {
           webAgentName: 'AI Assistant',
-          handoffKeywords: ['agent', 'human', 'speak to person'],
-          afterHoursBehavior: 'ai_full',
-          conversationGoal: 'Resolve the customer\'s issue in as few messages as possible and always collect their contact details before the conversation ends.',
-          identityCapture: {
-            timing: 'before',
-            fields: { name: true, email: true, phone: false }
-          }
+          handoffKeywords: ['agent', 'human', 'person'],
+          conversationGoal: 'Resolve the customer\'s issue efficiently and collect contact details.',
+          identityCapture: { timing: 'after', fields: { name: true, email: true, phone: false } },
+          afterHoursBehavior: 'ai_full'
         },
-        supportEmail: {
-          tone: 'professional',
-          signOff: 'Best regards, The Support Team',
-          alwaysAddress: '',
-          escalationTriggers: []
-        },
-        personalEmail: {
-          writingStyle: 'Write as if you are a senior professional who is direct and warm but never pushy. Mirror the tone of previous emails in the thread.',
-          responseLength: 'match',
-          signOff: appUser ? `Thanks, ${appUser.name.split(' ')[0]}` : 'Best regards',
-          contextAwareness: true
-        },
-        sms: {
-          responseStyle: 'concise',
-          openingMessage: "Hi! You've reached support. How can I help?",
-          afterHoursBehavior: 'ai_full',
-          handoffKeywords: ['agent', 'human'],
-          sentimentEscalation: true,
-          writingStyle: 'Casual and direct. Keep it under two sentences.',
-          smartTiming: true
-        },
-        voice: {
-          greetingScript: 'Hi, you\'ve reached support. I am an AI assistant. How can I help you today?',
-          callHandlingMode: 'receptionist_only',
-          handoffTarget: 'any',
-          handoffTimeoutSeconds: 30,
-          handoffFallback: 'voicemail',
-          voicemailEnabled: true,
-          transcriptionEnabled: true,
-          afterHoursBehavior: 'receptionist_only',
-          role: 'receptionist',
-          receptionistScript: 'Hi, you\'ve reached my line. I\'m not available. Can I take a message?',
-          callbackNotification: true,
-          voicemailTranscription: true
-        }
+        supportEmail: { tone: 'professional', signOff: 'Best regards, The Support Team', alwaysAddress: '', escalationTriggers: [] },
+        sms: { responseStyle: 'concise', openingMessage: "Hi! You've reached support. How can I help?", afterHoursBehavior: 'ai_full', handoffKeywords: ['agent', 'human'], sentimentEscalation: true },
+        voice: { greetingScript: 'Hi! Thank you for calling. How can I help?', callHandlingMode: 'full_ai', handoffTarget: 'any', handoffTimeoutSeconds: 30, handoffFallback: 'voicemail', voicemailEnabled: true, transcriptionEnabled: true, afterHoursBehavior: 'ai_full' }
       }
     },
   });
-  
+
+  useEffect(() => {
+    if (bot) {
+      form.reset({
+        name: bot.name,
+        isEnabled: bot.isEnabled ?? true,
+        aiEnabled: bot.aiEnabled ?? true,
+        welcomeMessage: bot.welcomeMessage || 'Hi! How can I help?',
+        noAgentFallbackMessage: bot.noAgentFallbackMessage || 'Our team will be with you shortly.',
+        assignedAgentId: bot.assignedAgentId || null,
+        primaryColor: bot.styleSettings?.primaryColor || '#3b82f6',
+        backgroundColor: bot.styleSettings?.backgroundColor || '#111827',
+        logoUrl: bot.styleSettings?.logoUrl || '',
+        chatbotIconsColor: bot.styleSettings?.chatbotIconsColor || '#3b82f6',
+        chatbotIconsTextColor: bot.styleSettings?.chatbotIconsTextColor || '#ffffff',
+        agentIds: bot.agentIds || [],
+        allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
+        channelConfig: bot.channelConfig || {},
+        workflowConfig: bot.workflowConfig || {}
+      });
+    } else {
+        form.reset();
+    }
+  }, [bot, form, isOpen]);
+
   const watchedValues = form.watch();
 
-  useEffect(() => {
-    if (isOpen) {
-        setActiveTab(hiddenTabs.includes('channels') ? 'general' : 'channels'); 
-    }
-  }, [isOpen, hiddenTabs]);
-
-  useEffect(() => {
-    if (isOpen && agent) {
-      if (isPersonal) {
-        db.getAgentEmailConfigs(agent.ownerId).then(setEmailConfigs);
-      } else {
-        db.getPhoneLookupsForHub(agent.hubId).then(setPhoneNumbers);
-        db.getEmailConfigs(agent.spaceId, agent.hubId).then(setEmailConfigs);
-      }
-    }
-  }, [isOpen, agent, isPersonal]);
-
-  useEffect(() => {
-    if (agent) {
-      form.reset({
-        name: agent.name,
-        isEnabled: agent.isEnabled ?? true,
-        aiEnabled: agent.aiEnabled ?? true,
-        welcomeMessage: agent.welcomeMessage || 'Hi there! How can we help you today?',
-        primaryColor: agent.styleSettings?.primaryColor || '#3b82f6',
-        backgroundColor: agent.styleSettings?.backgroundColor || '#111827',
-        headerTextColor: agent.styleSettings?.headerTextColor || '#ffffff',
-        agentMessageBackgroundColor: agent.styleSettings?.agentMessageBackgroundColor || '#374151',
-        agentMessageTextColor: agent.styleSettings?.agentMessageTextColor || '#ffffff',
-        customerTextColor: agent.styleSettings?.customerTextColor || '#ffffff',
-        chatbotIconsColor: agent.styleSettings?.chatbotIconsColor || '#3b82f6',
-        chatbotIconsTextColor: agent.styleSettings?.chatbotIconsTextColor || '#ffffff',
-        logoUrl: agent.styleSettings?.logoUrl || '',
-        agentIds: agent.agentIds || [],
-        escalateToTeamInbox: agent.escalateToTeamInbox ?? true,
-        allowedHelpCenterIds: agent.allowedHelpCenterIds || [],
-        handoffKeywords: agent.automations?.handoffKeywords || ['agent', 'human', 'speak to person'],
-        flow: agent.flow || { nodes: [], edges: [] },
-        channelConfig: agent.channelConfig || {
-          web: { enabled: !isPersonal },
-          sms: { enabled: false, numberConfigs: {} },
-          email: { enabled: false, emailConfigs: {} },
-          voice: { enabled: false, numberConfigs: {} }
-        },
-        workflowConfig: agent.workflowConfig || {
-          web: { 
-            welcomeMessage: agent.welcomeMessage || 'Hi there! How can we help you today?',
-            webAgentName: agent.webAgentName || 'AI Assistant',
-            handoffKeywords: agent.automations?.handoffKeywords || ['agent', 'human', 'speak to person'],
-            afterHoursBehavior: 'ai_full',
-            conversationGoal: agent.conversationGoal || 'Resolve the customer\'s issue in as few messages as possible and always collect their contact details before the conversation ends.',
-            identityCapture: agent.identityCapture ? {
-              timing: agent.identityCapture.timing || 'before',
-              fields: agent.identityCapture.fields || { name: true, email: true, phone: false }
-            } : { timing: 'before', fields: { name: true, email: true, phone: false } }
-          },
-          supportEmail: {
-            tone: 'professional',
-            signOff: 'Best regards, The Support Team',
-            alwaysAddress: '',
-            escalationTriggers: []
-          },
-          personalEmail: {
-            writingStyle: 'Write as if you are a senior professional who is direct and warm but never pushy. Mirror the tone of previous emails in the thread.',
-            responseLength: 'match',
-            signOff: appUser ? `Thanks, ${appUser.name.split(' ')[0]}` : 'Best regards',
-            contextAwareness: true
-          },
-          sms: {
-            responseStyle: 'concise',
-            openingMessage: "Hi! You've reached support. How can I help?",
-            afterHoursBehavior: 'ai_full',
-            handoffKeywords: ['agent', 'human'],
-            sentimentEscalation: true,
-            writingStyle: 'Casual and direct. Keep it under two sentences.',
-            smartTiming: true
-          },
-          voice: {
-            greetingScript: 'Hi, you\'ve reached support. I am an AI assistant. How can I help you today?',
-            callHandlingMode: 'receptionist_only',
-            handoffTarget: 'any',
-            handoffTimeoutSeconds: 30,
-            handoffFallback: 'voicemail',
-            voicemailEnabled: true,
-            transcriptionEnabled: true,
-            afterHoursBehavior: 'receptionist_only',
-            role: 'receptionist',
-            receptionistScript: 'Hi, you\'ve reached my line. I\'m not available. Can I take a message?',
-            callbackNotification: true,
-            voicemailTranscription: true
-          }
-        }
-      });
-    }
-  }, [agent, form, appUser, isPersonal]);
+  const navItems = mode === 'agent' 
+    ? [
+        { id: 'general', label: 'General', icon: Settings },
+        { id: 'channels', label: 'Channels', icon: Globe },
+        { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
+      ]
+    : [
+        { id: 'general', label: 'General', icon: Settings },
+        { id: 'branding', label: 'Branding', icon: Palette },
+        { id: 'installation', label: 'Install', icon: Plug },
+      ];
 
   const onSubmit = (values: AgentSettingsFormValues) => {
     const commonData = {
-        name: values.name,
-        webAgentName: values.workflowConfig?.web?.webAgentName,
-        isEnabled: values.isEnabled,
-        aiEnabled: values.aiEnabled,
-        welcomeMessage: values.workflowConfig?.web?.welcomeMessage || values.welcomeMessage,
-        conversationGoal: values.workflowConfig?.web?.conversationGoal,
-        layout: 'default' as const,
-        styleSettings: {
+        ...values,
+        styleSettings: mode === 'widget' ? {
             primaryColor: values.primaryColor,
             backgroundColor: values.backgroundColor,
-            headerTextColor: values.headerTextColor || '#ffffff',
-            agentMessageBackgroundColor: values.agentMessageBackgroundColor || '#374151',
-            agentMessageTextColor: values.agentMessageTextColor || '#ffffff',
-            customerTextColor: values.customerTextColor || '#ffffff',
-            chatbotIconsTextColor: values.chatbotIconsTextColor || '#ffffff',
-            chatbotIconsColor: values.chatbotIconsColor || '#3b82f6',
-            logoUrl: values.logoUrl || '',
-        },
-        agentIds: values.agentIds || [],
-        escalateToTeamInbox: values.escalateToTeamInbox,
-        allowedHelpCenterIds: values.allowedHelpCenterIds || [],
-        identityCapture: values.workflowConfig?.web?.identityCapture ? {
-          enabled: true,
-          required: true,
-          timing: values.workflowConfig.web.identityCapture.timing,
-          fields: values.workflowConfig.web.identityCapture.fields,
-        } : { enabled: false, required: false, timing: 'before', fields: { name: true, email: true, phone: false } },
-        automations: {
-            handoffKeywords: values.workflowConfig?.web?.handoffKeywords || values.handoffKeywords,
-            quickReplies: [],
-        },
-        flow: values.flow,
-        channelConfig: values.channelConfig,
-        workflowConfig: values.workflowConfig,
-        escalationTriggers: {
-            billingKeywords: ['refund', 'charge', 'invoice'],
-            sentimentThreshold: -0.5,
-        }
+            logoUrl: values.logoUrl,
+            chatbotIconsColor: values.chatbotIconsColor,
+            chatbotIconsTextColor: values.chatbotIconsTextColor,
+        } : bot?.styleSettings
     };
-
-    if (agent) {
-        onSave({ ...agent, ...commonData });
-    } else {
-        // @ts-ignore
-        onSave(commonData);
-    }
+    onSave(commonData as any);
     onOpenChange(false);
   };
-  
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: 'Copied to clipboard' });
   };
 
-  const addKeyword = () => {
-    const kw = newKeyword.trim().toLowerCase();
-    if (kw && kw !== 'help' && !watchedValues.workflowConfig?.web?.handoffKeywords.includes(kw)) {
-        const currentKeywords = watchedValues.workflowConfig?.web?.handoffKeywords || [];
-        form.setValue('workflowConfig.web.handoffKeywords', [...currentKeywords, kw]);
-        setNewKeyword('');
+  const widgetsUsingThisAgent = useMemo(() => {
+    if (mode !== 'agent' || !bot) return [];
+    return hubWidgets.filter(w => w.assignedAgentId === bot.id);
+  }, [mode, bot, hubWidgets]);
+
+  const renderChannelConfig = (channelId: string) => {
+    switch (channelId) {
+      case 'web':
+        return (
+          <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                    Widget installation and appearance is managed in <Link href={`/space/${bot?.spaceId}/hub/${bot?.hubId}/settings?view=web-chat`} className="text-primary font-bold hover:underline">Web Chat settings</Link>.
+                </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                    control={form.control}
+                    name="workflowConfig.web.webAgentName"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">AI Name (Optional)</FormLabel>
+                            <FormControl><Input placeholder="e.g. Finn" {...field} className="bg-muted/20 border-white/10" /></FormControl>
+                            <FormDescription className="text-[10px]">What the AI calls itself during chat.</FormDescription>
+                        </FormItem>
+                    )}
+                />
+            </div>
+
+            <div className="space-y-4">
+                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Conversation Goal</Label>
+                <FormField
+                    control={form.control}
+                    name="workflowConfig.web.conversationGoal"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-xs text-muted-foreground font-normal">What should this agent try to achieve?</FormLabel>
+                            <FormControl>
+                                <Textarea 
+                                    placeholder="Resolve the customer's issue in as few messages as possible and always collect their contact details before the conversation ends." 
+                                    {...field} 
+                                    className="bg-muted/20 border-white/10 min-h-[100px] text-sm italic"
+                                />
+                            </FormControl>
+                        </FormItem>
+                    )}
+                />
+            </div>
+
+            <Separator className="bg-white/5" />
+
+            <div className="space-y-6">
+                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Identity Capture</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <FormField
+                        control={form.control}
+                        name="workflowConfig.web.identityCapture.timing"
+                        render={({ field }) => (
+                            <FormItem className="space-y-3">
+                                <FormLabel className="text-xs text-muted-foreground">Timing</FormLabel>
+                                <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
+                                    <div className="flex items-center space-x-2"><RadioGroupItem value="before" id="before" /><Label htmlFor="before" className="text-xs">Before first response</Label></div>
+                                    <div className="flex items-center space-x-2"><RadioGroupItem value="after" id="after" /><Label htmlFor="after" className="text-xs">After first response</Label></div>
+                                </RadioGroup>
+                            </FormItem>
+                        )}
+                    />
+                    <div className="space-y-3">
+                        <FormLabel className="text-xs text-muted-foreground">Fields</FormLabel>
+                        <div className="flex flex-col gap-2">
+                            {['name', 'email', 'phone'].map(f => (
+                                <FormField
+                                    key={f}
+                                    control={form.control}
+                                    name={`workflowConfig.web.identityCapture.fields.${f}`}
+                                    render={({ field }) => (
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox id={`f-${f}`} checked={field.value} onCheckedChange={field.onChange} />
+                                            <Label htmlFor={`f-${f}`} className="text-xs capitalize">{f}</Label>
+                                        </div>
+                                    )}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="pt-6 border-t border-white/5">
+                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Active on Widgets</Label>
+                <div className="mt-4 space-y-2">
+                    {widgetsUsingThisAgent.length > 0 ? widgetsUsingThisAgent.map(w => (
+                        <div key={w.id} className="flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.02]">
+                            <div className="flex items-center gap-3">
+                                <div className="h-2 w-2 rounded-full bg-primary" />
+                                <span className="text-sm font-medium text-white">{w.name}</span>
+                            </div>
+                            <Button variant="ghost" size="sm" asChild className="h-8 text-[10px] uppercase font-bold text-primary hover:text-primary hover:bg-primary/10">
+                                <Link href={`/space/${bot?.spaceId}/hub/${bot?.hubId}/settings?view=web-chat`}>
+                                    Go to Widget <ArrowRight className="ml-1.5 h-3 w-3" />
+                                </Link>
+                            </Button>
+                        </div>
+                    )) : (
+                        <div className="p-6 border border-dashed border-white/10 rounded-xl text-center">
+                            <p className="text-xs text-muted-foreground">No widgets are currently using this agent.</p>
+                            <Link href={`/space/${bot?.spaceId}/hub/${bot?.hubId}/settings?view=web-chat`} className="text-[10px] uppercase font-black text-primary hover:underline mt-2 inline-block">Assign from Web Chat Settings →</Link>
+                        </div>
+                    )}
+                </div>
+            </div>
+          </div>
+        );
+      default: return null;
     }
   };
-
-  const removeKeyword = (kw: string) => {
-    const currentKeywords = watchedValues.workflowConfig?.web?.handoffKeywords || [];
-    form.setValue('workflowConfig.web.handoffKeywords', currentKeywords.filter(k => k !== kw));
-  };
-
-  const handleToggleChannel = (path: any, checked: boolean) => {
-    if (checked) {
-      const enabledCount = [
-        watchedValues.channelConfig?.web?.enabled,
-        watchedValues.channelConfig?.sms?.enabled,
-        watchedValues.channelConfig?.email?.enabled,
-        watchedValues.channelConfig?.voice?.enabled
-      ].filter(Boolean).length;
-
-      if (enabledCount >= MAX_CHANNELS) {
-        toast({
-          variant: "destructive",
-          title: "Channel limit reached",
-          description: `You can only enable a maximum of ${MAX_CHANNELS} channels per agent.`
-        });
-        return;
-      }
-    }
-    form.setValue(path, checked);
-  };
-
-  const basicSnippet = agent ? `<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${agent.id}" data-hub-id="${agent.hubId}" async></script>`.trim() : '';
-
-  const userAwareSnippet = agent ? `
-<script>
-  window.Manowar = window.Manowar || function() { (window.Manowar.q = window.Manowar.q || []).push(arguments) };
-  Manowar('update', {
-    user_id: 'REPLACE_WITH_USER_ID',
-    email: 'REPLACE_WITH_USER_EMAIL',
-    name: 'REPLACE_WITH_USER_NAME'
-  });
-</script>
-<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${agent.id}" data-hub-id="${agent.hubId}" async></script>
-`.trim() : '';
-
-  const navItems = [
-    { id: 'channels', label: 'Channels', icon: Globe },
-    { id: 'general', label: 'General', icon: Settings },
-    { id: 'workflow', label: 'Workflow', icon: Zap },
-    { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
-    { id: 'branding', label: 'Branding', icon: Palette, hidden: isPersonal },
-    { id: 'installation', label: 'Install', icon: Plug, hidden: isPersonal },
-  ];
-
-  const filteredNavItems = navItems.filter(item => !item.hidden && !hiddenTabs.includes(item.id));
-
-  const showPreview = watchedValues.channelConfig?.web?.enabled && !isPersonal && !hiddenTabs.includes('branding');
 
   return (
-    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl w-[95vw] h-[85vh] p-0 flex flex-col overflow-hidden bg-[#0d1117] border-white/10">
         <Form {...form}>
@@ -586,10 +400,10 @@ export default function AgentSettingsDialog({
                             <div className={cn("h-2 w-2 rounded-full", watchedValues.isEnabled ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-zinc-600")} />
                             <div>
                                 <DialogTitle className="text-base font-bold text-white leading-tight">
-                                    {watchedValues.name || 'New Agent'}
+                                    {watchedValues.name || (mode === 'widget' ? 'New Widget' : 'New Agent')}
                                 </DialogTitle>
                                 <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-muted-foreground opacity-50">
-                                    {isPersonal ? 'Personal Assistant' : 'AI Agent Configuration'}
+                                    {mode === 'widget' ? 'Widget Setup' : 'AI Intelligence'}
                                 </DialogDescription>
                             </div>
                         </div>
@@ -597,7 +411,7 @@ export default function AgentSettingsDialog({
                 </div>
 
                 <nav className="flex-1 p-2 space-y-1">
-                    {filteredNavItems.map((item) => (
+                    {navItems.map((item) => (
                         <button
                             key={item.id}
                             type="button"
@@ -629,1056 +443,144 @@ export default function AgentSettingsDialog({
                 </div>
             </aside>
 
-            <div className="flex-1 flex flex-col min-w-0 relative">
+            <div className="flex-1 flex flex-col min-w-0">
                 <ScrollArea className="flex-1">
-                    <div className="p-8 max-w-full mx-auto space-y-10">
-                        {activeTab === 'channels' && (
-                            <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div>
-                                    <h2 className="text-2xl font-bold text-white mb-1">Channels</h2>
-                                    <p className="text-muted-foreground text-sm">Select up to **{MAX_CHANNELS} active channels** for this agent.</p>
-                                </div>
-
-                                {/* WEB CHAT */}
-                                {!isPersonal && (
-                                    <section className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
-                                                    <MessageSquare className="h-4 w-4" />
-                                                </div>
-                                                <h3 className="font-bold text-white">Web Chat</h3>
-                                            </div>
-                                        </div>
-                                        <Card className="bg-[#161b22] border-white/10">
-                                            <CardContent className="p-6 flex items-center justify-between">
-                                                <div className="space-y-1">
-                                                    <p className="text-sm font-medium text-white">Standard Widget</p>
-                                                    <p className="text-xs text-muted-foreground">The AI assistant will handle traffic from your embedded web widget.</p>
-                                                </div>
-                                                <Switch checked={watchedValues.channelConfig?.web?.enabled ?? true} onCheckedChange={(val) => handleToggleChannel('channelConfig.web.enabled', val)} />
-                                            </CardContent>
-                                        </Card>
-                                    </section>
-                                )}
-
-                                {/* SMS */}
-                                <section className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
-                                                <Smartphone className="h-4 w-4" />
-                                            </div>
-                                            <h3 className="font-bold text-white">SMS</h3>
-                                        </div>
-                                        <Switch checked={watchedValues.channelConfig?.sms?.enabled ?? false} onCheckedChange={(val) => handleToggleChannel('channelConfig.sms.enabled', val)} />
-                                    </div>
-                                    <div className="grid gap-3">
-                                        {phoneNumbers.map(num => (
-                                            <Card key={num.id} className="bg-[#161b22] border-white/10">
-                                                <CardContent className="p-4 flex items-center justify-between">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center text-muted-foreground">
-                                                            <Smartphone className="h-4 w-4" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-bold text-white">{num.channelAddress}</p>
-                                                            <p className="text-[10px] uppercase font-black text-muted-foreground tracking-tighter">{num.label || 'Support Line'}</p>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
-                                        {phoneNumbers.length === 0 && (
-                                            <p className="text-xs text-center text-muted-foreground italic py-4">
-                                                {isPersonal ? 'Direct SMS number assignment is managed by the hub admin.' : 'No phone numbers assigned to this Hub.'}
-                                            </p>
-                                        )}
-                                    </div>
-                                </section>
-
-                                {/* EMAIL */}
-                                <section className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                                                <Mail className="h-4 w-4" />
-                                            </div>
-                                            <h3 className="font-bold text-white">Email</h3>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            {isPersonal && (
-                                                <Button type="button" variant="outline" size="sm" onClick={() => setIsConnectEmailOpen(true)} className="h-8 rounded-lg bg-white/5 border-white/10 text-[10px] font-bold uppercase">
-                                                    <Plus className="h-3 w-3 mr-1" /> Connect My Email
-                                                </Button>
-                                            )}
-                                            <Switch checked={watchedValues.channelConfig?.email?.enabled ?? false} onCheckedChange={(val) => handleToggleChannel('channelConfig.email.enabled', val)} />
-                                        </div>
-                                    </div>
-                                    <div className="grid gap-3">
-                                        {emailConfigs.map(config => (
-                                            <Card key={config.id} className="bg-[#161b22] border-white/10 overflow-hidden">
-                                                <CardContent className="p-0">
-                                                    <div className="p-4 flex items-center justify-between border-b border-white/5">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center text-muted-foreground">
-                                                                <Mail className="h-4 w-4" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-sm font-bold text-white">{config.emailAddress}</p>
-                                                                <p className="text-[10px] uppercase font-black text-muted-foreground tracking-tighter">{config.label}</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
-                                        {emailConfigs.length === 0 && (
-                                            <p className="text-xs text-center text-muted-foreground italic py-4">No email addresses connected.</p>
-                                        )}
-                                    </div>
-                                </section>
-
-                                {/* VOICE */}
-                                <section className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500">
-                                                <Phone className="h-4 w-4" />
-                                            </div>
-                                            <h3 className="font-bold text-white">Phone</h3>
-                                        </div>
-                                        <Switch checked={watchedValues.channelConfig?.voice?.enabled ?? false} onCheckedChange={(val) => handleToggleChannel('channelConfig.voice.enabled', val)} />
-                                    </div>
-                                    <div className="grid gap-4">
-                                        {phoneNumbers.map(num => (
-                                            <Card key={num.id} className="bg-[#161b22] border-white/10 overflow-hidden">
-                                                <CardContent className="p-4 flex items-center justify-between">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center text-muted-foreground">
-                                                            <Phone className="h-4 w-4" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-bold text-white">{num.channelAddress}</p>
-                                                            <p className="text-[10px] uppercase font-black text-muted-foreground tracking-tighter">{num.label || 'Support Line'}</p>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
-                                        {phoneNumbers.length === 0 && (
-                                            <p className="text-xs text-center text-muted-foreground italic py-4">
-                                                {isPersonal ? 'Direct SMS number assignment is managed by the hub admin.' : 'No phone numbers assigned to this Hub.'}
-                                            </p>
-                                        )}
-                                    </div>
-                                </section>
-                            </div>
-                        )}
-
+                    <div className="p-8 max-w-4xl mx-auto space-y-10">
                         {activeTab === 'general' && (
-                            <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">General</h2>
-                                    <p className="text-muted-foreground text-sm">Identity and access settings for your agent.</p>
+                                    <p className="text-muted-foreground text-sm">Identity and basic settings.</p>
                                 </div>
                                 <FormField
                                     control={form.control}
                                     name="name"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Agent Configuration Name</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="Support Agent Config" {...field} className="bg-muted/20 border-white/10 h-11" />
-                                            </FormControl>
-                                            <FormDescription className="text-xs">Internal name for this configuration.</FormDescription>
+                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Internal Name</FormLabel>
+                                            <FormControl><Input {...field} className="bg-muted/20 border-white/10 h-11" /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
-                                {!isPersonal ? (
-                                    <FormField
-                                        control={form.control}
-                                        name="agentIds"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-col">
-                                                <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Live Agents</FormLabel>
-                                                <FormControl>
-                                                    <MemberSelect 
-                                                        allUsers={allUsers} 
-                                                        selectedUsers={field.value || []} 
-                                                        onChange={field.onChange}
-                                                    />
-                                                </FormControl>
-                                                <FormDescription className="text-xs">Teammates who can jump in to help when AI escalates.</FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                ) : (
-                                    <FormField
-                                        control={form.control}
-                                        name="escalateToTeamInbox"
-                                        render={({ field }) => (
-                                            <div className="rounded-2xl border border-white/10 bg-[#161b22] p-6 flex items-center justify-between shadow-sm">
-                                                <div className="space-y-1">
-                                                    <h4 className="font-bold text-white flex items-center gap-2">
-                                                        <Forward className="h-4 w-4 text-primary" />
-                                                        Escalate to Team Inbox
-                                                    </h4>
-                                                    <p className="text-xs text-muted-foreground">When you can't be reached or the AI gets stuck, move conversations to the shared Team Inbox.</p>
-                                                </div>
-                                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                            </div>
-                                        )}
-                                    />
-                                )}
-                            </div>
-                        )}
 
-                        {activeTab === 'workflow' && (
-                            <div className="max-w-3xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div>
-                                    <h2 className="text-2xl font-bold text-white mb-1">Workflow</h2>
-                                    <p className="text-muted-foreground text-sm">Configure AI behavior tailored to each active channel.</p>
-                                </div>
-
-                                {/* WEB CHAT WORKFLOW */}
-                                {(watchedValues.channelConfig?.web?.enabled !== false && !isPersonal) && (
-                                    <section className="space-y-8 p-6 rounded-2xl border border-white/10 bg-[#161b22]">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
-                                                <MessageSquare className="h-4 w-4" />
-                                            </div>
-                                            <h3 className="font-bold text-white uppercase tracking-tight text-sm">Web Chat Workflow</h3>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                          <FormField
-                                              control={form.control}
-                                              name="workflowConfig.web.webAgentName"
-                                              render={({ field }) => (
-                                                  <FormItem>
-                                                      <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Agent Name (Public)</FormLabel>
-                                                      <FormControl>
-                                                          <Input 
-                                                              placeholder="e.g. Finn" 
-                                                              {...field} 
-                                                              className="bg-[#0d1117] border-white/10 h-11"
-                                                          />
-                                                      </FormControl>
-                                                      <FormDescription className="text-[10px]">What the visitor sees (e.g. "Finn is typing...")</FormDescription>
-                                                      <FormMessage />
-                                                  </FormItem>
-                                              )}
-                                          />
-                                          <FormField
-                                              control={form.control}
-                                              name="workflowConfig.web.welcomeMessage"
-                                              render={({ field }) => (
-                                                  <FormItem>
-                                                      <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Greeting Message</FormLabel>
-                                                      <FormControl>
-                                                          <Input 
-                                                              placeholder="Hi there! How can we help you today?" 
-                                                              {...field} 
-                                                              className="bg-[#0d1117] border-white/10 h-11"
-                                                          />
-                                                      </FormControl>
-                                                      <FormMessage />
-                                                  </FormItem>
-                                              )}
-                                          />
-                                        </div>
-
-                                        <Separator className="bg-white/5" />
-
-                                        <div className="space-y-6">
-                                          <div className="flex items-center gap-2">
-                                            <Target className="h-4 w-4 text-primary" />
-                                            <Label className="text-[10px] uppercase font-black tracking-widest text-white">Conversation Goal</Label>
-                                          </div>
-                                          <FormField
-                                              control={form.control}
-                                              name="workflowConfig.web.conversationGoal"
-                                              render={({ field }) => (
-                                                  <FormItem>
-                                                      <FormControl>
-                                                          <Textarea 
-                                                              placeholder="Resolve the customer's issue in as few messages as possible and always collect their contact details before the conversation ends." 
-                                                              {...field} 
-                                                              className="bg-[#0d1117] border-white/10 min-h-[100px] text-sm italic"
-                                                          />
-                                                      </FormControl>
-                                                      <FormDescription className="text-[10px]">This instruction is passed directly to the AI as its "North Star" for every interaction.</FormDescription>
-                                                      <FormMessage />
-                                                  </FormItem>
-                                              )}
-                                          />
-                                        </div>
-
-                                        <Separator className="bg-white/5" />
-
-                                        <div className="space-y-6">
-                                          <div className="flex items-center gap-2">
-                                            <UserCheck className="h-4 w-4 text-primary" />
-                                            <Label className="text-[10px] uppercase font-black tracking-widest text-white">Identity Capture</Label>
-                                          </div>
-                                          
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            <FormField
-                                              control={form.control}
-                                              name="workflowConfig.web.identityCapture.timing"
-                                              render={({ field }) => (
-                                                <FormItem className="space-y-3">
-                                                  <FormLabel className="text-xs text-muted-foreground">When should details be requested?</FormLabel>
-                                                  <FormControl>
-                                                    <RadioGroup
-                                                      onValueChange={field.onChange}
-                                                      defaultValue={field.value}
-                                                      className="flex flex-col space-y-1"
-                                                    >
-                                                      <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="before" id="before" />
-                                                        <Label htmlFor="before" className="text-xs">Before first response</Label>
-                                                      </div>
-                                                      <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="after" id="after" />
-                                                        <Label htmlFor="after" className="text-xs">After first response</Label>
-                                                      </div>
-                                                    </RadioGroup>
-                                                  </FormControl>
-                                                </FormItem>
-                                              )}
-                                            />
-
-                                            <div className="space-y-3">
-                                              <Label className="text-xs text-muted-foreground">What details to capture?</Label>
-                                              <div className="flex flex-col gap-2">
-                                                <FormField
-                                                  control={form.control}
-                                                  name="workflowConfig.web.identityCapture.fields.name"
-                                                  render={({ field }) => (
-                                                    <div className="flex items-center space-x-2">
-                                                      <Checkbox id="field-name" checked={field.value} onCheckedChange={field.onChange} />
-                                                      <Label htmlFor="field-name" className="text-xs">Name</Label>
-                                                    </div>
-                                                  )}
-                                                />
-                                                <FormField
-                                                  control={form.control}
-                                                  name="workflowConfig.web.identityCapture.fields.email"
-                                                  render={({ field }) => (
-                                                    <div className="flex items-center space-x-2">
-                                                      <Checkbox id="field-email" checked={field.value} onCheckedChange={field.onChange} />
-                                                      <Label htmlFor="field-email" className="text-xs">Email</Label>
-                                                    </div>
-                                                  )}
-                                                />
-                                                <FormField
-                                                  control={form.control}
-                                                  name="workflowConfig.web.identityCapture.fields.phone"
-                                                  render={({ field }) => (
-                                                    <div className="flex items-center space-x-2">
-                                                      <Checkbox id="field-phone" checked={field.value} onCheckedChange={field.onChange} />
-                                                      <Label htmlFor="field-phone" className="text-xs">Phone Number</Label>
-                                                    </div>
-                                                  )}
-                                                />
-                                              </div>
-                                            </div>
-                                          </div>
-                                          <p className="text-[10px] text-muted-foreground italic bg-white/5 p-2 rounded-lg">AI handles these requests naturally in conversation — no rigid forms will be shown unless the customer is silent.</p>
-                                        </div>
-
-                                        <Separator className="bg-white/5" />
-
+                                {mode === 'widget' && (
+                                    <div className="space-y-6 pt-4 border-t border-white/5">
                                         <FormField
                                             control={form.control}
-                                            name="workflowConfig.web.afterHoursBehavior"
+                                            name="welcomeMessage"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">After Hours Behavior</FormLabel>
-                                                    <Select value={field.value} onValueChange={field.onChange}>
-                                                        <FormControl><SelectTrigger className="bg-[#0d1117] border-white/10"><SelectValue /></SelectTrigger></FormControl>
-                                                        <SelectContent>
-                                                            <SelectItem value="ai_full">AI handles everything</SelectItem>
-                                                            <SelectItem value="take_message">AI takes a message for follow-up</SelectItem>
-                                                            <SelectItem value="disabled">Widget disabled (hidden)</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormDescription className="text-[10px]">Inherited from global Space business hours.</FormDescription>
+                                                    <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Greeting Message</FormLabel>
+                                                    <FormControl><Textarea placeholder="Hi! How can we help you today?" {...field} className="bg-muted/20 border-white/10 min-h-[100px]" /></FormControl>
+                                                    <FormDescription className="text-xs">Shown to every visitor when the widget opens.</FormDescription>
                                                 </FormItem>
                                             )}
                                         />
-
-                                        <div className="space-y-4">
-                                            <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Handoff Keywords</Label>
-                                            <div className="rounded-xl border border-white/5 bg-[#0d1117] p-4 space-y-4">
-                                                <div className="flex flex-wrap gap-2">
-                                                    {(watchedValues.workflowConfig?.web?.handoffKeywords || []).map((kw) => (
-                                                        <Badge key={kw} variant="secondary" className="bg-white/5 hover:bg-white/10 text-white border-white/10 h-7 px-2 rounded-lg gap-2 text-[10px]">
-                                                            {kw}
-                                                            <button type="button" onClick={() => removeKeyword(kw)} className="text-muted-foreground hover:text-white">
-                                                                <X className="h-3 w-3" />
-                                                            </button>
-                                                        </Badge>
-                                                    ))}
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <Input 
-                                                        value={newKeyword} 
-                                                        onChange={(e) => setNewKeyword(e.target.value)} 
-                                                        onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); addKeyword(); } }}
-                                                        placeholder="Add keyword (e.g. human)..." 
-                                                        className="bg-[#161b22] border-white/10 h-9 text-xs"
-                                                    />
-                                                    <Button type="button" variant="secondary" size="sm" onClick={addKeyword} className="h-9 px-4 text-xs">Add</Button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </section>
-                                )}
-
-                                {/* EMAIL WORKFLOW */}
-                                {watchedValues.channelConfig?.email?.enabled && (
-                                    <section className="space-y-8 p-6 rounded-2xl border border-white/10 bg-[#161b22]">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                                                <Mail className="h-4 w-4" />
-                                            </div>
-                                            <h3 className="font-bold text-white uppercase tracking-tight text-sm">
-                                                {isPersonal ? 'Personal / Sales Email Workflow' : 'Support Email Workflow'}
-                                            </h3>
-                                        </div>
-
-                                        <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5 space-y-2">
-                                            <div className="flex items-center gap-2 text-primary">
-                                                <Info className="h-3.5 w-3.5" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest">Default Behavior</span>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground leading-relaxed">
-                                                {isPersonal ? "Personal AI assists by drafting replies based on your unique voice. You must review every message before sending." : "The AI will analyze each inbound email and draft one complete, standalone response that addresses all customer questions at once."}
-                                            </p>
-                                        </div>
-
-                                        {isPersonal ? (
-                                            <div className="space-y-6">
-                                                <FormField
-                                                    control={form.control}
-                                                    name="workflowConfig.personalEmail.writingStyle"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Writing Style</FormLabel>
-                                                            <FormControl>
-                                                                <Textarea placeholder="Write like me: direct, using sentence fragments..." {...field} className="bg-[#0d1117] border-white/10 min-h-[100px] text-sm" />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="workflowConfig.personalEmail.responseLength"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Response Length</FormLabel>
-                                                                <Select value={field.value} onValueChange={field.onChange}>
-                                                                    <FormControl><SelectTrigger className="bg-[#0d1117] border-white/10"><SelectValue /></SelectTrigger></FormControl>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="short">Short</SelectItem>
-                                                                        <SelectItem value="medium">Medium</SelectItem>
-                                                                        <SelectItem value="match">Match customer</SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="workflowConfig.personalEmail.signOff"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Personal Sign-off</FormLabel>
-                                                                <FormControl><Input {...field} className="bg-[#0d1117] border-white/10" /></FormControl>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-                                                <ToggleOption 
-                                                    icon={Clock} 
-                                                    label="Context Awareness" 
-                                                    checked={watchedValues.workflowConfig?.personalEmail?.contextAwareness} 
-                                                    onChange={(val) => form.setValue('workflowConfig.personalEmail.contextAwareness', val)}
-                                                />
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-6">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="workflowConfig.supportEmail.tone"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Tone</FormLabel>
-                                                                <Select value={field.value} onValueChange={field.onChange}>
-                                                                    <FormControl><SelectTrigger className="bg-[#0d1117] border-white/10"><SelectValue /></SelectTrigger></FormControl>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="formal">Formal</SelectItem>
-                                                                        <SelectItem value="professional">Professional</SelectItem>
-                                                                        <SelectItem value="friendly">Friendly</SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="workflowConfig.supportEmail.signOff"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Sign-off</FormLabel>
-                                                                <FormControl><Input {...field} className="bg-[#0d1117] border-white/10" /></FormControl>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-                                                <FormField
-                                                    control={form.control}
-                                                    name="workflowConfig.supportEmail.alwaysAddress"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Always Address</FormLabel>
-                                                            <FormControl><Textarea {...field} className="bg-[#0d1117] border-white/10 min-h-[100px]" /></FormControl>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </div>
-                                        )}
-                                    </section>
-                                )}
-
-                                {/* SMS WORKFLOW */}
-                                {watchedValues.channelConfig?.sms?.enabled && (
-                                    <section className="space-y-8 p-6 rounded-2xl border border-white/10 bg-[#161b22]">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
-                                                <Smartphone className="h-4 w-4" />
-                                            </div>
-                                            <h3 className="font-bold text-white uppercase tracking-tight text-sm">
-                                                {isPersonal ? 'Personal SMS Workflow' : 'Support SMS Workflow'}
-                                            </h3>
-                                        </div>
-
-                                        {isPersonal ? (
-                                            <div className="space-y-6">
-                                                <FormField
-                                                    control={form.control}
-                                                    name="workflowConfig.sms.writingStyle"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Writing Style</FormLabel>
-                                                            <FormControl>
-                                                                <Textarea placeholder="Write as Bradley, casual and direct..." {...field} className="bg-[#0d1117] border-white/10 min-h-[80px] text-sm" />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <div className="rounded-xl border border-white/5 bg-[#0d1117] p-4 flex items-center justify-between">
-                                                    <div className="space-y-0.5">
-                                                        <h4 className="text-xs font-bold text-white">Response Length</h4>
-                                                        <p className="text-[10px] text-muted-foreground">Locked to concise for personal SMS.</p>
-                                                    </div>
-                                                    <Badge variant="secondary">Short Only</Badge>
-                                                </div>
-                                                <ToggleOption 
-                                                    icon={Clock} 
-                                                    label="Smart Timing" 
-                                                    checked={watchedValues.workflowConfig?.sms?.smartTiming} 
-                                                    onChange={(val) => form.setValue('workflowConfig.sms.smartTiming', val)}
-                                                />
-                                                <div className="flex items-center justify-between p-4 rounded-xl bg-orange-500/5 border border-orange-500/10">
-                                                    <div className="space-y-0.5">
-                                                        <h4 className="text-xs font-bold text-orange-400">Policy: Draft Only</h4>
-                                                        <p className="text-[10px] text-muted-foreground">AI never sends autonomously over personal SMS.</p>
-                                                    </div>
-                                                    <Badge className="bg-orange-500 text-white border-none uppercase text-[9px] font-black h-5">Mandatory</Badge>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-6">
-                                                <FormField
-                                                    control={form.control}
-                                                    name="workflowConfig.sms.responseStyle"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Response Style</FormLabel>
-                                                            <Select value={field.value} onValueChange={field.onChange}>
-                                                                <FormControl><SelectTrigger className="bg-[#0d1117] border-white/10"><SelectValue /></SelectTrigger></FormControl>
-                                                                <SelectContent>
-                                                                    <SelectItem value="conversational">Conversational</SelectItem>
-                                                                    <SelectItem value="concise">Concise</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <FormField
-                                                    control={form.control}
-                                                    name="workflowConfig.sms.openingMessage"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Opening Message</FormLabel>
-                                                            <FormControl><Textarea placeholder="Hi! You've reached support. How can I help?" {...field} className="bg-[#0d1117] border-white/10 min-h-[80px]" /></FormControl>
-                                                            <FormDescription className="text-[10px]">Only sent on the first inbound message from a new contact.</FormDescription>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10 space-y-2">
-                                                    <div className="flex items-center gap-2 text-emerald-400">
-                                                        <CheckCircle2 className="h-3.5 w-3.5" />
-                                                        <span className="text-[10px] font-black uppercase tracking-widest">Opt-Out Compliance</span>
-                                                    </div>
-                                                    <p className="text-[10px] text-muted-foreground">All initial outbound messages automatically append "Reply STOP to unsubscribe". This is always enabled.</p>
-                                                </div>
-                                                <FormField
-                                                    control={form.control}
-                                                    name="workflowConfig.sms.afterHoursBehavior"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">After Hours</FormLabel>
-                                                            <Select value={field.value} onValueChange={field.onChange}>
-                                                                <FormControl><SelectTrigger className="bg-[#0d1117] border-white/10"><SelectValue /></SelectTrigger></FormControl>
-                                                                <SelectContent>
-                                                                    <SelectItem value="ai_full">AI handles everything</SelectItem>
-                                                                    <SelectItem value="notify_ticket">Notify & create ticket</SelectItem>
-                                                                    <SelectItem value="off">AI off</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <ToggleOption 
-                                                    icon={ShieldAlert} 
-                                                    label="Sentiment Escalation" 
-                                                    checked={watchedValues.workflowConfig?.sms?.sentimentEscalation} 
-                                                    onChange={(val) => form.setValue('workflowConfig.sms.sentimentEscalation', val)}
-                                                />
-                                            </div>
-                                        )}
-                                    </section>
-                                )}
-
-                                {/* VOICE WORKFLOW */}
-                                {watchedValues.channelConfig?.voice?.enabled && (
-                                    <section className="space-y-8 p-6 rounded-2xl border border-white/10 bg-[#161b22]">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500">
-                                                <Phone className="h-4 w-4" />
-                                            </div>
-                                            <h3 className="font-bold text-white uppercase tracking-tight text-sm">
-                                                {isPersonal ? 'Personal Voice Workflow' : 'Support Voice Workflow'}
-                                            </h3>
-                                        </div>
-
-                                        {isPersonal ? (
-                                            <div className="space-y-8">
-                                                <div className="space-y-3">
-                                                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">AI Role on Calls</Label>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                        <ModeCard 
-                                                            id="v-personal-receptionist"
-                                                            value="receptionist"
-                                                            title="Receptionist"
-                                                            desc="AI takes a message for you."
-                                                            icon={UserCheck}
-                                                            active={watchedValues.workflowConfig?.voice?.role === 'receptionist'}
-                                                            onClick={() => form.setValue('workflowConfig.voice.role', 'receptionist')}
-                                                        />
-                                                        <ModeCard 
-                                                            id="v-personal-voicemail"
-                                                            value="voicemail_only"
-                                                            title="Voicemail Only"
-                                                            desc="Direct to voicemail."
-                                                            icon={Mic}
-                                                            active={watchedValues.workflowConfig?.voice?.role === 'voicemail_only'}
-                                                            onClick={() => form.setValue('workflowConfig.voice.role', 'voicemail_only')}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                {watchedValues.workflowConfig?.voice?.role === 'receptionist' && (
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="workflowConfig.voice.receptionistScript"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Receptionist Script</FormLabel>
-                                                                <FormControl><Textarea {...field} className="bg-[#0d1117] border-white/10 min-h-[80px]" /></FormControl>
-                                                            </FormItem>
-                                                        )}
-                                                    />
+                                        {!watchedValues.assignedAgentId && (
+                                            <FormField
+                                                control={form.control}
+                                                name="noAgentFallbackMessage"
+                                                render={({ field }) => (
+                                                    <FormItem className="animate-in fade-in duration-300">
+                                                        <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">No-Agent Fallback Message</FormLabel>
+                                                        <FormControl><Textarea placeholder="Our team will be with you shortly." {...field} className="bg-muted/20 border-white/10 min-h-[100px]" /></FormControl>
+                                                        <FormDescription className="text-xs">Shown after the visitor's first message when no AI Agent is assigned.</FormDescription>
+                                                    </FormItem>
                                                 )}
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                    <ToggleOption 
-                                                        icon={Bell} 
-                                                        label="Callback Notification" 
-                                                        checked={watchedValues.workflowConfig?.voice?.callbackNotification} 
-                                                        onChange={(val) => form.setValue('workflowConfig.voice.callbackNotification', val)}
-                                                    />
-                                                    <div className="flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.02] opacity-50">
-                                                        <div className="flex items-center gap-3">
-                                                            <Mic className="h-4 w-4 text-muted-foreground" />
-                                                            <span className="text-xs font-bold text-white">Voicemail Transcription</span>
-                                                        </div>
-                                                        <Badge variant="outline" className="text-[8px] h-4">ALWAYS ON</Badge>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-8">
-                                                <FormField
-                                                    control={form.control}
-                                                    name="workflowConfig.voice.greetingScript"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">AI Greeting Script</FormLabel>
-                                                            <FormControl><Textarea {...field} className="bg-[#0d1117] border-white/10 min-h-[100px]" /></FormControl>
-                                                            <FormDescription className="text-[10px]">What the AI says when a call connects.</FormDescription>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <div className="space-y-3">
-                                                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Call Handling Mode</Label>
-                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                        <ModeCard 
-                                                            id="v-hub-full"
-                                                            value="full_ai"
-                                                            title="Full AI"
-                                                            desc="AI owns the entire call."
-                                                            icon={BotIcon}
-                                                            active={watchedValues.workflowConfig?.voice?.callHandlingMode === 'full_ai'}
-                                                            onClick={() => form.setValue('workflowConfig.voice.callHandlingMode', 'full_ai')}
-                                                        />
-                                                        <ModeCard 
-                                                            id="v-hub-handoff"
-                                                            value="warm_handoff"
-                                                            title="AI Triage"
-                                                            desc="Warm handoff to agent."
-                                                            icon={Zap}
-                                                            active={watchedValues.workflowConfig?.voice?.callHandlingMode === 'warm_handoff'}
-                                                            onClick={() => form.setValue('workflowConfig.voice.callHandlingMode', 'warm_handoff')}
-                                                        />
-                                                        <ModeCard 
-                                                            id="v-hub-receptionist"
-                                                            value="receptionist_only"
-                                                            title="Receptionist"
-                                                            desc="Greets and takes msg."
-                                                            icon={UserCheck}
-                                                            active={watchedValues.workflowConfig?.voice?.callHandlingMode === 'receptionist_only'}
-                                                            onClick={() => form.setValue('workflowConfig.voice.callHandlingMode', 'receptionist_only')}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                {watchedValues.workflowConfig?.voice?.callHandlingMode === 'warm_handoff' && (
-                                                    <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 space-y-6">
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                            <FormField
-                                                                control={form.control}
-                                                                name="workflowConfig.voice.handoffTarget"
-                                                                render={({ field }) => (
-                                                                    <FormItem>
-                                                                        <FormLabel className="text-[10px] uppercase font-bold text-muted-foreground">Route to</FormLabel>
-                                                                        <Select value={field.value} onValueChange={field.onChange}>
-                                                                            <FormControl><SelectTrigger className="bg-[#0d1117] border-white/10"><SelectValue /></SelectTrigger></FormControl>
-                                                                            <SelectContent>
-                                                                                <SelectItem value="any">Any Available Agent</SelectItem>
-                                                                                <SelectItem value="assigned">Account Owner</SelectItem>
-                                                                                <SelectItem value="team">Team</SelectItem>
-                                                                            </SelectContent>
-                                                                        </Select>
-                                                                    </FormItem>
-                                                                )}
-                                                            />
-                                                            <FormField
-                                                                control={form.control}
-                                                                name="workflowConfig.voice.handoffTimeoutSeconds"
-                                                                render={({ field }) => (
-                                                                    <FormItem>
-                                                                        <div className="flex justify-between items-center">
-                                                                            <FormLabel className="text-[10px] uppercase font-bold text-muted-foreground">Timeout</FormLabel>
-                                                                            <span className="text-[10px] font-mono text-indigo-400 font-bold">{field.value}s</span>
-                                                                        </div>
-                                                                        <FormControl><Slider value={[field.value || 30]} max={120} min={10} step={5} onValueChange={(val) => field.onChange(val[0])} className="py-4" /></FormControl>
-                                                                    </FormItem>
-                                                                )}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                    <ToggleOption icon={ShieldAlert} label="Voicemail" checked={watchedValues.workflowConfig?.voice?.voicemailEnabled} onChange={(val) => form.setValue('workflowConfig.voice.voicemailEnabled', val)} />
-                                                    <ToggleOption icon={Mic} label="Transcription" checked={watchedValues.workflowConfig?.voice?.transcriptionEnabled} onChange={(val) => form.setValue('workflowConfig.voice.transcriptionEnabled', val)} />
-                                                </div>
-                                                <FormField
-                                                    control={form.control}
-                                                    name="workflowConfig.voice.afterHoursBehavior"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">After Hours</FormLabel>
-                                                            <Select value={field.value} onValueChange={field.onChange}>
-                                                                <FormControl><SelectTrigger className="bg-[#0d1117] border-white/10"><SelectValue /></SelectTrigger></FormControl>
-                                                                <SelectContent>
-                                                                    <SelectItem value="ai_full">Full AI Resolution</SelectItem>
-                                                                    <SelectItem value="receptionist_only">Receptionist only</SelectItem>
-                                                                    <SelectItem value="voicemail_only">Voicemail only</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </div>
+                                            />
                                         )}
-                                    </section>
+                                    </div>
                                 )}
                             </div>
                         )}
 
-                        {activeTab === 'branding' && (
-                            <div className="max-w-3xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        {activeTab === 'channels' && mode === 'agent' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div className="space-y-1">
+                                    <h2 className="text-2xl font-bold text-white">Channels</h2>
+                                    <div className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/5 w-fit">
+                                        <Info className="h-3.5 w-3.5 text-primary" />
+                                        <p className="text-[10px] text-muted-foreground font-medium">
+                                            Channels route to the inbox by default. Enabling a channel here adds AI on top of your existing connections.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <Card className="bg-[#161b22] border-white/10 overflow-hidden">
+                                    <div className="p-6 flex items-center justify-between border-b border-white/5">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500"><MessageSquare className="h-5 w-5" /></div>
+                                            <div>
+                                                <h3 className="font-bold text-white">Web Chat</h3>
+                                                <p className="text-xs text-muted-foreground">AI Intelligence for site visitors.</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            {activeConfigPath === 'web' ? (
+                                                <Button variant="ghost" size="sm" onClick={() => setActiveConfigPath(null)} className="text-muted-foreground h-8 text-[10px] uppercase font-black">Close Config</Button>
+                                            ) : (
+                                                <Button variant="secondary" size="sm" onClick={() => setActiveConfigPath('web')} className="h-8 text-[10px] uppercase font-black">Configure</Button>
+                                            )}
+                                            <Switch checked={watchedValues.channelConfig?.web?.enabled} onCheckedChange={(val) => form.setValue('channelConfig.web.enabled', val)} />
+                                        </div>
+                                    </div>
+                                    {activeConfigPath === 'web' && (
+                                        <div className="p-6 bg-black/20 border-t border-white/5">
+                                            {renderChannelConfig('web')}
+                                        </div>
+                                    )}
+                                </Card>
+                                
+                                <p className="text-center py-12 text-muted-foreground italic text-xs">Other channels (SMS, Email, Phone) coming soon.</p>
+                            </div>
+                        )}
+
+                        {activeTab === 'branding' && mode === 'widget' && (
+                            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">Branding</h2>
-                                    <p className="text-muted-foreground text-sm">Customize your agent's look and feel.</p>
+                                    <p className="text-muted-foreground text-sm">Customize your widget's appearance.</p>
                                 </div>
-
-                                <FormField
-                                    control={form.control}
-                                    name="logoUrl"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Bot Avatar</FormLabel>
-                                            <div className="flex items-center gap-4">
-                                                <Avatar className="h-16 w-16 border border-white/10 bg-white/5 rounded-2xl">
-                                                    <AvatarImage src={field.value} className="object-contain" />
-                                                    <AvatarFallback className="bg-transparent"><BotIcon className="h-8 w-8 opacity-20" /></AvatarFallback>
-                                                </Avatar>
-                                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => {
-                                                    if (e.target.files?.[0]) {
-                                                        const reader = new FileReader();
-                                                        reader.onloadend = () => field.onChange(reader.result as string);
-                                                        reader.readAsDataURL(e.target.files[0]);
-                                                    }
-                                                }} />
-                                                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="border-white/10 bg-white/5">Upload Image</Button>
-                                            </div>
-                                        </FormItem>
-                                    )}
-                                />
-
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div className="space-y-4">
-                                        <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Theme Colors</Label>
-                                        <div className="space-y-4">
-                                            <ColorField name="primaryColor" label="Primary Action" form={form} />
-                                            <ColorField name="backgroundColor" label="Window Background" form={form} />
-                                        </div>
+                                        <ColorField name="primaryColor" label="Primary Color" form={form} />
+                                        <ColorField name="backgroundColor" label="Background Color" form={form} />
                                     </div>
-
                                     <div className="space-y-4">
-                                        <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Header</Label>
-                                        <div className="space-y-4">
-                                            <ColorField name="headerTextColor" label="Header Text" form={form} />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Messages</Label>
-                                        <div className="space-y-4">
-                                            <ColorField name="agentMessageBackgroundColor" label="Agent Bubble" form={form} />
-                                            <ColorField name="agentMessageTextColor" label="Agent Text" form={form} />
-                                            <ColorField name="customerTextColor" label="Visitor Text" form={form} />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Interface</Label>
-                                        <div className="space-y-4">
-                                            <ColorField name="chatbotIconsColor" label="Launcher Background" form={form} />
-                                            <ColorField name="chatbotIconsTextColor" label="Launcher Icon" form={form} />
-                                        </div>
+                                        <ColorField name="chatbotIconsColor" label="Launcher Color" form={form} />
+                                        <ColorField name="chatbotIconsTextColor" label="Icon Color" form={form} />
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {activeTab === 'knowledge' && (
-                            <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div>
-                                    <h2 className="text-2xl font-bold text-white mb-1">Knowledge</h2>
-                                    <p className="text-muted-foreground text-sm">Select libraries this agent uses to find answers.</p>
-                                </div>
-                                <FormField
-                                    control={form.control}
-                                    name="allowedHelpCenterIds"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-col">
-                                            <FormLabel className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Sources</FormLabel>
-                                            <div className="space-y-4">
-                                                {helpCenters && helpCenters.length > 0 ? helpCenters.map(hc => (
-                                                    <div key={hc.id} className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/[0.02]">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                                                                <BookOpen className="h-4 w-4 text-primary" />
-                                                            </div>
-                                                            <span className="font-semibold text-white">{hc.name}</span>
-                                                        </div>
-                                                        <Switch 
-                                                            checked={field.value?.includes(hc.id)} 
-                                                            onCheckedChange={(checked) => {
-                                                                const newVal = checked 
-                                                                    ? [...(field.value || []), hc.id]
-                                                                    : (field.value || []).filter(id => id !== hc.id);
-                                                                field.onChange(newVal);
-                                                            }}
-                                                        />
-                                                    </div>
-                                                )) : (
-                                                    <div className="p-12 border-2 border-dashed border-white/5 rounded-2xl text-center">
-                                                        <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-20" />
-                                                        <p className="text-sm font-semibold text-white">No libraries available</p>
-                                                        <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto">Create a library in the Knowledge tab to use it as a source for your AI agent.</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-                        )}
-
-                        {activeTab === 'installation' && (
-                            <div className="max-w-3xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        {activeTab === 'installation' && mode === 'widget' && (
+                            <div className="space-y-10 animate-in fade-in duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">Install</h2>
-                                    <p className="text-muted-foreground text-sm">Add the chatbot to your website with a single line of code.</p>
+                                    <p className="text-muted-foreground text-sm">Embed code for your website.</p>
                                 </div>
-                                
-                                <div className="rounded-2xl border border-white/10 bg-[#161b22] p-6 space-y-6">
-                                    <div className="flex items-start gap-4">
-                                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                                            <Globe className="h-5 w-5 text-primary" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <h4 className="font-bold text-white">Standard Embed Script</h4>
-                                            <p className="text-xs text-muted-foreground">Copy and paste this script into your HTML's `head` or `body` tag.</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="relative group">
-                                        <pre className="bg-[#0d1117] border border-white/10 p-5 rounded-xl text-xs font-mono text-primary leading-relaxed overflow-x-auto whitespace-pre-wrap break-all">
-                                            <code>{basicSnippet}</code>
-                                        </pre>
-                                        <Button 
-                                            type="button" 
-                                            size="icon" 
-                                            variant="secondary" 
-                                            className="absolute top-3 right-3 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" 
-                                            onClick={() => handleCopy(basicSnippet)}
-                                        >
-                                            <Copy className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                <div className="rounded-2xl border border-white/10 bg-[#161b22] p-6 space-y-6">
-                                    <div className="flex items-start gap-4">
-                                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                                            <ShieldCheck className="h-5 w-5 text-primary" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <h4 className="font-bold text-white">Identity-Aware Script</h4>
-                                            <p className="text-xs text-muted-foreground">Use this version if your website already has authenticated users to track them across sessions.</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="relative group">
-                                        <pre className="bg-[#0d1117] border border-white/10 p-5 rounded-xl text-xs font-mono text-primary leading-relaxed overflow-x-auto whitespace-pre-wrap break-all">
-                                            <code>{userAwareSnippet}</code>
-                                        </pre>
-                                        <Button 
-                                            type="button" 
-                                            size="icon" 
-                                            variant="secondary" 
-                                            className="absolute top-3 right-3 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" 
-                                            onClick={() => handleCopy(userAwareSnippet)}
-                                        >
-                                            <Copy className="h-4 w-4" />
-                                        </Button>
-                                    </div>
+                                <div className="p-6 rounded-2xl border border-white/10 bg-[#161b22] space-y-4">
+                                    <pre className="bg-[#0d1117] border border-white/10 p-5 rounded-xl text-xs font-mono text-primary leading-relaxed overflow-x-auto whitespace-pre-wrap">
+                                        <code>{`<script src="https://manowar.cloud/chatbot-loader.js" data-widget-id="${bot?.id}" async></script>`}</code>
+                                    </pre>
+                                    <Button type="button" onClick={() => handleCopy(`<script src="https://manowar.cloud/chatbot-loader.js" data-widget-id="${bot?.id}" async></script>`)} className="w-full h-11 rounded-xl">Copy Snippet</Button>
                                 </div>
                             </div>
                         )}
                     </div>
                 </ScrollArea>
 
-                <div className="p-4 border-t border-white/10 bg-[#090c10] shrink-0 flex justify-between items-center gap-3">
-                    <div className="flex-1">
-                        {showPreview && (
-                            <button
-                                type="button"
-                                onClick={() => setIsPreviewOpen(!isPreviewOpen)}
-                                className="h-12 w-12 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-110 active:scale-95"
-                                style={{ 
-                                    backgroundColor: watchedValues.chatbotIconsColor || '#3b82f6',
-                                    color: watchedValues.chatbotIconsTextColor || '#ffffff'
-                                }}
-                                title="Preview Chatbot"
-                            >
-                                <MessageCircle className="h-6 w-6" />
-                            </button>
-                        )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-white">Cancel</Button>
-                        <Button type="submit" className="rounded-xl px-8 shadow-lg shadow-primary/20">Save Changes</Button>
-                    </div>
-                </div>
-
-                <ChatbotSimulator 
-                    isOpen={isPreviewOpen}
-                    onClose={() => setIsPreviewOpen(false)}
-                    botData={watchedValues}
-                    flow={watchedValues.flow || { nodes: [], edges: [] }}
-                    agents={isPersonal && appUser ? [appUser] : allUsers.filter(u => watchedValues.agentIds?.includes(u.id))}
-                />
+                <footer className="p-4 border-t border-white/10 bg-[#090c10] shrink-0 flex justify-end items-center gap-3">
+                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-white">Cancel</Button>
+                    <Button type="submit" className="rounded-xl px-8 shadow-lg shadow-primary/20">Save {mode === 'widget' ? 'Widget' : 'Agent'}</Button>
+                </footer>
             </div>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
-
-    <AutomationFlowBuilder 
-        isOpen={isFlowBuilderOpen}
-        onOpenChange={setIsFlowBuilderOpen}
-        flow={watchedValues.flow || { nodes: [], edges: [] }}
-        onSave={(newFlow) => form.setValue('flow', newFlow)}
-        aiEnabled={watchedValues.aiEnabled}
-        botData={watchedValues}
-        allUsers={isPersonal && appUser ? [appUser] : allUsers}
-    />
-
-    {isPersonal && appUser && (
-        <ConnectEmailDialog
-            isOpen={isConnectEmailOpen}
-            onOpenChange={setIsConnectEmailOpen}
-            userId={appUser.id}
-            hubId="agent"
-            spaceId={agent?.spaceId || 'default'}
-        />
-    )}
-    </>
   );
 }
 
@@ -1693,64 +595,11 @@ function ColorField({ name, label, form }: { name: string, label: string, form: 
                     <div className="flex items-center gap-2">
                         <Input {...field} className="bg-muted/20 border-white/10 h-9 font-mono text-[10px] uppercase" />
                         <div className="relative h-9 w-9 shrink-0 rounded-md border border-white/10 overflow-hidden">
-                            <input 
-                                type="color" 
-                                value={field.value} 
-                                onChange={field.onChange} 
-                                className="absolute inset-[-5px] h-[calc(100%+10px)] w-[calc(100%+10px)] cursor-pointer" 
-                            />
+                            <input type="color" value={field.value} onChange={field.onChange} className="absolute inset-[-5px] h-[calc(100%+10px)] w-[calc(100%+10px)] cursor-pointer" />
                         </div>
                     </div>
                 </FormItem>
             )}
         />
     );
-}
-
-function ModeCard({ id, value, title, desc, icon: Icon, active, onClick }: { id: string, title: string, desc: string, icon: any, active: boolean, onClick: () => void }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={cn(
-                "flex items-start gap-3 p-4 rounded-xl border-2 transition-all text-left",
-                active ? "bg-primary/10 border-primary ring-4 ring-primary/5 shadow-md" : "bg-[#0d1117] border-white/5 hover:border-white/10"
-            )}
-        >
-            <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", active ? "bg-primary text-primary-foreground" : "bg-white/5 text-muted-foreground")}>
-                <Icon className="h-4 w-4" />
-            </div>
-            <div className="min-w-0">
-                <p className={cn("font-bold text-xs", active ? "text-primary" : "text-white")}>{title}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{desc}</p>
-            </div>
-        </button>
-    );
-}
-
-function ToggleOption({ icon: Icon, label, checked, onChange }: { icon: any, label: string, checked: boolean, onChange: (val: boolean) => void }) {
-    return (
-        <div className="flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.02]">
-            <div className="flex items-center gap-3">
-                <Icon className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs font-bold text-white">{label}</span>
-            </div>
-            <Switch checked={checked} onCheckedChange={onChange} />
-        </div>
-    );
-}
-
-function ToggleRow({ icon: Icon, label, desc, checked, onCheckedChange }: { icon: any, label: string, desc: string, checked?: boolean, onCheckedChange: (val: boolean) => void }) {
-  return (
-    <div className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/[0.02]">
-      <div className="flex items-start gap-3">
-        <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-        <div className="space-y-0.5">
-          <p className="text-sm font-bold leading-tight text-white">{label}</p>
-          <p className="text-[10px] text-muted-foreground">{desc}</p>
-        </div>
-      </div>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
-    </div>
-  );
 }

@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Bot as BotIcon, Edit, MoreHorizontal, Plus, Trash2, Copy } from 'lucide-react';
+import { Bot as BotIcon, Edit, MoreHorizontal, Plus, Trash2, Copy, ChevronRight, MessageSquare, Bot } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -38,7 +38,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 interface InboxSettingsProps {
   allUsers: User[];
   appUser: User | null;
-  bots: BotData[];
+  bots: BotData[]; // Used for both widgets and agents
   onBotUpdate: (botId: string, data: Partial<BotData>) => void;
   onBotAdd: (bot: Omit<BotData, 'id'>) => void;
   onBotDelete: (botId: string) => void;
@@ -66,37 +66,33 @@ export default function InboxSettings({
   mode = 'agents',
   onUpdateActiveHub,
 }: InboxSettingsProps) {
-  const [selectedAgent, setSelectedAgent] = useState<BotData | null>(null);
+  const [selectedBot, setSelectedBot] = useState<BotData | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [agentToDelete, setAgentToDelete] = useState<BotData | null>(null);
+  const [botToDelete, setBotToDelete] = useState<BotData | null>(null);
   const { toast } = useToast();
 
-  const isAgentsMode = mode === 'agents';
+  const isWebChatMode = mode === 'web-chat';
 
-  const hubMembers = useMemo(() => {
-    if (!activeHub || !activeSpace) return [];
-    
-    let allowedUserIds: string[];
-    if (activeHub.isPrivate && activeHub.memberIds) {
-      allowedUserIds = activeHub.memberIds;
-    } else {
-      allowedUserIds = Object.keys(activeSpace.members || {});
-    }
-    
-    return allUsers.filter(u => allowedUserIds.includes(u.id));
-  }, [allUsers, activeHub, activeSpace]);
+  // Separate widgets from agents
+  const displayBots = useMemo(() => {
+    return bots.filter(b => b.type === (isWebChatMode ? 'widget' : 'agent'));
+  }, [bots, isWebChatMode]);
 
-  const handleEditAgent = (bot: BotData) => {
-    setSelectedAgent(bot);
+  const agentsList = useMemo(() => {
+    return bots.filter(b => b.type === 'agent' && b.isEnabled);
+  }, [bots]);
+
+  const handleEditBot = (bot: BotData) => {
+    setSelectedBot(bot);
     setIsDialogOpen(true);
   };
 
-  const handleNewAgent = () => {
-    setSelectedAgent(null);
+  const handleNewBot = () => {
+    setSelectedBot(null);
     setIsDialogOpen(true);
   };
 
-  const handleDuplicateAgent = (bot: BotData) => {
+  const handleDuplicateBot = (bot: BotData) => {
     const { id, ...rest } = bot;
     const duplicatedData: Omit<BotData, 'id'> = {
       ...rest,
@@ -104,216 +100,189 @@ export default function InboxSettings({
       isEnabled: false,
     };
     onBotAdd(duplicatedData);
-    toast({ title: 'Agent Duplicated', description: `Created a copy of ${bot.name}.` });
+    toast({ title: `${isWebChatMode ? 'Widget' : 'Agent'} Duplicated` });
   };
 
-  const handleSaveAgent = (agentData: BotData | Omit<BotData, 'id' | 'hubId'>) => {
-    if ('id' in agentData && agentData.id) {
-      onBotUpdate(agentData.id, agentData);
+  const handleSaveBot = (botData: BotData | Omit<BotData, 'id' | 'hubId'>) => {
+    if ('id' in botData && botData.id) {
+      onBotUpdate(botData.id, botData);
     } else if (activeHub) {
-      const agentWithHubId = { ...agentData, hubId: activeHub.id, spaceId: activeHub.spaceId };
-      onBotAdd(agentWithHubId as Omit<BotData, 'id'>);
+      const dataWithDefaults = { 
+        ...botData, 
+        hubId: activeHub.id, 
+        spaceId: activeHub.spaceId,
+        type: isWebChatMode ? 'widget' as const : 'agent' as const
+      };
+      onBotAdd(dataWithDefaults as Omit<BotData, 'id'>);
     }
   };
 
   const handleDeleteClick = (bot: BotData) => {
-    setAgentToDelete(bot);
+    setBotToDelete(bot);
   };
 
   const handleDeleteConfirm = async () => {
-    if (!agentToDelete) return;
+    if (!botToDelete) return;
     try {
-      onBotDelete(agentToDelete.id);
-      toast({ title: 'Agent deleted successfully.' });
+      onBotDelete(botToDelete.id);
+      toast({ title: `${isWebChatMode ? 'Widget' : 'Agent'} deleted successfully.` });
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Failed to delete agent.' });
+      toast({ variant: 'destructive', title: `Failed to delete ${isWebChatMode ? 'widget' : 'agent'}.` });
     } finally {
-      setAgentToDelete(null);
+      setBotToDelete(null);
     }
   };
 
-  const handleToggleAgentStatus = (bot: BotData) => {
-    onBotUpdate(bot.id, { isEnabled: !(bot.isEnabled ?? true) });
-    toast({
-        title: `Agent ${!(bot.isEnabled ?? true) ? 'Enabled' : 'Disabled'}`,
-        description: `${bot.name} has been ${!(bot.isEnabled ?? true) ? 'enabled' : 'disabled'}.`,
-    });
+  const handleAgentAssignment = (widgetId: string, agentId: string) => {
+    onBotUpdate(widgetId, { assignedAgentId: agentId === 'none' ? null : agentId });
+    toast({ title: 'Assignment updated' });
   };
-
-  const displayTitle = isAgentsMode ? 'Agents' : 'Web Chat';
-  const displayDescription = isAgentsMode 
-    ? 'Manage AI assistants that handle customer conversations.' 
-    : 'Manage your website chat widget setup and branding.';
 
   return (
     <>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
             <div>
-                <h1 className="text-2xl font-bold">{displayTitle}</h1>
-                <p className="text-muted-foreground">{displayDescription}</p>
+                <h1 className="text-2xl font-bold">{isWebChatMode ? 'Web Chat Widgets' : 'AI Agents'}</h1>
+                <p className="text-muted-foreground">
+                    {isWebChatMode 
+                        ? 'Manage your website chat interfaces and branding.' 
+                        : 'Configure high-intelligence brains to handle your conversations.'}
+                </p>
             </div>
-            <Button onClick={handleNewAgent}>
+            <Button onClick={handleNewBot}>
                 <Plus className="mr-2 h-4 w-4" />
-                {isAgentsMode ? 'Create Agent' : 'Create Widget'}
+                {isWebChatMode ? 'Create Widget' : 'Create Agent'}
             </Button>
         </div>
 
         <div className="space-y-4">
-          {bots.map((bot) => {
-            const now = new Date();
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-            const conversationsForBot = conversations.filter(c => c.hubId === bot.hubId);
-            
-            const conversationsToday = conversationsForBot.filter(c => {
-                const lastMessageDate = new Date(c.lastMessageAt);
-                return lastMessageDate >= todayStart;
-            }).length;
-
-            const ticketsForBotHub = tickets.filter(t => t.hubId === bot.hubId);
-            const totalTicketsForBot = ticketsForBotHub.length;
-            const closingStatusName = activeHub?.ticketClosingStatusName || 'Closed';
-            const resolvedTicketsForBot = ticketsForBotHub.filter(t => t.status === closingStatusName).length;
-            const resolutionRate = totalTicketsForBot > 0 ? Math.round((resolvedTicketsForBot / totalTicketsForBot) * 100) : 0;
-
-            const activeChannels = [];
-            if (bot.channelConfig?.web?.enabled !== false) activeChannels.push('Web');
-            if (bot.channelConfig?.sms?.enabled) activeChannels.push('SMS');
-            if (bot.channelConfig?.voice?.enabled) activeChannels.push('Phone');
-            if (bot.channelConfig?.email?.enabled) activeChannels.push('Email');
-
-            return (
-              <Card key={bot.id}>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <CardTitle className="flex items-center gap-3">
-                       <span className="relative flex h-3 w-3">
-                        {(bot.isEnabled ?? true) && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
-                        <span className={cn(
-                          "relative inline-flex rounded-full h-3 w-3",
-                          (bot.isEnabled ?? true) ? 'bg-green-500' : 'bg-gray-400'
-                        )}></span>
-                      </span>
-                      <div className="space-y-1">
-                        <span>{bot.name}</span>
-                      </div>
-                    </CardTitle>
-                    <div className="flex items-center gap-1">
-                      <Button variant="outline" size="sm" onClick={() => handleEditAgent(bot)}>
-                        Configure
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => handleToggleAgentStatus(bot)}>
-                            {(bot.isEnabled ?? true) ? 'Disable' : 'Enable'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDuplicateAgent(bot)}>
-                            <Copy className="mr-2 h-4 w-4" />
-                            Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={(e) => { e.preventDefault(); handleDeleteClick(bot); }}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+          {displayBots.map((bot) => (
+            <Card key={bot.id} className="overflow-hidden">
+              <CardHeader className="pb-4">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="flex items-center gap-3">
+                    <span className="relative flex h-3 w-3">
+                      {(bot.isEnabled ?? true) && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
+                      <span className={cn(
+                        "relative inline-flex rounded-full h-3 w-3",
+                        (bot.isEnabled ?? true) ? 'bg-green-500' : 'bg-gray-400'
+                      )}></span>
+                    </span>
+                    <span>{bot.name}</span>
+                  </CardTitle>
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="sm" onClick={() => handleEditBot(bot)}>
+                      Configure
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onBotUpdate(bot.id, { isEnabled: !bot.isEnabled })}>
+                          {bot.isEnabled ? 'Disable' : 'Enable'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicateBot(bot)}>
+                          <Copy className="mr-2 h-4 w-4" /> Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleDeleteClick(bot)} className="text-destructive">
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              </CardHeader>
+              
+              {isWebChatMode && (
+                <CardContent className="bg-muted/30 pt-6 border-t">
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">AI Agent Assignment</Label>
+                      <Select 
+                        value={bot.assignedAgentId || 'none'} 
+                        onValueChange={(val) => handleAgentAssignment(bot.id, val)}
+                      >
+                        <SelectTrigger className="bg-background h-11">
+                          <SelectValue placeholder="No Agent (Route to Inbox)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None (Route to Inbox)</SelectItem>
+                          {agentsList.map(agent => (
+                            <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="p-3 rounded-xl border bg-background/50 flex items-center gap-3">
+                      {bot.assignedAgentId ? (
+                        <>
+                          <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center text-green-500">
+                            <Check className="h-4 w-4" />
+                          </div>
+                          <p className="text-xs font-medium">
+                            <span className="font-bold text-foreground">
+                              {agentsList.find(a => a.id === bot.assignedAgentId)?.name || 'Agent'}
+                            </span> is active on this widget
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                            <MessageSquare className="h-4 w-4" />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Conversations route to inbox. <span className="font-bold">No AI involvement.</span>
+                          </p>
+                        </>
+                      )}
                     </div>
                   </div>
-                </CardHeader>
-                 <CardContent className="grid grid-cols-2 text-sm md:grid-cols-4 gap-x-4 gap-y-2">
-                    <div>
-                        <dt className="text-muted-foreground">Channels</dt>
-                        <dd className="font-medium mt-1">
-                          {activeChannels.length > 0 ? activeChannels.join(' · ') : 'None'}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt className="text-muted-foreground">Knowledge</dt>
-                        <dd className="font-medium">Connected</dd>
-                    </div>
-                    <div>
-                        <dt className="text-muted-foreground">Conversations Today</dt>
-                        <dd className="font-medium">{conversationsToday}</dd>
-                    </div>
-                    <div>
-                        <dt className="text-muted-foreground">Resolution Rate</dt>
-                        <dd className="font-medium">{resolutionRate}%</dd>
-                    </div>
                 </CardContent>
-              </Card>
-            )
-          })}
+              )}
+            </Card>
+          ))}
 
-          {bots.length === 0 && (
+          {displayBots.length === 0 && (
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
               <BotIcon className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-2 text-lg font-semibold text-foreground">
-                No {isAgentsMode ? 'Agents' : 'Widgets'} Created
+                No {isWebChatMode ? 'Widgets' : 'Agents'} Created
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Get started by creating a new {isAgentsMode ? 'AI agent' : 'web chat widget'}.
+                Get started by creating a new {isWebChatMode ? 'web chat widget' : 'AI agent'}.
               </p>
-              <Button className="mt-4" onClick={handleNewAgent}>
+              <Button className="mt-4" onClick={handleNewBot}>
                 <Plus className="mr-2 h-4 w-4" />
-                {isAgentsMode ? 'Create Agent' : 'Create Widget'}
+                {isWebChatMode ? 'Create Widget' : 'Create Agent'}
               </Button>
             </div>
           )}
         </div>
-
-        {!isAgentsMode && bots.length > 0 && (
-            <Card className="mt-8">
-                <CardHeader>
-                    <CardTitle>Global Routing</CardTitle>
-                    <CardDescription>Select which AI Agent should handle conversations from your web chat widgets.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-2">
-                        <Label>AI Agent</Label>
-                        <Select 
-                            value={activeHub?.settings?.webChatAgentId || 'none'} 
-                            onValueChange={(val) => onUpdateActiveHub?.({ settings: { ...activeHub?.settings, webChatAgentId: val === 'none' ? null : val } })}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="No Agent (Manual routing)" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="none">None (Route to Inbox)</SelectItem>
-                                {bots.filter(b => b.isEnabled).map(b => (
-                                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </CardContent>
-            </Card>
-        )}
       </div>
+
       <AgentSettingsDialog
         isOpen={isDialogOpen}
         onOpenChange={setIsDialogOpen}
-        bot={selectedAgent}
-        onSave={handleSaveAgent}
+        bot={selectedBot}
+        onSave={handleSaveBot}
         appUser={appUser}
-        allUsers={hubMembers}
+        allUsers={allUsers}
         helpCenters={helpCenters}
-        hiddenTabs={isAgentsMode ? ['branding', 'installation'] : []}
+        mode={isWebChatMode ? 'widget' : 'agent'}
+        hubWidgets={isWebChatMode ? [] : bots.filter(b => b.type === 'widget')}
       />
-      <AlertDialog open={!!agentToDelete} onOpenChange={() => setAgentToDelete(null)}>
+
+      <AlertDialog open={!!botToDelete} onOpenChange={() => setBotToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the agent "{agentToDelete?.name}". This action cannot be undone.
+              This will permanently delete the {isWebChatMode ? 'widget' : 'agent'} "{botToDelete?.name}". This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

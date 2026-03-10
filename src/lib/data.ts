@@ -86,7 +86,7 @@ export interface Hub {
   closingStatusName?: string;
   ticketClosingStatusName?: string;
   dealClosingStatusName?: string;
-  smsAiBehavior?: 'off' | 'draft' | 'auto'; // Deprecated in favor of Bot.channelConfig
+  webChatAgentId?: string | null; // DEPRECATED - Now per-widget
 }
 
 // --- Email Configs (Support Email) ---
@@ -119,6 +119,10 @@ export interface EmailConfig {
   connectedAt: string; // ISO
   connectedBy: string; // userId
   lastSyncedAt?: string; // ISO
+  // No-Agent Default behavior
+  autoAckEnabled?: boolean;
+  autoAckSubject?: string;
+  autoAckBody?: string;
 }
 
 export interface Project {
@@ -521,13 +525,16 @@ export interface AutomationFlow {
 // --- Chatbot / Inbox Interfaces ---
 export interface Bot {
   id: string;
+  type: 'agent' | 'widget';
   hubId: string;
   spaceId: string;
   name: string;
-  webAgentName?: string; // Name for the web chatbot (e.g. "Finn")
+  webAgentName?: string; 
   isEnabled?: boolean;
   aiEnabled?: boolean;
-  welcomeMessage?: string;
+  welcomeMessage?: string; // Used as Greeting for widgets
+  noAgentFallbackMessage?: string; // For widgets when assignedAgentId is null
+  assignedAgentId?: string | null; // For widgets
   layout: 'default' | 'compact';
   styleSettings?: {
     primaryColor: string;
@@ -553,12 +560,12 @@ export interface Bot {
       phone: boolean;
     };
   };
-  conversationGoal?: string; // Instruction for Claude
+  conversationGoal?: string; 
   automations?: {
     handoffKeywords?: string[];
     quickReplies?: string[];
   };
-  flow?: AutomationFlow; // Replaces simple quickReplies string
+  flow?: AutomationFlow; 
   escalationTriggers: {
     billingKeywords?: string[];
     sentimentThreshold?: number;
@@ -715,6 +722,7 @@ export interface Conversation {
   ownerAgentId: string | null;
   sharedWithTeam: boolean;
   crmContactId: string | null;
+  typing?: Record<string, boolean>;
 }
 
 export interface ChatMessage {
@@ -764,18 +772,25 @@ export interface PhoneChannelLookup {
   twilioSubaccountSid: string;
   label?: string;
   
-  // Voice Behavior
-  aiCallMode: 'full_ai' | 'triage' | 'agent_only';
-  handoffTarget: 'any' | 'assigned' | 'team';
+  // No-Agent Default / Fallback
+  autoAckEnabled?: boolean;
+  autoAckText?: string;
+  basicCallHoldMessage?: string;
+  basicCallBehavior?: 'ring' | 'voicemail';
+  voicemailTranscriptionEnabled?: boolean;
+
+  // AI Voice Behavior (if assigned)
+  aiCallMode?: 'full_ai' | 'triage' | 'agent_only';
+  handoffTarget?: 'any' | 'assigned' | 'team';
   handoffTeamId?: string;
-  handoffTimeout: number;
-  handoffFallback: 'voicemail' | 'ai_attempt' | 'callback';
+  handoffTimeout?: number;
+  handoffFallback?: 'voicemail' | 'ai_attempt' | 'callback';
   
-  aiGreetingEnabled: boolean;
-  transcriptionEnabled: boolean;
-  afterHoursAiOnly: boolean;
-  voicemailFallback: boolean;
-  greetingScript: string;
+  aiGreetingEnabled?: boolean;
+  transcriptionEnabled?: boolean;
+  afterHoursAiOnly?: boolean;
+  voicemailFallback?: boolean;
+  greetingScript?: string;
   
   updatedAt: any;
 }
