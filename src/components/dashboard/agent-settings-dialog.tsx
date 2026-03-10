@@ -21,9 +21,9 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Bot as BotData, User, HelpCenter } from '@/lib/data';
+import { Bot as BotData, User, HelpCenter, PhoneChannelLookup, EmailConfig } from '@/lib/data';
 import { 
   Bot as BotIcon, 
   X, 
@@ -209,32 +209,52 @@ export default function AgentSettingsDialog({
   }, [mode, bot, hubWidgets]);
 
   const navItems = useMemo(() => {
+    const items = [
+      { id: 'general', label: 'General', icon: Settings },
+    ];
+
     if (mode === 'widget') {
-      return [
-        { id: 'general', label: 'General', icon: Settings },
+      items.push(
         { id: 'branding', label: 'Branding', icon: Palette },
-        { id: 'installation', label: 'Install', icon: Plug },
-      ];
+        { id: 'installation', label: 'Install', icon: Plug }
+      );
     } else {
-      return [
-        { id: 'general', label: 'General', icon: Settings },
+      items.push(
         { id: 'channels', label: 'Channels', icon: Globe },
-        { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
-      ];
+        { id: 'knowledge', label: 'Knowledge', icon: BookOpen }
+      );
     }
+
+    return items;
   }, [mode]);
 
   const onSubmit = (values: AgentSettingsFormValues) => {
-    const commonData = {
-        ...values,
-        styleSettings: mode === 'widget' ? {
-            primaryColor: values.primaryColor,
-            backgroundColor: values.backgroundColor,
-            logoUrl: values.logoUrl,
-            chatbotIconsColor: values.chatbotIconsColor,
-            chatbotIconsTextColor: values.chatbotIconsTextColor,
-        } : bot?.styleSettings
+    // Firestore does not support 'undefined'.
+    const sanitize = (data: any) => {
+      return Object.fromEntries(
+        Object.entries(data).filter(([_, v]) => v !== undefined)
+      );
     };
+
+    const styleSettings = mode === 'widget' ? {
+        primaryColor: values.primaryColor || '#3b82f6',
+        backgroundColor: values.backgroundColor || '#111827',
+        logoUrl: values.logoUrl || '',
+        chatbotIconsColor: values.chatbotIconsColor || '#3b82f6',
+        chatbotIconsTextColor: values.chatbotIconsTextColor || '#ffffff',
+    } : (bot?.styleSettings || {
+        primaryColor: '#3b82f6',
+        backgroundColor: '#111827',
+        logoUrl: '',
+        chatbotIconsColor: '#3b82f6',
+        chatbotIconsTextColor: '#ffffff',
+    });
+
+    const commonData = {
+        ...sanitize(values),
+        styleSettings
+    };
+
     onSave(commonData as any);
     onOpenChange(false);
   };

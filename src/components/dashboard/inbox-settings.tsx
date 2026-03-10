@@ -97,23 +97,34 @@ export default function InboxSettings({
 
   const handleDuplicateBot = (bot: BotData) => {
     const { id, ...rest } = bot;
+    
+    // Firestore does not allow 'undefined' values.
+    const sanitizedRest = Object.fromEntries(
+      Object.entries(rest).filter(([_, v]) => v !== undefined)
+    );
+
     const duplicatedData: Omit<BotData, 'id'> = {
-      ...rest,
+      ...sanitizedRest,
       name: `Copy of ${bot.name}`,
       isEnabled: false,
-    };
+    } as any;
     onBotAdd(duplicatedData);
     toast({ title: `${isWebChatMode ? 'Widget' : 'Agent'} Duplicated` });
   };
 
   const handleSaveBot = (botData: BotData | Omit<BotData, 'id' | 'hubId'>) => {
-    if ('id' in botData && botData.id) {
-      const existing = bots.find(b => b.id === botData.id);
-      const type = botData.type || existing?.type || (isWebChatMode ? 'widget' : 'agent');
-      onBotUpdate(botData.id, { ...botData, type });
+    // Firestore does not allow 'undefined' values.
+    const sanitizedData = Object.fromEntries(
+      Object.entries(botData).filter(([_, v]) => v !== undefined)
+    );
+
+    if ('id' in sanitizedData && sanitizedData.id) {
+      const existing = bots.find(b => b.id === sanitizedData.id);
+      const type = sanitizedData.type || existing?.type || (isWebChatMode ? 'widget' : 'agent');
+      onBotUpdate(sanitizedData.id, { ...sanitizedData, type } as any);
     } else if (activeHub) {
       const dataWithDefaults = { 
-        ...botData, 
+        ...sanitizedData, 
         hubId: activeHub.id, 
         spaceId: activeHub.spaceId,
         type: isWebChatMode ? 'widget' as const : 'agent' as const
