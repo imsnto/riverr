@@ -597,6 +597,29 @@ export interface Bot {
       signOff: string;
       contextAwareness: boolean;
     };
+    sms?: {
+      responseStyle?: 'conversational' | 'concise';
+      openingMessage?: string;
+      afterHoursBehavior?: 'ai_full' | 'notify_ticket' | 'off';
+      handoffKeywords?: string[];
+      sentimentEscalation?: boolean;
+      writingStyle?: string;
+      smartTiming?: boolean;
+    };
+    voice?: {
+      greetingScript?: string;
+      callHandlingMode?: 'full_ai' | 'warm_handoff' | 'receptionist_only';
+      handoffTarget?: 'any' | 'assigned' | 'team';
+      handoffTimeoutSeconds?: number;
+      handoffFallback?: 'voicemail' | 'ai_resolve' | 'callback';
+      voicemailEnabled?: boolean;
+      transcriptionEnabled?: boolean;
+      afterHoursBehavior?: 'ai_full' | 'receptionist_only' | 'voicemail_only';
+      role?: 'receptionist' | 'voicemail_only';
+      receptionistScript?: string;
+      callbackNotification?: boolean;
+      voicemailTranscription?: boolean;
+    };
   };
   ownerType: 'hub' | 'user';
   ownerId: string;
