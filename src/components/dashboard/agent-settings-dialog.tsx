@@ -285,7 +285,7 @@ export default function AgentSettingsDialog({
       handoffKeywords: ['agent', 'human', 'speak to person'],
       flow: { nodes: [], edges: [] },
       channelConfig: {
-        web: { enabled: true },
+        web: { enabled: !isPersonal },
         sms: { enabled: false, numberConfigs: {} },
         email: { enabled: false, emailConfigs: {} },
         voice: { enabled: false, numberConfigs: {} }
@@ -372,7 +372,7 @@ export default function AgentSettingsDialog({
         handoffKeywords: agent.automations?.handoffKeywords || ['agent', 'human', 'speak to person'],
         flow: agent.flow || { nodes: [], edges: [] },
         channelConfig: agent.channelConfig || {
-          web: { enabled: true },
+          web: { enabled: !isPersonal },
           sms: { enabled: false, numberConfigs: {} },
           email: { enabled: false, emailConfigs: {} },
           voice: { enabled: false, numberConfigs: {} }
@@ -417,7 +417,7 @@ export default function AgentSettingsDialog({
         }
       });
     }
-  }, [agent, form, appUser]);
+  }, [agent, form, appUser, isPersonal]);
 
   const onSubmit = (values: AgentSettingsFormValues) => {
     const commonData = {
@@ -520,9 +520,11 @@ export default function AgentSettingsDialog({
     { id: 'general', label: 'General', icon: Settings },
     { id: 'workflow', label: 'Workflow', icon: Zap },
     { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
-    { id: 'branding', label: 'Branding', icon: Palette },
+    { id: 'branding', label: 'Branding', icon: Palette, hidden: isPersonal },
     { id: 'installation', label: 'Install', icon: Plug, hidden: isPersonal },
   ];
+
+  const showPreview = watchedValues.channelConfig?.web?.enabled && !isPersonal;
 
   return (
     <>
@@ -1449,18 +1451,20 @@ export default function AgentSettingsDialog({
 
                 <div className="p-4 border-t border-white/10 bg-[#090c10] shrink-0 flex justify-between items-center gap-3">
                     <div className="flex-1">
-                        <button
-                            type="button"
-                            onClick={() => setIsPreviewOpen(!isPreviewOpen)}
-                            className="h-12 w-12 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-110 active:scale-95"
-                            style={{ 
-                                backgroundColor: watchedValues.chatbotIconsColor || '#3b82f6',
-                                color: watchedValues.chatbotIconsTextColor || '#ffffff'
-                            }}
-                            title="Preview Chatbot"
-                        >
-                            <MessageCircle className="h-6 w-6" />
-                        </button>
+                        {showPreview && (
+                            <button
+                                type="button"
+                                onClick={() => setIsPreviewOpen(!isPreviewOpen)}
+                                className="h-12 w-12 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-110 active:scale-95"
+                                style={{ 
+                                    backgroundColor: watchedValues.chatbotIconsColor || '#3b82f6',
+                                    color: watchedValues.chatbotIconsTextColor || '#ffffff'
+                                }}
+                                title="Preview Chatbot"
+                            >
+                                <MessageCircle className="h-6 w-6" />
+                            </button>
+                        )}
                     </div>
                     <div className="flex items-center gap-3">
                         <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-white">Cancel</Button>

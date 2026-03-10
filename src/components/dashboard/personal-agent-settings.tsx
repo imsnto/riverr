@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -79,7 +78,30 @@ export default function PersonalAgentSettings({ helpCenters }: PersonalAgentSett
             escalationTriggers: { billingKeywords: [], sentimentThreshold: -0.5 },
             escalateToTeamInbox: true,
             hubId: 'personal',
-            spaceId: activeSpace?.id || 'default'
+            spaceId: activeSpace?.id || 'default',
+            channelConfig: {
+                web: { enabled: false }, // Explicitly disabled for personal
+                sms: { enabled: false, numberConfigs: {} },
+                email: { enabled: false, emailConfigs: {} },
+                voice: { enabled: false, numberConfigs: {} }
+            },
+            workflowConfig: {
+                personalEmail: {
+                    writingStyle: 'Professional and warm.',
+                    responseLength: 'match',
+                    signOff: `Best, ${appUser.name.split(' ')[0]}`,
+                    contextAwareness: true
+                },
+                sms: {
+                    writingStyle: 'Short and casual.',
+                    smartTiming: true
+                },
+                voice: {
+                    role: 'receptionist',
+                    receptionistScript: `Hi, you've reached ${appUser.name}. I'm unavailable right now. Can I take a message?`,
+                    callbackNotification: true
+                }
+            }
         };
         try {
             const created = await db.addBot(newAgent);
