@@ -27,7 +27,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import DealAutomationSettings from './deal-automation-settings';
 import EscalationIntakeSettings from './escalation-intake-settings';
-import { LogOut, Phone, User as UserIcon, Building2, LayoutGrid, Bell, BrainCircuit, Clock, Mail, Sparkles } from 'lucide-react';
+import { LogOut, Phone, User as UserIcon, Building2, LayoutGrid, Bell, BrainCircuit, Clock, Mail, Sparkles, MessageSquare } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import BrainSettings from './brain-settings';
@@ -42,7 +42,7 @@ import { db } from '@/lib/firebase';
 import PersonalAccountSettings from './personal-account-settings';
 import PersonalAgentSettings from './personal-agent-settings';
 
-type SettingsView = 'profile' | 'personal-agent' | 'users' | 'space-general' | 'hub-general' | 'phone' | 'email' | 'agents' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'brain' | 'notifications';
+type SettingsView = 'profile' | 'personal-agent' | 'users' | 'space-general' | 'hub-general' | 'phone' | 'email' | 'web-chat' | 'agents' | 'timesheets' | 'deal-automation' | 'escalation-intake' | 'brain' | 'notifications';
 
 interface SettingsLayoutProps {
   allUsers: User[];
@@ -150,6 +150,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
   const hubNavItems = [
     { key: 'hub-general' as SettingsView, label: 'General', icon: LayoutGrid },
     { key: 'email' as SettingsView, label: 'Support Email', icon: Mail, hidden: !hubHasInbox },
+    { key: 'web-chat' as SettingsView, label: 'Web Chat', icon: MessageSquare, hidden: !hubHasInbox },
     { key: 'agents' as SettingsView, label: 'Agents', icon: BrainCircuit, hidden: !hubHasInbox },
     { key: 'deal-automation' as SettingsView, label: 'Deal Automation', icon: LayoutGrid, hidden: !hubHasDeals },
     { key: 'escalation-intake' as SettingsView, label: 'Escalation Intake', icon: LayoutGrid, hidden: !(hubHasTickets && hubHasTasks) },
@@ -201,6 +202,24 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
         ) : null;
       case 'email':
         return (props.activeHub && activeSpace) ? <HubEmailSettings activeHub={props.activeHub} spaceId={activeSpace.id} /> : null;
+      case 'web-chat':
+        return props.activeHub ? (
+            <InboxSettings 
+                allUsers={props.allUsers}
+                appUser={props.appUser}
+                bots={props.bots}
+                onBotUpdate={props.onBotUpdate}
+                onBotAdd={props.onBotAdd}
+                onBotDelete={props.onBotDelete}
+                helpCenters={props.helpCenters}
+                tickets={props.tickets}
+                conversations={props.conversations}
+                activeHub={props.activeHub}
+                activeSpace={activeSpace}
+                mode="web-chat"
+                onUpdateActiveHub={props.onUpdateActiveHub}
+            />
+        ) : null;
        case 'agents':
         return props.activeHub ? (
             <InboxSettings 
@@ -215,6 +234,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
                 conversations={props.conversations}
                 activeHub={props.activeHub}
                 activeSpace={activeSpace}
+                mode="agents"
             />
         ) : null;
       case 'deal-automation':
@@ -275,6 +295,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
                             <>
                                 <SelectItem value="hub-general">Hub: General</SelectItem>
                                 {hubHasInbox && <SelectItem value="email">Hub: Support Email</SelectItem>}
+                                {hubHasInbox && <SelectItem value="web-chat">Hub: Web Chat</SelectItem>}
                                 {hubHasInbox && <SelectItem value="agents">Hub: Agents</SelectItem>}
                                 {hubHasDeals && <SelectItem value="deal-automation">Hub: Deal Automation</SelectItem>}
                                 {(hubHasTickets && hubHasTasks) && <SelectItem value="escalation-intake">Hub: Escalation Intake</SelectItem>}

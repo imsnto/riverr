@@ -253,6 +253,7 @@ interface AgentSettingsDialogProps {
   appUser: User | null;
   allUsers: User[];
   helpCenters: HelpCenter[];
+  hiddenTabs?: string[];
 }
 
 export default function AgentSettingsDialog({
@@ -263,6 +264,7 @@ export default function AgentSettingsDialog({
   appUser,
   allUsers,
   helpCenters,
+  hiddenTabs = [],
 }: AgentSettingsDialogProps) {
   const [activeTab, setActiveTab] = useState('channels');
   const [isFlowBuilderOpen, setIsFlowBuilderOpen] = useState(false);
@@ -359,9 +361,9 @@ export default function AgentSettingsDialog({
 
   useEffect(() => {
     if (isOpen) {
-        setActiveTab('channels'); 
+        setActiveTab(hiddenTabs.includes('channels') ? 'general' : 'channels'); 
     }
-  }, [isOpen]);
+  }, [isOpen, hiddenTabs]);
 
   useEffect(() => {
     if (isOpen && agent) {
@@ -567,7 +569,9 @@ export default function AgentSettingsDialog({
     { id: 'installation', label: 'Install', icon: Plug, hidden: isPersonal },
   ];
 
-  const showPreview = watchedValues.channelConfig?.web?.enabled && !isPersonal;
+  const filteredNavItems = navItems.filter(item => !item.hidden && !hiddenTabs.includes(item.id));
+
+  const showPreview = watchedValues.channelConfig?.web?.enabled && !isPersonal && !hiddenTabs.includes('branding');
 
   return (
     <>
@@ -593,7 +597,7 @@ export default function AgentSettingsDialog({
                 </div>
 
                 <nav className="flex-1 p-2 space-y-1">
-                    {navItems.filter(i => !i.hidden).map((item) => (
+                    {filteredNavItems.map((item) => (
                         <button
                             key={item.id}
                             type="button"

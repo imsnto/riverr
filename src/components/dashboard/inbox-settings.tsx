@@ -2,12 +2,13 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Bot as BotIcon, Edit, MoreHorizontal, Plus, Trash2, Globe, Smartphone, Phone, Mail, Copy } from 'lucide-react';
+import { Bot as BotIcon, Edit, MoreHorizontal, Plus, Trash2, Copy } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -31,6 +32,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface InboxSettingsProps {
   allUsers: User[];
@@ -44,6 +47,8 @@ interface InboxSettingsProps {
   conversations: Conversation[];
   activeHub: Hub | null;
   activeSpace: Space | null;
+  mode?: 'web-chat' | 'agents';
+  onUpdateActiveHub?: (data: Partial<Hub>) => void;
 }
 
 export default function InboxSettings({
@@ -58,11 +63,15 @@ export default function InboxSettings({
   conversations,
   activeHub,
   activeSpace,
+  mode = 'agents',
+  onUpdateActiveHub,
 }: InboxSettingsProps) {
   const [selectedAgent, setSelectedAgent] = useState<BotData | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [agentToDelete, setAgentToDelete] = useState<BotData | null>(null);
   const { toast } = useToast();
+
+  const isAgentsMode = mode === 'agents';
 
   const hubMembers = useMemo(() => {
     if (!activeHub || !activeSpace) return [];
@@ -91,7 +100,8 @@ export default function InboxSettings({
     const { id, ...rest } = bot;
     const duplicatedData: Omit<BotData, 'id'> = {
       ...rest,
-      name: `${bot.name} (Copy)`,
+      name: `Copy of ${bot.name}`,
+      isEnabled: false,
     };
     onBotAdd(duplicatedData);
     toast({ title: 'Agent Duplicated', description: `Created a copy of ${bot.name}.` });
@@ -101,7 +111,7 @@ export default function InboxSettings({
     if ('id' in agentData && agentData.id) {
       onBotUpdate(agentData.id, agentData);
     } else if (activeHub) {
-      const agentWithHubId = { ...agentData, hubId: activeHub.id };
+      const agentWithHubId = { ...agentData, hubId: activeHub.id, spaceId: activeHub.spaceId };
       onBotAdd(agentWithHubId as Omit<BotData, 'id'>);
     }
   };
@@ -130,17 +140,22 @@ export default function InboxSettings({
     });
   };
 
+  const displayTitle = isAgentsMode ? 'Agents' : 'Web Chat';
+  const displayDescription = isAgentsMode 
+    ? 'Manage AI assistants that handle customer conversations.' 
+    : 'Manage your website chat widget setup and branding.';
+
   return (
     <>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
             <div>
-                <h1 className="text-2xl font-bold">Agents</h1>
-                <p className="text-muted-foreground">Manage AI assistants that handle customer conversations.</p>
+                <h1 className="text-2xl font-bold">{displayTitle}</h1>
+                <p className="text-muted-foreground">{displayDescription}</p>
             </div>
             <Button onClick={handleNewAgent}>
                 <Plus className="mr-2 h-4 w-4" />
-                Create Agent
+                {isAgentsMode ? 'Create Agent' : 'Create Widget'}
             </Button>
         </div>
 
@@ -242,18 +257,46 @@ export default function InboxSettings({
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
               <BotIcon className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-2 text-lg font-semibold text-foreground">
-                No Agents Created
+                No {isAgentsMode ? 'Agents' : 'Widgets'} Created
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Get started by creating a new AI agent.
+                Get started by creating a new {isAgentsMode ? 'AI agent' : 'web chat widget'}.
               </p>
               <Button className="mt-4" onClick={handleNewAgent}>
                 <Plus className="mr-2 h-4 w-4" />
-                Create Agent
+                {isAgentsMode ? 'Create Agent' : 'Create Widget'}
               </Button>
             </div>
           )}
         </div>
+
+        {!isAgentsMode && bots.length > 0 && (
+            <Card className="mt-8">
+                <CardHeader>
+                    <CardTitle>Global Routing</CardTitle>
+                    <CardDescription>Select which AI Agent should handle conversations from your web chat widgets.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-2">
+                        <Label>AI Agent</Label>
+                        <Select 
+                            value={activeHub?.settings?.webChatAgentId || 'none'} 
+                            onValueChange={(val) => onUpdateActiveHub?.({ settings: { ...activeHub?.settings, webChatAgentId: val === 'none' ? null : val } })}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="No Agent (Manual routing)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">None (Route to Inbox)</SelectItem>
+                                {bots.filter(b => b.isEnabled).map(b => (
+                                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </CardContent>
+            </Card>
+        )}
       </div>
       <AgentSettingsDialog
         isOpen={isDialogOpen}
@@ -263,6 +306,7 @@ export default function InboxSettings({
         appUser={appUser}
         allUsers={hubMembers}
         helpCenters={helpCenters}
+        hiddenTabs={isAgentsMode ? ['branding', 'installation'] : []}
       />
       <AlertDialog open={!!agentToDelete} onOpenChange={() => setAgentToDelete(null)}>
         <AlertDialogContent>
