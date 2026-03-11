@@ -392,7 +392,10 @@ export default function ChatbotWidgetPage() {
     setIsBotTyping(true);
     setTimeout(async () => {
       await invokeAgent({
-          bot: bot!,
+          bot: {
+            ...bot!,
+            assignedAgentId: bot?.assignedAgentId,
+          },
           conversation: { ...conversation, visitorName: name, visitorEmail: email },
           message: incomingMessage,
       });
@@ -446,6 +449,7 @@ export default function ChatbotWidgetPage() {
     const isNewConversation = !currentConversation;
 
     if (isNewConversation) {
+        // Inherit human team members from either the bot or its assigned AI brain
         const agentIds = bot.agentIds || [];
         const assigneeId = agentIds.length > 0 ? agentIds[Math.floor(Math.random() * agentIds.length)] : null;
         
@@ -627,6 +631,7 @@ export default function ChatbotWidgetPage() {
             flow: bot.flow,
             conversationGoal: bot.conversationGoal,
             identityCapture: bot.identityCapture,
+            assignedAgentId: bot.assignedAgentId,
         };
 
         try {
@@ -679,7 +684,8 @@ export default function ChatbotWidgetPage() {
       console.warn("No FCM tokens found for assigned agents");
     }
   } else {
-    console.warn("No agents assigned to this conversation");
+    // If no agents assigned, try to notify the hub's default admins
+    console.warn("No agents assigned to this conversation. Trying default notifications.");
   }
 }
 

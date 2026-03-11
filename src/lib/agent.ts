@@ -143,17 +143,21 @@ export async function handleIncomingMessage(args: {
 }) {
   const { bot, adapters } = args;
   let conversation = args.conversation;
-  const text = args.message.text ?? "";
+  const text = (args.message.text ?? "").trim();
   const botName = bot.webAgentName || bot.name || "Support";
 
   // ---- 1. ESCALATION GUARD ----
+  // If we are already waiting for a human, don't let AI intervene unless explicitly designed to.
   if (conversation.status === 'waiting_human' || conversation.status === 'resolved') {
     return;
   }
 
   // ---- 2. GLOBAL HANDOFF TRIGGERS ----
-  if (bot.handoffKeywords?.length && containsAny(text, bot.handoffKeywords)) {
-      await escalateNow(adapters, conversation, "Requested via global trigger.");
+  const defaultHandoffKeywords = ['human', 'agent', 'person', 'representative', 'support'];
+  const handoffKeywords = bot.handoffKeywords?.length ? bot.handoffKeywords : defaultHandoffKeywords;
+  
+  if (containsAny(text, handoffKeywords)) {
+      await escalateNow(adapters, conversation, "Requested by user via keyword.");
       return;
   }
 
@@ -173,8 +177,11 @@ export async function handleIncomingMessage(args: {
   await adapters.persistAssistantMessage({
       conversationId: conversation.id,
       hubId: conversation.hubId,
-      text: `I'm not quite sure how to help. Could you tell me more about what you're looking for in **${botName}**?`,
-      responderType: 'automation'
+      text: `I'm not quite sure how to help. Would you like to speak with a human agent?`,
+      responderType: 'automation',
+      meta: {
+        buttons: [{ id: 'handoff', label: 'Talk to Human' }]
+      }
   });
 }
 
@@ -453,7 +460,7 @@ async function executeAiPhase(args: {
   });
 
   // Instruction augmentation based on Conversation Goal
-  let systemInstruction = `You are ${botName}, a helpful AI assistant.`;
+  let systemInstruction = `You are ${botName}, a helpful AI assistant. You must be conversational, warm, and helpful.`;
   if (bot.conversationGoal) {
     systemInstruction += `\n\n**CONVERSATION GOAL:**\n${bot.conversationGoal}`;
   }
@@ -483,7 +490,7 @@ async function executeAiPhase(args: {
   });
 
   const topIntent = supportSearch.intents?.[0];
-  if (topIntent && topIntent._searchScore && topIntent._searchScore > 0.7) {
+  if (topIntent && topIntent._searchScore && topIntent._searchScore > 0.75) {
       // Direct hit on learned knowledge
       await adapters.persistAssistantMessage({
           conversationId: conversation.id,
@@ -515,6 +522,10 @@ async function executeAiPhase(args: {
       context,
       greetingScript: systemInstruction
   });
+
+  if (!answer || answer.trim() === "") {
+      return false; // Let the caller handle the silence
+  }
 
   await adapters.persistAssistantMessage({
       conversationId: conversation.id,
