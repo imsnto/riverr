@@ -56,7 +56,7 @@ import {
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -70,6 +70,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import Link from 'next/link';
 import { Separator } from '../ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const agentSettingsSchema = z.object({
   name: z.string().min(1, 'Name is required.'),
@@ -1074,12 +1075,52 @@ export default function AgentSettingsDialog({
                                     <h2 className="text-2xl font-bold text-white mb-1">Install</h2>
                                     <p className="text-muted-foreground text-sm">Embed code for your website.</p>
                                 </div>
-                                <div className="p-6 rounded-2xl border border-white/10 bg-[#161b22] space-y-4">
-                                    <pre className="bg-[#0d1117] border border-white/10 p-5 rounded-xl text-xs font-mono text-primary leading-relaxed overflow-x-auto whitespace-pre-wrap text-left">
-                                        <code>{`<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${bot?.id}" data-hub-id="${bot?.hubId}" async></script>`}</code>
-                                    </pre>
-                                    <Button type="button" onClick={() => handleCopy(`<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${bot?.id}" data-hub-id="${bot?.hubId}" async></script>`)} className="w-full h-11 rounded-xl">Copy Snippet</Button>
-                                </div>
+
+                                <Tabs defaultValue="standard" className="w-full">
+                                    <TabsList className="bg-white/5 border-white/10 p-1 rounded-xl mb-6">
+                                        <TabsTrigger value="standard" className="rounded-lg text-xs font-bold px-6">Standard Snippet</TabsTrigger>
+                                        <TabsTrigger value="identify" className="rounded-lg text-xs font-bold px-6">User Identification</TabsTrigger>
+                                    </TabsList>
+                                    
+                                    <TabsContent value="standard" className="space-y-6">
+                                        <div className="p-6 rounded-2xl border border-white/10 bg-[#161b22] space-y-4">
+                                            <p className="text-xs text-muted-foreground">Standard script for basic chat functionality.</p>
+                                            <pre className="bg-[#0d1117] border border-white/10 p-5 rounded-xl text-xs font-mono text-primary leading-relaxed overflow-x-auto whitespace-pre-wrap text-left">
+                                                <code>{`<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${bot?.id}" data-hub-id="${bot?.hubId}" async></script>`}</code>
+                                            </pre>
+                                            <Button type="button" onClick={() => handleCopy(`<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${bot?.id}" data-hub-id="${bot?.hubId}" async></script>`)} className="w-full h-11 rounded-xl">Copy Snippet</Button>
+                                        </div>
+                                    </TabsContent>
+                                    
+                                    <TabsContent value="identify" className="space-y-6">
+                                        <div className="p-6 rounded-2xl border border-white/10 bg-[#161b22] space-y-4">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] uppercase font-black px-1.5 h-5">Advanced</Badge>
+                                                <p className="text-xs text-muted-foreground font-medium text-left">Identify logged-in users to sync their profile and history securely.</p>
+                                            </div>
+                                            <pre className="bg-[#0d1117] border border-white/10 p-5 rounded-xl text-[11px] font-mono text-indigo-400 leading-relaxed overflow-x-auto whitespace-pre-wrap text-left">
+                                                <code>{`<script>
+  window.Manowar = window.Manowar || function() { (window.ManowarArgs = window.ManowarArgs || []).push(arguments) };
+  Manowar('identify', {
+    user_id: 'USER_ID', // Replace with your user's ID
+    email: 'user@example.com', // Replace with your user's email
+    name: 'John Doe' // Optional
+  });
+</script>
+<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${bot?.id}" data-hub-id="${bot?.hubId}" async></script>`}</code>
+                                            </pre>
+                                            <Button type="button" onClick={() => handleCopy(`<script>
+  window.Manowar = window.Manowar || function() { (window.ManowarArgs = window.ManowarArgs || []).push(arguments) };
+  Manowar('identify', {
+    user_id: 'USER_ID',
+    email: 'user@example.com',
+    name: 'John Doe'
+  });
+</script>
+<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${bot?.id}" data-hub-id="${bot?.hubId}" async></script>`)} className="w-full h-11 rounded-xl">Copy User-Aware Snippet</Button>
+                                        </div>
+                                    </TabsContent>
+                                </Tabs>
                             </div>
                         )}
                     </div>

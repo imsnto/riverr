@@ -147,6 +147,8 @@ export async function handleIncomingMessage(args: {
   const botName = bot.webAgentName || bot.name || "Support";
 
   // ---- 1. ESCALATION GUARD ----
+  console.log("Waiting....?");
+  console.log(conversation.status);
   // If we are already waiting for a human, don't let AI intervene unless explicitly designed to.
   if (conversation.status === 'waiting_human' || conversation.status === 'resolved') {
     return;
