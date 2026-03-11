@@ -33,6 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Switch } from '../ui/switch';
 
 interface InboxSettingsProps {
   allUsers: User[];
@@ -196,7 +197,7 @@ export default function InboxSettings({
 
         <div className="space-y-4">
           {displayBots.map((bot) => (
-            <Card key={bot.id} className="overflow-hidden">
+            <Card key={bot.id} className="overflow-hidden border border-white/10">
               <CardHeader className="pb-4">
                 <div className="flex justify-between items-center">
                   <CardTitle className="flex items-center gap-3">
@@ -209,8 +210,16 @@ export default function InboxSettings({
                     </span>
                     <span>{bot.name}</span>
                   </CardTitle>
-                  <div className="flex items-center gap-1">
-                    <Button variant="outline" size="sm" onClick={() => handleEditBot(bot)}>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 mr-2">
+                        <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground opacity-50">Active</span>
+                        <Switch 
+                            checked={bot.isEnabled ?? true} 
+                            onCheckedChange={(val) => onBotUpdate(bot.id, { isEnabled: val })}
+                            className="scale-75"
+                        />
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => handleEditBot(bot)} className="h-8 text-xs font-bold px-4 rounded-lg">
                       Configure
                     </Button>
                     <DropdownMenu>
@@ -220,9 +229,6 @@ export default function InboxSettings({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onBotUpdate(bot.id, { isEnabled: !bot.isEnabled })}>
-                          {bot.isEnabled ? 'Disable' : 'Enable'}
-                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDuplicateBot(bot)}>
                           <Copy className="mr-2 h-4 w-4" /> Duplicate
                         </DropdownMenuItem>
@@ -236,7 +242,7 @@ export default function InboxSettings({
               </CardHeader>
               
               {isWebChatMode && (
-                <CardContent className="bg-muted/30 pt-6 border-t">
+                <CardContent className="bg-muted/30 pt-6 border-t border-white/5">
                   <div className="space-y-4">
                     <div className="flex flex-col gap-2">
                       <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">AI Agent Assignment</Label>
@@ -244,7 +250,7 @@ export default function InboxSettings({
                         value={bot.assignedAgentId || 'none'} 
                         onValueChange={(val) => handleAgentAssignment(bot.id, val)}
                       >
-                        <SelectTrigger className="bg-background h-11">
+                        <SelectTrigger className="bg-background h-11 border-white/10">
                           <SelectValue placeholder="No Agent (Route to Inbox)" />
                         </SelectTrigger>
                         <SelectContent>
@@ -256,7 +262,7 @@ export default function InboxSettings({
                       </Select>
                     </div>
                     
-                    <div className="p-3 rounded-xl border bg-background/50 flex items-center gap-3">
+                    <div className="p-3 rounded-xl border border-white/5 bg-background/50 flex items-center gap-3">
                       {bot.assignedAgentId ? (
                         <>
                           <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center text-green-500">

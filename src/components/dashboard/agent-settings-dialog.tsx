@@ -51,7 +51,8 @@ import {
   Eye,
   Upload,
   Plus,
-  Image as ImageIcon
+  Image as ImageIcon,
+  EyeOff
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -898,30 +899,19 @@ export default function AgentSettingsDialog({
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 mr-2">
-                        <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground opacity-50">Active</span>
-                        <FormField
-                            control={form.control}
-                            name="isEnabled"
-                            render={({ field }) => (
-                                <Switch checked={field.value} onCheckedChange={field.onChange} className="scale-75" />
-                            )}
-                        />
-                    </div>
-                    <Separator orientation="vertical" className="h-6 bg-white/10" />
                     <Button 
                         type="button" 
                         variant="ghost" 
-                        size="sm" 
+                        size="icon" 
                         onClick={() => setIsPreviewOpen(!isPreviewOpen)}
                         className={cn(
-                            "rounded-full h-9 px-4 text-xs font-bold gap-2", 
+                            "rounded-full h-9 w-9", 
                             isPreviewOpen ? "bg-primary/10 text-primary hover:bg-primary/20" : "text-muted-foreground hover:text-white"
                         )}
                     >
-                        <Eye className="h-3.5 w-3.5" />
-                        {isPreviewOpen ? "Hide Preview" : "Show Preview"}
+                        {isPreviewOpen ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
+                    <Separator orientation="vertical" className="h-6 bg-white/10" />
                     <Button type="submit" className="rounded-full h-9 px-6 font-black shadow-lg shadow-primary/20">
                         Save Changes
                     </Button>
@@ -934,9 +924,9 @@ export default function AgentSettingsDialog({
             {/* Main Content Area */}
             <div className="flex-1 flex overflow-hidden relative">
                 <ScrollArea className="flex-1 h-full">
-                    <div className="p-10 max-w-4xl mx-auto space-y-10 pb-32">
+                    <div className="p-10 max-w-4xl mx-auto space-y-10 pb-32 text-left">
                         {activeTab === 'general' && (
-                            <div className="space-y-8 animate-in fade-in duration-300 text-left">
+                            <div className="space-y-8 animate-in fade-in duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">General</h2>
                                     <p className="text-muted-foreground text-sm">Identity and human team settings.</p>
@@ -954,7 +944,7 @@ export default function AgentSettingsDialog({
                                 />
 
                                 {mode === 'widget' && (
-                                    <div className="space-y-10 pt-4 border-t border-white/5 text-left">
+                                    <div className="space-y-10 pt-4 border-t border-white/5">
                                         <div className="space-y-4">
                                             <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Human Team Members</Label>
                                             <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02]">
@@ -1049,7 +1039,7 @@ export default function AgentSettingsDialog({
 
                         {activeTab === 'channels' && (
                             <div className="space-y-12 animate-in fade-in duration-300">
-                                <div className="text-left">
+                                <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">Channels</h2>
                                     <p className="text-muted-foreground text-sm">Channels route to the inbox by default. Enabling a channel here adds AI on top of your existing connections.</p>
                                 </div>
@@ -1062,7 +1052,7 @@ export default function AgentSettingsDialog({
                                         { id: 'email', label: 'Email', icon: Mail, desc: 'Sync and automate email threads.' }
                                     ].filter(c => !isPersonalAgent || c.id !== 'web').map(channel => (
                                         <Card key={channel.id} className="bg-[#161b22] border-white/10 overflow-hidden">
-                                            <div className="p-6 flex items-center justify-between border-b border-white/5 text-left">
+                                            <div className="p-6 flex items-center justify-between border-b border-white/5">
                                                 <div className="flex items-center gap-4">
                                                     <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary"><channel.icon className="h-5 w-5" /></div>
                                                     <div>
@@ -1091,7 +1081,7 @@ export default function AgentSettingsDialog({
                         )}
 
                         {activeTab === 'knowledge' && (
-                            <div className="space-y-8 animate-in fade-in duration-300 text-left">
+                            <div className="space-y-8 animate-in fade-in duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">Knowledge</h2>
                                     <p className="text-muted-foreground text-sm">Select libraries this agent can reference to answer questions.</p>
@@ -1103,8 +1093,8 @@ export default function AgentSettingsDialog({
                                                 <div className="h-10 w-10 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
                                                     <BookOpen className="h-5 w-5" />
                                                 </div>
-                                                <div className="flex flex-col text-left">
-                                                    <span className="text-sm font-bold text-white">{hc.name}</span>
+                                                <div>
+                                                    <span className="text-sm font-bold text-white block">{hc.name}</span>
                                                     <span className="text-[10px] text-muted-foreground uppercase">{hc.visibility}</span>
                                                 </div>
                                             </div>
@@ -1129,7 +1119,7 @@ export default function AgentSettingsDialog({
                         )}
 
                         {activeTab === 'branding' && mode === 'widget' && (
-                            <div className="space-y-10 animate-in fade-in duration-300 text-left">
+                            <div className="space-y-10 animate-in fade-in duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">Branding</h2>
                                     <p className="text-muted-foreground text-sm">Customize your widget's appearance.</p>
@@ -1201,7 +1191,7 @@ export default function AgentSettingsDialog({
                         )}
 
                         {activeTab === 'installation' && mode === 'widget' && (
-                            <div className="space-y-10 animate-in fade-in duration-300 text-left">
+                            <div className="space-y-10 animate-in fade-in duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">Install</h2>
                                     <p className="text-muted-foreground text-sm">Embed code for your website.</p>
