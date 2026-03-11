@@ -55,7 +55,9 @@ import {
   Bell,
   Eye,
   Upload,
-  Users
+  Users,
+  Plus,
+  Image as ImageIcon
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -665,7 +667,7 @@ export default function AgentSettingsDialog({
                                 <FormItem>
                                     <FormLabel className="text-xs">If no agent answers...</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger></FormControl>
+                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                         <SelectContent>
                                             <SelectItem value="voicemail">Take voicemail</SelectItem>
                                             <SelectItem value="ai_resolve">AI attempts resolution</SelectItem>
