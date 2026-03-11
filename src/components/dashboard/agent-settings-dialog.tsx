@@ -253,14 +253,18 @@ export default function AgentSettingsDialog({
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !bot) return;
+    if (!file) return;
+
+    // Use current bot ID or a temporary one for new bots
+    const botIdForPath = bot?.id || `new_bot_${Date.now()}`;
 
     setIsUploadingLogo(true);
     try {
-      const url = await db.uploadBotLogo(file, bot.id);
+      const url = await db.uploadBotLogo(file, botIdForPath);
       form.setValue('logoUrl', url);
       toast({ title: 'Logo uploaded' });
     } catch (err) {
+      console.error("Logo upload failed:", err);
       toast({ variant: 'destructive', title: 'Upload failed' });
     } finally {
       setIsUploadingLogo(false);
