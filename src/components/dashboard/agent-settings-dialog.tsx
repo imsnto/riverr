@@ -1076,9 +1076,9 @@ export default function AgentSettingsDialog({
                                 </div>
                                 <div className="p-6 rounded-2xl border border-white/10 bg-[#161b22] space-y-4">
                                     <pre className="bg-[#0d1117] border border-white/10 p-5 rounded-xl text-xs font-mono text-primary leading-relaxed overflow-x-auto whitespace-pre-wrap text-left">
-                                        <code>{`<script src="https://manowar.cloud/chatbot-loader.js" data-widget-id="${bot?.id}" async></script>`}</code>
+                                        <code>{`<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${bot?.id}" data-hub-id="${bot?.hubId}" async></script>`}</code>
                                     </pre>
-                                    <Button type="button" onClick={() => handleCopy(`<script src="https://manowar.cloud/chatbot-loader.js" data-widget-id="${bot?.id}" async></script>`)} className="w-full h-11 rounded-xl">Copy Snippet</Button>
+                                    <Button type="button" onClick={() => handleCopy(`<script src="https://manowar.cloud/chatbot-loader.js" data-bot-id="${bot?.id}" data-hub-id="${bot?.hubId}" async></script>`)} className="w-full h-11 rounded-xl">Copy Snippet</Button>
                                 </div>
                             </div>
                         )}

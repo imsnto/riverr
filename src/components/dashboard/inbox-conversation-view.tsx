@@ -184,6 +184,7 @@ export default function InboxConversationView({
         setIsSending(false);
       }
     } else {
+      console.log('agent')
       const newMessage: Omit<ChatMessage, 'id' | 'conversationId'> = {
         authorId: appUser.id,
         type: isNote ? 'note' : 'message',
