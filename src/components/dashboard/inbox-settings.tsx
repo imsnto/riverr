@@ -319,6 +319,8 @@ export default function InboxSettings({
         helpCenters={helpCenters}
         mode={isWebChatMode ? 'widget' : 'agent'}
         hubWidgets={isWebChatMode ? [] : bots.filter(b => b.type === 'widget' || !b.type)}
+        activeHub={activeHub}
+        activeSpace={activeSpace}
       />
 
       <AlertDialog open={!!botToDelete} onOpenChange={() => setBotToDelete(null)}>

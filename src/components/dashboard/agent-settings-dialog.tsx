@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/form';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Bot as BotData, User, HelpCenter } from '@/lib/data';
+import { Bot as BotData, User, HelpCenter, Hub, Space } from '@/lib/data';
 import { 
   Bot as BotIcon, 
   X, 
@@ -59,8 +59,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '../ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '../ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useToast } from '@/hooks/use-toast';
@@ -114,6 +114,8 @@ interface AgentSettingsDialogProps {
   helpCenters: HelpCenter[];
   mode: 'agent' | 'widget';
   hubWidgets?: BotData[];
+  activeHub?: Hub | null;
+  activeSpace?: Space | null;
 }
 
 export default function AgentSettingsDialog({
@@ -126,6 +128,8 @@ export default function AgentSettingsDialog({
   helpCenters,
   mode,
   hubWidgets = [],
+  activeHub,
+  activeSpace,
 }: AgentSettingsDialogProps) {
   const [activeTab, setActiveTab] = useState('general');
   const [activeConfigPath, setActiveConfigPath] = useState<string | null>(null);
@@ -208,6 +212,19 @@ export default function AgentSettingsDialog({
   }, [bot, form, isOpen]);
 
   const watchedValues = form.watch();
+
+  const filteredMembers = useMemo(() => {
+    // If we have context, filter by the relevant members
+    if (activeSpace) {
+        // If it's a private hub, only show hub members
+        if (mode === 'widget' && activeHub?.isPrivate && activeHub.memberIds) {
+            return allUsers.filter(u => activeHub.memberIds?.includes(u.id));
+        }
+        // Otherwise, show everyone in the space
+        return allUsers.filter(u => activeSpace.members && activeSpace.members[u.id]);
+    }
+    return allUsers;
+  }, [allUsers, activeSpace, activeHub, mode]);
 
   const widgetsUsingThisAgent = useMemo(() => {
     if (mode !== 'agent' || !bot) return [];
@@ -990,10 +1007,10 @@ export default function AgentSettingsDialog({
                                                     <PopoverContent className="w-64 p-0" align="start">
                                                         <Command>
                                                             <CommandInput placeholder="Search members..." />
-                                                            <CommandList>
+                                                            <CommandList className="max-h-64 overflow-y-auto">
                                                                 <CommandEmpty>No members found.</CommandEmpty>
                                                                 <CommandGroup>
-                                                                    {allUsers.map(user => (
+                                                                    {filteredMembers.map(user => (
                                                                         <CommandItem 
                                                                             key={user.id} 
                                                                             onSelect={() => {
