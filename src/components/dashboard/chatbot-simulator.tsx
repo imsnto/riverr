@@ -1,17 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Bot as BotData, AutomationFlow, ChatMessage, User } from '@/lib/data';
+import { Bot as BotData, AutomationFlow, ChatMessage, User, Attachment } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, X, Bot, Loader2, MessageCircle, ChevronRight, Plus } from 'lucide-react';
+import { Send, X, Bot, Loader2, MessageCircle, ChevronRight, Plus, Paperclip, ImageIcon, File as FileIcon } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { marked } from 'marked';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
 interface ChatbotSimulatorProps {
   isOpen: boolean;
@@ -41,6 +42,9 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
   const [previewName, setPreviewName] = useState('');
   const [previewEmail, setPreviewEmail] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -139,7 +143,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
   }, [messages, isThinking, isWidgetOpen]);
 
   const handleInput = (text: string, buttonId?: string, forceNodeId?: string) => {
-    if (!text.trim() && !buttonId && !forceNodeId) return;
+    if (!text.trim() && !buttonId && !forceNodeId && attachments.length === 0) return;
     
     const targetNodeId = forceNodeId || currentNodeId;
     const currentNode = nodes.find(n => n.id === targetNodeId);
@@ -154,8 +158,21 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
     }
 
     if (!forceNodeId) {
-        setMessages(prev => [...prev, { id: Date.now(), role: 'user', text: text || 'Click' }]);
+        const msgAttachments = attachments.map(file => ({
+            id: `att-${Date.now()}-${Math.random()}`,
+            name: file.name,
+            url: URL.createObjectURL(file),
+            type: file.type.startsWith('image/') ? 'image' : 'file',
+        }));
+
+        setMessages(prev => [...prev, { 
+            id: Date.now(), 
+            role: 'user', 
+            text: text || (msgAttachments.length > 0 ? 'Sent an attachment' : 'Click'),
+            attachments: msgAttachments
+        }]);
         setUserInput('');
+        setAttachments([]);
     }
     
     let targetEdge;
@@ -174,6 +191,12 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
     }
 
     if (targetEdge) handleStep(targetEdge.target);
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      setAttachments(prev => [...prev, ...Array.from(event.target.files!)]);
+    }
   };
 
   if (!isOpen) return null;
@@ -253,6 +276,23 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
                               ) : (
                                   <p className="whitespace-pre-wrap">{m.text}</p>
                               )}
+
+                              {m.attachments && m.attachments.length > 0 && (
+                                <div className="mt-2 space-y-1">
+                                    {m.attachments.map((att: any) => (
+                                        <div key={att.id}>
+                                            {att.type === 'image' ? (
+                                                <img src={att.url} alt={att.name} className="rounded-lg max-w-full h-auto object-cover" />
+                                            ) : (
+                                                <div className="flex items-center gap-2 text-[10px] text-white/80 p-1 bg-black/20 rounded">
+                                                    <FileIcon className="h-3 w-3" />
+                                                    <span className="truncate">{att.name}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                              )}
                               
                               {m.isIdentityForm && (
                                 <div className="mt-3 space-y-2 p-2.5 border-t border-white/10 bg-black/20 rounded-xl text-left">
@@ -311,24 +351,67 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
         </ScrollArea>
 
         {/* Footer */}
-        <div className="p-2.5 border-t border-white/5 bg-black/20 shrink-0">
-          <div className="relative flex items-end gap-2">
+        <div className="p-2 border-t border-white/5 bg-zinc-900 shrink-0">
+          <div className="flex items-end gap-1">
+            <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" multiple />
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-full hover:bg-white/5 text-muted-foreground">
+                        <Plus className="h-4 w-4" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="start" className="w-auto p-1 text-[10px]">
+                    <Button variant="ghost" size="sm" className="w-full justify-start h-8 px-2 text-[10px]" onClick={() => fileInputRef.current?.click()}>
+                        <Paperclip className="mr-2 h-3.5 w-3.5" />
+                        Attachment
+                    </Button>
+                </PopoverContent>
+            </Popover>
+
             <div className="relative flex-1">
-              <Textarea 
-                placeholder="Message..." 
-                className="pr-8 rounded-xl min-h-[36px] max-h-24 border-none bg-white/5 focus-visible:ring-0 text-[11px] py-2 text-white resize-none" 
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleInput(userInput);
-                    }
-                }}
-              />
-              <Button type="button" size="icon" variant="ghost" className="absolute right-0.5 bottom-0.5 h-7 w-7 rounded-full text-muted-foreground hover:text-white" onClick={() => handleInput(userInput)}>
-                <Send className="h-3.5 w-3.5" />
-              </Button>
+              {attachments.length > 0 && (
+                <div className="p-1 space-y-1 mb-1">
+                  {attachments.map((file, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 text-[9px] bg-zinc-800 p-1.5 rounded-md">
+                      <div className="flex items-center gap-1.5 overflow-hidden">
+                        {file.type.startsWith('image/') ? (
+                          <ImageIcon className="h-3 w-3 flex-shrink-0" />
+                        ) : (
+                          <FileIcon className="h-3 w-3 flex-shrink-0" />
+                        )}
+                        <span className="truncate">{file.name}</span>
+                      </div>
+                      <Button type="button" variant="ghost" size="icon" className="h-4 w-4 hover:bg-white/10" onClick={() => setAttachments(attachments.filter((_, index) => index !== i))}>
+                        <X className="h-2.5 w-2.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="relative">
+                <Textarea 
+                    placeholder="Message..." 
+                    className="pr-8 rounded-xl min-h-[36px] max-h-24 border-none bg-zinc-800 focus-visible:ring-0 text-[11px] py-2 text-white resize-none" 
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleInput(userInput);
+                        }
+                    }}
+                />
+                <Button 
+                    type="button" 
+                    size="icon" 
+                    variant="ghost" 
+                    className="absolute right-0.5 bottom-0.5 h-7 w-7 rounded-full text-muted-foreground hover:text-white" 
+                    onClick={() => handleInput(userInput)}
+                    disabled={!userInput.trim() && attachments.length === 0}
+                >
+                    <Send className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -349,4 +432,8 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
       </button>
     </div>
   );
+}
+
+function differenceInDays(d1: Date, d2: Date) {
+  return Math.floor((d1.getTime() - d2.getTime()) / (1000 * 60 * 60 * 24));
 }
