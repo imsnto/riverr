@@ -75,6 +75,12 @@ import ChatbotSimulator from './chatbot-simulator';
 import * as db from '@/lib/db';
 
 const agentSettingsSchema = z.object({
+  id: z.string().optional(),
+  type: z.string().optional(),
+  hubId: z.string().optional(),
+  spaceId: z.string().optional(),
+  ownerType: z.string().optional(),
+  ownerId: z.string().optional(),
   name: z.string().min(1, 'Name is required.'),
   isEnabled: z.boolean().default(true),
   aiEnabled: z.boolean().default(true),
@@ -172,6 +178,12 @@ export default function AgentSettingsDialog({
   useEffect(() => {
     if (bot) {
       form.reset({
+        id: bot.id,
+        type: bot.type,
+        hubId: bot.hubId,
+        spaceId: bot.spaceId,
+        ownerType: bot.ownerType,
+        ownerId: bot.ownerId,
         name: bot.name,
         isEnabled: bot.isEnabled ?? true,
         aiEnabled: bot.aiEnabled ?? true,
