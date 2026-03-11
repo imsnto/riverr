@@ -21,7 +21,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Bot as BotData, User, HelpCenter, PhoneChannelLookup, EmailConfig } from '@/lib/data';
 import { 
@@ -52,7 +52,8 @@ import {
   Info,
   Trash2,
   Target,
-  Bell
+  Bell,
+  Eye
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -71,6 +72,7 @@ import { Slider } from '@/components/ui/slider';
 import Link from 'next/link';
 import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ChatbotSimulator from './chatbot-simulator';
 
 const agentSettingsSchema = z.object({
   name: z.string().min(1, 'Name is required.'),
@@ -84,6 +86,10 @@ const agentSettingsSchema = z.object({
   logoUrl: z.string().optional(),
   chatbotIconsColor: z.string().optional(),
   chatbotIconsTextColor: z.string().optional(),
+  headerTextColor: z.string().optional(),
+  customerTextColor: z.string().optional(),
+  agentMessageBackgroundColor: z.string().optional(),
+  agentMessageTextColor: z.string().optional(),
   agentIds: z.array(z.string()).optional(),
   allowedHelpCenterIds: z.array(z.string()).optional(),
   channelConfig: z.any().optional(),
@@ -117,6 +123,7 @@ export default function AgentSettingsDialog({
 }: AgentSettingsDialogProps) {
   const [activeTab, setActiveTab] = useState('general');
   const [activeConfigPath, setActiveConfigPath] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -136,6 +143,10 @@ export default function AgentSettingsDialog({
       logoUrl: '',
       chatbotIconsColor: '#3b82f6',
       chatbotIconsTextColor: '#ffffff',
+      headerTextColor: '#ffffff',
+      customerTextColor: '#ffffff',
+      agentMessageBackgroundColor: '#374151',
+      agentMessageTextColor: '#ffffff',
       agentIds: [],
       allowedHelpCenterIds: [],
       channelConfig: {
@@ -152,40 +163,6 @@ export default function AgentSettingsDialog({
           conversationGoal: 'Resolve the customer\'s issue efficiently and collect contact details.',
           identityCapture: { timing: 'after', fields: { name: true, email: true, phone: false } },
           afterHoursBehavior: 'ai_full'
-        },
-        supportEmail: { 
-          tone: 'professional', 
-          signOff: 'Best regards, The Support Team', 
-          alwaysAddress: '', 
-          escalationTriggers: [],
-          escalateOnSentiment: true 
-        },
-        personalEmail: {
-          writingStyle: 'Professional and warm.',
-          responseLength: 'match',
-          signOff: `Thanks, ${appUser?.name.split(' ')[0]}`,
-          contextAwareness: true,
-          alwaysAddress: '',
-        },
-        sms: { 
-          responseStyle: 'concise', 
-          openingMessage: "Hi! You've reached support. How can I help?", 
-          afterHoursBehavior: 'ai_full', 
-          handoffKeywords: ['agent', 'human'], 
-          sentimentEscalation: true,
-          smartTiming: true
-        },
-        voice: { 
-          greetingScript: 'Hi! Thank you for calling. How can I help?', 
-          callHandlingMode: 'full_ai', 
-          handoffTarget: 'any', 
-          handoffTimeoutSeconds: 60, 
-          handoffFallback: 'voicemail', 
-          voicemailEnabled: true, 
-          transcriptionEnabled: true, 
-          afterHoursBehavior: 'ai_full',
-          aiGreetingEnabled: true,
-          callbackNotification: true
         }
       }
     },
@@ -205,6 +182,10 @@ export default function AgentSettingsDialog({
         logoUrl: bot.styleSettings?.logoUrl || '',
         chatbotIconsColor: bot.styleSettings?.chatbotIconsColor || '#3b82f6',
         chatbotIconsTextColor: bot.styleSettings?.chatbotIconsTextColor || '#ffffff',
+        headerTextColor: bot.styleSettings?.headerTextColor || '#ffffff',
+        customerTextColor: bot.styleSettings?.customerTextColor || '#ffffff',
+        agentMessageBackgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151',
+        agentMessageTextColor: bot.styleSettings?.agentMessageTextColor || '#ffffff',
         agentIds: bot.agentIds || [],
         allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
         channelConfig: bot.channelConfig || {},
@@ -254,19 +235,17 @@ export default function AgentSettingsDialog({
       return obj;
     };
 
-    const styleSettings = mode === 'widget' ? {
+    const styleSettings = {
         primaryColor: values.primaryColor || '#3b82f6',
         backgroundColor: values.backgroundColor || '#111827',
         logoUrl: values.logoUrl || '',
         chatbotIconsColor: values.chatbotIconsColor || '#3b82f6',
         chatbotIconsTextColor: values.chatbotIconsTextColor || '#ffffff',
-    } : (bot?.styleSettings || {
-        primaryColor: '#3b82f6',
-        backgroundColor: '#111827',
-        logoUrl: '',
-        chatbotIconsColor: '#3b82f6',
-        chatbotIconsTextColor: '#ffffff',
-    });
+        headerTextColor: values.headerTextColor || '#ffffff',
+        customerTextColor: values.customerTextColor || '#ffffff',
+        agentMessageBackgroundColor: values.agentMessageBackgroundColor || '#374151',
+        agentMessageTextColor: values.agentMessageTextColor || '#ffffff',
+    };
 
     const commonData = deepSanitize({
         ...values,
@@ -917,7 +896,23 @@ export default function AgentSettingsDialog({
                 </div>
             </aside>
 
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+                <header className="flex items-center justify-between p-4 border-b border-white/10 bg-[#0d1117] shrink-0">
+                    <div className="flex items-center gap-2"></div>
+                    <div className="flex items-center gap-3">
+                        <Button 
+                            type="button" 
+                            variant={isPreviewOpen ? "secondary" : "outline"} 
+                            size="sm" 
+                            onClick={() => setIsPreviewOpen(!isPreviewOpen)}
+                            className="rounded-full bg-white/5 border-white/10 h-9 px-4 text-xs font-bold gap-2"
+                        >
+                            <Eye className="h-3.5 w-3.5" />
+                            {isPreviewOpen ? "Hide Preview" : "Preview Widget"}
+                        </Button>
+                    </div>
+                </header>
+
                 <ScrollArea className="flex-1 text-left">
                     <div className="p-8 max-w-4xl mx-auto space-y-10">
                         {activeTab === 'general' && (
@@ -1056,14 +1051,44 @@ export default function AgentSettingsDialog({
                                     <h2 className="text-2xl font-bold text-white mb-1">Branding</h2>
                                     <p className="text-muted-foreground text-sm">Customize your widget's appearance.</p>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="space-y-4">
-                                        <ColorField name="primaryColor" label="Primary Color" form={form} />
-                                        <ColorField name="backgroundColor" label="Background Color" form={form} />
+                                
+                                <div className="space-y-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="space-y-4">
+                                            <Label className="text-[10px] uppercase font-black tracking-widest text-primary">Main Theme</Label>
+                                            <ColorField name="primaryColor" label="Primary Color" form={form} />
+                                            <ColorField name="backgroundColor" label="Background Color" form={form} />
+                                            <FormField
+                                                control={form.control}
+                                                name="logoUrl"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-[10px] font-bold text-muted-foreground/70">Logo URL</FormLabel>
+                                                        <FormControl><Input placeholder="https://..." {...field} className="bg-muted/20 border-white/10 h-9" /></FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                        <div className="space-y-4">
+                                            <Label className="text-[10px] uppercase font-black tracking-widest text-primary">Launcher</Label>
+                                            <ColorField name="chatbotIconsColor" label="Launcher Color" form={form} />
+                                            <ColorField name="chatbotIconsTextColor" label="Icon Color" form={form} />
+                                        </div>
                                     </div>
-                                    <div className="space-y-4">
-                                        <ColorField name="chatbotIconsColor" label="Launcher Color" form={form} />
-                                        <ColorField name="chatbotIconsTextColor" label="Icon Color" form={form} />
+
+                                    <Separator className="bg-white/5" />
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="space-y-4">
+                                            <Label className="text-[10px] uppercase font-black tracking-widest text-primary">Agent Messages</Label>
+                                            <ColorField name="agentMessageBackgroundColor" label="Bubble Background" form={form} />
+                                            <ColorField name="agentMessageTextColor" label="Text Color" form={form} />
+                                            <ColorField name="headerTextColor" label="Header Text Color" form={form} />
+                                        </div>
+                                        <div className="space-y-4">
+                                            <Label className="text-[10px] uppercase font-black tracking-widest text-primary">Customer Messages</Label>
+                                            <ColorField name="customerTextColor" label="Text Color" form={form} />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1130,6 +1155,32 @@ export default function AgentSettingsDialog({
                     <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-white">Cancel</Button>
                     <Button type="submit" className="rounded-xl px-8 shadow-lg shadow-primary/20">Save {mode === 'widget' ? 'Widget' : 'Agent'}</Button>
                 </footer>
+
+                {isPreviewOpen && (
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-[300] flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
+                        <ChatbotSimulator 
+                            isOpen={isPreviewOpen}
+                            onClose={() => setIsPreviewOpen(false)}
+                            botData={{
+                                ...bot,
+                                name: watchedValues.name,
+                                styleSettings: {
+                                    primaryColor: watchedValues.primaryColor || '#3b82f6',
+                                    backgroundColor: watchedValues.backgroundColor || '#111827',
+                                    logoUrl: watchedValues.logoUrl || '',
+                                    chatbotIconsColor: watchedValues.chatbotIconsColor || '#3b82f6',
+                                    chatbotIconsTextColor: watchedValues.chatbotIconsTextColor || '#ffffff',
+                                    headerTextColor: watchedValues.headerTextColor || '#ffffff',
+                                    customerTextColor: watchedValues.customerTextColor || '#ffffff',
+                                    agentMessageBackgroundColor: watchedValues.agentMessageBackgroundColor || '#374151',
+                                    agentMessageTextColor: watchedValues.agentMessageTextColor || '#ffffff',
+                                }
+                            }}
+                            flow={bot?.flow || { nodes: [], edges: [] }}
+                            agents={allUsers.filter(u => watchedValues.agentIds?.includes(u.id))}
+                        />
+                    </div>
+                )}
             </div>
           </form>
         </Form>
