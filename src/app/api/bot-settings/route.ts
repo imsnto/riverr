@@ -31,8 +31,33 @@ export async function GET(request: NextRequest) {
     }
 
     const botData = botDoc.data();
-    const agentIds = botData?.agentIds || [];
     
+    // Resolve Greeting and Personality Logic
+    let resolvedGreeting = botData?.welcomeMessage;
+    let webAgentName = botData?.webAgentName || botData?.name || 'Assistant';
+    let agentIds = botData?.agentIds || [];
+
+    // If this is a widget, check for assigned AI Agent to inherit persona and human team
+    if (botData?.type === 'widget' && botData?.assignedAgentId) {
+      const aiAgentDoc = await adminDB.collection('bots').doc(botData.assignedAgentId).get();
+      if (aiAgentDoc.exists) {
+        const aiAgentData = aiAgentDoc.data();
+        
+        // Inherit human team members from the Agent if widget has none
+        if (agentIds.length === 0) {
+          agentIds = aiAgentData?.agentIds || [];
+        }
+
+        const webConfig = aiAgentData?.workflowConfig?.web;
+        if (webConfig) {
+          const aiName = webConfig.webAgentName || aiAgentData.name || 'Assistant';
+          const aiBaseGreeting = webConfig.welcomeMessage || "How can I help you today?";
+          webAgentName = aiName;
+          resolvedGreeting = `Hi, I'm ${aiName}. ${aiBaseGreeting}`;
+        }
+      }
+    }
+
     let agents: { id: string; name: string; avatarUrl: string }[] = [];
     if (agentIds.length > 0) {
         const userPromises = agentIds.map((id: string) => adminDB.collection('users').doc(id).get());
@@ -47,26 +72,6 @@ export async function GET(request: NextRequest) {
                     avatarUrl: data?.avatarUrl || '',
                 };
             });
-    }
-
-    // Resolve Greeting Logic: 
-    // If an agent is attached, use the agent's greeting + name.
-    // Otherwise use the widget's greeting.
-    let resolvedGreeting = botData?.welcomeMessage;
-    let webAgentName = botData?.webAgentName || botData?.name || 'Assistant';
-
-    if (botData?.assignedAgentId) {
-      const aiAgentDoc = await adminDB.collection('bots').doc(botData.assignedAgentId).get();
-      if (aiAgentDoc.exists) {
-        const aiAgentData = aiAgentDoc.data();
-        const webConfig = aiAgentData?.workflowConfig?.web;
-        if (webConfig) {
-          const aiName = webConfig.webAgentName || aiAgentData.name || 'Assistant';
-          const aiBaseGreeting = webConfig.welcomeMessage || "How can I help you today?";
-          webAgentName = aiName;
-          resolvedGreeting = `Hi, I'm ${aiName}. ${aiBaseGreeting}`;
-        }
-      }
     }
 
     // Only return public-safe settings

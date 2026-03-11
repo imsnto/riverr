@@ -505,31 +505,27 @@ async function executeAiPhase(args: {
   });
 
   const chunks = docSearch.chunks ?? [];
-  const topScore = chunks.length ? Math.max(...chunks.map(c => c.score)) : 0;
+  
+  // ALWAYS generate a natural, grounded answer using the context we found (if any)
+  const context = chunks.map(c => ({ title: c.title, text: c.chunkText, url: c.url }));
+  
+  const answer = await adapters.generateAnswer({
+      query: text,
+      botName: botName,
+      context,
+      greetingScript: systemInstruction
+  });
 
-  if (topScore >= 0.5) {
-      const context = chunks.map(c => ({ title: c.title, text: c.chunkText, url: c.url }));
-      
-      // Use Genkit to generate a natural, grounded answer
-      const answer = await adapters.generateAnswer({
-          query: text,
-          botName: botName,
-          context,
-          greetingScript: systemInstruction
-      });
-
-      await adapters.persistAssistantMessage({
-          conversationId: conversation.id,
-          hubId: conversation.hubId,
-          text: answer,
-          responderType: 'ai',
-          sources: chunks.slice(0, 3).map(c => ({ articleId: c.articleId, title: c.title, url: c.url, score: c.score })),
-      });
-      await adapters.updateConversation({ conversationId: conversation.id, hubId: conversation.hubId, patch: { aiResolved: true } });
-      return true;
-  }
-
-  return false;
+  await adapters.persistAssistantMessage({
+      conversationId: conversation.id,
+      hubId: conversation.hubId,
+      text: answer,
+      responderType: 'ai',
+      sources: chunks.slice(0, 3).map(c => ({ articleId: c.articleId, title: c.title, url: c.url, score: c.score })),
+  });
+  await adapters.updateConversation({ conversationId: conversation.id, hubId: conversation.hubId, patch: { aiResolved: true } });
+  
+  return true;
 }
 
 // -------------------------

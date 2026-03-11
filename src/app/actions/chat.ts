@@ -121,7 +121,6 @@ export async function updateConversation(conversationId: string, data: Partial<C
     const cleanData = Object.fromEntries(
         Object.entries(data).filter(([_, v]) => v !== undefined)
     );
-    console.log('cleaData', cleanData, data)
 
     await convRef.update(cleanData as any);
   
@@ -337,7 +336,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
         .where("primaryPhone", "==", fromE164)
         .limit(1)
         .get();
-      if (!byRaw.empty) contactId = bRaw.docs[0].id;
+      if (!byRaw.empty) contactId = byRaw.docs[0].id;
     }
 
     const now = new Date();
@@ -484,7 +483,22 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
       conversation: Conversation;
       message: IncomingMessage;
   }) {
-      const { bot } = args;
+      let { bot } = args;
+
+      // ---- INTELLIGENT AGENT RESOLUTION ----
+      // If this is a widget, resolve its brain from the assigned AI Agent
+      if (bot.assignedAgentId) {
+          const aiAgentDoc = await adminDB.collection('bots').doc(bot.assignedAgentId).get();
+          if (aiAgentDoc.exists) {
+              const aiAgentData = aiAgentDoc.data();
+              bot = {
+                  ...bot, // keep widget metadata
+                  ...aiAgentData, // inherit agent knowledge and logic
+                  id: aiAgentDoc.id,
+              };
+          }
+      }
+
       const adapters: AgentAdapters = {
           searchHelpCenter,
           searchSupport,
