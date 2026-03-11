@@ -183,61 +183,61 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
       {/* Floating Chat Window */}
       <div 
         className={cn(
-            "absolute bottom-24 right-6 w-[340px] h-[520px] rounded-2xl shadow-2xl border border-white/10 flex flex-col overflow-hidden transition-all duration-300 transform origin-bottom-right",
+            "absolute bottom-20 right-6 w-[280px] h-[440px] rounded-2xl shadow-2xl border border-white/10 flex flex-col overflow-hidden transition-all duration-300 transform origin-bottom-right",
             isWidgetOpen ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 translate-y-4 pointer-events-none"
         )}
         style={{ backgroundColor: style.backgroundColor }}
       >
         {/* Header */}
         <div 
-            className="p-4 border-b border-white/5 flex items-center justify-between shrink-0"
+            className="p-3 border-b border-white/5 flex items-center justify-between shrink-0"
             style={{ backgroundColor: style.backgroundColor }}
         >
           <div className="flex items-center gap-3 text-left">
-            <Avatar className="h-9 w-9 rounded-full border border-white/10 shadow-sm shrink-0">
+            <Avatar className="h-8 w-8 rounded-full border border-white/10 shadow-sm shrink-0">
               <AvatarImage src={style.logoUrl} className="object-contain" />
-              <AvatarFallback className="bg-white/5"><Bot className="h-4 w-4 opacity-50" /></AvatarFallback>
+              <AvatarFallback className="bg-white/5"><Bot className="h-3.5 w-3.5 opacity-50" /></AvatarFallback>
             </Avatar>
             <div className="flex flex-col min-w-0">
-              <span className="text-xs font-bold truncate" style={{ color: style.headerTextColor }}>{botData.name || 'AI Assistant'}</span>
-              <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[11px] font-bold truncate" style={{ color: style.headerTextColor }}>{botData.name || 'AI Assistant'}</span>
+              <div className="flex items-center gap-1 mt-0.5">
                 <div className="flex -space-x-1.5">
                     {agents.slice(0, 3).map(agent => (
-                    <Avatar key={agent.id} className="h-3.5 w-3.5 border border-white/10 ring-1 ring-black/20">
+                    <Avatar key={agent.id} className="h-3 w-3 border border-white/10 ring-1 ring-black/20">
                         <AvatarImage src={agent.avatarUrl} />
-                        <AvatarFallback className="text-[5px]">{getInitials(agent.name)}</AvatarFallback>
+                        <AvatarFallback className="text-[4px]">{getInitials(agent.name)}</AvatarFallback>
                     </Avatar>
                     ))}
                 </div>
-                <span className="text-[9px] font-medium opacity-50 uppercase tracking-tighter" style={{ color: style.headerTextColor }}>Online</span>
+                <span className="text-[8px] font-medium opacity-50 uppercase tracking-tighter" style={{ color: style.headerTextColor }}>Online</span>
               </div>
             </div>
           </div>
-          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-white/5" onClick={() => setIsWidgetOpen(false)}>
-            <X className="h-4 w-4" style={{ color: style.headerTextColor }} />
+          <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-white/5" onClick={() => setIsWidgetOpen(false)}>
+            <X className="h-3.5 w-3.5" style={{ color: style.headerTextColor }} />
           </Button>
         </div>
 
         {/* Body */}
         <ScrollArea className="flex-1" ref={scrollRef}>
-          <div className="p-4 space-y-5">
+          <div className="p-3 space-y-4">
             <div className="flex items-end gap-2 justify-start">
-              <div className="p-3 rounded-2xl text-xs shadow-sm rounded-bl-none text-left" style={{ backgroundColor: style.agentMessageBackgroundColor, color: style.agentMessageTextColor }}>
+              <div className="p-2.5 rounded-2xl text-[11px] shadow-sm rounded-bl-none text-left" style={{ backgroundColor: style.agentMessageBackgroundColor, color: style.agentMessageTextColor }}>
                 <p className="whitespace-pre-wrap">{botData.welcomeMessage || 'Hi! How can I help?'}</p>
               </div>
             </div>
-            <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground/50 ml-1 text-left">AI Assistant</p>
+            <p className="text-[8px] uppercase font-black tracking-widest text-muted-foreground/50 ml-1 text-left">AI Assistant</p>
 
             {messages.map((m) => (
               <div key={m.id} className="space-y-1">
                 <div className={cn("flex flex-col gap-2", m.role === 'user' ? "items-end" : "items-start")}>
                   {m.role === 'system' ? (
-                    <Badge variant="outline" className="self-center bg-muted/50 border-white/5 text-[8px] font-black tracking-tight uppercase px-2">{m.text}</Badge>
+                    <Badge variant="outline" className="self-center bg-muted/50 border-white/5 text-[7px] font-black tracking-tight uppercase px-1.5 h-4">{m.text}</Badge>
                   ) : (
                     <>
                       {m.text && (
                           <div className={cn(
-                              "max-w-[85%] p-3 rounded-2xl text-xs shadow-sm text-left",
+                              "max-w-[90%] p-2.5 rounded-2xl text-[11px] shadow-sm text-left",
                               m.role === 'user' ? "rounded-br-none" : "rounded-bl-none"
                           )}
                           style={m.role === 'user' ? { 
@@ -249,33 +249,33 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
                           }}
                           >
                               {m.type === 'ai' ? (
-                                  <div className="prose prose-sm prose-invert text-xs" dangerouslySetInnerHTML={{ __html: marked.parse(m.text) as string }} />
+                                  <div className="prose prose-sm prose-invert text-[11px]" dangerouslySetInnerHTML={{ __html: marked.parse(m.text) as string }} />
                               ) : (
                                   <p className="whitespace-pre-wrap">{m.text}</p>
                               )}
                               
                               {m.isIdentityForm && (
-                                <div className="mt-4 space-y-3 p-3 border-t border-white/10 bg-black/20 rounded-xl text-left">
+                                <div className="mt-3 space-y-2 p-2.5 border-t border-white/10 bg-black/20 rounded-xl text-left">
                                   <div className="space-y-1">
-                                      <Label className="text-[9px] uppercase font-black tracking-widest opacity-70" style={{ color: style.agentMessageTextColor }}>Name</Label>
+                                      <Label className="text-[8px] uppercase font-black tracking-widest opacity-70" style={{ color: style.agentMessageTextColor }}>Name</Label>
                                       <Input 
                                           placeholder="e.g. John Doe" 
-                                          className="h-8 text-[11px] bg-white/5 border-white/10 text-white" 
+                                          className="h-7 text-[10px] bg-white/5 border-white/10 text-white" 
                                           value={previewName}
                                           onChange={(e) => setPreviewName(e.target.value)}
                                       />
                                   </div>
                                   <div className="space-y-1">
-                                      <Label className="text-[9px] uppercase font-black tracking-widest opacity-70" style={{ color: style.agentMessageTextColor }}>Email</Label>
+                                      <Label className="text-[8px] uppercase font-black tracking-widest opacity-70" style={{ color: style.agentMessageTextColor }}>Email</Label>
                                       <Input 
                                           placeholder="e.g. john@example.com" 
-                                          className="h-8 text-[11px] bg-white/5 border-white/10 text-white" 
+                                          className="h-7 text-[10px] bg-white/5 border-white/10 text-white" 
                                           value={previewEmail}
                                           onChange={(e) => setPreviewEmail(e.target.value)}
                                       />
                                   </div>
-                                  {formError && <p className="text-[9px] text-red-400 font-bold">{formError}</p>}
-                                  <Button type="button" size="sm" className="w-full h-8 text-[11px] font-bold mt-2 rounded-lg" style={{ backgroundColor: style.primaryColor, color: style.customerTextColor }} onClick={() => handleInput(`Name: ${previewName}, Email: ${previewEmail}`, undefined, m.nodeId)}>
+                                  {formError && <p className="text-[8px] text-red-400 font-bold">{formError}</p>}
+                                  <Button type="button" size="sm" className="w-full h-7 text-[10px] font-bold mt-1 rounded-lg" style={{ backgroundColor: style.primaryColor, color: style.customerTextColor }} onClick={() => handleInput(`Name: ${previewName}, Email: ${previewEmail}`, undefined, m.nodeId)}>
                                       Submit Details
                                   </Button>
                                 </div>
@@ -283,17 +283,17 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
                           </div>
                       )}
                       {m.buttons && (
-                          <div className="flex flex-wrap gap-2 pt-1">
+                          <div className="flex flex-wrap gap-1.5 pt-1">
                               {m.buttons.map((btn: any) => (
                               <button 
                                   key={btn.id} 
                                   type="button"
                                   onClick={() => handleInput(btn.label, btn.id)}
-                                  className="h-8 px-3 rounded-full border-2 transition-all text-[11px] font-bold flex items-center gap-1 group"
+                                  className="h-7 px-2.5 rounded-full border transition-all text-[10px] font-bold flex items-center gap-1 group"
                                   style={{ borderColor: `${style.primaryColor}40`, color: style.primaryColor }}
                               >
                                   {btn.label}
-                                  <ChevronRight className="h-3 w-3 opacity-50 group-hover:translate-x-0.5 transition-transform" />
+                                  <ChevronRight className="h-2.5 w-2.5 opacity-50 group-hover:translate-x-0.5 transition-transform" />
                               </button>
                               ))}
                           </div>
@@ -302,7 +302,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
                   )}
                 </div>
                 {m.role === 'bot' && (
-                  <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground/50 ml-1 text-left">Team member</p>
+                  <p className="text-[8px] uppercase font-black tracking-widest text-muted-foreground/50 ml-1 text-left">Team member</p>
                 )}
               </div>
             ))}
@@ -311,12 +311,12 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
         </ScrollArea>
 
         {/* Footer */}
-        <div className="p-3 border-t border-white/5 bg-black/20 shrink-0">
+        <div className="p-2.5 border-t border-white/5 bg-black/20 shrink-0">
           <div className="relative flex items-end gap-2">
             <div className="relative flex-1">
               <Textarea 
                 placeholder="Message..." 
-                className="pr-10 rounded-xl min-h-[40px] max-h-32 border-none bg-white/5 focus-visible:ring-0 text-xs py-2 text-white resize-none" 
+                className="pr-8 rounded-xl min-h-[36px] max-h-24 border-none bg-white/5 focus-visible:ring-0 text-[11px] py-2 text-white resize-none" 
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -326,8 +326,8 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
                     }
                 }}
               />
-              <Button type="button" size="icon" variant="ghost" className="absolute right-1 bottom-1 h-8 w-8 rounded-full text-muted-foreground hover:text-white" onClick={() => handleInput(userInput)}>
-                <Send className="h-4 w-4" />
+              <Button type="button" size="icon" variant="ghost" className="absolute right-0.5 bottom-0.5 h-7 w-7 rounded-full text-muted-foreground hover:text-white" onClick={() => handleInput(userInput)}>
+                <Send className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
@@ -338,13 +338,13 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
       <button 
         type="button"
         onClick={() => setIsWidgetOpen(!isWidgetOpen)}
-        className="absolute bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 shrink-0 z-50"
+        className="absolute bottom-6 right-6 h-12 w-12 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 shrink-0 z-50"
         style={{ backgroundColor: style.chatbotIconsColor }}
       >
         {isWidgetOpen ? (
-            <X className="h-7 w-7" style={{ color: style.chatbotIconsTextColor }} />
+            <X className="h-6 w-6" style={{ color: style.chatbotIconsTextColor }} />
         ) : (
-            <MessageCircle className="h-7 w-7" style={{ color: style.chatbotIconsTextColor }} />
+            <MessageCircle className="h-6 w-6" style={{ color: style.chatbotIconsTextColor }} />
         )}
       </button>
     </div>

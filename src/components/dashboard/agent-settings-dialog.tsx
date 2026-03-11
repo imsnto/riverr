@@ -906,7 +906,7 @@ export default function AgentSettingsDialog({
                         onClick={() => setIsPreviewOpen(!isPreviewOpen)}
                         className={cn(
                             "rounded-full h-9 w-9", 
-                            isPreviewOpen ? "bg-primary/10 text-primary hover:bg-primary/20" : "text-muted-foreground hover:text-white"
+                            isPreviewOpen ? "text-muted-foreground hover:text-white" : "bg-primary/10 text-primary hover:bg-primary/20"
                         )}
                     >
                         {isPreviewOpen ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1249,7 +1249,7 @@ export default function AgentSettingsDialog({
 
                 {/* Sidebar Preview */}
                 {isPreviewOpen && (
-                    <aside className="w-[420px] border-l border-white/10 bg-[#090c10] relative flex flex-col shrink-0 animate-in slide-in-from-right duration-500 overflow-hidden">
+                    <aside className="w-[360px] border-l border-white/10 bg-[#090c10] relative flex flex-col shrink-0 animate-in slide-in-from-right duration-500 overflow-hidden">
                         <div className="flex-1 overflow-hidden relative">
                             <ChatbotSimulator 
                                 isOpen={isPreviewOpen}
