@@ -745,7 +745,7 @@ export default function AgentSettingsDialog({
         );
       case 'email':
         return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300 text-left">
+          <div className="space-y-8 animate-in fade-in duration-300 text-left">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {!isPersonalAgent ? (
                   <FormField
@@ -906,10 +906,10 @@ export default function AgentSettingsDialog({
                         onClick={() => setIsPreviewOpen(!isPreviewOpen)}
                         className={cn(
                             "rounded-full h-9 w-9", 
-                            isPreviewOpen ? "text-muted-foreground hover:text-white" : "bg-primary/10 text-primary hover:bg-primary/20"
+                            isPreviewOpen ? "bg-primary/10 text-primary hover:bg-primary/20" : "text-muted-foreground hover:text-white"
                         )}
                     >
-                        {isPreviewOpen ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {isPreviewOpen ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                     </Button>
                     <Separator orientation="vertical" className="h-6 bg-white/10" />
                     <Button type="submit" className="rounded-full h-9 px-6 font-black shadow-lg shadow-primary/20">
@@ -1273,9 +1273,6 @@ export default function AgentSettingsDialog({
                                 flow={bot?.flow || { nodes: [], edges: [] }}
                                 agents={allUsers.filter(u => watchedValues.agentIds?.includes(u.id))}
                             />
-                        </div>
-                        <div className="p-4 bg-black/40 border-t border-white/5 text-center shrink-0">
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-40">Live Appearance Simulator</p>
                         </div>
                     </aside>
                 )}

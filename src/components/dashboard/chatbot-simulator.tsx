@@ -100,7 +100,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
         if (nextEdge) handleStep(nextEdge.target);
         return;
       }
-      setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt || "Before we continue, could I get your name and email?", type: 'automation', isIdentityForm: true, nodeId: node.id }]);
+      setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt || "Before we continue, could we get your name and email?", type: 'automation', isIdentityForm: true, nodeId: node.id }]);
     } else if (node.type === 'handoff') {
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text || 'Transferring you to a human agent...', type: 'automation' }]);
       setMessages(prev => [...prev, { id: Date.now(), role: 'system', text: 'Escalated to human' }]);
