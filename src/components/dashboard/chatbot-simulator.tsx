@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -44,7 +45,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
   const [formError, setFormError] = useState<string | null>(null);
 
   const [attachments, setAttachments] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -63,6 +64,8 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
     chatbotIconsTextColor: botData.styleSettings?.chatbotIconsTextColor || '#ffffff',
     logoUrl: botData.styleSettings?.logoUrl || ''
   };
+
+  const botName = botData.webAgentName || botData.name || 'AI Assistant';
 
   const handleStep = useCallback(async (nodeId: string | null) => {
     if (!nodeId) return;
@@ -149,7 +152,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
     const currentNode = nodes.find(n => n.id === targetNodeId);
 
     if (currentNode?.type === 'identity_form' && forceNodeId) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text.trim());
       if (!previewName.trim() || !emailRegex.test(previewEmail.trim())) {
         setFormError("Please enter a valid name and email.");
         return;
@@ -222,7 +225,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
               <AvatarFallback className="bg-white/5"><Bot className="h-3.5 w-3.5 opacity-50" /></AvatarFallback>
             </Avatar>
             <div className="flex flex-col min-w-0">
-              <span className="text-[11px] font-bold truncate" style={{ color: style.headerTextColor }}>{botData.name || 'AI Assistant'}</span>
+              <span className="text-[11px] font-bold truncate" style={{ color: style.headerTextColor }}>{botName}</span>
               <div className="flex items-center gap-1 mt-0.5">
                 <div className="flex -space-x-1.5">
                     {agents.slice(0, 3).map(agent => (
@@ -244,12 +247,14 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
         {/* Body */}
         <ScrollArea className="flex-1" ref={scrollRef}>
           <div className="p-3 space-y-4">
-            <div className="flex items-end gap-2 justify-start">
-              <div className="p-2.5 rounded-2xl text-[11px] shadow-sm rounded-bl-none text-left" style={{ backgroundColor: style.agentMessageBackgroundColor, color: style.agentMessageTextColor }}>
-                <p className="whitespace-pre-wrap">{botData.welcomeMessage || 'Hi! How can I help?'}</p>
+            <div className="flex flex-col items-start">
+              <div className="flex items-end gap-2 justify-start">
+                <div className="p-2.5 rounded-2xl text-[11px] shadow-sm rounded-bl-none text-left" style={{ backgroundColor: style.agentMessageBackgroundColor, color: style.agentMessageTextColor }}>
+                  <p className="whitespace-pre-wrap">{botData.welcomeMessage || 'Hi! How can I help?'}</p>
+                </div>
               </div>
+              <p className="text-[8px] uppercase font-black tracking-widest text-muted-foreground/50 ml-1 mt-1 text-left">{botName}</p>
             </div>
-            <p className="text-[8px] uppercase font-black tracking-widest text-muted-foreground/50 ml-1 text-left">AI Assistant</p>
 
             {messages.map((m) => (
               <div key={m.id} className="space-y-1">
@@ -342,7 +347,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
                   )}
                 </div>
                 {m.role === 'bot' && (
-                  <p className="text-[8px] uppercase font-black tracking-widest text-muted-foreground/50 ml-1 text-left">Team member</p>
+                  <p className="text-[8px] uppercase font-black tracking-widest text-muted-foreground/50 ml-1 mt-1 text-left">{botName}</p>
                 )}
               </div>
             ))}

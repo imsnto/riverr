@@ -797,12 +797,14 @@ export default function ChatbotWidgetPage() {
       {/* Body */}
       <ScrollArea className="flex-1" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
-          <div className="flex items-end gap-2">
-            <div className="p-3 rounded-xl rounded-bl-sm max-w-xs break-words" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
-              <p className="text-sm whitespace-pre-wrap">{bot.welcomeMessage}</p>
+          <div className="flex flex-col items-start">
+            <div className="flex items-end gap-2">
+              <div className="p-3 rounded-xl rounded-bl-sm max-w-xs break-words" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
+                <p className="text-sm whitespace-pre-wrap">{bot.welcomeMessage}</p>
+              </div>
             </div>
+            <p className="text-[10px] uppercase font-black tracking-widest text-zinc-500 mt-1">{agentDisplayName}</p>
           </div>
-          <p className="text-xs text-zinc-500">{agentDisplayName}</p>
 
           {(visibleMessages.length > 0) && visibleMessages.map(msg => {
             const isAgent = msg.senderType === 'agent' || msg.senderType === 'bot';
@@ -831,13 +833,13 @@ export default function ChatbotWidgetPage() {
                     className={cn('flex items-end gap-2 min-w-0', isAgent ? 'justify-start' : 'justify-end')}
                 >
                     {isAgent ? (
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex flex-col items-start">
                         <div className="p-3 rounded-xl rounded-bl-sm max-w-xs" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
                         {msg.content && <div className="text-sm prose prose-sm prose-invert max-w-none break-words overflow-hidden [&_a]:break-all [&_a]:whitespace-normal [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:overflow-x-auto [&_code]:break-words" style={{ color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }} dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
                         {renderAttachments(msg)}
                         </div>
-                        <p className="text-xs text-zinc-500 mt-2">
-                            {isAI ? `${agentDisplayName} (AI)` : isAutomation ? agentDisplayName : (agent?.name || 'Team member')}
+                        <p className="text-[10px] uppercase font-black tracking-widest text-zinc-500 mt-1">
+                            {isAI ? `${agentDisplayName}` : isAutomation ? agentDisplayName : (agent?.name || 'Team member')}
                         </p>
                     </div>
                     ) : (
