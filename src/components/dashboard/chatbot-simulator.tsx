@@ -47,6 +47,18 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
   const nodes = flow.nodes || [];
   const edges = flow.edges || [];
 
+  const style = {
+    backgroundColor: botData.styleSettings?.backgroundColor || '#111827',
+    primaryColor: botData.styleSettings?.primaryColor || '#3b82f6',
+    headerTextColor: botData.styleSettings?.headerTextColor || '#ffffff',
+    agentMessageBackgroundColor: botData.styleSettings?.agentMessageBackgroundColor || '#374151',
+    agentMessageTextColor: botData.styleSettings?.agentMessageTextColor || '#ffffff',
+    customerTextColor: botData.styleSettings?.customerTextColor || '#ffffff',
+    chatbotIconsColor: botData.styleSettings?.chatbotIconsColor || '#3b82f6',
+    chatbotIconsTextColor: botData.styleSettings?.chatbotIconsTextColor || '#ffffff',
+    logoUrl: botData.styleSettings?.logoUrl || ''
+  };
+
   const handleStep = useCallback(async (nodeId: string | null) => {
     if (!nodeId) return;
     const node = nodes.find(n => n.id === nodeId);
@@ -81,10 +93,6 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
       const buttons = node.data.buttons || [];
       const text = node.data.text;
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: text || '', type: 'automation', buttons }]);
-    } else if (node.type === 'ai_classifier') {
-        return; 
-    } else if (node.type === 'capture_input') {
-      setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt, type: 'automation' }]);
     } else if (node.type === 'identity_form') {
       if (previewEmail && previewName) {
         const nextEdge = edges.find(e => e.source === nodeId && (!e.sourceHandle || e.sourceHandle === 'next'));
@@ -114,12 +122,13 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
 
   useEffect(() => {
     if (isOpen) {
-        handleReset();
+        setMessages([]);
+        handleStep('start');
     }
     return () => {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
     }
-  }, [isOpen]);
+  }, [isOpen, handleStep]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -166,62 +175,39 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
     if (targetEdge) handleStep(targetEdge.target);
   };
 
-  const handleReset = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setMessages([]);
-    setPreviewName('');
-    setPreviewEmail('');
-    setFormError(null);
-    handleStep('start');
-  };
-
   if (!isOpen) return null;
 
-  const style = {
-    backgroundColor: botData.styleSettings?.backgroundColor || '#111827',
-    primaryColor: botData.styleSettings?.primaryColor || '#3b82f6',
-    headerTextColor: botData.styleSettings?.headerTextColor || '#ffffff',
-    agentMessageBackgroundColor: botData.styleSettings?.agentMessageBackgroundColor || '#374151',
-    agentMessageTextColor: botData.styleSettings?.agentMessageTextColor || '#ffffff',
-    customerTextColor: botData.styleSettings?.customerTextColor || '#ffffff',
-    chatbotIconsColor: botData.styleSettings?.chatbotIconsColor || '#3b82f6',
-    chatbotIconsTextColor: botData.styleSettings?.chatbotIconsTextColor || '#ffffff',
-    logoUrl: botData.styleSettings?.logoUrl || ''
-  };
-
   return (
-    <div className="flex flex-col items-end gap-4">
+    <div className="flex flex-col items-center justify-center w-full h-full gap-6">
       {/* Floating Chat Window */}
       <div 
-        className="w-[380px] h-[600px] bg-background rounded-2xl shadow-2xl border border-white/5 flex flex-col overflow-hidden relative animate-in slide-in-from-bottom-4 duration-300"
+        className="w-full max-w-[380px] h-[580px] bg-background rounded-3xl shadow-2xl border border-white/10 flex flex-col overflow-hidden relative"
         style={{ backgroundColor: style.backgroundColor }}
       >
         {/* Header */}
         <div 
-            className="p-4 border-b border-white/5 flex items-center justify-between shrink-0"
+            className="p-5 border-b border-white/5 flex items-center justify-between shrink-0"
             style={{ backgroundColor: style.backgroundColor }}
         >
           <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9 rounded-full border border-white/10 shadow-sm">
+            <Avatar className="h-10 w-10 rounded-full border border-white/10 shadow-sm shrink-0">
               <AvatarImage src={style.logoUrl} className="object-contain" />
               <AvatarFallback className="bg-white/5"><Bot className="h-5 w-5 opacity-50" /></AvatarFallback>
             </Avatar>
-            <div className="flex flex-col">
-              <span className="text-base font-bold" style={{ color: style.headerTextColor }}>{botData.name || 'AI Assistant'}</span>
-              <div className="flex -space-x-1.5 mt-0.5">
-                {agents.slice(0, 3).map(agent => (
-                  <Avatar key={agent.id} className="h-4 w-4 border border-white/10">
-                    <AvatarImage src={agent.avatarUrl} />
-                    <AvatarFallback className="text-[6px]">{getInitials(agent.name)}</AvatarFallback>
-                  </Avatar>
-                ))}
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-bold truncate" style={{ color: style.headerTextColor }}>{botData.name || 'AI Assistant'}</span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="flex -space-x-1.5">
+                    {agents.slice(0, 3).map(agent => (
+                    <Avatar key={agent.id} className="h-4 w-4 border border-white/10 ring-1 ring-black/20">
+                        <AvatarImage src={agent.avatarUrl} />
+                        <AvatarFallback className="text-[6px]">{getInitials(agent.name)}</AvatarFallback>
+                    </Avatar>
+                    ))}
+                </div>
+                <span className="text-[10px] font-medium opacity-50" style={{ color: style.headerTextColor }}>Online</span>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-muted-foreground hover:text-white rounded-full">
-                <X className="h-5 w-5" />
-            </Button>
           </div>
         </div>
 
@@ -239,7 +225,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
               <div key={m.id} className="space-y-1">
                 <div className={cn("flex flex-col gap-2", m.role === 'user' ? "items-end" : "items-start")}>
                   {m.role === 'system' ? (
-                    <Badge variant="outline" className="self-center bg-muted/50 border-white/5 text-[9px] font-black tracking-tight">{m.text}</Badge>
+                    <Badge variant="outline" className="self-center bg-muted/50 border-white/5 text-[9px] font-black tracking-tight uppercase px-2">{m.text}</Badge>
                   ) : (
                     <>
                       {m.text && (
@@ -319,13 +305,13 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
         {/* Footer */}
         <div className="p-4 border-t border-white/5 bg-black/20 shrink-0">
           <div className="relative flex items-end gap-2">
-            <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground rounded-full">
+            <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground rounded-full hover:bg-white/5">
               <Plus className="h-5 w-5" />
             </Button>
             <div className="relative flex-1">
               <Textarea 
                 placeholder="Message..." 
-                className="pr-12 rounded-2xl min-h-[44px] max-h-32 border-none bg-white/5 focus-visible:ring-0 text-sm py-2.5 text-white" 
+                className="pr-12 rounded-2xl min-h-[44px] max-h-32 border-none bg-white/5 focus-visible:ring-0 text-sm py-2.5 text-white resize-none" 
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -345,10 +331,10 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
 
       {/* Floating Launcher Button */}
       <button 
-        className="h-16 w-16 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+        className="h-16 w-16 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 shrink-0"
         style={{ backgroundColor: style.chatbotIconsColor }}
       >
-        <ChevronRight className="h-8 w-8 rotate-90" style={{ color: style.chatbotIconsTextColor }} />
+        <MessageCircle className="h-8 w-8" style={{ color: style.chatbotIconsTextColor }} />
       </button>
     </div>
   );
