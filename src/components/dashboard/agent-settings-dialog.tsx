@@ -53,7 +53,9 @@ import {
   Trash2,
   Target,
   Bell,
-  Eye
+  Eye,
+  Upload,
+  Users
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -73,6 +75,7 @@ import Link from 'next/link';
 import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ChatbotSimulator from './chatbot-simulator';
+import * as db from '@/lib/db';
 
 const agentSettingsSchema = z.object({
   name: z.string().min(1, 'Name is required.'),
@@ -124,7 +127,8 @@ export default function AgentSettingsDialog({
   const [activeTab, setActiveTab] = useState('general');
   const [activeConfigPath, setActiveConfigPath] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const isPersonalAgent = bot?.ownerType === 'user';
@@ -220,6 +224,22 @@ export default function AgentSettingsDialog({
 
     return items;
   }, [mode]);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !bot) return;
+
+    setIsUploadingLogo(true);
+    try {
+      const url = await db.uploadBotLogo(file, bot.id);
+      form.setValue('logoUrl', url);
+      toast({ title: 'Logo uploaded' });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Upload failed' });
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
 
   const onSubmit = (values: AgentSettingsFormValues) => {
     const deepSanitize = (obj: any): any => {
@@ -919,7 +939,7 @@ export default function AgentSettingsDialog({
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div>
                                     <h2 className="text-2xl font-bold text-white mb-1">General</h2>
-                                    <p className="text-muted-foreground text-sm">Identity and status settings.</p>
+                                    <p className="text-muted-foreground text-sm">Identity and human team settings.</p>
                                 </div>
                                 <FormField
                                     control={form.control}
@@ -934,7 +954,70 @@ export default function AgentSettingsDialog({
                                 />
 
                                 {mode === 'widget' && (
-                                    <div className="space-y-6 pt-4 border-t border-white/5">
+                                    <div className="space-y-10 pt-4 border-t border-white/5">
+                                        <div className="space-y-4">
+                                            <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Human Team Members</Label>
+                                            <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02]">
+                                                <div className="flex flex-wrap gap-2 mb-4">
+                                                    {watchedValues.agentIds?.map(userId => {
+                                                        const user = allUsers.find(u => u.id === userId);
+                                                        return (
+                                                            <Badge key={userId} variant="secondary" className="pl-1 pr-2 py-1 h-8 gap-2 rounded-lg border-white/5">
+                                                                <Avatar className="h-6 w-6">
+                                                                    <AvatarImage src={user?.avatarUrl} />
+                                                                    <AvatarFallback>{getInitials(user?.name)}</AvatarFallback>
+                                                                </Avatar>
+                                                                <span className="text-xs">{user?.name}</span>
+                                                                <button type="button" onClick={() => form.setValue('agentIds', watchedValues.agentIds?.filter(id => id !== userId))}>
+                                                                    <X className="h-3 w-3 hover:text-white" />
+                                                                </button>
+                                                            </Badge>
+                                                        );
+                                                    })}
+                                                    {(!watchedValues.agentIds || watchedValues.agentIds.length === 0) && (
+                                                        <p className="text-xs text-muted-foreground italic px-1">No human members assigned.</p>
+                                                    )}
+                                                </div>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button type="button" variant="outline" size="sm" className="h-9 gap-2 border-white/10 rounded-lg">
+                                                            <Plus className="h-3.5 w-3.5" />
+                                                            Add Team Member
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-64 p-0" align="start">
+                                                        <Command>
+                                                            <CommandInput placeholder="Search members..." />
+                                                            <CommandList>
+                                                                <CommandEmpty>No members found.</CommandEmpty>
+                                                                <CommandGroup>
+                                                                    {allUsers.map(user => (
+                                                                        <CommandItem 
+                                                                            key={user.id} 
+                                                                            onSelect={() => {
+                                                                                const current = watchedValues.agentIds || [];
+                                                                                if (!current.includes(user.id)) {
+                                                                                    form.setValue('agentIds', [...current, user.id]);
+                                                                                }
+                                                                            }}
+                                                                            className="gap-3 p-2 cursor-pointer"
+                                                                        >
+                                                                            <Avatar className="h-6 w-6">
+                                                                                <AvatarImage src={user.avatarUrl} />
+                                                                                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                                                                            </Avatar>
+                                                                            <span className="text-sm font-medium">{user.name}</span>
+                                                                        </CommandItem>
+                                                                    ))}
+                                                                </CommandGroup>
+                                                            </CommandList>
+                                                        </Command>
+                                                    </PopoverContent>
+                                                </Popover>
+                                            </div>
+                                            <p className="text-[10px] text-muted-foreground">These members appear in the chat header and handle handoffs.</p>
+                                        </div>
+
                                         <FormField
                                             control={form.control}
                                             name="welcomeMessage"
@@ -1058,16 +1141,39 @@ export default function AgentSettingsDialog({
                                             <Label className="text-[10px] uppercase font-black tracking-widest text-primary">Main Theme</Label>
                                             <ColorField name="primaryColor" label="Primary Color" form={form} />
                                             <ColorField name="backgroundColor" label="Background Color" form={form} />
-                                            <FormField
-                                                control={form.control}
-                                                name="logoUrl"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-[10px] font-bold text-muted-foreground/70">Logo URL</FormLabel>
-                                                        <FormControl><Input placeholder="https://..." {...field} className="bg-muted/20 border-white/10 h-9" /></FormControl>
-                                                    </FormItem>
-                                                )}
-                                            />
+                                            
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-bold text-muted-foreground/70">Widget Logo</Label>
+                                                <div className="flex items-center gap-4 p-3 rounded-xl border border-white/5 bg-white/[0.02]">
+                                                    {watchedValues.logoUrl ? (
+                                                        <img src={watchedValues.logoUrl} className="h-10 w-10 rounded-lg object-contain bg-black/40 p-1 border border-white/10" alt="Logo" />
+                                                    ) : (
+                                                        <div className="h-10 w-10 rounded-lg bg-white/5 flex items-center justify-center border border-dashed border-white/10">
+                                                            <ImageIcon className="h-4 w-4 text-muted-foreground opacity-40" />
+                                                        </div>
+                                                    )}
+                                                    <div className="flex-1">
+                                                        <input 
+                                                            type="file" 
+                                                            accept="image/*" 
+                                                            ref={logoInputRef} 
+                                                            onChange={handleLogoUpload} 
+                                                            className="hidden" 
+                                                        />
+                                                        <Button 
+                                                            type="button" 
+                                                            variant="outline" 
+                                                            size="sm" 
+                                                            className="h-8 gap-2"
+                                                            onClick={() => logoInputRef.current?.click()}
+                                                            disabled={isUploadingLogo}
+                                                        >
+                                                            {isUploadingLogo ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                                                            {watchedValues.logoUrl ? 'Change Logo' : 'Upload Logo'}
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div className="space-y-4">
                                             <Label className="text-[10px] uppercase font-black tracking-widest text-primary">Launcher</Label>
@@ -1157,28 +1263,30 @@ export default function AgentSettingsDialog({
                 </footer>
 
                 {isPreviewOpen && (
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-[300] flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
-                        <ChatbotSimulator 
-                            isOpen={isPreviewOpen}
-                            onClose={() => setIsPreviewOpen(false)}
-                            botData={{
-                                ...bot,
-                                name: watchedValues.name,
-                                styleSettings: {
-                                    primaryColor: watchedValues.primaryColor || '#3b82f6',
-                                    backgroundColor: watchedValues.backgroundColor || '#111827',
-                                    logoUrl: watchedValues.logoUrl || '',
-                                    chatbotIconsColor: watchedValues.chatbotIconsColor || '#3b82f6',
-                                    chatbotIconsTextColor: watchedValues.chatbotIconsTextColor || '#ffffff',
-                                    headerTextColor: watchedValues.headerTextColor || '#ffffff',
-                                    customerTextColor: watchedValues.customerTextColor || '#ffffff',
-                                    agentMessageBackgroundColor: watchedValues.agentMessageBackgroundColor || '#374151',
-                                    agentMessageTextColor: watchedValues.agentMessageTextColor || '#ffffff',
-                                }
-                            }}
-                            flow={bot?.flow || { nodes: [], edges: [] }}
-                            agents={allUsers.filter(u => watchedValues.agentIds?.includes(u.id))}
-                        />
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-[300] flex flex-col items-end justify-end p-10 animate-in fade-in duration-300 pointer-events-none">
+                        <div className="pointer-events-auto">
+                            <ChatbotSimulator 
+                                isOpen={isPreviewOpen}
+                                onClose={() => setIsPreviewOpen(false)}
+                                botData={{
+                                    ...bot,
+                                    name: watchedValues.name,
+                                    styleSettings: {
+                                        primaryColor: watchedValues.primaryColor || '#3b82f6',
+                                        backgroundColor: watchedValues.backgroundColor || '#111827',
+                                        logoUrl: watchedValues.logoUrl || '',
+                                        chatbotIconsColor: watchedValues.chatbotIconsColor || '#3b82f6',
+                                        chatbotIconsTextColor: watchedValues.chatbotIconsTextColor || '#ffffff',
+                                        headerTextColor: watchedValues.headerTextColor || '#ffffff',
+                                        customerTextColor: watchedValues.customerTextColor || '#ffffff',
+                                        agentMessageBackgroundColor: watchedValues.agentMessageBackgroundColor || '#374151',
+                                        agentMessageTextColor: watchedValues.agentMessageTextColor || '#ffffff',
+                                    }
+                                }}
+                                flow={bot?.flow || { nodes: [], edges: [] }}
+                                agents={allUsers.filter(u => watchedValues.agentIds?.includes(u.id))}
+                            />
+                        </div>
                     </div>
                 )}
             </div>

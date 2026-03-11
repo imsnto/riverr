@@ -5,9 +5,10 @@ import { Bot as BotData, AutomationFlow, ChatMessage, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, X, Bot, Loader2, MessageCircle, ChevronRight } from 'lucide-react';
+import { Send, X, Bot, Loader2, MessageCircle, ChevronRight, Plus } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Badge } from '../ui/badge';
+import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { marked } from 'marked';
@@ -81,8 +82,6 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
       const text = node.data.text;
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: text || '', type: 'automation', buttons }]);
     } else if (node.type === 'ai_classifier') {
-        // AI Classifier is "Silent" - it just waits for user input to route the conversation
-        // We do NOT send a message or buttons here.
         return; 
     } else if (node.type === 'capture_input') {
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.prompt, type: 'automation' }]);
@@ -191,106 +190,125 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
   };
 
   return (
-    <div className="absolute top-0 right-0 w-[440px] h-full bg-black/40 backdrop-blur-sm z-[300] flex flex-col items-center justify-center p-6 animate-in slide-in-from-right duration-300">
+    <div className="flex flex-col items-end gap-4">
+      {/* Floating Chat Window */}
       <div 
-        className="w-full h-full bg-background rounded-[2.5rem] shadow-2xl border-8 border-muted flex flex-col overflow-hidden relative"
+        className="w-[380px] h-[600px] bg-background rounded-2xl shadow-2xl border border-white/5 flex flex-col overflow-hidden relative animate-in slide-in-from-bottom-4 duration-300"
         style={{ backgroundColor: style.backgroundColor }}
       >
         {/* Header */}
         <div 
-            className="p-5 border-b border-white/5 flex items-center justify-between shrink-0"
+            className="p-4 border-b border-white/5 flex items-center justify-between shrink-0"
             style={{ backgroundColor: style.backgroundColor }}
         >
           <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9 rounded-full border border-white/10">
+            <Avatar className="h-9 w-9 rounded-full border border-white/10 shadow-sm">
               <AvatarImage src={style.logoUrl} className="object-contain" />
               <AvatarFallback className="bg-white/5"><Bot className="h-5 w-5 opacity-50" /></AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
-              <span className="text-sm font-bold" style={{ color: style.headerTextColor }}>{botData.name || 'Agent'}</span>
-              <span className="text-[9px] uppercase font-black text-green-500 tracking-tighter">Live Preview</span>
+              <span className="text-base font-bold" style={{ color: style.headerTextColor }}>{botData.name || 'AI Assistant'}</span>
+              <div className="flex -space-x-1.5 mt-0.5">
+                {agents.slice(0, 3).map(agent => (
+                  <Avatar key={agent.id} className="h-4 w-4 border border-white/10">
+                    <AvatarImage src={agent.avatarUrl} />
+                    <AvatarFallback className="text-[6px]">{getInitials(agent.name)}</AvatarFallback>
+                  </Avatar>
+                ))}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={handleReset} className="h-7 text-[10px] uppercase font-bold text-muted-foreground hover:text-white">Reset</Button>
-            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-muted-foreground hover:text-white">
-                <X className="h-4 w-4" />
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-muted-foreground hover:text-white rounded-full">
+                <X className="h-5 w-5" />
             </Button>
           </div>
         </div>
 
         {/* Body */}
         <ScrollArea className="flex-1" ref={scrollRef}>
-          <div className="p-6 space-y-6">
+          <div className="p-5 space-y-6">
+            <div className="flex items-end gap-2 justify-start">
+              <div className="p-3.5 rounded-2xl text-sm shadow-sm rounded-bl-none" style={{ backgroundColor: style.agentMessageBackgroundColor, color: style.agentMessageTextColor }}>
+                <p className="whitespace-pre-wrap">{botData.welcomeMessage || 'Hi! How can I help?'}</p>
+              </div>
+            </div>
+            <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/50 ml-1">AI Assistant</p>
+
             {messages.map((m) => (
-              <div key={m.id} className={cn("flex flex-col gap-2", m.role === 'user' ? "items-end" : "items-start")}>
-                {m.role === 'system' ? (
-                  <Badge variant="outline" className="self-center bg-muted/50 uppercase text-[9px] font-black">{m.text}</Badge>
-                ) : (
-                  <>
-                    {m.text && (
-                        <div className={cn(
-                            "max-w-[85%] p-3.5 rounded-2xl text-sm shadow-sm",
-                            m.role === 'user' ? "rounded-br-none" : "rounded-bl-none"
-                        )}
-                        style={m.role === 'user' ? { 
-                            backgroundColor: style.primaryColor, 
-                            color: style.customerTextColor 
-                        } : { 
-                            backgroundColor: style.agentMessageBackgroundColor, 
-                            color: style.agentMessageTextColor 
-                        }}
-                        >
-                            {m.type === 'ai' ? (
-                                <div className="prose prose-sm prose-invert" dangerouslySetInnerHTML={{ __html: marked.parse(m.text) as string }} />
-                            ) : (
-                                <p className="whitespace-pre-wrap">{m.text}</p>
-                            )}
-                            
-                            {m.isIdentityForm && (
-                              <div className="mt-4 space-y-3 p-4 border-t border-white/10 bg-black/20 rounded-xl">
-                                <div className="space-y-1">
-                                    <Label className="text-[10px] uppercase font-bold tracking-wider opacity-70" style={{ color: style.agentMessageTextColor }}>Name</Label>
-                                    <Input 
-                                        placeholder="e.g. John Doe" 
-                                        className="h-9 text-xs bg-white/5 border-white/10" 
-                                        value={previewName}
-                                        onChange={(e) => setPreviewName(e.target.value)}
-                                    />
+              <div key={m.id} className="space-y-1">
+                <div className={cn("flex flex-col gap-2", m.role === 'user' ? "items-end" : "items-start")}>
+                  {m.role === 'system' ? (
+                    <Badge variant="outline" className="self-center bg-muted/50 border-white/5 text-[9px] font-black tracking-tight">{m.text}</Badge>
+                  ) : (
+                    <>
+                      {m.text && (
+                          <div className={cn(
+                              "max-w-[85%] p-3.5 rounded-2xl text-sm shadow-sm",
+                              m.role === 'user' ? "rounded-br-none" : "rounded-bl-none"
+                          )}
+                          style={m.role === 'user' ? { 
+                              backgroundColor: style.primaryColor, 
+                              color: style.customerTextColor 
+                          } : { 
+                              backgroundColor: style.agentMessageBackgroundColor, 
+                              color: style.agentMessageTextColor 
+                          }}
+                          >
+                              {m.type === 'ai' ? (
+                                  <div className="prose prose-sm prose-invert" dangerouslySetInnerHTML={{ __html: marked.parse(m.text) as string }} />
+                              ) : (
+                                  <p className="whitespace-pre-wrap">{m.text}</p>
+                              )}
+                              
+                              {m.isIdentityForm && (
+                                <div className="mt-4 space-y-3 p-4 border-t border-white/10 bg-black/20 rounded-xl">
+                                  <div className="space-y-1">
+                                      <Label className="text-[10px] uppercase font-black tracking-widest opacity-70" style={{ color: style.agentMessageTextColor }}>Name</Label>
+                                      <Input 
+                                          placeholder="e.g. John Doe" 
+                                          className="h-9 text-xs bg-white/5 border-white/10 text-white" 
+                                          value={previewName}
+                                          onChange={(e) => setPreviewName(e.target.value)}
+                                      />
+                                  </div>
+                                  <div className="space-y-1">
+                                      <Label className="text-[10px] uppercase font-black tracking-widest opacity-70" style={{ color: style.agentMessageTextColor }}>Email</Label>
+                                      <Input 
+                                          placeholder="e.g. john@example.com" 
+                                          className="h-9 text-xs bg-white/5 border-white/10 text-white" 
+                                          value={previewEmail}
+                                          onChange={(e) => setPreviewEmail(e.target.value)}
+                                      />
+                                  </div>
+                                  {formError && <p className="text-[10px] text-red-400 font-bold">{formError}</p>}
+                                  <Button size="sm" className="w-full h-9 text-xs font-bold mt-2 rounded-lg" style={{ backgroundColor: style.primaryColor, color: style.customerTextColor }} onClick={() => handleInput(`Name: ${previewName}, Email: ${previewEmail}`, undefined, m.nodeId)}>
+                                      Submit Details
+                                  </Button>
                                 </div>
-                                <div className="space-y-1">
-                                    <Label className="text-[10px] uppercase font-bold tracking-wider opacity-70" style={{ color: style.agentMessageTextColor }}>Email</Label>
-                                    <Input 
-                                        placeholder="e.g. john@example.com" 
-                                        className="h-9 text-xs bg-white/5 border-white/10" 
-                                        value={previewEmail}
-                                        onChange={(e) => setPreviewEmail(e.target.value)}
-                                    />
-                                </div>
-                                {formError && <p className="text-[10px] text-red-400 font-bold">{formError}</p>}
-                                <Button size="sm" className="w-full h-9 text-xs font-bold mt-2" style={{ backgroundColor: style.primaryColor, color: style.customerTextColor }} onClick={() => handleInput(`Name: ${previewName}, Email: ${previewEmail}`, undefined, m.nodeId)}>
-                                    Submit Details
-                                </Button>
-                              </div>
-                            )}
-                        </div>
-                    )}
-                    {m.buttons && (
-                        <div className="flex flex-wrap gap-2 pt-1">
-                            {m.buttons.map((btn: any) => (
-                            <button 
-                                key={btn.id} 
-                                onClick={() => handleInput(btn.label, btn.id)}
-                                className="h-9 px-4 rounded-full border-2 transition-all text-xs font-bold flex items-center gap-1 group"
-                                style={{ borderColor: `${style.primaryColor}40`, color: style.primaryColor }}
-                            >
-                                {btn.label}
-                                <ChevronRight className="h-3 w-3 opacity-50 group-hover:translate-x-0.5 transition-transform" />
-                            </button>
-                            ))}
-                        </div>
-                    )}
-                  </>
+                              )}
+                          </div>
+                      )}
+                      {m.buttons && (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                              {m.buttons.map((btn: any) => (
+                              <button 
+                                  key={btn.id} 
+                                  onClick={() => handleInput(btn.label, btn.id)}
+                                  className="h-9 px-4 rounded-full border-2 transition-all text-xs font-bold flex items-center gap-1 group"
+                                  style={{ borderColor: `${style.primaryColor}40`, color: style.primaryColor }}
+                              >
+                                  {btn.label}
+                                  <ChevronRight className="h-3 w-3 opacity-50 group-hover:translate-x-0.5 transition-transform" />
+                              </button>
+                              ))}
+                          </div>
+                      )}
+                    </>
+                  )}
+                </div>
+                {m.role === 'bot' && (
+                  <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/50 ml-1">Team member</p>
                 )}
               </div>
             ))}
@@ -300,25 +318,38 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
 
         {/* Footer */}
         <div className="p-4 border-t border-white/5 bg-black/20 shrink-0">
-          <div className="relative">
-            <Textarea 
-              placeholder="Type a message..." 
-              className="pr-12 rounded-2xl min-h-[44px] max-h-32 border-2 bg-white/5 border-white/10 focus-visible:ring-primary/20 text-sm py-2.5" 
-              value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
-              onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleInput(userInput);
-                  }
-              }}
-            />
-            <Button size="icon" className="absolute right-1 bottom-1 h-9 w-9 rounded-full shadow-lg" style={{ backgroundColor: style.chatbotIconsColor }} onClick={() => handleInput(userInput)}>
-              <Send className="h-4 w-4" style={{ color: style.chatbotIconsTextColor }} />
+          <div className="relative flex items-end gap-2">
+            <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground rounded-full">
+              <Plus className="h-5 w-5" />
             </Button>
+            <div className="relative flex-1">
+              <Textarea 
+                placeholder="Message..." 
+                className="pr-12 rounded-2xl min-h-[44px] max-h-32 border-none bg-white/5 focus-visible:ring-0 text-sm py-2.5 text-white" 
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleInput(userInput);
+                    }
+                }}
+              />
+              <Button size="icon" variant="ghost" className="absolute right-1 bottom-1 h-9 w-9 rounded-full text-muted-foreground hover:text-white" onClick={() => handleInput(userInput)}>
+                <Send className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Floating Launcher Button */}
+      <button 
+        className="h-16 w-16 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+        style={{ backgroundColor: style.chatbotIconsColor }}
+      >
+        <ChevronRight className="h-8 w-8 rotate-90" style={{ color: style.chatbotIconsTextColor }} />
+      </button>
     </div>
   );
 }

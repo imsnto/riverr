@@ -682,6 +682,12 @@ export const uploadHelpCenterCoverImage = async (file: File, hcId: string) => {
   return getDownloadURL(storageRef);
 };
 
+export const uploadBotLogo = async (file: File, botId: string) => {
+  const storageRef = ref(storage, `bots/${botId}/logo_${Date.now()}`);
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+};
+
 export const uploadImageToFirebase = async (file: File, hubId: string, docId: string) => {
   const storageRef = ref(storage, `hubs/${hubId}/docs/${docId}/${Date.now()}_${file.name}`);
   await uploadBytes(storageRef, file);
