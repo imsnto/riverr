@@ -10,7 +10,7 @@ import { Textarea } from '../ui/textarea';
 import { cn, getInitials } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
-import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check, Bot, Smartphone, Phone, PhoneMissed, PhoneIncoming, PhoneOutgoing, Mic, Share2, Mail } from 'lucide-react';
+import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check, Bot, Smartphone, Phone, PhoneMissed, PhoneIncoming, PhoneOutgoing, Mic, Share2, Mail, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card } from '../ui/card';

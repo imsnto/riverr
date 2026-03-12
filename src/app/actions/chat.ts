@@ -433,18 +433,22 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
     
     if (message.conversationId && message.type === 'message') {
       let authorName = "Visitor";
+      let senderType = '';
   
       if (message.authorId === 'ai_agent') {
           authorName = message.responderType === 'ai' ? 'Assistant' : 'Support Assistant';
+          senderType = 'ai';
       } else if (message.senderType === 'agent') {
         const userDoc = await adminDB.collection('users').doc(message.authorId).get();
         if (userDoc.exists) authorName = userDoc.data()?.name || 'Agent';
+        senderType = 'agent'
       } else { 
         const linkedContactId = await ensureCrmLinkedForConversationAdmin(message.conversationId);
         if (linkedContactId) {
             const contactDoc = await adminDB.collection('contacts').doc(linkedContactId).get();
             authorName = contactDoc.data()?.name || 'Visitor';
         }
+        senderType = 'visitor'
       }
   
       const preview = (message.content || "").slice(0, 140) || (message.attachments?.length ? "Sent an attachment" : "");
@@ -457,6 +461,7 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
           lastMessageAuthor: authorName,
           lastResponderType: message.responderType,
           updatedAt: timestamp as any,
+          senderType: senderType || ''
         }),
         adminDB.collection("tickets")
           .where("conversationId", "==", message.conversationId)
@@ -602,6 +607,7 @@ export async function createConversationAndLinkCrm(args: {
   assigneeId: string | null;
   lastMessage: string;
   lastMessageAuthor: string | null;
+  convoStatus?: string
 }) {
   const convoRef = await adminDB.collection("conversations").add({
     hubId: args.hubId,
@@ -619,6 +625,7 @@ export async function createConversationAndLinkCrm(args: {
     ownerType: 'hub',
     ownerAgentId: null,
     sharedWithTeam: false,
+    convoStatus: args.convoStatus || ''
   });
 
   await ensureCrmLinkedForConversationAdmin(convoRef.id);

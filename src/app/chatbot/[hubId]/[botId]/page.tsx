@@ -459,6 +459,7 @@ export default function ChatbotWidgetPage() {
             assigneeId,
             lastMessage: textToSend || "Sent an attachment",
             lastMessageAuthor: visitor.name || null,
+            convoStatus: 'open'
         });
         currentConversation = newConvo;
 
