@@ -528,10 +528,46 @@ export interface Bot {
   type: 'agent' | 'widget';
   hubId: string;
   spaceId: string;
-  name: string;
-  webAgentName?: string; 
+  name: string; // Internal name
+  webAgentName?: string; // Public agent name (one word)
+  roleTitle?: string;
   isEnabled?: boolean;
   aiEnabled?: boolean;
+  
+  // General Personality
+  tone?: 'formal' | 'friendly' | 'expert' | 'direct' | 'warm';
+  voiceNotes?: string;
+  primaryGoal?: string;
+  closingTemplate?: string;
+
+  // Shared Escalation
+  escalationRules?: {
+    orderValueThresholdEnabled: boolean;
+    orderValueThreshold: number;
+    frustrationEnabled: boolean;
+    unansweredLoopEnabled: boolean;
+    complexRequestEnabled: boolean;
+    notifyEmail: string;
+  };
+
+  // Knowledge Context
+  businessContext?: {
+    businessName: string;
+    location?: string;
+    whatYouDo: string;
+    targetAudience: string;
+    hours?: string;
+    minOrder?: string;
+    turnaround?: string;
+    differentiation?: string;
+    forbiddenTopics?: string;
+  };
+  
+  products?: { id: string; name: string; price?: string; description: string; triggers: string }[];
+  faqs?: { id: string; question: string; answer: string }[];
+  objections?: { id: string; objection: string; response: string }[];
+  qualificationFlow?: { id: string; question: string; note?: string; goal: string; pricingPolicy: string }[];
+
   welcomeMessage?: string; // Used as Greeting for widgets
   noAgentFallbackMessage?: string; // For widgets when assignedAgentId is null
   assignedAgentId?: string | null; // For widgets
@@ -571,80 +607,34 @@ export interface Bot {
     sentimentThreshold?: number;
   };
   channelConfig?: {
-    web?: { enabled: boolean };
+    web?: { 
+      enabled: boolean;
+      displayOverrides?: { name?: string };
+      greeting?: { text: string; returningText?: string };
+      quickReplies?: { name: string; trigger: string; options: string[] }[];
+    };
     sms?: { 
-      enabled: boolean; 
-      numberConfigs: Record<string, { aiMode: 'off' | 'draft' | 'auto' }> 
+      enabled: boolean;
+      openingText: string;
+      maxLength: 160 | 320 | 0;
+      allowMms: boolean;
+      capture: { email: 'none' | 'natural' | 'early'; name: 'none' | 'natural'; message: string };
+      escalation: { keywords: string[]; message: string; sentiment: boolean };
+      afterHours: { mode: string; message: string };
     };
     email?: { 
-      enabled: boolean; 
-      emailConfigs: Record<string, { aiMode: 'off' | 'draft' | 'auto'; aiGreetingScript: string }> 
+      enabled: boolean;
+      workflow: { approval: string; delay: string; threading: string };
+      format: { signOff: string; length: string; alwaysInclude: string; subject: string };
+      escalation: { holdForValue: boolean; holdForFrustration: boolean; holdForLegal: boolean; holdForAttachment: boolean; holdForVip: boolean; keywords: string[]; sentiment: boolean };
     };
     voice?: { 
-      enabled: boolean; 
-      numberConfigs: Record<string, { 
-        aiCallMode: 'agent_only' | 'warm_handoff' | 'full_ai';
-        handoffRouteTo: 'any' | 'assigned' | 'team';
-        handoffTimeoutSeconds: number;
-        handoffFallback: 'voicemail' | 'ai_resolve' | 'callback';
-        aiGreeting: boolean;
-        transcribe: boolean;
-        afterHoursAiOnly: boolean;
-        voicemailFallback: boolean;
-        greetingScript: string;
-      }> 
-    };
-  };
-  workflowConfig?: {
-    web?: {
-      welcomeMessage: string;
-      webAgentName?: string;
-      handoffKeywords: string[];
-      afterHoursBehavior: 'ai_full' | 'take_message' | 'disabled';
-      conversationGoal: string;
-      identityCapture: {
-        timing: 'before' | 'after';
-        fields: {
-          name: boolean;
-          email: boolean;
-          phone: boolean;
-        };
-      };
-    };
-    supportEmail?: {
-      tone: 'formal' | 'professional' | 'friendly';
-      signOff: string;
-      alwaysAddress: string;
-      escalationTriggers: string[];
-    };
-    personalEmail?: {
-      writingStyle: string;
-      responseLength: 'short' | 'medium' | 'match';
-      signOff: string;
-      contextAwareness: boolean;
-    };
-    sms?: {
-      responseStyle?: 'conversational' | 'concise';
-      openingMessage?: string;
-      afterHoursBehavior?: 'ai_full' | 'notify_ticket' | 'off';
-      handoffKeywords?: string[];
-      sentimentEscalation?: boolean;
-      writingStyle?: string;
-      smartTiming?: boolean;
-    };
-    voice?: {
-      greetingScript?: string;
-      callHandlingMode?: 'full_ai' | 'warm_handoff' | 'receptionist_only';
-      handoffTarget?: 'any' | 'assigned' | 'team';
-      handoffTimeoutSeconds?: number;
-      handoffFallback?: 'voicemail' | 'ai_resolve' | 'callback';
-      voicemailEnabled?: boolean;
-      transcriptionEnabled?: boolean;
-      afterHoursBehavior?: 'ai_full' | 'receptionist_only' | 'voicemail_only';
-      role?: 'receptionist' | 'voicemail_only';
-      receptionistScript?: string;
-      callbackNotification?: boolean;
-      voicemailTranscription?: boolean;
+      enabled: boolean;
+      mode: string;
+      transferNumber?: string;
+      scripts: { greeting: string; handoff?: string; voicemail?: string };
+      behaviour: { transcribe: boolean; afterHoursAiOnly: boolean; voicemailFallback: boolean; greetingEnabled: boolean; maxDuration: string; keywords: string[] };
+      afterHours: { mode: string; redirectNumber?: string };
     };
   };
   ownerType: 'hub' | 'user';
