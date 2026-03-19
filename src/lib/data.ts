@@ -628,7 +628,7 @@ export interface Bot {
       format: { signOff: string; length: string; alwaysInclude: string; subject: string };
       escalation: { holdForValue: boolean; holdForFrustration: boolean; holdForLegal: boolean; holdForAttachment: boolean; holdForVip: boolean; keywords: string[]; sentiment: boolean };
     };
-    voice?: { 
+    phone?: { 
       enabled: boolean;
       mode: string;
       transferNumber?: string;

@@ -458,7 +458,17 @@ export default function AgentSettingsDialog({
                                 </TabsList>
 
                                 <TabsContent value="web" className="space-y-10">
-                                    <div className="grid grid-cols-2 gap-10">
+                                    <div className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/[0.03] mb-6">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-sm font-bold">Enable Web Chat for this Agent</Label>
+                                            <p className="text-xs text-muted-foreground">Allow this agent to handle conversations from web widgets.</p>
+                                        </div>
+                                        <FormField control={form.control} name="channelConfig.web.enabled" render={({ field }) => (
+                                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                        )} />
+                                    </div>
+
+                                    <div className={cn("grid grid-cols-2 gap-10 transition-opacity", !watchedValues.channelConfig?.web?.enabled && "opacity-40 pointer-events-none")}>
                                         <div className="space-y-8">
                                             <div className="space-y-4">
                                                 <Label className="text-[10px] uppercase font-black tracking-widest text-primary">Greeting</Label>
@@ -488,32 +498,54 @@ export default function AgentSettingsDialog({
                                 </TabsContent>
 
                                 <TabsContent value="sms" className="space-y-10">
-                                    <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-start gap-3">
-                                        <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                                        <p className="text-xs text-amber-500 leading-relaxed font-bold">SMS hard constraints: No quick replies, no formatting, no images (unless MMS). Plain text only.</p>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-10">
-                                        <div className="space-y-8">
-                                            <FormField control={form.control} name="channelConfig.sms.openingText" render={({ field }) => (
-                                                <FormItem><FormLabel className="text-xs">Opening Text</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormDescription className="text-[10px]">Character count: {field.value?.length || 0}/160</FormDescription></FormItem>
-                                            )} />
-                                            <FormField control={form.control} name="channelConfig.sms.maxLength" render={({ field }) => (
-                                                <FormItem><FormLabel className="text-xs">Max Response Length</FormLabel><Select onValueChange={(val) => field.onChange(Number(val))} value={String(field.value)}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="160">160 Chars (1 SMS)</SelectItem><SelectItem value="320">320 Chars (2 SMS)</SelectItem><SelectItem value="0">No Limit</SelectItem></SelectContent></Select></FormItem>
-                                            )} />
+                                    <div className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/[0.03] mb-6">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-sm font-bold">Enable SMS for this Agent</Label>
+                                            <p className="text-xs text-muted-foreground">Allow this agent to handle inbound SMS messages.</p>
                                         </div>
-                                        <div className="space-y-8">
-                                            <FormField control={form.control} name="channelConfig.sms.escalation.message" render={({ field }) => (
-                                                <FormItem><FormLabel className="text-xs">Handoff Message</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
-                                            )} />
-                                            <FormField control={form.control} name="channelConfig.sms.escalation.keywords" render={({ field }) => (
-                                                <FormItem><FormLabel className="text-xs">Handoff Keywords</FormLabel><FormControl><Input placeholder="agent, human, person" value={field.value?.join(', ')} onChange={(e) => field.onChange(e.target.value.split(',').map(s => s.trim()))} /></FormControl></FormItem>
-                                            )} />
+                                        <FormField control={form.control} name="channelConfig.sms.enabled" render={({ field }) => (
+                                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                        )} />
+                                    </div>
+
+                                    <div className={cn("space-y-10 transition-opacity", !watchedValues.channelConfig?.sms?.enabled && "opacity-40 pointer-events-none")}>
+                                        <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-start gap-3">
+                                            <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                                            <p className="text-xs text-amber-500 leading-relaxed font-bold">SMS hard constraints: No quick replies, no formatting, no images (unless MMS). Plain text only.</p>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-10">
+                                            <div className="space-y-8">
+                                                <FormField control={form.control} name="channelConfig.sms.openingText" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-xs">Opening Text</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormDescription className="text-[10px]">Character count: {field.value?.length || 0}/160</FormDescription></FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="channelConfig.sms.maxLength" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-xs">Max Response Length</FormLabel><Select onValueChange={(val) => field.onChange(Number(val))} value={String(field.value)}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="160">160 Chars (1 SMS)</SelectItem><SelectItem value="320">320 Chars (2 SMS)</SelectItem><SelectItem value="0">No Limit</SelectItem></SelectContent></Select></FormItem>
+                                                )} />
+                                            </div>
+                                            <div className="space-y-8">
+                                                <FormField control={form.control} name="channelConfig.sms.escalation.message" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-xs">Handoff Message</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="channelConfig.sms.escalation.keywords" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-xs">Handoff Keywords</FormLabel><FormControl><Input placeholder="agent, human, person" value={field.value?.join(', ')} onChange={(e) => field.onChange(e.target.value.split(',').map(s => s.trim()))} /></FormControl></FormItem>
+                                                )} />
+                                            </div>
                                         </div>
                                     </div>
                                 </TabsContent>
 
                                 <TabsContent value="phone" className="space-y-10">
-                                    <div className="grid grid-cols-2 gap-10">
+                                    <div className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/[0.03] mb-6">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-sm font-bold">Enable Phone for this Agent</Label>
+                                            <p className="text-xs text-muted-foreground">Allow this agent to handle voice calls.</p>
+                                        </div>
+                                        <FormField control={form.control} name="channelConfig.phone.enabled" render={({ field }) => (
+                                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                        )} />
+                                    </div>
+
+                                    <div className={cn("grid grid-cols-2 gap-10 transition-opacity", !watchedValues.channelConfig?.phone?.enabled && "opacity-40 pointer-events-none")}>
                                         <div className="space-y-8">
                                             <section className="space-y-4">
                                                 <Label className="text-[10px] uppercase font-black tracking-widest text-primary">Call Mode</Label>
@@ -558,7 +590,17 @@ export default function AgentSettingsDialog({
                                 </TabsContent>
 
                                 <TabsContent value="email" className="space-y-10">
-                                    <div className="grid grid-cols-2 gap-10">
+                                    <div className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/[0.03] mb-6">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-sm font-bold">Enable Email for this Agent</Label>
+                                            <p className="text-xs text-muted-foreground">Allow this agent to handle inbound emails.</p>
+                                        </div>
+                                        <FormField control={form.control} name="channelConfig.email.enabled" render={({ field }) => (
+                                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                        )} />
+                                    </div>
+
+                                    <div className={cn("grid grid-cols-2 gap-10 transition-opacity", !watchedValues.channelConfig?.email?.enabled && "opacity-40 pointer-events-none")}>
                                         <div className="space-y-8">
                                             <section className="space-y-4">
                                                 <Label className="text-[10px] uppercase font-black tracking-widest text-primary">Workflow</Label>
