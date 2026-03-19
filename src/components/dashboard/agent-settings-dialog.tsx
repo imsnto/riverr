@@ -130,8 +130,8 @@ const agentSettingsSchema = z.object({
     }),
     email: z.object({
       enabled: z.boolean().default(false),
-      workflow: z.object({ approval: string, delay: string, threading: string }),
-      format: z.object({ signOff: string, length: string, alwaysInclude: string, subject: string }),
+      workflow: z.object({ approval: z.string(), delay: z.string(), threading: z.string() }),
+      format: z.object({ signOff: z.string(), length: z.string(), alwaysInclude: z.string(), subject: z.string() }),
       escalation: z.object({ holdForValue: z.boolean(), holdForFrustration: z.boolean(), holdForLegal: z.boolean(), holdForAttachment: z.boolean(), holdForVip: z.boolean(), keywords: z.array(z.string()), sentiment: z.boolean() })
     })
   }).optional()
@@ -207,10 +207,10 @@ export default function AgentSettingsDialog({
           escalationRules: { ...defaultFormValues.escalationRules, ...bot.escalationRules },
           businessContext: { ...defaultFormValues.businessContext, ...bot.businessContext },
           channelConfig: {
-            web: { ...defaultFormValues.channelConfig.web, ...bot.channelConfig?.web },
-            sms: { ...defaultFormValues.channelConfig.sms, ...bot.channelConfig?.sms },
-            phone: { ...defaultFormValues.channelConfig.phone, ...bot.channelConfig?.phone },
-            email: { ...defaultFormValues.channelConfig.email, ...bot.channelConfig?.email },
+            web: { ...defaultFormValues.channelConfig!.web, ...bot.channelConfig?.web },
+            sms: { ...defaultFormValues.channelConfig!.sms, ...bot.channelConfig?.sms },
+            phone: { ...defaultFormValues.channelConfig!.phone, ...bot.channelConfig?.phone },
+            email: { ...defaultFormValues.channelConfig!.email, ...bot.channelConfig?.email },
           }
         };
         form.reset(merged as any);
@@ -483,10 +483,10 @@ export default function AgentSettingsDialog({
                               <div className="grid grid-cols-2 gap-4">
                                 <FormField control={form.control} name={`qualificationFlow.${index}.goal`} render={({ field }) => (
                                   <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-8"><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Guide to order directly">Order directly</SelectItem><SelectItem value="Capture details and send quote">Capture & Quote</SelectItem><SelectItem value="Book a callback">Book Callback</SelectItem><SelectItem value="Collect email">Collect Email</SelectItem><SelectItem value="Provide information">Provide Information</SelectItem></SelectContent></Select></FormItem>
-                                )} />
+                                )}/>
                                 <FormField control={form.control} name={`qualificationFlow.${index}.pricingPolicy`} render={({ field }) => (
                                   <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-8"><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="State prices directly">State prices</SelectItem><SelectItem value="Ranges only">Ranges only</SelectItem><SelectItem value="Always request a quote">Always request quote</SelectItem></SelectContent></Select></FormItem>
-                                )} />
+                                )}/>
                               </div>
                             </CardContent>
                           </Card>
@@ -569,8 +569,8 @@ export default function AgentSettingsDialog({
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable Email</Label><Switch checked={watchedValues.channelConfig?.email?.enabled ?? false} onCheckedChange={(val) => form.setValue('channelConfig.email.enabled', val)} /></div>
                         <div className={cn("grid grid-cols-2 gap-10", !watchedValues.channelConfig?.email?.enabled && "opacity-40 pointer-events-none")}>
                           <section className="space-y-6">
-                            <FormField control={form.control} name="channelConfig.email.workflow.approval" render={({ field }) => (<FormItem><FormLabel className="text-xs">Approval Workflow</FormLabel><Select onValueChange={field.onChange} value={field.value || 'auto_exceptions'}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="auto">Auto-send</SelectItem><SelectItem value="auto_exceptions">Flag Exceptions</SelectItem><SelectItem value="manual">Manual Approval</SelectItem></SelectContent></Select></FormItem>)} />
-                            <FormField control={form.control} name="channelConfig.email.workflow.delay" render={({ field }) => (<FormItem><FormLabel className="text-xs">Reply Delay</FormLabel><Select onValueChange={field.onChange} value={field.value || '2-5'}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="immediate">Immediate</SelectItem><SelectItem value="2-5">2–5 min</SelectItem><SelectItem value="15-30">15–30 min</SelectItem></SelectContent></Select></FormItem>)} />
+                            <FormField control={form.control} name="channelConfig.email.workflow.approval" render={({ field }) => (<FormItem><FormLabel className="text-xs">Approval Workflow</FormLabel><Select onValueChange={field.onChange} value={field.value || 'auto_exceptions'}><FormControl><SelectTrigger><SelectValue placeholder="Select a workflow" /></SelectTrigger></FormControl><SelectContent><SelectItem value="auto">Auto-send</SelectItem><SelectItem value="auto_exceptions">Flag Exceptions</SelectItem><SelectItem value="manual">Manual Approval</SelectItem></SelectContent></Select></FormItem>)} />
+                            <FormField control={form.control} name="channelConfig.email.workflow.delay" render={({ field }) => (<FormItem><FormLabel className="text-xs">Reply Delay</FormLabel><Select onValueChange={field.onChange} value={field.value || '2-5'}><FormControl><SelectTrigger><SelectValue placeholder="Select a delay" /></SelectTrigger></FormControl><SelectContent><SelectItem value="immediate">Immediate</SelectItem><SelectItem value="2-5">2–5 min</SelectItem><SelectItem value="15-30">15–30 min</SelectItem></SelectContent></Select></FormItem>)} />
                           </section>
                           <section className="space-y-6">
                             <div className="flex items-center justify-between p-3 border rounded-lg bg-white/[0.02]"><Label className="text-xs">Hold for orders</Label><Switch checked={watchedValues.channelConfig?.email?.escalation?.holdForValue ?? true} onCheckedChange={(val) => form.setValue('channelConfig.email.escalation.holdForValue', val)} /></div>
