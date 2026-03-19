@@ -21,7 +21,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Bot as BotData, User, HelpCenter, Hub, Space } from '@/lib/data';
 import { 
@@ -42,6 +42,8 @@ import {
   Globe2,
   Loader2,
   Sparkles,
+  Check,
+  CheckCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -265,6 +267,10 @@ export default function AgentSettingsDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden bg-[#0d1117] border-white/10">
+        <div className="sr-only">
+          <DialogTitle>{watchedValues.name || 'AI Agent'}</DialogTitle>
+          <DialogDescription>Configure your AI Agent's personality, knowledge, and delivery channels.</DialogDescription>
+        </div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
             <header className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#090c10] shrink-0 z-[100]">
@@ -316,7 +322,7 @@ export default function AgentSettingsDialog({
                           <FormItem><FormLabel className="text-xs">Agent Name (One word)</FormLabel><FormControl><Input placeholder="Assistant" {...field} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="roleTitle" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Role Title</FormLabel><FormControl><Input placeholder="e.g. Sales Specialist" {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Role Title</FormLabel><FormControl><Input placeholder="e.g. Sales Concierge" {...field} /></FormControl></FormItem>
                         )} />
                       </div>
                       <FormField control={form.control} name="name" render={({ field }) => (
@@ -355,8 +361,8 @@ export default function AgentSettingsDialog({
                           </div>
                         </div>
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-xs">Frustration detected</Label><Switch checked={watchedValues.escalationRules?.frustrationEnabled ?? true} onCheckedChange={(val) => form.setValue('escalationRules.frustrationEnabled', val)} /></div>
-                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-xs">Unanswered loops</Label><Switch checked={watchedValues.escalationRules?.unansweredLoopEnabled ?? true} onCheckedChange={(val) => form.setValue('escalationRules.unansweredLoopEnabled', val)} /></div>
-                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-xs">Complex requests</Label><Switch checked={watchedValues.escalationRules?.complexRequestEnabled ?? true} onCheckedChange={(val) => form.setValue('escalationRules.complexRequestEnabled', val)} /></div>
+                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-xs">Same question unanswered twice</Label><Switch checked={watchedValues.escalationRules?.unansweredLoopEnabled ?? true} onCheckedChange={(val) => form.setValue('escalationRules.unansweredLoopEnabled', val)} /></div>
+                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-xs">Complex or custom requests</Label><Switch checked={watchedValues.escalationRules?.complexRequestEnabled ?? true} onCheckedChange={(val) => form.setValue('escalationRules.complexRequestEnabled', val)} /></div>
                         <FormField control={form.control} name="escalationRules.notifyEmail" render={({ field }) => (
                           <FormItem><FormLabel className="text-xs">Escalation Notify Email</FormLabel><FormControl><Input placeholder="team@business.com" {...field} /></FormControl></FormItem>
                         )} />
@@ -367,7 +373,6 @@ export default function AgentSettingsDialog({
 
                 {activeTab === 'knowledge' && (
                   <div className="space-y-12 animate-in fade-in duration-300 text-left">
-                    {/* NEW: WEBSITE AUTO-FILL TOOL */}
                     <Card className="bg-primary/5 border-primary/20 border-2 overflow-hidden">
                       <CardHeader className="bg-primary/10 py-4">
                         <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-primary">
@@ -427,11 +432,14 @@ export default function AgentSettingsDialog({
                           <FormItem><FormLabel className="text-xs">Min Order / Delivery Area</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                         )} />
                       </div>
+                      <FormField control={form.control} name="businessContext.turnaround" render={({ field }) => (
+                        <FormItem><FormLabel className="text-xs">Turnaround / Lead Times</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                      )} />
                       <FormField control={form.control} name="businessContext.differentiation" render={({ field }) => (
                         <FormItem><FormLabel className="text-xs">What makes you different</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                       )} />
                       <FormField control={form.control} name="businessContext.forbiddenTopics" render={({ field }) => (
-                        <FormItem><FormLabel className="text-xs">Forbidden Topics</FormLabel><FormControl><Input placeholder="Comma-separated..." {...field} /></FormControl></FormItem>
+                        <FormItem><FormLabel className="text-xs">Topics never to discuss</FormLabel><FormControl><Input placeholder="Comma-separated..." {...field} /></FormControl></FormItem>
                       )} />
                     </section>
 
@@ -461,9 +469,9 @@ export default function AgentSettingsDialog({
                           <Card key={field.id} className="bg-[#161b22] border-white/10 relative">
                             <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-destructive" onClick={() => removeProduct(index)}><Trash2 className="h-3 w-3" /></Button>
                             <CardContent className="p-6 space-y-4">
-                              <div className="grid grid-cols-2 gap-4"><Input placeholder="Product Name" {...form.register(`products.${index}.name` as any)} /><Input placeholder="Price Range" {...form.register(`products.${index}.price` as any)} /></div>
-                              <Textarea placeholder="Detailed Description" {...form.register(`products.${index}.description` as any)} />
-                              <Input placeholder="When to recommend (signals/keywords)" {...form.register(`products.${index}.triggers` as any)} />
+                              <div className="grid grid-cols-2 gap-4"><Input placeholder="Product Name" {...form.register(`products.${index}.name` as any)} /><Input placeholder="Price / Range" {...form.register(`products.${index}.price` as any)} /></div>
+                              <Textarea placeholder="Description" {...form.register(`products.${index}.description` as any)} />
+                              <Input placeholder="When to recommend (critical signals)" {...form.register(`products.${index}.triggers` as any)} />
                             </CardContent>
                           </Card>
                         ))}
