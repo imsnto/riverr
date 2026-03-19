@@ -490,14 +490,14 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
   }) {
       let { bot } = args;
 
-      // ---- INTELLIGENT AGENT RESOLUTION ----
+      // ---- INTELLIGENT AGENT RESOLUTION (Stage vs Actor) ----
       // If this is a widget, resolve its brain from the assigned AI Agent
       if (bot.assignedAgentId) {
           const aiAgentDoc = await adminDB.collection('bots').doc(bot.assignedAgentId).get();
           if (aiAgentDoc.exists) {
               const aiAgentData = aiAgentDoc.data();
               bot = {
-                  ...bot, // keep widget metadata
+                  ...bot, // keep widget metadata (branding, etc)
                   ...aiAgentData, // inherit agent knowledge and logic
                   id: aiAgentDoc.id,
               };

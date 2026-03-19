@@ -86,25 +86,18 @@ export const updateSpace = async (spaceId: string, data: Partial<Space>) => {
   await updateDoc(docRef, data);
 };
 
-/**
- * Removes a user from a space and all associated private hubs.
- * Also cleans up the memberships collection for data integrity.
- */
 export const removeUserFromSpace = async (spaceId: string, userId: string) => {
   const spaceRef = doc(db, 'spaces', spaceId);
   const membershipId = `${spaceId}_${userId}`;
   const membershipRef = doc(db, 'memberships', membershipId);
   const batch = writeBatch(db);
 
-  // 1. Remove from space members map (Primary authorization source)
   batch.update(spaceRef, {
     [`members.${userId}`]: deleteField()
   });
   
-  // 2. Delete the dedicated membership document
   batch.delete(membershipRef);
   
-  // 3. Remove from all hubs in this space (cleaning up private member lists)
   const hubsQuery = query(collection(db, 'hubs'), where('spaceId', '==', spaceId));
   const hubsSnap = await getDocs(hubsQuery);
   
@@ -131,9 +124,6 @@ export const getSpacesForUser = async (userId: string): Promise<Space[]> => {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Space));
 };
 
-/**
- * Real-time subscription for spaces where the user is a member.
- */
 export const subscribeToUserSpaces = (userId: string, callback: (spaces: Space[]) => void) => {
   const q = query(collection(db, 'spaces'), where(`members.${userId}.role`, 'in', ['Admin', 'Member', 'Viewer']));
   return onSnapshot(q, (snapshot) => {
@@ -165,25 +155,6 @@ export const addHub = async (hub: Omit<Hub, 'id'>): Promise<Hub> => {
 export const updateHub = async (hubId: string, data: Partial<Hub>) => {
   const docRef = doc(db, 'hubs', hubId);
   await updateDoc(docRef, data);
-};
-
-export const createDefaultHubForSpace = async (spaceId: string, userId: string, params: { name: string, type: string }) => {
-    const hubData: Omit<Hub, 'id'> = {
-        name: params.name,
-        spaceId,
-        type: params.type,
-        createdAt: new Date().toISOString(),
-        createdBy: userId,
-        isDefault: true,
-        settings: { components: ['tasks', 'inbox'], defaultView: 'overview' },
-        statuses: [
-            { name: 'Backlog', color: '#6b7280' },
-            { name: 'In Progress', color: '#3b82f6' },
-            { name: 'In Review', color: '#f59e0b' },
-            { name: 'Done', color: '#22c55e' },
-        ],
-    };
-    return addHub(hubData);
 };
 
 // --- Projects ---
@@ -900,5 +871,4 @@ export const deleteAgentEmailConfig = async (userId: string, configId: string) =
   await deleteDoc(docRef);
 };
 
-// --- Seeding ---
 export const seedDatabase = async () => {};

@@ -474,13 +474,22 @@ export default function Dashboard({ view }: { view: string }) {
     });
   };
   
+  // ---- BOT FORGE CRUD HANDLERS ----
   const handleBotUpdate = async (bid: string, d: Partial<Bot>) => {
     await db.updateBot(bid, d);
     setBots(prev => prev.map(b => b.id === bid ? { ...b, ...d } : b));
     toast({ title: "Bot Updated" });
   }
-  const handleBotAdd = async (b: Omit<Bot, 'id'>) => { const nb = await db.addBot(b); setBots(prev => [...prev, nb]); }
-  const handleBotDelete = async (bid: string) => { await db.deleteBot(bid); setBots(prev => prev.filter(b => b.id !== bid)); toast({ title: "Bot Deleted" }); };
+  const handleBotAdd = async (b: Omit<Bot, 'id'>) => { 
+    const nb = await db.addBot(b); 
+    setBots(prev => [...prev, nb]); 
+  }
+  const handleBotDelete = async (bid: string) => { 
+    await db.deleteBot(bid); 
+    setBots(prev => prev.filter(b => b.id !== bid)); 
+    toast({ title: "Bot Deleted" }); 
+  };
+
   const handleLogTime = async (td: Omit<TimeEntry, 'id'>) => {
     const nte = await db.addTimeEntry({...td, spaceId: activeSpace!.id});
     setTimeEntries(prev => [...prev, nte]);

@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDB } from '@/lib/firebase-admin';
 
@@ -15,6 +14,11 @@ export async function OPTIONS() {
   });
 }
 
+/**
+ * Runtime Settings Resolver
+ * Used by the live Chat Widget to decide branding and behavior.
+ * Implements "Theater Architecture": Resolves the Stage (Widget) + Actor (Agent).
+ */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const botId = searchParams.get('botId');
@@ -32,32 +36,42 @@ export async function GET(request: NextRequest) {
 
     const botData = botDoc.data();
     
-    // Resolve Greeting and Personality Logic
+    // Default fallback values from the Widget itself
     let resolvedGreeting = botData?.welcomeMessage;
     let webAgentName = botData?.webAgentName || botData?.name || 'Assistant';
     let agentIds = botData?.agentIds || [];
+    let identityCapture = botData?.identityCapture;
 
-    // If this is a widget, check for assigned AI Agent to inherit persona and human team
+    // ---- INTELLIGENT AGENT INHERITANCE (The Actor) ----
+    // If this is a widget stage and has an assigned AI Actor brain
     if (botData?.type === 'widget' && botData?.assignedAgentId) {
       const aiAgentDoc = await adminDB.collection('bots').doc(botData.assignedAgentId).get();
       if (aiAgentDoc.exists) {
         const aiAgentData = aiAgentDoc.data();
         
-        // Inherit human team members from the Agent if widget has none
+        // 1. Inherit Human Team members if the widget has none explicitly set
         if (agentIds.length === 0) {
           agentIds = aiAgentData?.agentIds || [];
         }
 
-        const webConfig = aiAgentData?.workflowConfig?.web;
-        if (webConfig) {
-          const aiName = webConfig.webAgentName || aiAgentData.name || 'Assistant';
-          const aiBaseGreeting = webConfig.welcomeMessage || "How can I help you today?";
+        // 2. Resolve Agent Personality & Greeting for Web Channel
+        // We look specifically for the agent's web channel instructions
+        const webConfig = aiAgentData?.channelConfig?.web;
+        if (webConfig?.enabled) {
+          const aiName = aiAgentData.webAgentName || aiAgentData.name || 'Assistant';
+          const aiBaseGreeting = webConfig.greeting?.text || "How can I help you today?";
           webAgentName = aiName;
-          resolvedGreeting = `Hi, I'm ${aiName}. ${aiBaseGreeting}`;
+          resolvedGreeting = aiBaseGreeting;
+          
+          // 3. Inherit Lead Capture timing/fields from the Agent actor
+          if (aiAgentData.identityCapture) {
+            identityCapture = aiAgentData.identityCapture;
+          }
         }
       }
     }
 
+    // Resolve public-safe user info for avatars
     let agents: { id: string; name: string; avatarUrl: string }[] = [];
     if (agentIds.length > 0) {
         const userPromises = agentIds.map((id: string) => adminDB.collection('users').doc(id).get());
@@ -74,14 +88,16 @@ export async function GET(request: NextRequest) {
             });
     }
 
-    // Only return public-safe settings
+    // Explicitly select fields safe for the public web widget
     const safeSettings = {
+        id: botId,
+        type: botData?.type,
         name: botData?.name,
         webAgentName: webAgentName,
         styleSettings: botData?.styleSettings,
         agents: agents,
         welcomeMessage: resolvedGreeting,
-        identityCapture: botData?.identityCapture,
+        identityCapture: identityCapture,
         assignedAgentId: botData?.assignedAgentId,
     };
 
