@@ -796,7 +796,7 @@ export const savePushToken = async (userId: string, token: string, userAgent: st
 export const getCommsNumbersForSpace = (spaceId: string, callback: (numbers: any[]) => void) => {
   const q = query(collection(db, `spaces/${spaceId}/commsNumbers`));
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map(d => ({ id: doc.id, ...d.data() })));
+    callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
   });
 };
 

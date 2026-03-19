@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -137,7 +136,6 @@ export default function WidgetSettingsDialog({
   useEffect(() => {
     if (isOpen) {
       if (bot) {
-        // Deep merge with defaults to prevent undefined nested properties
         const mergedValues = {
           ...defaultValues,
           ...bot,
@@ -179,7 +177,15 @@ export default function WidgetSettingsDialog({
   };
 
   const onSubmit = (values: WidgetSettingsFormValues) => {
-    onSave(values as any);
+    const payload: BotData | Omit<BotData, 'id' | 'hubId'> = {
+      ...(bot || {}),
+      ...values,
+      type: 'widget',
+      welcomeMessage: values.welcomeMessage,
+      identityCapture: values.identityCapture,
+    } as any;
+
+    onSave(payload);
     onOpenChange(false);
   };
 
@@ -315,7 +321,7 @@ export default function WidgetSettingsDialog({
                           <section className="space-y-6">
                             <div className="flex items-center gap-2 text-amber-500">
                               <Settings2 className="h-4 w-4" />
-                              <h3 className="text-sm font-bold uppercase tracking-widest">Fallback Behavior (No Agent)</h3>
+                              <h3 className="text-sm font-bold uppercase tracking-widest">Fallback Behavior (No AI Agent)</h3>
                             </div>
                             <FormField control={form.control} name="welcomeMessage" render={({ field }) => (
                               <FormItem>
@@ -377,7 +383,7 @@ export default function WidgetSettingsDialog({
 
                   {activeTab === 'team' && (
                     <div className="space-y-8 animate-in fade-in duration-300">
-                      <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Human Team (Hub Scoped)</h3>
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Human Team</h3>
                       <p className="text-sm text-muted-foreground leading-relaxed">Select which members of this Hub are responsible for responding to chats on this widget.</p>
                       <div className="grid grid-cols-2 gap-3">
                         {allUsers.map((user) => (

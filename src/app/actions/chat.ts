@@ -3,6 +3,7 @@
 import { adminDB } from '@/lib/firebase-admin';
 import { handleIncomingMessage, AgentAdapters, BotConfig, Conversation, IncomingMessage, SearchHelpCenterParams, SearchHelpCenterResult, HelpChunk, SearchSupportParams, SearchSupportResult, SupportIntentNode } from '@/lib/agent';
 import * as db from '@/lib/db';
+import { resolveRuntimeBot } from '@/lib/bot-runtime';
 import type { Firestore } from "firebase-admin/firestore";
 import { getTypesenseAdmin, getTypesenseSearch } from '@/lib/typesense';
 import { indexHelpCenterArticleToChunks } from '@/lib/knowledge/indexer';
@@ -22,97 +23,109 @@ const typesense = getTypesenseSearch();
 export type SearchSalesExtractionsResult = { extractions: any[] };
 
 async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
-    const { hubId, allowedHelpCenterIds, userId, query, topK = 10 } = params;
+  const { hubId, allowedHelpCenterIds, userId, query, topK = 10 } = params;
 
-    if (!hubId || !allowedHelpCenterIds?.length) return { chunks: [] };
+  if (!hubId || !allowedHelpCenterIds?.length) return { chunks: [] };
 
-    const searchParameters = {
-        'q': query,
-        'query_by': 'text,title,tags,headingPath',
-        'query_by_weights': '4,2,2,1',
-        'per_page': topK,
-        'sort_by': '_text_match:desc,sourceUpdatedAt:desc'
-    };
-    
-    const baseFilter = `type:='doc' && hubId:=${hubId} && helpCenterId:=[${allowedHelpCenterIds.join(',')}] && status:='published'`;
+  const safeIds = allowedHelpCenterIds
+    .filter(Boolean)
+    .map((id) => String(id).replace(/'/g, "\\'"));
 
-    const publicFilter = `${baseFilter} && isPublic:=true`;
-    const publicSearchRequest = { ...searchParameters, filter_by: publicFilter };
-    
-    let privateSearchRequest = null;
-    if (userId) {
-        const privateFilter = `${baseFilter} && isPublic:=false && allowedUserIds:=[${userId}]`;
-        privateSearchRequest = { ...searchParameters, filter_by: privateFilter };
+  if (!safeIds.length) return { chunks: [] };
+
+  const searchParameters = {
+    q: query,
+    query_by: 'text,title,tags,headingPath',
+    query_by_weights: '4,2,2,1',
+    per_page: topK,
+    sort_by: '_text_match:desc,sourceUpdatedAt:desc',
+  };
+
+  const hcFilter = safeIds.map(id => `'${id}'`).join(',');
+  const baseFilter = `type:='doc' && hubId:='${hubId}' && helpCenterId:=[${hcFilter}] && status:='published'`;
+
+  const publicFilter = `${baseFilter} && isPublic:=true`;
+  const publicSearchRequest = { ...searchParameters, filter_by: publicFilter };
+
+  let privateSearchRequest = null;
+  if (userId) {
+    const privateFilter = `${baseFilter} && isPublic:=false && allowedUserIds:=['${String(userId).replace(/'/g, "\\'")}']`;
+    privateSearchRequest = { ...searchParameters, filter_by: privateFilter };
+  }
+
+  try {
+    const [publicResults, privateResults] = await Promise.all([
+      typesense.collections('memory_nodes').documents().search(publicSearchRequest),
+      privateSearchRequest
+        ? typesense.collections('memory_nodes').documents().search(privateSearchRequest)
+        : Promise.resolve(null),
+    ]);
+
+    const hits = [...(publicResults.hits || []), ...(privateResults?.hits || [])];
+    const uniqueHits = Array.from(new Map(hits.map((item: any) => [item.document.id, item])).values());
+
+    const chunks: HelpChunk[] = uniqueHits
+      .map((hit: any) => {
+        const doc = hit.document as any;
+        return {
+          chunkText: doc.text,
+          score: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
+          articleId: doc.sourceId,
+          title: doc.title,
+          url: doc.url,
+          helpCenterIds: doc.helpCenterIds || [doc.helpCenterId],
+          updatedAt: new Date(doc.sourceUpdatedAt).toISOString(),
+          articleType: doc.articleType,
+          articleContent: doc.content || null,
+        };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, topK);
+
+    return { chunks };
+  } catch (error: any) {
+    if (error.httpStatus === 404) {
+      console.warn("Typesense search failed: 'memory_nodes' collection not found. Returning empty results.");
+      return { chunks: [] };
     }
-    
-    try {
-        const [publicResults, privateResults] = await Promise.all([
-            typesense.collections('memory_nodes').documents().search(publicSearchRequest),
-            privateSearchRequest ? typesense.collections('memory_nodes').documents().search(privateSearchRequest) : Promise.resolve(null)
-        ]);
-        
-        const hits = [...(publicResults.hits || []), ...(privateResults?.hits || [])];
-        const uniqueHits = Array.from(new Map(hits.map(item => [item.document.id, item])).values());
-        
-        const chunks: HelpChunk[] = uniqueHits.map(hit => {
-            const doc = hit.document as any;
-            return {
-                chunkText: doc.text,
-                score: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
-                articleId: doc.sourceId,
-                title: doc.title,
-                url: doc.url,
-                helpCenterIds: doc.helpCenterIds || [doc.helpCenterId],
-                updatedAt: new Date(doc.sourceUpdatedAt).toISOString(),
-                articleType: doc.articleType,
-                articleContent: doc.content || null,
-            };
-        }).sort((a, b) => b.score - a.score).slice(0, topK);
-
-        return { chunks };
-    } catch (error: any) {
-        if (error.httpStatus === 404) {
-            console.warn("Typesense search failed: 'memory_nodes' collection not found. Returning empty results.");
-            return { chunks: [] };
-        }
-        console.error("Typesense search failed in searchHelpCenter:", error);
-        throw error;
-    }
+    console.error('Typesense search failed in searchHelpCenter:', error);
+    throw error;
+  }
 }
 
 async function searchSupport(params: SearchSupportParams): Promise<SearchSupportResult> {
-    const { hubId, userId, query, topK = 5 } = params;
+  const { hubId, query, topK = 5 } = params;
 
-    if (!hubId) return { intents: [] };
+  if (!hubId) return { intents: [] };
 
-    const searchParameters = {
-        'q': query,
-        'query_by': 'textForEmbedding,title,description',
-        'query_by_weights': '4,2,1',
-        'per_page': topK,
-        'sort_by': '_text_match:desc',
-        'filter_by': `type:='support_intent' && hubId:=${hubId}`
-    };
+  const searchParameters = {
+    q: query,
+    query_by: 'textForEmbedding,title,description',
+    query_by_weights: '4,2,1',
+    per_page: topK,
+    sort_by: '_text_match:desc',
+    filter_by: `type:='support_intent' && hubId:='${String(hubId).replace(/'/g, "\\'")}'`,
+  };
 
-    try {
-        const results = await typesense.collections('memory_nodes').documents().search(searchParameters);
-        
-        const intents: any[] = (results.hits || []).map(hit => {
-            return {
-                ...(hit.document as SupportIntentNode),
-                _searchScore: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
-            };
-        });
+  try {
+    const results = await typesense.collections('memory_nodes').documents().search(searchParameters);
 
-        return { intents };
-    } catch (error: any) {
-        if (error.httpStatus === 404) {
-            console.warn("Typesense search failed: 'memory_nodes' collection not found. Returning empty results.");
-            return { intents: [] };
-        }
-        console.error("Typesense search failed in searchSupport:", error);
-        throw error;
+    const intents: any[] = (results.hits || []).map((hit: any) => {
+      return {
+        ...(hit.document as SupportIntentNode),
+        _searchScore: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
+      };
+    });
+
+    return { intents };
+  } catch (error: any) {
+    if (error.httpStatus === 404) {
+      console.warn("Typesense search failed: 'memory_nodes' collection not found. Returning empty results.");
+      return { intents: [] };
     }
+    console.error('Typesense search failed in searchSupport:', error);
+    throw error;
+  }
 }
 
 export async function updateConversation(conversationId: string, data: Partial<Conversation>) {
@@ -483,111 +496,122 @@ async function ensureCrmLinkedForConversationAdmin(conversationId: string) {
     return { ...message, id: messageRef.id };
   }
   
-  export async function invokeAgent(args: {
-      bot: any;
-      conversation: Conversation;
-      message: IncomingMessage;
-  }) {
-      let { bot } = args;
+export async function invokeAgent(args: {
+  bot: any;
+  conversation: Conversation;
+  message: IncomingMessage;
+}) {
+  let { bot, conversation } = args;
 
-      // ---- INTELLIGENT AGENT RESOLUTION (Stage vs Actor) ----
-      // If this is a widget, resolve its brain from the assigned AI Agent
-      if (bot.assignedAgentId) {
-          const aiAgentDoc = await adminDB.collection('bots').doc(bot.assignedAgentId).get();
-          if (aiAgentDoc.exists) {
-              const aiAgentData = aiAgentDoc.data();
-              bot = {
-                  ...bot, // keep widget metadata (branding, etc)
-                  ...aiAgentData, // inherit agent knowledge and logic
-                  id: aiAgentDoc.id,
-              };
-          }
+  const resolved = bot?.id ? await resolveRuntimeBot(bot.id) : null;
+  const effectiveBot = resolved?.effectiveBot || bot;
+
+  const adapters: AgentAdapters = {
+    searchHelpCenter,
+    searchSupport,
+    generateAnswer: async (params) => {
+      const result = await agentResponse(params);
+      return result.answer;
+    },
+    escalateToHuman: async ({ conversationId, reason }) => {
+      await updateConversation(conversationId, {
+        status: 'waiting_human',
+        escalated: true,
+        escalationReason: reason,
+        state: 'human_assigned',
+      });
+    },
+    persistAssistantMessage: async ({ conversationId, text, responderType }) => {
+      const convo = await adminDB.collection('conversations').doc(conversationId).get();
+      const convoData = convo.data() as Conversation;
+
+      const messageData: Omit<ChatMessage, 'id'> = {
+        conversationId,
+        authorId: 'ai_agent',
+        type: 'message',
+        senderType: 'agent',
+        responderType,
+        content: text,
+        timestamp: new Date().toISOString(),
+      };
+
+      if (convoData?.channel === 'sms') {
+        const msgRef = await adminDB.collection('chat_messages').add({
+          ...messageData,
+          channel: 'sms',
+          provider: 'twilio',
+          deliveryStatus: 'created',
+        });
+
+        const provider = getMessagingProvider('twilio');
+
+        try {
+          const { providerMessageId } = await provider.sendSms({
+            from: convoData.channelAddress!,
+            to: convoData.externalAddress!,
+            body: text,
+          });
+
+          await msgRef.update({
+            providerMessageId,
+            deliveryStatus: 'queued',
+          });
+
+          await adminDB.doc(`provider_message_lookups/twilio_${providerMessageId}`).set({
+            messageId: msgRef.id,
+            conversationId,
+          });
+        } catch (e) {
+          console.error('AI SMS delivery failed', e);
+          await msgRef.update({ deliveryStatus: 'failed' });
+        }
+      } else {
+        await addChatMessage(messageData);
       }
+    },
+    updateConversation: async ({ conversationId, patch }) => {
+      await updateConversation(conversationId, patch);
+    },
+  };
 
-      const adapters: AgentAdapters = {
-          searchHelpCenter,
-          searchSupport,
-          generateAnswer: async (params) => {
-              const result = await agentResponse(params);
-              return result.answer;
-          },
-          escalateToHuman: async ({ conversationId, reason }) => {
-              await updateConversation(conversationId, {
-                  status: 'waiting_human',
-                  escalated: true,
-                  escalationReason: reason,
-                  state: 'human_assigned',
-              });
-          },
-          persistAssistantMessage: async ({ conversationId, text, responderType }) => {
-              const convo = await adminDB.collection('conversations').doc(conversationId).get();
-              const convoData = convo.data() as Conversation;
+  const botConfig: BotConfig = {
+    id: effectiveBot.id,
+    hubId: effectiveBot.hubId,
+    name: effectiveBot.name,
+    webAgentName: effectiveBot.webAgentName || effectiveBot.name,
+    allowedHelpCenterIds: effectiveBot.allowedHelpCenterIds || [],
+    aiEnabled: effectiveBot.aiEnabled !== false,
+    handoffKeywords:
+      effectiveBot.automations?.handoffKeywords ||
+      effectiveBot.channelConfig?.sms?.escalation?.keywords ||
+      [],
+    quickReplies:
+      effectiveBot.automations?.quickReplies || [],
+    flow: effectiveBot.flow,
+    conversationGoal:
+      effectiveBot.conversationGoal ||
+      effectiveBot.primaryGoal ||
+      'Provide information and let customer decide',
+    identityCapture:
+      effectiveBot.identityCapture || {
+        enabled: false,
+        required: false,
+        timing: 'after',
+        fields: {
+          name: true,
+          email: true,
+          phone: false,
+        },
+      },
+  };
 
-              const messageData: Omit<ChatMessage, 'id'> = {
-                  conversationId,
-                  authorId: 'ai_agent',
-                  type: 'message',
-                  senderType: 'agent',
-                  responderType,
-                  content: text,
-                  timestamp: new Date().toISOString(),
-              };
-
-              if (convoData?.channel === 'sms') {
-                  const msgRef = await adminDB.collection("chat_messages").add({
-                      ...messageData,
-                      channel: 'sms',
-                      provider: 'twilio',
-                      deliveryStatus: 'created',
-                  });
-
-                  const provider = getMessagingProvider('twilio');
-                  
-                  try {
-                      const { providerMessageId } = await provider.sendSms({
-                          from: convoData.channelAddress!,
-                          to: convoData.externalAddress!,
-                          body: text,
-                      });
-
-                      await msgRef.update({
-                          providerMessageId,
-                          deliveryStatus: 'queued',
-                      });
-
-                      await adminDB.doc(`provider_message_lookups/twilio_${providerMessageId}`).set({
-                          messageId: msgRef.id,
-                          conversationId,
-                      });
-                  } catch (e) {
-                      console.error("AI SMS delivery failed", e);
-                      await msgRef.update({ deliveryStatus: 'failed' });
-                  }
-              } else {
-                  await addChatMessage(messageData);
-              }
-          },
-          updateConversation: async ({ conversationId, patch }) => {
-              await updateConversation(conversationId, patch);
-          },
-      };
-
-      const botConfig: BotConfig = {
-          id: bot.id,
-          hubId: bot.hubId,
-          name: bot.name,
-          webAgentName: bot.webAgentName,
-          allowedHelpCenterIds: bot.allowedHelpCenterIds || [],
-          aiEnabled: bot.aiEnabled,
-          handoffKeywords: bot.automations?.handoffKeywords,
-          quickReplies: bot.automations?.quickReplies,
-          flow: bot.flow,
-          conversationGoal: bot.conversationGoal,
-          identityCapture: bot.identityCapture,
-      };
-  
-      await handleIncomingMessage({ ...args, bot: botConfig, adapters });
-  }
+  await handleIncomingMessage({
+    ...args,
+    conversation,
+    bot: botConfig,
+    adapters,
+  });
+}
 
 export async function searchHelpCenterAction(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
   return searchHelpCenter(params);

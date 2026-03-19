@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useTransition } from 'react';
@@ -239,7 +238,40 @@ export default function AgentSettingsDialog({
   };
 
   const onSubmit = (values: AgentSettingsFormValues) => {
-    onSave(values as any);
+    const webCapture = values.channelConfig?.web?.capture;
+
+    const payload: BotData | Omit<BotData, 'id' | 'hubId'> = {
+      ...(bot || {}),
+      ...values,
+      type: 'agent',
+      identityCapture: webCapture
+        ? {
+            enabled: true,
+            required: false,
+            timing: webCapture.timing,
+            fields: {
+              name: !!webCapture.fields?.name,
+              email: !!webCapture.fields?.email,
+              phone: !!webCapture.fields?.phone,
+            },
+          }
+        : {
+            enabled: false,
+            required: false,
+            timing: 'after',
+            fields: {
+              name: true,
+              email: true,
+              phone: false,
+            },
+          },
+      welcomeMessage:
+        values.channelConfig?.web?.greeting?.text ||
+        values.webAgentName ||
+        'Hi! How can I help?',
+    } as any;
+
+    onSave(payload);
     onOpenChange(false);
   };
 
@@ -247,7 +279,7 @@ export default function AgentSettingsDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden bg-[#0d1117] border-white/10">
         <DialogTitle className="sr-only">AI Agent Configuration</DialogTitle>
-        <DialogDescription className="sr-only">Logic and intelligence hub for the agent brain.</DialogDescription>
+        <DialogDescription className="sr-only">Configure your AI Agent's intelligence and delivery channels.</DialogDescription>
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden text-left">
@@ -297,7 +329,7 @@ export default function AgentSettingsDialog({
                       <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Core Settings</h3>
                       <div className="grid grid-cols-2 gap-6">
                         <FormField control={form.control} name="webAgentName" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Agent Name</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Agent Name (One word)</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="tone" render={({ field }) => (
                           <FormItem><FormLabel className="text-xs">Tone</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="friendly">Friendly</SelectItem><SelectItem value="formal">Formal</SelectItem><SelectItem value="expert">Expert</SelectItem></SelectContent></Select></FormItem>
@@ -341,11 +373,39 @@ export default function AgentSettingsDialog({
                   <div className="space-y-12 animate-in fade-in duration-300">
                     <Tabs value={activeChannel} onValueChange={setActiveChannel}>
                       <TabsList className="bg-white/5"><TabsTrigger value="web">Web</TabsTrigger><TabsTrigger value="sms">SMS</TabsTrigger><TabsTrigger value="phone">Phone</TabsTrigger><TabsTrigger value="email">Email</TabsTrigger></TabsList>
+                      
                       <TabsContent value="web" className="space-y-6 mt-6">
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable Web Channel</Label><Switch checked={watchedValues.channelConfig?.web?.enabled} onCheckedChange={v => form.setValue('channelConfig.web.enabled', v)} /></div>
                         {watchedValues.channelConfig?.web?.enabled && (
                           <div className="space-y-6 pl-4 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
                             <FormField control={form.control} name="channelConfig.web.greeting.text" render={({ field }) => (<FormItem><FormLabel className="text-xs">Greeting Script</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>)} />
+                          </div>
+                        )}
+                      </TabsContent>
+
+                      <TabsContent value="sms" className="space-y-6 mt-6">
+                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable SMS Channel</Label><Switch checked={watchedValues.channelConfig?.sms?.enabled} onCheckedChange={v => form.setValue('channelConfig.sms.enabled', v)} /></div>
+                        {watchedValues.channelConfig?.sms?.enabled && (
+                          <div className="space-y-6 pl-4 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
+                            <FormField control={form.control} name="channelConfig.sms.openingText" render={({ field }) => (<FormItem><FormLabel className="text-xs">Opening Response</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>)} />
+                          </div>
+                        )}
+                      </TabsContent>
+
+                      <TabsContent value="phone" className="space-y-6 mt-6">
+                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable Phone Channel</Label><Switch checked={watchedValues.channelConfig?.phone?.enabled} onCheckedChange={v => form.setValue('channelConfig.phone.enabled', v)} /></div>
+                        {watchedValues.channelConfig?.phone?.enabled && (
+                          <div className="space-y-6 pl-4 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
+                            <FormField control={form.control} name="channelConfig.phone.scripts.greeting" render={({ field }) => (<FormItem><FormLabel className="text-xs">Greeting Script (Voice)</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>)} />
+                          </div>
+                        )}
+                      </TabsContent>
+
+                      <TabsContent value="email" className="space-y-6 mt-6">
+                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable Email Channel</Label><Switch checked={watchedValues.channelConfig?.email?.enabled} onCheckedChange={v => form.setValue('channelConfig.email.enabled', v)} /></div>
+                        {watchedValues.channelConfig?.email?.enabled && (
+                          <div className="space-y-6 pl-4 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
+                            <FormField control={form.control} name="channelConfig.email.format.signOff" render={({ field }) => (<FormItem><FormLabel className="text-xs">Email Sign-off</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                           </div>
                         )}
                       </TabsContent>
