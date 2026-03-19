@@ -1,10 +1,9 @@
-
 'use client';
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -26,73 +25,43 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Bot as BotData, User, HelpCenter, Hub, Space } from '@/lib/data';
 import { 
-  Bot as BotIcon, 
-  X, 
-  Check, 
-  Loader2, 
-  MessageSquare, 
+  Settings, 
+  BookOpen, 
   Globe, 
+  X, 
+  Plus, 
+  Trash2, 
+  MessageSquare, 
   Smartphone, 
   Phone, 
   Mail, 
-  Settings, 
-  Palette, 
-  Plug, 
-  BookOpen, 
-  Zap, 
-  UserCheck, 
-  Clock, 
-  Mic, 
-  ShieldAlert, 
-  ArrowRight, 
-  Info,
-  Trash2,
-  Bell,
-  Eye,
-  Upload,
-  Plus,
-  Image as ImageIcon,
-  EyeOff,
-  Navigation,
-  CheckCircle2,
   AlertCircle,
-  Users,
-  FilePlus,
-  Briefcase,
-  Star,
-  Headset,
-  Workflow
+  GripVertical,
 } from 'lucide-react';
-import { cn, getInitials } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '../ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Badge } from '../ui/badge';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import Link from 'next/link';
-import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import * as db from '@/lib/db';
+import { Badge } from '../ui/badge';
+import { Separator } from '../ui/separator';
 
 const agentSettingsSchema = z.object({
   id: z.string().optional(),
-  type: z.string().optional(),
   hubId: z.string().optional(),
   spaceId: z.string().optional(),
   ownerType: z.string().optional(),
   ownerId: z.string().optional(),
+  type: z.enum(['agent', 'widget']).optional(),
   
-  // Tab 1: General
-  name: z.string().min(1, 'Internal name is required.'),
+  // TAB 1 — GENERAL
   webAgentName: z.string().min(1, 'Agent name is required.'),
   roleTitle: z.string().optional(),
+  name: z.string().min(1, 'Internal name is required.'),
   isEnabled: z.boolean().default(true),
   aiEnabled: z.boolean().default(true),
   tone: z.enum(['formal', 'friendly', 'expert', 'direct', 'warm']).default('friendly'),
@@ -105,15 +74,15 @@ const agentSettingsSchema = z.object({
     frustrationEnabled: z.boolean().default(true),
     unansweredLoopEnabled: z.boolean().default(true),
     complexRequestEnabled: z.boolean().default(true),
-    notifyEmail: z.string().optional()
+    notifyEmail: z.string().email('Valid email required for escalation alerts.').or(z.literal(''))
   }),
 
-  // Tab 2: Knowledge
+  // TAB 2 — KNOWLEDGE
   businessContext: z.object({
     businessName: z.string().optional(),
     location: z.string().optional(),
     whatYouDo: z.string().optional(),
-    targetAudience: z.string().optional(),
+    whoYourCustomersAre: z.string().optional(),
     hours: z.string().optional(),
     minOrder: z.string().optional(),
     turnaround: z.string().optional(),
@@ -121,34 +90,31 @@ const agentSettingsSchema = z.object({
     forbiddenTopics: z.string().optional(),
   }),
   allowedHelpCenterIds: z.array(z.string()).optional(),
-  products: z.array(z.object({ id: z.string(), name: z.string(), price: z.string().optional(), description: z.string(), triggers: z.string() })).optional(),
-  faqs: z.array(z.object({ id: z.string(), question: z.string(), answer: z.string() })).optional(),
-  objections: z.array(z.object({ id: z.string(), objection: z.string(), response: z.string() })).optional(),
-  qualificationFlow: z.array(z.object({ id: z.string(), question: z.string(), note: z.string().optional(), goal: z.string(), pricingPolicy: z.string() })).optional(),
+  products: z.array(z.object({ id: z.string(), name: z.string(), price: z.string().optional(), description: z.string(), triggers: z.string() })),
+  faqs: z.array(z.object({ id: z.string(), question: z.string(), answer: z.string() })),
+  objections: z.array(z.object({ id: z.string(), objection: z.string(), response: z.string() })),
+  qualificationFlow: z.array(z.object({ id: z.string(), question: z.string(), note: z.string().optional(), goal: z.string(), pricingPolicy: z.string() })),
+  pricingPolicy: z.string().default('Always request a quote — never state prices'),
 
-  // Tab 3: Channels
+  // TAB 3 — CHANNELS
   channelConfig: z.object({
     web: z.object({
       enabled: z.boolean().default(false),
       agentDisplayName: z.string().optional(),
       greeting: z.object({ text: z.string(), returningText: z.string().optional() }),
-      quickReplies: z.array(z.object({ id: z.string(), name: z.string(), trigger: z.string(), options: z.array(z.string()) })).optional(),
+      quickReplies: z.array(z.object({ id: z.string(), groupName: z.string(), trigger: z.string(), options: z.array(z.string()) })).optional(),
       capture: z.object({ timing: z.string(), fields: z.object({ name: z.boolean(), email: z.boolean(), phone: z.boolean(), company: z.boolean() }) }),
       afterHours: z.object({ mode: z.string(), message: z.string().optional() })
-    }).optional(),
+    }),
     sms: z.object({
       enabled: z.boolean().default(false),
       openingText: z.string().optional(),
       maxLength: z.coerce.number().optional(),
       allowMms: z.boolean().default(false),
       capture: z.object({ email: z.string(), name: z.string(), message: z.string().optional() }),
-      escalation: { 
-        keywords: z.array(z.string()), 
-        message: z.string(), 
-        sentiment: z.boolean() 
-      },
+      escalation: z.object({ keywords: z.array(z.string()), message: z.string(), sentiment: z.boolean() }),
       afterHours: z.object({ mode: z.string(), message: z.string().optional() })
-    }).optional(),
+    }),
     phone: z.object({
       enabled: z.boolean().default(false),
       mode: z.string(),
@@ -156,14 +122,14 @@ const agentSettingsSchema = z.object({
       scripts: z.object({ greeting: z.string(), handoff: z.string().optional(), voicemail: z.string().optional() }),
       behaviour: z.object({ transcribe: z.boolean(), afterHoursAiOnly: z.boolean(), voicemailFallback: z.boolean(), greetingEnabled: z.boolean(), maxDuration: z.string(), keywords: z.array(z.string()) }),
       afterHours: z.object({ mode: z.string(), redirectNumber: z.string().optional() })
-    }).optional(),
+    }),
     email: z.object({
       enabled: z.boolean().default(false),
       workflow: z.object({ approval: z.string(), delay: z.string(), threading: z.string() }),
       format: z.object({ signOff: z.string(), length: z.string(), alwaysInclude: z.string(), subject: z.string() }),
       escalation: z.object({ holdForValue: z.boolean(), holdForFrustration: z.boolean(), holdForLegal: z.boolean(), holdForAttachment: z.boolean(), holdForVip: z.boolean(), keywords: z.array(z.string()), sentiment: z.boolean() })
-    }).optional()
-  }).optional()
+    })
+  })
 });
 
 type AgentSettingsFormValues = z.infer<typeof agentSettingsSchema>;
@@ -180,8 +146,11 @@ interface AgentSettingsDialogProps {
   activeSpace?: Space | null;
 }
 
-const DEFAULT_QUALIFICATION_GOAL = "Provide information and let customer decide";
-const DEFAULT_PRICING_POLICY = "Always request a quote — never state prices";
+const DEFAULT_QUALIFICATION_FLOW = [
+  { id: 'q1', question: 'What do you need?', goal: 'Provide information and let customer decide', pricingPolicy: 'Always request a quote — never state prices' },
+  { id: 'q2', question: 'How many / what quantity?', goal: 'Provide information and let customer decide', pricingPolicy: 'Always request a quote — never state prices' },
+  { id: 'q3', question: 'What is your timeline?', goal: 'Provide information and let customer decide', pricingPolicy: 'Always request a quote — never state prices' }
+];
 
 export default function AgentSettingsDialog({
   isOpen,
@@ -194,73 +163,57 @@ export default function AgentSettingsDialog({
   activeHub,
   activeSpace,
 }: AgentSettingsDialogProps) {
-  const [activeTab, setActiveTab] = useState('general');
-  const [activeChannel, setActiveChannel] = useState('web');
-  const { toast } = useToast();
+  const [activeTab, setActiveTab] = React.useState('general');
 
   const form = useForm<AgentSettingsFormValues>({
     resolver: zodResolver(agentSettingsSchema),
     defaultValues: {
-      name: 'My AI Agent',
       webAgentName: 'Assistant',
       roleTitle: '',
+      name: 'My AI Agent',
       isEnabled: true,
       aiEnabled: true,
       tone: 'friendly',
       voiceNotes: '',
-      primaryGoal: DEFAULT_QUALIFICATION_GOAL,
+      primaryGoal: 'Provide information and let customer decide',
       closingTemplate: '',
       escalationRules: {
         orderValueThresholdEnabled: false,
+        orderValueThreshold: 500,
         frustrationEnabled: true,
         unansweredLoopEnabled: true,
         complexRequestEnabled: true,
-        notifyEmail: ''
+        notifyEmail: '',
       },
-      businessContext: {
-        businessName: '',
-        location: '',
-        whatYouDo: '',
-        targetAudience: '',
-        hours: '',
-        minOrder: '',
-        turnaround: '',
-        differentiation: '',
-        forbiddenTopics: '',
-      },
-      products: [{ id: 'prod-1', name: '', price: '', description: '', triggers: '' }],
-      faqs: [{ id: 'faq-1', question: '', answer: '' }],
-      objections: [{ id: 'obj-1', objection: '', response: '' }],
-      qualificationFlow: [
-        { id: 'q1', question: "What do you need?", goal: DEFAULT_QUALIFICATION_GOAL, pricingPolicy: DEFAULT_PRICING_POLICY },
-        { id: 'q2', question: "How many / what quantity?", goal: DEFAULT_QUALIFICATION_GOAL, pricingPolicy: DEFAULT_PRICING_POLICY },
-        { id: 'q3', question: "What is your timeline?", goal: DEFAULT_QUALIFICATION_GOAL, pricingPolicy: DEFAULT_PRICING_POLICY }
-      ],
+      businessContext: {},
+      allowedHelpCenterIds: [],
+      products: [{ id: 'p1', name: '', price: '', description: '', triggers: '' }],
+      faqs: [{ id: 'f1', question: '', answer: '' }],
+      objections: [{ id: 'o1', objection: '', response: '' }],
+      qualificationFlow: DEFAULT_QUALIFICATION_FLOW,
+      pricingPolicy: 'Always request a quote — never state prices',
       channelConfig: {
         web: {
           enabled: false,
-          agentDisplayName: '',
-          greeting: { text: 'Hi! How can I help you today?', returningText: '' },
-          quickReplies: [{ id: 'qr-1', name: 'Opening message', trigger: 'On greeting', options: ["Tell me more", "Get a quote", "Contact us"] }],
+          greeting: { text: 'Hi! How can I help you today?' },
+          quickReplies: [{ id: 'qr1', groupName: 'Opening message', trigger: 'On greeting', options: ['Tell me more', 'Get a quote', 'Contact us'] }],
           capture: { timing: 'after', fields: { name: true, email: true, phone: false, company: false } },
-          afterHours: { mode: 'ai_full', message: '' }
+          afterHours: { mode: 'ai_full' }
         },
         sms: {
           enabled: false,
           openingText: "Hi! You've reached us. How can I help?",
           maxLength: 160,
-          allowMms: false,
-          capture: { email: 'natural_quote', name: 'natural', message: '' },
+          capture: { email: 'natural_quote', name: 'natural' },
           escalation: { keywords: ['agent', 'human', 'person'], message: 'Let me connect you with a team member now.', sentiment: true },
-          afterHours: { mode: 'delayed_human', message: '' }
+          afterHours: { mode: 'delayed_human' }
         },
         phone: {
           enabled: false,
           mode: 'triage',
-          transferNumber: '',
-          scripts: { greeting: 'Thank you for calling. How can I help you today?', handoff: '', voicemail: '' },
+          scripts: { greeting: 'Thank you for calling. How can I help you today?' },
           behaviour: { transcribe: true, afterHoursAiOnly: false, voicemailFallback: true, greetingEnabled: true, maxDuration: '5', keywords: ['manager', 'human', 'transfer'] },
-          afterHours: { mode: 'ai_message', redirectNumber: '' }
+          afterHours: { mode: 'ai_message' }
         },
         email: {
           enabled: false,
@@ -272,10 +225,10 @@ export default function AgentSettingsDialog({
     },
   });
 
-  const { fields: productFields, append: appendProduct, remove: removeProduct } = useFieldArray({ control: form.control, name: "products" as any });
-  const { fields: faqFields, append: appendFaq, remove: removeFaq } = useFieldArray({ control: form.control, name: "faqs" as any });
-  const { fields: objectionFields, append: appendObjection, remove: removeObjection } = useFieldArray({ control: form.control, name: "objections" as any });
-  const { fields: qualFields, append: appendQual, remove: removeQual } = useFieldArray({ control: form.control, name: "qualificationFlow" as any });
+  const { fields: productFields, append: appendProduct, remove: removeProduct } = useFieldArray({ control: form.control, name: "products" });
+  const { fields: faqFields, append: appendFaq, remove: removeFaq } = useFieldArray({ control: form.control, name: "faqs" });
+  const { fields: objectionFields, append: appendObjection, remove: removeObjection } = useFieldArray({ control: form.control, name: "objections" });
+  const { fields: qualFields } = useFieldArray({ control: form.control, name: "qualificationFlow" });
 
   useEffect(() => {
     if (bot) {
@@ -297,11 +250,11 @@ export default function AgentSettingsDialog({
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
             <header className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#090c10] shrink-0 z-[100]">
                 <div className="flex items-center gap-10">
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-3 shrink-0 text-left">
                         <div className={cn("h-2 w-2 rounded-full", watchedValues.isEnabled ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-zinc-600")} />
                         <div>
                             <h2 className="text-sm font-bold text-white leading-none">{watchedValues.name || 'AI Agent'}</h2>
-                            <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground opacity-50 mt-1">BotForge Config</p>
+                            <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground opacity-50 mt-1">Agent Settings</p>
                         </div>
                     </div>
 
@@ -365,7 +318,7 @@ export default function AgentSettingsDialog({
                             <section className="space-y-6">
                                 <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Conversation Goal</h3>
                                 <FormField control={form.control} name="primaryGoal" render={({ field }) => (
-                                    <FormItem><FormLabel className="text-xs">Primary Goal</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Guide to order directly">Guide to order directly</SelectItem><SelectItem value="Capture details and send quote">Capture details and send quote</SelectItem><SelectItem value="Book a callback">Book a callback</SelectItem><SelectItem value="Collect email for follow-up">Collect email for follow-up</SelectItem><SelectItem value="Provide information and let customer decide">Provide information and let customer decide</SelectItem></SelectContent></Select></FormItem>
+                                    <FormItem><FormLabel className="text-xs">Primary Goal</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Guide to order directly">Guide to order directly</SelectItem><SelectItem value="Capture details and send quote">Capture & Quote</SelectItem><SelectItem value="Book a callback">Book Callback</SelectItem><SelectItem value="Collect email for follow-up">Collect Email</SelectItem><SelectItem value="Provide information and let customer decide">Provide Info</SelectItem></SelectContent></Select></FormItem>
                                 )} />
                                 <FormField control={form.control} name="closingTemplate" render={({ field }) => (
                                     <FormItem><FormLabel className="text-xs">Closing Message Template</FormLabel><FormControl><Textarea {...field} /></FormControl></FormItem>
@@ -378,7 +331,13 @@ export default function AgentSettingsDialog({
                                     <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
                                         <Label className="text-xs">Order Value Threshold</Label>
                                         <div className="flex items-center gap-3">
-                                            <Input type="number" placeholder="$500" className="w-24 h-8" />
+                                            <Input 
+                                                type="number" 
+                                                placeholder="$500" 
+                                                className="w-24 h-8" 
+                                                value={watchedValues.escalationRules.orderValueThreshold || ''}
+                                                onChange={(e) => form.setValue('escalationRules.orderValueThreshold', Number(e.target.value))}
+                                            />
                                             <Switch checked={watchedValues.escalationRules.orderValueThresholdEnabled} onCheckedChange={(val) => form.setValue('escalationRules.orderValueThresholdEnabled', val)} />
                                         </div>
                                     </div>
@@ -395,7 +354,7 @@ export default function AgentSettingsDialog({
                                         <Switch checked={watchedValues.escalationRules.complexRequestEnabled} onCheckedChange={(val) => form.setValue('escalationRules.complexRequestEnabled', val)} />
                                     </div>
                                     <FormField control={form.control} name="escalationRules.notifyEmail" render={({ field }) => (
-                                        <FormItem><FormLabel className="text-xs">Escalation Notify Email</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                                        <FormItem><FormLabel className="text-xs">Escalation Notify Email</FormLabel><FormControl><Input placeholder="team@business.com" {...field} /></FormControl></FormItem>
                                     )} />
                                 </div>
                             </section>
@@ -417,7 +376,7 @@ export default function AgentSettingsDialog({
                                 <FormField control={form.control} name="businessContext.whatYouDo" render={({ field }) => (
                                     <FormItem><FormLabel className="text-xs">What you do</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl></FormItem>
                                 )} />
-                                <FormField control={form.control} name="businessContext.targetAudience" render={({ field }) => (
+                                <FormField control={form.control} name="businessContext.whoYourCustomersAre" render={({ field }) => (
                                     <FormItem><FormLabel className="text-xs">Who your customers are</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
                                 )} />
                                 <div className="grid grid-cols-2 gap-6">
@@ -436,6 +395,37 @@ export default function AgentSettingsDialog({
                                 )} />
                                 <FormField control={form.control} name="businessContext.forbiddenTopics" render={({ field }) => (
                                     <FormItem><FormLabel className="text-xs">Topics the agent must never discuss</FormLabel><FormControl><Input placeholder="Comma-separated..." {...field} /></FormControl></FormItem>
+                                )} />
+                            </section>
+
+                            <section className="space-y-6">
+                                <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Connected libraries</h3>
+                                <FormField control={form.control} name="allowedHelpCenterIds" render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid gap-2">
+                                            {helpCenters.map((hc) => (
+                                                <div key={hc.id} className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                                            <BookOpen className="h-4 w-4" />
+                                                        </div>
+                                                        <div className="text-left">
+                                                            <p className="text-xs font-bold">{hc.name}</p>
+                                                            <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mt-0.5">{hc.visibility || 'PUBLIC'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <Checkbox 
+                                                        checked={field.value?.includes(hc.id)} 
+                                                        onCheckedChange={(checked) => {
+                                                            const current = field.value || [];
+                                                            field.onChange(checked ? [...current, hc.id] : current.filter(id => id !== hc.id));
+                                                        }} 
+                                                    />
+                                                </div>
+                                            ))}
+                                            {helpCenters.length === 0 && <p className="text-xs text-muted-foreground italic p-4 text-center border-2 border-dashed rounded-xl">No libraries found in this hub.</p>}
+                                        </div>
+                                    </FormItem>
                                 )} />
                             </section>
 
@@ -463,10 +453,17 @@ export default function AgentSettingsDialog({
                                 <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Common Questions (FAQs)</h3>
                                 <div className="space-y-4">
                                     {faqFields.map((field, index) => (
-                                        <Card key={field.id} className="bg-[#161b22] border-white/10">
-                                            <CardContent className="p-6 space-y-4">
-                                                <Input placeholder="Customer asks..." {...form.register(`faqs.${index}.question` as any)} />
-                                                <Textarea placeholder="Your answer" {...form.register(`faqs.${index}.answer` as any)} />
+                                        <Card key={field.id} className="bg-[#161b22] border-white/10 relative">
+                                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-destructive" onClick={() => removeFaq(index)}><Trash2 className="h-3 w-3" /></Button>
+                                            <CardContent className="p-6 space-y-4 text-left">
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] uppercase font-bold opacity-50">Customer asks</Label>
+                                                    <Input placeholder="What's the difference between..." {...form.register(`faqs.${index}.question` as any)} />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] uppercase font-bold opacity-50">Your answer</Label>
+                                                    <Textarea placeholder="Our pellets are..." {...form.register(`faqs.${index}.answer` as any)} />
+                                                </div>
                                             </CardContent>
                                         </Card>
                                     ))}
@@ -475,13 +472,20 @@ export default function AgentSettingsDialog({
                             </section>
 
                             <section className="space-y-6">
-                                <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Objections & How to handle them</h3>
+                                <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Objections</h3>
                                 <div className="space-y-4">
                                     {objectionFields.map((field, index) => (
-                                        <Card key={field.id} className="bg-[#161b22] border-white/10">
-                                            <CardContent className="p-6 space-y-4">
-                                                <Input placeholder="Objection..." {...form.register(`objections.${index}.objection` as any)} />
-                                                <Textarea placeholder="How to respond" {...form.register(`objections.${index}.response` as any)} />
+                                        <Card key={field.id} className="bg-[#161b22] border-white/10 relative">
+                                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-destructive" onClick={() => removeObjection(index)}><Trash2 className="h-3 w-3" /></Button>
+                                            <CardContent className="p-6 space-y-4 text-left">
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] uppercase font-bold opacity-50">Objection</Label>
+                                                    <Input placeholder="It seems expensive..." {...form.register(`objections.${index}.objection` as any)} />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] uppercase font-bold opacity-50">How to respond</Label>
+                                                    <Textarea placeholder="Explain the quality..." {...form.register(`objections.${index}.response` as any)} />
+                                                </div>
                                             </CardContent>
                                         </Card>
                                     ))}
@@ -493,10 +497,12 @@ export default function AgentSettingsDialog({
                                 <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Qualification Flow</h3>
                                 <div className="space-y-4">
                                     {qualFields.map((field, index) => (
-                                        <Card key={field.id} className="bg-[#161b22] border-white/10 relative">
-                                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-destructive" onClick={() => removeQual(index)}><Trash2 className="h-3 w-3" /></Button>
+                                        <Card key={field.id} className="bg-[#161b22] border-white/10 text-left">
                                             <CardContent className="p-6 space-y-4">
-                                                <Input placeholder="Step question" {...form.register(`qualificationFlow.${index}.question` as any)} />
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] uppercase font-bold opacity-50">Step Question</Label>
+                                                    <Input placeholder="Step question" {...form.register(`qualificationFlow.${index}.question` as any)} />
+                                                </div>
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <FormField control={form.control} name={`qualificationFlow.${index}.goal`} render={({ field }) => (
                                                         <FormItem>
@@ -514,7 +520,6 @@ export default function AgentSettingsDialog({
                                             </CardContent>
                                         </Card>
                                     ))}
-                                    <Button type="button" variant="outline" className="w-full border-dashed" onClick={() => appendQual({ id: Date.now().toString(), question: '', goal: DEFAULT_QUALIFICATION_GOAL, pricingPolicy: DEFAULT_PRICING_POLICY })}><Plus className="h-4 w-4 mr-2" /> Add Qualification Step</Button>
                                 </div>
                             </section>
                         </div>
@@ -522,7 +527,7 @@ export default function AgentSettingsDialog({
 
                     {activeTab === 'channels' && (
                         <div className="space-y-12 animate-in fade-in duration-300 text-left">
-                            <Tabs defaultValue="web" onValueChange={setActiveChannel} className="w-full">
+                            <Tabs defaultValue="web" className="w-full">
                                 <TabsList className="bg-white/[0.03] border-white/10 p-1 mb-8">
                                     <TabsTrigger value="web" className="gap-2"><MessageSquare className="h-3.5 w-3.5" /> Web Chat</TabsTrigger>
                                     <TabsTrigger value="sms" className="gap-2"><Smartphone className="h-3.5 w-3.5" /> SMS</TabsTrigger>
@@ -564,9 +569,10 @@ export default function AgentSettingsDialog({
                                                     <FormItem><FormLabel className="text-xs">Capture Timing</FormLabel><RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col gap-2 mt-2"><div className="flex items-center gap-2"><RadioGroupItem value="after" id="cap-after" /><Label htmlFor="cap-after">After first response</Label></div><div className="flex items-center gap-2"><RadioGroupItem value="before" id="cap-before" /><Label htmlFor="cap-before">Before first response</Label></div><div className="flex items-center gap-2"><RadioGroupItem value="escalation" id="cap-esc" /><Label htmlFor="cap-esc">On escalation</Label></div></RadioGroup></FormItem>
                                                 )} />
                                                 <div className="grid grid-cols-2 gap-4 pt-4">
-                                                    {['name', 'email', 'phone', 'company'].map(f => (
-                                                        <div key={f} className="flex items-center gap-2"><Checkbox checked={(watchedValues.channelConfig?.web?.capture?.fields as any)?.[f]} onCheckedChange={(val) => form.setValue(`channelConfig.web.capture.fields.${f}` as any, val)} /><Label className="capitalize text-xs">{f}</Label></div>
-                                                    ))}
+                                                    <div className="flex items-center gap-2"><Checkbox checked={watchedValues.channelConfig?.web?.capture?.fields?.name} onCheckedChange={(val) => form.setValue('channelConfig.web.capture.fields.name', !!val)} /><Label className="capitalize text-xs">Name</Label></div>
+                                                    <div className="flex items-center gap-2"><Checkbox checked={watchedValues.channelConfig?.web?.capture?.fields?.email} onCheckedChange={(val) => form.setValue('channelConfig.web.capture.fields.email', !!val)} /><Label className="capitalize text-xs">Email</Label></div>
+                                                    <div className="flex items-center gap-2"><Checkbox checked={watchedValues.channelConfig?.web?.capture?.fields?.phone} onCheckedChange={(val) => form.setValue('channelConfig.web.capture.fields.phone', !!val)} /><Label className="capitalize text-xs">Phone</Label></div>
+                                                    <div className="flex items-center gap-2"><Checkbox checked={watchedValues.channelConfig?.web?.capture?.fields?.company} onCheckedChange={(val) => form.setValue('channelConfig.web.capture.fields.company', !!val)} /><Label className="capitalize text-xs">Company</Label></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -653,15 +659,15 @@ export default function AgentSettingsDialog({
                                                 <div className="grid gap-2">
                                                     <div className="flex items-center justify-between p-3 border rounded-lg bg-white/[0.02]">
                                                         <Label className="text-xs">Transcribe Calls</Label>
-                                                        <Switch checked={watchedValues.channelConfig?.phone?.behaviour?.transcribe} onCheckedChange={(val) => form.setValue('channelConfig.phone.behaviour.transcribe' as any, val)} />
+                                                        <Switch checked={watchedValues.channelConfig?.phone?.behaviour?.transcribe} onCheckedChange={(val) => form.setValue('channelConfig.phone.behaviour.transcribe', !!val)} />
                                                     </div>
                                                     <div className="flex items-center justify-between p-3 border rounded-lg bg-white/[0.02]">
                                                         <Label className="text-xs">Voicemail Fallback</Label>
-                                                        <Switch checked={watchedValues.channelConfig?.phone?.behaviour?.voicemailFallback} onCheckedChange={(val) => form.setValue('channelConfig.phone.behaviour.voicemailFallback' as any, val)} />
+                                                        <Switch checked={watchedValues.channelConfig?.phone?.behaviour?.voicemailFallback} onCheckedChange={(val) => form.setValue('channelConfig.phone.behaviour.voicemailFallback', !!val)} />
                                                     </div>
                                                     <div className="flex items-center justify-between p-3 border rounded-lg bg-white/[0.02]">
                                                         <Label className="text-xs">AI Greeting Enabled</Label>
-                                                        <Switch checked={watchedValues.channelConfig?.phone?.behaviour?.greetingEnabled} onCheckedChange={(val) => form.setValue('channelConfig.phone.behaviour.greetingEnabled' as any, val)} />
+                                                        <Switch checked={watchedValues.channelConfig?.phone?.behaviour?.greetingEnabled} onCheckedChange={(val) => form.setValue('channelConfig.phone.behaviour.greetingEnabled', !!val)} />
                                                     </div>
                                                 </div>
                                                 <FormField control={form.control} name="channelConfig.phone.behaviour.maxDuration" render={({ field }) => (
@@ -734,7 +740,10 @@ export default function AgentSettingsDialog({
                                                     ].map(t => (
                                                         <div key={t.key} className="flex items-center justify-between p-3 border rounded-lg bg-white/[0.02]">
                                                             <Label className="text-xs">{t.label}</Label>
-                                                            <Switch checked={(watchedValues.channelConfig?.email?.escalation as any)?.[t.key]} onCheckedChange={(val) => form.setValue(`channelConfig.email.escalation.${t.key}` as any, val)} />
+                                                            <Switch 
+                                                                checked={!!(watchedValues.channelConfig?.email?.escalation as any)?.[t.key]} 
+                                                                onCheckedChange={(val) => form.setValue(`channelConfig.email.escalation.${t.key}` as any, !!val)} 
+                                                            />
                                                         </div>
                                                     ))}
                                                 </div>

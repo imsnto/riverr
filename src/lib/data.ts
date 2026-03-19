@@ -736,6 +736,7 @@ export interface ChatMessage {
   channel?: 'webchat' | 'sms' | 'voice' | 'email';
   provider?: 'internal' | 'twilio' | 'google' | 'microsoft' | 'imap';
   providerMessageId?: string;
+  providerMessageId?: string;
   providerCallId?: string;
   deliveryStatus?: 'created'|'queued'|'sent'|'delivered'|'failed'|'undelivered';
   errorCode?: string;
