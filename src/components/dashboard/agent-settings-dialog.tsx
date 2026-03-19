@@ -35,8 +35,6 @@ import {
   Smartphone, 
   Phone, 
   Mail, 
-  AlertCircle,
-  Bot,
   Search,
   Globe2,
   Loader2,
@@ -48,7 +46,7 @@ import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '../ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '../ui/checkbox';
@@ -62,7 +60,7 @@ const agentSettingsSchema = z.object({
   id: z.string().optional(),
   hubId: z.string().optional(),
   spaceId: z.string().optional(),
-  type: z.enum(['agent', 'widget']).optional(),
+  type: z.literal('agent').default('agent'),
   
   // TAB 1 — GENERAL
   webAgentName: z.string().min(1, 'Agent name is required.'),
@@ -146,10 +144,7 @@ interface AgentSettingsDialogProps {
   bot: BotData | null;
   onSave: (data: BotData | Omit<BotData, 'id' | 'hubId'>) => void;
   appUser: User | null;
-  allUsers: User[];
   helpCenters: HelpCenter[];
-  activeHub?: Hub | null;
-  activeSpace?: Space | null;
 }
 
 export default function AgentSettingsDialog({
@@ -229,34 +224,27 @@ export default function AgentSettingsDialog({
   const handleCrawlWebsite = () => {
     let urlToCrawl = crawlUrl.trim();
     if (!urlToCrawl) return;
-
-    // Assumption: Use https:// if no protocol provided
     if (!/^https?:\/\//i.test(urlToCrawl)) {
       urlToCrawl = `https://${urlToCrawl}`;
     }
-
     startCrawlTransition(async () => {
       try {
         const result = await crawlWebsiteAction(urlToCrawl);
-        
         if (result.businessContext) {
           Object.entries(result.businessContext).forEach(([key, value]) => {
             if (value) form.setValue(`businessContext.${key as keyof typeof result.businessContext}`, value);
           });
         }
-
         if (result.products && result.products.length > 0) {
           replaceProducts(result.products.map(p => ({ ...p, id: `p-${Math.random()}` })));
         }
-
         if (result.faqs && result.faqs.length > 0) {
           replaceFaqs(result.faqs.map(f => ({ ...f, id: `f-${Math.random()}` })));
         }
-
-        toast({ title: 'Crawl Successful', description: 'Business context and products have been auto-filled.' });
+        toast({ title: 'Crawl Successful' });
         setCrawlUrl('');
       } catch (e) {
-        toast({ variant: 'destructive', title: 'Crawl Failed', description: 'Could not extract info from this website.' });
+        toast({ variant: 'destructive', title: 'Crawl Failed' });
       }
     });
   };
@@ -269,10 +257,9 @@ export default function AgentSettingsDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden bg-[#0d1117] border-white/10">
-        <div className="sr-only">
-          <DialogTitle>{watchedValues.name || 'AI Agent'}</DialogTitle>
-          <DialogDescription>Configure your AI Agent's personality, knowledge, and delivery channels.</DialogDescription>
-        </div>
+        <DialogTitle className="sr-only">AI Agent Configuration</DialogTitle>
+        <DialogDescription className="sr-only">Configure your AI Agent's intelligence and delivery channels.</DialogDescription>
+        
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
             <header className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#090c10] shrink-0 z-[100]">
@@ -281,7 +268,7 @@ export default function AgentSettingsDialog({
                   <div className={cn("h-2 w-2 rounded-full", watchedValues.isEnabled ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-zinc-600")} />
                   <div>
                     <h2 className="text-sm font-bold text-white leading-none">{watchedValues.name || 'AI Agent'}</h2>
-                    <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground opacity-50 mt-1">Configuration</p>
+                    <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground opacity-50 mt-1">Intelligence Config</p>
                   </div>
                 </div>
 
@@ -381,28 +368,15 @@ export default function AgentSettingsDialog({
                           <Sparkles className="h-4 w-4" />
                           Knowledge Autopilot
                         </CardTitle>
-                        <CardDescription className="text-xs">
-                          Enter your website URL and we'll try to automatically populate your business context, products, and FAQs.
-                        </CardDescription>
+                        <CardDescription className="text-xs">Enter your website URL and we'll auto-populate your context.</CardDescription>
                       </CardHeader>
                       <CardContent className="p-6">
                         <div className="flex items-center gap-3">
                           <div className="relative flex-1">
                             <Globe2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              placeholder="riverr.app" 
-                              className="pl-10 h-11 bg-background border-white/10" 
-                              value={crawlUrl}
-                              onChange={(e) => setCrawlUrl(e.target.value)}
-                            />
+                            <Input placeholder="riverr.app" className="pl-10 h-11 bg-background border-white/10" value={crawlUrl} onChange={(e) => setCrawlUrl(e.target.value)} />
                           </div>
-                          <Button 
-                            type="button" 
-                            size="lg" 
-                            className="font-bold gap-2 px-8" 
-                            onClick={handleCrawlWebsite}
-                            disabled={isCrawling || !crawlUrl}
-                          >
+                          <Button type="button" size="lg" className="font-bold gap-2 px-8" onClick={handleCrawlWebsite} disabled={isCrawling || !crawlUrl}>
                             {isCrawling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                             {isCrawling ? 'Crawling...' : 'Crawl Website'}
                           </Button>
@@ -465,31 +439,23 @@ export default function AgentSettingsDialog({
                     </section>
 
                     <section className="space-y-6">
-                      <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Products & Services</h3>
-                      <div className="space-y-4">
-                        {productFields.map((field, index) => (
-                          <Card key={field.id} className="bg-[#161b22] border-white/10 relative">
-                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-destructive" onClick={() => removeProduct(index)}><Trash2 className="h-3 w-3" /></Button>
-                            <CardContent className="p-6 space-y-4">
-                              <div className="grid grid-cols-2 gap-4"><Input placeholder="Product Name" {...form.register(`products.${index}.name` as any)} /><Input placeholder="Price / Range" {...form.register(`products.${index}.price` as any)} /></div>
-                              <Textarea placeholder="Description" {...form.register(`products.${index}.description` as any)} />
-                              <Input placeholder="When to recommend (critical signals)" {...form.register(`products.${index}.triggers` as any)} />
-                            </CardContent>
-                          </Card>
-                        ))}
-                        <Button type="button" variant="outline" className="w-full border-dashed" onClick={() => appendProduct({ id: Date.now().toString(), name: '', price: '', description: '', triggers: '' })}><Plus className="h-4 w-4 mr-2" /> Add Product</Button>
-                      </div>
-                    </section>
-
-                    <section className="space-y-6">
-                      <h3 className="text-sm font-bold uppercase tracking-widest text-primary">FAQs & Objections</h3>
-                      <Tabs defaultValue="faqs">
-                        <TabsList className="bg-white/5"><TabsTrigger value="faqs">Common Questions</TabsTrigger><TabsTrigger value="objections">Objection Handling</TabsTrigger></TabsList>
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Products, FAQs & Objections</h3>
+                      <Tabs defaultValue="products">
+                        <TabsList className="bg-white/5"><TabsTrigger value="products">Products</TabsTrigger><TabsTrigger value="faqs">FAQs</TabsTrigger><TabsTrigger value="objections">Objections</TabsTrigger></TabsList>
+                        <TabsContent value="products" className="space-y-4 mt-4">
+                          {productFields.map((field, index) => (
+                            <Card key={field.id} className="bg-[#161b22] border-white/10 relative">
+                              <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-destructive" onClick={() => removeProduct(index)}><Trash2 className="h-3 w-3" /></Button>
+                              <CardContent className="p-6 space-y-4"><div className="grid grid-cols-2 gap-4"><Input placeholder="Name" {...form.register(`products.${index}.name` as any)} /><Input placeholder="Price" {...form.register(`products.${index}.price` as any)} /></div><Textarea placeholder="Description" {...form.register(`products.${index}.description` as any)} /><Input placeholder="Recommendation triggers..." {...form.register(`products.${index}.triggers` as any)} /></CardContent>
+                            </Card>
+                          ))}
+                          <Button type="button" variant="outline" className="w-full border-dashed" onClick={() => appendProduct({ id: Date.now().toString(), name: '', description: '', triggers: '' })}><Plus className="h-4 w-4 mr-2" /> Add Product</Button>
+                        </TabsContent>
                         <TabsContent value="faqs" className="space-y-4 mt-4">
                           {faqFields.map((field, index) => (
                             <Card key={field.id} className="bg-[#161b22] border-white/10 relative">
                               <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-destructive" onClick={() => removeFaq(index)}><Trash2 className="h-3 w-3" /></Button>
-                              <CardContent className="p-6 space-y-4"><Input placeholder="Customer asks..." {...form.register(`faqs.${index}.question` as any)} /><Textarea placeholder="Your answer..." {...form.register(`faqs.${index}.answer` as any)} /></CardContent>
+                              <CardContent className="p-6 space-y-4"><Input placeholder="Question" {...form.register(`faqs.${index}.question` as any)} /><Textarea placeholder="Answer" {...form.register(`faqs.${index}.answer` as any)} /></CardContent>
                             </Card>
                           ))}
                           <Button type="button" variant="outline" className="w-full border-dashed" onClick={() => appendFaq({ id: Date.now().toString(), question: '', answer: '' })}><Plus className="h-4 w-4 mr-2" /> Add FAQ</Button>
@@ -498,7 +464,7 @@ export default function AgentSettingsDialog({
                           {objectionFields.map((field, index) => (
                             <Card key={field.id} className="bg-[#161b22] border-white/10 relative">
                               <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-destructive" onClick={() => removeObjection(index)}><Trash2 className="h-3 w-3" /></Button>
-                              <CardContent className="p-6 space-y-4"><Input placeholder="Objection" {...form.register(`objections.${index}.objection` as any)} /><Textarea placeholder="How to respond..." {...form.register(`objections.${index}.response` as any)} /></CardContent>
+                              <CardContent className="p-6 space-y-4"><Input placeholder="Objection" {...form.register(`objections.${index}.objection` as any)} /><Textarea placeholder="Response" {...form.register(`objections.${index}.response` as any)} /></CardContent>
                             </Card>
                           ))}
                           <Button type="button" variant="outline" className="w-full border-dashed" onClick={() => appendObjection({ id: Date.now().toString(), objection: '', response: '' })}><Plus className="h-4 w-4 mr-2" /> Add Objection</Button>
@@ -512,13 +478,13 @@ export default function AgentSettingsDialog({
                         {qualFields.map((field, index) => (
                           <Card key={field.id} className="bg-[#161b22] border-white/10">
                             <CardContent className="p-6 space-y-4">
-                              <Input placeholder="Step Question" {...form.register(`qualificationFlow.${index}.question` as any)} />
+                              <Input placeholder="Question" {...form.register(`qualificationFlow.${index}.question` as any)} />
                               <div className="grid grid-cols-2 gap-4">
                                 <FormField control={form.control} name={`qualificationFlow.${index}.goal`} render={({ field }) => (
-                                  <FormItem><FormLabel className="text-[10px] uppercase font-bold opacity-50">Goal</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select goal" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Guide to order directly">Order directly</SelectItem><SelectItem value="Capture details and send quote">Capture & Quote</SelectItem><SelectItem value="Book a callback">Book Callback</SelectItem><SelectItem value="Collect email">Collect Email</SelectItem><SelectItem value="Provide information">Provide Information</SelectItem></SelectContent></Select></FormItem>
+                                  <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-8"><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Guide to order directly">Order directly</SelectItem><SelectItem value="Capture details and send quote">Capture & Quote</SelectItem><SelectItem value="Book a callback">Book Callback</SelectItem><SelectItem value="Collect email">Collect Email</SelectItem><SelectItem value="Provide information">Provide Information</SelectItem></SelectContent></Select></FormItem>
                                 )} />
                                 <FormField control={form.control} name={`qualificationFlow.${index}.pricingPolicy`} render={({ field }) => (
-                                  <FormItem><FormLabel className="text-[10px] uppercase font-bold opacity-50">Pricing Policy</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select policy" /></SelectTrigger></FormControl><SelectContent><SelectItem value="State prices directly">State prices</SelectItem><SelectItem value="Ranges only">Ranges only</SelectItem><SelectItem value="Always request a quote">Always request quote</SelectItem></SelectContent></Select></FormItem>
+                                  <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-8"><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="State prices directly">State prices</SelectItem><SelectItem value="Ranges only">Ranges only</SelectItem><SelectItem value="Always request a quote">Always request quote</SelectItem></SelectContent></Select></FormItem>
                                 )} />
                               </div>
                             </CardContent>
@@ -548,7 +514,7 @@ export default function AgentSettingsDialog({
                       <div className="space-y-8 animate-in slide-in-from-left-2 duration-300">
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable Web Chat</Label><Switch checked={watchedValues.channelConfig?.web?.enabled ?? false} onCheckedChange={(val) => form.setValue('channelConfig.web.enabled', val)} /></div>
                         <div className={cn("space-y-10", !watchedValues.channelConfig?.web?.enabled && "opacity-40 pointer-events-none")}>
-                          <section className="space-y-6"><FormField control={form.control} name="channelConfig.web.agentDisplayName" render={({ field }) => (<FormItem><FormLabel className="text-xs">Agent Display Name Override</FormLabel><FormControl><Input placeholder="Inherits from General..." {...field} /></FormControl></FormItem>)} /><FormField control={form.control} name="channelConfig.web.greeting.text" render={({ field }) => (<FormItem><FormLabel className="text-xs">Opening Greeting</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>)} /></section>
+                          <FormField control={form.control} name="channelConfig.web.agentDisplayName" render={({ field }) => (<FormItem><FormLabel className="text-xs">Agent Display Name Override</FormLabel><FormControl><Input placeholder="Inherits from General..." {...field} /></FormControl></FormItem>)} /><FormField control={form.control} name="channelConfig.web.greeting.text" render={({ field }) => (<FormItem><FormLabel className="text-xs">Opening Greeting</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>)} /></section>
                           <section className="space-y-6"><Label className="text-xs font-bold uppercase">Lead Capture</Label><RadioGroup onValueChange={(v) => form.setValue('channelConfig.web.capture.timing', v)} value={watchedValues.channelConfig?.web?.capture?.timing || 'after'} className="grid grid-cols-2 gap-4"><div className="flex items-center gap-2"><RadioGroupItem value="before" id="cap-before" /><Label htmlFor="cap-before">Before first response</Label></div><div className="flex items-center gap-2"><RadioGroupItem value="after" id="cap-after" /><Label htmlFor="cap-after">After first response</Label></div></RadioGroup></section>
                         </div>
                       </div>
@@ -568,7 +534,7 @@ export default function AgentSettingsDialog({
                       <div className="space-y-8 animate-in slide-in-from-left-2 duration-300">
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable Phone</Label><Switch checked={watchedValues.channelConfig?.phone?.enabled ?? false} onCheckedChange={(val) => form.setValue('channelConfig.phone.enabled', val)} /></div>
                         <div className={cn("space-y-8", !watchedValues.channelConfig?.phone?.enabled && "opacity-40 pointer-events-none")}>
-                          <FormField control={form.control} name="channelConfig.phone.mode" render={({ field }) => (<FormItem><FormLabel className="text-xs">Call Mode</FormLabel><Select onValueChange={field.onChange} value={field.value || 'triage'}><FormControl><SelectTrigger><SelectValue placeholder="Select mode" /></SelectTrigger></FormControl><SelectContent><SelectItem value="full_ai">Full AI</SelectItem><SelectItem value="triage">AI Triage + Handoff</SelectItem><SelectItem value="receptionist">Receptionist Only</SelectItem></SelectContent></Select></FormItem>)} />
+                          <FormField control={form.control} name="channelConfig.phone.mode" render={({ field }) => (<FormItem><FormLabel className="text-xs">Call Mode</FormLabel><Select onValueChange={field.onChange} value={field.value || 'triage'}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="full_ai">Full AI</SelectItem><SelectItem value="triage">AI Triage + Handoff</SelectItem><SelectItem value="receptionist">Receptionist Only</SelectItem></SelectContent></Select></FormItem>)} />
                           <FormField control={form.control} name="channelConfig.phone.scripts.greeting" render={({ field }) => (<FormItem><FormLabel className="text-xs">AI Greeting Script</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>)} />
                         </div>
                       </div>
@@ -579,8 +545,8 @@ export default function AgentSettingsDialog({
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable Email</Label><Switch checked={watchedValues.channelConfig?.email?.enabled ?? false} onCheckedChange={(val) => form.setValue('channelConfig.email.enabled', val)} /></div>
                         <div className={cn("grid grid-cols-2 gap-10", !watchedValues.channelConfig?.email?.enabled && "opacity-40 pointer-events-none")}>
                           <section className="space-y-6">
-                            <FormField control={form.control} name="channelConfig.email.workflow.approval" render={({ field }) => (<FormItem><FormLabel className="text-xs">Workflow</FormLabel><Select onValueChange={field.onChange} value={field.value || 'auto_exceptions'}><FormControl><SelectTrigger><SelectValue placeholder="Select workflow" /></SelectTrigger></FormControl><SelectContent><SelectItem value="auto">Auto-send</SelectItem><SelectItem value="auto_exceptions">Flag Exceptions</SelectItem><SelectItem value="manual">Manual Approval</SelectItem></SelectContent></Select></FormItem>)} />
-                            <FormField control={form.control} name="channelConfig.email.workflow.delay" render={({ field }) => (<FormItem><FormLabel className="text-xs">Reply Delay</FormLabel><Select onValueChange={field.onChange} value={field.value || '2-5'}><FormControl><SelectTrigger><SelectValue placeholder="Select delay" /></SelectTrigger></FormControl><SelectContent><SelectItem value="immediate">Immediate</SelectItem><SelectItem value="2-5">2–5 min</SelectItem><SelectItem value="15-30">15–30 min</SelectItem></SelectContent></Select></FormItem>)} />
+                            <FormField control={form.control} name="channelConfig.email.workflow.approval" render={({ field }) => (<FormItem><FormLabel className="text-xs">Workflow</FormLabel><Select onValueChange={field.onChange} value={field.value || 'auto_exceptions'}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="auto">Auto-send</SelectItem><SelectItem value="auto_exceptions">Flag Exceptions</SelectItem><SelectItem value="manual">Manual Approval</SelectItem></SelectContent></Select></FormItem>)} />
+                            <FormField control={form.control} name="channelConfig.email.workflow.delay" render={({ field }) => (<FormItem><FormLabel className="text-xs">Reply Delay</FormLabel><Select onValueChange={field.onChange} value={field.value || '2-5'}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="immediate">Immediate</SelectItem><SelectItem value="2-5">2–5 min</SelectItem><SelectItem value="15-30">15–30 min</SelectItem></SelectContent></Select></FormItem>)} />
                           </section>
                           <section className="space-y-6">
                             <div className="flex items-center justify-between p-3 border rounded-lg bg-white/[0.02]"><Label className="text-xs">Hold for legal</Label><Switch checked={watchedValues.channelConfig?.email?.escalation?.holdForLegal ?? true} onCheckedChange={(val) => form.setValue('channelConfig.email.escalation.holdForLegal', val)} /></div>

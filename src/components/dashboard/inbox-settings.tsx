@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Bot as BotIcon, Edit, MoreHorizontal, Plus, Trash2, Copy, ChevronRight, MessageSquare, Check } from 'lucide-react';
+import { Bot as BotIcon, Edit, MoreHorizontal, Plus, Trash2, Copy, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Bot as BotData, User, HelpCenter, Conversation, Ticket, Hub, Space } from '@/lib/data';
 import AgentSettingsDialog from './agent-settings-dialog';
+import WidgetSettingsDialog from './widget-settings-dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,7 +39,7 @@ import { Switch } from '../ui/switch';
 interface InboxSettingsProps {
   allUsers: User[];
   appUser: User | null;
-  bots: BotData[]; // Used for both widgets and agents
+  bots: BotData[];
   onBotUpdate: (botId: string, data: Partial<BotData>) => void;
   onBotAdd: (bot: Omit<BotData, 'id'>) => void;
   onBotDelete: (botId: string) => void;
@@ -59,12 +60,8 @@ export default function InboxSettings({
   onBotAdd,
   onBotDelete,
   helpCenters,
-  tickets,
-  conversations,
   activeHub,
-  activeSpace,
   mode = 'agents',
-  onUpdateActiveHub,
 }: InboxSettingsProps) {
   const [selectedBot, setSelectedBot] = useState<BotData | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -73,17 +70,15 @@ export default function InboxSettings({
 
   const isWebChatMode = mode === 'web-chat';
 
-  // Separate widgets from agents
   const displayBots = useMemo(() => {
     return bots.filter(b => {
-      // Legacy fallback: if type is missing, treat as 'widget'
       const type = b.type || 'widget';
       return type === (isWebChatMode ? 'widget' : 'agent');
     });
   }, [bots, isWebChatMode]);
 
   const agentsList = useMemo(() => {
-    return bots.filter(b => (b.type === 'agent' || !b.type) && b.isEnabled);
+    return bots.filter(b => b.type === 'agent' && b.isEnabled);
   }, [bots]);
 
   const handleEditBot = (bot: BotData) => {
@@ -99,11 +94,9 @@ export default function InboxSettings({
   const handleDuplicateBot = (bot: BotData) => {
     const { id, ...rest } = bot;
     
-    // Firestore does not allow 'undefined' values.
     const deepSanitize = (obj: any): any => {
-      if (Array.isArray(obj)) {
-        return obj.map(deepSanitize);
-      } else if (obj !== null && typeof obj === 'object') {
+      if (Array.isArray(obj)) return obj.map(deepSanitize);
+      if (obj !== null && typeof obj === 'object') {
         return Object.fromEntries(
           Object.entries(obj)
             .filter(([_, v]) => v !== undefined)
@@ -113,10 +106,8 @@ export default function InboxSettings({
       return obj;
     };
 
-    const sanitizedRest = deepSanitize(rest);
-
     const duplicatedData: Omit<BotData, 'id'> = {
-      ...sanitizedRest,
+      ...deepSanitize(rest),
       name: `Copy of ${bot.name}`,
       isEnabled: false,
     } as any;
@@ -125,11 +116,9 @@ export default function InboxSettings({
   };
 
   const handleSaveBot = (botData: BotData | Omit<BotData, 'id' | 'hubId'>) => {
-    // Firestore does not allow 'undefined' values.
     const deepSanitize = (obj: any): any => {
-      if (Array.isArray(obj)) {
-        return obj.map(deepSanitize);
-      } else if (obj !== null && typeof obj === 'object') {
+      if (Array.isArray(obj)) return obj.map(deepSanitize);
+      if (obj !== null && typeof obj === 'object') {
         return Object.fromEntries(
           Object.entries(obj)
             .filter(([_, v]) => v !== undefined)
@@ -142,39 +131,28 @@ export default function InboxSettings({
     const sanitizedData = deepSanitize(botData);
 
     if ('id' in sanitizedData && sanitizedData.id) {
-      const existing = bots.find(b => b.id === sanitizedData.id);
-      const type = sanitizedData.type || existing?.type || (isWebChatMode ? 'widget' : 'agent');
-      onBotUpdate(sanitizedData.id, { ...sanitizedData, type } as any);
+      onBotUpdate(sanitizedData.id, sanitizedData as any);
     } else if (activeHub) {
       const dataWithDefaults = { 
         ...sanitizedData, 
         hubId: activeHub.id, 
         spaceId: activeHub.spaceId,
-        type: isWebChatMode ? 'widget' as const : 'agent' as const
+        type: isWebChatMode ? 'widget' : 'agent'
       };
       onBotAdd(dataWithDefaults as Omit<BotData, 'id'>);
     }
-  };
-
-  const handleDeleteClick = (bot: BotData) => {
-    setBotToDelete(bot);
   };
 
   const handleDeleteConfirm = async () => {
     if (!botToDelete) return;
     try {
       onBotDelete(botToDelete.id);
-      toast({ title: `${isWebChatMode ? 'Widget' : 'Agent'} deleted successfully.` });
+      toast({ title: 'Deleted successfully.' });
     } catch (err) {
-      toast({ variant: 'destructive', title: `Failed to delete ${isWebChatMode ? 'widget' : 'agent'}.` });
+      toast({ variant: 'destructive', title: 'Failed to delete.' });
     } finally {
       setBotToDelete(null);
     }
-  };
-
-  const handleAgentAssignment = (widgetId: string, agentId: string) => {
-    onBotUpdate(widgetId, { assignedAgentId: agentId === 'none' ? null : agentId });
-    toast({ title: 'Assignment updated' });
   };
 
   return (
@@ -232,7 +210,7 @@ export default function InboxSettings({
                         <DropdownMenuItem onClick={() => handleDuplicateBot(bot)}>
                           <Copy className="mr-2 h-4 w-4" /> Duplicate
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleDeleteClick(bot)} className="text-destructive">
+                        <DropdownMenuItem onSelect={() => setBotToDelete(bot)} className="text-destructive">
                           <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -248,7 +226,7 @@ export default function InboxSettings({
                       <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">AI Agent Assignment</Label>
                       <Select 
                         value={bot.assignedAgentId || 'none'} 
-                        onValueChange={(val) => handleAgentAssignment(bot.id, val)}
+                        onValueChange={(val) => onBotUpdate(bot.id, { assignedAgentId: val === 'none' ? null : val })}
                       >
                         <SelectTrigger className="bg-background h-11 border-white/10">
                           <SelectValue placeholder="No Agent (Route to Inbox)" />
@@ -277,7 +255,7 @@ export default function InboxSettings({
                       ) : (
                         <>
                           <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
-                            <MessageSquare className="h-4 w-4" />
+                            <BotIcon className="h-4 w-4" />
                           </div>
                           <p className="text-xs text-muted-foreground">
                             Conversations route to inbox. <span className="font-bold">No AI involvement.</span>
@@ -309,26 +287,32 @@ export default function InboxSettings({
         </div>
       </div>
 
-      <AgentSettingsDialog
-        isOpen={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        bot={selectedBot}
-        onSave={handleSaveBot}
-        appUser={appUser}
-        allUsers={allUsers}
-        helpCenters={helpCenters}
-        mode={isWebChatMode ? 'widget' : 'agent'}
-        hubWidgets={isWebChatMode ? [] : bots.filter(b => b.type === 'widget' || !b.type)}
-        activeHub={activeHub}
-        activeSpace={activeSpace}
-      />
+      {isWebChatMode ? (
+        <WidgetSettingsDialog
+          isOpen={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          bot={selectedBot}
+          onSave={handleSaveBot}
+          allUsers={allUsers}
+          hubAgents={agentsList}
+        />
+      ) : (
+        <AgentSettingsDialog
+          isOpen={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          bot={selectedBot}
+          onSave={handleSaveBot}
+          appUser={appUser}
+          helpCenters={helpCenters}
+        />
+      )}
 
       <AlertDialog open={!!botToDelete} onOpenChange={() => setBotToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the {isWebChatMode ? 'widget' : 'agent'} "{botToDelete?.name}". This action cannot be undone.
+              This will permanently delete "{botToDelete?.name}". This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
