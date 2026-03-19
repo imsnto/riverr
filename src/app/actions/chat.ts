@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -10,6 +9,7 @@ import { indexHelpCenterArticleToChunks } from '@/lib/knowledge/indexer';
 import { LeadStateNode, Contact, SalesPersonaSegmentNode, ChatMessage, Visitor, HelpCenter, HelpCenterCollection, HelpCenterArticle, ResponderType } from '@/lib/data';
 import { draftSalesEmail, type DraftSalesEmailInput, type DraftSalesEmailOutput } from '@/ai/flows/draft-sales-email';
 import { agentResponse } from '@/ai/flows/agent-response';
+import { crawlWebsiteKnowledge } from '@/ai/flows/crawl-website-knowledge';
 import { serverTimestamp } from 'firebase-admin/firestore';
 import admin from 'firebase-admin';
 import { isWhimsical, generateWhimsicalName, normalizePhoneFallback } from '@/lib/utils';
@@ -736,4 +736,8 @@ export async function searchSalesExtractionsAction(params: { query: string; spac
         console.error("Typesense search failed in searchSalesExtractionsAction:", error);
         return { extractions: [] };
     }
+}
+
+export async function crawlWebsiteAction(url: string) {
+  return crawlWebsiteKnowledge({ url });
 }

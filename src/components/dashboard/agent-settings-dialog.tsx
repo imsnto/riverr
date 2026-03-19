@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useTransition } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
@@ -37,6 +37,11 @@ import {
   Mail, 
   AlertCircle,
   ChevronRight,
+  Bot,
+  Search,
+  Globe2,
+  Loader2,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -49,6 +54,8 @@ import { Checkbox } from '../ui/checkbox';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { crawlWebsiteAction } from '@/app/actions/chat';
+import { useToast } from '@/hooks/use-toast';
 
 const agentSettingsSchema = z.object({
   id: z.string().optional(),
@@ -154,6 +161,9 @@ export default function AgentSettingsDialog({
 }: AgentSettingsDialogProps) {
   const [activeTab, setActiveTab] = useState('general');
   const [activeChannel, setActiveChannel] = useState('web');
+  const [crawlUrl, setCrawlUrl] = useState('');
+  const [isCrawling, startCrawlTransition] = useTransition();
+  const { toast } = useToast();
 
   const defaultFormValues: AgentSettingsFormValues = {
     webAgentName: 'Assistant',
@@ -186,15 +196,14 @@ export default function AgentSettingsDialog({
     defaultValues: defaultFormValues,
   });
 
-  const { fields: productFields, append: appendProduct, remove: removeProduct } = useFieldArray({ control: form.control, name: "products" });
-  const { fields: faqFields, append: appendFaq, remove: removeFaq } = useFieldArray({ control: form.control, name: "faqs" });
+  const { fields: productFields, append: appendProduct, remove: removeProduct, replace: replaceProducts } = useFieldArray({ control: form.control, name: "products" });
+  const { fields: faqFields, append: appendFaq, remove: removeFaq, replace: replaceFaqs } = useFieldArray({ control: form.control, name: "faqs" });
   const { fields: objectionFields, append: appendObjection, remove: removeObjection } = useFieldArray({ control: form.control, name: "objections" });
   const { fields: qualFields } = useFieldArray({ control: form.control, name: "qualificationFlow" });
 
   useEffect(() => {
     if (isOpen) {
       if (bot) {
-        // Deep merge with defaults to prevent runtime errors on missing nested fields
         const merged = {
           ...defaultFormValues,
           ...bot,
@@ -215,6 +224,38 @@ export default function AgentSettingsDialog({
   }, [bot, form, isOpen]);
 
   const watchedValues = form.watch();
+
+  const handleCrawlWebsite = () => {
+    if (!crawlUrl || !crawlUrl.startsWith('http')) {
+      toast({ variant: 'destructive', title: 'Invalid URL', description: 'Please enter a valid website address.' });
+      return;
+    }
+
+    startCrawlTransition(async () => {
+      try {
+        const result = await crawlWebsiteAction(crawlUrl);
+        
+        if (result.businessContext) {
+          Object.entries(result.businessContext).forEach(([key, value]) => {
+            if (value) form.setValue(`businessContext.${key as keyof typeof result.businessContext}`, value);
+          });
+        }
+
+        if (result.products && result.products.length > 0) {
+          replaceProducts(result.products.map(p => ({ ...p, id: `p-${Math.random()}` })));
+        }
+
+        if (result.faqs && result.faqs.length > 0) {
+          replaceFaqs(result.faqs.map(f => ({ ...f, id: `f-${Math.random()}` })));
+        }
+
+        toast({ title: 'Crawl Successful', description: 'Business context and products have been auto-filled.' });
+        setCrawlUrl('');
+      } catch (e) {
+        toast({ variant: 'destructive', title: 'Crawl Failed', description: 'Could not extract info from this website.' });
+      }
+    });
+  };
 
   const onSubmit = (values: AgentSettingsFormValues) => {
     onSave(values as any);
@@ -326,6 +367,42 @@ export default function AgentSettingsDialog({
 
                 {activeTab === 'knowledge' && (
                   <div className="space-y-12 animate-in fade-in duration-300 text-left">
+                    {/* NEW: WEBSITE AUTO-FILL TOOL */}
+                    <Card className="bg-primary/5 border-primary/20 border-2 overflow-hidden">
+                      <CardHeader className="bg-primary/10 py-4">
+                        <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-primary">
+                          <Sparkles className="h-4 w-4" />
+                          Knowledge Autopilot
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          Enter your website URL and we'll try to automatically populate your business context, products, and FAQs.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-6">
+                        <div className="flex items-center gap-3">
+                          <div className="relative flex-1">
+                            <Globe2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                              placeholder="https://yourbusiness.com" 
+                              className="pl-10 h-11 bg-background border-white/10" 
+                              value={crawlUrl}
+                              onChange={(e) => setCrawlUrl(e.target.value)}
+                            />
+                          </div>
+                          <Button 
+                            type="button" 
+                            size="lg" 
+                            className="font-bold gap-2 px-8" 
+                            onClick={handleCrawlWebsite}
+                            disabled={isCrawling || !crawlUrl}
+                          >
+                            {isCrawling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                            {isCrawling ? 'Crawling...' : 'Crawl Website'}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
                     <section className="space-y-6">
                       <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Business Context</h3>
                       <div className="grid grid-cols-2 gap-6">
