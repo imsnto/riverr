@@ -69,7 +69,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Badge } from '../ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useToast } from '@/hooks/use-toast';
@@ -105,15 +105,15 @@ const agentSettingsSchema = z.object({
     frustrationEnabled: z.boolean().default(true),
     unansweredLoopEnabled: z.boolean().default(true),
     complexRequestEnabled: z.boolean().default(true),
-    notifyEmail: z.string().email('Valid notification email required.')
+    notifyEmail: z.string().optional()
   }),
 
   // Tab 2: Knowledge
   businessContext: z.object({
-    businessName: z.string().min(1, 'Business name is required.'),
+    businessName: z.string().optional(),
     location: z.string().optional(),
-    whatYouDo: z.string().min(1, 'Description required.'),
-    targetAudience: z.string().min(1, 'Target audience required.'),
+    whatYouDo: z.string().optional(),
+    targetAudience: z.string().optional(),
     hours: z.string().optional(),
     minOrder: z.string().optional(),
     turnaround: z.string().optional(),
@@ -129,7 +129,7 @@ const agentSettingsSchema = z.object({
   // Tab 3: Channels
   channelConfig: z.object({
     web: z.object({
-      enabled: z.boolean().default(true),
+      enabled: z.boolean().default(false),
       agentDisplayName: z.string().optional(),
       greeting: z.object({ text: z.string(), returningText: z.string().optional() }),
       quickReplies: z.array(z.object({ id: z.string(), name: z.string(), trigger: z.string(), options: z.array(z.string()) })).optional(),
@@ -180,6 +180,9 @@ interface AgentSettingsDialogProps {
   activeSpace?: Space | null;
 }
 
+const DEFAULT_QUALIFICATION_GOAL = "Provide information and let customer decide";
+const DEFAULT_PRICING_POLICY = "Always request a quote — never state prices";
+
 export default function AgentSettingsDialog({
   isOpen,
   onOpenChange,
@@ -198,56 +201,72 @@ export default function AgentSettingsDialog({
   const form = useForm<AgentSettingsFormValues>({
     resolver: zodResolver(agentSettingsSchema),
     defaultValues: {
-      name: '',
-      webAgentName: '',
+      name: 'My AI Agent',
+      webAgentName: 'Assistant',
+      roleTitle: '',
       isEnabled: true,
       aiEnabled: true,
       tone: 'friendly',
-      primaryGoal: 'Capture details and send quote',
+      voiceNotes: '',
+      primaryGoal: DEFAULT_QUALIFICATION_GOAL,
+      closingTemplate: '',
       escalationRules: {
         orderValueThresholdEnabled: false,
         frustrationEnabled: true,
         unansweredLoopEnabled: true,
         complexRequestEnabled: true,
-        notifyEmail: appUser?.email || ''
+        notifyEmail: ''
       },
       businessContext: {
         businessName: '',
+        location: '',
         whatYouDo: '',
         targetAudience: '',
+        hours: '',
+        minOrder: '',
+        turnaround: '',
+        differentiation: '',
+        forbiddenTopics: '',
       },
-      products: [],
-      faqs: [],
-      objections: [],
-      qualificationFlow: [],
+      products: [{ id: 'prod-1', name: '', price: '', description: '', triggers: '' }],
+      faqs: [{ id: 'faq-1', question: '', answer: '' }],
+      objections: [{ id: 'obj-1', objection: '', response: '' }],
+      qualificationFlow: [
+        { id: 'q1', question: "What do you need?", goal: DEFAULT_QUALIFICATION_GOAL, pricingPolicy: DEFAULT_PRICING_POLICY },
+        { id: 'q2', question: "How many / what quantity?", goal: DEFAULT_QUALIFICATION_GOAL, pricingPolicy: DEFAULT_PRICING_POLICY },
+        { id: 'q3', question: "What is your timeline?", goal: DEFAULT_QUALIFICATION_GOAL, pricingPolicy: DEFAULT_PRICING_POLICY }
+      ],
       channelConfig: {
         web: {
-          enabled: true,
-          greeting: { text: 'Hi! How can I help?' },
+          enabled: false,
+          agentDisplayName: '',
+          greeting: { text: 'Hi! How can I help you today?', returningText: '' },
+          quickReplies: [{ id: 'qr-1', name: 'Opening message', trigger: 'On greeting', options: ["Tell me more", "Get a quote", "Contact us"] }],
           capture: { timing: 'after', fields: { name: true, email: true, phone: false, company: false } },
-          afterHours: { mode: 'ai_full' }
+          afterHours: { mode: 'ai_full', message: '' }
         },
         sms: {
           enabled: false,
-          openingText: '',
+          openingText: "Hi! You've reached us. How can I help?",
           maxLength: 160,
           allowMms: false,
-          capture: { email: 'natural', name: 'natural' },
-          escalation: { keywords: ['agent', 'human'], message: '', sentiment: true },
-          afterHours: { mode: 'delayed_human' }
+          capture: { email: 'natural_quote', name: 'natural', message: '' },
+          escalation: { keywords: ['agent', 'human', 'person'], message: 'Let me connect you with a team member now.', sentiment: true },
+          afterHours: { mode: 'delayed_human', message: '' }
         },
         phone: {
           enabled: false,
-          mode: 'full_ai',
-          scripts: { greeting: '' },
-          behaviour: { transcribe: true, afterHoursAiOnly: false, voicemailFallback: true, greetingEnabled: true, maxDuration: '5', keywords: [] },
-          afterHours: { mode: 'ai_full' }
+          mode: 'triage',
+          transferNumber: '',
+          scripts: { greeting: 'Thank you for calling. How can I help you today?', handoff: '', voicemail: '' },
+          behaviour: { transcribe: true, afterHoursAiOnly: false, voicemailFallback: true, greetingEnabled: true, maxDuration: '5', keywords: ['manager', 'human', 'transfer'] },
+          afterHours: { mode: 'ai_message', redirectNumber: '' }
         },
         email: {
           enabled: false,
           workflow: { approval: 'auto_exceptions', delay: '2-5', threading: 'thread' },
           format: { signOff: '', length: 'standard', alwaysInclude: '', subject: '' },
-          escalation: { holdForValue: true, holdForFrustration: true, holdForLegal: true, holdForAttachment: true, holdForVip: false, keywords: [], sentiment: true }
+          escalation: { holdForValue: true, holdForFrustration: true, holdForLegal: true, holdForAttachment: true, holdForVip: false, keywords: ['urgent', 'manager', 'complaint', 'legal'], sentiment: true }
         }
       }
     },
@@ -346,7 +365,7 @@ export default function AgentSettingsDialog({
                             <section className="space-y-6">
                                 <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Conversation Goal</h3>
                                 <FormField control={form.control} name="primaryGoal" render={({ field }) => (
-                                    <FormItem><FormLabel className="text-xs">Primary Goal</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Guide to order directly">Guide to order directly</SelectItem><SelectItem value="Capture details and send quote">Capture details and send quote</SelectItem><SelectItem value="Book a callback">Book a callback</SelectItem><SelectItem value="Collect email for follow-up">Collect email for follow-up</SelectItem></SelectContent></Select></FormItem>
+                                    <FormItem><FormLabel className="text-xs">Primary Goal</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Guide to order directly">Guide to order directly</SelectItem><SelectItem value="Capture details and send quote">Capture details and send quote</SelectItem><SelectItem value="Book a callback">Book a callback</SelectItem><SelectItem value="Collect email for follow-up">Collect email for follow-up</SelectItem><SelectItem value="Provide information and let customer decide">Provide information and let customer decide</SelectItem></SelectContent></Select></FormItem>
                                 )} />
                                 <FormField control={form.control} name="closingTemplate" render={({ field }) => (
                                     <FormItem><FormLabel className="text-xs">Closing Message Template</FormLabel><FormControl><Textarea {...field} /></FormControl></FormItem>
@@ -360,16 +379,20 @@ export default function AgentSettingsDialog({
                                         <Label className="text-xs">Order Value Threshold</Label>
                                         <div className="flex items-center gap-3">
                                             <Input type="number" placeholder="$500" className="w-24 h-8" />
-                                            <Switch />
+                                            <Switch checked={watchedValues.escalationRules.orderValueThresholdEnabled} onCheckedChange={(val) => form.setValue('escalationRules.orderValueThresholdEnabled', val)} />
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
                                         <Label className="text-xs">Escalate on Frustration</Label>
-                                        <Switch defaultChecked />
+                                        <Switch checked={watchedValues.escalationRules.frustrationEnabled} onCheckedChange={(val) => form.setValue('escalationRules.frustrationEnabled', val)} />
                                     </div>
                                     <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
                                         <Label className="text-xs">Escalate on Unanswered Loops</Label>
-                                        <Switch defaultChecked />
+                                        <Switch checked={watchedValues.escalationRules.unansweredLoopEnabled} onCheckedChange={(val) => form.setValue('escalationRules.unansweredLoopEnabled', val)} />
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
+                                        <Label className="text-xs">Complex or custom request</Label>
+                                        <Switch checked={watchedValues.escalationRules.complexRequestEnabled} onCheckedChange={(val) => form.setValue('escalationRules.complexRequestEnabled', val)} />
                                     </div>
                                     <FormField control={form.control} name="escalationRules.notifyEmail" render={({ field }) => (
                                         <FormItem><FormLabel className="text-xs">Escalation Notify Email</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
@@ -405,8 +428,14 @@ export default function AgentSettingsDialog({
                                         <FormItem><FormLabel className="text-xs">Min Order / Delivery Area</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                                     )} />
                                 </div>
+                                <FormField control={form.control} name="businessContext.turnaround" render={({ field }) => (
+                                    <FormItem><FormLabel className="text-xs">Turnaround / Lead Times</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="businessContext.differentiation" render={({ field }) => (
+                                    <FormItem><FormLabel className="text-xs">What makes you different</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                                )} />
                                 <FormField control={form.control} name="businessContext.forbiddenTopics" render={({ field }) => (
-                                    <FormItem><FormLabel className="text-xs">Forbidden Topics</FormLabel><FormControl><Input placeholder="Comma-separated..." {...field} /></FormControl></FormItem>
+                                    <FormItem><FormLabel className="text-xs">Topics the agent must never discuss</FormLabel><FormControl><Input placeholder="Comma-separated..." {...field} /></FormControl></FormItem>
                                 )} />
                             </section>
 
@@ -444,6 +473,50 @@ export default function AgentSettingsDialog({
                                     <Button type="button" variant="outline" className="w-full border-dashed" onClick={() => appendFaq({ id: Date.now().toString(), question: '', answer: '' })}><Plus className="h-4 w-4 mr-2" /> Add FAQ</Button>
                                 </div>
                             </section>
+
+                            <section className="space-y-6">
+                                <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Objections & How to handle them</h3>
+                                <div className="space-y-4">
+                                    {objectionFields.map((field, index) => (
+                                        <Card key={field.id} className="bg-[#161b22] border-white/10">
+                                            <CardContent className="p-6 space-y-4">
+                                                <Input placeholder="Objection..." {...form.register(`objections.${index}.objection` as any)} />
+                                                <Textarea placeholder="How to respond" {...form.register(`objections.${index}.response` as any)} />
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                    <Button type="button" variant="outline" className="w-full border-dashed" onClick={() => appendObjection({ id: Date.now().toString(), objection: '', response: '' })}><Plus className="h-4 w-4 mr-2" /> Add Objection</Button>
+                                </div>
+                            </section>
+
+                            <section className="space-y-6">
+                                <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Qualification Flow</h3>
+                                <div className="space-y-4">
+                                    {qualFields.map((field, index) => (
+                                        <Card key={field.id} className="bg-[#161b22] border-white/10 relative">
+                                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-destructive" onClick={() => removeQual(index)}><Trash2 className="h-3 w-3" /></Button>
+                                            <CardContent className="p-6 space-y-4">
+                                                <Input placeholder="Step question" {...form.register(`qualificationFlow.${index}.question` as any)} />
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <FormField control={form.control} name={`qualificationFlow.${index}.goal`} render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-[10px] uppercase font-bold opacity-50">Goal</FormLabel>
+                                                            <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Guide to order directly">Order directly</SelectItem><SelectItem value="Capture details and send quote">Capture & Quote</SelectItem><SelectItem value="Book a callback">Book Callback</SelectItem><SelectItem value="Collect email for follow-up">Collect Email</SelectItem><SelectItem value="Provide information and let customer decide">Provide Info</SelectItem></SelectContent></Select>
+                                                        </FormItem>
+                                                    )} />
+                                                    <FormField control={form.control} name={`qualificationFlow.${index}.pricingPolicy`} render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-[10px] uppercase font-bold opacity-50">Pricing Policy</FormLabel>
+                                                            <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="State prices directly">State prices directly</SelectItem><SelectItem value="Ranges only (\"from...\")">Ranges only</SelectItem><SelectItem value="Always request a quote — never state prices">Always request quote</SelectItem></SelectContent></Select>
+                                                        </FormItem>
+                                                    )} />
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                    <Button type="button" variant="outline" className="w-full border-dashed" onClick={() => appendQual({ id: Date.now().toString(), question: '', goal: DEFAULT_QUALIFICATION_GOAL, pricingPolicy: DEFAULT_PRICING_POLICY })}><Plus className="h-4 w-4 mr-2" /> Add Qualification Step</Button>
+                                </div>
+                            </section>
                         </div>
                     )}
 
@@ -472,6 +545,9 @@ export default function AgentSettingsDialog({
                                         <div className="space-y-8">
                                             <div className="space-y-4">
                                                 <Label className="text-[10px] uppercase font-black tracking-widest text-primary">Greeting</Label>
+                                                <FormField control={form.control} name="channelConfig.web.agentDisplayName" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-xs">Agent Display Name Override</FormLabel><FormControl><Input placeholder="Inherits from General..." {...field} /></FormControl></FormItem>
+                                                )} />
                                                 <FormField control={form.control} name="channelConfig.web.greeting.text" render={({ field }) => (
                                                     <FormItem><FormLabel className="text-xs">Opening Greeting</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
                                                 )} />
@@ -564,7 +640,10 @@ export default function AgentSettingsDialog({
                                                     <FormItem><FormLabel className="text-xs">AI Greeting Script</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
                                                 )} />
                                                 <FormField control={form.control} name="channelConfig.phone.scripts.handoff" render={({ field }) => (
-                                                    <FormItem><FormLabel className="text-xs">Handoff Intro Script</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                                                    <FormItem><FormLabel className="text-xs">Warm handoff intro script</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="channelConfig.phone.scripts.voicemail" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-xs">Voicemail Script</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                                                 )} />
                                             </section>
                                         </div>
@@ -580,10 +659,28 @@ export default function AgentSettingsDialog({
                                                         <Label className="text-xs">Voicemail Fallback</Label>
                                                         <Switch checked={watchedValues.channelConfig?.phone?.behaviour?.voicemailFallback} onCheckedChange={(val) => form.setValue('channelConfig.phone.behaviour.voicemailFallback' as any, val)} />
                                                     </div>
+                                                    <div className="flex items-center justify-between p-3 border rounded-lg bg-white/[0.02]">
+                                                        <Label className="text-xs">AI Greeting Enabled</Label>
+                                                        <Switch checked={watchedValues.channelConfig?.phone?.behaviour?.greetingEnabled} onCheckedChange={(val) => form.setValue('channelConfig.phone.behaviour.greetingEnabled' as any, val)} />
+                                                    </div>
                                                 </div>
                                                 <FormField control={form.control} name="channelConfig.phone.behaviour.maxDuration" render={({ field }) => (
                                                     <FormItem><FormLabel className="text-xs">Max Call Duration</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="2">2 Minutes</SelectItem><SelectItem value="5">5 Minutes</SelectItem><SelectItem value="10">10 Minutes</SelectItem><SelectItem value="0">No Limit</SelectItem></SelectContent></Select></FormItem>
                                                 )} />
+                                                <FormField control={form.control} name="channelConfig.phone.behaviour.keywords" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-xs">Escalation Keywords</FormLabel><FormControl><Input placeholder="manager, human, transfer" value={field.value?.join(', ')} onChange={(e) => field.onChange(e.target.value.split(',').map(s => s.trim()))} /></FormControl></FormItem>
+                                                )} />
+                                            </section>
+                                            <section className="space-y-4">
+                                                <Label className="text-[10px] uppercase font-black tracking-widest text-primary">After Hours</Label>
+                                                <FormField control={form.control} name="channelConfig.phone.afterHours.mode" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-xs">After Hours Mode</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="ai_full">Full AI Resolution</SelectItem><SelectItem value="ai_message">AI Triage & Message</SelectItem><SelectItem value="voicemail">Voicemail Only</SelectItem><SelectItem value="redirect">Redirect to On-Call</SelectItem></SelectContent></Select></FormItem>
+                                                )} />
+                                                {watchedValues.channelConfig?.phone?.afterHours?.mode === 'redirect' && (
+                                                    <FormField control={form.control} name="channelConfig.phone.afterHours.redirectNumber" render={({ field }) => (
+                                                        <FormItem><FormLabel className="text-xs">Redirect Number</FormLabel><FormControl><Input placeholder="+1..." {...field} /></FormControl></FormItem>
+                                                    )} />
+                                                )}
                                             </section>
                                         </div>
                                     </div>
@@ -619,6 +716,9 @@ export default function AgentSettingsDialog({
                                                 <FormField control={form.control} name="channelConfig.email.format.alwaysInclude" render={({ field }) => (
                                                     <FormItem><FormLabel className="text-xs">Always include in every reply</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
                                                 )} />
+                                                <FormField control={form.control} name="channelConfig.email.format.subject" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-xs">Subject Line Template (Outbound)</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                                                )} />
                                             </section>
                                         </div>
                                         <div className="space-y-8">
@@ -626,10 +726,11 @@ export default function AgentSettingsDialog({
                                                 <Label className="text-[10px] uppercase font-black tracking-widest text-primary">Escalation Triggers</Label>
                                                 <div className="grid gap-2">
                                                     {[
-                                                        { key: 'holdForValue', label: 'Hold for order value' },
-                                                        { key: 'holdForFrustration', label: 'Hold for frustration' },
-                                                        { key: 'holdForLegal', label: 'Hold for legal/dispute' },
-                                                        { key: 'holdForAttachment', label: 'Hold for attachments' },
+                                                        { key: 'holdForValue', label: 'Hold for review: order value' },
+                                                        { key: 'holdForFrustration', label: 'Hold for review: frustration or complaint' },
+                                                        { key: 'holdForLegal', label: 'Hold for review: legal or contract' },
+                                                        { key: 'holdForAttachment', label: 'Hold for review: email contains attachment' },
+                                                        { key: 'holdForVip', label: 'Hold for review: known VIP domain' },
                                                     ].map(t => (
                                                         <div key={t.key} className="flex items-center justify-between p-3 border rounded-lg bg-white/[0.02]">
                                                             <Label className="text-xs">{t.label}</Label>
@@ -637,6 +738,9 @@ export default function AgentSettingsDialog({
                                                         </div>
                                                     ))}
                                                 </div>
+                                                <FormField control={form.control} name="channelConfig.email.escalation.keywords" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-xs">Escalation Keywords</FormLabel><FormControl><Input placeholder="urgent, manager, complaint, legal" value={field.value?.join(', ')} onChange={(e) => field.onChange(e.target.value.split(',').map(s => s.trim()))} /></FormControl></FormItem>
+                                                )} />
                                             </section>
                                         </div>
                                     </div>
