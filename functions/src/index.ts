@@ -1,8 +1,6 @@
-
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
 import { EmailConfig } from "../../src/lib/data";
-import { getEmailProvider } from "../../src/lib/email/EmailProviderFactory";
 
 if (!admin.apps.length) admin.initializeApp();
 
@@ -78,3 +76,4 @@ export { twilioVoiceStatus } from "./http/twilioVoiceStatus";
 export { twilioVoiceRecording } from "./http/twilioVoiceRecording";
 export { twilioVoiceDialResult } from "./http/twilioVoiceDialResult";
 export { provisionTwilioSubaccount, searchNumbers, buyPhoneNumber } from "./twilio/provisioning";
+export { syncDistilledQaToTypesense } from './syncDistilledQaToTypesense';

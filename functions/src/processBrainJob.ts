@@ -1,21 +1,71 @@
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
-import * as admin from "firebase-admin";
-import { genkit } from "genkit";
-import { googleAI } from "@genkit-ai/google-genai";
-import { distillSupportIntent } from "../../src/ai/flows/distill-support-intent";
-import { extractSalesConversation } from "../../src/ai/flows/distill-sales-intelligence";
-import { summarizeSalesCluster } from "../../src/ai/flows/summarize-sales-cluster";
-import { recommendNextSalesAction } from "../../src/ai/flows/recommend-next-sales-action";
-import { RawConversationNode, SupportIntentNode, SalesPersonaSegmentNode, LeadStateNode } from "../../src/lib/data";
-import { gmailAdapter } from "../../src/lib/brain/adapters/gmail";
+import * as admin from 'firebase-admin';
+import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { VertexAI } from '@google-cloud/vertexai';
+import { distillSupportIntent } from '../../src/ai/flows/distill-support-intent';
+import Typesense from 'typesense';
 
 if (!admin.apps.length) admin.initializeApp();
+const db = admin.firestore();
 
-const ai = genkit({
-  plugins: [googleAI()],
+const vertexAI = new VertexAI({
+  project: process.env.GCLOUD_PROJECT,
+  location: 'us-central1',
 });
 
-export const processBrainJob = onDocumentCreated("brain_jobs/{jobId}", async (event) => {
+const embeddingModel = vertexAI.getGenerativeModel({
+  model: 'embedding-2',
+});
+
+const tsClient = new Typesense.Client({
+  nodes: [
+    {
+      host: process.env.TYPESENSE_HOST!,
+      port: Number(process.env.TYPESENSE_PORT || 443),
+      protocol: process.env.TYPESENSE_PROTOCOL || 'https',
+    },
+  ],
+  apiKey: process.env.TYPESENSE_ADMIN_API_KEY!,
+  connectionTimeoutSeconds: 10,
+});
+
+const MAX_CHUNK_CHARS = 3500;
+const CHUNK_OVERLAP_CHARS = 400;
+
+function chunkConversationTurns(turnLines: string[]): string[] {
+  const fullText = turnLines.map((t) => t.trim()).filter(Boolean).join('\n');
+  if (!fullText) return [];
+  if (fullText.length <= MAX_CHUNK_CHARS) return [fullText];
+
+  const chunks: string[] = [];
+  let start = 0;
+
+  while (start < fullText.length) {
+    const end = Math.min(start + MAX_CHUNK_CHARS, fullText.length);
+    chunks.push(fullText.slice(start, end));
+    if (end >= fullText.length) break;
+    start = Math.max(0, end - CHUNK_OVERLAP_CHARS);
+  }
+
+  return chunks;
+}
+
+async function generateQaEmbedding(text: string): Promise<number[] | null> {
+  try {
+    const result = await embeddingModel.embedContent({
+      content: {
+        role: 'user',
+        parts: [{ text }],
+      },
+    });
+
+    return result.embedding?.values || null;
+  } catch (err) {
+    console.error('Vertex embedding error:', err);
+    return null;
+  }
+}
+
+export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (event) => {
   const snap = event.data;
   if (!snap) return;
 
@@ -23,183 +73,187 @@ export const processBrainJob = onDocumentCreated("brain_jobs/{jobId}", async (ev
   const jobId = event.params.jobId;
 
   await snap.ref.update({
-    status: "running",
+    status: 'running',
     startedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
   try {
     switch (job.type) {
-      case "ingest_conversations": {
-        console.log(`Starting conversation ingestion for source: ${job.params.source}`);
-        if (job.params.source !== 'gmail') {
-            throw new Error(`Unsupported ingestion source: ${job.params.source}`);
-        }
+      case 'ingest_conversations': {
+        const { spaceId, hubId } = job.params as { spaceId: string; hubId: string };
+        if (!spaceId || !hubId) throw new Error('ingest_conversations requires spaceId and hubId');
 
-        const rawThreads = await gmailAdapter.fetchBatch({ query: job.params.query, maxResults: 50 });
-        const batch = admin.firestore().batch();
-        let processedCount = 0;
-
-        for (const rawThread of rawThreads) {
-            const normalizedThread = gmailAdapter.normalize(rawThread);
-            const rawNode = gmailAdapter.toRawNode(normalizedThread);
-
-            // --- REAL EMBEDDING STEP ---
-            const { embedding } = await ai.embed({
-                model: 'googleai/embedding-004',
-                content: rawNode.textForEmbedding,
-            });
-            const embeddedAt = new Date().toISOString();
-            const embeddingModel = "embedding-004";
-            // --- END REAL EMBEDDING ---
-
-            const finalNode: Omit<RawConversationNode, 'id'> = {
-                ...(rawNode as Omit<RawConversationNode, 'id'>),
-                spaceId: job.params.spaceId,
-                embedding: embedding,
-                embeddingModel: embeddingModel,
-                embeddedAt: embeddedAt,
-            };
-            
-            const nodeRef = admin.firestore().collection('memory_nodes').doc();
-            batch.set(nodeRef, finalNode);
-            processedCount++;
-        }
-        
-        await batch.commit();
-        console.log(`Ingested and embedded ${processedCount} conversation(s).`);
-        break;
-      }
-
-      case "distill_support_intents": {
-        const rawNodesSnap = await admin.firestore().collection("memory_nodes")
-          .where("type", "==", "raw_conversation")
-          .where("channel", "==", "support")
-          .where("processedForIntent", "==", null)
-          .limit(10)
-          .get();
-
-        for (const doc of rawNodesSnap.docs) {
-          const node = doc.data() as RawConversationNode;
-          const result = await distillSupportIntent({
-            conversationText: node.normalized.cleanedText,
-            lastAgentMessage: node.normalized.lastAgentOrRepMessage,
-          });
-
-          const intentRef = admin.firestore().collection("memory_nodes").doc();
-          await intentRef.set({
-            type: "support_intent",
-            spaceId: node.spaceId,
-            hubId: node.hubId || "",
-            intentKey: result.intentKey,
-            title: result.customerQuestion,
-            description: result.resolution,
-            learnedFromNodeIds: [doc.id],
-            answerVariants: [{ variantId: "default", template: result.resolution }],
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-
-          await doc.ref.update({ processedForIntent: true });
-        }
-        break;
-      }
-
-      case "distill_sales_intelligence": {
-        const rawNodesSnap = await admin.firestore().collection("memory_nodes")
-          .where("type", "==", "raw_conversation")
-          .where("channel", "==", "sales")
-          .where("processedForSales", "==", null)
-          .limit(10)
-          .get();
-
-        for (const doc of rawNodesSnap.docs) {
-          const node = doc.data() as RawConversationNode;
-          const extraction = await extractSalesConversation({
-            conversationText: node.normalized.cleanedText,
-            participants: node.participants as any,
-          });
-
-          await admin.firestore().collection("sales_extractions").add({
-            ...extraction,
-            spaceId: node.spaceId,
-            sourceNodeId: doc.id,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-
-          await doc.ref.update({ processedForSales: true });
-        }
-        break;
-      }
-
-      case "cluster_sales_personas": {
-        const extractionsSnap = await admin.firestore().collection("sales_extractions")
-          .where("spaceId", "==", job.params.spaceId)
+        const conversationsSnap = await db
+          .collection('conversations')
+          .where('hubId', '==', hubId)
           .limit(50)
           .get();
 
-        const extractions = extractionsSnap.docs.map(d => d.data());
-        const result = await summarizeSalesCluster({
-          aggregatedPains: extractions.flatMap(e => e.pains),
-          aggregatedObjections: extractions.flatMap(e => e.objections),
-          aggregatedBuyingSignals: extractions.flatMap(e => e.buyingSignals),
-          examplePersonas: extractions.map(e => e.recommendedPersonaClusterText),
-        });
+        let processed = 0;
 
-        await admin.firestore().collection("memory_nodes").add({
-          type: "sales_persona_segment",
-          spaceId: job.params.spaceId,
-          ...result,
-          learnedFromNodeIds: extractionsSnap.docs.map(d => d.id),
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        for (const convDoc of conversationsSnap.docs) {
+          const conv = convDoc.data() as any;
+
+          const messagesSnap = await db
+            .collection('chat_messages')
+            .where('conversationId', '==', convDoc.id)
+            .get();
+
+          const messages = messagesSnap.docs
+            .map((d) => d.data() as any)
+            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+          const lines = messages
+            .map((m) => {
+              const role =
+                m.senderType === 'agent' || m.authorId === 'ai_agent'
+                  ? 'Agent'
+                  : 'User';
+              return `${role}: ${m.content || ''}`.trim();
+            })
+            .filter(Boolean);
+
+          if (!lines.length) continue;
+
+          const normalizedText = lines.join('\n');
+          const lastAgentMessage =
+            [...messages].reverse().find((m) => m.senderType === 'agent' || m.authorId === 'ai_agent')?.content || '';
+
+          const rawRef = db.collection('brain_raw_conversations').doc();
+          await rawRef.set({
+            spaceId,
+            hubId,
+            conversationId: convDoc.id,
+            normalizedText,
+            lastAgentMessage,
+            messageCount: lines.length,
+            processedForChunking: true,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          const chunks = chunkConversationTurns(lines);
+
+          for (let i = 0; i < chunks.length; i++) {
+            await db.collection('brain_chunks').add({
+              spaceId,
+              hubId,
+              rawConversationId: rawRef.id,
+              conversationId: convDoc.id,
+              chunkIndex: i,
+              chunkText: chunks[i],
+              processedForDistillation: null,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+
+          await convDoc.ref.set(
+            {
+              brainIngestion: {
+                ingestedAt: admin.firestore.FieldValue.serverTimestamp(),
+                rawConversationId: rawRef.id,
+                chunkCount: chunks.length,
+              },
+            },
+            { merge: true }
+          );
+
+          processed += 1;
+
+          await snap.ref.set(
+            {
+              progress: {
+                current: processed,
+                total: conversationsSnap.size,
+                message: `Ingested ${processed} of ${conversationsSnap.size} conversations`,
+              },
+            },
+            { merge: true }
+          );
+        }
+
         break;
       }
 
-      case "update_lead_states": {
-        const contactsSnap = await admin.firestore().collection("contacts")
-          .where("spaceId", "==", job.params.spaceId)
+      case 'distill_support_intents': {
+        const { spaceId } = job.params as { spaceId: string };
+        if (!spaceId) throw new Error('distill_support_intents requires spaceId');
+
+        const chunksSnap = await db
+          .collection('brain_chunks')
+          .where('spaceId', '==', spaceId)
+          .where('processedForDistillation', '==', null)
           .limit(20)
           .get();
 
-        for (const contactDoc of contactsSnap.docs) {
-          const contact = contactDoc.data();
-          const extractionsSnap = await admin.firestore().collection("sales_extractions")
-            .where("spaceId", "==", job.params.spaceId)
-            .limit(5)
-            .get();
+        let processed = 0;
 
-          const bestExtraction = extractionsSnap.docs[0]?.data();
-          const personaSnap = await admin.firestore().collection("memory_nodes")
-            .where("type", "==", "sales_persona_segment")
-            .where("spaceId", "==", job.params.spaceId)
-            .limit(1)
-            .get();
+        for (const chunkDoc of chunksSnap.docs) {
+          const chunk = chunkDoc.data() as any;
 
-          const result = await recommendNextSalesAction({
-            lead: { id: contactDoc.id, name: contact.name, company: contact.company },
-            matchedPersona: personaSnap.docs[0]?.data() as any,
+          const result = await distillSupportIntent({
+            conversationText: chunk.chunkText,
+            lastAgentMessage: '',
           });
 
-          await admin.firestore().collection("memory_nodes").doc(`lead_state_${contactDoc.id}`).set({
-            type: "lead_state",
-            spaceId: job.params.spaceId,
-            leadId: contactDoc.id,
-            ...result,
-            updatedAt: new Date().toISOString(),
-          }, { merge: true });
+          const qa = result;
+          if (!qa?.customerQuestion || !qa?.resolution) {
+            await chunkDoc.ref.update({ processedForDistillation: true });
+            continue;
+          }
+
+          const embeddingText = `Question: ${qa.customerQuestion}\nAnswer: ${qa.resolution}`;
+          const embedding = await generateQaEmbedding(embeddingText);
+
+          const qaRef = db.collection('brain_distilled_qas').doc();
+          await qaRef.set({
+            spaceId,
+            hubId: chunk.hubId,
+            chunkId: chunkDoc.id,
+            rawConversationId: chunk.rawConversationId,
+            intentKey: qa.intentKey,
+            question: qa.customerQuestion,
+            answer: qa.resolution,
+            confidence: 0.8,
+            requiredContext: qa.requiredContext || [],
+            requiresHumanIf: qa.safetyCriteria?.requiresHumanIf || [],
+            mustNot: qa.safetyCriteria?.mustNot || [],
+            embedding,
+            status: 'approved',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          await chunkDoc.ref.update({ processedForDistillation: true });
+
+          processed += 1;
+
+          await snap.ref.set(
+            {
+              progress: {
+                current: processed,
+                total: chunksSnap.size,
+                message: `Distilled ${processed} of ${chunksSnap.size} chunks`,
+              },
+            },
+            { merge: true }
+          );
         }
+
         break;
       }
+
+      default:
+        throw new Error(`Unsupported brain job type: ${job.type}`);
     }
 
     await snap.ref.update({
-      status: "completed",
+      status: 'completed',
       completedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   } catch (error: any) {
-    console.error("Job failed:", error);
+    console.error('processBrainJob failed:', error);
     await snap.ref.update({
-      status: "failed",
-      error: error.message,
+      status: 'failed',
+      error: error?.message || 'Unknown error',
       completedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   }

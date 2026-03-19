@@ -32,44 +32,36 @@ export async function distillSupportIntent(input: DistillSupportIntentInput): Pr
   return distillSupportIntentFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'distillSupportIntentPrompt',
-  input: {schema: DistillSupportIntentInputSchema},
-  output: {schema: DistillSupportIntentOutputSchema},
-  prompt: `You are an expert at analyzing customer support conversations and distilling them into structured, reusable knowledge.
-
-Analyze the following conversation. Your goal is to extract a single, core "support intent" from it.
-
-**Conversation Transcript:**
----
-{{{conversationText}}}
----
-
-**Key Information:**
-- The customer's problem is the core issue they are trying to solve.
-- The agent's final message likely contains the correct answer or resolution.
-
-**Your Task:**
-Based on the transcript, extract the following information and provide it in the requested JSON format:
-
-1.  **intentKey**: Create a unique, machine-readable key for this specific problem. Use snake_case. Examples: 'cannot_login', 'update_shipping_address', 'cancel_subscription'.
-2.  **customerQuestion**: Rephrase the customer's initial messages into a single, clear question that represents their core need.
-3.  **resolution**: Analyze the agent's final message ('{{{lastAgentMessage}}}') and rewrite it as a clear, helpful, standalone answer.
-4.  **requiredContext**: What specific pieces of information (like an order ID, email, or username) would an AI need to ask for *before* it could provide this resolution?
-5.  **safetyCriteria**: Define the guardrails for this intent. When should an AI escalate to a human? What should it avoid saying?
-
-Provide your analysis in the structured JSON format.
-`,
-});
-
 const distillSupportIntentFlow = ai.defineFlow(
   {
-    name: 'distillSupportIntentFlow',
+    name: 'distillSupportIntent',
     inputSchema: DistillSupportIntentInputSchema,
     outputSchema: DistillSupportIntentOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
+  async (input) => {
+    const prompt = `
+You are an expert at analyzing customer support conversations and distilling them into structured, reusable knowledge.
+
+Given the conversation below, return:
+- a stable intentKey (snake_case)
+- the customerQuestion (one clear sentence)
+- the resolution (standalone helpful answer)
+- requiredContext (list of info needed to answer)
+- safetyCriteria (guardrails and escalation conditions)
+
+Conversation:
+---
+${input.conversationText}
+---
+`;
+
+    const { output } = await ai.generate({
+      prompt,
+      output: {
+        schema: DistillSupportIntentOutputSchema,
+      },
+    });
+
     return output!;
   }
 );

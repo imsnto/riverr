@@ -96,7 +96,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
   const initialView = (searchParams.get('view') as SettingsView) || 'profile';
   const [activeView, setActiveView] = useState<SettingsView>(initialView);
   const isMobile = useIsMobile();
-  const { signOut, activeSpace } = useAuth();
+  const { signOut, activeSpace, activeHub } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -192,7 +192,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
           />
         ) : null;
       case 'brain':
-        return <BrainSettings />;
+        return <BrainSettings activeSpace={activeSpace} activeHub={activeHub} />;
       case 'phone':
         return activeSpace ? <PhoneSettings space={activeSpace} allHubs={props.allHubs.filter(h => h.spaceId === activeSpace.id)} /> : null;
       case 'hub-general':
