@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Bot as BotData, User, HelpCenter, Hub, Space } from '@/lib/data';
+import { Bot as BotData, User, HelpCenter } from '@/lib/data';
 import { 
   Settings, 
   BookOpen, 
@@ -41,6 +41,7 @@ import {
   Sparkles,
   Check,
   ShieldAlert,
+  Bot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -107,7 +108,7 @@ const agentSettingsSchema = z.object({
       agentDisplayName: z.string().optional(),
       greeting: z.object({ text: z.string(), returningText: z.string().optional() }),
       quickReplies: z.array(z.object({ id: z.string(), groupName: z.string(), trigger: z.string(), options: z.array(z.string()) })),
-      capture: z.object({ timing: z.string(), fields: z.object({ name: z.boolean(), email: z.boolean(), phone: z.boolean(), company: z.boolean() }) }),
+      capture: z.object({ timing: z.enum(['before', 'after']), fields: z.object({ name: z.boolean(), email: z.boolean(), phone: z.boolean(), company: z.boolean() }) }),
       afterHours: z.object({ mode: z.string(), message: z.string().optional() })
     }),
     sms: z.object({
@@ -514,8 +515,26 @@ export default function AgentSettingsDialog({
                       <div className="space-y-8 animate-in slide-in-from-left-2 duration-300">
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable Web Chat</Label><Switch checked={watchedValues.channelConfig?.web?.enabled ?? false} onCheckedChange={(val) => form.setValue('channelConfig.web.enabled', val)} /></div>
                         <div className={cn("space-y-10", !watchedValues.channelConfig?.web?.enabled && "opacity-40 pointer-events-none")}>
-                          <FormField control={form.control} name="channelConfig.web.agentDisplayName" render={({ field }) => (<FormItem><FormLabel className="text-xs">Agent Display Name Override</FormLabel><FormControl><Input placeholder="Inherits from General..." {...field} /></FormControl></FormItem>)} /><FormField control={form.control} name="channelConfig.web.greeting.text" render={({ field }) => (<FormItem><FormLabel className="text-xs">Opening Greeting</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>)} /></section>
-                          <section className="space-y-6"><Label className="text-xs font-bold uppercase">Lead Capture</Label><RadioGroup onValueChange={(v) => form.setValue('channelConfig.web.capture.timing', v)} value={watchedValues.channelConfig?.web?.capture?.timing || 'after'} className="grid grid-cols-2 gap-4"><div className="flex items-center gap-2"><RadioGroupItem value="before" id="cap-before" /><Label htmlFor="cap-before">Before first response</Label></div><div className="flex items-center gap-2"><RadioGroupItem value="after" id="cap-after" /><Label htmlFor="cap-after">After first response</Label></div></RadioGroup></section>
+                          <section className="space-y-6">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-primary">Greetings & Messaging</Label>
+                            <FormField control={form.control} name="channelConfig.web.agentDisplayName" render={({ field }) => (
+                              <FormItem><FormLabel className="text-xs">Agent Display Name Override</FormLabel><FormControl><Input placeholder="Inherits from General..." {...field} /></FormControl></FormItem>
+                            )} />
+                            <FormField control={form.control} name="channelConfig.web.greeting.text" render={({ field }) => (
+                              <FormItem><FormLabel className="text-xs">Opening Greeting</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
+                            )} />
+                          </section>
+                          <section className="space-y-6">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-primary">Lead Capture</Label>
+                            <RadioGroup onValueChange={(v) => form.setValue('channelConfig.web.capture.timing', v as 'before' | 'after')} value={watchedValues.channelConfig?.web?.capture?.timing || 'after'} className="grid grid-cols-2 gap-4">
+                              <div className="flex items-center gap-2"><RadioGroupItem value="before" id="cap-before" /><Label htmlFor="cap-before">Before first response</Label></div>
+                              <div className="flex items-center gap-2"><RadioGroupItem value="after" id="cap-after" /><Label htmlFor="cap-after">After first response</Label></div>
+                            </RadioGroup>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="flex items-center gap-2"><Checkbox checked={watchedValues.channelConfig?.web?.capture?.fields?.name} onCheckedChange={(v) => form.setValue('channelConfig.web.capture.fields.name', !!v)} id="web-name" /><Label htmlFor="f-name">Capture Name</Label></div>
+                              <div className="flex items-center gap-2"><Checkbox checked={watchedValues.channelConfig?.web?.capture?.fields?.email} onCheckedChange={(v) => form.setValue('channelConfig.web.capture.fields.email', !!v)} id="web-email" /><Label htmlFor="f-email">Capture Email</Label></div>
+                            </div>
+                          </section>
                         </div>
                       </div>
                     )}
@@ -525,7 +544,8 @@ export default function AgentSettingsDialog({
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable SMS</Label><Switch checked={watchedValues.channelConfig?.sms?.enabled ?? false} onCheckedChange={(val) => form.setValue('channelConfig.sms.enabled', val)} /></div>
                         <div className={cn("space-y-8", !watchedValues.channelConfig?.sms?.enabled && "opacity-40 pointer-events-none")}>
                           <FormField control={form.control} name="channelConfig.sms.openingText" render={({ field }) => (<FormItem><FormLabel className="text-xs">Opening Text</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>)} />
-                          <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-xs">Escalate on negative sentiment</Label><Switch checked={watchedValues.channelConfig?.sms?.escalation?.sentiment ?? true} onCheckedChange={(val) => form.setValue('channelConfig.sms.escalation.sentiment', val)} /></div>
+                          <FormField control={form.control} name="channelConfig.sms.maxLength" render={({ field }) => (<FormItem><FormLabel className="text-xs">Max Response Length (chars)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)} />
+                          <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-xs">Escalate on repeated negative sentiment</Label><Switch checked={watchedValues.channelConfig?.sms?.escalation?.sentiment ?? true} onCheckedChange={(val) => form.setValue('channelConfig.sms.escalation.sentiment', val)} /></div>
                         </div>
                       </div>
                     )}
@@ -536,6 +556,10 @@ export default function AgentSettingsDialog({
                         <div className={cn("space-y-8", !watchedValues.channelConfig?.phone?.enabled && "opacity-40 pointer-events-none")}>
                           <FormField control={form.control} name="channelConfig.phone.mode" render={({ field }) => (<FormItem><FormLabel className="text-xs">Call Mode</FormLabel><Select onValueChange={field.onChange} value={field.value || 'triage'}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="full_ai">Full AI</SelectItem><SelectItem value="triage">AI Triage + Handoff</SelectItem><SelectItem value="receptionist">Receptionist Only</SelectItem></SelectContent></Select></FormItem>)} />
                           <FormField control={form.control} name="channelConfig.phone.scripts.greeting" render={({ field }) => (<FormItem><FormLabel className="text-xs">AI Greeting Script</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>)} />
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center justify-between p-3 border rounded-lg bg-white/[0.02]"><Label className="text-xs">Voicemail Fallback</Label><Switch checked={watchedValues.channelConfig?.phone?.behaviour?.voicemailFallback ?? true} onCheckedChange={(val) => form.setValue('channelConfig.phone.behaviour.voicemailFallback', val)} /></div>
+                            <div className="flex items-center justify-between p-3 border rounded-lg bg-white/[0.02]"><Label className="text-xs">Transcribe All Calls</Label><Switch checked={watchedValues.channelConfig?.phone?.behaviour?.transcribe ?? true} onCheckedChange={(val) => form.setValue('channelConfig.phone.behaviour.transcribe', val)} /></div>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -545,11 +569,11 @@ export default function AgentSettingsDialog({
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable Email</Label><Switch checked={watchedValues.channelConfig?.email?.enabled ?? false} onCheckedChange={(val) => form.setValue('channelConfig.email.enabled', val)} /></div>
                         <div className={cn("grid grid-cols-2 gap-10", !watchedValues.channelConfig?.email?.enabled && "opacity-40 pointer-events-none")}>
                           <section className="space-y-6">
-                            <FormField control={form.control} name="channelConfig.email.workflow.approval" render={({ field }) => (<FormItem><FormLabel className="text-xs">Workflow</FormLabel><Select onValueChange={field.onChange} value={field.value || 'auto_exceptions'}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="auto">Auto-send</SelectItem><SelectItem value="auto_exceptions">Flag Exceptions</SelectItem><SelectItem value="manual">Manual Approval</SelectItem></SelectContent></Select></FormItem>)} />
+                            <FormField control={form.control} name="channelConfig.email.workflow.approval" render={({ field }) => (<FormItem><FormLabel className="text-xs">Approval Workflow</FormLabel><Select onValueChange={field.onChange} value={field.value || 'auto_exceptions'}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="auto">Auto-send</SelectItem><SelectItem value="auto_exceptions">Flag Exceptions</SelectItem><SelectItem value="manual">Manual Approval</SelectItem></SelectContent></Select></FormItem>)} />
                             <FormField control={form.control} name="channelConfig.email.workflow.delay" render={({ field }) => (<FormItem><FormLabel className="text-xs">Reply Delay</FormLabel><Select onValueChange={field.onChange} value={field.value || '2-5'}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="immediate">Immediate</SelectItem><SelectItem value="2-5">2–5 min</SelectItem><SelectItem value="15-30">15–30 min</SelectItem></SelectContent></Select></FormItem>)} />
                           </section>
                           <section className="space-y-6">
-                            <div className="flex items-center justify-between p-3 border rounded-lg bg-white/[0.02]"><Label className="text-xs">Hold for legal</Label><Switch checked={watchedValues.channelConfig?.email?.escalation?.holdForLegal ?? true} onCheckedChange={(val) => form.setValue('channelConfig.email.escalation.holdForLegal', val)} /></div>
+                            <div className="flex items-center justify-between p-3 border rounded-lg bg-white/[0.02]"><Label className="text-xs">Hold for orders</Label><Switch checked={watchedValues.channelConfig?.email?.escalation?.holdForValue ?? true} onCheckedChange={(val) => form.setValue('channelConfig.email.escalation.holdForValue', val)} /></div>
                             <div className="flex items-center justify-between p-3 border rounded-lg bg-white/[0.02]"><Label className="text-xs">Hold for attachments</Label><Switch checked={watchedValues.channelConfig?.email?.escalation?.holdForAttachment ?? true} onCheckedChange={(val) => form.setValue('channelConfig.email.escalation.holdForAttachment', val)} /></div>
                           </section>
                         </div>
