@@ -6,12 +6,13 @@ import type { Space, Hub, BrainJob } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BrainCircuit, MessageSquare, Lightbulb, CheckCircle2, AlertCircle, Clock, Database, GitBranch, Play } from 'lucide-react';
+import { Loader2, BrainCircuit, Database, Lightbulb, CheckCircle2, AlertCircle, Clock, Play } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db as firestore } from '@/lib/firebase';
+import { cn } from '@/lib/utils';
 
 interface BrainSettingsProps {
   activeSpace: Space | null;
@@ -90,7 +91,7 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
             </div>
             <h1 className="text-2xl font-bold">Business Brain</h1>
         </div>
-        <p className="text-muted-foreground text-sm pl-13">Distill intelligence and reusable knowledge from your workspace conversations.</p>
+        <p className="text-muted-foreground text-sm">Distill intelligence and reusable knowledge from your workspace conversations.</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

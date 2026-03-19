@@ -1,20 +1,10 @@
 import * as admin from 'firebase-admin';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
-import { VertexAI } from '@google-cloud/vertexai';
+import { generateEmbedding } from '../../src/lib/brain/embed';
 import { distillSupportIntent } from '../../src/ai/flows/distill-support-intent';
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
-
-const vertexAI = new VertexAI({
-  project: process.env.GCLOUD_PROJECT,
-  location: 'us-central1',
-});
-
-// Using Gemini Embedding 2 (text-embedding-004)
-const embeddingModel = vertexAI.getGenerativeModel({
-  model: 'text-embedding-004',
-});
 
 const MAX_CHUNK_CHARS = 3500;
 const CHUNK_OVERLAP_CHARS = 400;
@@ -37,25 +27,10 @@ function chunkConversationTurns(turnLines: string[]): string[] {
   return chunks;
 }
 
-async function generateQaEmbedding(text: string): Promise<number[] | null> {
-  try {
-    const result = await embeddingModel.embedContent({
-      content: {
-        role: 'user',
-        parts: [{ text }],
-      },
-      config: {
-        outputDimensionality: 3072, // Target dimension for embedding-2
-      }
-    });
-
-    return result.embedding?.values || null;
-  } catch (err) {
-    console.error('Vertex embedding error:', err);
-    return null;
-  }
-}
-
+/**
+ * Processes background jobs for the Business Brain.
+ * Handles conversation ingestion and support knowledge distillation.
+ */
 export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (event) => {
   const snap = event.data;
   if (!snap) return;
@@ -83,8 +58,6 @@ export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (ev
         let processed = 0;
 
         for (const convDoc of conversationsSnap.docs) {
-          const conv = convDoc.data() as any;
-
           const messagesSnap = await db
             .collection('chat_messages')
             .where('conversationId', '==', convDoc.id)
@@ -192,7 +165,7 @@ export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (ev
           }
 
           const embeddingText = `Question: ${qa.customerQuestion}\nAnswer: ${qa.resolution}`;
-          const embedding = await generateQaEmbedding(embeddingText);
+          const embedding = await generateEmbedding(embeddingText);
 
           if (embedding) {
             const qaRef = db.collection('brain_distilled_qas').doc();
@@ -208,6 +181,7 @@ export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (ev
               requiredContext: qa.requiredContext || [],
               requiresHumanIf: qa.safetyCriteria?.requiresHumanIf || [],
               mustNot: qa.safetyCriteria?.mustNot || [],
+              // Store as a Firestore Vector type for semantic search
               embedding: admin.firestore.FieldValue.vector(embedding),
               status: 'approved',
               createdAt: admin.firestore.FieldValue.serverTimestamp(),

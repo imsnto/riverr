@@ -4,8 +4,8 @@ import { EmailConfig } from "../../src/lib/data";
 
 if (!admin.apps.length) admin.initializeApp();
 
-// Shared Watch Renewal Logic
-async function renewWatches() {
+// Daily Email Watch Renewal
+export const renewEmailWatches = onSchedule("every 24 hours", async (event) => {
   const db = admin.firestore();
   const now = new Date();
   const cutoff = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000); // 2 days buffer
@@ -17,13 +17,7 @@ async function renewWatches() {
     .get();
 
   for (const doc of hubQuerySnap.docs) {
-    const config = { id: doc.id, ...doc.data() } as EmailConfig;
-    try {
-      console.log(`Renewing hub watch for ${config.emailAddress}`);
-      // In production, we'd exchange tokens and call provider.renewWatch
-    } catch (e) {
-      console.error(`Failed to renew hub watch for ${config.emailAddress}:`, e);
-    }
+    console.log(`Renewing hub watch for ${doc.data().emailAddress}`);
   }
 
   // 2. Renew Agent Watches
@@ -39,23 +33,13 @@ async function renewWatches() {
     if (configSnap.exists) {
       const config = configSnap.data() as EmailConfig;
       if (config.connected && config.watchConfig?.expiresAt && new Date(config.watchConfig.expiresAt) <= cutoff) {
-        try {
-          console.log(`Renewing agent watch for ${config.emailAddress}`);
-          // In production, we'd exchange tokens and call provider.renewWatch
-        } catch (e) {
-          console.error(`Failed to renew agent watch for ${config.emailAddress}:`, e);
-        }
+        console.log(`Renewing agent watch for ${config.emailAddress}`);
       }
     }
   }
-}
-
-// Daily Email Watch Renewal
-export const renewEmailWatches = onSchedule("every 24 hours", async (event) => {
-  await renewWatches();
 });
 
-// Existing exports...
+// Exports
 export { sendInviteEmail } from "./sendInviteEmail";
 export { acceptInvite } from "./acceptInvite";
 export { resendInvite } from "./resendInvite";
@@ -76,4 +60,3 @@ export { twilioVoiceStatus } from "./http/twilioVoiceStatus";
 export { twilioVoiceRecording } from "./http/twilioVoiceRecording";
 export { twilioVoiceDialResult } from "./http/twilioVoiceDialResult";
 export { provisionTwilioSubaccount, searchNumbers, buyPhoneNumber } from "./twilio/provisioning";
-export { syncDistilledQaToTypesense } from './syncDistilledQaToTypesense';
