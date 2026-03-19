@@ -22,7 +22,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Bot as BotData, User, HelpCenter } from '@/lib/data';
 import { 
@@ -54,6 +54,7 @@ import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { crawlWebsiteAction } from '@/app/actions/chat';
 import { useToast } from '@/hooks/use-toast';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 const agentSettingsSchema = z.object({
   id: z.string().optional(),
@@ -119,7 +120,7 @@ const agentSettingsSchema = z.object({
       enabled: z.boolean().default(false),
       workflow: z.object({ approval: z.string(), delay: z.string(), threading: z.string() }),
       format: z.object({ signOff: z.string(), length: z.string(), alwaysInclude: z.string(), subject: z.string() }),
-      escalation: z.object({ holdForValue: z.boolean(), holdForFrustration: z.boolean(), keywords: z.array(z.string()), sentiment: z.boolean() })
+      escalation: z.object({ holdForValue: z.boolean(), holdForFrustration: z.boolean(), holdForLegal: z.boolean(), holdForAttachment: z.boolean(), holdForVip: z.boolean(), keywords: z.array(z.string()), sentiment: z.boolean() })
     })
   }).optional()
 });
@@ -156,7 +157,7 @@ export default function AgentSettingsDialog({
     aiEnabled: true,
     tone: 'friendly',
     primaryGoal: 'Provide information and let customer decide',
-    escalationRules: { frustrationEnabled: true, unansweredLoopEnabled: true, complexRequestEnabled: true, notifyEmail: '' },
+    escalationRules: { frustrationEnabled: true, unansweredLoopEnabled: true, complexRequestEnabled: true, notifyEmail: '', orderValueThresholdEnabled: false },
     businessContext: {},
     products: [],
     faqs: [],
@@ -171,7 +172,7 @@ export default function AgentSettingsDialog({
       web: { enabled: false, greeting: { text: 'Hi! How can I help?' }, capture: { timing: 'after', fields: { name: true, email: true, phone: false } } },
       sms: { enabled: false, openingText: "Hi! How can I help?", maxLength: 160, escalation: { keywords: ['agent'], sentiment: true } },
       phone: { enabled: false, mode: 'triage', scripts: { greeting: 'Hi! How can I help?' }, behaviour: { transcribe: true, voicemailFallback: true, maxDuration: '5' } },
-      email: { enabled: false, workflow: { approval: 'auto_exceptions', delay: '2-5', threading: 'thread' }, format: { signOff: '', length: 'standard', alwaysInclude: '', subject: '' }, escalation: { holdForValue: true, holdForFrustration: true, keywords: ['urgent'], sentiment: true } }
+      email: { enabled: false, workflow: { approval: 'auto_exceptions', delay: '2-5', threading: 'thread' }, format: { signOff: '', length: 'standard', alwaysInclude: '', subject: '' }, escalation: { holdForValue: true, holdForFrustration: true, holdForLegal: false, holdForAttachment: false, holdForVip: false, keywords: ['urgent'], sentiment: true } }
     }
   };
 
@@ -190,13 +191,19 @@ export default function AgentSettingsDialog({
         const merged = {
           ...defaultFormValues,
           ...bot,
-          escalationRules: { ...defaultFormValues.escalationRules, ...bot.escalationRules },
-          businessContext: { ...defaultFormValues.businessContext, ...bot.businessContext },
+          escalationRules: { 
+            ...defaultFormValues.escalationRules, 
+            ...(bot.escalationRules || {}) 
+          },
+          businessContext: { 
+            ...defaultFormValues.businessContext, 
+            ...(bot.businessContext || {}) 
+          },
           channelConfig: {
-            web: { ...defaultFormValues.channelConfig!.web, ...bot.channelConfig?.web },
-            sms: { ...defaultFormValues.channelConfig!.sms, ...bot.channelConfig?.sms },
-            phone: { ...defaultFormValues.channelConfig!.phone, ...bot.channelConfig?.phone },
-            email: { ...defaultFormValues.channelConfig!.email, ...bot.channelConfig?.email },
+            web: { ...defaultFormValues.channelConfig!.web, ...(bot.channelConfig?.web || {}) },
+            sms: { ...defaultFormValues.channelConfig!.sms, ...(bot.channelConfig?.sms || {}) },
+            phone: { ...defaultFormValues.channelConfig!.phone, ...(bot.channelConfig?.phone || {}) },
+            email: { ...defaultFormValues.channelConfig!.email, ...(bot.channelConfig?.email || {}) },
           }
         };
         form.reset(merged as any);
@@ -342,7 +349,6 @@ export default function AgentSettingsDialog({
                           </div>
                         )}
                       </TabsContent>
-                      {/* Similar sections for SMS, Phone, Email... */}
                     </Tabs>
                   </div>
                 )}
@@ -352,28 +358,5 @@ export default function AgentSettingsDialog({
         </Form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function ColorInput({ form, name, label }: { form: any, name: string, label: string }) {
-  return (
-    <FormField
-      control={form.control}
-      name={name}
-      render={({ field }) => (
-        <FormItem className="space-y-2">
-          <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">{label}</FormLabel>
-          <div className="flex gap-2">
-            <FormControl>
-              <div className="relative flex-1">
-                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded shadow-inner border border-white/10" style={{ backgroundColor: field.value }} />
-                <Input {...field} className="pl-9 font-mono text-xs h-9 uppercase" />
-              </div>
-            </FormControl>
-            <input type="color" value={field.value} onChange={e => field.onChange(e.target.value)} className="w-9 h-9 rounded-md border border-white/10 bg-transparent p-1 cursor-pointer" />
-          </div>
-        </FormItem>
-      )}
-    />
   );
 }

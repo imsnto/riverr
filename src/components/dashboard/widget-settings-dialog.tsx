@@ -106,37 +106,57 @@ export default function WidgetSettingsDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  const defaultValues: WidgetSettingsFormValues = {
+    name: 'New Web Chat',
+    welcomeMessage: 'Hi! How can we help you today?',
+    agentIds: [],
+    styleSettings: {
+      primaryColor: '#3b82f6',
+      backgroundColor: '#111827',
+      headerTextColor: '#ffffff',
+      customerTextColor: '#ffffff',
+      agentMessageBackgroundColor: '#374151',
+      agentMessageTextColor: '#ffffff',
+      chatbotIconsColor: '#3b82f6',
+      chatbotIconsTextColor: '#ffffff',
+      logoUrl: '',
+    },
+    identityCapture: {
+      enabled: false,
+      required: false,
+      timing: 'after',
+      fields: { name: true, email: true, phone: false },
+    },
+  };
+
   const form = useForm<WidgetSettingsFormValues>({
     resolver: zodResolver(widgetSettingsSchema),
-    defaultValues: {
-      name: 'New Web Chat',
-      welcomeMessage: 'Hi! How can we help you today?',
-      agentIds: [],
-      styleSettings: {
-        primaryColor: '#3b82f6',
-        backgroundColor: '#111827',
-        headerTextColor: '#ffffff',
-        customerTextColor: '#ffffff',
-        agentMessageBackgroundColor: '#374151',
-        agentMessageTextColor: '#ffffff',
-        chatbotIconsColor: '#3b82f6',
-        chatbotIconsTextColor: '#ffffff',
-      },
-      identityCapture: {
-        enabled: false,
-        required: false,
-        timing: 'after',
-        fields: { name: true, email: true, phone: false },
-      },
-    },
+    defaultValues,
   });
 
   useEffect(() => {
     if (isOpen) {
       if (bot) {
-        form.reset(bot as any);
+        // Deep merge with defaults to prevent undefined nested properties
+        const mergedValues = {
+          ...defaultValues,
+          ...bot,
+          styleSettings: {
+            ...defaultValues.styleSettings,
+            ...(bot.styleSettings || {})
+          },
+          identityCapture: {
+            ...defaultValues.identityCapture,
+            ...(bot.identityCapture || {}),
+            fields: {
+              ...defaultValues.identityCapture.fields,
+              ...(bot.identityCapture?.fields || {})
+            }
+          }
+        };
+        form.reset(mergedValues as any);
       } else {
-        form.reset();
+        form.reset(defaultValues);
       }
     }
   }, [bot, form, isOpen]);
@@ -316,15 +336,36 @@ export default function WidgetSettingsDialog({
                               <div className="space-y-6 pl-4 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
                                 <div className="space-y-3">
                                   <Label className="text-xs uppercase font-bold text-muted-foreground">Capture Timing</Label>
-                                  <RadioGroup onValueChange={(v) => form.setValue('identityCapture.timing', v as 'before' | 'after')} value={watchedValues.identityCapture.timing} className="flex gap-4">
+                                  <RadioGroup onValueChange={(v) => form.setValue('identityCapture.timing', v as 'before' | 'after')} value={watchedValues.identityCapture?.timing} className="flex gap-4">
                                     <div className="flex items-center gap-2"><RadioGroupItem value="before" id="t-before" /><Label htmlFor="t-before">Before chat</Label></div>
                                     <div className="flex items-center gap-2"><RadioGroupItem value="after" id="t-after" /><Label htmlFor="t-after">On request</Label></div>
                                   </RadioGroup>
                                 </div>
                                 <div className="grid grid-cols-3 gap-4">
-                                  <div className="flex items-center gap-2"><Checkbox checked={watchedValues.identityCapture.fields.name} onCheckedChange={(v) => form.setValue('identityCapture.fields.name', !!v)} id="f-name" /><Label htmlFor="f-name">Name</Label></div>
-                                  <div className="flex items-center gap-2"><Checkbox checked={watchedValues.identityCapture.fields.email} onCheckedChange={(v) => form.setValue('identityCapture.fields.email', !!v)} id="f-email" /><Label htmlFor="f-email">Email</Label></div>
-                                  <div className="flex items-center gap-2"><Checkbox checked={watchedValues.identityCapture.fields.phone} onCheckedChange={(v) => form.setValue('identityCapture.fields.phone', !!v)} id="f-phone" /><Label htmlFor="f-phone">Phone</Label></div>
+                                  <div className="flex items-center gap-2">
+                                    <Checkbox 
+                                      checked={watchedValues.identityCapture?.fields?.name} 
+                                      onCheckedChange={(v) => form.setValue('identityCapture.fields.name', !!v)} 
+                                      id="f-name" 
+                                    />
+                                    <Label htmlFor="f-name">Name</Label>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Checkbox 
+                                      checked={watchedValues.identityCapture?.fields?.email} 
+                                      onCheckedChange={(v) => form.setValue('identityCapture.fields.email', !!v)} 
+                                      id="f-email" 
+                                    />
+                                    <Label htmlFor="f-email">Email</Label>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Checkbox 
+                                      checked={watchedValues.identityCapture?.fields?.phone} 
+                                      onCheckedChange={(v) => form.setValue('identityCapture.fields.phone', !!v)} 
+                                      id="f-phone" 
+                                    />
+                                    <Label htmlFor="f-phone">Phone</Label>
+                                  </div>
                                 </div>
                               </div>
                             )}
