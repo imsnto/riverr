@@ -36,14 +36,13 @@ import {
   Phone, 
   Mail, 
   AlertCircle,
-  ChevronRight,
   Bot,
   Search,
   Globe2,
   Loader2,
   Sparkles,
   Check,
-  CheckCircle2,
+  ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -180,9 +179,9 @@ export default function AgentSettingsDialog({
     faqs: [{ id: 'f1', question: '', answer: '' }],
     objections: [{ id: 'o1', objection: '', response: '' }],
     qualificationFlow: [
-      { id: 'q1', question: 'What do you need?', goal: 'Provide information', pricingPolicy: 'Always request a quote' },
-      { id: 'q2', question: 'How many / what quantity?', goal: 'Provide information', pricingPolicy: 'Always request a quote' },
-      { id: 'q3', question: 'What is your timeline?', goal: 'Provide information', pricingPolicy: 'Always request a quote' }
+      { id: 'q1', question: 'What do you need?', goal: 'Provide information and let customer decide', pricingPolicy: 'Always request a quote — never state prices' },
+      { id: 'q2', question: 'How many / what quantity?', goal: 'Provide information and let customer decide', pricingPolicy: 'Always request a quote — never state prices' },
+      { id: 'q3', question: 'What is your timeline?', goal: 'Provide information and let customer decide', pricingPolicy: 'Always request a quote — never state prices' }
     ],
     pricingPolicy: 'Always request a quote — never state prices',
     channelConfig: {
@@ -228,14 +227,17 @@ export default function AgentSettingsDialog({
   const watchedValues = form.watch();
 
   const handleCrawlWebsite = () => {
-    if (!crawlUrl || !crawlUrl.startsWith('http')) {
-      toast({ variant: 'destructive', title: 'Invalid URL', description: 'Please enter a valid website address.' });
-      return;
+    let urlToCrawl = crawlUrl.trim();
+    if (!urlToCrawl) return;
+
+    // Assumption: Use https:// if no protocol provided
+    if (!/^https?:\/\//i.test(urlToCrawl)) {
+      urlToCrawl = `https://${urlToCrawl}`;
     }
 
     startCrawlTransition(async () => {
       try {
-        const result = await crawlWebsiteAction(crawlUrl);
+        const result = await crawlWebsiteAction(urlToCrawl);
         
         if (result.businessContext) {
           Object.entries(result.businessContext).forEach(([key, value]) => {
@@ -312,9 +314,9 @@ export default function AgentSettingsDialog({
             </header>
 
             <ScrollArea className="flex-1">
-              <div className="p-10 max-w-4xl mx-auto pb-32">
+              <div className="p-10 max-w-4xl mx-auto pb-32 text-left">
                 {activeTab === 'general' && (
-                  <div className="space-y-12 animate-in fade-in duration-300 text-left">
+                  <div className="space-y-12 animate-in fade-in duration-300">
                     <section className="space-y-6">
                       <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Agent Identity</h3>
                       <div className="grid grid-cols-2 gap-6">
@@ -372,7 +374,7 @@ export default function AgentSettingsDialog({
                 )}
 
                 {activeTab === 'knowledge' && (
-                  <div className="space-y-12 animate-in fade-in duration-300 text-left">
+                  <div className="space-y-12 animate-in fade-in duration-300">
                     <Card className="bg-primary/5 border-primary/20 border-2 overflow-hidden">
                       <CardHeader className="bg-primary/10 py-4">
                         <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-primary">
@@ -388,7 +390,7 @@ export default function AgentSettingsDialog({
                           <div className="relative flex-1">
                             <Globe2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
-                              placeholder="https://yourbusiness.com" 
+                              placeholder="riverr.app" 
                               className="pl-10 h-11 bg-background border-white/10" 
                               value={crawlUrl}
                               onChange={(e) => setCrawlUrl(e.target.value)}
@@ -452,7 +454,7 @@ export default function AgentSettingsDialog({
                               <div key={hc.id} className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
                                 <div className="flex items-center gap-3">
                                   <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><BookOpen className="h-4 w-4" /></div>
-                                  <div className="text-left"><p className="text-xs font-bold">{hc.name}</p><p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mt-0.5">{hc.visibility || 'PUBLIC'}</p></div>
+                                  <div><p className="text-xs font-bold">{hc.name}</p><p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mt-0.5">{hc.visibility || 'PUBLIC'}</p></div>
                                 </div>
                                 <Checkbox checked={field.value?.includes(hc.id)} onCheckedChange={(checked) => { const current = field.value || []; field.onChange(checked ? [...current, hc.id] : current.filter(id => id !== hc.id)); }} />
                               </div>
@@ -487,7 +489,7 @@ export default function AgentSettingsDialog({
                           {faqFields.map((field, index) => (
                             <Card key={field.id} className="bg-[#161b22] border-white/10 relative">
                               <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-destructive" onClick={() => removeFaq(index)}><Trash2 className="h-3 w-3" /></Button>
-                              <CardContent className="p-6 space-y-4 text-left"><Input placeholder="Customer asks..." {...form.register(`faqs.${index}.question` as any)} /><Textarea placeholder="Your answer..." {...form.register(`faqs.${index}.answer` as any)} /></CardContent>
+                              <CardContent className="p-6 space-y-4"><Input placeholder="Customer asks..." {...form.register(`faqs.${index}.question` as any)} /><Textarea placeholder="Your answer..." {...form.register(`faqs.${index}.answer` as any)} /></CardContent>
                             </Card>
                           ))}
                           <Button type="button" variant="outline" className="w-full border-dashed" onClick={() => appendFaq({ id: Date.now().toString(), question: '', answer: '' })}><Plus className="h-4 w-4 mr-2" /> Add FAQ</Button>
@@ -496,7 +498,7 @@ export default function AgentSettingsDialog({
                           {objectionFields.map((field, index) => (
                             <Card key={field.id} className="bg-[#161b22] border-white/10 relative">
                               <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-destructive" onClick={() => removeObjection(index)}><Trash2 className="h-3 w-3" /></Button>
-                              <CardContent className="p-6 space-y-4 text-left"><Input placeholder="Objection" {...form.register(`objections.${index}.objection` as any)} /><Textarea placeholder="How to respond..." {...form.register(`objections.${index}.response` as any)} /></CardContent>
+                              <CardContent className="p-6 space-y-4"><Input placeholder="Objection" {...form.register(`objections.${index}.objection` as any)} /><Textarea placeholder="How to respond..." {...form.register(`objections.${index}.response` as any)} /></CardContent>
                             </Card>
                           ))}
                           <Button type="button" variant="outline" className="w-full border-dashed" onClick={() => appendObjection({ id: Date.now().toString(), objection: '', response: '' })}><Plus className="h-4 w-4 mr-2" /> Add Objection</Button>
@@ -508,7 +510,7 @@ export default function AgentSettingsDialog({
                       <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Qualification Flow</h3>
                       <div className="space-y-4">
                         {qualFields.map((field, index) => (
-                          <Card key={field.id} className="bg-[#161b22] border-white/10 text-left">
+                          <Card key={field.id} className="bg-[#161b22] border-white/10">
                             <CardContent className="p-6 space-y-4">
                               <Input placeholder="Step Question" {...form.register(`qualificationFlow.${index}.question` as any)} />
                               <div className="grid grid-cols-2 gap-4">
@@ -528,7 +530,7 @@ export default function AgentSettingsDialog({
                 )}
 
                 {activeTab === 'channels' && (
-                  <div className="space-y-12 animate-in fade-in duration-300 text-left">
+                  <div className="space-y-12 animate-in fade-in duration-300">
                     <div className="flex items-center gap-4 bg-white/[0.03] border border-white/10 p-1 rounded-xl mb-10 overflow-x-auto">
                       {[
                         { id: 'web', label: 'Web Chat', icon: MessageSquare },
