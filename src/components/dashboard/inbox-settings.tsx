@@ -61,6 +61,7 @@ export default function InboxSettings({
   onBotDelete,
   helpCenters,
   activeHub,
+  activeSpace,
   mode = 'agents',
 }: InboxSettingsProps) {
   const [selectedBot, setSelectedBot] = useState<BotData | null>(null);
@@ -70,6 +71,7 @@ export default function InboxSettings({
 
   const isWebChatMode = mode === 'web-chat';
 
+  // Filter bots by type
   const displayBots = useMemo(() => {
     return bots.filter(b => {
       const type = b.type || 'widget';
@@ -77,9 +79,26 @@ export default function InboxSettings({
     });
   }, [bots, isWebChatMode]);
 
+  // Filter agents for brain assignment
   const agentsList = useMemo(() => {
     return bots.filter(b => b.type === 'agent' && b.isEnabled);
   }, [bots]);
+
+  // Filter users specifically for the current Hub context
+  const hubMembers = useMemo(() => {
+    if (!activeHub || !activeSpace) return [];
+    
+    let memberIds: string[] | undefined;
+
+    // Use explicit hub members if private, otherwise use all space members
+    if (activeHub.isPrivate && activeHub.memberIds) {
+      memberIds = activeHub.memberIds;
+    } else {
+      memberIds = Object.keys(activeSpace.members);
+    }
+    
+    return allUsers.filter(u => memberIds?.includes(u.id));
+  }, [activeHub, activeSpace, allUsers]);
 
   const handleEditBot = (bot: BotData) => {
     setSelectedBot(bot);
@@ -293,7 +312,7 @@ export default function InboxSettings({
           onOpenChange={setIsDialogOpen}
           bot={selectedBot}
           onSave={handleSaveBot}
-          allUsers={allUsers}
+          allUsers={hubMembers}
           hubAgents={agentsList}
         />
       ) : (

@@ -130,11 +130,11 @@ const agentSettingsSchema = z.object({
     }),
     email: z.object({
       enabled: z.boolean().default(false),
-      workflow: z.object({ approval: z.string(), delay: z.string(), threading: z.string() }),
-      format: z.object({ signOff: z.string(), length: z.string(), alwaysInclude: z.string(), subject: z.string() }),
+      workflow: z.object({ approval: string, delay: string, threading: string }),
+      format: z.object({ signOff: string, length: string, alwaysInclude: string, subject: string }),
       escalation: z.object({ holdForValue: z.boolean(), holdForFrustration: z.boolean(), holdForLegal: z.boolean(), holdForAttachment: z.boolean(), holdForVip: z.boolean(), keywords: z.array(z.string()), sentiment: z.boolean() })
     })
-  })
+  }).optional()
 });
 
 type AgentSettingsFormValues = z.infer<typeof agentSettingsSchema>;
@@ -527,12 +527,12 @@ export default function AgentSettingsDialog({
                           <section className="space-y-6">
                             <Label className="text-xs font-bold uppercase tracking-widest text-primary">Lead Capture</Label>
                             <RadioGroup onValueChange={(v) => form.setValue('channelConfig.web.capture.timing', v as 'before' | 'after')} value={watchedValues.channelConfig?.web?.capture?.timing || 'after'} className="grid grid-cols-2 gap-4">
-                              <div className="flex items-center gap-2"><RadioGroupItem value="before" id="cap-before" /><Label htmlFor="cap-before">Before first response</Label></div>
-                              <div className="flex items-center gap-2"><RadioGroupItem value="after" id="cap-after" /><Label htmlFor="cap-after">After first response</Label></div>
+                              <div className="flex items-center gap-2"><RadioGroupItem value="before" id="cap-before" /><Label htmlFor="t-before">Before first response</Label></div>
+                              <div className="flex items-center gap-2"><RadioGroupItem value="after" id="cap-after" /><Label htmlFor="t-after">After first response</Label></div>
                             </RadioGroup>
                             <div className="grid grid-cols-2 gap-4">
-                              <div className="flex items-center gap-2"><Checkbox checked={watchedValues.channelConfig?.web?.capture?.fields?.name} onCheckedChange={(v) => form.setValue('channelConfig.web.capture.fields.name', !!v)} id="web-name" /><Label htmlFor="f-name">Capture Name</Label></div>
-                              <div className="flex items-center gap-2"><Checkbox checked={watchedValues.channelConfig?.web?.capture?.fields?.email} onCheckedChange={(v) => form.setValue('channelConfig.web.capture.fields.email', !!v)} id="web-email" /><Label htmlFor="f-email">Capture Email</Label></div>
+                              <div className="flex items-center gap-2"><Checkbox checked={watchedValues.channelConfig?.web?.capture?.fields?.name} onCheckedChange={(v) => form.setValue('channelConfig.web.capture.fields.name', !!v)} id="f-name" /><Label htmlFor="f-name">Capture Name</Label></div>
+                              <div className="flex items-center gap-2"><Checkbox checked={watchedValues.channelConfig?.web?.capture?.fields?.email} onCheckedChange={(v) => form.setValue('channelConfig.web.capture.fields.email', !!v)} id="f-email" /><Label htmlFor="f-email">Capture Email</Label></div>
                             </div>
                           </section>
                         </div>
