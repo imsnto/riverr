@@ -2,7 +2,6 @@ import * as admin from 'firebase-admin';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { VertexAI } from '@google-cloud/vertexai';
 import { distillSupportIntent } from '../../src/ai/flows/distill-support-intent';
-import Typesense from 'typesense';
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
@@ -12,20 +11,9 @@ const vertexAI = new VertexAI({
   location: 'us-central1',
 });
 
+// Using Gemini Embedding 2 (text-embedding-004)
 const embeddingModel = vertexAI.getGenerativeModel({
-  model: 'embedding-2',
-});
-
-const tsClient = new Typesense.Client({
-  nodes: [
-    {
-      host: process.env.TYPESENSE_HOST!,
-      port: Number(process.env.TYPESENSE_PORT || 443),
-      protocol: process.env.TYPESENSE_PROTOCOL || 'https',
-    },
-  ],
-  apiKey: process.env.TYPESENSE_ADMIN_API_KEY!,
-  connectionTimeoutSeconds: 10,
+  model: 'text-embedding-004',
 });
 
 const MAX_CHUNK_CHARS = 3500;
@@ -56,6 +44,9 @@ async function generateQaEmbedding(text: string): Promise<number[] | null> {
         role: 'user',
         parts: [{ text }],
       },
+      config: {
+        outputDimensionality: 3072, // Target dimension for embedding-2
+      }
     });
 
     return result.embedding?.values || null;
@@ -190,12 +181,11 @@ export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (ev
         for (const chunkDoc of chunksSnap.docs) {
           const chunk = chunkDoc.data() as any;
 
-          const result = await distillSupportIntent({
+          const qa = await distillSupportIntent({
             conversationText: chunk.chunkText,
             lastAgentMessage: '',
           });
 
-          const qa = result;
           if (!qa?.customerQuestion || !qa?.resolution) {
             await chunkDoc.ref.update({ processedForDistillation: true });
             continue;
@@ -204,23 +194,25 @@ export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (ev
           const embeddingText = `Question: ${qa.customerQuestion}\nAnswer: ${qa.resolution}`;
           const embedding = await generateQaEmbedding(embeddingText);
 
-          const qaRef = db.collection('brain_distilled_qas').doc();
-          await qaRef.set({
-            spaceId,
-            hubId: chunk.hubId,
-            chunkId: chunkDoc.id,
-            rawConversationId: chunk.rawConversationId,
-            intentKey: qa.intentKey,
-            question: qa.customerQuestion,
-            answer: qa.resolution,
-            confidence: 0.8,
-            requiredContext: qa.requiredContext || [],
-            requiresHumanIf: qa.safetyCriteria?.requiresHumanIf || [],
-            mustNot: qa.safetyCriteria?.mustNot || [],
-            embedding,
-            status: 'approved',
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
+          if (embedding) {
+            const qaRef = db.collection('brain_distilled_qas').doc();
+            await qaRef.set({
+              spaceId,
+              hubId: chunk.hubId,
+              chunkId: chunkDoc.id,
+              rawConversationId: chunk.rawConversationId,
+              intentKey: qa.intentKey,
+              question: qa.customerQuestion,
+              answer: qa.resolution,
+              confidence: 0.8,
+              requiredContext: qa.requiredContext || [],
+              requiresHumanIf: qa.safetyCriteria?.requiresHumanIf || [],
+              mustNot: qa.safetyCriteria?.mustNot || [],
+              embedding: admin.firestore.FieldValue.vector(embedding),
+              status: 'approved',
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
 
           await chunkDoc.ref.update({ processedForDistillation: true });
 

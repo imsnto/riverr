@@ -17,10 +17,33 @@ import { isWhimsical, generateWhimsicalName, normalizePhoneFallback } from '@/li
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
 import { getMessagingProvider } from '@/lib/comms/providerFactory';
+import { VertexAI } from '@google-cloud/vertexai';
 
 const typesense = getTypesenseSearch();
 
 export type SearchSalesExtractionsResult = { extractions: any[] };
+
+const vertexAI = new VertexAI({
+  project: process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.GCLOUD_PROJECT,
+  location: 'us-central1',
+});
+
+const embeddingModel = vertexAI.getGenerativeModel({
+  model: 'text-embedding-004',
+});
+
+async function generateVector(text: string): Promise<number[] | null> {
+  try {
+    const result = await embeddingModel.embedContent({
+      content: { role: 'user', parts: [{ text }] },
+      config: { outputDimensionality: 3072 }
+    });
+    return result.embedding?.values || null;
+  } catch (err) {
+    console.error('Vector generation error:', err);
+    return null;
+  }
+}
 
 async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
   const { hubId, allowedHelpCenterIds, userId, query, topK = 10 } = params;
@@ -95,36 +118,47 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
 
 async function searchSupport(params: SearchSupportParams): Promise<SearchSupportResult> {
   const { hubId, query, topK = 5 } = params;
+  if (!hubId || !query) return { intents: [] };
 
-  if (!hubId) return { intents: [] };
-
-  const searchParameters = {
-    q: query,
-    query_by: 'textForEmbedding,title,description',
-    query_by_weights: '4,2,1',
-    per_page: topK,
-    sort_by: '_text_match:desc',
-    filter_by: `type:='support_intent' && hubId:='${String(hubId).replace(/'/g, "\\'")}'`,
-  };
+  const queryVector = await generateVector(query);
+  if (!queryVector) return { intents: [] };
 
   try {
-    const results = await typesense.collections('memory_nodes').documents().search(searchParameters);
+    const coll = adminDB.collection('brain_distilled_qas');
+    
+    // Nearest-neighbor search using Firestore Vector Search
+    const vectorQuery = coll
+      .where('hubId', '==', hubId)
+      .where('status', '==', 'approved')
+      .findNearest({
+        vectorField: 'embedding',
+        queryVector: admin.firestore.FieldValue.vector(queryVector),
+        limit: topK,
+        distanceMeasure: 'COSINE',
+      });
 
-    const intents: any[] = (results.hits || []).map((hit: any) => {
+    const snap = await vectorQuery.get();
+
+    const intents: any[] = snap.docs.map((doc) => {
+      const data = doc.data();
       return {
-        ...(hit.document as SupportIntentNode),
-        _searchScore: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
+        id: doc.id,
+        title: data.question,
+        description: data.answer,
+        intentKey: data.intentKey,
+        requiredContext: data.requiredContext || [],
+        safeAnswerPolicy: { 
+          mustNot: data.mustNot || [], 
+          requiresHumanIf: data.requiresHumanIf || [] 
+        },
+        _searchScore: (doc as any).distance ? 1 - (doc as any).distance : 0.8,
       };
     });
 
     return { intents };
-  } catch (error: any) {
-    if (error.httpStatus === 404) {
-      console.warn("Typesense search failed: 'memory_nodes' collection not found. Returning empty results.");
-      return { intents: [] };
-    }
-    console.error('Typesense search failed in searchSupport:', error);
-    throw error;
+  } catch (error) {
+    console.error('Firestore vector search failed in searchSupport:', error);
+    return { intents: [] };
   }
 }
 

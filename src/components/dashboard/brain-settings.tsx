@@ -6,7 +6,7 @@ import type { Space, Hub, BrainJob } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BrainCircuit, MessageSquare, Lightbulb, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import { Loader2, BrainCircuit, MessageSquare, Lightbulb, CheckCircle2, AlertCircle, Clock, Database, GitBranch, Play } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
@@ -30,7 +30,7 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
       collection(firestore, 'brain_jobs'),
       where('params.spaceId', '==', activeSpace.id),
       orderBy('createdAt', 'desc'),
-      limit(5)
+      limit(10)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -49,7 +49,7 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
         spaceId: activeSpace.id,
         hubId: activeHub.id,
       });
-      toast({ title: 'Ingestion Started', description: `Started job ID: ${jobId}` });
+      toast({ title: 'Ingestion Started', description: `Job ID: ${jobId}` });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Failed to start ingestion' });
     } finally {
@@ -64,7 +64,7 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
       const jobId = await db.startBrainJob('distill_support_intents', {
         spaceId: activeSpace.id,
       });
-      toast({ title: 'Distillation Started', description: `Started job ID: ${jobId}` });
+      toast({ title: 'Distillation Started', description: `Job ID: ${jobId}` });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Failed to start distillation' });
     } finally {
@@ -74,7 +74,7 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'running': return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+      case 'running': return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
       case 'completed': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case 'failed': return <AlertCircle className="h-4 w-4 text-red-500" />;
       default: return <Clock className="h-4 w-4 text-muted-foreground" />;
@@ -83,42 +83,47 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <header>
-        <h1 className="text-2xl font-bold">Business Brain</h1>
-        <p className="text-muted-foreground">Train your AI Agent by distilling knowledge from past conversations.</p>
+      <header className="flex flex-col gap-1">
+        <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <BrainCircuit className="h-6 w-6" />
+            </div>
+            <h1 className="text-2xl font-bold">Business Brain</h1>
+        </div>
+        <p className="text-muted-foreground text-sm pl-13">Distill intelligence and reusable knowledge from your workspace conversations.</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="border-primary/10 bg-primary/5">
+        <Card className="border-primary/10 bg-primary/5 hover:border-primary/20 transition-all">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-primary" />
-              Conversation Ingestion
+            <CardTitle className="flex items-center gap-2 text-sm uppercase font-black tracking-widest text-primary">
+              <Database className="h-4 w-4" />
+              Ingestion Pipeline
             </CardTitle>
             <CardDescription>
-              Collect messages from this hub and prepare them for processing.
+              Scan conversations in this hub and prepare them for AI distillation.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button 
               onClick={runIngest} 
               disabled={isRunning || !activeSpace || !activeHub}
-              className="w-full font-bold"
+              className="w-full font-bold h-11 rounded-xl shadow-lg shadow-primary/20"
             >
-              {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-              Run Ingestion
+              {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+              Start Ingestion
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="border-indigo-500/10 bg-indigo-500/5">
+        <Card className="border-indigo-500/10 bg-indigo-500/5 hover:border-indigo-500/20 transition-all">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5 text-indigo-500" />
+            <CardTitle className="flex items-center gap-2 text-sm uppercase font-black tracking-widest text-indigo-400">
+              <Lightbulb className="h-4 w-4" />
               Support Distillation
             </CardTitle>
             <CardDescription>
-              Analyze ingested messages to create high-quality support intents.
+              Analyze chunks to extract reusable Q&A and generate vector embeddings.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -126,45 +131,62 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
               onClick={runDistill} 
               disabled={isRunning || !activeSpace}
               variant="secondary"
-              className="w-full font-bold"
+              className="w-full font-bold h-11 rounded-xl shadow-lg shadow-indigo-500/10"
             >
               {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <BrainCircuit className="h-4 w-4 mr-2" />}
-              Distill Knowledge
+              Distill Support Knowledge
             </Button>
           </CardContent>
         </Card>
       </div>
 
-      <div className="space-y-4">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Recent Activity</h2>
+      <div className="space-y-4 pt-4">
+        <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground opacity-60">Job History & Progress</h2>
+            {recentJobs.some(j => j.status === 'running') && (
+                <Badge variant="secondary" className="animate-pulse bg-primary/10 text-primary border-primary/20">
+                    Job in progress...
+                </Badge>
+            )}
+        </div>
+        
         <div className="space-y-3">
           {recentJobs.map((job) => (
-            <Card key={job.id} className="overflow-hidden">
+            <Card key={job.id} className="overflow-hidden border-white/5 bg-white/[0.02]">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    {getStatusIcon(job.status)}
+                    <div className={cn(
+                        "h-8 w-8 rounded-lg flex items-center justify-center shrink-0",
+                        job.status === 'completed' ? 'bg-green-500/10' : job.status === 'failed' ? 'bg-red-500/10' : 'bg-primary/10'
+                    )}>
+                        {getStatusIcon(job.status)}
+                    </div>
                     <div>
                       <p className="text-sm font-bold capitalize">{job.type.replace(/_/g, ' ')}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase font-black">
-                        Started {formatDistanceToNow(new Date(job.createdAt), { addSuffix: true })}
+                      <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tight opacity-50">
+                        {formatDistanceToNow(new Date(job.createdAt), { addSuffix: true })}
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[10px] h-5 uppercase font-black">
+                  <Badge variant="outline" className={cn(
+                      "text-[10px] h-5 uppercase font-black px-2",
+                      job.status === 'completed' ? 'border-green-500/50 text-green-500' : 
+                      job.status === 'failed' ? 'border-red-500/50 text-red-500' : ''
+                  )}>
                     {job.status}
                   </Badge>
                 </div>
 
                 {job.status === 'running' && job.progress && (
-                  <div className="space-y-2 animate-in fade-in duration-500">
-                    <Progress value={(job.progress.current / job.progress.total) * 100} className="h-1.5" />
-                    <p className="text-[10px] text-center text-muted-foreground italic">{job.progress.message}</p>
+                  <div className="space-y-2 px-11 animate-in fade-in duration-500">
+                    <Progress value={(job.progress.current / job.progress.total) * 100} className="h-1 rounded-full bg-white/5" />
+                    <p className="text-[10px] text-muted-foreground font-medium italic">{job.progress.message}</p>
                   </div>
                 )}
 
                 {job.status === 'failed' && job.error && (
-                  <div className="p-2 rounded bg-red-500/10 border border-red-500/20">
+                  <div className="ml-11 p-2 rounded-lg bg-red-500/5 border border-red-500/10">
                     <p className="text-[10px] text-red-400 font-medium">Error: {job.error}</p>
                   </div>
                 )}
@@ -173,9 +195,9 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
           ))}
 
           {recentJobs.length === 0 && (
-            <div className="text-center py-12 border-2 border-dashed rounded-xl">
-              <BrainCircuit className="mx-auto h-8 w-8 text-muted-foreground opacity-20" />
-              <p className="text-sm text-muted-foreground mt-2">No recent brain activity in this space.</p>
+            <div className="text-center py-16 border-2 border-dashed rounded-2xl border-white/5 bg-white/[0.01]">
+              <BrainCircuit className="mx-auto h-8 w-8 text-muted-foreground opacity-10 mb-2" />
+              <p className="text-sm text-muted-foreground font-medium italic">No recent brain activity detected.</p>
             </div>
           )}
         </div>
