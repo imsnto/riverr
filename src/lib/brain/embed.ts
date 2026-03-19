@@ -1,13 +1,13 @@
 import { VertexAI } from '@google-cloud/vertexai';
 
-const project = process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.GCLOUD_PROJECT;
-const location = 'us-central1';
+const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
+const location = process.env.GOOGLE_CLOUD_LOCATION || process.env.VERTEX_LOCATION || 'us-central1';
 
-// Vertex AI text-embedding-004 is the recommended model for high-fidelity 3072-dim vectors
+// Vertex AI text-embedding-004 is recommended for high-fidelity 3072-dim vectors
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'text-embedding-004';
 
 const vertexAI = new VertexAI({
-  project: project,
+  project: project || '',
   location: location,
 });
 
@@ -34,7 +34,7 @@ export async function generateEmbedding(text: string): Promise<number[] | null> 
     });
 
     const values = result.embedding?.values;
-    return values && values.length > 0 ? values : null;
+    return values && values.length > 0 ? (values as number[]) : null;
   } catch (error) {
     console.error('generateEmbedding failed:', error);
     return null;

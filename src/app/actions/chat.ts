@@ -1,22 +1,28 @@
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
-import { handleIncomingMessage, AgentAdapters, BotConfig, Conversation, IncomingMessage, SearchHelpCenterParams, SearchHelpCenterResult, HelpChunk, SearchSupportParams, SearchSupportResult, SupportIntentNode } from '@/lib/agent';
-import * as db from '@/lib/db';
+import { 
+  handleIncomingMessage, 
+  AgentAdapters, 
+  BotConfig, 
+  Conversation, 
+  IncomingMessage, 
+  SearchHelpCenterParams, 
+  SearchHelpCenterResult, 
+  HelpChunk, 
+  SearchSupportParams, 
+  SearchSupportResult 
+} from '@/lib/agent';
 import { resolveRuntimeBot } from '@/lib/bot-runtime';
 import { getTypesenseSearch } from '@/lib/typesense';
-import { indexHelpCenterArticleToChunks } from '@/lib/knowledge/indexer';
-import { ChatMessage, Visitor, HelpCenter, Contact } from '@/lib/data';
+import { ChatMessage, HelpCenter, HelpCenterCollection, HelpCenterArticle } from '@/lib/data';
 import { agentResponse } from '@/ai/flows/agent-response';
-import { crawlWebsiteKnowledge } from '@/ai/flows/crawl-website-knowledge';
 import admin from 'firebase-admin';
-import { normalizePhoneFallback } from '@/lib/utils';
 import { getMessagingProvider } from '@/lib/comms/providerFactory';
 import { generateEmbedding } from '@/lib/brain/embed';
+import { crawlWebsiteKnowledge } from '@/ai/flows/crawl-website-knowledge';
 
 const typesense = getTypesenseSearch();
-
-export type SearchSalesExtractionsResult = { extractions: any[] };
 
 /**
  * Searches the Help Center documentation using Typesense.
@@ -99,40 +105,30 @@ async function searchSupport(params: SearchSupportParams): Promise<SearchSupport
   const { hubId, query, topK = 5 } = params;
   if (!hubId || !query) return { intents: [] };
 
-  // 1. Generate embedding for the user's question
-  const queryVector = await generateEmbedding(query);
-  if (!queryVector) return { intents: [] };
+  const queryEmbedding = await generateEmbedding(query);
+  if (!queryEmbedding) return { intents: [] };
 
   try {
     const coll = adminDB.collection('brain_distilled_qas');
     
-    // 2. Perform Firestore Nearest-Neighbor search
-    // Using DOT_PRODUCT as Vertex vectors are normalized
-    const vectorQuery = coll
+    const vectorQuery = (coll as any)
       .where('hubId', '==', hubId)
       .where('status', '==', 'approved')
       .findNearest({
         vectorField: 'embedding',
-        queryVector: admin.firestore.FieldValue.vector(queryVector),
+        queryVector: admin.firestore.FieldValue.vector(queryEmbedding),
         limit: topK,
         distanceMeasure: 'DOT_PRODUCT',
       });
 
     const snap = await vectorQuery.get();
 
-    const intents: any[] = snap.docs.map((doc) => {
+    const intents: any[] = snap.docs.map((doc: any) => {
       const data = doc.data();
       return {
         id: doc.id,
-        title: data.question,
-        description: data.answer,
-        intentKey: data.intentKey,
-        requiredContext: data.requiredContext || [],
-        safeAnswerPolicy: { 
-          mustNot: data.mustNot || [], 
-          requiresHumanIf: data.requiresHumanIf || [] 
-        },
-        _searchScore: (doc as any).distance ? 1 - (doc as any).distance : 0.8,
+        ...data,
+        _searchScore: doc.distance ? 1 - doc.distance : 0.8,
       };
     });
 
@@ -161,7 +157,7 @@ export async function invokeAgent(args: {
       return result.answer;
     },
     escalateToHuman: async ({ conversationId, reason }) => {
-      await db.updateConversation(conversationId, {
+      await adminDB.collection('conversations').doc(conversationId).update({
         status: 'waiting_human',
         escalated: true,
         escalationReason: reason,
@@ -213,11 +209,11 @@ export async function invokeAgent(args: {
           await msgRef.update({ deliveryStatus: 'failed' });
         }
       } else {
-        await db.addChatMessage(messageData);
+        await adminDB.collection('chat_messages').add(messageData);
       }
     },
     updateConversation: async ({ conversationId, patch }) => {
-      await db.updateConversation(conversationId, patch);
+      await adminDB.collection('conversations').doc(conversationId).update(patch);
     },
   };
 
@@ -260,12 +256,144 @@ export async function invokeAgent(args: {
   });
 }
 
+export async function addChatMessage(message: Omit<ChatMessage, 'id'>) {
+  const docRef = await adminDB.collection('chat_messages').add(message);
+  return { id: docRef.id, ...message };
+}
+
+export async function updateConversation(id: string, patch: Partial<Conversation>) {
+  await adminDB.collection('conversations').doc(id).update(patch);
+}
+
+export async function createConversationAndLinkCrm(data: {
+  hubId: string;
+  visitorId: string;
+  assigneeId: string | null;
+  lastMessage: string;
+  lastMessageAuthor: string | null;
+  convoStatus?: string;
+}) {
+  const now = new Date().toISOString();
+  const hubSnap = await adminDB.collection('hubs').doc(data.hubId).get();
+  const spaceId = hubSnap.data()?.spaceId;
+
+  const convoRef = await adminDB.collection('conversations').add({
+    hubId: data.hubId,
+    spaceId,
+    visitorId: data.visitorId,
+    assigneeId: data.assigneeId,
+    status: data.convoStatus || 'bot',
+    state: 'ai_active',
+    lastMessage: data.lastMessage,
+    lastMessageAt: now,
+    lastMessageAuthor: data.lastMessageAuthor,
+    createdAt: now,
+    updatedAt: now,
+    ownerType: 'hub',
+    sharedWithTeam: true
+  });
+
+  return { id: convoRef.id, ...data, spaceId };
+}
+
+export async function ensureConversationCrmLinkedAction(conversationId: string) {
+  const convoRef = adminDB.collection('conversations').doc(conversationId);
+  const convoSnap = await convoRef.get();
+  const convo = convoSnap.data();
+  if (!convo || convo.contactId) return;
+
+  const visitorSnap = await adminDB.collection('visitors').doc(convo.visitorId).get();
+  const visitor = visitorSnap.data();
+  if (!visitor?.email) return;
+
+  const contactQuery = await adminDB.collection('contacts')
+    .where('spaceId', '==', convo.spaceId)
+    .where('primaryEmail', '==', visitor.email.toLowerCase())
+    .limit(1)
+    .get();
+
+  if (!contactQuery.empty) {
+    await convoRef.update({ contactId: contactQuery.docs[0].id });
+  }
+}
+
+export async function reindexArticleAction(articleId: string) {
+  console.log(`Triggering reindex for article: ${articleId}`);
+}
+
 export async function searchHelpCenterAction(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
   return searchHelpCenter(params);
 }
 
 export async function searchSupportAction(params: SearchSupportParams): Promise<SearchSupportResult> {
   return searchSupport(params);
+}
+
+export async function exportLibraryAction(helpCenterId: string) {
+  const hcDoc = await adminDB.collection('help_centers').doc(helpCenterId).get();
+  if (!hcDoc.exists) throw new Error("Library not found");
+
+  const collectionsSnap = await adminDB.collection('help_center_collections')
+    .where('helpCenterId', '==', helpCenterId)
+    .get();
+  
+  const articlesSnap = await adminDB.collection('help_center_articles')
+    .where('helpCenterId', '==', helpCenterId)
+    .get();
+
+  return {
+    helpCenter: { id: hcDoc.id, ...hcDoc.data() },
+    collections: collectionsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+    articles: articlesSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+  };
+}
+
+export async function importLibraryAction(hubId: string, spaceId: string, userId: string, data: any) {
+  const { helpCenter, collections, articles } = data;
+
+  const newHcRef = adminDB.collection('help_centers').doc();
+  const newHcId = newHcRef.id;
+
+  const { id: _, ...hcData } = helpCenter;
+  await newHcRef.set({
+    ...hcData,
+    hubId,
+    spaceId,
+  });
+
+  const collectionIdMap: Record<string, string> = {};
+  for (const coll of collections) {
+    const newCollRef = adminDB.collection('help_center_collections').doc();
+    collectionIdMap[coll.id] = newCollRef.id;
+  }
+
+  for (const coll of collections) {
+    const { id: _, ...collData } = coll;
+    const newId = collectionIdMap[coll.id];
+    await adminDB.collection('help_center_collections').doc(newId).set({
+      ...collData,
+      hubId,
+      helpCenterId: newHcId,
+      parentId: collData.parentId ? (collectionIdMap[collData.parentId] || null) : null,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  for (const art of articles) {
+    const { id: _, ...artData } = art;
+    await adminDB.collection('help_center_articles').add({
+      ...artData,
+      hubId,
+      spaceId,
+      helpCenterId: newHcId,
+      folderId: artData.folderId ? (collectionIdMap[artData.folderId] || null) : null,
+      authorId: userId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  return { success: true, newHelpCenterId: newHcId };
 }
 
 export async function crawlWebsiteAction(url: string) {
