@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useEffect, useState, useTransition, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -22,7 +23,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Bot as BotData, User, HelpCenter } from '@/lib/data';
+import { Bot as BotData, User } from '@/lib/data';
 import { 
   X, 
   Plus, 
@@ -35,6 +36,7 @@ import {
   Settings2,
   Users,
   BrainCircuit,
+  Sparkles,
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -48,6 +50,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import ChatbotSimulator from './chatbot-simulator';
 import { uploadBotLogo } from '@/lib/db';
+import { Separator } from '../ui/separator';
 
 const widgetSettingsSchema = z.object({
   id: z.string().optional(),
@@ -87,7 +90,7 @@ interface WidgetSettingsDialogProps {
   bot: BotData | null;
   onSave: (data: BotData | Omit<BotData, 'id' | 'hubId'>) => void;
   allUsers: User[];
-  hubAgents: BotData[]; // All agents available in this hub to be used as brains
+  hubAgents: BotData[]; 
 }
 
 export default function WidgetSettingsDialog({
@@ -163,29 +166,26 @@ export default function WidgetSettingsDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] w-[1200px] h-[90vh] p-0 flex flex-col overflow-hidden bg-[#0d1117] border-white/10">
-        <div className="sr-only">
-          <DialogTitle>Web Chat Widget Settings</DialogTitle>
-          <DialogDescription>Configure the look and behavior of your website chat widget.</DialogDescription>
-        </div>
+        <DialogTitle className="sr-only">Web Chat Widget Settings</DialogTitle>
+        <DialogDescription className="sr-only">Configure visual branding and behavior fallbacks for the web stage.</DialogDescription>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden text-left">
             <header className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#090c10] shrink-0 z-[100]">
               <div className="flex items-center gap-10">
-                <div className="flex items-center gap-3 text-left">
+                <div className="flex items-center gap-3 shrink-0 text-left">
                   <div className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
                   <div>
                     <h2 className="text-sm font-bold text-white leading-none">{watchedValues.name}</h2>
-                    <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground opacity-50 mt-1">Web Widget</p>
+                    <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground opacity-50 mt-1">Web Stage</p>
                   </div>
                 </div>
 
                 <nav className="flex items-center bg-white/[0.03] rounded-full p-1 border border-white/5">
                   {[
                     { id: 'style', label: 'Style & Branding', icon: Palette },
-                    { id: 'behavior', label: 'Behavior', icon: Settings2 },
-                    { id: 'team', label: 'Human Team', icon: Users },
-                    { id: 'brain', label: 'AI Brain', icon: BrainCircuit }
+                    { id: 'behavior', label: 'Chat Behavior', icon: BrainCircuit },
+                    { id: 'team', label: 'Human Team', icon: Users }
                   ].map((item) => (
                     <button
                       key={item.id}
@@ -211,7 +211,7 @@ export default function WidgetSettingsDialog({
 
             <div className="flex-1 flex overflow-hidden">
               <ScrollArea className="flex-1">
-                <div className="p-10 max-w-2xl mx-auto pb-32 text-left">
+                <div className="p-10 max-w-2xl mx-auto pb-32 space-y-12">
                   
                   {activeTab === 'style' && (
                     <div className="space-y-12 animate-in fade-in duration-300">
@@ -228,7 +228,7 @@ export default function WidgetSettingsDialog({
                               {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
                               Upload Widget Logo
                             </Button>
-                            {!bot?.id && <p className="text-[10px] text-amber-500 font-bold">Save the widget first to upload a logo.</p>}
+                            {!bot?.id && <p className="text-[10px] text-amber-500 font-bold">Save widget to enable uploads.</p>}
                           </div>
                         </div>
 
@@ -236,9 +236,9 @@ export default function WidgetSettingsDialog({
                           <ColorInput form={form} name="styleSettings.primaryColor" label="Primary Theme Color" />
                           <ColorInput form={form} name="styleSettings.backgroundColor" label="Background Color" />
                           <ColorInput form={form} name="styleSettings.headerTextColor" label="Header Text Color" />
-                          <ColorInput form={form} name="styleSettings.customerTextColor" label="Customer Text Color" />
-                          <ColorInput form={form} name="styleSettings.agentMessageBackgroundColor" label="Agent Message BG" />
-                          <ColorInput form={form} name="styleSettings.agentMessageTextColor" label="Agent Message Text" />
+                          <ColorInput form={form} name="styleSettings.customerTextColor" label="Customer Bubble Text" />
+                          <ColorInput form={form} name="styleSettings.agentMessageBackgroundColor" label="Agent Bubble Color" />
+                          <ColorInput form={form} name="styleSettings.agentMessageTextColor" label="Agent Bubble Text" />
                         </div>
                       </section>
                     </div>
@@ -247,52 +247,106 @@ export default function WidgetSettingsDialog({
                   {activeTab === 'behavior' && (
                     <div className="space-y-12 animate-in fade-in duration-300">
                       <section className="space-y-6">
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Core Behavior</h3>
-                        <FormField control={form.control} name="welcomeMessage" render={({ field }) => (
+                        <div className="flex items-center gap-2 text-primary">
+                          <BrainCircuit className="h-4 w-4" />
+                          <h3 className="text-sm font-bold uppercase tracking-widest">Primary Behavior (AI Agent)</h3>
+                        </div>
+                        <FormField control={form.control} name="assignedAgentId" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">Initial Greeting</FormLabel>
-                            <FormControl><Textarea rows={4} {...field} /></FormControl>
+                            <FormLabel className="text-xs">Assign an AI Agent Brain</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                              <FormControl><SelectTrigger className="h-12"><SelectValue placeholder="No Agent Brain (Human Only)" /></SelectTrigger></FormControl>
+                              <SelectContent>
+                                <SelectItem value="none">None (Use Fallback Behavior)</SelectItem>
+                                {hubAgents.map(agent => (
+                                  <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>When an agent is selected, its personality and knowledge will override the stage fallbacks.</FormDescription>
                           </FormItem>
                         )} />
                       </section>
 
-                      <section className="space-y-6">
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Identity Capture</h3>
-                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
-                          <Label className="text-sm font-bold">Enable Lead Capture</Label>
-                          <Switch checked={watchedValues.identityCapture?.enabled} onCheckedChange={(val) => form.setValue('identityCapture.enabled', val)} />
-                        </div>
-
-                        {watchedValues.identityCapture?.enabled && (
-                          <div className="space-y-6 pl-4 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
-                            <div className="space-y-3">
-                              <Label className="text-xs uppercase font-bold text-muted-foreground">Capture Timing</Label>
-                              <RadioGroup onValueChange={(v) => form.setValue('identityCapture.timing', v as 'before' | 'after')} value={watchedValues.identityCapture.timing} className="flex gap-4">
-                                <div className="flex items-center gap-2"><RadioGroupItem value="before" id="t-before" /><Label htmlFor="t-before">Before chat starts</Label></div>
-                                <div className="flex items-center gap-2"><RadioGroupItem value="after" id="t-after" /><Label htmlFor="t-after">When AI requests</Label></div>
-                              </RadioGroup>
+                      {watchedValues.assignedAgentId && watchedValues.assignedAgentId !== 'none' ? (
+                        <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10 space-y-4 animate-in zoom-in-95 duration-300">
+                          <div className="flex items-center gap-2 text-primary font-bold text-sm">
+                            <Sparkles className="h-4 w-4" /> 
+                            AI Behavior Active
+                          </div>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            This widget is currently using the instructions, personality, and logic from <span className="font-bold text-foreground">
+                              {hubAgents.find(a => a.id === watchedValues.assignedAgentId)?.name || 'the selected agent'}
+                            </span>. 
+                          </p>
+                          <div className="grid grid-cols-2 gap-3 pt-2">
+                            <div className="p-3 bg-background/50 rounded-lg border border-white/5 opacity-50 cursor-not-allowed">
+                              <p className="text-[9px] font-black uppercase tracking-wider text-muted-foreground mb-1">Greeting</p>
+                              <p className="text-[11px] truncate">Inherited from Agent</p>
                             </div>
-                            <div className="grid grid-cols-3 gap-4">
-                              <div className="flex items-center gap-2"><Checkbox checked={watchedValues.identityCapture.fields.name} onCheckedChange={(v) => form.setValue('identityCapture.fields.name', !!v)} id="f-name" /><Label htmlFor="f-name">Name</Label></div>
-                              <div className="flex items-center gap-2"><Checkbox checked={watchedValues.identityCapture.fields.email} onCheckedChange={(v) => form.setValue('identityCapture.fields.email', !!v)} id="f-email" /><Label htmlFor="f-email">Email</Label></div>
-                              <div className="flex items-center gap-2"><Checkbox checked={watchedValues.identityCapture.fields.phone} onCheckedChange={(v) => form.setValue('identityCapture.fields.phone', !!v)} id="f-phone" /><Label htmlFor="f-phone">Phone</Label></div>
+                            <div className="p-3 bg-background/50 rounded-lg border border-white/5 opacity-50 cursor-not-allowed">
+                              <p className="text-[9px] font-black uppercase tracking-wider text-muted-foreground mb-1">Lead Capture</p>
+                              <p className="text-[11px] truncate">Inherited from Agent</p>
                             </div>
                           </div>
-                        )}
-                      </section>
+                        </div>
+                      ) : (
+                        <div className="space-y-12 animate-in slide-in-from-top-2 duration-300">
+                          <section className="space-y-6">
+                            <div className="flex items-center gap-2 text-amber-500">
+                              <Settings2 className="h-4 w-4" />
+                              <h3 className="text-sm font-bold uppercase tracking-widest">Fallback Behavior (No Agent)</h3>
+                            </div>
+                            <FormField control={form.control} name="welcomeMessage" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Fallback Greeting</FormLabel>
+                                <FormControl><Textarea rows={4} placeholder="Hi! How can we help you?" {...field} /></FormControl>
+                              </FormItem>
+                            )} />
+                          </section>
+
+                          <section className="space-y-6">
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Fallback Lead Capture</h3>
+                            <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
+                              <Label className="text-sm font-bold">Enable Lead Capture</Label>
+                              <Switch checked={watchedValues.identityCapture?.enabled} onCheckedChange={(val) => form.setValue('identityCapture.enabled', val)} />
+                            </div>
+
+                            {watchedValues.identityCapture?.enabled && (
+                              <div className="space-y-6 pl-4 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
+                                <div className="space-y-3">
+                                  <Label className="text-xs uppercase font-bold text-muted-foreground">Capture Timing</Label>
+                                  <RadioGroup onValueChange={(v) => form.setValue('identityCapture.timing', v as 'before' | 'after')} value={watchedValues.identityCapture.timing} className="flex gap-4">
+                                    <div className="flex items-center gap-2"><RadioGroupItem value="before" id="t-before" /><Label htmlFor="t-before">Before chat</Label></div>
+                                    <div className="flex items-center gap-2"><RadioGroupItem value="after" id="t-after" /><Label htmlFor="t-after">On request</Label></div>
+                                  </RadioGroup>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                  <div className="flex items-center gap-2"><Checkbox checked={watchedValues.identityCapture.fields.name} onCheckedChange={(v) => form.setValue('identityCapture.fields.name', !!v)} id="f-name" /><Label htmlFor="f-name">Name</Label></div>
+                                  <div className="flex items-center gap-2"><Checkbox checked={watchedValues.identityCapture.fields.email} onCheckedChange={(v) => form.setValue('identityCapture.fields.email', !!v)} id="f-email" /><Label htmlFor="f-email">Email</Label></div>
+                                  <div className="flex items-center gap-2"><Checkbox checked={watchedValues.identityCapture.fields.phone} onCheckedChange={(v) => form.setValue('identityCapture.fields.phone', !!v)} id="f-phone" /><Label htmlFor="f-phone">Phone</Label></div>
+                                </div>
+                              </div>
+                            )}
+                          </section>
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {activeTab === 'team' && (
                     <div className="space-y-8 animate-in fade-in duration-300">
-                      <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Human Team Assignment</h3>
-                      <p className="text-sm text-muted-foreground">Select the team members who should be notified and available to take over chats from this widget.</p>
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Human Team (Hub Scoped)</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">Select which members of this Hub are responsible for responding to chats on this widget.</p>
                       <div className="grid grid-cols-2 gap-3">
                         {allUsers.map((user) => (
                           <div key={user.id} className="flex items-center justify-between p-3 border rounded-xl hover:bg-white/[0.02] transition-colors">
                             <div className="flex items-center gap-3">
                               <Avatar className="h-8 w-8"><AvatarImage src={user.avatarUrl} /><AvatarFallback>{getInitials(user.name)}</AvatarFallback></Avatar>
-                              <div><p className="text-xs font-bold">{user.name}</p><p className="text-[10px] text-muted-foreground">{user.email}</p></div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold truncate">{user.name}</p>
+                                <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+                              </div>
                             </div>
                             <Checkbox 
                               checked={watchedValues.agentIds?.includes(user.id)} 
@@ -304,27 +358,6 @@ export default function WidgetSettingsDialog({
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
-
-                  {activeTab === 'brain' && (
-                    <div className="space-y-8 animate-in fade-in duration-300">
-                      <h3 className="text-sm font-bold uppercase tracking-widest text-primary">AI Brain Assignment</h3>
-                      <FormField control={form.control} name="assignedAgentId" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Connected AI Agent</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                            <FormControl><SelectTrigger className="h-12"><SelectValue placeholder="Select an AI Agent Brain" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                              <SelectItem value="none">None (Human Only)</SelectItem>
-                              {hubAgents.map(agent => (
-                                <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>The selected Agent's knowledge and instructions will power this widget.</FormDescription>
-                        </FormItem>
-                      )} />
                     </div>
                   )}
 
