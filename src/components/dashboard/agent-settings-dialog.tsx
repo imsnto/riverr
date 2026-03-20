@@ -43,7 +43,6 @@ import {
   Clock,
   Zap,
   Target,
-  FileText,
   BrainCircuit,
   Users,
   Palette,
@@ -364,7 +363,6 @@ export default function AgentSettingsDialog({
   useEffect(() => {
     if (isOpen) {
       if (bot) {
-        // Deep merge logic to ensure nested defaults persist if keys are missing in Firestore doc
         const mergedData = {
           ...defaultValues,
           ...bot,
@@ -725,7 +723,7 @@ export default function AgentSettingsDialog({
                                   <FormField control={form.control} name="channelConfig.web.leadCapture.timing" render={({ field }) => (
                                     <FormItem><FormLabel className="text-xs">When to ask for contact details</FormLabel>
                                       <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a timing" /></SelectTrigger></FormControl>
                                         <SelectContent>
                                           <SelectItem value="before">Before chat starts</SelectItem>
                                           <SelectItem value="after">After first meaningful reply</SelectItem>
@@ -818,7 +816,7 @@ export default function AgentSettingsDialog({
                                 <FormField control={form.control} name="channelConfig.phone.operationMode" render={({ field }) => (
                                   <FormItem><FormLabel className="text-xs">Call handling mode</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
-                                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                      <FormControl><SelectTrigger><SelectValue placeholder="Select a mode" /></SelectTrigger></FormControl>
                                       <SelectContent>
                                         <SelectItem value="full_ai">Full AI resolution</SelectItem>
                                         <SelectItem value="handoff">AI triage + handoff</SelectItem>
@@ -861,9 +859,10 @@ export default function AgentSettingsDialog({
                               <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Reply Workflow</h4>
                               <div className="grid grid-cols-2 gap-6">
                                 <FormField control={form.control} name="channelConfig.email.approvalMode" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Reply approval</FormLabel>
+                                  <FormItem>
+                                    <FormLabel className="text-xs">Reply approval</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
-                                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                      <FormControl><SelectTrigger><SelectValue placeholder="Select a mode" /></SelectTrigger></FormControl>
                                       <SelectContent>
                                         <SelectItem value="auto">Auto-send (High Risk)</SelectItem>
                                         <SelectItem value="auto_exceptions">Auto-send except escalations</SelectItem>
@@ -873,9 +872,10 @@ export default function AgentSettingsDialog({
                                   </FormItem>
                                 )} />
                                 <FormField control={form.control} name="channelConfig.email.replyDelay" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Reply Delay</FormLabel>
+                                  <FormItem>
+                                    <FormLabel className="text-xs">Reply Delay</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
-                                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                      <FormControl><SelectTrigger><SelectValue placeholder="Select a delay" /></SelectTrigger></FormControl>
                                       <SelectContent>
                                         <SelectItem value="immediate">Immediate</SelectItem>
                                         <SelectItem value="2_5_minutes">2-5 Minutes (Human-like)</SelectItem>
@@ -883,6 +883,46 @@ export default function AgentSettingsDialog({
                                       </SelectContent>
                                     </Select>
                                   </FormItem>
+                                )} />
+                                <FormField control={form.control} name="channelConfig.email.threadingBehavior" render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-xs">Threading behavior</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="reply_in_thread">Reply in thread</SelectItem>
+                                        <SelectItem value="new_thread">Start new thread</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </FormItem>
+                                )} />
+                              </div>
+                            </section>
+
+                            <section className="space-y-6">
+                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Formatting</h4>
+                              <div className="grid grid-cols-2 gap-6">
+                                <FormField control={form.control} name="channelConfig.email.responseLength" render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-xs">Response length</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="short">Short</SelectItem>
+                                        <SelectItem value="standard">Standard</SelectItem>
+                                        <SelectItem value="detailed">Detailed</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </FormItem>
+                                )} />
+                                <FormField control={form.control} name="channelConfig.email.standardSignoff" render={({ field }) => (
+                                  <FormItem><FormLabel className="text-xs">Email sign-off</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="channelConfig.email.subjectTemplate" render={({ field }) => (
+                                  <FormItem className="col-span-2"><FormLabel className="text-xs">Subject Template (for new threads)</FormLabel><FormControl><Input {...field} placeholder="e.g. Re: {{original_subject}}" /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="channelConfig.email.alwaysIncludeBlock" render={({ field }) => (
+                                  <FormItem className="col-span-2"><FormLabel className="text-xs">Always include block (Footer)</FormLabel><FormControl><Textarea rows={2} {...field} placeholder="e.g. Confidentiality notice..." /></FormControl></FormItem>
                                 )} />
                               </div>
                             </section>
@@ -895,6 +935,18 @@ export default function AgentSettingsDialog({
                                 )} />
                                 <FormField control={form.control} name="channelConfig.email.escalation.holdForHighValue" render={({ field }) => (
                                   <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">Hold for high value</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="channelConfig.email.escalation.holdForLegal" render={({ field }) => (
+                                  <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">Hold for legal/refund</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="channelConfig.email.escalation.holdForAttachment" render={({ field }) => (
+                                  <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">Hold for attachment</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="channelConfig.email.escalation.holdForVip" render={({ field }) => (
+                                  <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">Hold for VIP</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="channelConfig.email.sentimentEscalation" render={({ field }) => (
+                                  <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">Sentiment escalation</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
                                 )} />
                               </div>
                             </section>
