@@ -50,6 +50,7 @@ import { useToast } from '@/hooks/use-toast';
 import ChatbotSimulator from './chatbot-simulator';
 import { uploadBotLogo } from '@/lib/db';
 import { Separator } from '../ui/separator';
+import { Badge } from '../ui/badge';
 
 const widgetSettingsSchema = z.object({
   id: z.string().optional(),
@@ -412,7 +413,7 @@ export default function WidgetSettingsDialog({
                 </div>
               </ScrollArea>
 
-              {/* Preview Panel (Restored and Optimized) */}
+              {/* Preview Panel */}
               <aside className="hidden md:flex w-[400px] border-l border-white/10 bg-[#090c10] flex-col overflow-hidden shrink-0">
                 <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
                   <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-50">Live Simulator</span>
