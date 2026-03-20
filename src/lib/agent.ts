@@ -147,10 +147,9 @@ export async function handleIncomingMessage(args: {
   const botName = bot.webAgentName || bot.name || "Support";
 
   // ---- 1. ESCALATION GUARD ----
-  console.log("Waiting....?");
-  console.log(conversation.status);
   // If we are already waiting for a human, don't let AI intervene unless explicitly designed to.
   if (conversation.status === 'waiting_human' || conversation.status === 'resolved') {
+    console.log(`[Agent] Silence: Conversation ${conversation.id} is in status ${conversation.status}`);
     return;
   }
 
@@ -159,18 +158,21 @@ export async function handleIncomingMessage(args: {
   const handoffKeywords = bot.handoffKeywords?.length ? bot.handoffKeywords : defaultHandoffKeywords;
   
   if (containsAny(text, handoffKeywords)) {
+      console.log(`[Agent] Keyword match: '${text}' triggered handoff.`);
       await escalateNow(adapters, conversation, "Requested by user via keyword.");
       return;
   }
 
   // ---- 3. HYBRID FLOW EXECUTION ----
   if (bot.flow?.nodes?.length) {
+    console.log(`[Agent] Executing custom flow for ${conversation.id}`);
     await executeHybridFlow(args);
     return;
   }
 
   // ---- 4. LEGACY AI FALLBACK ----
   if (bot.aiEnabled !== false) {
+    console.log(`[Agent] Executing conversational reasoning for ${conversation.id}`);
     await executeAiPhase(args);
     return;
   }
@@ -493,7 +495,7 @@ async function executeAiPhase(args: {
 
   const topIntent = supportSearch.intents?.[0];
   if (topIntent && topIntent._searchScore && topIntent._searchScore > 0.75) {
-      // Direct hit on learned knowledge
+      console.log(`[Agent] Distilled hit: ${topIntent.intentKey}`);
       await adapters.persistAssistantMessage({
           conversationId: conversation.id,
           hubId: conversation.hubId,

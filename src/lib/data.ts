@@ -59,7 +59,7 @@ export interface Space {
   };
 }
 
-export type ConversationStatus = 'new' | 'automated' | 'ai_active' | 'waiting_human' | 'resolved';
+export type ConversationStatus = 'new' | 'automated' | 'ai_active' | 'waiting_human' | 'resolved' | 'open' | 'unassigned';
 export type ResponderType = 'automation' | 'ai' | 'human' | 'system';
 
 export type ConversationState =
@@ -612,6 +612,7 @@ export interface Bot {
       displayOverrides?: { name?: string };
       greeting?: { text: string; returningText?: string };
       quickReplies?: { name: string; trigger: string; options: string[] }[];
+      handoffKeywords?: string[];
     };
     sms?: { 
       enabled: boolean;
@@ -730,12 +731,12 @@ export interface ChatMessage {
   from?: string;
   to?: string;
   linked_ticket_id?: string;
+  linked_ticket_id?: string;
   attachments?: Attachment[];
   visibility?: 'public' | 'internal';
   isInternal?: boolean;
   channel?: 'webchat' | 'sms' | 'voice' | 'email';
   provider?: 'internal' | 'twilio' | 'google' | 'microsoft' | 'imap';
-  providerMessageId?: string;
   providerMessageId?: string;
   providerCallId?: string;
   deliveryStatus?: 'created'|'queued'|'sent'|'delivered'|'failed'|'undelivered';

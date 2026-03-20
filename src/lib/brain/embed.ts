@@ -1,3 +1,4 @@
+
 import { VertexAI } from '@google-cloud/vertexai';
 
 // Fallback to the known project ID for Firebase Studio environment if env vars are missing
@@ -24,7 +25,7 @@ function getVertexAI() {
 
 /**
  * Generates a high-dimensional vector embedding for the given text.
- * Returns a 3072-dimensional array of floats.
+ * Standardized to 768 dimensions to match the Typesense index configuration.
  */
 export async function generateEmbedding(text: string): Promise<number[] | null> {
   if (!text || !text.trim()) return null;
@@ -41,7 +42,8 @@ export async function generateEmbedding(text: string): Promise<number[] | null> 
         parts: [{ text: text.trim() }],
       },
       config: {
-        outputDimensionality: 3072,
+        // MATCH TYPESENSE SCHEMA: ensure dimensions align with the search index
+        outputDimensionality: 768,
       }
     });
 

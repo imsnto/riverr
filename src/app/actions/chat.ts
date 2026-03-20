@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -225,6 +226,7 @@ export async function invokeAgent(args: {
     allowedHelpCenterIds: effectiveBot.allowedHelpCenterIds || [],
     aiEnabled: effectiveBot.aiEnabled !== false,
     handoffKeywords:
+      effectiveBot.channelConfig?.web?.handoffKeywords ||
       effectiveBot.automations?.handoffKeywords ||
       effectiveBot.channelConfig?.sms?.escalation?.keywords ||
       [],
@@ -284,6 +286,7 @@ export async function createConversationAndLinkCrm(data: {
     assigneeId: data.assigneeId,
     status: data.convoStatus || 'bot',
     state: 'ai_active',
+    channel: 'webchat', // Ensure channel is set for correct RAG/Comms routing
     lastMessage: data.lastMessage,
     lastMessageAt: now,
     lastMessageAuthor: data.lastMessageAuthor,
