@@ -68,7 +68,15 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
 
   const handleStep = useCallback(async (nodeId: string | null) => {
     if (!nodeId) return;
+    
     const node = nodes.find(n => n.id === nodeId);
+    
+    // If we're at start and have no nodes, go to conversational mode
+    if (nodeId === 'start' && nodes.length === 0) {
+        setCurrentNodeId('conversational_ai');
+        return;
+    }
+
     if (!node) return;
 
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -89,7 +97,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
     }
 
     if (node.type === 'message') {
-      if (node.data.text) {
+      if (node.data.text && node.data.text !== botData.welcomeMessage) {
         setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text, type: 'automation' }]);
       }
       const nextEdge = edges.find(e => e.source === nodeId && (!e.sourceHandle || e.sourceHandle === 'next'));
@@ -125,7 +133,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
         }
       }, 1500);
     }
-  }, [nodes, edges, previewEmail, previewName]);
+  }, [nodes, edges, previewEmail, previewName, botData.welcomeMessage]);
 
   useEffect(() => {
     if (isOpen) {
@@ -135,7 +143,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
     return () => {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
     }
-  }, [isOpen, handleStep, botData.welcomeMessage]); // Added welcomeMessage to dependencies to re-sync preview on change
+  }, [isOpen, handleStep, botData.welcomeMessage]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -177,6 +185,21 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
         setAttachments([]);
     }
     
+    // AI MOCK RESPONSE
+    if (!targetNodeId || targetNodeId === 'conversational_ai') {
+        setIsThinking(true);
+        setTimeout(() => {
+            setIsThinking(false);
+            setMessages(prev => [...prev, { 
+                id: Date.now(), 
+                role: 'bot', 
+                text: `I'm ${botName}. I've received your message: "${text}". In the live widget, I'll use Finn's brain to analyze your libraries and respond!`, 
+                type: 'ai' 
+            }]);
+        }, 1500);
+        return;
+    }
+
     let targetEdge;
     if (buttonId) {
         targetEdge = edges.find(e => e.source === targetNodeId && e.sourceHandle === `intent:${buttonId}`);
@@ -192,7 +215,21 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
         targetEdge = edges.find(e => e.source === targetNodeId && (e.sourceHandle === 'next' || !e.sourceHandle));
     }
 
-    if (targetEdge) handleStep(targetEdge.target);
+    if (targetEdge) {
+        handleStep(targetEdge.target);
+    } else {
+        // If we logic hits a dead end, assume conversational AI takes over
+        setIsThinking(true);
+        setTimeout(() => {
+            setIsThinking(false);
+            setMessages(prev => [...prev, { 
+                id: Date.now(), 
+                role: 'bot', 
+                text: "That makes sense. Let me see how I can help with that...", 
+                type: 'ai' 
+            }]);
+        }, 1200);
+    }
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {

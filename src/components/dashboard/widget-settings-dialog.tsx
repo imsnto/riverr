@@ -168,6 +168,8 @@ export default function WidgetSettingsDialog({
     if (agent) {
       return {
         ...watchedValues,
+        name: agent.name, // Adopt agent's identity
+        webAgentName: agent.webAgentName || agent.name,
         welcomeMessage: agent.channelConfig?.web?.greeting?.text || agent.welcomeMessage || watchedValues.welcomeMessage,
         flow: agent.flow || { nodes: [], edges: [] },
         agentIds: agent.agentIds?.length ? agent.agentIds : watchedValues.agentIds
