@@ -47,7 +47,11 @@ import {
   Users,
   Palette,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  ShieldCheck,
+  MessageCircle,
+  Check
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -67,49 +71,64 @@ const agentSettingsSchema = z.object({
   id: z.string().optional(),
   type: z.literal('agent').default('agent'),
 
-  // Core identity
-  name: z.string().min(1, 'Agent Name is required'),
-  internalName: z.string().min(1, 'Internal Name is required'),
+  // Intelligence - Identity
+  name: z.string().min(1, 'Internal Name is required'),
+  webAgentName: z.string().min(1, 'Public Agent Name is required'),
   roleTitle: z.string().optional(),
 
-  // Personality
+  // Intelligence - Personality
   tone: z.enum(['friendly', 'formal', 'expert', 'direct', 'warm']).default('friendly'),
   voiceNotes: z.string().optional(),
+  responseLength: z.enum(['short', 'balanced', 'detailed']).default('balanced'),
+  proactivity: z.enum(['low', 'balanced', 'high']).default('balanced'),
+  assertiveness: z.enum(['low', 'balanced', 'high']).default('balanced'),
 
-  // Goal
+  // Intelligence - Goals
   primaryGoal: z.string().min(1, 'Primary goal is required'),
-  closingMessage: z.string().optional(),
+  secondaryGoal: z.string().optional(),
+  closingTemplate: z.string().optional(),
+  successCriteria: z.string().optional(),
 
-  // Escalation
+  // Intelligence - Escalation
   escalation: z.object({
     enabled: z.boolean().default(true),
     notifyEmail: z.string().email('Valid email required').or(z.literal('')),
     highValue: z.object({
       enabled: z.boolean().default(false),
-      threshold: z.coerce.number().default(1000),
+      threshold: z.coerce.number().default(500),
     }),
     frustration: z.boolean().default(true),
     repeatedFailures: z.boolean().default(true),
     complexRequests: z.boolean().default(true),
+    maxFailures: z.coerce.number().default(2),
   }),
 
-  // Knowledge
+  // Intelligence - Safety
+  safety: z.object({
+    neverPretendHuman: z.boolean().default(true),
+    askClarifyingWhenUnsure: z.boolean().default(true),
+    offerHumanWhenUnsure: z.boolean().default(true),
+    avoidHallucination: z.boolean().default(true),
+    strictMode: z.boolean().default(false),
+  }),
+
+  // Knowledge - Business Context
   businessContext: z.object({
     businessName: z.string().optional(),
     location: z.string().optional(),
     description: z.string().optional(),
-    customers: z.string().optional(),
-    hours: z.string().optional(),
+    targetAudience: z.string().optional(),
+    businessHours: z.string().optional(),
     minOrder: z.string().optional(),
     turnaround: z.string().optional(),
-    differentiation: z.string().optional(),
+    differentiators: z.string().optional(),
     forbiddenTopics: z.string().optional(),
   }),
 
-  // Knowledge Sources
+  // Knowledge - Sources
   allowedHelpCenterIds: z.array(z.string()).default([]),
 
-  // Lists
+  // Knowledge - Repeatable Lists
   products: z.array(z.object({
     id: z.string(),
     name: z.string(),
@@ -134,6 +153,18 @@ const agentSettingsSchema = z.object({
     id: z.string(),
     question: z.string(),
     note: z.string().optional(),
+  })).default([]),
+
+  policies: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    content: z.string(),
+  })).default([]),
+
+  scripts: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    content: z.string(),
   })).default([]),
 
   pricingPolicy: z.string().optional(),
@@ -219,30 +250,43 @@ const agentSettingsSchema = z.object({
 type AgentSettingsFormValues = z.infer<typeof agentSettingsSchema>;
 
 const defaultValues: AgentSettingsFormValues = {
-  name: 'Assistant',
-  internalName: 'Support Agent V1',
+  name: 'Support Agent V1',
+  webAgentName: 'Assistant',
   roleTitle: 'Customer Support',
   tone: 'friendly',
   voiceNotes: '',
-  primaryGoal: 'Assist customers with their inquiries using the provided knowledge base.',
-  closingMessage: 'Thank you for chatting with us!',
+  responseLength: 'balanced',
+  proactivity: 'balanced',
+  assertiveness: 'balanced',
+  primaryGoal: 'Provide helpful, accurate answers and guide the user toward the next best step.',
+  secondaryGoal: 'Capture contact information when appropriate.',
+  closingTemplate: 'Let me know if you need anything else!',
+  successCriteria: 'The customer gets a clear answer, a qualified next step, or a human handoff.',
   escalation: {
     enabled: true,
     notifyEmail: '',
-    highValue: { enabled: false, threshold: 1000 },
+    highValue: { enabled: false, threshold: 500 },
     frustration: true,
     repeatedFailures: true,
     complexRequests: true,
+    maxFailures: 2,
+  },
+  safety: {
+    neverPretendHuman: true,
+    askClarifyingWhenUnsure: true,
+    offerHumanWhenUnsure: true,
+    avoidHallucination: true,
+    strictMode: false,
   },
   businessContext: {
     businessName: '',
     location: '',
     description: '',
-    customers: '',
-    hours: '',
+    targetAudience: '',
+    businessHours: '',
     minOrder: '',
     turnaround: '',
-    differentiation: '',
+    differentiators: '',
     forbiddenTopics: '',
   },
   allowedHelpCenterIds: [],
@@ -250,7 +294,9 @@ const defaultValues: AgentSettingsFormValues = {
   faqs: [],
   objections: [],
   qualificationFlow: [],
-  pricingPolicy: '',
+  policies: [],
+  scripts: [],
+  pricingPolicy: 'Always request a quote when pricing depends on scope, quantity, or timeline.',
   channelConfig: {
     web: {
       enabled: true,
@@ -343,7 +389,7 @@ export default function AgentSettingsDialog({
   helpCenters,
   allUsers,
 }: AgentSettingsDialogProps) {
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState('intelligence');
   const [activeChannel, setActiveChannel] = useState('web');
   const [crawlUrl, setCrawlUrl] = useState('');
   const [isCrawling, startCrawlTransition] = useTransition();
@@ -358,6 +404,8 @@ export default function AgentSettingsDialog({
   const { fields: faqFields, append: appendFaq, remove: removeFaq } = useFieldArray({ control: form.control, name: "faqs" });
   const { fields: objectionFields, append: appendObjection, remove: removeObjection } = useFieldArray({ control: form.control, name: "objections" });
   const { fields: qualificationFields, append: appendQualification, remove: removeQualification } = useFieldArray({ control: form.control, name: "qualificationFlow" });
+  const { fields: policyFields, append: appendPolicy, remove: removePolicy } = useFieldArray({ control: form.control, name: "policies" });
+  const { fields: scriptFields, append: appendScript, remove: removeScript } = useFieldArray({ control: form.control, name: "scripts" });
 
   useEffect(() => {
     if (isOpen) {
@@ -365,6 +413,8 @@ export default function AgentSettingsDialog({
         const mergedData = {
           ...defaultValues,
           ...bot,
+          styleSettings: { ...defaultValues.styleSettings, ...(bot.styleSettings || {}) },
+          identityCapture: { ...defaultValues.identityCapture, ...(bot.identityCapture || {}) },
           channelConfig: {
             ...defaultValues.channelConfig,
             ...(bot.channelConfig || {}),
@@ -380,6 +430,7 @@ export default function AgentSettingsDialog({
           },
           businessContext: { ...defaultValues.businessContext, ...(bot.businessContext || {}) },
           escalation: { ...defaultValues.escalation, ...(bot.escalation || {}) },
+          safety: { ...defaultValues.safety, ...(bot.safety || {}) },
         };
         form.reset(mergedData as any);
       } else {
@@ -416,7 +467,6 @@ export default function AgentSettingsDialog({
       ...(bot || {}),
       ...values,
       type: 'agent',
-      welcomeMessage: values.channelConfig?.web?.greeting?.text || values.name,
     } as any;
 
     onSave(payload);
@@ -435,14 +485,14 @@ export default function AgentSettingsDialog({
                     <BrainCircuit className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-white leading-none">{watchedValues.name || 'AI Brain'}</h2>
+                    <h2 className="text-sm font-bold text-white leading-none">{watchedValues.webAgentName || 'AI Brain'}</h2>
                     <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground opacity-50 mt-1">Global Configuration</p>
                   </div>
                 </div>
 
                 <nav className="flex items-center bg-white/[0.03] rounded-full p-1 border border-white/5">
                   {[
-                    { id: 'general', label: 'Intelligence', icon: Settings },
+                    { id: 'intelligence', label: 'Intelligence', icon: BrainCircuit },
                     { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
                     { id: 'channels', label: 'Channels', icon: Globe }
                   ].map((item) => (
@@ -469,23 +519,23 @@ export default function AgentSettingsDialog({
             </header>
 
             <ScrollArea className="flex-1">
-              <div className="p-10 max-w-4xl mx-auto pb-32 space-y-12">
-                {activeTab === 'general' && (
-                  <div className="space-y-12 animate-in fade-in duration-300">
+              <div className="p-10 max-w-4xl mx-auto pb-32 space-y-16">
+                {activeTab === 'intelligence' && (
+                  <div className="space-y-16 animate-in fade-in duration-300">
                     <section className="space-y-6">
                       <div className="flex items-center gap-2 text-primary">
                         <Users className="h-4 w-4" />
                         <h3 className="text-sm font-bold uppercase tracking-widest">Identity</h3>
                       </div>
                       <div className="grid grid-cols-2 gap-6">
-                        <FormField control={form.control} name="name" render={({ field }) => (
+                        <FormField control={form.control} name="webAgentName" render={({ field }) => (
                           <FormItem><FormLabel className="text-xs">Public Agent Name</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                         )} />
-                        <FormField control={form.control} name="internalName" render={({ field }) => (
+                        <FormField control={form.control} name="name" render={({ field }) => (
                           <FormItem><FormLabel className="text-xs">Internal ID</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="roleTitle" render={({ field }) => (
-                          <FormItem className="col-span-2"><FormLabel className="text-xs">Official Role / Job Title</FormLabel><FormControl><Input {...field} placeholder="e.g. Lead Support Concierge" /></FormControl></FormItem>
+                          <FormItem className="col-span-2"><FormLabel className="text-xs">Official Role / Job Title</FormLabel><FormControl><Input {...field} placeholder="e.g. Customer Support" /></FormControl></FormItem>
                         )} />
                       </div>
                     </section>
@@ -493,7 +543,7 @@ export default function AgentSettingsDialog({
                     <section className="space-y-6">
                       <div className="flex items-center gap-2 text-primary">
                         <Palette className="h-4 w-4" />
-                        <h3 className="text-sm font-bold uppercase tracking-widest">Personality & Tone</h3>
+                        <h3 className="text-sm font-bold uppercase tracking-widest">Personality</h3>
                       </div>
                       <div className="grid grid-cols-2 gap-6">
                         <FormField control={form.control} name="tone" render={({ field }) => (
@@ -502,16 +552,28 @@ export default function AgentSettingsDialog({
                               <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                               <SelectContent>
                                 <SelectItem value="friendly">Friendly & Approachable</SelectItem>
-                                <SelectItem value="formal">Formal & Corporate</SelectItem>
-                                <SelectItem value="expert">Expert & Technical</SelectItem>
+                                <SelectItem value="formal">Professional & Polished</SelectItem>
+                                <SelectItem value="expert">Expert & Reassuring</SelectItem>
                                 <SelectItem value="direct">Direct & Efficient</SelectItem>
-                                <SelectItem value="warm">Warm & Empathetic</SelectItem>
+                                <SelectItem value="warm">Warm & Supportive</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="responseLength" render={({ field }) => (
+                          <FormItem><FormLabel className="text-xs">Response Length</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                              <SelectContent>
+                                <SelectItem value="short">Concise</SelectItem>
+                                <SelectItem value="balanced">Balanced</SelectItem>
+                                <SelectItem value="detailed">In-depth</SelectItem>
                               </SelectContent>
                             </Select>
                           </FormItem>
                         )} />
                         <FormField control={form.control} name="voiceNotes" render={({ field }) => (
-                          <FormItem className="col-span-2"><FormLabel className="text-xs">Custom Voice & Style Constraints</FormLabel><FormControl><Textarea rows={3} {...field} placeholder="e.g. Speak like a luxury hotel concierge. Never say 'cool' or 'no problem'." /></FormControl></FormItem>
+                          <FormItem className="col-span-2"><FormLabel className="text-xs">Custom Voice & Style Constraints</FormLabel><FormControl><Textarea rows={3} {...field} placeholder="e.g. Never use emojis. Use industry terminology." /></FormControl></FormItem>
                         )} />
                       </div>
                     </section>
@@ -519,14 +581,17 @@ export default function AgentSettingsDialog({
                     <section className="space-y-6">
                       <div className="flex items-center gap-2 text-primary">
                         <Target className="h-4 w-4" />
-                        <h3 className="text-sm font-bold uppercase tracking-widest">Goals & Closing</h3>
+                        <h3 className="text-sm font-bold uppercase tracking-widest">Goals & Success</h3>
                       </div>
                       <div className="grid gap-6">
                         <FormField control={form.control} name="primaryGoal" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Primary Conversation Objective</FormLabel><FormControl><Textarea rows={3} {...field} placeholder="What is the AI's north star?" /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Primary Conversation Objective</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                         )} />
-                        <FormField control={form.control} name="closingMessage" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Default Closing Signature</FormLabel><FormControl><Textarea rows={2} {...field} placeholder="How should the AI sign off?" /></FormControl></FormItem>
+                        <FormField control={form.control} name="secondaryGoal" render={({ field }) => (
+                          <FormItem><FormLabel className="text-xs">Secondary Objective</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                        )} />
+                        <FormField control={form.control} name="closingTemplate" render={({ field }) => (
+                          <FormItem><FormLabel className="text-xs">Default Closing Signature</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                         )} />
                       </div>
                     </section>
@@ -534,45 +599,66 @@ export default function AgentSettingsDialog({
                     <section className="space-y-6">
                       <div className="flex items-center gap-2 text-primary">
                         <ShieldAlert className="h-4 w-4" />
-                        <h3 className="text-sm font-bold uppercase tracking-widest">Global Handoff & Escalation</h3>
+                        <h3 className="text-sm font-bold uppercase tracking-widest">Escalation & Handoff</h3>
                       </div>
                       <div className="space-y-4">
                         <FormField control={form.control} name="escalation.enabled" render={({ field }) => (
                           <FormItem className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
-                            <div className="space-y-0.5"><FormLabel className="text-sm font-bold">Enable Human Handoff</FormLabel><FormDescription className="text-xs">Allow the AI to automatically pause and alert your team.</FormDescription></div>
+                            <div className="space-y-0.5"><FormLabel className="text-sm font-bold">Enable Human Handoff</FormLabel></div>
                             <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                           </FormItem>
                         )} />
-                        
-                        {watchedValues.escalation?.enabled && (
-                          <div className="grid gap-4 pl-6 border-l-2 border-primary/20">
-                            <FormField control={form.control} name="escalation.notifyEmail" render={({ field }) => (
-                              <FormItem><FormLabel className="text-xs">Escalation Alert Email</FormLabel><FormControl><Input {...field} placeholder="team@yourcompany.com" /></FormControl></FormItem>
-                            )} />
-                            <div className="grid grid-cols-2 gap-4">
-                              <FormField control={form.control} name="escalation.frustration" render={({ field }) => (
-                                <FormItem className="flex items-center justify-between p-3 border rounded-lg bg-background/50"><FormLabel className="text-xs">Frustration Alerts</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
-                              )} />
-                              <FormField control={form.control} name="escalation.repeatedFailures" render={({ field }) => (
-                                <FormItem className="flex items-center justify-between p-3 border rounded-lg bg-background/50"><FormLabel className="text-xs">Unanswered Loops</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
-                              )} />
-                            </div>
-                          </div>
-                        )}
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField control={form.control} name="escalation.notifyEmail" render={({ field }) => (
+                            <FormItem className="col-span-2"><FormLabel className="text-xs">Escalation Alert Email</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                          )} />
+                          <FormField control={form.control} name="escalation.frustration" render={({ field }) => (
+                            <FormItem className="flex items-center justify-between p-3 border rounded-lg bg-background/50"><FormLabel className="text-xs">Frustration Alerts</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                          )} />
+                          <FormField control={form.control} name="escalation.repeatedFailures" render={({ field }) => (
+                            <FormItem className="flex items-center justify-between p-3 border rounded-lg bg-background/50"><FormLabel className="text-xs">Unanswered Loops</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                          )} />
+                          <FormField control={form.control} name="escalation.highValue.enabled" render={({ field }) => (
+                            <FormItem className="flex items-center justify-between p-3 border rounded-lg bg-background/50"><FormLabel className="text-xs">High-Value Escalation</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                          )} />
+                          <FormField control={form.control} name="escalation.highValue.threshold" render={({ field }) => (
+                            <FormItem><FormLabel className="text-xs">Threshold ($)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>
+                          )} />
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="space-y-6">
+                      <div className="flex items-center gap-2 text-primary">
+                        <ShieldCheck className="h-4 w-4" />
+                        <h3 className="text-sm font-bold uppercase tracking-widest">Safety & Ethics</h3>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        <FormField control={form.control} name="safety.neverPretendHuman" render={({ field }) => (
+                          <FormItem className="flex items-center justify-between p-3 border rounded-lg bg-background/50"><FormLabel className="text-xs">Never claim to be human</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                        )} />
+                        <FormField control={form.control} name="safety.askClarifyingWhenUnsure" render={({ field }) => (
+                          <FormItem className="flex items-center justify-between p-3 border rounded-lg bg-background/50"><FormLabel className="text-xs">Ask clarifying questions when unsure</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                        )} />
+                        <FormField control={form.control} name="safety.offerHumanWhenUnsure" render={({ field }) => (
+                          <FormItem className="flex items-center justify-between p-3 border rounded-lg bg-background/50"><FormLabel className="text-xs">Offer human handoff when unsure</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                        )} />
+                        <FormField control={form.control} name="safety.avoidHallucination" render={({ field }) => (
+                          <FormItem className="flex items-center justify-between p-3 border rounded-lg bg-background/50"><FormLabel className="text-xs">Avoid unsupported answers</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                        )} />
                       </div>
                     </section>
                   </div>
                 )}
 
                 {activeTab === 'knowledge' && (
-                  <div className="space-y-12 animate-in fade-in duration-300">
+                  <div className="space-y-16 animate-in fade-in duration-300">
                     <Card className="bg-primary/5 border-primary/20 border-2 overflow-hidden">
                       <CardHeader className="py-4 text-left">
                         <CardTitle className="text-sm font-black uppercase flex items-center gap-2 text-primary">
-                          <Sparkles className="h-4 w-4" /> 
-                          Knowledge Autopilot
+                          <Sparkles className="h-4 w-4" /> Knowledge Autopilot
                         </CardTitle>
-                        <CardDescription className="text-xs">Extract your business info automatically from your website.</CardDescription>
+                        <CardDescription className="text-xs">This scans your site and drafts business knowledge automatically. Review before using in production.</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="flex gap-3">
@@ -599,24 +685,56 @@ export default function AgentSettingsDialog({
                         <FormField control={form.control} name="businessContext.description" render={({ field }) => (
                           <FormItem className="col-span-2"><FormLabel className="text-xs">What You Actually Do</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
                         )} />
-                        <FormField control={form.control} name="businessContext.customers" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Who Your Customers Are</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                        <FormField control={form.control} name="businessContext.targetAudience" render={({ field }) => (
+                          <FormItem className="col-span-2"><FormLabel className="text-xs">Ideal Customer Profile</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                         )} />
-                        <FormField control={form.control} name="businessContext.hours" render={({ field }) => (
+                        <FormField control={form.control} name="businessContext.businessHours" render={({ field }) => (
                           <FormItem><FormLabel className="text-xs">Business Hours</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="businessContext.minOrder" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Minimum Order</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Minimum Order / Lead Time</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                         )} />
-                        <FormField control={form.control} name="businessContext.turnaround" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Turnaround Time</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
-                        )} />
-                        <FormField control={form.control} name="businessContext.differentiation" render={({ field }) => (
-                          <FormItem className="col-span-2"><FormLabel className="text-xs">What Makes You Different</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                        <FormField control={form.control} name="businessContext.differentiators" render={({ field }) => (
+                          <FormItem className="col-span-2"><FormLabel className="text-xs">Key Differentiators (Why Us?)</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="businessContext.forbiddenTopics" render={({ field }) => (
-                          <FormItem className="col-span-2"><FormLabel className="text-xs">Forbidden Topics</FormLabel><FormControl><Input {...field} placeholder="e.g. pricing discounts, competitor names" /></FormControl></FormItem>
+                          <FormItem className="col-span-2"><FormLabel className="text-xs">Strict Forbidden Topics</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                         )} />
+                      </div>
+                    </section>
+
+                    <section className="space-y-6">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-primary">
+                          <CheckCircle2 className="h-4 w-4" />
+                          <h3 className="text-sm font-bold uppercase tracking-widest">Connected Libraries</h3>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Choose which libraries or help centers this agent can use as grounding sources.</p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {helpCenters.map(hc => (
+                          <div key={hc.id} className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02] hover:bg-white/[0.04] transition-colors group">
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><BookOpen className="h-5 w-5" /></div>
+                              <div>
+                                <p className="text-sm font-bold">{hc.name}</p>
+                                <Badge variant="outline" className="text-[9px] uppercase font-black px-1 h-4 mt-1">{hc.visibility}</Badge>
+                              </div>
+                            </div>
+                            <Checkbox 
+                              checked={watchedValues.allowedHelpCenterIds?.includes(hc.id)} 
+                              onCheckedChange={(checked) => {
+                                const current = watchedValues.allowedHelpCenterIds || [];
+                                form.setValue('allowedHelpCenterIds', checked ? [...current, hc.id] : current.filter(id => id !== hc.id));
+                              }} 
+                            />
+                          </div>
+                        ))}
+                        {helpCenters.length === 0 && (
+                          <div className="col-span-full py-8 text-center border-2 border-dashed rounded-xl opacity-50">
+                            <p className="text-sm italic">No libraries available in this Hub.</p>
+                          </div>
+                        )}
                       </div>
                     </section>
 
@@ -632,6 +750,8 @@ export default function AgentSettingsDialog({
                           <TabsTrigger value="faqs">FAQs</TabsTrigger>
                           <TabsTrigger value="objections">Objections</TabsTrigger>
                           <TabsTrigger value="qualification">Qualification</TabsTrigger>
+                          <TabsTrigger value="policies">Policies</TabsTrigger>
+                          <TabsTrigger value="scripts">Scripts</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="products" className="space-y-4">
@@ -641,57 +761,73 @@ export default function AgentSettingsDialog({
                               <Button type="button" variant="ghost" size="icon" onClick={() => removeProduct(i)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"><Trash2 className="h-3 w-3" /></Button>
                               <div className="grid grid-cols-2 gap-4">
                                 <Input placeholder="Product/Service Name" {...form.register(`products.${i}.name`)} className="bg-background font-bold" />
-                                <Input placeholder="Price/Starting at..." {...form.register(`products.${i}.priceRange`)} className="bg-background" />
+                                <Input placeholder="Price/Range" {...form.register(`products.${i}.priceRange`)} className="bg-background" />
                               </div>
                               <Textarea placeholder="Full Description" {...form.register(`products.${i}.description`)} rows={2} className="bg-background" />
-                              <Input placeholder="When to recommend (e.g. customer mentions scalability)" {...form.register(`products.${i}.recommendationTriggers`)} className="bg-background text-xs italic" />
+                              <Input placeholder="When should the AI recommend this?" {...form.register(`products.${i}.recommendationTriggers`)} className="bg-background text-xs italic" />
                             </div>
                           ))}
                         </TabsContent>
 
                         <TabsContent value="faqs" className="space-y-4">
-                          <div className="flex justify-end"><Button type="button" size="sm" onClick={() => appendFaq({ id: `f-${Date.now()}`, question: '', answer: '' })}>Add FAQ Pair</Button></div>
+                          <div className="flex justify-end"><Button type="button" size="sm" onClick={() => appendFaq({ id: `f-${Date.now()}`, question: '', answer: '' })}>Add FAQ</Button></div>
                           {faqFields.map((f, i) => (
                             <div key={f.id} className="p-4 border rounded-xl bg-white/[0.02] space-y-3 relative group">
                               <Button type="button" variant="ghost" size="icon" onClick={() => removeFaq(i)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"><Trash2 className="h-3 w-3" /></Button>
-                              <Input placeholder="Frequent Question" {...form.register(`faqs.${i}.question`)} className="bg-background font-bold" />
-                              <Textarea placeholder="Approved Answer" {...form.register(`faqs.${i}.answer`)} rows={2} className="bg-background" />
+                              <Input placeholder="Customer asks" {...form.register(`faqs.${i}.question`)} className="bg-background font-bold" />
+                              <Textarea placeholder="Answer" {...form.register(`faqs.${i}.answer`)} rows={2} className="bg-background" />
                             </div>
                           ))}
                         </TabsContent>
 
                         <TabsContent value="objections" className="space-y-4">
-                          <div className="flex justify-end"><Button type="button" size="sm" onClick={() => appendObjection({ id: `o-${Date.now()}`, objection: '', response: '' })}>Add Objection Handling</Button></div>
+                          <div className="flex justify-end"><Button type="button" size="sm" onClick={() => appendObjection({ id: `o-${Date.now()}`, objection: '', response: '' })}>Add Objection</Button></div>
                           {objectionFields.map((f, i) => (
                             <div key={f.id} className="p-4 border rounded-xl bg-white/[0.02] space-y-3 relative group">
                               <Button type="button" variant="ghost" size="icon" onClick={() => removeObjection(i)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"><Trash2 className="h-3 w-3" /></Button>
-                              <Input placeholder="Common Objection (e.g. Too expensive)" {...form.register(`objections.${i}.objection`)} className="bg-background font-bold" />
-                              <Textarea placeholder="Strategic Rebuttal" {...form.register(`objections.${i}.response`)} rows={2} className="bg-background" />
+                              <Input placeholder="Objection" {...form.register(`objections.${i}.objection`)} className="bg-background font-bold" />
+                              <Textarea placeholder="Best Response" {...form.register(`objections.${i}.response`)} rows={2} className="bg-background" />
                             </div>
                           ))}
                         </TabsContent>
 
                         <TabsContent value="qualification" className="space-y-4">
-                          <div className="flex justify-end"><Button type="button" size="sm" onClick={() => appendQualification({ id: `q-${Date.now()}`, question: '', note: '' })}>Add Data Capture Point</Button></div>
+                          <div className="flex justify-end"><Button type="button" size="sm" onClick={() => appendQualification({ id: `q-${Date.now()}`, question: '', note: '' })}>Add Point</Button></div>
                           {qualificationFields.map((f, i) => (
                             <div key={f.id} className="p-4 border rounded-xl bg-white/[0.02] space-y-3 relative group">
                               <Button type="button" variant="ghost" size="icon" onClick={() => removeQualification(i)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"><Trash2 className="h-3 w-3" /></Button>
-                              <Input placeholder="Question to ask user" {...form.register(`qualificationFlow.${i}.question`)} className="bg-background font-bold" />
-                              <Input placeholder="Note (why it matters)" {...form.register(`qualificationFlow.${i}.note`)} className="bg-background text-xs" />
+                              <Input placeholder="Question" {...form.register(`qualificationFlow.${i}.question`)} className="bg-background font-bold" />
+                              <Input placeholder="Why this matters" {...form.register(`qualificationFlow.${i}.note`)} className="bg-background text-xs" />
+                            </div>
+                          ))}
+                          <Separator className="my-6" />
+                          <FormField control={form.control} name="pricingPolicy" render={({ field }) => (
+                            <FormItem><FormLabel className="text-xs font-bold uppercase tracking-wider">Pricing Guidance</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
+                          )} />
+                        </TabsContent>
+
+                        <TabsContent value="policies" className="space-y-4">
+                          <div className="flex justify-end"><Button type="button" size="sm" onClick={() => appendPolicy({ id: `pol-${Date.now()}`, title: '', content: '' })}>Add Policy</Button></div>
+                          {policyFields.map((f, i) => (
+                            <div key={f.id} className="p-4 border rounded-xl bg-white/[0.02] space-y-3 relative group">
+                              <Button type="button" variant="ghost" size="icon" onClick={() => removePolicy(i)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"><Trash2 className="h-3 w-3" /></Button>
+                              <Input placeholder="Policy Name" {...form.register(`policies.${i}.title`)} className="bg-background font-bold" />
+                              <Textarea placeholder="Policy Details" {...form.register(`policies.${i}.content`)} rows={3} className="bg-background" />
+                            </div>
+                          ))}
+                        </TabsContent>
+
+                        <TabsContent value="scripts" className="space-y-4">
+                          <div className="flex justify-end"><Button type="button" size="sm" onClick={() => appendScript({ id: `scr-${Date.now()}`, title: '', content: '' })}>Add Script</Button></div>
+                          {scriptFields.map((f, i) => (
+                            <div key={f.id} className="p-4 border rounded-xl bg-white/[0.02] space-y-3 relative group">
+                              <Button type="button" variant="ghost" size="icon" onClick={() => removeScript(i)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"><Trash2 className="h-3 w-3" /></Button>
+                              <Input placeholder="Script Name" {...form.register(`scripts.${i}.title`)} className="bg-background font-bold" />
+                              <Textarea placeholder="Approved Script / Messaging" {...form.register(`scripts.${i}.content`)} rows={3} className="bg-background" />
                             </div>
                           ))}
                         </TabsContent>
                       </Tabs>
-                    </section>
-
-                    <section className="space-y-6">
-                      <div className="flex items-center gap-2 text-primary">
-                        <AlertCircle className="h-4 w-4" />
-                        <h3 className="text-sm font-bold uppercase tracking-widest">Pricing Policy</h3>
-                      </div>
-                      <FormField control={form.control} name="pricingPolicy" render={({ field }) => (
-                        <FormItem><FormControl><Textarea rows={4} placeholder="Guidelines for sharing pricing, discounts, etc." {...field} /></FormControl></FormItem>
-                      )} />
                     </section>
                   </div>
                 )}
@@ -732,9 +868,7 @@ export default function AgentSettingsDialog({
                       
                       <TabsContent value="web" className="space-y-10">
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
-                          <div className="space-y-0.5">
-                            <Label className="text-sm font-bold">Enable Web Chat</Label>
-                          </div>
+                          <Label className="text-sm font-bold">Enable Web Chat</Label>
                           <FormField control={form.control} name="channelConfig.web.enabled" render={({ field }) => (
                             <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                           )} />
