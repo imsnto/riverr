@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -15,87 +14,79 @@ import {
   SearchSupportResult 
 } from '@/lib/agent';
 import { resolveRuntimeBot } from '@/lib/bot-runtime';
-import { getTypesenseSearch } from '@/lib/typesense';
-import { ChatMessage, HelpCenter, HelpCenterCollection, HelpCenterArticle } from '@/lib/data';
+import { ChatMessage } from '@/lib/data';
 import { agentResponse } from '@/ai/flows/agent-response';
 import admin from 'firebase-admin';
 import { getMessagingProvider } from '@/lib/comms/providerFactory';
-import { generateEmbedding } from '@/lib/brain/embed';
+import { generateQueryEmbedding } from '@/lib/brain/embed';
 import { crawlWebsiteKnowledge } from '@/ai/flows/crawl-website-knowledge';
 
-const typesense = getTypesenseSearch();
-
 /**
- * Searches the Help Center documentation using Typesense.
+ * Searches the Help Center documentation using Firestore Vector Search.
+ * Replaces Typesense-based RAG.
  */
 async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
-  const { hubId, allowedHelpCenterIds, userId, query, topK = 10 } = params;
+  const { hubId, allowedHelpCenterIds, userId, query, topK = 8 } = params;
 
-  if (!hubId || !allowedHelpCenterIds?.length) return { chunks: [] };
+  if (!hubId || !query?.trim()) return { chunks: [] };
 
-  const safeIds = allowedHelpCenterIds
-    .filter(Boolean)
-    .map((id) => String(id).replace(/'/g, "\\'"));
-
-  if (!safeIds.length) return { chunks: [] };
-
-  const searchParameters = {
-    q: query,
-    query_by: 'text,title,tags,headingPath',
-    query_by_weights: '4,2,2,1',
-    per_page: topK,
-    sort_by: '_text_match:desc,sourceUpdatedAt:desc',
-  };
-
-  const hcFilter = safeIds.map(id => `'${id}'`).join(',');
-  const baseFilter = `type:='doc' && hubId:='${hubId}' && helpCenterId:=[${hcFilter}] && status:='published'`;
-
-  const publicFilter = `${baseFilter} && isPublic:=true`;
-  const publicSearchRequest = { ...searchParameters, filter_by: publicFilter };
-
-  let privateSearchRequest = null;
-  if (userId) {
-    const privateFilter = `${baseFilter} && isPublic:=false && allowedUserIds:=['${String(userId).replace(/'/g, "\\'")}']`;
-    privateSearchRequest = { ...searchParameters, filter_by: privateFilter };
-  }
+  const queryVector = await generateQueryEmbedding(query);
+  if (!queryVector) return { chunks: [] };
 
   try {
-    const [publicResults, privateResults] = await Promise.all([
-      typesense.collections('memory_nodes').documents().search(publicSearchRequest),
-      privateSearchRequest
-        ? typesense.collections('memory_nodes').documents().search(privateSearchRequest)
-        : Promise.resolve(null),
-    ]);
+    const coll = adminDB.collection('brain_chunks');
+    
+    // Perform vector search against the chunks collection
+    const vectorQuery = (coll as any)
+      .where('hubId', '==', hubId)
+      .where('sourceType', 'in', ['help_center_article', 'website', 'pdf', 'manual_note'])
+      .where('status', '==', 'active')
+      .findNearest({
+        vectorField: 'embedding',
+        queryVector: admin.firestore.FieldValue.vector(queryVector),
+        limit: Math.min(topK * 3, 30), // Fetch more for filtered intersection
+        distanceMeasure: 'DOT_PRODUCT',
+      });
 
-    const hits = [...(publicResults.hits || []), ...(privateResults?.hits || [])];
-    const uniqueHits = Array.from(new Map(hits.map((item: any) => [item.document.id, item])).values());
+    const snap = await vectorQuery.get();
 
-    const chunks: HelpChunk[] = uniqueHits
-      .map((hit: any) => {
-        const doc = hit.document as any;
+    const chunks = snap.docs
+      .map((doc: any) => {
+        const data = doc.data();
         return {
-          chunkText: doc.text,
-          score: hit.text_match_info?.score ? parseFloat(hit.text_match_info.score) / 1000 : 0,
-          articleId: doc.sourceId,
-          title: doc.title,
-          url: doc.url,
-          helpCenterIds: doc.helpCenterIds || [doc.helpCenterId],
-          updatedAt: new Date(doc.sourceUpdatedAt).toISOString(),
-          articleType: doc.articleType,
-          articleContent: doc.content || null,
+          chunkText: data.text,
+          score: typeof doc.distance === 'number' ? 1 - doc.distance : 0.7,
+          articleId: data.sourceId,
+          title: data.title,
+          url: data.url || '',
+          helpCenterIds: data.helpCenterId ? [data.helpCenterId] : [],
+          updatedAt: data.updatedAt,
+          articleType: data.sourceType === 'help_center_article' ? 'article' : 'snippet',
+          articleContent: null,
+          visibility: data.visibility || 'public',
+          allowedUserIds: data.allowedUserIds || [],
         };
       })
-      .sort((a, b) => b.score - a.score)
+      .filter((c: any) => {
+        // Filter by connected library IDs
+        const hcOk = !allowedHelpCenterIds?.length || 
+                     c.helpCenterIds.length === 0 || 
+                     c.helpCenterIds.some((id: string) => allowedHelpCenterIds.includes(id));
+
+        // Filter by access control
+        const visibilityOk = c.visibility === 'public' || 
+                             c.visibility === 'internal' || 
+                             (c.visibility === 'private' && userId && c.allowedUserIds.includes(userId));
+
+        return hcOk && visibilityOk;
+      })
+      .sort((a: any, b: any) => b.score - a.score)
       .slice(0, topK);
 
-    return { chunks };
-  } catch (error: any) {
-    if (error.httpStatus === 404) {
-      console.warn("Typesense search failed: 'memory_nodes' collection not found.");
-      return { chunks: [] };
-    }
-    console.error('Typesense search failed:', error);
-    throw error;
+    return { chunks: chunks as HelpChunk[] };
+  } catch (error) {
+    console.error('Firestore vector search failed in searchHelpCenter:', error);
+    return { chunks: [] };
   }
 }
 
@@ -104,10 +95,10 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
  */
 async function searchSupport(params: SearchSupportParams): Promise<SearchSupportResult> {
   const { hubId, query, topK = 5 } = params;
-  if (!hubId || !query) return { intents: [] };
+  if (!hubId || !query?.trim()) return { intents: [] };
 
-  const queryEmbedding = await generateEmbedding(query);
-  if (!queryEmbedding) return { intents: [] };
+  const queryVector = await generateQueryEmbedding(query);
+  if (!queryVector) return { intents: [] };
 
   try {
     const coll = adminDB.collection('brain_distilled_qas');
@@ -117,7 +108,7 @@ async function searchSupport(params: SearchSupportParams): Promise<SearchSupport
       .where('status', '==', 'approved')
       .findNearest({
         vectorField: 'embedding',
-        queryVector: admin.firestore.FieldValue.vector(queryEmbedding),
+        queryVector: admin.firestore.FieldValue.vector(queryVector),
         limit: topK,
         distanceMeasure: 'DOT_PRODUCT',
       });
@@ -128,8 +119,10 @@ async function searchSupport(params: SearchSupportParams): Promise<SearchSupport
       const data = doc.data();
       return {
         id: doc.id,
-        ...data,
-        _searchScore: doc.distance ? 1 - doc.distance : 0.8,
+        intentKey: data.intentKey || doc.id,
+        title: data.question,
+        description: data.answer,
+        _searchScore: typeof doc.distance === 'number' ? 1 - doc.distance : 0.8,
       };
     });
 
@@ -147,6 +140,7 @@ export async function invokeAgent(args: {
 }) {
   let { bot, conversation } = args;
 
+  // ENSURE we resolve the full runtime bot (Stage -> Actor logic)
   const resolved = bot?.id ? await resolveRuntimeBot(bot.id) : null;
   const effectiveBot = resolved?.effectiveBot || bot;
 
@@ -228,8 +222,7 @@ export async function invokeAgent(args: {
     handoffKeywords:
       effectiveBot.channelConfig?.web?.handoffKeywords ||
       effectiveBot.automations?.handoffKeywords ||
-      effectiveBot.channelConfig?.sms?.escalation?.keywords ||
-      [],
+      ['human', 'agent', 'person', 'representative', 'support'],
     quickReplies:
       effectiveBot.automations?.quickReplies || [],
     flow: effectiveBot.flow,
@@ -284,16 +277,18 @@ export async function createConversationAndLinkCrm(data: {
     spaceId,
     visitorId: data.visitorId,
     assigneeId: data.assigneeId,
-    status: data.convoStatus || 'bot',
+    status: data.convoStatus || 'ai_active',
     state: 'ai_active',
-    channel: 'webchat', // Ensure channel is set for correct RAG/Comms routing
+    channel: 'webchat', 
     lastMessage: data.lastMessage,
     lastMessageAt: now,
     lastMessageAuthor: data.lastMessageAuthor,
     createdAt: now,
     updatedAt: now,
     ownerType: 'hub',
-    sharedWithTeam: true
+    sharedWithTeam: true,
+    aiAttempted: false,
+    aiResolved: false,
   });
 
   return { id: convoRef.id, ...data, spaceId };
@@ -322,6 +317,7 @@ export async function ensureConversationCrmLinkedAction(conversationId: string) 
 
 export async function reindexArticleAction(articleId: string) {
   console.log(`Triggering reindex for article: ${articleId}`);
+  // In a real implementation, this would call the indexer with the article data
 }
 
 export async function searchHelpCenterAction(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {

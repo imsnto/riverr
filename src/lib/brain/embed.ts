@@ -1,18 +1,16 @@
-
 import { VertexAI } from '@google-cloud/vertexai';
 
-// Fallback to the known project ID for Firebase Studio environment if env vars are missing
 const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || 'timeflow-6i3eo';
 const location = process.env.GOOGLE_CLOUD_LOCATION || process.env.VERTEX_LOCATION || 'us-central1';
 
-// Vertex AI text-embedding-004 is recommended for high-fidelity 3072-dim vectors
-const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'text-embedding-004';
+// Standardized model for high-fidelity retrieval
+const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'gemini-embedding-2-preview';
+
+// Firestore vector search supports a maximum of 2048 dimensions.
+const EMBEDDING_DIM = 2048;
 
 let vertexAIInstance: VertexAI | null = null;
 
-/**
- * Lazily initializes the VertexAI instance to avoid initialization errors during module evaluation.
- */
 function getVertexAI() {
   if (!vertexAIInstance) {
     vertexAIInstance = new VertexAI({
@@ -24,10 +22,10 @@ function getVertexAI() {
 }
 
 /**
- * Generates a high-dimensional vector embedding for the given text.
- * Standardized to 768 dimensions to match the Typesense index configuration.
+ * Generates an embedding for documentation content (articles, PDFs, etc).
+ * Uses taskType: RETRIEVAL_DOCUMENT for optimal indexing.
  */
-export async function generateEmbedding(text: string): Promise<number[] | null> {
+export async function generateDocumentEmbedding(text: string): Promise<number[] | null> {
   if (!text || !text.trim()) return null;
 
   try {
@@ -42,15 +40,54 @@ export async function generateEmbedding(text: string): Promise<number[] | null> 
         parts: [{ text: text.trim() }],
       },
       config: {
-        // MATCH TYPESENSE SCHEMA: ensure dimensions align with the search index
-        outputDimensionality: 768,
+        taskType: 'RETRIEVAL_DOCUMENT',
+        outputDimensionality: EMBEDDING_DIM,
       }
     });
 
     const values = result.embedding?.values;
     return values && values.length > 0 ? (values as number[]) : null;
   } catch (error) {
-    console.error('generateEmbedding failed:', error);
+    console.error('generateDocumentEmbedding failed:', error);
     return null;
   }
+}
+
+/**
+ * Generates an embedding for a user search query.
+ * Uses taskType: RETRIEVAL_QUERY for optimal retrieval performance.
+ */
+export async function generateQueryEmbedding(text: string): Promise<number[] | null> {
+  if (!text || !text.trim()) return null;
+
+  try {
+    const vertexAI = getVertexAI();
+    const embeddingModel = vertexAI.getGenerativeModel({
+      model: EMBEDDING_MODEL,
+    });
+
+    const result = await embeddingModel.embedContent({
+      content: {
+        role: 'user',
+        parts: [{ text: text.trim() }],
+      },
+      config: {
+        taskType: 'RETRIEVAL_QUERY',
+        outputDimensionality: EMBEDDING_DIM,
+      }
+    });
+
+    const values = result.embedding?.values;
+    return values && values.length > 0 ? (values as number[]) : null;
+  } catch (error) {
+    console.error('generateQueryEmbedding failed:', error);
+    return null;
+  }
+}
+
+/**
+ * @deprecated Use generateDocumentEmbedding or generateQueryEmbedding
+ */
+export async function generateEmbedding(text: string): Promise<number[] | null> {
+    return generateDocumentEmbedding(text);
 }

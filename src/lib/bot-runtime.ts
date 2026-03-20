@@ -65,9 +65,11 @@ function mergeStageAndActor(widget: Bot, actor?: Bot | null): ResolvedRuntimeBot
   const allowedHelpCenterIds =
     actor?.allowedHelpCenterIds || [];
 
+  // THE ACTOR (AGENT) HUB AND KNOWLEDGE IS WHAT MATTERS FOR GROUNDING
   const effectiveBot: Bot = {
     ...widget,
     ...(actor || {}),
+    hubId: actor?.hubId || widget.hubId, // CRITICAL: Use actor's hub for retrieval
     type: actor?.type || widget.type,
     assignedAgentId: widget.assignedAgentId || null,
     styleSettings: widget.styleSettings,

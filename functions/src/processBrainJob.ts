@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
-import { generateEmbedding } from '../../src/lib/brain/embed';
+import { generateDocumentEmbedding } from '../../src/lib/brain/embed';
 import { distillSupportIntent } from '../../src/ai/flows/distill-support-intent';
 
 if (!admin.apps.length) admin.initializeApp();
@@ -164,8 +164,9 @@ export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (ev
             continue;
           }
 
-          const embeddingText = `Question: ${qa.customerQuestion}\nAnswer: ${qa.resolution}`;
-          const embedding = await generateEmbedding(embeddingText);
+          const combinedText = `Question: ${qa.customerQuestion}\nAnswer: ${qa.resolution}`;
+          // USE DOCUMENT EMBEDDING (2048-dim) FOR LEARNED QA
+          const embedding = await generateDocumentEmbedding(combinedText);
 
           if (embedding) {
             const qaRef = db.collection('brain_distilled_qas').doc();
@@ -177,14 +178,18 @@ export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (ev
               intentKey: qa.intentKey,
               question: qa.customerQuestion,
               answer: qa.resolution,
+              combinedText,
               confidence: 0.8,
               requiredContext: qa.requiredContext || [],
               requiresHumanIf: qa.safetyCriteria?.requiresHumanIf || [],
               mustNot: qa.safetyCriteria?.mustNot || [],
-              // Store as a Firestore Vector type for semantic search
-              embedding: admin.firestore.FieldValue.vector(embedding),
+              // Store as a Firestore Vector type
+              embedding: (admin.firestore.FieldValue as any).vector(embedding),
+              embeddingModel: process.env.EMBEDDING_MODEL || 'gemini-embedding-2-preview',
+              embeddingDim: 2048,
               status: 'approved',
               createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
           }
 
