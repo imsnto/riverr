@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -36,7 +35,6 @@ import {
   Phone, 
   Mail, 
   Search,
-  Globe2,
   Loader2,
   Sparkles,
   UserCheck,
@@ -47,6 +45,8 @@ import {
   Target,
   FileText,
   BrainCircuit,
+  Users,
+  Palette
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -207,6 +207,7 @@ interface AgentSettingsDialogProps {
   onSave: (data: BotData | Omit<BotData, 'id' | 'hubId'>) => void;
   appUser: User | null;
   helpCenters: HelpCenter[];
+  allUsers: User[];
 }
 
 export default function AgentSettingsDialog({
@@ -216,6 +217,7 @@ export default function AgentSettingsDialog({
   onSave,
   appUser,
   helpCenters,
+  allUsers,
 }: AgentSettingsDialogProps) {
   const [activeTab, setActiveTab] = useState('general');
   const [activeChannel, setActiveChannel] = useState('web');
@@ -230,7 +232,7 @@ export default function AgentSettingsDialog({
       internalName: 'Support Agent V1',
       tone: 'friendly',
       primaryGoal: 'Assist customers with their inquiries using the provided knowledge base.',
-      escalation: { enabled: true, frustration: true, repeatedFailures: true, complexRequests: true, highValue: { enabled: false, threshold: 1000 } },
+      escalation: { enabled: true, frustration: true, repeatedFailures: true, complexRequests: true, highValue: { enabled: false, threshold: 1000 }, notifyEmail: '' },
       businessContext: {},
       channelConfig: {
         web: { enabled: false, leadCapture: { timing: 'after', name: true, email: true, phone: false }, quickReplies: [] },
@@ -276,7 +278,40 @@ export default function AgentSettingsDialog({
   };
 
   const onSubmit = (values: AgentSettingsFormValues) => {
-    onSave(values as any);
+    const webCapture = values.channelConfig?.web?.leadCapture;
+
+    const payload: BotData | Omit<BotData, 'id' | 'hubId'> = {
+      ...(bot || {}),
+      ...values,
+      type: 'agent',
+      identityCapture: webCapture
+        ? {
+            enabled: true,
+            required: false,
+            timing: webCapture.timing,
+            fields: {
+              name: !!webCapture.name,
+              email: !!webCapture.email,
+              phone: !!webCapture.phone,
+            },
+          }
+        : {
+            enabled: false,
+            required: false,
+            timing: 'after',
+            fields: {
+              name: true,
+              email: true,
+              phone: false,
+            },
+          },
+      welcomeMessage:
+        values.channelConfig?.web?.greeting ||
+        values.name ||
+        'Hi! How can I help?',
+    } as any;
+
+    onSave(payload);
     onOpenChange(false);
   };
 
