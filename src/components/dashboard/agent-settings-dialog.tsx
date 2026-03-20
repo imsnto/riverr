@@ -341,11 +341,17 @@ export default function AgentSettingsDialog({
                       <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Escalation Triggers</h3>
                       <div className="grid gap-4">
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
-                          <Label className="text-xs font-bold">Frustration Detection</Label>
+                          <div className="space-y-0.5">
+                            <Label className="text-sm font-bold">Frustration Detection</Label>
+                            <p className="text-xs text-muted-foreground">Escalate if customer uses angry language.</p>
+                          </div>
                           <Switch checked={watchedValues.escalationRules?.frustrationEnabled} onCheckedChange={(v) => form.setValue('escalationRules.frustrationEnabled', v)} />
                         </div>
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
-                          <Label className="text-xs font-bold">Complexity Threshold</Label>
+                          <div className="space-y-0.5">
+                            <Label className="text-sm font-bold">Complexity Threshold</Label>
+                            <p className="text-xs text-muted-foreground">Escalate if question isn't in knowledge base after 2 tries.</p>
+                          </div>
                           <Switch checked={watchedValues.escalationRules?.complexRequestEnabled} onCheckedChange={(v) => form.setValue('escalationRules.complexRequestEnabled', v)} />
                         </div>
                       </div>
@@ -356,15 +362,49 @@ export default function AgentSettingsDialog({
                 {activeTab === 'knowledge' && (
                   <div className="space-y-12 animate-in fade-in duration-300">
                     <Card className="bg-primary/5 border-primary/20 border-2 overflow-hidden">
-                      <CardHeader className="py-4"><CardTitle className="text-sm font-black uppercase flex items-center gap-2 text-primary"><Sparkles className="h-4 w-4" /> Autopilot</CardTitle></CardHeader>
-                      <CardContent><div className="flex gap-3"><Input placeholder="riverr.app" value={crawlUrl} onChange={e => setCrawlUrl(e.target.value)} /><Button onClick={handleCrawlWebsite} disabled={isCrawling}>{isCrawling ? <Loader2 className="animate-spin h-4 w-4" /> : 'Crawl'}</Button></div></CardContent>
+                      <CardHeader className="py-4">
+                        <CardTitle className="text-sm font-black uppercase flex items-center gap-2 text-primary">
+                          <Sparkles className="h-4 w-4" /> 
+                          Knowledge Autopilot
+                        </CardTitle>
+                        <CardDescription className="text-xs">Extract your business info automatically from your website.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex gap-3">
+                          <Input placeholder="e.g. riverr.app" value={crawlUrl} onChange={e => setCrawlUrl(e.target.value)} className="bg-background" />
+                          <Button onClick={handleCrawlWebsite} disabled={isCrawling} className="shrink-0 font-bold">
+                            {isCrawling ? <Loader2 className="animate-spin h-4 w-4" /> : 'Start Crawl'}
+                          </Button>
+                        </div>
+                      </CardContent>
                     </Card>
 
                     <section className="space-y-6">
-                      <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Context</h3>
-                      <FormField control={form.control} name="businessContext.whatYouDo" render={({ field }) => (
-                        <FormItem><FormLabel className="text-xs">What you do</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl></FormItem>
-                      )} />
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Business Context</h3>
+                      <div className="grid gap-6">
+                        <FormField control={form.control} name="businessContext.whatYouDo" render={({ field }) => (
+                          <FormItem><FormLabel className="text-xs">What you do (Value Proposition)</FormLabel><FormControl><Textarea rows={4} {...field} placeholder="Explain your business simply..." /></FormControl></FormItem>
+                        )} />
+                        <FormField control={form.control} name="businessContext.whoYourCustomersAre" render={({ field }) => (
+                          <FormItem><FormLabel className="text-xs">Target Audience</FormLabel><FormControl><Input {...field} placeholder="e.g. B2B SaaS Founders" /></FormControl></FormItem>
+                        )} />
+                      </div>
+                    </section>
+
+                    <section className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Products & FAQs</h3>
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendFaq({ id: `faq-${Date.now()}`, question: '', answer: '' })} className="h-8 text-[10px] font-black">Add FAQ</Button>
+                      </div>
+                      <div className="space-y-4">
+                        {faqFields.map((field, idx) => (
+                          <div key={field.id} className="p-4 border rounded-xl bg-white/[0.02] space-y-3 relative group">
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removeFaq(idx)} className="h-6 w-6 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="h-3 w-3" /></Button>
+                            <Input placeholder="Question" {...form.register(`faqs.${idx}.question`)} className="bg-background h-9 text-xs font-bold" />
+                            <Textarea placeholder="Answer" {...form.register(`faqs.${idx}.answer`)} rows={2} className="bg-background text-xs" />
+                          </div>
+                        ))}
+                      </div>
                     </section>
                   </div>
                 )}
@@ -372,40 +412,61 @@ export default function AgentSettingsDialog({
                 {activeTab === 'channels' && (
                   <div className="space-y-12 animate-in fade-in duration-300">
                     <Tabs value={activeChannel} onValueChange={setActiveChannel}>
-                      <TabsList className="bg-white/5"><TabsTrigger value="web">Web</TabsTrigger><TabsTrigger value="sms">SMS</TabsTrigger><TabsTrigger value="phone">Phone</TabsTrigger><TabsTrigger value="email">Email</TabsTrigger></TabsList>
+                      <TabsList className="bg-white/5 border border-white/10 h-11 p-1">
+                        <TabsTrigger value="web" className="text-xs font-bold">Web Chat</TabsTrigger>
+                        <TabsTrigger value="sms" className="text-xs font-bold">SMS</TabsTrigger>
+                        <TabsTrigger value="phone" className="text-xs font-bold">Voice</TabsTrigger>
+                        <TabsTrigger value="email" className="text-xs font-bold">Email</TabsTrigger>
+                      </TabsList>
                       
-                      <TabsContent value="web" className="space-y-6 mt-6">
-                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable Web Channel</Label><Switch checked={watchedValues.channelConfig?.web?.enabled} onCheckedChange={v => form.setValue('channelConfig.web.enabled', v)} /></div>
+                      <TabsContent value="web" className="space-y-8 mt-10">
+                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable Web AI</Label><Switch checked={watchedValues.channelConfig?.web?.enabled} onCheckedChange={v => form.setValue('channelConfig.web.enabled', v)} /></div>
                         {watchedValues.channelConfig?.web?.enabled && (
-                          <div className="space-y-6 pl-4 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
-                            <FormField control={form.control} name="channelConfig.web.greeting.text" render={({ field }) => (<FormItem><FormLabel className="text-xs">Greeting Script</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>)} />
+                          <div className="space-y-8 pl-6 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
+                            <FormField control={form.control} name="channelConfig.web.greeting.text" render={({ field }) => (
+                              <FormItem><FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Web Greeting Script</FormLabel><FormControl><Textarea rows={3} {...field} placeholder="How the agent introduces itself on the web..." /></FormControl></FormItem>
+                            )} />
+                            
+                            <div className="space-y-4">
+                              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Lead Capture Policy</Label>
+                              <RadioGroup onValueChange={(v) => form.setValue('channelConfig.web.capture.timing', v as 'before' | 'after')} value={watchedValues.channelConfig?.web?.capture?.timing} className="flex gap-6">
+                                <div className="flex items-center gap-2"><RadioGroupItem value="before" id="wc-before" /><Label htmlFor="t-before" className="text-xs">Before AI starts</Label></div>
+                                <div className="flex items-center gap-2"><RadioGroupItem value="after" id="wc-after" /><Label htmlFor="t-after" className="text-xs">Contextual request</Label></div>
+                              </RadioGroup>
+                            </div>
                           </div>
                         )}
                       </TabsContent>
 
-                      <TabsContent value="sms" className="space-y-6 mt-6">
-                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable SMS Channel</Label><Switch checked={watchedValues.channelConfig?.sms?.enabled} onCheckedChange={v => form.setValue('channelConfig.sms.enabled', v)} /></div>
+                      <TabsContent value="sms" className="space-y-8 mt-10">
+                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable SMS AI</Label><Switch checked={watchedValues.channelConfig?.sms?.enabled} onCheckedChange={v => form.setValue('channelConfig.sms.enabled', v)} /></div>
                         {watchedValues.channelConfig?.sms?.enabled && (
-                          <div className="space-y-6 pl-4 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
-                            <FormField control={form.control} name="channelConfig.sms.openingText" render={({ field }) => (<FormItem><FormLabel className="text-xs">Opening Response</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>)} />
+                          <div className="space-y-8 pl-6 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
+                            <FormField control={form.control} name="channelConfig.sms.openingText" render={({ field }) => (
+                              <FormItem><FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider">SMS Auto-Response</FormLabel><FormControl><Textarea rows={2} {...field} placeholder="e.g. Hi! This is our AI assistant. How can I help?" /></FormControl></FormItem>
+                            )} />
                           </div>
                         )}
                       </TabsContent>
 
-                      <TabsContent value="phone" className="space-y-6 mt-6">
-                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable Phone Channel</Label><Switch checked={watchedValues.channelConfig?.phone?.enabled} onCheckedChange={v => form.setValue('channelConfig.phone.enabled', v)} /></div>
+                      <TabsContent value="phone" className="space-y-8 mt-10">
+                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable Voice AI</Label><Switch checked={watchedValues.channelConfig?.phone?.enabled} onCheckedChange={v => form.setValue('channelConfig.phone.enabled', v)} /></div>
                         {watchedValues.channelConfig?.phone?.enabled && (
-                          <div className="space-y-6 pl-4 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
-                            <FormField control={form.control} name="channelConfig.phone.scripts.greeting" render={({ field }) => (<FormItem><FormLabel className="text-xs">Greeting Script (Voice)</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>)} />
+                          <div className="space-y-8 pl-6 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
+                            <FormField control={form.control} name="channelConfig.phone.scripts.greeting" render={({ field }) => (
+                              <FormItem><FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Voice Greeting (Text-to-Speech)</FormLabel><FormControl><Textarea rows={2} {...field} placeholder="What the AI says when someone calls..." /></FormControl></FormItem>
+                            )} />
                           </div>
                         )}
                       </TabsContent>
 
-                      <TabsContent value="email" className="space-y-6 mt-6">
-                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable Email Channel</Label><Switch checked={watchedValues.channelConfig?.email?.enabled} onCheckedChange={v => form.setValue('channelConfig.email.enabled', v)} /></div>
+                      <TabsContent value="email" className="space-y-8 mt-10">
+                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]"><Label className="text-sm font-bold">Enable Email AI</Label><Switch checked={watchedValues.channelConfig?.email?.enabled} onCheckedChange={v => form.setValue('channelConfig.email.enabled', v)} /></div>
                         {watchedValues.channelConfig?.email?.enabled && (
-                          <div className="space-y-6 pl-4 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
-                            <FormField control={form.control} name="channelConfig.email.format.signOff" render={({ field }) => (<FormItem><FormLabel className="text-xs">Email Sign-off</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                          <div className="space-y-8 pl-6 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
+                            <FormField control={form.control} name="channelConfig.email.format.signOff" render={({ field }) => (
+                              <FormItem><FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email Signature</FormLabel><FormControl><Input {...field} placeholder="e.g. Best regards, the AI Team" /></FormControl></FormItem>
+                            )} />
                           </div>
                         )}
                       </TabsContent>
