@@ -62,7 +62,6 @@ import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { crawlWebsiteAction } from '@/app/actions/chat';
 import { useToast } from '@/hooks/use-toast';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 const agentSettingsSchema = z.object({
   id: z.string().optional(),
@@ -369,7 +368,12 @@ export default function AgentSettingsDialog({
           channelConfig: {
             ...defaultValues.channelConfig,
             ...(bot.channelConfig || {}),
-            web: { ...defaultValues.channelConfig.web, ...(bot.channelConfig?.web || {}) },
+            web: { 
+              ...defaultValues.channelConfig.web, 
+              ...(bot.channelConfig?.web || {}),
+              greeting: { ...defaultValues.channelConfig.web.greeting, ...(bot.channelConfig?.web?.greeting || {}) },
+              leadCapture: { ...defaultValues.channelConfig.web.leadCapture, ...(bot.channelConfig?.web?.leadCapture || {}) }
+            },
             sms: { ...defaultValues.channelConfig.sms, ...(bot.channelConfig?.sms || {}) },
             phone: { ...defaultValues.channelConfig.phone, ...(bot.channelConfig?.phone || {}) },
             email: { ...defaultValues.channelConfig.email, ...(bot.channelConfig?.email || {}) },
@@ -596,16 +600,22 @@ export default function AgentSettingsDialog({
                           <FormItem className="col-span-2"><FormLabel className="text-xs">What You Actually Do</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="businessContext.customers" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Target Demographic</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Who Your Customers Are</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="businessContext.hours" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Operational Hours</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Business Hours</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                        )} />
+                        <FormField control={form.control} name="businessContext.minOrder" render={({ field }) => (
+                          <FormItem><FormLabel className="text-xs">Minimum Order</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                        )} />
+                        <FormField control={form.control} name="businessContext.turnaround" render={({ field }) => (
+                          <FormItem><FormLabel className="text-xs">Turnaround Time</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="businessContext.differentiation" render={({ field }) => (
-                          <FormItem className="col-span-2"><FormLabel className="text-xs">Key Differentiators (Why Us?)</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                          <FormItem className="col-span-2"><FormLabel className="text-xs">What Makes You Different</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="businessContext.forbiddenTopics" render={({ field }) => (
-                          <FormItem className="col-span-2"><FormLabel className="text-xs">Strict Forbidden Topics</FormLabel><FormControl><Input {...field} placeholder="e.g. pricing discounts, competitor names" /></FormControl></FormItem>
+                          <FormItem className="col-span-2"><FormLabel className="text-xs">Forbidden Topics</FormLabel><FormControl><Input {...field} placeholder="e.g. pricing discounts, competitor names" /></FormControl></FormItem>
                         )} />
                       </div>
                     </section>
@@ -634,7 +644,7 @@ export default function AgentSettingsDialog({
                                 <Input placeholder="Price/Starting at..." {...form.register(`products.${i}.priceRange`)} className="bg-background" />
                               </div>
                               <Textarea placeholder="Full Description" {...form.register(`products.${i}.description`)} rows={2} className="bg-background" />
-                              <Input placeholder="Recommendation triggers (e.g. customer mentions scalability)" {...form.register(`products.${i}.recommendationTriggers`)} className="bg-background text-xs italic" />
+                              <Input placeholder="When to recommend (e.g. customer mentions scalability)" {...form.register(`products.${i}.recommendationTriggers`)} className="bg-background text-xs italic" />
                             </div>
                           ))}
                         </TabsContent>
@@ -662,16 +672,26 @@ export default function AgentSettingsDialog({
                         </TabsContent>
 
                         <TabsContent value="qualification" className="space-y-4">
-                          <div className="flex justify-end"><Button type="button" size="sm" onClick={() => removeQualification(i)}>Add Data Capture Point</Button></div>
+                          <div className="flex justify-end"><Button type="button" size="sm" onClick={() => appendQualification({ id: `q-${Date.now()}`, question: '', note: '' })}>Add Data Capture Point</Button></div>
                           {qualificationFields.map((f, i) => (
                             <div key={f.id} className="p-4 border rounded-xl bg-white/[0.02] space-y-3 relative group">
                               <Button type="button" variant="ghost" size="icon" onClick={() => removeQualification(i)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"><Trash2 className="h-3 w-3" /></Button>
                               <Input placeholder="Question to ask user" {...form.register(`qualificationFlow.${i}.question`)} className="bg-background font-bold" />
-                              <Input placeholder="Why we need this (internal instruction)" {...form.register(`qualificationFlow.${i}.note`)} className="bg-background text-xs" />
+                              <Input placeholder="Note (why it matters)" {...form.register(`qualificationFlow.${i}.note`)} className="bg-background text-xs" />
                             </div>
                           ))}
                         </TabsContent>
                       </Tabs>
+                    </section>
+
+                    <section className="space-y-6">
+                      <div className="flex items-center gap-2 text-primary">
+                        <AlertCircle className="h-4 w-4" />
+                        <h3 className="text-sm font-bold uppercase tracking-widest">Pricing Policy</h3>
+                      </div>
+                      <FormField control={form.control} name="pricingPolicy" render={({ field }) => (
+                        <FormItem><FormControl><Textarea rows={4} placeholder="Guidelines for sharing pricing, discounts, etc." {...field} /></FormControl></FormItem>
+                      )} />
                     </section>
                   </div>
                 )}
@@ -680,10 +700,34 @@ export default function AgentSettingsDialog({
                   <div className="space-y-12 animate-in fade-in duration-300">
                     <Tabs value={activeChannel} onValueChange={setActiveChannel}>
                       <TabsList className="bg-white/5 border border-white/10 h-11 p-1 mb-10">
-                        <TabsTrigger value="web" className="text-xs font-bold gap-2"><MessageSquare className="h-3.5 w-3.5" /> Web Chat</TabsTrigger>
-                        <TabsTrigger value="sms" className="text-xs font-bold gap-2"><Smartphone className="h-3.5 w-3.5" /> SMS</TabsTrigger>
-                        <TabsTrigger value="phone" className="text-xs font-bold gap-2"><Phone className="h-3.5 w-3.5" /> Phone</TabsTrigger>
-                        <TabsTrigger value="email" className="text-xs font-bold gap-2"><Mail className="h-3.5 w-3.5" /> Email</TabsTrigger>
+                        <TabsTrigger value="web" className="text-xs font-bold gap-2 min-w-[100px] justify-start relative">
+                          <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                          <span>Web Chat</span>
+                          {watchedValues.channelConfig?.web?.enabled && (
+                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)] ml-auto shrink-0" />
+                          )}
+                        </TabsTrigger>
+                        <TabsTrigger value="sms" className="text-xs font-bold gap-2 min-w-[100px] justify-start relative">
+                          <Smartphone className="h-3.5 w-3.5 shrink-0" />
+                          <span>SMS</span>
+                          {watchedValues.channelConfig?.sms?.enabled && (
+                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)] ml-auto shrink-0" />
+                          )}
+                        </TabsTrigger>
+                        <TabsTrigger value="phone" className="text-xs font-bold gap-2 min-w-[100px] justify-start relative">
+                          <Phone className="h-3.5 w-3.5 shrink-0" />
+                          <span>Phone</span>
+                          {watchedValues.channelConfig?.phone?.enabled && (
+                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)] ml-auto shrink-0" />
+                          )}
+                        </TabsTrigger>
+                        <TabsTrigger value="email" className="text-xs font-bold gap-2 min-w-[100px] justify-start relative">
+                          <Mail className="h-3.5 w-3.5 shrink-0" />
+                          <span>Email</span>
+                          {watchedValues.channelConfig?.email?.enabled && (
+                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)] ml-auto shrink-0" />
+                          )}
+                        </TabsTrigger>
                       </TabsList>
                       
                       <TabsContent value="web" className="space-y-10">
@@ -698,7 +742,6 @@ export default function AgentSettingsDialog({
 
                         {watchedValues.channelConfig?.web?.enabled && (
                           <div className="space-y-12 pl-6 border-l-2 border-primary/20">
-                            {/* Core Behavior */}
                             <section className="space-y-6">
                               <h4 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                                 <Zap className="h-3.5 w-3.5" /> Core Behavior
@@ -710,10 +753,12 @@ export default function AgentSettingsDialog({
                                 <FormField control={form.control} name="channelConfig.web.greeting.returningText" render={({ field }) => (
                                   <FormItem><FormLabel className="text-xs">Returning visitor greeting</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                                 )} />
+                                <FormField control={form.control} name="channelConfig.web.displayNameOverride" render={({ field }) => (
+                                  <FormItem><FormLabel className="text-xs">Display name override</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                                )} />
                               </div>
                             </section>
 
-                            {/* Lead Capture */}
                             <section className="space-y-6">
                               <h4 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                                 <UserCheck className="h-3.5 w-3.5" /> Lead Capture
@@ -735,13 +780,23 @@ export default function AgentSettingsDialog({
                                     <FormItem className="flex items-center justify-between p-3 border rounded-lg bg-background/50"><FormLabel className="text-xs">Require contact details before chat starts</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
                                   )} />
                                 </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                  <FormField control={form.control} name="channelConfig.web.leadCapture.fields.name" render={({ field }) => (
+                                    <FormItem className="flex items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="text-xs !mt-0">Capture Name</FormLabel></FormItem>
+                                  )} />
+                                  <FormField control={form.control} name="channelConfig.web.leadCapture.fields.email" render={({ field }) => (
+                                    <FormItem className="flex items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="text-xs !mt-0">Capture Email</FormLabel></FormItem>
+                                  )} />
+                                  <FormField control={form.control} name="channelConfig.web.leadCapture.fields.phone" render={({ field }) => (
+                                    <FormItem className="flex items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="text-xs !mt-0">Capture Phone</FormLabel></FormItem>
+                                  )} />
+                                </div>
                                 <FormField control={form.control} name="channelConfig.web.leadCapture.captureMessage" render={({ field }) => (
                                   <FormItem><FormLabel className="text-xs">Lead capture message</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                                 )} />
                               </div>
                             </section>
 
-                            {/* Escalation */}
                             <section className="space-y-6">
                               <h4 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                                 <ShieldAlert className="h-3.5 w-3.5" /> Escalation
@@ -762,6 +817,9 @@ export default function AgentSettingsDialog({
                                   </FormItem>
                                 )} />
                               </div>
+                              <FormField control={form.control} name="channelConfig.web.afterHoursMessage" render={({ field }) => (
+                                <FormItem><FormLabel className="text-xs">After-hours message</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                              )} />
                             </section>
                           </div>
                         )}
@@ -792,9 +850,39 @@ export default function AgentSettingsDialog({
                             </section>
                             
                             <section className="space-y-6">
+                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Lead Capture</h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                <FormField control={form.control} name="channelConfig.sms.collectNameMode" render={({ field }) => (
+                                  <FormItem><FormLabel className="text-xs">Collect Name</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="none">None</SelectItem><SelectItem value="natural">Natural Conversation</SelectItem></SelectContent></Select></FormItem>
+                                )} />
+                                <FormField control={form.control} name="channelConfig.sms.collectEmailMode" render={({ field }) => (
+                                  <FormItem><FormLabel className="text-xs">Collect Email</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="none">None</SelectItem><SelectItem value="natural">Natural Conversation</SelectItem></SelectContent></Select></FormItem>
+                                )} />
+                              </div>
+                              <FormField control={form.control} name="channelConfig.sms.leadCaptureMessage" render={({ field }) => (
+                                <FormItem><FormLabel className="text-xs">Lead capture prompt</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                              )} />
+                            </section>
+
+                            <section className="space-y-6">
                               <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Escalation</h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                <FormField control={form.control} name="channelConfig.sms.sentimentEscalation" render={({ field }) => (
+                                  <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">Sentiment escalation</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                                )} />
+                              </div>
                               <FormField control={form.control} name="channelConfig.sms.handoffMessage" render={({ field }) => (
                                 <FormItem><FormLabel className="text-xs">Handoff Confirmation</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                              )} />
+                            </section>
+
+                            <section className="space-y-6">
+                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">After Hours</h4>
+                              <FormField control={form.control} name="channelConfig.sms.afterHoursMode" render={({ field }) => (
+                                <FormItem><FormLabel className="text-xs">After-hours mode</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="ai_only">AI Only</SelectItem><SelectItem value="delayed_human">Set Delayed Human Expectation</SelectItem></SelectContent></Select></FormItem>
+                              )} />
+                              <FormField control={form.control} name="channelConfig.sms.afterHoursMessage" render={({ field }) => (
+                                <FormItem><FormLabel className="text-xs">After-hours auto-reply</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                               )} />
                             </section>
                           </div>
@@ -814,7 +902,8 @@ export default function AgentSettingsDialog({
                               <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Call Handling</h4>
                               <div className="grid grid-cols-2 gap-6">
                                 <FormField control={form.control} name="channelConfig.phone.operationMode" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Call handling mode</FormLabel>
+                                  <FormItem>
+                                    <FormLabel className="text-xs">Call handling mode</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
                                       <FormControl><SelectTrigger><SelectValue placeholder="Select a mode" /></SelectTrigger></FormControl>
                                       <SelectContent>
@@ -837,8 +926,41 @@ export default function AgentSettingsDialog({
                                 <FormField control={form.control} name="channelConfig.phone.greetingScript" render={({ field }) => (
                                   <FormItem><FormLabel className="text-xs">Phone greeting script</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                                 )} />
+                                <FormField control={form.control} name="channelConfig.phone.handoffScript" render={({ field }) => (
+                                  <FormItem><FormLabel className="text-xs">Handoff script</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                                )} />
                                 <FormField control={form.control} name="channelConfig.phone.voicemailScript" render={({ field }) => (
                                   <FormItem><FormLabel className="text-xs">Voicemail Script</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                                )} />
+                              </div>
+                            </section>
+
+                            <section className="space-y-6">
+                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Voice Behavior</h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                <FormField control={form.control} name="channelConfig.phone.transcribeCalls" render={({ field }) => (
+                                  <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">Transcribe calls</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="channelConfig.phone.voicemailFallback" render={({ field }) => (
+                                  <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">Voicemail fallback</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="channelConfig.phone.aiGreetingEnabled" render={({ field }) => (
+                                  <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">AI greeting enabled</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="channelConfig.phone.maxDurationMinutes" render={({ field }) => (
+                                  <FormItem><FormLabel className="text-xs">Max duration (minutes)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>
+                                )} />
+                              </div>
+                            </section>
+
+                            <section className="space-y-6">
+                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">After Hours</h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                <FormField control={form.control} name="channelConfig.phone.afterHoursMode" render={({ field }) => (
+                                  <FormItem><FormLabel className="text-xs">After-hours mode</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="ai_message_only">AI message only</SelectItem><SelectItem value="redirect">Redirect call</SelectItem></SelectContent></Select></FormItem>
+                                )} />
+                                <FormField control={form.control} name="channelConfig.phone.afterHoursRedirectNumber" render={({ field }) => (
+                                  <FormItem><FormLabel className="text-xs">Redirect number</FormLabel><FormControl><Input placeholder="+1..." {...field} /></FormControl></FormItem>
                                 )} />
                               </div>
                             </section>
@@ -864,7 +986,7 @@ export default function AgentSettingsDialog({
                                     <Select onValueChange={field.onChange} value={field.value}>
                                       <FormControl><SelectTrigger><SelectValue placeholder="Select a mode" /></SelectTrigger></FormControl>
                                       <SelectContent>
-                                        <SelectItem value="auto">Auto-send (High Risk)</SelectItem>
+                                        <SelectItem value="auto">Auto-send</SelectItem>
                                         <SelectItem value="auto_exceptions">Auto-send except escalations</SelectItem>
                                         <SelectItem value="manual">Manual approval</SelectItem>
                                       </SelectContent>
@@ -878,8 +1000,8 @@ export default function AgentSettingsDialog({
                                       <FormControl><SelectTrigger><SelectValue placeholder="Select a delay" /></SelectTrigger></FormControl>
                                       <SelectContent>
                                         <SelectItem value="immediate">Immediate</SelectItem>
-                                        <SelectItem value="2_5_minutes">2-5 Minutes (Human-like)</SelectItem>
-                                        <SelectItem value="10_plus_minutes">Delayed</SelectItem>
+                                        <SelectItem value="2_5_minutes">2-5 Minutes</SelectItem>
+                                        <SelectItem value="10_plus_minutes">10+ Minutes</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </FormItem>
@@ -919,10 +1041,10 @@ export default function AgentSettingsDialog({
                                   <FormItem><FormLabel className="text-xs">Email sign-off</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                                 )} />
                                 <FormField control={form.control} name="channelConfig.email.subjectTemplate" render={({ field }) => (
-                                  <FormItem className="col-span-2"><FormLabel className="text-xs">Subject Template (for new threads)</FormLabel><FormControl><Input {...field} placeholder="e.g. Re: {{original_subject}}" /></FormControl></FormItem>
+                                  <FormItem className="col-span-2"><FormLabel className="text-xs">Subject Template (for new threads)</FormLabel><FormControl><Input placeholder="e.g. Re: {{original_subject}}" {...field} /></FormControl></FormItem>
                                 )} />
                                 <FormField control={form.control} name="channelConfig.email.alwaysIncludeBlock" render={({ field }) => (
-                                  <FormItem className="col-span-2"><FormLabel className="text-xs">Always include block (Footer)</FormLabel><FormControl><Textarea rows={2} {...field} placeholder="e.g. Confidentiality notice..." /></FormControl></FormItem>
+                                  <FormItem className="col-span-2"><FormLabel className="text-xs">Always include block (Footer)</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                                 )} />
                               </div>
                             </section>
