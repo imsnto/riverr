@@ -267,7 +267,11 @@ export default function AgentSettingsDialog({
             fields: { name: true, email: true, phone: false },
             captureMessage: 'Before I connect you with the right next step, could I grab your name and email?'
           }, 
-          quickReplies: ['Pricing', 'Support', 'Talk to a human'] 
+          quickReplies: ['Pricing', 'Support', 'Talk to a human'],
+          handoffKeywords: ['agent', 'human', 'person'],
+          sentimentEscalation: true,
+          afterHoursMode: 'ai_handles_everything',
+          afterHoursMessage: "We're currently offline, but I can still help and make sure the team follows up if needed."
         },
         sms: { 
           enabled: false, 
@@ -654,7 +658,7 @@ export default function AgentSettingsDialog({
                       <TabsList className="bg-white/5 border border-white/10 h-11 p-1 mb-10">
                         <TabsTrigger value="web" className="text-xs font-bold gap-2"><MessageSquare className="h-3.5 w-3.5" /> Web Chat</TabsTrigger>
                         <TabsTrigger value="sms" className="text-xs font-bold gap-2"><Smartphone className="h-3.5 w-3.5" /> SMS</TabsTrigger>
-                        <TabsTrigger value="phone" className="text-xs font-bold gap-2"><Phone className="h-3.5 w-3.5" /> Voice</TabsTrigger>
+                        <TabsTrigger value="phone" className="text-xs font-bold gap-2"><Phone className="h-3.5 w-3.5" /> Phone</TabsTrigger>
                         <TabsTrigger value="email" className="text-xs font-bold gap-2"><Mail className="h-3.5 w-3.5" /> Email</TabsTrigger>
                       </TabsList>
                       
@@ -662,7 +666,6 @@ export default function AgentSettingsDialog({
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
                           <div className="space-y-0.5">
                             <Label className="text-sm font-bold">Enable Web Chat</Label>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">If no AI agent is assigned to this widget, these settings will be used.</p>
                           </div>
                           <FormField control={form.control} name="channelConfig.web.enabled" render={({ field }) => (
                             <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
@@ -678,10 +681,10 @@ export default function AgentSettingsDialog({
                               </h4>
                               <div className="grid gap-6">
                                 <FormField control={form.control} name="channelConfig.web.greeting.text" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Initial Greeting</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
+                                  <FormItem><FormLabel className="text-xs">Initial greeting</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
                                 )} />
                                 <FormField control={form.control} name="channelConfig.web.greeting.returningText" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Returning Visitor Greeting</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                                  <FormItem><FormLabel className="text-xs">Returning visitor greeting</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                                 )} />
                               </div>
                             </section>
