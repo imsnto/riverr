@@ -21,7 +21,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Bot as BotData, User, HelpCenter } from '@/lib/data';
 import { 
@@ -277,7 +277,7 @@ export default function AgentSettingsDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden bg-[#0d1117] border-white/10">
+      <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden bg-[#0d1117] border-white/10 text-left">
         <DialogTitle className="sr-only">AI Agent Configuration</DialogTitle>
         <DialogDescription className="sr-only">Configure your AI Agent's intelligence and delivery channels.</DialogDescription>
         
@@ -341,14 +341,14 @@ export default function AgentSettingsDialog({
                       <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Escalation Triggers</h3>
                       <div className="grid gap-4">
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
-                          <div className="space-y-0.5">
+                          <div className="space-y-0.5 text-left">
                             <Label className="text-sm font-bold">Frustration Detection</Label>
                             <p className="text-xs text-muted-foreground">Escalate if customer uses angry language.</p>
                           </div>
                           <Switch checked={watchedValues.escalationRules?.frustrationEnabled} onCheckedChange={(v) => form.setValue('escalationRules.frustrationEnabled', v)} />
                         </div>
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
-                          <div className="space-y-0.5">
+                          <div className="space-y-0.5 text-left">
                             <Label className="text-sm font-bold">Complexity Threshold</Label>
                             <p className="text-xs text-muted-foreground">Escalate if question isn't in knowledge base after 2 tries.</p>
                           </div>
@@ -367,12 +367,12 @@ export default function AgentSettingsDialog({
                           <Sparkles className="h-4 w-4" /> 
                           Knowledge Autopilot
                         </CardTitle>
-                        <CardDescription className="text-xs">Extract your business info automatically from your website.</CardDescription>
+                        <CardDescription className="text-xs text-left">Extract your business info automatically from your website.</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="flex gap-3">
                           <Input placeholder="e.g. riverr.app" value={crawlUrl} onChange={e => setCrawlUrl(e.target.value)} className="bg-background" />
-                          <Button onClick={handleCrawlWebsite} disabled={isCrawling} className="shrink-0 font-bold">
+                          <Button type="button" onClick={handleCrawlWebsite} disabled={isCrawling} className="shrink-0 font-bold">
                             {isCrawling ? <Loader2 className="animate-spin h-4 w-4" /> : 'Start Crawl'}
                           </Button>
                         </div>
@@ -430,8 +430,8 @@ export default function AgentSettingsDialog({
                             <div className="space-y-4">
                               <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Lead Capture Policy</Label>
                               <RadioGroup onValueChange={(v) => form.setValue('channelConfig.web.capture.timing', v as 'before' | 'after')} value={watchedValues.channelConfig?.web?.capture?.timing} className="flex gap-6">
-                                <div className="flex items-center gap-2"><RadioGroupItem value="before" id="wc-before" /><Label htmlFor="t-before" className="text-xs">Before AI starts</Label></div>
-                                <div className="flex items-center gap-2"><RadioGroupItem value="after" id="wc-after" /><Label htmlFor="t-after" className="text-xs">Contextual request</Label></div>
+                                <div className="flex items-center gap-2"><RadioGroupItem value="before" id="wc-before" /><Label htmlFor="wc-before" className="text-xs">Before AI starts</Label></div>
+                                <div className="flex items-center gap-2"><RadioGroupItem value="after" id="wc-after" /><Label htmlFor="wc-after" className="text-xs">Contextual request</Label></div>
                               </RadioGroup>
                             </div>
                           </div>
