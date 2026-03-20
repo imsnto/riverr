@@ -140,13 +140,15 @@ const agentSettingsSchema = z.object({
 
   pricingPolicy: z.string().optional(),
 
-  // Channels (COMPREHENSIVE)
+  // Channels
   channelConfig: z.object({
     web: z.object({
       enabled: z.boolean().default(true),
       displayNameOverride: z.string().optional(),
-      greeting: z.string().default('Hi! How can I help?'),
-      returningGreeting: z.string().default('Welcome back. How can I help today?'),
+      greeting: z.object({
+        text: z.string().default('Hi! How can I help today?'),
+        returningText: z.string().default('Welcome back. How can I help today?'),
+      }),
       leadCapture: z.object({
         enabled: z.boolean().default(true),
         required: z.boolean().default(false),
@@ -253,10 +255,57 @@ export default function AgentSettingsDialog({
       escalation: { enabled: true, frustration: true, repeatedFailures: true, complexRequests: true, highValue: { enabled: false, threshold: 1000 }, notifyEmail: '' },
       businessContext: {},
       channelConfig: {
-        web: { enabled: true, greeting: 'Hi! How can I help?', leadCapture: { timing: 'after', enabled: true, fields: { name: true, email: true, phone: false } }, quickReplies: ['Pricing', 'Support', 'Talk to a human'] },
-        sms: { enabled: false, maxResponseLength: 160, mmsEnabled: false, collectNameMode: 'natural', collectEmailMode: 'natural', sentimentEscalation: true },
-        phone: { enabled: false, operationMode: 'handoff', transcribeCalls: true, voicemailFallback: true, maxDurationMinutes: 5, aiGreetingEnabled: true },
-        email: { enabled: false, approvalMode: 'auto_exceptions', replyDelay: '2_5_minutes', threadingBehavior: 'reply_in_thread', responseLength: 'standard', escalation: { holdForHighValue: true, holdForFrustration: true, holdForLegal: true, holdForAttachment: true, holdForVip: false }, sentimentEscalation: true }
+        web: { 
+          enabled: true, 
+          greeting: { 
+            text: 'Hi! How can I help today?', 
+            returningText: 'Welcome back. How can I help today?' 
+          }, 
+          leadCapture: { 
+            timing: 'after', 
+            enabled: true, 
+            fields: { name: true, email: true, phone: false },
+            captureMessage: 'Before I connect you with the right next step, could I grab your name and email?'
+          }, 
+          quickReplies: ['Pricing', 'Support', 'Talk to a human'] 
+        },
+        sms: { 
+          enabled: false, 
+          openingText: 'Hi! How can I help?',
+          maxResponseLength: 160, 
+          mmsEnabled: false, 
+          collectNameMode: 'natural', 
+          collectEmailMode: 'natural', 
+          sentimentEscalation: true,
+          handoffKeywords: ['agent', 'human', 'person', 'call me'],
+          handoffMessage: 'No problem — I’ll have someone follow up with you soon.',
+          afterHoursMode: 'delayed_human',
+          afterHoursMessage: "Thanks for texting. We're currently offline, but the team will follow up as soon as possible."
+        },
+        phone: { 
+          enabled: false, 
+          operationMode: 'handoff', 
+          greetingScript: 'Thank you for calling. How can I help today?',
+          handoffScript: 'I’m going to connect you with a member of the team now.',
+          voicemailScript: 'We’re unavailable right now. Please leave your name, number, and what you need, and someone will get back to you.',
+          transcribeCalls: true, 
+          voicemailFallback: true, 
+          maxDurationMinutes: 5, 
+          aiGreetingEnabled: true,
+          escalationKeywords: ['human', 'agent', 'manager', 'representative'],
+          afterHoursMode: 'ai_message_only'
+        },
+        email: { 
+          enabled: false, 
+          approvalMode: 'auto_exceptions', 
+          replyDelay: '2_5_minutes', 
+          threadingBehavior: 'reply_in_thread', 
+          responseLength: 'standard', 
+          standardSignoff: 'Best regards, {{agent_name}}',
+          escalation: { holdForHighValue: true, holdForFrustration: true, holdForLegal: true, holdForAttachment: true, holdForVip: false }, 
+          sentimentEscalation: true,
+          escalationKeywords: ['urgent', 'manager', 'legal', 'complaint']
+        }
       }
     },
   });
@@ -268,7 +317,15 @@ export default function AgentSettingsDialog({
 
   useEffect(() => {
     if (isOpen && bot) {
-      form.reset(bot as any);
+      // Ensure complex structures are nested correctly if they arrived as flat strings (legacy)
+      const data = { ...bot };
+      if (typeof data.channelConfig?.web?.greeting === 'string') {
+        data.channelConfig.web.greeting = {
+          text: data.channelConfig.web.greeting,
+          returningText: 'Welcome back. How can I help today?'
+        };
+      }
+      form.reset(data as any);
     }
   }, [bot, form, isOpen]);
 
@@ -325,9 +382,9 @@ export default function AgentSettingsDialog({
             },
           },
       welcomeMessage:
-        values.channelConfig?.web?.greeting ||
+        values.channelConfig?.web?.greeting?.text ||
         values.name ||
-        'Hi! How can I help?',
+        'Hi! How can I help today?',
     } as any;
 
     onSave(payload);
@@ -347,7 +404,7 @@ export default function AgentSettingsDialog({
                   </div>
                   <div>
                     <h2 className="text-sm font-bold text-white leading-none">{watchedValues.name || 'AI Brain'}</h2>
-                    <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground opacity-50 mt-1">Full Logic Configuration</p>
+                    <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground opacity-50 mt-1">Global Configuration</p>
                   </div>
                 </div>
 
@@ -393,7 +450,7 @@ export default function AgentSettingsDialog({
                           <FormItem><FormLabel className="text-xs">Public Agent Name</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="internalName" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Internal Backend ID</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Internal ID</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="roleTitle" render={({ field }) => (
                           <FormItem className="col-span-2"><FormLabel className="text-xs">Official Role / Job Title</FormLabel><FormControl><Input {...field} placeholder="e.g. Lead Support Concierge" /></FormControl></FormItem>
@@ -445,7 +502,7 @@ export default function AgentSettingsDialog({
                     <section className="space-y-6">
                       <div className="flex items-center gap-2 text-primary">
                         <ShieldAlert className="h-4 w-4" />
-                        <h3 className="text-sm font-bold uppercase tracking-widest">Handoff & Escalation</h3>
+                        <h3 className="text-sm font-bold uppercase tracking-widest">Global Handoff & Escalation</h3>
                       </div>
                       <div className="space-y-4">
                         <FormField control={form.control} name="escalation.enabled" render={({ field }) => (
@@ -577,7 +634,7 @@ export default function AgentSettingsDialog({
                         </TabsContent>
 
                         <TabsContent value="qualification" className="space-y-4">
-                          <div className="flex justify-end"><Button type="button" size="sm" onClick={() => appendQualification({ id: `q-${Date.now()}`, question: '', note: '' })}>Add Data Capture Point</Button></div>
+                          <div className="flex justify-end"><Button type="button" size="sm" onClick={() => removeQualification(i)}>Add Data Capture Point</Button></div>
                           {qualificationFields.map((f, i) => (
                             <div key={f.id} className="p-4 border rounded-xl bg-white/[0.02] space-y-3 relative group">
                               <Button type="button" variant="ghost" size="icon" onClick={() => removeQualification(i)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"><Trash2 className="h-3 w-3" /></Button>
@@ -604,8 +661,8 @@ export default function AgentSettingsDialog({
                       <TabsContent value="web" className="space-y-10">
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
                           <div className="space-y-0.5">
-                            <Label className="text-sm font-bold">Enable Web Delivery</Label>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">Stage Fallback Active</p>
+                            <Label className="text-sm font-bold">Enable Web Chat</Label>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">If no AI agent is assigned to this widget, these settings will be used.</p>
                           </div>
                           <FormField control={form.control} name="channelConfig.web.enabled" render={({ field }) => (
                             <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
@@ -620,11 +677,11 @@ export default function AgentSettingsDialog({
                                 <Zap className="h-3.5 w-3.5" /> Core Behavior
                               </h4>
                               <div className="grid gap-6">
-                                <FormField control={form.control} name="channelConfig.web.greeting" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Initial Greeting Script</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
+                                <FormField control={form.control} name="channelConfig.web.greeting.text" render={({ field }) => (
+                                  <FormItem><FormLabel className="text-xs">Initial Greeting</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
                                 )} />
-                                <FormField control={form.control} name="channelConfig.web.returningGreeting" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Returning Visitor Script</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                                <FormField control={form.control} name="channelConfig.web.greeting.returningText" render={({ field }) => (
+                                  <FormItem><FormLabel className="text-xs">Returning Visitor Greeting</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                                 )} />
                               </div>
                             </section>
@@ -632,27 +689,27 @@ export default function AgentSettingsDialog({
                             {/* Lead Capture */}
                             <section className="space-y-6">
                               <h4 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                                <UserCheck className="h-3.5 w-3.5" /> Capture Strategy
+                                <UserCheck className="h-3.5 w-3.5" /> Lead Capture
                               </h4>
                               <div className="space-y-4">
                                 <div className="grid grid-cols-2 gap-6">
                                   <FormField control={form.control} name="channelConfig.web.leadCapture.timing" render={({ field }) => (
-                                    <FormItem><FormLabel className="text-xs">Capture Timing</FormLabel>
+                                    <FormItem><FormLabel className="text-xs">When to ask for contact details</FormLabel>
                                       <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                         <SelectContent>
-                                          <SelectItem value="before">Strict (Before Chat)</SelectItem>
-                                          <SelectItem value="after">Contextual (During/After)</SelectItem>
+                                          <SelectItem value="before">Before chat starts</SelectItem>
+                                          <SelectItem value="after">After first meaningful reply</SelectItem>
                                         </SelectContent>
                                       </Select>
                                     </FormItem>
                                   )} />
                                   <FormField control={form.control} name="channelConfig.web.leadCapture.required" render={({ field }) => (
-                                    <FormItem className="flex items-center justify-between p-3 border rounded-lg bg-background/50"><FormLabel className="text-xs">Required to chat</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                                    <FormItem className="flex items-center justify-between p-3 border rounded-lg bg-background/50"><FormLabel className="text-xs">Require contact details before chat starts</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
                                   )} />
                                 </div>
                                 <FormField control={form.control} name="channelConfig.web.leadCapture.captureMessage" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Capture Prompt Message</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                                  <FormItem><FormLabel className="text-xs">Lead capture message</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                                 )} />
                               </div>
                             </section>
@@ -660,18 +717,18 @@ export default function AgentSettingsDialog({
                             {/* Escalation */}
                             <section className="space-y-6">
                               <h4 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                                <ShieldAlert className="h-3.5 w-3.5" /> Web Escalation
+                                <ShieldAlert className="h-3.5 w-3.5" /> Escalation
                               </h4>
                               <div className="grid grid-cols-2 gap-6">
                                 <FormField control={form.control} name="channelConfig.web.sentimentEscalation" render={({ field }) => (
-                                  <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">Negative Sentiment</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                                  <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">Escalate on negative sentiment</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
                                 )} />
                                 <FormField control={form.control} name="channelConfig.web.afterHoursMode" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">After-Hours Mode</FormLabel>
+                                  <FormItem><FormLabel className="text-xs">After-hours behavior</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
                                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                       <SelectContent>
-                                        <SelectItem value="ai_handles_everything">AI Handles Everything</SelectItem>
+                                        <SelectItem value="ai_handles_everything">AI continues helping</SelectItem>
                                         <SelectItem value="respond_and_notify">Respond & Set Expectation</SelectItem>
                                       </SelectContent>
                                     </Select>
@@ -685,7 +742,7 @@ export default function AgentSettingsDialog({
 
                       <TabsContent value="sms" className="space-y-10">
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
-                          <Label className="text-sm font-bold">Enable SMS Delivery</Label>
+                          <Label className="text-sm font-bold">Enable SMS Channel</Label>
                           <FormField control={form.control} name="channelConfig.sms.enabled" render={({ field }) => (
                             <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                           )} />
@@ -693,13 +750,13 @@ export default function AgentSettingsDialog({
                         {watchedValues.channelConfig?.sms?.enabled && (
                           <div className="space-y-12 pl-6 border-l-2 border-primary/20">
                             <section className="space-y-6">
-                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">SMS Constraints</h4>
+                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">SMS Behavior</h4>
                               <div className="grid grid-cols-2 gap-6">
                                 <FormField control={form.control} name="channelConfig.sms.openingText" render={({ field }) => (
-                                  <FormItem className="col-span-2"><FormLabel className="text-xs">Inbound Auto-Reply</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                                  <FormItem className="col-span-2"><FormLabel className="text-xs">Opening SMS Text</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                                 )} />
                                 <FormField control={form.control} name="channelConfig.sms.maxResponseLength" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Character Limit</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>
+                                  <FormItem><FormLabel className="text-xs">Max Response Length</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>
                                 )} />
                                 <FormField control={form.control} name="channelConfig.sms.mmsEnabled" render={({ field }) => (
                                   <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">Allow MMS Attachments</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
@@ -708,7 +765,7 @@ export default function AgentSettingsDialog({
                             </section>
                             
                             <section className="space-y-6">
-                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">SMS Handoff</h4>
+                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Escalation</h4>
                               <FormField control={form.control} name="channelConfig.sms.handoffMessage" render={({ field }) => (
                                 <FormItem><FormLabel className="text-xs">Handoff Confirmation</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                               )} />
@@ -719,7 +776,7 @@ export default function AgentSettingsDialog({
 
                       <TabsContent value="phone" className="space-y-10">
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
-                          <Label className="text-sm font-bold">Enable Voice Delivery</Label>
+                          <Label className="text-sm font-bold">Enable Phone Channel</Label>
                           <FormField control={form.control} name="channelConfig.phone.enabled" render={({ field }) => (
                             <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                           )} />
@@ -727,34 +784,34 @@ export default function AgentSettingsDialog({
                         {watchedValues.channelConfig?.phone?.enabled && (
                           <div className="space-y-12 pl-6 border-l-2 border-primary/20">
                             <section className="space-y-6">
-                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Operational Mode</h4>
+                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Call Handling</h4>
                               <div className="grid grid-cols-2 gap-6">
                                 <FormField control={form.control} name="channelConfig.phone.operationMode" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Handler Mode</FormLabel>
+                                  <FormItem><FormLabel className="text-xs">Call handling mode</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
                                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                       <SelectContent>
-                                        <SelectItem value="full_ai">Autonomous Resolution</SelectItem>
-                                        <SelectItem value="handoff">Triage & Transfer</SelectItem>
-                                        <SelectItem value="receptionist">Receptionist Only</SelectItem>
+                                        <SelectItem value="full_ai">Full AI resolution</SelectItem>
+                                        <SelectItem value="handoff">AI triage + handoff</SelectItem>
+                                        <SelectItem value="receptionist">AI takes a message</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </FormItem>
                                 )} />
                                 <FormField control={form.control} name="channelConfig.phone.transferNumber" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Transfer/Forwarding Number</FormLabel><FormControl><Input placeholder="+1..." {...field} /></FormControl></FormItem>
+                                  <FormItem><FormLabel className="text-xs">Transfer Number</FormLabel><FormControl><Input placeholder="+1..." {...field} /></FormControl></FormItem>
                                 )} />
                               </div>
                             </section>
 
                             <section className="space-y-6">
-                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Voice Scripts (TTS)</h4>
+                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Call Scripts</h4>
                               <div className="grid gap-6">
                                 <FormField control={form.control} name="channelConfig.phone.greetingScript" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Inbound Greeting</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                                  <FormItem><FormLabel className="text-xs">Phone greeting script</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                                 )} />
                                 <FormField control={form.control} name="channelConfig.phone.voicemailScript" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Voicemail Instructions</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                                  <FormItem><FormLabel className="text-xs">Voicemail Script</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                                 )} />
                               </div>
                             </section>
@@ -764,7 +821,7 @@ export default function AgentSettingsDialog({
 
                       <TabsContent value="email" className="space-y-10">
                         <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
-                          <Label className="text-sm font-bold">Enable Email Delivery</Label>
+                          <Label className="text-sm font-bold">Enable Email Channel</Label>
                           <FormField control={form.control} name="channelConfig.email.enabled" render={({ field }) => (
                             <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                           )} />
@@ -772,22 +829,22 @@ export default function AgentSettingsDialog({
                         {watchedValues.channelConfig?.email?.enabled && (
                           <div className="space-y-12 pl-6 border-l-2 border-primary/20">
                             <section className="space-y-6">
-                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Workflow Rules</h4>
+                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Reply Workflow</h4>
                               <div className="grid grid-cols-2 gap-6">
                                 <FormField control={form.control} name="channelConfig.email.approvalMode" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Approval Policy</FormLabel>
+                                  <FormItem><FormLabel className="text-xs">Reply approval</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
                                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                       <SelectContent>
-                                        <SelectItem value="auto">Auto-Reply (High Risk)</SelectItem>
-                                        <SelectItem value="auto_exceptions">Auto-Reply with Exceptions</SelectItem>
-                                        <SelectItem value="manual">Always Draft</SelectItem>
+                                        <SelectItem value="auto">Auto-send (High Risk)</SelectItem>
+                                        <SelectItem value="auto_exceptions">Auto-send except escalations</SelectItem>
+                                        <SelectItem value="manual">Manual approval</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </FormItem>
                                 )} />
                                 <FormField control={form.control} name="channelConfig.email.replyDelay" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Response Delay</FormLabel>
+                                  <FormItem><FormLabel className="text-xs">Reply Delay</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
                                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                       <SelectContent>
@@ -802,13 +859,13 @@ export default function AgentSettingsDialog({
                             </section>
 
                             <section className="space-y-6">
-                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Email Escalation</h4>
+                              <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Escalation Rules</h4>
                               <div className="grid grid-cols-2 gap-4">
                                 <FormField control={form.control} name="channelConfig.email.escalation.holdForFrustration" render={({ field }) => (
-                                  <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">Frustrated Sentiment</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                                  <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">Hold for frustration</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
                                 )} />
                                 <FormField control={form.control} name="channelConfig.email.escalation.holdForHighValue" render={({ field }) => (
-                                  <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">High Opportunity Value</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                                  <FormItem className="flex items-center justify-between p-3 border rounded-lg"><FormLabel className="text-xs">Hold for high value</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
                                 )} />
                               </div>
                             </section>
@@ -824,33 +881,5 @@ export default function AgentSettingsDialog({
         </Form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function ColorInput({ form, name, label }: { form: any, name: string, label: string }) {
-  return (
-    <FormField
-      control={form.control}
-      name={name}
-      render={({ field }) => (
-        <FormItem className="space-y-2">
-          <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">{label}</FormLabel>
-          <div className="flex gap-2">
-            <FormControl>
-              <div className="relative flex-1">
-                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded shadow-inner border border-white/10" style={{ backgroundColor: field.value }} />
-                <Input {...field} className="pl-9 font-mono text-xs h-9 uppercase" />
-              </div>
-            </FormControl>
-            <input 
-              type="color" 
-              value={field.value} 
-              onChange={(e) => field.onChange(e.target.value)} 
-              className="w-9 h-9 rounded-md border border-white/10 bg-transparent p-1 cursor-pointer shrink-0" 
-            />
-          </div>
-        </FormItem>
-      )}
-    />
   );
 }
