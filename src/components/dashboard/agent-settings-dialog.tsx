@@ -220,6 +220,112 @@ const agentSettingsSchema = z.object({
 
 type AgentSettingsFormValues = z.infer<typeof agentSettingsSchema>;
 
+const defaultValues: AgentSettingsFormValues = {
+  name: 'Assistant',
+  internalName: 'Support Agent V1',
+  roleTitle: 'Customer Support',
+  tone: 'friendly',
+  voiceNotes: '',
+  primaryGoal: 'Assist customers with their inquiries using the provided knowledge base.',
+  closingMessage: 'Thank you for chatting with us!',
+  escalation: {
+    enabled: true,
+    notifyEmail: '',
+    highValue: { enabled: false, threshold: 1000 },
+    frustration: true,
+    repeatedFailures: true,
+    complexRequests: true,
+  },
+  businessContext: {
+    businessName: '',
+    location: '',
+    description: '',
+    customers: '',
+    hours: '',
+    minOrder: '',
+    turnaround: '',
+    differentiation: '',
+    forbiddenTopics: '',
+  },
+  allowedHelpCenterIds: [],
+  products: [],
+  faqs: [],
+  objections: [],
+  qualificationFlow: [],
+  pricingPolicy: '',
+  channelConfig: {
+    web: {
+      enabled: true,
+      displayNameOverride: '',
+      greeting: {
+        text: 'Hi! How can I help today?',
+        returningText: 'Welcome back. How can I help today?',
+      },
+      leadCapture: {
+        enabled: true,
+        required: false,
+        timing: 'after',
+        captureMessage: 'Before I connect you with the right next step, could I grab your name and email?',
+        fields: { name: true, email: true, phone: false },
+      },
+      quickReplies: ['Pricing', 'Support', 'Talk to a human'],
+      handoffKeywords: ['agent', 'human', 'person'],
+      sentimentEscalation: true,
+      afterHoursMode: 'ai_handles_everything',
+      afterHoursMessage: "We're currently offline, but I can still help and make sure the team follows up if needed.",
+    },
+    sms: {
+      enabled: false,
+      openingText: 'Hi! How can I help?',
+      maxResponseLength: 160,
+      mmsEnabled: false,
+      collectNameMode: 'natural',
+      collectEmailMode: 'natural',
+      leadCaptureMessage: "If you'd like, I can grab your email and have the team follow up with more details.",
+      handoffKeywords: ['agent', 'human', 'person', 'call me'],
+      handoffMessage: "No problem — I’ll have someone follow up with you soon.",
+      sentimentEscalation: true,
+      afterHoursMode: 'delayed_human',
+      afterHoursMessage: "Thanks for texting. We're currently offline, but the team will follow up as soon as possible.",
+    },
+    phone: {
+      enabled: false,
+      operationMode: 'handoff',
+      transferNumber: '',
+      greetingScript: 'Thank you for calling. How can I help today?',
+      handoffScript: 'I’m going to connect you with a member of the team now.',
+      voicemailScript: 'We’re unavailable right now. Please leave your name, number, and what you need, and someone will get back to you.',
+      transcribeCalls: true,
+      voicemailFallback: true,
+      aiGreetingEnabled: true,
+      afterHoursAiOnly: false,
+      maxDurationMinutes: 5,
+      escalationKeywords: ['human', 'agent', 'manager', 'representative'],
+      afterHoursMode: 'ai_message_only',
+      afterHoursRedirectNumber: '',
+    },
+    email: {
+      enabled: false,
+      approvalMode: 'auto_exceptions',
+      replyDelay: '2_5_minutes',
+      threadingBehavior: 'reply_in_thread',
+      standardSignoff: 'Best regards, {{agent_name}}',
+      responseLength: 'standard',
+      alwaysIncludeBlock: '',
+      subjectTemplate: '',
+      escalation: {
+        holdForHighValue: true,
+        holdForFrustration: true,
+        holdForLegal: true,
+        holdForAttachment: true,
+        holdForVip: false,
+      },
+      escalationKeywords: ['urgent', 'manager', 'legal', 'complaint'],
+      sentimentEscalation: true,
+    }
+  }
+};
+
 interface AgentSettingsDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -247,71 +353,7 @@ export default function AgentSettingsDialog({
 
   const form = useForm<AgentSettingsFormValues>({
     resolver: zodResolver(agentSettingsSchema),
-    defaultValues: {
-      name: 'Assistant',
-      internalName: 'Support Agent V1',
-      tone: 'friendly',
-      primaryGoal: 'Assist customers with their inquiries using the provided knowledge base.',
-      escalation: { enabled: true, frustration: true, repeatedFailures: true, complexRequests: true, highValue: { enabled: false, threshold: 1000 }, notifyEmail: '' },
-      businessContext: {},
-      channelConfig: {
-        web: { 
-          enabled: true, 
-          greeting: { 
-            text: 'Hi! How can I help today?', 
-            returningText: 'Welcome back. How can I help today?' 
-          }, 
-          leadCapture: { 
-            timing: 'after', 
-            enabled: true, 
-            fields: { name: true, email: true, phone: false },
-            captureMessage: 'Before I connect you with the right next step, could I grab your name and email?'
-          }, 
-          quickReplies: ['Pricing', 'Support', 'Talk to a human'],
-          handoffKeywords: ['agent', 'human', 'person'],
-          sentimentEscalation: true,
-          afterHoursMode: 'ai_handles_everything',
-          afterHoursMessage: "We're currently offline, but I can still help and make sure the team follows up if needed."
-        },
-        sms: { 
-          enabled: false, 
-          openingText: 'Hi! How can I help?',
-          maxResponseLength: 160, 
-          mmsEnabled: false, 
-          collectNameMode: 'natural', 
-          collectEmailMode: 'natural', 
-          sentimentEscalation: true,
-          handoffKeywords: ['agent', 'human', 'person', 'call me'],
-          handoffMessage: 'No problem — I’ll have someone follow up with you soon.',
-          afterHoursMode: 'delayed_human',
-          afterHoursMessage: "Thanks for texting. We're currently offline, but the team will follow up as soon as possible."
-        },
-        phone: { 
-          enabled: false, 
-          operationMode: 'handoff', 
-          greetingScript: 'Thank you for calling. How can I help today?',
-          handoffScript: 'I’m going to connect you with a member of the team now.',
-          voicemailScript: 'We’re unavailable right now. Please leave your name, number, and what you need, and someone will get back to you.',
-          transcribeCalls: true, 
-          voicemailFallback: true, 
-          maxDurationMinutes: 5, 
-          aiGreetingEnabled: true,
-          escalationKeywords: ['human', 'agent', 'manager', 'representative'],
-          afterHoursMode: 'ai_message_only'
-        },
-        email: { 
-          enabled: false, 
-          approvalMode: 'auto_exceptions', 
-          replyDelay: '2_5_minutes', 
-          threadingBehavior: 'reply_in_thread', 
-          responseLength: 'standard', 
-          standardSignoff: 'Best regards, {{agent_name}}',
-          escalation: { holdForHighValue: true, holdForFrustration: true, holdForLegal: true, holdForAttachment: true, holdForVip: false }, 
-          sentimentEscalation: true,
-          escalationKeywords: ['urgent', 'manager', 'legal', 'complaint']
-        }
-      }
-    },
+    defaultValues,
   });
 
   const { fields: productFields, append: appendProduct, remove: removeProduct } = useFieldArray({ control: form.control, name: "products" });
@@ -320,16 +362,27 @@ export default function AgentSettingsDialog({
   const { fields: qualificationFields, append: appendQualification, remove: removeQualification } = useFieldArray({ control: form.control, name: "qualificationFlow" });
 
   useEffect(() => {
-    if (isOpen && bot) {
-      // Ensure complex structures are nested correctly if they arrived as flat strings (legacy)
-      const data = { ...bot };
-      if (typeof data.channelConfig?.web?.greeting === 'string') {
-        data.channelConfig.web.greeting = {
-          text: data.channelConfig.web.greeting,
-          returningText: 'Welcome back. How can I help today?'
+    if (isOpen) {
+      if (bot) {
+        // Deep merge logic to ensure nested defaults persist if keys are missing in Firestore doc
+        const mergedData = {
+          ...defaultValues,
+          ...bot,
+          channelConfig: {
+            ...defaultValues.channelConfig,
+            ...(bot.channelConfig || {}),
+            web: { ...defaultValues.channelConfig.web, ...(bot.channelConfig?.web || {}) },
+            sms: { ...defaultValues.channelConfig.sms, ...(bot.channelConfig?.sms || {}) },
+            phone: { ...defaultValues.channelConfig.phone, ...(bot.channelConfig?.phone || {}) },
+            email: { ...defaultValues.channelConfig.email, ...(bot.channelConfig?.email || {}) },
+          },
+          businessContext: { ...defaultValues.businessContext, ...(bot.businessContext || {}) },
+          escalation: { ...defaultValues.escalation, ...(bot.escalation || {}) },
         };
+        form.reset(mergedData as any);
+      } else {
+        form.reset(defaultValues);
       }
-      form.reset(data as any);
     }
   }, [bot, form, isOpen]);
 
@@ -357,38 +410,11 @@ export default function AgentSettingsDialog({
   };
 
   const onSubmit = (values: AgentSettingsFormValues) => {
-    const webCapture = values.channelConfig?.web?.leadCapture;
-
     const payload: BotData | Omit<BotData, 'id' | 'hubId'> = {
       ...(bot || {}),
       ...values,
       type: 'agent',
-      identityCapture: webCapture
-        ? {
-            enabled: !!webCapture.enabled,
-            required: !!webCapture.required,
-            timing: webCapture.timing,
-            captureMessage: webCapture.captureMessage,
-            fields: {
-              name: !!webCapture.fields?.name,
-              email: !!webCapture.fields?.email,
-              phone: !!webCapture.fields?.phone,
-            },
-          }
-        : {
-            enabled: false,
-            required: false,
-            timing: 'after',
-            fields: {
-              name: true,
-              email: true,
-              phone: false,
-            },
-          },
-      welcomeMessage:
-        values.channelConfig?.web?.greeting?.text ||
-        values.name ||
-        'Hi! How can I help today?',
+      welcomeMessage: values.channelConfig?.web?.greeting?.text || values.name,
     } as any;
 
     onSave(payload);
