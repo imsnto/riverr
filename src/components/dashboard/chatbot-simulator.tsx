@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -38,7 +37,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
   const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [userInput, setUserInput] = useState('');
-  const [isWidgetOpen, setIsWidgetOpen] = useState(false);
+  const [isWidgetOpen, setIsWidgetOpen] = useState(true);
   
   const [previewName, setPreviewName] = useState('');
   const [previewEmail, setPreviewEmail] = useState('');
@@ -136,7 +135,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
     return () => {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
     }
-  }, [isOpen, handleStep]);
+  }, [isOpen, handleStep, botData.welcomeMessage]); // Added welcomeMessage to dependencies to re-sync preview on change
 
   useEffect(() => {
     if (scrollRef.current) {

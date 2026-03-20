@@ -167,7 +167,7 @@ export default function WidgetSettingsDialog({
     if (agent) {
       return {
         ...watchedValues,
-        welcomeMessage: agent.welcomeMessage || watchedValues.welcomeMessage,
+        welcomeMessage: agent.channelConfig?.web?.greeting?.text || agent.welcomeMessage || watchedValues.welcomeMessage,
         flow: agent.flow || { nodes: [], edges: [] },
         agentIds: agent.agentIds?.length ? agent.agentIds : watchedValues.agentIds
       };
@@ -412,10 +412,11 @@ export default function WidgetSettingsDialog({
                 </div>
               </ScrollArea>
 
-              {/* Preview Panel (Restored) */}
-              <aside className="hidden lg:flex w-[400px] border-l border-white/10 bg-[#090c10] flex-col overflow-hidden">
-                <div className="p-4 border-b border-white/5 flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground opacity-50">Live Preview</span>
+              {/* Preview Panel (Restored and Optimized) */}
+              <aside className="hidden md:flex w-[400px] border-l border-white/10 bg-[#090c10] flex-col overflow-hidden shrink-0">
+                <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-50">Live Simulator</span>
+                  <Badge variant="outline" className="text-[9px] h-4 uppercase font-bold border-white/10">Preview Mode</Badge>
                 </div>
                 <div className="flex-1 relative">
                   <ChatbotSimulator 
