@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -161,6 +161,20 @@ export default function WidgetSettingsDialog({
 
   const watchedValues = form.watch();
 
+  // Resolve the "Effective" bot for the simulator
+  const simulatorBotData = useMemo(() => {
+    const agent = hubAgents.find(a => a.id === watchedValues.assignedAgentId);
+    if (agent) {
+      return {
+        ...watchedValues,
+        welcomeMessage: agent.welcomeMessage || watchedValues.welcomeMessage,
+        flow: agent.flow || { nodes: [], edges: [] },
+        agentIds: agent.agentIds?.length ? agent.agentIds : watchedValues.agentIds
+      };
+    }
+    return watchedValues;
+  }, [watchedValues, hubAgents]);
+
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !bot?.id) return;
@@ -181,8 +195,6 @@ export default function WidgetSettingsDialog({
       ...(bot || {}),
       ...values,
       type: 'widget',
-      welcomeMessage: values.welcomeMessage,
-      identityCapture: values.identityCapture,
     } as any;
 
     onSave(payload);
@@ -192,8 +204,7 @@ export default function WidgetSettingsDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] w-[1200px] h-[90vh] p-0 flex flex-col overflow-hidden bg-[#0d1117] border-white/10">
-        <DialogTitle className="sr-only">Web Chat Widget Settings</DialogTitle>
-        <DialogDescription className="sr-only">Configure visual branding and behavior fallbacks for the web stage.</DialogDescription>
+        <DialogTitle className="sr-only">Web Stage Settings</DialogTitle>
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden text-left">
@@ -275,11 +286,11 @@ export default function WidgetSettingsDialog({
                       <section className="space-y-6">
                         <div className="flex items-center gap-2 text-primary">
                           <BrainCircuit className="h-4 w-4" />
-                          <h3 className="text-sm font-bold uppercase tracking-widest">Primary Behavior (AI Agent)</h3>
+                          <h3 className="text-sm font-bold uppercase tracking-widest">AI Agent Brain</h3>
                         </div>
                         <FormField control={form.control} name="assignedAgentId" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">Assign an AI Agent Brain</FormLabel>
+                            <FormLabel className="text-xs">Select an AI Brain</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value || 'none'}>
                               <FormControl><SelectTrigger className="h-12"><SelectValue placeholder="No Agent Brain (Human Only)" /></SelectTrigger></FormControl>
                               <SelectContent>
@@ -289,50 +300,28 @@ export default function WidgetSettingsDialog({
                                 ))}
                               </SelectContent>
                             </Select>
-                            <FormDescription>When an agent is selected, its personality and knowledge will override the stage fallbacks.</FormDescription>
+                            <FormDescription>When a brain is assigned, the simulator and live widget will use that agent's greeting and logic.</FormDescription>
                           </FormItem>
                         )} />
                       </section>
 
-                      {watchedValues.assignedAgentId && watchedValues.assignedAgentId !== 'none' ? (
-                        <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10 space-y-4 animate-in zoom-in-95 duration-300">
-                          <div className="flex items-center gap-2 text-primary font-bold text-sm">
-                            <Sparkles className="h-4 w-4" /> 
-                            AI Behavior Active
-                          </div>
-                          <p className="text-sm text-muted-foreground leading-relaxed">
-                            This widget is currently using the instructions, personality, and logic from <span className="font-bold text-foreground">
-                              {hubAgents.find(a => a.id === watchedValues.assignedAgentId)?.name || 'the selected agent'}
-                            </span>. 
-                          </p>
-                          <div className="grid grid-cols-2 gap-3 pt-2">
-                            <div className="p-3 bg-background/50 rounded-lg border border-white/5 opacity-50 cursor-not-allowed">
-                              <p className="text-[9px] font-black uppercase tracking-wider text-muted-foreground mb-1">Greeting</p>
-                              <p className="text-[11px] truncate">Inherited from Agent</p>
-                            </div>
-                            <div className="p-3 bg-background/50 rounded-lg border border-white/5 opacity-50 cursor-not-allowed">
-                              <p className="text-[9px] font-black uppercase tracking-wider text-muted-foreground mb-1">Lead Capture</p>
-                              <p className="text-[11px] truncate">Inherited from Agent</p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
+                      {!watchedValues.assignedAgentId || watchedValues.assignedAgentId === 'none' ? (
                         <div className="space-y-12 animate-in slide-in-from-top-2 duration-300">
                           <section className="space-y-6">
                             <div className="flex items-center gap-2 text-amber-500">
                               <Settings2 className="h-4 w-4" />
-                              <h3 className="text-sm font-bold uppercase tracking-widest">Fallback Behavior (No AI Agent)</h3>
+                              <h3 className="text-sm font-bold uppercase tracking-widest">Fallback Behavior</h3>
                             </div>
                             <FormField control={form.control} name="welcomeMessage" render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-xs">Fallback Greeting</FormLabel>
+                                <FormLabel className="text-xs">Default Greeting</FormLabel>
                                 <FormControl><Textarea rows={4} placeholder="Hi! How can we help you?" {...field} /></FormControl>
                               </FormItem>
                             )} />
                           </section>
 
                           <section className="space-y-6">
-                            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Fallback Lead Capture</h3>
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Lead Capture</h3>
                             <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
                               <Label className="text-sm font-bold">Enable Lead Capture</Label>
                               <Switch checked={watchedValues.identityCapture?.enabled} onCheckedChange={(val) => form.setValue('identityCapture.enabled', val)} />
@@ -377,6 +366,18 @@ export default function WidgetSettingsDialog({
                             )}
                           </section>
                         </div>
+                      ) : (
+                        <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10 space-y-4 animate-in zoom-in-95 duration-300">
+                          <div className="flex items-center gap-2 text-primary font-bold text-sm">
+                            <Sparkles className="h-4 w-4" /> 
+                            AI Agent Overrides Active
+                          </div>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            This widget is using the greeting, logic, and knowledge from <span className="font-bold text-foreground">
+                              {hubAgents.find(a => a.id === watchedValues.assignedAgentId)?.name}
+                            </span>. Fallback behavior settings are hidden.
+                          </p>
+                        </div>
                       )}
                     </div>
                   )}
@@ -411,7 +412,7 @@ export default function WidgetSettingsDialog({
                 </div>
               </ScrollArea>
 
-              {/* Preview Panel */}
+              {/* Preview Panel (Restored) */}
               <aside className="hidden lg:flex w-[400px] border-l border-white/10 bg-[#090c10] flex-col overflow-hidden">
                 <div className="p-4 border-b border-white/5 flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground opacity-50">Live Preview</span>
@@ -420,9 +421,9 @@ export default function WidgetSettingsDialog({
                   <ChatbotSimulator 
                     isOpen={true} 
                     onClose={() => {}} 
-                    botData={watchedValues as any} 
-                    flow={{ nodes: [], edges: [] }} 
-                    agents={allUsers.filter(u => watchedValues.agentIds?.includes(u.id))}
+                    botData={simulatorBotData as any} 
+                    flow={simulatorBotData.flow || { nodes: [], edges: [] }} 
+                    agents={allUsers.filter(u => simulatorBotData.agentIds?.includes(u.id))}
                   />
                 </div>
               </aside>
