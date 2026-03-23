@@ -1,23 +1,24 @@
 function normalizeSpaces(s: string) {
-  return (s ?? "").replace(/\s+/g, " ").trim();
+  return (s ?? "").replace(/[^\S\r\n]+/g, " ").trim();
 }
 
 export function stripHtml(html: string) {
-  return normalizeSpaces(
-    (html ?? "")
-      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, " ")
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<\/(p|div|h1|h2|h3|h4|li|ul|ol|blockquote)>/gi, "\n")
-      .replace(/<[^>]+>/g, " ")
-  );
+  // Preserve newlines but collapse horizontal whitespace
+  const clean = (html ?? "")
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|h1|h2|h3|h4|li|ul|ol|blockquote|tr|section|article)>/gi, "\n")
+    .replace(/<[^>]+>/g, " ");
+  
+  return clean.split('\n').map(l => l.trim()).filter(Boolean).join('\n');
 }
 
 /**
  * Cheap token estimate (good enough for chunk sizing).
  */
 export function estimateTokens(text: string) {
-  const t = normalizeSpaces(text);
+  const t = text || "";
   if (!t) return 0;
   // rule of thumb: ~4 chars/token in English
   return Math.ceil(t.length / 4);
@@ -105,48 +106,69 @@ export function chunkArticleHtml(args: {
     if (!t) return;
 
     if (t.length > 20000) {
-      console.warn("CHUNK_ENGINE: Large block detected, forcing iterative split", { length: t.length });
+      console.warn("CHUNK_ENGINE: Large block detected, forcing split", { length: t.length });
     }
 
     const tok = estimateTokens(t);
 
-    // if a single block is huge, split it by sentences-ish
+    // If a single block is huge, split it
     if (tok > maxTokens) {
       const parts = t.split(/(?<=[.?!])\s+/).filter(Boolean);
 
-      // 🔒 HARD STOP: if splitting doesn't reduce size (no sentence breaks), fallback to iterative slicing
+      // 🔒 HARD STOP: if splitting by sentences doesn't work, iterative slicing with boundary logic
       if (parts.length === 1) {
-        const words = t.split(/\s+/);
-        const chunkSizeInWords = 100; // safe iterative fallback
+        const words = t.split(/\s+/).filter(Boolean);
+        const chunkSizeInWords = 100;
+
         for (let i = 0; i < words.length; i += chunkSizeInWords) {
           const slice = words.slice(i, i + chunkSizeInWords).join(" ");
-          buffer.push(slice);
-          bufferTokens += estimateTokens(slice);
+          if (!slice) continue;
           
-          if (bufferTokens >= maxTokens) {
+          const sliceTok = estimateTokens(slice);
+
+          // Boundary check for the current slice
+          if (bufferTokens + sliceTok > maxTokens && buffer.length) {
             flush();
-            buffer = [];
-            bufferTokens = 0;
+
+            if (overlapTokens > 0) {
+              const joined = buffer.join("\n");
+              const overlapWords = joined.split(/\s+/).filter(Boolean);
+              const keepWords = Math.max(30, Math.round(overlapTokens * 1.3));
+              const overlapText = overlapWords.slice(-keepWords).join(" ").trim();
+
+              if (overlapText) {
+                buffer = [overlapText];
+                bufferTokens = estimateTokens(overlapText);
+              } else {
+                buffer = [];
+                bufferTokens = 0;
+              }
+            } else {
+              buffer = [];
+              bufferTokens = 0;
+            }
           }
+
+          buffer.push(slice);
+          bufferTokens += sliceTok;
         }
         return;
       }
 
       for (const p of parts) {
-        if (p === t) continue; // 🔒 prevent infinite loop
+        if (p === t) continue; // 🔒 recursion safety
         pushText(p);
       }
       return;
     }
 
-    // If adding would exceed limit, flush current chunk with overlap
+    // Standard chunk-boundary logic
     if (bufferTokens + tok > maxTokens && buffer.length) {
       flush();
 
-      // overlap: keep last N tokens worth of text in buffer
       if (overlapTokens > 0) {
         const joined = buffer.join("\n");
-        const words = joined.split(/\s+/);
+        const words = joined.split(/\s+/).filter(Boolean);
         const keepWords = Math.max(30, Math.round(overlapTokens * 1.3));
         const overlapText = words.slice(-keepWords).join(" ").trim();
 
