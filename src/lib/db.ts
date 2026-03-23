@@ -684,6 +684,12 @@ export const getMemoryNodes = async (type: string): Promise<any[]> => {
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 };
 
+export const getBrainChunks = async (hubId: string): Promise<any[]> => {
+  const q = query(collection(db, 'brain_chunks'), where('hubId', '==', hubId), limit(50));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
 export const getSalesExtractions = async (spaceId: string) => {
     const q = query(collection(db, 'sales_extractions'), where('spaceId', '==', spaceId), limit(50));
     const snap = await getDocs(q);
