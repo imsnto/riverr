@@ -13,6 +13,7 @@ import { Input } from '../ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { marked } from 'marked';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { previewAgentResponseAction } from '@/app/actions/chat';
 
 interface ChatbotSimulatorProps {
   isOpen: boolean;
@@ -71,7 +72,6 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
     
     const node = nodes.find(n => n.id === nodeId);
     
-    // If we're at start and have no nodes, go to conversational mode
     if (nodeId === 'start' && nodes.length === 0) {
         setCurrentNodeId('conversational_ai');
         return;
@@ -119,19 +119,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
       setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: node.data.text || 'Transferring you to a human agent...', type: 'automation' }]);
       setMessages(prev => [...prev, { id: Date.now(), role: 'system', text: 'Escalated to human' }]);
     } else if (node.type === 'ai_step') {
-      setIsThinking(true);
-      timeoutRef.current = setTimeout(() => {
-        setIsThinking(false);
-        const resolved = Math.random() > 0.4;
-        if (resolved) {
-          setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: "I've found an answer for you in our knowledge base!", type: 'ai' }]);
-          const nextEdge = edges.find(e => e.source === nodeId && e.sourceHandle === 'resolved');
-          if (nextEdge) handleStep(nextEdge.target);
-        } else {
-          const nextEdge = edges.find(e => e.source === nodeId && e.sourceHandle === 'unresolved');
-          if (nextEdge) handleStep(nextEdge.target);
-        }
-      }, 1500);
+      setCurrentNodeId('conversational_ai');
     }
   }, [nodes, edges, previewEmail, previewName, botData.welcomeMessage]);
 
@@ -152,15 +140,16 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
     }
   }, [messages, isThinking, isWidgetOpen]);
 
-  const handleInput = (text: string, buttonId?: string, forceNodeId?: string) => {
+  const handleInput = async (text: string, buttonId?: string, forceNodeId?: string) => {
     if (!text.trim() && !buttonId && !forceNodeId && attachments.length === 0) return;
     
+    const submittedText = text.trim();
     const targetNodeId = forceNodeId || currentNodeId;
     const currentNode = nodes.find(n => n.id === targetNodeId);
 
     if (currentNode?.type === 'identity_form' && forceNodeId) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text.trim());
-      if (!previewName.trim() || !emailRegex.test(previewEmail.trim())) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(previewEmail.trim());
+      if (!previewName.trim() || !emailRegex) {
         setFormError("Please enter a valid name and email.");
         return;
       }
@@ -178,26 +167,55 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
         setMessages(prev => [...prev, { 
             id: Date.now(), 
             role: 'user', 
-            text: text || (msgAttachments.length > 0 ? 'Sent an attachment' : 'Click'),
+            text: submittedText || (msgAttachments.length > 0 ? 'Sent an attachment' : 'Click'),
             attachments: msgAttachments
         }]);
         setUserInput('');
         setAttachments([]);
     }
     
-    // AI MOCK RESPONSE
-    if (!targetNodeId || targetNodeId === 'conversational_ai') {
-        setIsThinking(true);
-        setTimeout(() => {
-            setIsThinking(false);
-            setMessages(prev => [...prev, { 
-                id: Date.now(), 
-                role: 'bot', 
-                text: `I'm ${botName}. I've received your message: "${text}". In the live widget, I'll use Finn's brain to analyze your libraries and respond!`, 
-                type: 'ai' 
-            }]);
-        }, 1500);
-        return;
+    const hasAssignedAgent = !!botData.id && !!botData.assignedAgentId && botData.assignedAgentId !== 'none';
+
+    const shouldUseRealAiPreview = hasAssignedAgent && !forceNodeId && (
+      !targetNodeId || targetNodeId === 'conversational_ai' || nodes.length === 0
+    );
+
+    if (shouldUseRealAiPreview) {
+      setIsThinking(true);
+      try {
+        const result = await previewAgentResponseAction({
+          widgetBotId: String(botData.id),
+          message: submittedText,
+          visitor: {
+            name: previewName || undefined,
+            email: previewEmail || undefined,
+          },
+        });
+
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            role: 'bot',
+            text: result.answer,
+            type: 'ai',
+            sources: result.sources || [],
+          }
+        ]);
+      } catch (error) {
+        console.error('Preview AI response failed:', error);
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            role: 'system',
+            text: 'Preview failed to generate a response.',
+          }
+        ]);
+      } finally {
+        setIsThinking(false);
+      }
+      return;
     }
 
     let targetEdge;
@@ -207,7 +225,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
         targetEdge = edges.find(e => e.source === targetNodeId && (e.sourceHandle === 'next' || !e.sourceHandle));
     } else if (currentNode?.type === 'quick_reply' || currentNode?.type === 'ai_classifier') {
         const buttons = currentNode.type === 'quick_reply' ? (currentNode.data.buttons || []) : (currentNode.data.intents || []);
-        const matchedButton = buttons.find((b: any) => text.toLowerCase().includes(b.label.toLowerCase()));
+        const matchedButton = buttons.find((b: any) => submittedText.toLowerCase().includes(String(b.label || '').toLowerCase()));
         targetEdge = matchedButton 
             ? edges.find(e => e.source === targetNodeId && e.sourceHandle === `intent:${matchedButton.id}`)
             : edges.find(e => e.source === targetNodeId && e.sourceHandle === 'fallback');
@@ -217,18 +235,33 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
 
     if (targetEdge) {
         handleStep(targetEdge.target);
-    } else {
-        // If we logic hits a dead end, assume conversational AI takes over
+    } else if (hasAssignedAgent && !forceNodeId) {
         setIsThinking(true);
-        setTimeout(() => {
-            setIsThinking(false);
-            setMessages(prev => [...prev, { 
-                id: Date.now(), 
-                role: 'bot', 
-                text: "That makes sense. Let me see how I can help with that...", 
-                type: 'ai' 
-            }]);
-        }, 1200);
+        try {
+          const result = await previewAgentResponseAction({
+            widgetBotId: String(botData.id),
+            message: submittedText,
+            visitor: {
+              name: previewName || undefined,
+              email: previewEmail || undefined,
+            },
+          });
+
+          setMessages(prev => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              role: 'bot',
+              text: result.answer,
+              type: 'ai',
+              sources: result.sources || [],
+            }
+          ]);
+        } catch (error) {
+          console.error('Preview AI fallback failed:', error);
+        } finally {
+          setIsThinking(false);
+        }
     }
   };
 
@@ -316,6 +349,18 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
                                   <div className="prose prose-sm prose-invert text-[11px]" dangerouslySetInnerHTML={{ __html: marked.parse(m.text) as string }} />
                               ) : (
                                   <p className="whitespace-pre-wrap">{m.text}</p>
+                              )}
+
+                              {m.sources && m.sources.length > 0 && (
+                                <div className="mt-3 space-y-1.5 border-t border-white/10 pt-2">
+                                  <p className="text-[8px] font-black uppercase tracking-widest opacity-50">Sources</p>
+                                  {m.sources.map((source: any) => (
+                                    <div key={source.articleId} className="text-[9px] rounded-md border border-white/5 bg-black/20 px-2 py-1 flex items-center justify-between">
+                                      <span className="truncate flex-1 font-bold">{source.title}</span>
+                                      <ChevronRight className="h-2 w-2 ml-1 opacity-30" />
+                                    </div>
+                                  ))}
+                                </div>
                               )}
 
                               {m.attachments && m.attachments.length > 0 && (

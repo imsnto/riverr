@@ -21,9 +21,19 @@ import { getMessagingProvider } from '@/lib/comms/providerFactory';
 import { generateQueryEmbedding } from '@/lib/brain/embed';
 import { crawlWebsiteKnowledge } from '@/ai/flows/crawl-website-knowledge';
 
+export type PreviewAgentResponseResult = {
+  answer: string;
+  usedAgentName: string;
+  sources: Array<{
+    articleId: string;
+    title: string;
+    url: string;
+    score: number;
+  }>;
+};
+
 /**
  * Searches the Help Center documentation using Firestore Vector Search.
- * Replaces Typesense-based RAG.
  */
 async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
   const { hubId, allowedHelpCenterIds, userId, query, topK = 8 } = params;
@@ -36,7 +46,6 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
   try {
     const coll = adminDB.collection('brain_chunks');
     
-    // Perform vector search against the chunks collection
     const vectorQuery = (coll as any)
       .where('hubId', '==', hubId)
       .where('sourceType', 'in', ['help_center_article', 'website', 'pdf', 'manual_note'])
@@ -44,7 +53,7 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
       .findNearest({
         vectorField: 'embedding',
         queryVector: admin.firestore.FieldValue.vector(queryVector),
-        limit: Math.min(topK * 3, 30), // Fetch more for filtered intersection
+        limit: Math.min(topK * 3, 30),
         distanceMeasure: 'DOT_PRODUCT',
       });
 
@@ -68,12 +77,10 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
         };
       })
       .filter((c: any) => {
-        // Filter by connected library IDs
         const hcOk = !allowedHelpCenterIds?.length || 
                      c.helpCenterIds.length === 0 || 
                      c.helpCenterIds.some((id: string) => allowedHelpCenterIds.includes(id));
 
-        // Filter by access control
         const visibilityOk = c.visibility === 'public' || 
                              c.visibility === 'internal' || 
                              (c.visibility === 'private' && userId && c.allowedUserIds.includes(userId));
@@ -133,6 +140,121 @@ async function searchSupport(params: SearchSupportParams): Promise<SearchSupport
   }
 }
 
+/**
+ * Non-mutating version of the agent logic used for settings previews.
+ */
+export async function previewAgentResponseAction(args: {
+  widgetBotId: string;
+  message: string;
+  visitor?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  };
+}): Promise<PreviewAgentResponseResult> {
+  const widgetBotId = String(args.widgetBotId || '').trim();
+  const message = String(args.message || '').trim();
+
+  if (!widgetBotId) {
+    throw new Error('widgetBotId is required');
+  }
+
+  if (!message) {
+    return {
+      answer: '',
+      usedAgentName: 'Assistant',
+      sources: [],
+    };
+  }
+
+  const resolved = await resolveRuntimeBot(widgetBotId);
+  const effectiveBot = resolved?.effectiveBot;
+
+  if (!effectiveBot) {
+    throw new Error('Unable to resolve runtime bot');
+  }
+
+  const botName = effectiveBot.webAgentName || effectiveBot.name || 'Assistant';
+  const conversationGoal = effectiveBot.conversationGoal || effectiveBot.primaryGoal || 'Provide information and let customer decide';
+
+  let systemInstruction = `You are ${botName}, a helpful AI assistant. Be conversational, warm, accurate, and concise.`;
+
+  if (conversationGoal) {
+    systemInstruction += `\n\nCONVERSATION GOAL:\n${conversationGoal}`;
+  }
+
+  if (effectiveBot.businessContext?.businessName) {
+    systemInstruction += `\n\nBUSINESS NAME:\n${effectiveBot.businessContext.businessName}`;
+  }
+
+  if (effectiveBot.businessContext?.whatYouDo) {
+    systemInstruction += `\n\nWHAT THE BUSINESS DOES:\n${effectiveBot.businessContext.whatYouDo}`;
+  }
+
+  if (effectiveBot.businessContext?.targetAudience) {
+    systemInstruction += `\n\nTARGET AUDIENCE:\n${effectiveBot.businessContext.targetAudience}`;
+  }
+
+  if (effectiveBot.businessContext?.hours) {
+    systemInstruction += `\n\nHOURS:\n${effectiveBot.businessContext.hours}`;
+  }
+
+  if (effectiveBot.businessContext?.forbiddenTopics) {
+    systemInstruction += `\n\nFORBIDDEN TOPICS:\n${effectiveBot.businessContext.forbiddenTopics}`;
+  }
+
+  // 1. Check Distilled Intents
+  const supportSearch = await searchSupport({
+    hubId: effectiveBot.hubId,
+    userId: null,
+    query: message,
+    topK: 3,
+  });
+
+  const topIntent = supportSearch.intents?.[0];
+  if (topIntent && topIntent._searchScore && topIntent._searchScore > 0.75) {
+    return {
+      answer: topIntent.description || 'I found a matching support answer.',
+      usedAgentName: botName,
+      sources: [],
+    };
+  }
+
+  // 2. Search Documentation
+  const docSearch = await searchHelpCenter({
+    hubId: effectiveBot.hubId,
+    allowedHelpCenterIds: effectiveBot.allowedHelpCenterIds || [],
+    userId: null,
+    query: message,
+    topK: 5,
+  });
+
+  const chunks = docSearch.chunks ?? [];
+  const context = chunks.map((c) => ({
+    title: c.title,
+    text: c.chunkText,
+    url: c.url,
+  }));
+
+  const result = await agentResponse({
+    query: message,
+    botName,
+    context,
+    greetingScript: systemInstruction,
+  });
+
+  return {
+    answer: (result?.answer || '').trim() || `I'm not sure yet, but I need a little more detail to help with that.`,
+    usedAgentName: botName,
+    sources: chunks.slice(0, 3).map((c) => ({
+      articleId: c.articleId,
+      title: c.title,
+      url: c.url,
+      score: c.score,
+    })),
+  };
+}
+
 export async function invokeAgent(args: {
   bot: any;
   conversation: Conversation;
@@ -140,7 +262,6 @@ export async function invokeAgent(args: {
 }) {
   let { bot, conversation } = args;
 
-  // ENSURE we resolve the full runtime bot (Stage -> Actor logic)
   const resolved = bot?.id ? await resolveRuntimeBot(bot.id) : null;
   const effectiveBot = resolved?.effectiveBot || bot;
 
@@ -317,7 +438,6 @@ export async function ensureConversationCrmLinkedAction(conversationId: string) 
 
 export async function reindexArticleAction(articleId: string) {
   console.log(`Triggering reindex for article: ${articleId}`);
-  // In a real implementation, this would call the indexer with the article data
 }
 
 export async function searchHelpCenterAction(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {

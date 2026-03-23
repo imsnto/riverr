@@ -162,15 +162,14 @@ export default function WidgetSettingsDialog({
 
   const watchedValues = form.watch();
 
-  // Resolve the "Effective" bot for the simulator
   const simulatorBotData = useMemo(() => {
     const agent = hubAgents.find(a => a.id === watchedValues.assignedAgentId);
     if (agent) {
       return {
         ...watchedValues,
-        name: agent.name, // Adopt agent's identity
+        name: agent.name,
         webAgentName: agent.webAgentName || agent.name,
-        welcomeMessage: agent.channelConfig?.web?.greeting?.text || agent.welcomeMessage || watchedValues.welcomeMessage,
+        welcomeMessage: agent.channelConfig?.web?.greeting?.text || agent.welcomeMessage || watchedValues.welcomeMessage || 'Hi! How can I help?',
         flow: agent.flow || { nodes: [], edges: [] },
         agentIds: agent.agentIds?.length ? agent.agentIds : watchedValues.agentIds
       };
