@@ -3,20 +3,19 @@
  */
 import admin from "firebase-admin";
 
-
 if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        // convert literal \n to real newlines
-        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-      }),
-      storageBucket: "timeflow-6i3eo.appspot.com",
-    });
-  }
-  
-  export const adminAuth = admin.auth();
-  export const adminDB = admin.firestore();
-  export const adminStorage = admin.storage().bucket("timeflow-6i3eo.appspot.com");
-  export default admin;
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      // convert literal \n to real newlines
+      privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    }),
+    storageBucket: "timeflow-6i3eo.appspot.com",
+  });
+}
+
+export const adminAuth = admin.auth();
+export const adminDB = admin.firestore();
+export const adminStorage = admin.storage().bucket("timeflow-6i3eo.appspot.com");
+export default admin;

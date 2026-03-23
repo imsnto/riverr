@@ -30,10 +30,11 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
-  // FIX 1: Use activeSpace.id as dependency to prevent infinite object-reference loops
   useEffect(() => {
     if (!activeSpace?.id) return;
 
+    // To avoid requiring a composite index during the prototype phase,
+    // we fetch filtered jobs and sort them locally.
     const q = query(
       collection(firestore, 'brain_jobs'),
       where('params.spaceId', '==', activeSpace.id),
@@ -51,7 +52,6 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
     return () => unsubscribe();
   }, [activeSpace?.id]);
 
-  // FIX 2: Stable ID dependency and mount check
   useEffect(() => {
     const hubId = activeHub?.id;
     if (!hubId) return;
@@ -101,7 +101,6 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
     if (!activeHub?.id) return;
     startReindexTransition(async () => {
       try {
-        console.log('REINDEX: Triggering mass reindex API...');
         const response = await fetch('/api/admin/reindex-help-center', {
           method: 'POST',
           headers: { 
@@ -111,22 +110,20 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
         });
         
         const payload = await response.json().catch(() => null);
-        console.log('REINDEX: Server response', response.status, payload);
 
         if (!response.ok) {
           throw new Error(payload?.error || 'Server responded with error');
         }
 
-        toast({ title: "Mass Reindexing Complete", description: `Reindexed ${payload.articles} articles into ${payload.totalChunks} vector chunks.` });
+        toast({ title: "Mass Reindexing Complete", description: `Reindexed ${payload.articles} articles.` });
         
-        // FIX 3: Debounce the refetch to allow Firestore indexes to propagate
+        // Debounce refetch
         setTimeout(() => {
             if (activeHub?.id) {
                 db.getBrainChunks(activeHub.id).then(setIndexedChunks);
             }
         }, 1000);
       } catch (e: any) {
-        console.error('REINDEX: Client failure', e);
         toast({ 
           variant: 'destructive', 
           title: 'Mass Reindexing Failed',
