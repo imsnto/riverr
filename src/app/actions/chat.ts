@@ -20,6 +20,7 @@ import admin from 'firebase-admin';
 import { getMessagingProvider } from '@/lib/comms/providerFactory';
 import { generateQueryEmbedding } from '@/lib/brain/embed';
 import { crawlWebsiteKnowledge } from '@/ai/flows/crawl-website-knowledge';
+import { indexHelpCenterArticleToChunks } from '@/lib/knowledge/indexer';
 
 export type PreviewAgentResponseResult = {
   answer: string;
@@ -437,7 +438,28 @@ export async function ensureConversationCrmLinkedAction(conversationId: string) 
 }
 
 export async function reindexArticleAction(articleId: string) {
-  console.log(`Triggering reindex for article: ${articleId}`);
+  const articleSnap = await adminDB.collection('help_center_articles').doc(articleId).get();
+  if (!articleSnap.exists) return;
+  const article = { id: articleSnap.id, ...articleSnap.data() };
+  
+  const hubSnap = await adminDB.collection('hubs').doc(article.hubId).get();
+  const spaceId = hubSnap.data()?.spaceId;
+  if (!spaceId) return;
+
+  // 1. Delete existing chunks for this article to avoid duplicates
+  const chunksRef = adminDB.collection('brain_chunks');
+  const existingChunks = await chunksRef.where('sourceId', '==', articleId).get();
+  const batch = adminDB.batch();
+  existingChunks.docs.forEach(doc => batch.delete(doc.ref));
+  await batch.commit();
+
+  // 2. Index to Firestore Vector Search using actual grounding logic
+  await indexHelpCenterArticleToChunks({
+    adminDB,
+    article,
+    spaceId,
+    publicHelpBaseUrl: process.env.PUBLIC_HELP_BASE_URL || ''
+  });
 }
 
 export async function searchHelpCenterAction(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
