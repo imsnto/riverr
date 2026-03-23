@@ -101,6 +101,24 @@ export function chunkArticleHtml(args: {
     chunks.push({ headingPath: [...headingPath], text, chunkIndex: order++ });
   };
 
+  const resetBufferWithOverlap = () => {
+    if (overlapTokens > 0 && buffer.length) {
+      const joined = buffer.join("\n");
+      const words = joined.split(/\s+/).filter(Boolean);
+      const keepWords = Math.max(30, Math.round(overlapTokens * 1.3));
+      const overlapText = words.slice(-keepWords).join(" ").trim();
+
+      if (overlapText) {
+        buffer = [overlapText];
+        bufferTokens = estimateTokens(overlapText);
+        return;
+      }
+    }
+
+    buffer = [];
+    bufferTokens = 0;
+  };
+
   const pushText = (text: string) => {
     const t = normalizeSpaces(text);
     if (!t) return;
@@ -129,24 +147,7 @@ export function chunkArticleHtml(args: {
           // Boundary check for the current slice
           if (bufferTokens + sliceTok > maxTokens && buffer.length) {
             flush();
-
-            if (overlapTokens > 0) {
-              const joined = buffer.join("\n");
-              const overlapWords = joined.split(/\s+/).filter(Boolean);
-              const keepWords = Math.max(30, Math.round(overlapTokens * 1.3));
-              const overlapText = overlapWords.slice(-keepWords).join(" ").trim();
-
-              if (overlapText) {
-                buffer = [overlapText];
-                bufferTokens = estimateTokens(overlapText);
-              } else {
-                buffer = [];
-                bufferTokens = 0;
-              }
-            } else {
-              buffer = [];
-              bufferTokens = 0;
-            }
+            resetBufferWithOverlap();
           }
 
           buffer.push(slice);
@@ -165,24 +166,7 @@ export function chunkArticleHtml(args: {
     // Standard chunk-boundary logic
     if (bufferTokens + tok > maxTokens && buffer.length) {
       flush();
-
-      if (overlapTokens > 0) {
-        const joined = buffer.join("\n");
-        const words = joined.split(/\s+/).filter(Boolean);
-        const keepWords = Math.max(30, Math.round(overlapTokens * 1.3));
-        const overlapText = words.slice(-keepWords).join(" ").trim();
-
-        if (overlapText) {
-          buffer = [overlapText];
-          bufferTokens = estimateTokens(overlapText);
-        } else {
-          buffer = [];
-          bufferTokens = 0;
-        }
-      } else {
-        buffer = [];
-        bufferTokens = 0;
-      }
+      resetBufferWithOverlap();
     }
 
     buffer.push(t);
