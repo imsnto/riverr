@@ -2,19 +2,9 @@ import { NextResponse } from "next/server";
 import { adminDB } from "@/lib/firebase-admin";
 import { indexHelpCenterArticleToChunks } from "@/lib/knowledge/indexer";
 
-const REINDEX_SECRET = process.env.ADMIN_REINDEX_SECRET;
-const PUBLIC_HELP_BASE_URL = process.env.PUBLIC_HELP_BASE_URL || "";
-
 export async function POST(req: Request) {
-  if (!REINDEX_SECRET) {
-    return NextResponse.json({ ok: false, error: "Missing ADMIN_REINDEX_SECRET on the server." }, { status: 500 });
-  }
-
-  const auth = req.headers.get("x-admin-secret");
-  if (auth !== REINDEX_SECRET) {
-    return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
-  }
-
+  console.log('REINDEX: Start request received');
+  
   const body = await req.json().catch(() => ({}));
   const hubId = body.hubId as string | undefined;
   const articleId = body.articleId as string | undefined;
@@ -32,60 +22,68 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: `Hub ${hubId} is missing a spaceId.` }, { status: 500 });
   }
 
-  if (articleId) {
-    const articleRef = adminDB.collection("help_center_articles").doc(articleId);
-    const docSnap = await articleRef.get();
+  try {
+    if (articleId) {
+      console.log(`REINDEX: Single article ${articleId}`);
+      const articleRef = adminDB.collection("help_center_articles").doc(articleId);
+      const docSnap = await articleRef.get();
 
-    if (!docSnap.exists || docSnap.data()?.hubId !== hubId) {
-      return NextResponse.json(
-        { ok: false, error: `Article ${articleId} not found in hub ${hubId}.` },
-        { status: 404 }
-      );
+      if (!docSnap.exists || docSnap.data()?.hubId !== hubId) {
+        return NextResponse.json(
+          { ok: false, error: `Article ${articleId} not found in hub ${hubId}.` },
+          { status: 404 }
+        );
+      }
+      
+      // Cleanup existing chunks for this article
+      const chunksRef = adminDB.collection('brain_chunks');
+      const existingChunks = await chunksRef.where('sourceId', '==', articleId).get();
+      const batch = adminDB.batch();
+      existingChunks.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+
+      const article = { id: docSnap.id, ...docSnap.data() };
+      const res = await indexHelpCenterArticleToChunks({
+        adminDB,
+        article,
+        spaceId,
+        publicHelpBaseUrl: process.env.PUBLIC_HELP_BASE_URL || "",
+      });
+      
+      return NextResponse.json({ ok: true, hubId, spaceId, articles: 1, totalChunks: res.chunkCount, reindexed: [articleId] });
     }
-    
-    // Cleanup existing chunks for this article
-    const existingChunks = await adminDB.collection('brain_chunks').where('sourceId', '==', articleId).get();
-    const batch = adminDB.batch();
-    existingChunks.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
 
-    const article = { id: docSnap.id, ...docSnap.data() };
-    const res = await indexHelpCenterArticleToChunks({
-      adminDB,
-      article,
-      spaceId,
-      publicHelpBaseUrl: PUBLIC_HELP_BASE_URL,
-    });
-    
-    return NextResponse.json({ ok: true, hubId, spaceId, articles: 1, totalChunks: res.chunkCount, reindexed: [articleId] });
+    console.log(`REINDEX: Mass reindexing hub ${hubId}`);
+    const snap = await adminDB
+      .collection("help_center_articles")
+      .where("hubId", "==", hubId)
+      .where("status", "==", "published")
+      .get();
+
+    let totalChunks = 0;
+    let articlesCount = 0;
+
+    for (const doc of snap.docs) {
+      const article = { id: doc.id, ...doc.data() };
+      
+      const existingChunks = await adminDB.collection('brain_chunks').where('sourceId', '==', article.id).get();
+      const batch = adminDB.batch();
+      existingChunks.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+
+      const res = await indexHelpCenterArticleToChunks({
+        adminDB,
+        article,
+        spaceId,
+        publicHelpBaseUrl: process.env.PUBLIC_HELP_BASE_URL || "",
+      });
+      totalChunks += res.chunkCount;
+      articlesCount += 1;
+    }
+
+    return NextResponse.json({ ok: true, hubId, spaceId, articles: articlesCount, totalChunks });
+  } catch (err: any) {
+    console.error('REINDEX ERROR:', err);
+    return NextResponse.json({ ok: false, error: err.message || "Internal server error during indexing" }, { status: 500 });
   }
-
-  const snap = await adminDB
-    .collection("help_center_articles")
-    .where("hubId", "==", hubId)
-    .where("status", "==", "published")
-    .get();
-
-  let totalChunks = 0;
-  let articlesCount = 0;
-
-  for (const doc of snap.docs) {
-    const article = { id: doc.id, ...doc.data() };
-    
-    const existingChunks = await adminDB.collection('brain_chunks').where('sourceId', '==', article.id).get();
-    const batch = adminDB.batch();
-    existingChunks.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
-
-    const res = await indexHelpCenterArticleToChunks({
-      adminDB,
-      article,
-      spaceId,
-      publicHelpBaseUrl: PUBLIC_HELP_BASE_URL,
-    });
-    totalChunks += res.chunkCount;
-    articlesCount += 1;
-  }
-
-  return NextResponse.json({ ok: true, hubId, spaceId, articles: articlesCount, totalChunks });
 }

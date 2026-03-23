@@ -93,19 +93,31 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
     if (!activeHub) return;
     startReindexTransition(async () => {
       try {
+        console.log('REINDEX: Triggering mass reindex API...');
         const response = await fetch('/api/admin/reindex-help-center', {
           method: 'POST',
           headers: { 
-            'Content-Type': 'application/json',
-            'x-admin-secret': process.env.NEXT_PUBLIC_ADMIN_REINDEX_SECRET || '' 
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({ hubId: activeHub.id })
         });
-        if (!response.ok) throw new Error('Network response was not ok');
-        toast({ title: "Mass Reindexing Complete", description: "The content library has been fully vectorized." });
+        
+        const payload = await response.json().catch(() => null);
+        console.log('REINDEX: Server response', response.status, payload);
+
+        if (!response.ok) {
+          throw new Error(payload?.error || 'Server responded with error');
+        }
+
+        toast({ title: "Mass Reindexing Complete", description: `Reindexed ${payload.articles} articles into ${payload.totalChunks} vector chunks.` });
         db.getBrainChunks(activeHub.id).then(setIndexedChunks);
-      } catch (e) {
-        toast({ variant: 'destructive', title: 'Mass Reindexing Failed' });
+      } catch (e: any) {
+        console.error('REINDEX: Client failure', e);
+        toast({ 
+          variant: 'destructive', 
+          title: 'Mass Reindexing Failed',
+          description: e.message || 'Check console for details.'
+        });
       }
     });
   }

@@ -84,10 +84,3 @@ export async function generateQueryEmbedding(text: string): Promise<number[] | n
     return null;
   }
 }
-
-/**
- * @deprecated Use generateDocumentEmbedding or generateQueryEmbedding
- */
-export async function generateEmbedding(text: string): Promise<number[] | null> {
-    return generateDocumentEmbedding(text);
-}

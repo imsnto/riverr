@@ -685,9 +685,23 @@ export const getMemoryNodes = async (type: string): Promise<any[]> => {
 };
 
 export const getBrainChunks = async (hubId: string): Promise<any[]> => {
-  const q = query(collection(db, 'brain_chunks'), where('hubId', '==', hubId), limit(50));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  console.log(`DB: Fetching brain chunks for hub ${hubId}`);
+  const q = query(
+    collection(db, 'brain_chunks'), 
+    where('hubId', '==', hubId), 
+    orderBy('createdAt', 'desc'),
+    limit(100)
+  );
+  try {
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    console.error('DB: Failed to fetch brain chunks', err);
+    // Fallback if index isn't ready
+    const fallbackQ = query(collection(db, 'brain_chunks'), where('hubId', '==', hubId), limit(100));
+    const fallbackSnap = await getDocs(fallbackQ);
+    return fallbackSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
 };
 
 export const getSalesExtractions = async (spaceId: string) => {

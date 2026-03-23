@@ -13,7 +13,6 @@ function safeSlug(s: string) {
 
 /**
  * Indexes a help center article into Firestore vector search.
- * Replaces Typesense-based indexing.
  */
 export async function indexHelpCenterArticleToChunks(args: {
   adminDB: Firestore;
@@ -38,6 +37,8 @@ export async function indexHelpCenterArticleToChunks(args: {
     maxTokens: 220,
     overlapTokens: 60,
   });
+
+  console.log(`INDEXER: Processing article ${articleId} into ${specs.length} specs`);
 
   const now = new Date().toISOString();
   const modelName = process.env.EMBEDDING_MODEL || 'gemini-embedding-2-preview';
@@ -69,6 +70,7 @@ export async function indexHelpCenterArticleToChunks(args: {
             visibility: article.visibility || 'public',
             allowedUserIds: article.allowedUserIds || [],
             status: 'active',
+            // Firestore Vector write
             embedding: (admin.firestore.FieldValue as any).vector(embedding),
             embeddingModel: modelName,
             embeddingDim: 2048,
@@ -78,9 +80,10 @@ export async function indexHelpCenterArticleToChunks(args: {
             chunkIndex: c.chunkIndex,
         };
 
-        // Standard Firestore write
         await adminDB.collection('brain_chunks').add(chunkData);
         chunkCount++;
+    } else {
+        console.warn(`INDEXER: Failed to generate embedding for chunk ${c.chunkIndex} of article ${articleId}`);
     }
   }
 
@@ -93,5 +96,6 @@ export async function indexHelpCenterArticleToChunks(args: {
     { merge: true }
   );
 
+  console.log(`INDEXER: Successfully indexed ${chunkCount} chunks for ${articleId}`);
   return { chunkCount };
 }
