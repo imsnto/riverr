@@ -1,4 +1,3 @@
-
 function normalizeSpaces(s: string) {
   return (s ?? "").replace(/\s+/g, " ").trim();
 }
@@ -16,7 +15,6 @@ export function stripHtml(html: string) {
 
 /**
  * Cheap token estimate (good enough for chunk sizing).
- * Later you can swap to a real tokenizer.
  */
 export function estimateTokens(text: string) {
   const t = normalizeSpaces(text);
@@ -32,8 +30,6 @@ type Block = {
 };
 
 function extractBlocksFromHtml(html: string): Block[] {
-  // We’ll “preserve” headings via regex before stripping everything.
-  // This is not a perfect HTML parser, but works well for typical rich-text output.
   const raw = html ?? "";
 
   // Replace headings with sentinel lines
@@ -43,7 +39,6 @@ function extractBlocksFromHtml(html: string): Block[] {
     .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, "\n[[H3]] $1 \n")
     .replace(/<h4[^>]*>([\s\S]*?)<\/h4>/gi, "\n[[H4]] $1 \n");
 
-  // Now strip remaining tags, keeping newlines
   const plain = stripHtml(withSentinels);
 
   const lines = plain
@@ -64,7 +59,6 @@ function extractBlocksFromHtml(html: string): Block[] {
     }
   }
 
-  // Merge consecutive text blocks that are tiny
   const merged: Block[] = [];
   for (const b of blocks) {
     const last = merged[merged.length - 1];
@@ -86,8 +80,8 @@ export type ChunkSpec = {
 
 export function chunkArticleHtml(args: {
   html: string;
-  maxTokens?: number;   // default 220
-  overlapTokens?: number; // default 60
+  maxTokens?: number;   
+  overlapTokens?: number;
 }) : ChunkSpec[] {
   const maxTokens = args.maxTokens ?? 220;
   const overlapTokens = args.overlapTokens ?? 60;
@@ -110,12 +104,38 @@ export function chunkArticleHtml(args: {
     const t = normalizeSpaces(text);
     if (!t) return;
 
+    if (t.length > 20000) {
+      console.warn("CHUNK_ENGINE: Large block detected, forcing iterative split", { length: t.length });
+    }
+
     const tok = estimateTokens(t);
 
     // if a single block is huge, split it by sentences-ish
     if (tok > maxTokens) {
       const parts = t.split(/(?<=[.?!])\s+/).filter(Boolean);
-      for (const p of parts) pushText(p);
+
+      // 🔒 HARD STOP: if splitting doesn't reduce size (no sentence breaks), fallback to iterative slicing
+      if (parts.length === 1) {
+        const words = t.split(/\s+/);
+        const chunkSizeInWords = 100; // safe iterative fallback
+        for (let i = 0; i < words.length; i += chunkSizeInWords) {
+          const slice = words.slice(i, i + chunkSizeInWords).join(" ");
+          buffer.push(slice);
+          bufferTokens += estimateTokens(slice);
+          
+          if (bufferTokens >= maxTokens) {
+            flush();
+            buffer = [];
+            bufferTokens = 0;
+          }
+        }
+        return;
+      }
+
+      for (const p of parts) {
+        if (p === t) continue; // 🔒 prevent infinite loop
+        pushText(p);
+      }
       return;
     }
 
@@ -127,10 +147,16 @@ export function chunkArticleHtml(args: {
       if (overlapTokens > 0) {
         const joined = buffer.join("\n");
         const words = joined.split(/\s+/);
-        // approx tokens ~ words*0.75 (very rough); we’ll just keep last X words
         const keepWords = Math.max(30, Math.round(overlapTokens * 1.3));
-        buffer = [words.slice(-keepWords).join(" ")];
-        bufferTokens = estimateTokens(buffer[0]);
+        const overlapText = words.slice(-keepWords).join(" ").trim();
+
+        if (overlapText) {
+          buffer = [overlapText];
+          bufferTokens = estimateTokens(overlapText);
+        } else {
+          buffer = [];
+          bufferTokens = 0;
+        }
       } else {
         buffer = [];
         bufferTokens = 0;
@@ -143,14 +169,12 @@ export function chunkArticleHtml(args: {
 
   for (const b of blocks) {
     if (b.kind === "heading") {
-      // Flush before changing heading context
       if (buffer.length) {
         flush();
         buffer = [];
         bufferTokens = 0;
       }
 
-      // Update heading path based on level
       const lvl = b.level ?? 2;
       const idx = Math.max(0, lvl - 1);
       headingPath = headingPath.slice(0, idx);
@@ -163,6 +187,5 @@ export function chunkArticleHtml(args: {
 
   if (buffer.length) flush();
 
-  // Drop extremely tiny chunks
   return chunks.filter(c => c.text.length >= 80);
 }
