@@ -1,6 +1,6 @@
 import type { Firestore } from "firebase-admin/firestore";
 import admin from "firebase-admin";
-import { chunkArticleHtml, estimateTokens } from "./chunking";
+import { chunkArticleHtml } from "./chunking";
 import { generateDocumentEmbedding } from '@/lib/brain/embed';
 
 function safeSlug(s: string) {

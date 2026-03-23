@@ -1,125 +1,9 @@
-
 import { NextResponse } from "next/server";
 import { adminDB } from "@/lib/firebase-admin";
 import { indexHelpCenterArticleToChunks } from "@/lib/knowledge/indexer";
-import { getTypesenseAdmin } from "@/lib/typesense";
 
-const typesense = getTypesenseAdmin();
 const REINDEX_SECRET = process.env.ADMIN_REINDEX_SECRET;
-
-const PUBLIC_HELP_BASE_URL = process.env.PUBLIC_HELP_BASE_URL || "https://6000-firebase-studio-1753688090358.cluster-ys234awlzbhwoxmkkse6qo3fz6.cloudworkstations.dev";
-
-const typesenseMemoryNodeSchema = {
-  "name": "memory_nodes",
-  "fields": [
-    { "name": "id", "type": "string" },
-    { "name": "type", "type": "string", "facet": true }, // e.g., 'doc', 'ticket'
-    { "name": "spaceId", "type": "string", "facet": true },
-    { "name": "hubId", "type": "string", "facet": true },
-    { "name": "sourceId", "type": "string", "facet": true, "optional": true }, // articleId, ticketId
-    
-    // Searchable content
-    { "name": "title", "type": "string", "optional": true },
-    { "name": "text", "type": "string", "optional": true },
-    { "name": "textForEmbedding", "type": "string", "optional": true },
-    { "name": "tags", "type": "string[]", "facet": true, "optional": true },
-
-    // Embedding vector
-    { "name": "embedding", "type": "float[]", "num_dim": 768, "optional": true },
-
-    // Metadata for filtering & display
-    { "name": "status", "type": "string", "facet": true, "optional": true }, // 'published', 'resolved'
-    { "name": "url", "type": "string", "optional": true },
-    { "name": "language", "type": "string", "facet": true, "default": "en" },
-    
-    // Access control
-    { "name": "isPublic", "type": "bool", "facet": true, "optional": true },
-    { "name": "allowedUserIds", "type": "string[]", "optional": true, "facet": true },
-    
-    // Timestamps
-    { "name": "sourceCreatedAt", "type": "int64", "optional": true },
-    { "name": "sourceUpdatedAt", "type": "int64", "optional": true },
-    { "name": "indexedAt", "type": "int64", "optional": true },
-
-    // Doc-specific context, still useful
-    { "name": "helpCenterIds", "type": "string[]", "facet": true, "optional": true },
-    { "name": "headingPath", "type": "string[]", "optional": true },
-    { "name": "content", "type": "string", "optional": true }, // For playbooks
-    { "name": "articleType", "type": "string", "facet": true, "optional": true },
-  ],
-  "default_sorting_field": "indexedAt"
-};
-
-const typesenseSalesExtractionsSchema = {
-  "name": "sales_extractions",
-  "fields": [
-    { "name": "id", "type": "string" },
-    { "name": "spaceId", "type": "string", "facet": true },
-    { "name": "sourceNodeId", "type": "string" },
-    
-    // The embedding vector for clustering
-    { "name": "embedding", "type": "float[]", "num_dim": 768, "optional": true },
-
-    // Searchable text
-    { "name": "recommendedPersonaClusterText", "type": "string" },
-    { "name": "pains", "type": "string[]", "facet": true, "optional": true },
-    { "name": "objections", "type": "string[]", "facet": true, "optional": true },
-    { "name": "buyingSignals", "type": "string[]", "facet": true, "optional": true },
-    
-    // Filtering fields
-    { "name": "outcome", "type": "string", "facet": true },
-    { "name": "industry", "type": "string", "facet": true, "optional": true },
-    { "name": "role", "type": "string", "facet": true, "optional": true },
-    { "name": "orgSize", "type": "string", "facet": true, "optional": true },
-    
-    // Timestamps
-    { "name": "embeddedAt", "type": "string", "optional": true },
-  ],
-  "default_sorting_field": "embeddedAt"
-};
-
-
-async function ensureMemoryNodeCollectionExists() {
-    try {
-        await typesense.collections('memory_nodes').retrieve();
-    } catch (error: any) {
-        if (error.httpStatus === 404) {
-            console.log("Creating Typesense collection: memory_nodes");
-            await typesense.collections().create(typesenseMemoryNodeSchema as any);
-        } else {
-            throw error; // Re-throw other errors
-        }
-    }
-}
-
-async function ensureSalesExtractionsCollectionExists() {
-    try {
-        await typesense.collections('sales_extractions').retrieve();
-    } catch (error: any) {
-        if (error.httpStatus === 404) {
-            console.log("Creating Typesense collection: sales_extractions");
-            await typesense.collections().create(typesenseSalesExtractionsSchema as any);
-        } else {
-            throw error;
-        }
-    }
-}
-
-
-async function deleteChunksForArticle(spaceId: string, articleId: string) {
-  try {
-    await typesense.collections("memory_nodes").documents().delete({
-      filter_by: `spaceId:=${spaceId} && sourceId:=${articleId}`,
-    });
-  } catch (error: any) {
-      // It's okay if no documents were found to delete (404)
-      if (error.httpStatus !== 404) {
-          console.error(`Error deleting chunks for article ${articleId}:`, error);
-          throw error;
-      }
-  }
-}
-
+const PUBLIC_HELP_BASE_URL = process.env.PUBLIC_HELP_BASE_URL || "";
 
 export async function POST(req: Request) {
   if (!REINDEX_SECRET) {
@@ -130,9 +14,6 @@ export async function POST(req: Request) {
   if (auth !== REINDEX_SECRET) {
     return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
   }
-
-  await ensureMemoryNodeCollectionExists();
-  await ensureSalesExtractionsCollectionExists();
 
   const body = await req.json().catch(() => ({}));
   const hubId = body.hubId as string | undefined;
@@ -162,7 +43,11 @@ export async function POST(req: Request) {
       );
     }
     
-    await deleteChunksForArticle(spaceId, articleId);
+    // Cleanup existing chunks for this article
+    const existingChunks = await adminDB.collection('brain_chunks').where('sourceId', '==', articleId).get();
+    const batch = adminDB.batch();
+    existingChunks.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
 
     const article = { id: docSnap.id, ...docSnap.data() };
     const res = await indexHelpCenterArticleToChunks({
@@ -187,7 +72,10 @@ export async function POST(req: Request) {
   for (const doc of snap.docs) {
     const article = { id: doc.id, ...doc.data() };
     
-    await deleteChunksForArticle(spaceId, article.id);
+    const existingChunks = await adminDB.collection('brain_chunks').where('sourceId', '==', article.id).get();
+    const batch = adminDB.batch();
+    existingChunks.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
 
     const res = await indexHelpCenterArticleToChunks({
       adminDB,
