@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
@@ -33,15 +34,19 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
   useEffect(() => {
     if (!activeSpace) return;
 
+    // To avoid requiring a composite index during the prototype phase,
+    // we fetch filtered jobs and sort them locally.
     const q = query(
       collection(firestore, 'brain_jobs'),
       where('params.spaceId', '==', activeSpace.id),
-      orderBy('createdAt', 'desc'),
-      limit(10)
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const jobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BrainJob));
+      const jobs = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as BrainJob))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 10);
       setRecentJobs(jobs);
     });
 
