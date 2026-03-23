@@ -30,11 +30,10 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
+  // FIX 1: Use activeSpace.id as dependency to prevent infinite object-reference loops
   useEffect(() => {
-    if (!activeSpace) return;
+    if (!activeSpace?.id) return;
 
-    // To avoid requiring a composite index during the prototype phase,
-    // we fetch filtered jobs and sort them locally.
     const q = query(
       collection(firestore, 'brain_jobs'),
       where('params.spaceId', '==', activeSpace.id),
@@ -50,13 +49,22 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
     });
 
     return () => unsubscribe();
-  }, [activeSpace]);
+  }, [activeSpace?.id]);
 
+  // FIX 2: Stable ID dependency and mount check
   useEffect(() => {
-    if (activeHub) {
-      db.getBrainChunks(activeHub.id).then(setIndexedChunks);
-    }
-  }, [activeHub]);
+    const hubId = activeHub?.id;
+    if (!hubId) return;
+
+    let isMounted = true;
+    db.getBrainChunks(hubId).then((data) => {
+      if (isMounted) setIndexedChunks(data);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeHub?.id]);
 
   const runIngest = async () => {
     if (!activeSpace || !activeHub) return;
@@ -90,7 +98,7 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
   };
 
   const handleMassReindex = () => {
-    if (!activeHub) return;
+    if (!activeHub?.id) return;
     startReindexTransition(async () => {
       try {
         console.log('REINDEX: Triggering mass reindex API...');
@@ -110,7 +118,13 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
         }
 
         toast({ title: "Mass Reindexing Complete", description: `Reindexed ${payload.articles} articles into ${payload.totalChunks} vector chunks.` });
-        db.getBrainChunks(activeHub.id).then(setIndexedChunks);
+        
+        // FIX 3: Debounce the refetch to allow Firestore indexes to propagate
+        setTimeout(() => {
+            if (activeHub?.id) {
+                db.getBrainChunks(activeHub.id).then(setIndexedChunks);
+            }
+        }, 1000);
       } catch (e: any) {
         console.error('REINDEX: Client failure', e);
         toast({ 
@@ -325,7 +339,9 @@ export default function BrainSettings({ activeSpace, activeHub }: BrainSettingsP
                           <span>Vector Model: {chunk.embeddingModel}</span>
                           <span>Dims: {chunk.embeddingDim || 2048}</span>
                         </div>
-                        <span>Indexed {formatDistanceToNow(new Date(chunk.createdAt || Date.now()), { addSuffix: true })}</span>
+                        {chunk.createdAt && (
+                          <span>Indexed {formatDistanceToNow(new Date(chunk.createdAt), { addSuffix: true })}</span>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

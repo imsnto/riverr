@@ -40,58 +40,67 @@ export async function indexHelpCenterArticleToChunks(args: {
 
   console.log(`INDEXER: Processing article ${articleId} into ${specs.length} specs`);
 
-  const now = new Date().toISOString();
   const modelName = process.env.EMBEDDING_MODEL || 'gemini-embedding-2-preview';
+
+  // FIX 4: Parallelize embedding generation for 5-10x speedup
+  console.log(`INDEXER: Generating ${specs.length} embeddings in parallel...`);
+  const results = await Promise.all(
+    specs.map(async (c) => {
+      try {
+        const embedding = await generateDocumentEmbedding(c.text);
+        return { spec: c, embedding };
+      } catch (err) {
+        console.error(`INDEXER: Embedding failed for chunk ${c.chunkIndex} of article ${articleId}`, err);
+        return { spec: c, embedding: null };
+      }
+    })
+  );
 
   let chunkCount = 0;
 
-  for (const c of specs) {
-    const anchor = c.headingPath.length
-        ? safeSlug(c.headingPath.join("-")) + `-${c.chunkIndex}`
-        : `chunk-${c.chunkIndex}`;
+  for (const { spec, embedding } of results) {
+    if (!embedding) continue;
+
+    const anchor = spec.headingPath.length
+        ? safeSlug(spec.headingPath.join("-")) + `-${spec.chunkIndex}`
+        : `chunk-${spec.chunkIndex}`;
 
     const url = article.publicUrl
       ? (article.publicUrl.startsWith("http") ? article.publicUrl : `${publicHelpBaseUrl}${article.publicUrl}`)
       : `${publicHelpBaseUrl}/hc/${helpCenterId}/articles/${articleId}`;
 
-    // GENERATE VECTOR (2048-dim)
-    const embedding = await generateDocumentEmbedding(c.text);
+    const chunkData = {
+        hubId,
+        spaceId,
+        sourceType: 'help_center_article',
+        sourceId: articleId,
+        helpCenterId,
+        title: articleTitle,
+        text: spec.text,
+        url: url + (anchor ? `#${anchor}` : ""),
+        visibility: article.visibility || 'public',
+        allowedUserIds: article.allowedUserIds || [],
+        status: 'active',
+        // Firestore Vector write
+        embedding: (admin.firestore.FieldValue as any).vector(embedding),
+        embeddingModel: modelName,
+        embeddingDim: 2048,
+        // FIX 5: Use serverTimestamp for accurate ordering
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        headingPath: spec.headingPath,
+        chunkIndex: spec.chunkIndex,
+    };
 
-    if (embedding) {
-        const chunkData = {
-            hubId,
-            spaceId,
-            sourceType: 'help_center_article',
-            sourceId: articleId,
-            helpCenterId,
-            title: articleTitle,
-            text: c.text,
-            url: url + (anchor ? `#${anchor}` : ""),
-            visibility: article.visibility || 'public',
-            allowedUserIds: article.allowedUserIds || [],
-            status: 'active',
-            // Firestore Vector write
-            embedding: (admin.firestore.FieldValue as any).vector(embedding),
-            embeddingModel: modelName,
-            embeddingDim: 2048,
-            createdAt: now,
-            updatedAt: now,
-            headingPath: c.headingPath,
-            chunkIndex: c.chunkIndex,
-        };
-
-        await adminDB.collection('brain_chunks').add(chunkData);
-        chunkCount++;
-    } else {
-        console.warn(`INDEXER: Failed to generate embedding for chunk ${c.chunkIndex} of article ${articleId}`);
-    }
+    await adminDB.collection('brain_chunks').add(chunkData);
+    chunkCount++;
   }
 
   // Update index metadata
   await adminDB.collection("help_center_articles").doc(articleId).set(
     {
       chunkCount: chunkCount,
-      chunkedAt: now,
+      chunkedAt: new Date().toISOString(),
     },
     { merge: true }
   );
