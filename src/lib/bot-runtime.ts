@@ -62,19 +62,25 @@ function mergeStageAndActor(widget: Bot, actor?: Bot | null): ResolvedRuntimeBot
       ? widget.agentIds
       : actor?.agentIds || [];
 
+  // PLUMBING: Actor (Agent Brain) defines the knowledge policy
   const allowedHelpCenterIds =
-    actor?.allowedHelpCenterIds || [];
+    actor?.allowedHelpCenterIds || widget.allowedHelpCenterIds || [];
 
-  // THE ACTOR (AGENT) HUB AND KNOWLEDGE IS WHAT MATTERS FOR GROUNDING
+  const intelligenceAccessLevel = 
+    actor?.intelligenceAccessLevel || widget.intelligenceAccessLevel || 'topics_only';
+
+  // The effective bot is what the Agent Engine actually interacts with
   const effectiveBot: Bot = {
     ...widget,
     ...(actor || {}),
-    hubId: actor?.hubId || widget.hubId, // CRITICAL: Use actor's hub for retrieval
-    type: actor?.type || widget.type,
+    id: actor?.id || widget.id,
+    hubId: actor?.hubId || widget.hubId,
+    type: widget.type || 'widget', // Keep the identity of the entry point
     assignedAgentId: widget.assignedAgentId || null,
     styleSettings: widget.styleSettings,
     agentIds: humanAgentIds,
     allowedHelpCenterIds,
+    intelligenceAccessLevel,
     welcomeMessage: resolvedGreeting,
     identityCapture: resolvedIdentityCapture,
     webAgentName: getAgentName(actor || widget),
@@ -98,6 +104,7 @@ export async function resolveRuntimeBot(botId: string): Promise<ResolvedRuntimeB
 
   const bot = { id: botDoc.id, ...botDoc.data() } as Bot;
 
+  // If we provided an Agent ID directly (e.g. internal assistant)
   if (bot.type === 'agent') {
     const identityCapture = normalizeIdentityCaptureFromAgent(bot);
 
@@ -119,6 +126,7 @@ export async function resolveRuntimeBot(botId: string): Promise<ResolvedRuntimeB
     };
   }
 
+  // If we provided a Widget ID (Standard customer-facing flow)
   if (bot.type === 'widget' && bot.assignedAgentId) {
     const actorDoc = await adminDB.collection('bots').doc(bot.assignedAgentId).get();
     const actor = actorDoc.exists

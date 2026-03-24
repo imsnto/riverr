@@ -9,43 +9,56 @@ export type VectorSearchResult = {
   url?: string;
   score: number;
   sourceId?: string;
+  sourceType?: string;
   helpCenterId?: string | null;
   visibility?: string;
   allowedUserIds?: string[];
+  intentKey?: string;
+  description?: string;
 };
 
 /**
- * Firestore-native vector search
- * STRICTLY scoped to hubId for multi-tenant isolation.
+ * Searches the curated Help Center Articles index.
+ * Tier 1: Highest Trust
  */
-export async function searchBrainChunks(args: {
+export async function searchArticles(args: {
   query: string;
   hubId: string;
+  allowedHelpCenterIds?: string[];
   limit?: number;
 }): Promise<VectorSearchResult[]> {
-  const { query, hubId, limit = 8 } = args;
+  const { query, hubId, allowedHelpCenterIds, limit = 8 } = args;
+  
+  // PLUMBING: If a whitelist is provided but is empty, the agent has no grounded articles.
+  if (allowedHelpCenterIds && allowedHelpCenterIds.length === 0) {
+    return [];
+  }
 
-  if (!query?.trim()) return [];
-
-  // 1. Generate query embedding (normalized 2048-dim)
   const embedding = await generateQueryEmbedding(query);
   if (!embedding) return [];
 
   try {
-    // 2. Firestore vector search using findNearest
     const coll = adminDB.collection('brain_chunks');
-    const vectorQuery = (coll as any)
+    
+    // Base filters
+    let q = (coll as any)
       .where('hubId', '==', hubId)
-      .where('status', '==', 'active')
-      .findNearest({
-        vectorField: 'embedding',
-        queryVector: admin.firestore.FieldValue.vector(embedding),
-        limit: Math.min(limit * 3, 30), // Fetch more for post-filtering if needed
-        distanceMeasure: 'COSINE',
-      });
+      .where('sourceType', '==', 'help_center_article')
+      .where('status', '==', 'active');
+
+    // Filter by specifically authorized help centers
+    if (allowedHelpCenterIds && allowedHelpCenterIds.length > 0) {
+      q = q.where('helpCenterId', 'in', allowedHelpCenterIds.slice(0, 10));
+    }
+
+    const vectorQuery = q.findNearest({
+      vectorField: 'embedding',
+      queryVector: admin.firestore.FieldValue.vector(embedding),
+      limit,
+      distanceMeasure: 'COSINE',
+    });
 
     const snap = await vectorQuery.get();
-
     return snap.docs.map((doc: any) => {
       const data = doc.data();
       return {
@@ -54,38 +67,36 @@ export async function searchBrainChunks(args: {
         title: data.title,
         url: data.url,
         sourceId: data.sourceId,
+        sourceType: 'article',
         helpCenterId: data.helpCenterId,
         visibility: data.visibility || 'public',
         allowedUserIds: data.allowedUserIds || [],
-        // distance is returned in search metadata
-        score: typeof doc.distance === 'number' ? 1 - doc.distance : 0.7,
+        score: typeof doc.distance === 'number' ? 1 - doc.distance : 0.8,
       };
     });
-  } catch (error) {
-    console.error('Firestore vector search failed:', error);
+  } catch (err) {
+    console.error('searchArticles failed:', err);
     return [];
   }
 }
 
 /**
- * Searches the distilled support QAs memory.
+ * Searches the semantic Topics index (recurring patterns).
+ * Tier 2: Medium Trust
  */
-export async function searchSupportMemory(args: {
+export async function searchTopics(args: {
   query: string;
-  hubId: string;
+  spaceId: string;
   limit?: number;
-}) {
-  const { query, hubId, limit = 5 } = args;
-  if (!query?.trim()) return [];
-
+}): Promise<VectorSearchResult[]> {
+  const { query, spaceId, limit = 5 } = args;
   const embedding = await generateQueryEmbedding(query);
   if (!embedding) return [];
 
   try {
-    const coll = adminDB.collection('brain_distilled_qas');
+    const coll = adminDB.collection('topics');
     const vectorQuery = (coll as any)
-      .where('hubId', '==', hubId)
-      .where('status', '==', 'approved')
+      .where('spaceId', '==', spaceId)
       .findNearest({
         vectorField: 'embedding',
         queryVector: admin.firestore.FieldValue.vector(embedding),
@@ -94,19 +105,60 @@ export async function searchSupportMemory(args: {
       });
 
     const snap = await vectorQuery.get();
-
     return snap.docs.map((doc: any) => {
       const data = doc.data();
       return {
         id: doc.id,
-        intentKey: data.intentKey || doc.id,
-        title: data.question,
-        description: data.answer,
-        score: typeof doc.distance === 'number' ? 1 - doc.distance : 0.8,
+        title: data.title,
+        text: data.summary || data.title,
+        sourceType: 'topic',
+        score: typeof doc.distance === 'number' ? 1 - doc.distance : 0.75,
       };
     });
-  } catch (error) {
-    console.error('Support memory search failed:', error);
+  } catch (err) {
+    console.error('searchTopics failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Searches the raw Insights index (learned memories).
+ * Tier 3: Lower Trust / Internal Learning
+ */
+export async function searchInsights(args: {
+  query: string;
+  hubId: string;
+  limit?: number;
+}): Promise<VectorSearchResult[]> {
+  const { query, hubId, limit = 5 } = args;
+  const embedding = await generateQueryEmbedding(query);
+  if (!embedding) return [];
+
+  try {
+    const coll = adminDB.collection('insights');
+    const vectorQuery = (coll as any)
+      .where('hubId', '==', hubId)
+      .where('processingStatus', '==', 'completed')
+      .findNearest({
+        vectorField: 'embedding',
+        queryVector: admin.firestore.FieldValue.vector(embedding),
+        limit,
+        distanceMeasure: 'COSINE',
+      });
+
+    const snap = await vectorQuery.get();
+    return snap.docs.map((doc: any) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        title: data.title,
+        text: data.content,
+        sourceType: 'insight',
+        score: typeof doc.distance === 'number' ? 1 - doc.distance : 0.7,
+      };
+    });
+  } catch (err) {
+    console.error('searchInsights failed:', err);
     return [];
   }
 }

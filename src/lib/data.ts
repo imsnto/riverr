@@ -618,6 +618,14 @@ export interface AutomationFlow {
   edges: AutomationEdge[];
 }
 
+// --- Intelligence Retrieval Types ---
+
+export type IntelligenceAccessLevel = 
+  | 'none' 
+  | 'topics_only' 
+  | 'insights_hidden_support' 
+  | 'internal_full_access';
+
 // --- Chatbot / Inbox Interfaces ---
 export interface Bot {
   id: string;
@@ -630,6 +638,8 @@ export interface Bot {
   isEnabled?: boolean;
   aiEnabled?: boolean;
   
+  intelligenceAccessLevel?: IntelligenceAccessLevel;
+
   tone?: 'formal' | 'friendly' | 'expert' | 'direct' | 'warm';
   voiceNotes?: string;
   primaryGoal?: string;

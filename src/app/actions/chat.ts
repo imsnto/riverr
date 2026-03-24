@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -8,19 +7,13 @@ import {
   BotConfig, 
   Conversation, 
   IncomingMessage, 
-  SearchHelpCenterParams, 
-  SearchHelpCenterResult, 
-  HelpChunk, 
-  SearchSupportParams, 
-  SearchSupportResult 
 } from '@/lib/agent';
 import { resolveRuntimeBot } from '@/lib/bot-runtime';
-import { ChatMessage } from '@/lib/data';
+import { ChatMessage, IntelligenceAccessLevel } from '@/lib/data';
 import { agentResponse } from '@/ai/flows/agent-response';
-import admin from 'firebase-admin';
+import { orchestrateRetrieval, AgentKnowledgePolicy } from '@/lib/brain/retrieve-context';
 import { getMessagingProvider } from '@/lib/comms/providerFactory';
-import { retrieveBrainContext } from '@/lib/brain/retrieve-context';
-import { searchBrainChunks, searchSupportMemory } from '@/lib/brain/vector-search';
+import { indexHelpCenterArticleToChunks } from '@/lib/knowledge/indexer';
 
 export type PreviewAgentResponseResult = {
   answer: string;
@@ -32,72 +25,6 @@ export type PreviewAgentResponseResult = {
     score: number;
   }>;
 };
-
-/**
- * Searches the Help Center documentation using Firestore Vector Search.
- * TIER 1: Primary Answer Sources (Articles)
- */
-async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
-  const { hubId, allowedHelpCenterIds, userId, query, topK = 8 } = params;
-
-  if (!hubId || !query?.trim()) return { chunks: [] };
-
-  const results = await searchBrainChunks({
-    query,
-    hubId,
-    limit: topK
-  });
-
-  const chunks = results
-    .filter((c: any) => {
-      const hcOk = !allowedHelpCenterIds?.length || 
-                   !c.helpCenterId || 
-                   allowedHelpCenterIds.includes(c.helpCenterId);
-
-      const visibilityOk = c.visibility === 'public' || 
-                           c.visibility === 'internal' || 
-                           (c.visibility === 'private' && userId && c.allowedUserIds?.includes(userId));
-
-      return hcOk && visibilityOk;
-    })
-    .map(c => ({
-      chunkText: c.text,
-      score: c.score,
-      articleId: c.sourceId || c.id,
-      title: c.title || 'Untitled',
-      url: c.url || '',
-      helpCenterIds: c.helpCenterId ? [c.helpCenterId] : [],
-      articleType: 'article' as const,
-      articleContent: null,
-    }));
-
-  return { chunks: chunks as HelpChunk[] };
-}
-
-/**
- * Searches the Distilled Support Brain using Firestore Vector Search.
- * TIER 2: Supporting Intelligence (Insights)
- */
-async function searchSupport(params: SearchSupportParams): Promise<SearchSupportResult> {
-  const { hubId, query, topK = 5 } = params;
-  if (!hubId || !query?.trim()) return { intents: [] };
-
-  const results = await searchSupportMemory({
-    query,
-    hubId,
-    limit: topK
-  });
-
-  const intents: any[] = results.map((res: any) => ({
-    id: res.id,
-    intentKey: res.intentKey,
-    title: res.title,
-    description: res.description,
-    _searchScore: res.score,
-  }));
-
-  return { intents };
-}
 
 /**
  * Non-mutating version of the agent logic used for settings previews.
@@ -114,59 +41,60 @@ export async function previewAgentResponseAction(args: {
   const widgetBotId = String(args.widgetBotId || '').trim();
   const message = String(args.message || '').trim();
 
-  if (!widgetBotId) {
-    throw new Error('widgetBotId is required');
-  }
-
-  if (!message) {
-    return {
-      answer: '',
-      usedAgentName: 'Assistant',
-      sources: [],
-    };
-  }
+  if (!widgetBotId) throw new Error('widgetBotId is required');
+  if (!message) return { answer: '', usedAgentName: 'Assistant', sources: [] };
 
   const resolved = await resolveRuntimeBot(widgetBotId);
-  const effectiveBot = resolved?.effectiveBot;
+  if (!resolved) throw new Error('Unable to resolve runtime bot');
 
-  if (!effectiveBot) {
-    throw new Error('Unable to resolve runtime bot');
-  }
+  const { effectiveBot, webAgentName } = resolved;
 
-  const botName = effectiveBot.webAgentName || effectiveBot.name || 'Assistant';
-  
-  // REAL RETRIEVAL PATH
-  const context = await retrieveBrainContext({
+  // PLUMBING: Policy derives from Bot Config
+  const policy: AgentKnowledgePolicy = {
+    agentId: effectiveBot.id,
+    isCustomerFacing: effectiveBot.type === 'widget',
+    accessLevel: effectiveBot.intelligenceAccessLevel || 'topics_only',
+    allowedLibraryIds: effectiveBot.allowedHelpCenterIds || []
+  };
+
+  const decision = await orchestrateRetrieval({
     message,
     hubId: effectiveBot.hubId,
-    allowedHelpCenterIds: effectiveBot.allowedHelpCenterIds,
-    userId: null,
+    spaceId: effectiveBot.spaceId,
+    policy
   });
 
-  const conversationGoal = effectiveBot.conversationGoal || effectiveBot.primaryGoal || 'Provide information and let customer decide';
+  let systemInstruction = `You are ${webAgentName}, a helpful AI assistant. Be conversational, warm, and accurate.`;
+  
+  if (decision.answerMode === 'insight_supported_hidden') {
+    systemInstruction += `\n\nCRITICAL POLICY: Your answer is based on internal support signals. DO NOT cite sources. DO NOT reveal internal language or customer names. Keep the tone helpful but cautious.`;
+  } else if (decision.answerMode === 'topic_supported') {
+    systemInstruction += `\n\nPOLICY: This information is based on recurring patterns. Avoid presenting it as absolute official policy if it sounds like a guarantee.`;
+  }
 
-  let systemInstruction = `You are ${botName}, a helpful AI assistant. Be conversational, warm, accurate, and concise.`;
-
-  if (conversationGoal) {
-    systemInstruction += `\n\nCONVERSATION GOAL:\n${conversationGoal}`;
+  if (effectiveBot.conversationGoal) {
+    systemInstruction += `\n\nCONVERSATION GOAL:\n${effectiveBot.conversationGoal}`;
   }
 
   const result = await agentResponse({
     query: message,
-    botName,
-    context: context?.chunks.map(c => ({ title: c.title || 'Source', text: c.text, url: c.url })) || [],
+    botName: webAgentName,
+    context: decision.chosenCandidates.map(c => ({ title: c.title || 'Source', text: c.text, url: c.url })),
     greetingScript: systemInstruction,
   });
 
   return {
-    answer: (result?.answer || '').trim() || `I'm not sure yet, but I need a little more detail to help with that.`,
-    usedAgentName: botName,
-    sources: (context?.chunks || []).slice(0, 3).map((c) => ({
-      articleId: c.sourceId || c.id,
-      title: c.title || 'Untitled',
-      url: c.url || '',
-      score: c.score,
-    })),
+    answer: (result?.answer || '').trim() || (decision.answerMode === 'escalate' ? `I'm not sure, let me connect you to a human.` : ''),
+    usedAgentName: webAgentName,
+    sources: decision.chosenCandidates
+      .filter(c => c.sourceType === 'article')
+      .slice(0, 3)
+      .map((c) => ({
+        articleId: c.id,
+        title: c.title || 'Untitled',
+        url: c.url || '',
+        score: c.score,
+      })),
   };
 }
 
@@ -181,8 +109,16 @@ export async function invokeAgent(args: {
   const effectiveBot = resolved?.effectiveBot || bot;
 
   const adapters: AgentAdapters = {
-    searchHelpCenter,
-    searchSupport,
+    retrieveContext: async (params) => {
+      // PLUMBING: Pass resolved bot type to set customer-facing flag
+      return orchestrateRetrieval({
+        ...params,
+        policy: {
+          ...params.policy,
+          isCustomerFacing: effectiveBot.type === 'widget'
+        }
+      });
+    },
     generateAnswer: async (params) => {
       const result = await agentResponse(params);
       return result.answer;
@@ -195,7 +131,7 @@ export async function invokeAgent(args: {
         state: 'human_assigned',
       });
     },
-    persistAssistantMessage: async ({ conversationId, text, responderType }) => {
+    persistAssistantMessage: async ({ conversationId, text, responderType, meta, sources }) => {
       const convo = await adminDB.collection('conversations').doc(conversationId).get();
       const convoData = convo.data() as Conversation;
 
@@ -207,6 +143,9 @@ export async function invokeAgent(args: {
         responderType,
         content: text,
         timestamp: new Date().toISOString(),
+        attachments: [],
+        sources: sources || null,
+        ...((meta as any) || {})
       };
 
       if (convoData?.channel === 'sms') {
@@ -248,19 +187,20 @@ export async function invokeAgent(args: {
     },
   };
 
+  // PLUMBING: Map BotConfig fields correctly from effectiveBot
   const botConfig: BotConfig = {
     id: effectiveBot.id,
+    type: effectiveBot.type || 'widget', 
     hubId: effectiveBot.hubId,
     name: effectiveBot.name,
     webAgentName: effectiveBot.webAgentName || effectiveBot.name,
     allowedHelpCenterIds: effectiveBot.allowedHelpCenterIds || [],
+    intelligenceAccessLevel: effectiveBot.intelligenceAccessLevel || 'topics_only',
     aiEnabled: effectiveBot.aiEnabled !== false,
     handoffKeywords:
       effectiveBot.channelConfig?.web?.handoffKeywords ||
       effectiveBot.automations?.handoffKeywords ||
       ['human', 'agent', 'person', 'representative', 'support'],
-    quickReplies:
-      effectiveBot.automations?.quickReplies || [],
     flow: effectiveBot.flow,
     conversationGoal:
       effectiveBot.conversationGoal ||
@@ -350,14 +290,31 @@ export async function ensureConversationCrmLinkedAction(conversationId: string) 
   }
 }
 
+/**
+ * Triggered whenever an article is updated or created to ensure the 
+ * search index (brain_chunks) is accurate.
+ */
 export async function reindexArticleAction(articleId: string) {
-  // Placeholder - in real app would trigger indexing job
-}
+  const articleSnap = await adminDB.collection("help_center_articles").doc(articleId).get();
+  if (!articleSnap.exists) return;
+  const article = { id: articleSnap.id, ...articleSnap.data() };
+  
+  const hubDoc = await adminDB.collection("hubs").doc(article.hubId as string).get();
+  const spaceId = hubDoc.data()?.spaceId;
+  if (!spaceId) return;
 
-export async function searchHelpCenterAction(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
-  return searchHelpCenter(params);
-}
+  // 1. Cleanup existing chunks for this article to prevent duplicates
+  const chunksRef = adminDB.collection('brain_chunks');
+  const existingChunks = await chunksRef.where('sourceId', '==', articleId).get();
+  const batch = adminDB.batch();
+  existingChunks.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
 
-export async function searchSupportAction(params: SearchSupportParams): Promise<SearchSupportResult> {
-  return searchSupport(params);
+  // 2. Run indexer to create new chunks + embeddings
+  await indexHelpCenterArticleToChunks({
+    adminDB,
+    article,
+    spaceId,
+    publicHelpBaseUrl: process.env.PUBLIC_HELP_BASE_URL || "",
+  });
 }

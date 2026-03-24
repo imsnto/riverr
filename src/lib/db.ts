@@ -1,4 +1,3 @@
-
 'use client';
 import {
   collection,
@@ -19,6 +18,7 @@ import {
   limit,
   deleteField,
   orderBy,
+  arrayUnion,
 } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -54,6 +54,9 @@ import {
   ImportedSource,
   SourceChunk,
   Article,
+  HelpCenter,
+  HelpCenterCollection,
+  HelpCenterArticle,
 } from './data';
 
 // --- Users ---
@@ -77,6 +80,16 @@ export const addUser = async (user: Omit<User, 'id'>, uid: string): Promise<User
 export const updateUser = async (userId: string, data: Partial<User>) => {
   const userRef = doc(db, 'users', userId);
   await updateDoc(userRef, data);
+};
+
+export const savePushToken = async (userId: string, token: string, userAgent?: string) => {
+  const tokenRef = doc(db, 'fcmTokens', userId);
+  await setDoc(tokenRef, {
+    id: userId,
+    tokens: arrayUnion(token),
+    updatedAt: serverTimestamp(),
+    userAgent: userAgent || null
+  }, { merge: true });
 };
 
 // --- Spaces ---
@@ -218,6 +231,9 @@ export const getProjectsInHub = async (hubId: string): Promise<Project[]> => {
 
 export const addProject = async (project: Omit<Project, 'id'>): Promise<Project> => {
   const docRef = await addDoc(collection(db, 'projects'), project);
+  if (project.taskCounter === undefined) {
+      await updateDoc(docRef, { taskCounter: 0 });
+  }
   return { id: docRef.id, ...project };
 };
 
@@ -270,6 +286,12 @@ export const uploadSpaceLogo = async (file: File, spaceId: string) => {
   return getDownloadURL(storageRef);
 };
 
+export const uploadBotLogo = async (file: File, botId: string) => {
+  const storageRef = ref(storage, `bots/${botId}/logo_${Date.now()}`);
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+};
+
 // --- Brain Jobs ---
 export const startBrainJob = async (type: BrainJob['type'], params: Record<string, any>) => {
     const jobData: Omit<BrainJob, 'id'> = {
@@ -299,17 +321,65 @@ export const getBrainChunks = async (hubId: string): Promise<any[]> => {
   }
 };
 
-// --- Other syncs ---
+// --- Help Center CRUD ---
 export const getHelpCenters = async (hubId: string): Promise<HelpCenter[]> => {
   const q = query(collection(db, 'help_centers'), where('hubId', '==', hubId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HelpCenter));
 };
 
+export const addHelpCenter = async (hc: Omit<HelpCenter, 'id'>): Promise<HelpCenter> => {
+  const docRef = await addDoc(collection(db, 'help_centers'), hc);
+  return { id: docRef.id, ...hc };
+};
+
+export const getHelpCenterCollections = async (hubId: string): Promise<HelpCenterCollection[]> => {
+  const q = query(collection(db, 'help_center_collections'), where('hubId', '==', hubId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as HelpCenterCollection));
+};
+
+export const saveHelpCenterCollection = async (hubId: string, data: Omit<HelpCenterCollection, 'id' | 'hubId'>, id?: string) => {
+  if (id) {
+    await updateDoc(doc(db, 'help_center_collections', id), { ...data, updatedAt: new Date().toISOString() });
+  } else {
+    await addDoc(collection(db, 'help_center_collections'), { ...data, hubId, updatedAt: new Date().toISOString() });
+  }
+};
+
+export const getHelpCenterArticles = async (hubId: string): Promise<HelpCenterArticle[]> => {
+  const q = query(collection(db, 'help_center_articles'), where('hubId', '==', hubId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as HelpCenterArticle));
+};
+
+export const addHelpCenterArticle = async (article: Omit<HelpCenterArticle, 'id'>): Promise<HelpCenterArticle> => {
+  const docRef = await addDoc(collection(db, 'help_center_articles'), article);
+  return { id: docRef.id, ...article };
+};
+
+export const updateHelpCenterArticle = async (id: string, data: Partial<HelpCenterArticle>) => {
+  await updateDoc(doc(db, 'help_center_articles', id), data);
+};
+
+export const deleteHelpCenterArticle = async (id: string) => {
+  await deleteDoc(doc(db, 'help_center_articles', id));
+};
+
+// --- Tickets & Deals ---
 export const getTicketsInHub = async (hubId: string): Promise<Ticket[]> => {
   const q = query(collection(db, 'tickets'), where('hubId', '==', hubId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ticket));
+};
+
+export const addTicket = async (td: Omit<Ticket, 'id'>): Promise<Ticket> => {
+  const docRef = await addDoc(collection(db, 'tickets'), td);
+  return { id: docRef.id, ...td };
+};
+
+export const updateTicket = async (id: string, data: Partial<Ticket>) => {
+  await updateDoc(doc(db, 'tickets', id), data);
 };
 
 export const getDealsInHub = async (hubId: string): Promise<Deal[]> => {
@@ -318,6 +388,54 @@ export const getDealsInHub = async (hubId: string): Promise<Deal[]> => {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Deal));
 };
 
+export const addDeal = async (dd: Omit<Deal, 'id'>): Promise<Deal> => {
+  const docRef = await addDoc(collection(db, 'deals'), dd);
+  return { id: docRef.id, ...dd };
+};
+
+export const updateDeal = async (id: string, data: Partial<Deal>) => {
+  await updateDoc(doc(db, 'deals', id), data);
+};
+
+// --- Escalation Rules ---
+export const getEscalationIntakeRules = async (hubId: string): Promise<EscalationIntakeRule[]> => {
+    const q = query(collection(db, 'escalation_intake_rules'), where('hubId', '==', hubId));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as EscalationIntakeRule));
+};
+
+export const saveEscalationIntakeRule = async (hubId: string, rule: Omit<EscalationIntakeRule, 'id' | 'hubId'>, id?: string) => {
+  if (id) {
+    await updateDoc(doc(db, 'escalation_intake_rules', id), rule);
+  } else {
+    await addDoc(collection(db, 'escalation_intake_rules'), { ...rule, hubId });
+  }
+};
+
+export const deleteEscalationIntakeRule = async (hubId: string, id: string) => {
+  await deleteDoc(doc(db, 'escalation_intake_rules', id));
+};
+
+// --- Automation Rules ---
+export const getDealAutomationRules = async (hubId: string): Promise<DealAutomationRule[]> => {
+  const q = query(collection(db, 'deal_automation_rules'), where('hubId', '==', hubId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as DealAutomationRule));
+};
+
+export const saveDealAutomationRule = async (rule: Omit<DealAutomationRule, 'id'>, id?: string) => {
+  if (id) {
+    await updateDoc(doc(db, 'deal_automation_rules', id), rule);
+  } else {
+    await addDoc(collection(db, 'deal_automation_rules'), rule);
+  }
+};
+
+export const deleteDealAutomationRule = async (id: string) => {
+  await deleteDoc(doc(db, 'deal_automation_rules', id));
+};
+
+// --- Time Entries ---
 export const getTimeEntriesInHub = async (projectIds: string[]): Promise<TimeEntry[]> => {
   if (projectIds.length === 0) return [];
   const q = query(collection(db, 'time_entries'), where('project_id', 'in', projectIds.slice(0, 10)));
@@ -325,24 +443,41 @@ export const getTimeEntriesInHub = async (projectIds: string[]): Promise<TimeEnt
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimeEntry));
 };
 
+export const addTimeEntry = async (entry: Omit<TimeEntry, 'id'>): Promise<TimeEntry> => {
+  const docRef = await addDoc(collection(db, 'time_entries'), entry);
+  return { id: docRef.id, ...entry };
+};
+
+// --- Slack Logs ---
 export const getSlackMeetingLogsInSpace = async (spaceId: string): Promise<SlackMeetingLog[]> => {
   const q = query(collection(db, 'slack_meeting_logs'), where('spaceId', '==', spaceId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SlackMeetingLog));
 };
 
+// --- Bots & Agents ---
 export const getBots = async (hubId: string): Promise<Bot[]> => {
   const q = query(collection(db, 'bots'), where('hubId', '==', hubId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bot));
 };
 
-export const getEscalationIntakeRules = async (hubId: string): Promise<EscalationIntakeRule[]> => {
-    const q = query(collection(db, 'escalation_intake_rules'), where('hubId', '==', hubId));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as EscalationIntakeRule));
+export const addBot = async (bot: Omit<Bot, 'id'>): Promise<Bot> => {
+  const docRef = await addDoc(collection(db, 'bots'), bot);
+  return { id: docRef.id, ...bot };
 };
 
+export const updateBot = async (id: string, data: Partial<Bot>) => {
+  const docRef = doc(db, 'bots', id);
+  await updateDoc(docRef, data);
+};
+
+export const deleteBot = async (id: string) => {
+  const docRef = doc(db, 'bots', id);
+  await deleteDoc(docRef);
+};
+
+// --- Job Flows ---
 export const getJobFlowTemplates = async (hubId: string): Promise<JobFlowTemplate[]> => {
   const q = query(collection(db, 'job_flow_templates'), where('hubId', '==', hubId));
   const querySnapshot = await getDocs(q);
@@ -379,12 +514,60 @@ export const getPersonalAgents = async (userId: string): Promise<Bot[]> => {
   return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bot));
 };
 
+// --- Invites ---
+export const addInvite = async (invite: Omit<Invite, 'id'>): Promise<Invite> => {
+  const docRef = await addDoc(collection(db, 'invites'), invite);
+  return { id: docRef.id, ...invite };
+};
+
+export const getPendingInvites = async (spaceIds: string[]): Promise<Invite[]> => {
+  if (spaceIds.length === 0) return [];
+  const q = query(collection(db, 'invites'), where('spaceId', 'in', spaceIds), where('status', '==', 'pending'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as Invite));
+};
+
+export const resendInvite = async (inviteId: string) => {
+  const functions = getFunctions(getApp());
+  const resend = httpsCallable(functions, 'resendInvite');
+  await resend({ inviteId });
+};
+
+export const revokeInvite = async (inviteId: string) => {
+  await updateDoc(doc(db, 'invites', inviteId), { status: 'expired' });
+};
+
+// --- Comms ---
+export const getCommsNumbersForSpace = (spaceId: string, callback: (nums: any[]) => void) => {
+  const q = collection(db, `spaces/${spaceId}/commsNumbers`);
+  return onSnapshot(q, (snapshot) => {
+    callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+};
+
+export const getAllPhoneLookupsForSpace = async (spaceId: string): Promise<PhoneChannelLookup[]> => {
+  const q = query(collection(db, 'phone_channel_lookups'), where('spaceId', '==', spaceId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as PhoneChannelLookup));
+};
+
+export const getPhoneLookupsForHub = async (hubId: string): Promise<PhoneChannelLookup[]> => {
+  const q = query(collection(db, 'phone_channel_lookups'), where('hubId', '==', hubId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as PhoneChannelLookup));
+};
+
+export const savePhoneChannelLookup = async (id: string, data: Partial<PhoneChannelLookup>) => {
+  await updateDoc(doc(db, 'phone_channel_lookups', id), data);
+};
+
 export const getDirectPhoneNumbersForUser = async (userId: string): Promise<PhoneChannelLookup[]> => {
   const q = query(collection(db, 'phone_channel_lookups'), where('userId', '==', userId));
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as PhoneChannelLookup));
 };
 
+// --- Email Configs ---
 export const subscribeToEmailConfigs = (spaceId: string, hubId: string, callback: (configs: EmailConfig[]) => void) => {
   const q = query(collection(db, `spaces/${spaceId}/hubs/${hubId}/emailConfigs`), where('connected', '==', true));
   return onSnapshot(q, (snapshot) => {
@@ -399,31 +582,278 @@ export const subscribeToAgentEmailConfigs = (userId: string, callback: (configs:
   });
 };
 
-export const getPhoneLookupsForHub = async (hubId: string): Promise<PhoneChannelLookup[]> => {
-  const q = query(collection(db, 'phone_channel_lookups'), where('hubId', '==', hubId));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as PhoneChannelLookup));
+export const updateEmailConfig = async (spaceId: string, hubId: string, configId: string, data: Partial<EmailConfig>) => {
+  await updateDoc(doc(db, `spaces/${spaceId}/hubs/${hubId}/emailConfigs`, configId), data);
 };
 
-export const updateAgentSeenAt = async (conversationId: string, userId: string) => {
-  const docRef = doc(db, 'conversations', conversationId);
-  await updateDoc(docRef, {
-    [`lastAgentSeenAtByAgent.${userId}`]: new Date().toISOString()
+export const updateAgentEmailConfig = async (userId: string, configId: string, data: Partial<EmailConfig>) => {
+  await updateDoc(doc(db, `users/${userId}/emailConfigs`, configId), data);
+};
+
+export const deleteAgentEmailConfig = async (userId: string, configId: string) => {
+  await deleteDoc(doc(db, `users/${userId}/emailConfigs`, configId));
+  // Also clean up index
+  const configs = await getDocs(query(collection(db, 'emailIndex'), where('emailConfigId', '==', configId)));
+  const batch = writeBatch(db);
+  configs.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+};
+
+// --- Conversations & Messages ---
+export const addConversation = async (convo: Omit<Conversation, 'id'>): Promise<Conversation> => {
+  const docRef = await addDoc(collection(db, 'conversations'), convo);
+  return { id: docRef.id, ...convo };
+};
+
+export const updateConversation = async (id: string, data: Partial<Conversation>) => {
+  await updateDoc(doc(db, 'conversations', id), data);
+};
+
+export const getConversationsForHub = async (hubId: string): Promise<Conversation[]> => {
+  const q = query(collection(db, 'conversations'), where('hubId', '==', hubId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as Conversation));
+};
+
+export const getConversation = (id: string, callback: (convo: Conversation) => void) => {
+  return onSnapshot(doc(db, 'conversations', id), (doc) => {
+    if (doc.exists()) callback({ id: doc.id, ...doc.data() } as Conversation);
+  });
+};
+
+export const getMessagesForConversations = (convoIds: string[], callback: (messages: ChatMessage[]) => void, publicOnly = false) => {
+  if (convoIds.length === 0) {
+    callback([]);
+    return () => {};
+  }
+  let q = query(collection(db, 'chat_messages'), where('conversationId', 'in', convoIds.slice(0, 10)));
+  return onSnapshot(q, (snapshot) => {
+    let msgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ChatMessage));
+    if (publicOnly) msgs = msgs.filter(m => m.type !== 'note');
+    msgs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    callback(msgs);
+  });
+};
+
+export const addChatMessage = async (msg: Omit<ChatMessage, 'id'>): Promise<ChatMessage> => {
+  const docRef = await addDoc(collection(db, 'chat_messages'), msg);
+  return { id: docRef.id, ...msg };
+};
+
+export const setTypingStatus = async (conversationId: string, userId: string, isTyping: boolean) => {
+  const convoRef = doc(db, 'conversations', conversationId);
+  await updateDoc(convoRef, {
+    [`typing.${userId}`]: isTyping
+  });
+};
+
+export const updateAgentSeenAt = async (conversationId: string, agentId: string) => {
+  const convoRef = doc(db, 'conversations', conversationId);
+  await updateDoc(convoRef, {
+    [`lastAgentSeenAtByAgent.${agentId}`]: new Date().toISOString()
   });
 };
 
 export const updateVisitorActivity = async (conversationId: string) => {
-  const docRef = doc(db, 'conversations', conversationId);
-  await updateDoc(docRef, {
+  const convoRef = doc(db, 'conversations', conversationId);
+  await updateDoc(convoRef, {
     lastVisitorActiveAt: new Date().toISOString()
   });
 };
 
-export const setTypingStatus = async (conversationId: string, userId: string, isTyping: boolean) => {
-  const docRef = doc(db, 'conversations', conversationId);
-  await updateDoc(docRef, {
-    [`typing.${userId}`]: isTyping
+// --- Visitors ---
+export const getOrCreateVisitor = async (id: string, initialData?: Partial<Visitor>): Promise<Visitor> => {
+  const docRef = doc(db, 'visitors', id);
+  const snap = await getDoc(docRef);
+  if (snap.exists()) return { id: snap.id, ...snap.data() } as Visitor;
+  const now = new Date().toISOString();
+  const newData = { ...initialData, lastSeen: now };
+  await setDoc(docRef, newData);
+  return { id, ...newData } as Visitor;
+};
+
+export const updateVisitor = async (id: string, data: Partial<Visitor>) => {
+  await updateDoc(doc(db, 'visitors', id), data);
+};
+
+// --- Shared Assets ---
+export const getDocumentsInHub = async (hubId: string): Promise<Document[]> => {
+  const q = query(collection(db, 'documents'), where('hubId', '==', hubId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document));
+};
+
+export const getDocument = async (id: string): Promise<Document | null> => {
+  const docSnap = await getDoc(doc(db, 'documents', id));
+  return docSnap.exists() ? ({ id: docSnap.id, ...docSnap.data() } as Document) : null;
+};
+
+export const addDocument = async (d: Omit<Document, 'id'>): Promise<Document> => {
+  const docRef = await addDoc(collection(db, 'documents'), d);
+  return { id: docRef.id, ...d };
+};
+
+export const updateDocument = async (id: string, data: Partial<Document>) => {
+  await updateDoc(doc(db, 'documents', id), data);
+};
+
+export const deleteDocument = async (id: string) => {
+  await deleteDoc(doc(db, 'documents', id));
+};
+
+export const uploadImageToFirebase = async (file: File, hubId: string, docId: string): Promise<string> => {
+  const storageRef = ref(storage, `hubs/${hubId}/documents/${docId}/${Date.now()}_${file.name}`);
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+};
+
+// --- Contacts ---
+export const getContacts = async (spaceId: string): Promise<Contact[]> => {
+  const q = query(collection(db, 'contacts'), where('spaceId', '==', spaceId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as Contact));
+};
+
+export const subscribeToContacts = (spaceId: string, callback: (contacts: Contact[]) => void) => {
+  const q = query(collection(db, 'contacts'), where('spaceId', '==', spaceId));
+  return onSnapshot(q, (snapshot) => {
+    callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Contact)));
   });
+};
+
+export const addContact = async (c: Omit<Contact, 'id'>): Promise<Contact> => {
+  const docRef = await addDoc(collection(db, 'contacts'), c);
+  return { id: docRef.id, ...c };
+};
+
+export const addContactEvent = async (contactId: string, event: any) => {
+  await addDoc(collection(db, `contacts/${contactId}/events`), event);
+};
+
+export const subscribeToContactEvents = (contactId: string, callback: (events: any[]) => void) => {
+  const q = query(collection(db, `contacts/${contactId}/events`), orderBy('timestamp', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+};
+
+export const deleteContactEvent = async (contactId: string, eventId: string) => {
+  await deleteDoc(doc(db, `contacts/${contactId}/events`, eventId));
+};
+
+// --- Complex Workflow Helpers ---
+export const launchJob = async (name: string, template: JobFlowTemplate, roleMapping: Record<string, string>, creatorId: string, spaceId: string) => {
+    const hubId = template.hubId;
+    const now = new Date().toISOString();
+    
+    const jobData: Omit<Job, 'id'> = {
+        name,
+        workflowTemplateId: template.id,
+        space_id: spaceId,
+        hubId,
+        currentPhaseIndex: 0,
+        status: 'active',
+        createdAt: now,
+        createdBy: creatorId,
+        roleUserMapping: roleMapping
+    };
+    
+    const jobRef = await addDoc(collection(db, 'jobs'), jobData);
+    
+    // Create initial tasks for phase 0
+    const firstPhase = template.phases[0];
+    for (const taskTemplate of firstPhase.tasks) {
+        const assigneeId = roleMapping[taskTemplate.defaultAssigneeId] || taskTemplate.defaultAssigneeId;
+        
+        const newTask: Omit<Task, 'id'> = {
+            name: taskTemplate.titleTemplate,
+            description: taskTemplate.descriptionTemplate || '',
+            project_id: null,
+            hubId,
+            spaceId,
+            status: 'Backlog',
+            assigned_to: assigneeId,
+            createdBy: creatorId,
+            createdAt: now,
+            due_date: new Date(Date.now() + taskTemplate.estimatedDurationDays * 86400000).toISOString(),
+            priority: 'Medium',
+            tags: ['workflow-task'],
+            activities: [],
+            comments: [],
+            attachments: [],
+            relationships: []
+        };
+        
+        const createdTask = await addTask(newTask);
+        
+        await addDoc(collection(db, 'job_flow_tasks'), {
+            jobId: jobRef.id,
+            taskId: createdTask.id,
+            phaseIndex: 0,
+            createdAt: now,
+            hubId,
+        });
+    }
+    
+    return jobRef.id;
+};
+
+export const updateJobPhase = async (job: Job, template: JobFlowTemplate, allTasks: Task[], jobLinks: JobFlowTask[]) => {
+    const nextPhaseIndex = job.currentPhaseIndex + 1;
+    const isLastPhase = nextPhaseIndex >= template.phases.length;
+    
+    const update: any = {
+        currentPhaseIndex: isLastPhase ? job.currentPhaseIndex : nextPhaseIndex,
+        status: isLastPhase ? 'completed' : 'active',
+        updatedAt: new Date().toISOString()
+    };
+    
+    await updateDoc(doc(db, 'jobs', job.id), update);
+    
+    if (!isLastPhase) {
+        const nextPhase = template.phases[nextPhaseIndex];
+        const now = new Date().toISOString();
+        
+        for (const taskTemplate of nextPhase.tasks) {
+            const assigneeId = job.roleUserMapping[taskTemplate.defaultAssigneeId] || taskTemplate.defaultAssigneeId;
+            const newTask: Omit<Task, 'id'> = {
+                name: taskTemplate.titleTemplate,
+                description: taskTemplate.descriptionTemplate || '',
+                project_id: null,
+                hubId: job.hubId,
+                spaceId: job.space_id,
+                status: 'Backlog',
+                assigned_to: assigneeId,
+                createdBy: job.createdBy,
+                createdAt: now,
+                due_date: new Date(Date.now() + taskTemplate.estimatedDurationDays * 86400000).toISOString(),
+                priority: 'Medium',
+                tags: ['workflow-task'],
+                activities: [],
+                comments: [],
+                attachments: [],
+                relationships: []
+            };
+            const createdTask = await addTask(newTask);
+            await addDoc(collection(db, 'job_flow_tasks'), {
+                jobId: job.id,
+                taskId: createdTask.id,
+                phaseIndex: nextPhaseIndex,
+                createdAt: now,
+                hubId: job.hubId,
+            });
+        }
+    }
+};
+
+export const reviewJobPhase = async (jobId: string, phaseIndex: number, reviewerId: string) => {
+    const q = query(collection(db, 'job_flow_tasks'), where('jobId', '==', jobId), where('phaseIndex', '==', phaseIndex));
+    const snap = await getDocs(q);
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => {
+        batch.update(d.ref, { reviewedBy: reviewerId, reviewedAt: new Date().toISOString() });
+    });
+    await batch.commit();
 };
 
 export const seedDatabase = async () => {};

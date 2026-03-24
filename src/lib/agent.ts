@@ -1,20 +1,21 @@
-
 /**
  * agent.ts (Hybrid Intelligence & Intent Routing Engine)
  *
  * Implements conversational AI reasoning + deterministic subflow execution.
  */
 
-import type { Conversation as ImportedConversation, SupportIntentNode, ConversationStatus, ResponderType, AutomationNode, AutomationEdge, Bot } from "./data";
+import type { Conversation as ImportedConversation, SupportIntentNode, ConversationStatus, ResponderType, AutomationNode, AutomationEdge, Bot, IntelligenceAccessLevel } from "./data";
 
 export type MessageRole = "user" | "assistant" | "internal";
 
 export interface BotConfig {
   id: string;
+  type: 'agent' | 'widget'; // REQUIRED PLUMBING
   hubId: string;
   name: string;
   webAgentName?: string;
   allowedHelpCenterIds: string[];
+  intelligenceAccessLevel?: IntelligenceAccessLevel;
   aiEnabled?: boolean; 
   handoffKeywords?: string[];
   quickReplies?: string[];
@@ -61,53 +62,39 @@ export interface IncomingMessage {
   };
 }
 
-export interface HelpChunk {
-  chunkText: string;
-  score: number;
-  articleId: string;
-  title: string;
-  url: string;
-  helpCenterIds: string[];
-  updatedAt?: string;
-  articleType: 'article' | 'playbook' | 'snippet' | 'pdf';
-  articleContent: string | null;
+export interface RetrievalDecision {
+  answerMode: 'article_grounded' | 'topic_supported' | 'insight_supported_hidden' | 'internal_evidence_only' | 'clarify' | 'escalate';
+  chosenCandidates: Array<{
+    sourceType: 'article' | 'topic' | 'insight' | 'chunk';
+    id: string;
+    text: string;
+    title?: string;
+    url?: string;
+    score: number;
+  }>;
+  confidence: number;
+  rationale: string;
 }
-
-export interface SearchHelpCenterParams {
-  hubId: string;
-  allowedHelpCenterIds: string[];
-  userId?: string | null;
-  query: string;
-  topK?: number;
-}
-
-export interface SearchHelpCenterResult {
-  chunks: HelpChunk[];
-}
-
-export interface SearchSupportParams {
-  hubId: string;
-  userId?: string | null;
-  query: string;
-  topK?: number;
-}
-
-export type SearchableSupportIntentNode = SupportIntentNode & { _searchScore?: number };
-
-export interface SearchSupportResult {
-  intents: SearchableSupportIntentNode[];
-}
-
 
 export interface AgentAdapters {
-  searchHelpCenter: (params: SearchHelpCenterParams) => Promise<SearchHelpCenterResult>;
-  searchSupport: (params: SearchSupportParams) => Promise<SearchSupportResult>;
+  retrieveContext: (args: {
+    message: string;
+    hubId: string;
+    spaceId: string;
+    policy: {
+      isCustomerFacing: boolean;
+      accessLevel: IntelligenceAccessLevel;
+      allowedLibraryIds: string[];
+    };
+  }) => Promise<RetrievalDecision>;
+
   generateAnswer: (args: {
     query: string;
     botName: string;
     context: Array<{ title: string; text: string; url?: string }>;
     greetingScript?: string;
   }) => Promise<string>;
+
   escalateToHuman: (args: {
     conversationId: string;
     hubId: string;
@@ -144,12 +131,9 @@ export async function handleIncomingMessage(args: {
   const { bot, adapters } = args;
   let conversation = args.conversation;
   const text = (args.message.text ?? "").trim();
-  const botName = bot.webAgentName || bot.name || "Support";
 
   // ---- 1. ESCALATION GUARD ----
-  // If we are already waiting for a human, don't let AI intervene unless explicitly designed to.
   if (conversation.status === 'waiting_human' || conversation.status === 'resolved') {
-    console.log(`[Agent] Silence: Conversation ${conversation.id} is in status ${conversation.status}`);
     return;
   }
 
@@ -158,21 +142,18 @@ export async function handleIncomingMessage(args: {
   const handoffKeywords = bot.handoffKeywords?.length ? bot.handoffKeywords : defaultHandoffKeywords;
   
   if (containsAny(text, handoffKeywords)) {
-      console.log(`[Agent] Keyword match: '${text}' triggered handoff.`);
       await escalateNow(adapters, conversation, "Requested by user via keyword.");
       return;
   }
 
   // ---- 3. HYBRID FLOW EXECUTION ----
   if (bot.flow?.nodes?.length) {
-    console.log(`[Agent] Executing custom flow for ${conversation.id}`);
     await executeHybridFlow(args);
     return;
   }
 
   // ---- 4. LEGACY AI FALLBACK ----
   if (bot.aiEnabled !== false) {
-    console.log(`[Agent] Executing conversational reasoning for ${conversation.id}`);
     await executeAiPhase(args);
     return;
   }
@@ -204,73 +185,40 @@ async function executeHybridFlow(args: {
   const edges = bot.flow!.edges || [];
   let currentStepId = conversation.meta?.currentFlowStepId;
 
-  // 1. Initial State Resolution
   if (!currentStepId) {
     const startNode = nodes.find(n => n.type === 'start');
     currentStepId = startNode?.id;
   } else {
-    // Handling interaction with existing state
     const currentNode = nodes.find(n => n.id === currentStepId);
     if (!currentNode) return;
 
     if (currentNode.type === 'quick_reply' || currentNode.type === 'ai_classifier') {
       const selectedButtonId = message.meta?.buttonId;
-      
-      // Look for explicit edge from this button/intent
-      const targetEdge = edges.find(e => 
-        e.source === currentStepId && 
-        e.sourceHandle === `intent:${selectedButtonId}`
-      );
+      const targetEdge = edges.find(e => e.source === currentStepId && e.sourceHandle === `intent:${selectedButtonId}`);
 
       if (targetEdge) {
         currentStepId = targetEdge.target;
-      } else if (currentNode.type === 'ai_classifier') {
-        // AI INTENT CLASSIFICATION for free-text
-        const intents = currentNode.data.intents || [];
-        const classification = await classifyIntent(message.text, intents);
-        
-        const intentEdge = edges.find(e => 
-          e.source === currentStepId && 
-          e.sourceHandle === `intent:${classification}`
-        );
-
-        if (intentEdge) {
-          currentStepId = intentEdge.target;
-        } else {
-          // Fallback path
-          const fallbackEdge = edges.find(e => e.source === currentStepId && e.sourceHandle === 'fallback');
-          currentStepId = fallbackEdge?.target;
-        }
       } else {
         const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
         currentStepId = nextEdge?.target;
       }
     } else if (currentNode.type === 'capture_input') {
-      // Validate input based on type
       const inputType = currentNode.data.inputType || 'text';
       const isValid = validateInput(message.text, inputType);
       
       if (isValid) {
-        // --- CRM SYNC LOGIC ---
         if (currentNode.data.saveToProfile) {
           const varName = currentNode.data.variableName?.toLowerCase();
           const patch: Partial<Conversation> = {};
           if (varName === 'email') patch.visitorEmail = message.text.trim().toLowerCase();
           if (varName === 'name') patch.visitorName = message.text.trim();
-          
           if (Object.keys(patch).length > 0) {
-            await adapters.updateConversation({
-              conversationId: conversation.id,
-              hubId: conversation.hubId,
-              patch
-            });
+            await adapters.updateConversation({ conversationId: conversation.id, hubId: conversation.hubId, patch });
           }
         }
-
-        const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+        const nextEdge = edges.find(e => e.source === currentFlowStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
         currentStepId = nextEdge?.target;
       } else {
-        // Validation failed - stay on current node and retry
         await adapters.persistAssistantMessage({
           conversationId: conversation.id,
           hubId: conversation.hubId,
@@ -280,36 +228,18 @@ async function executeHybridFlow(args: {
         return;
       }
     } else if (currentNode.type === 'identity_form') {
-      // The widget will handle the actual identity capture.
-      // If we are already identified, handleInput should advance.
       if (conversation.visitorEmail || conversation.contactId) {
-        const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+        const nextEdge = edges.find(e => e.source === currentFlowStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
         currentStepId = nextEdge?.target;
       } else {
-        // Form not yet submitted
         return;
       }
-    } else if (currentNode.type === 'condition') {
-        const field = currentNode.data.conditionField;
-        const operator = currentNode.data.operator || 'exists';
-        const comparisonValue = currentNode.data.conditionValue;
-        
-        let actualValue: any = null;
-        if (field === 'email') actualValue = conversation.visitorEmail;
-        if (field === 'name') actualValue = conversation.visitorName;
-        if (field === 'identified') actualValue = !!conversation.contactId;
-        
-        const met = evaluateCondition(actualValue, operator, comparisonValue);
-        const targetHandle = met ? 'true' : 'false';
-        const branchEdge = edges.find(e => e.source === currentStepId && e.sourceHandle === targetHandle);
-        currentStepId = branchEdge?.target;
     } else {
-      const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+      const nextEdge = edges.find(e => e.source === currentFlowStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
       currentStepId = nextEdge?.target;
     }
   }
 
-  // 2. Traversal Loop
   let safetyLimit = 15;
   while (currentStepId && safetyLimit-- > 0) {
     const node = nodes.find(n => n.id === currentStepId);
@@ -348,7 +278,7 @@ async function executeHybridFlow(args: {
         responderType: 'automation',
         meta: { buttons }
       });
-      return; // Wait for input
+      return;
     }
 
     if (node.type === 'capture_input') {
@@ -362,13 +292,11 @@ async function executeHybridFlow(args: {
     }
 
     if (node.type === 'identity_form') {
-      // SKIP if already identified
       if (conversation.visitorEmail || conversation.contactId) {
         const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
         currentStepId = nextEdge?.target;
         continue;
       }
-
       await adapters.persistAssistantMessage({
         conversationId: conversation.id,
         hubId: conversation.hubId,
@@ -376,24 +304,7 @@ async function executeHybridFlow(args: {
         responderType: 'automation',
         meta: { type: 'identity_form' }
       });
-      return; // The widget detects meta.type === 'identity_form' and shows the form
-    }
-
-    if (node.type === 'condition') {
-      const field = node.data.conditionField;
-      const operator = node.data.operator || 'exists';
-      const comparisonValue = node.data.conditionValue;
-      
-      let actualValue: any = null;
-      if (field === 'email') actualValue = conversation.visitorEmail;
-      if (field === 'name') actualValue = conversation.visitorName;
-      if (field === 'identified') actualValue = !!conversation.contactId;
-
-      const met = evaluateCondition(actualValue, operator, comparisonValue);
-      const targetHandle = met ? 'true' : 'false';
-      const branchEdge = edges.find(e => e.source === currentStepId && e.sourceHandle === targetHandle);
-      currentStepId = branchEdge?.target;
-      continue;
+      return;
     }
 
     if (node.type === 'ai_step') {
@@ -405,38 +316,16 @@ async function executeHybridFlow(args: {
         const unresolvedEdge = edges.find(e => e.source === currentStepId && e.sourceHandle === 'unresolved');
         currentStepId = unresolvedEdge?.target;
       }
-      if (!currentStepId) return; // AI handled it or path ends
+      if (!currentStepId) return;
       continue;
     }
 
     if (node.type === 'handoff') {
       await escalateNow(adapters, conversation, "Handoff step triggered.", node.data.text);
-      const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
-      if (nextEdge) {
-          currentStepId = nextEdge.target;
-          continue;
-      }
       return;
     }
 
     if (node.type === 'end') {
-      const waitBehavior = node.data.waitBehavior || 'pause';
-      
-      if (waitBehavior === 'end') {
-        await adapters.updateConversation({
-          conversationId: conversation.id,
-          hubId: conversation.hubId,
-          patch: { status: 'resolved', meta: { ...conversation.meta, currentFlowStepId: undefined } }
-        });
-        return;
-      }
-
-      const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
-      if (nextEdge) {
-          // It's a "Wait for visitor" but with a path forward. 
-          // Stop this turn and let the next interaction pick up from here.
-          return;
-      }
       return;
     }
 
@@ -445,7 +334,7 @@ async function executeHybridFlow(args: {
 }
 
 /**
- * Conversational Reasoning logic.
+ * Conversational Reasoning logic using Tiered Intelligence Orchestrator.
  */
 async function executeAiPhase(args: {
   bot: BotConfig;
@@ -463,63 +352,35 @@ async function executeAiPhase(args: {
       patch: { aiAttempted: true, status: 'open' }
   });
 
-  // Instruction augmentation based on Conversation Goal
-  let systemInstruction = `You are ${botName}, a helpful AI assistant. You must be conversational, warm, and helpful.`;
-  if (bot.conversationGoal) {
-    systemInstruction += `\n\n**CONVERSATION GOAL:**\n${bot.conversationGoal}`;
-  }
+  // 1. Policy-Aware Retrieval Decision (PLUMBING: derive isCustomerFacing from bot type)
+  const isCustomerFacing = bot.type === 'widget';
 
-  // Identity Capture instructions
-  if (bot.identityCapture?.fields) {
-    const fieldsToAsk = [];
-    if (bot.identityCapture.fields.name && !conversation.visitorName) fieldsToAsk.push('name');
-    if (bot.identityCapture.fields.email && !conversation.visitorEmail) fieldsToAsk.push('email');
-    if (bot.identityCapture.fields.phone && !conversation.visitorPhone) fieldsToAsk.push('phone number');
-
-    if (fieldsToAsk.length > 0) {
-      if (bot.identityCapture.timing === 'before') {
-        systemInstruction += `\n\n**CRITICAL:** Before resolving the user's issue, you MUST ask for their ${fieldsToAsk.join(', ')}. Weave this naturally into your first response.`;
-      } else {
-        systemInstruction += `\n\n**CRITICAL:** While helping the user, you MUST eventually capture their ${fieldsToAsk.join(', ')}. Weave this naturally into the conversation contextually.`;
-      }
+  const decision = await adapters.retrieveContext({
+    message: text,
+    hubId: bot.hubId,
+    spaceId: conversation.spaceId,
+    policy: {
+      isCustomerFacing,
+      accessLevel: bot.intelligenceAccessLevel || 'topics_only',
+      allowedLibraryIds: bot.allowedHelpCenterIds || []
     }
-  }
-
-  // 1. Check Distilled Support Intents (Learned Intelligence)
-  const supportSearch = await adapters.searchSupport({
-      hubId: bot.hubId,
-      userId: conversation.userId ?? null,
-      query: text,
-      topK: 3,
   });
 
-  const topIntent = supportSearch.intents?.[0];
-  if (topIntent && topIntent._searchScore && topIntent._searchScore > 0.75) {
-      console.log(`[Agent] Distilled hit: ${topIntent.intentKey}`);
-      await adapters.persistAssistantMessage({
-          conversationId: conversation.id,
-          hubId: conversation.hubId,
-          text: topIntent.description,
-          responderType: 'ai',
-      });
-      await adapters.updateConversation({ conversationId: conversation.id, hubId: conversation.hubId, patch: { aiResolved: true } });
-      return true;
+  // 2. Adaptive System Instruction
+  let systemInstruction = `You are ${botName}, a helpful AI assistant. Be conversational, warm, and accurate.`;
+  
+  if (decision.answerMode === 'insight_supported_hidden') {
+    systemInstruction += `\n\nCRITICAL POLICY: Your answer is based on internal support signals. DO NOT cite sources. DO NOT reveal internal language or customer names. Keep the tone helpful but cautious.`;
+  } else if (decision.answerMode === 'topic_supported') {
+    systemInstruction += `\n\nPOLICY: This information is based on recurring patterns. Avoid presenting it as absolute official policy if it sounds like a guarantee.`;
   }
 
-  // 2. Search Documentation (RAG)
-  const docSearch = await adapters.searchHelpCenter({
-      hubId: bot.hubId,
-      allowedHelpCenterIds: bot.allowedHelpCenterIds,
-      userId: conversation.userId ?? null,
-      query: text,
-      topK: 5,
-  });
+  if (bot.conversationGoal) {
+    systemInstruction += `\n\nCONVERSATION GOAL:\n${bot.conversationGoal}`;
+  }
 
-  const chunks = docSearch.chunks ?? [];
-  
-  // ALWAYS generate a natural, grounded answer using the context we found (if any)
-  const context = chunks.map(c => ({ title: c.title, text: c.chunkText, url: c.url }));
-  
+  // 3. Generate Answer
+  const context = decision.chosenCandidates.map(c => ({ title: c.title || 'Source', text: c.text, url: c.url }));
   const answer = await adapters.generateAnswer({
       query: text,
       botName: botName,
@@ -528,18 +389,25 @@ async function executeAiPhase(args: {
   });
 
   if (!answer || answer.trim() === "") {
-      return false; // Let the caller handle the silence
+      if (decision.answerMode === 'escalate') {
+        await escalateNow(adapters, conversation, "No trusted knowledge sources found.");
+        return true;
+      }
+      return false;
   }
 
+  // 4. Persist result with tiered sources
   await adapters.persistAssistantMessage({
       conversationId: conversation.id,
       hubId: conversation.hubId,
       text: answer,
       responderType: 'ai',
-      sources: chunks.slice(0, 3).map(c => ({ articleId: c.articleId, title: c.title, url: c.url, score: c.score })),
+      sources: decision.chosenCandidates
+        .filter(c => c.sourceType === 'article') // Only expose curated sources to UI
+        .map(c => ({ title: c.title || 'Untitled', url: c.url || '', articleId: c.id, score: c.score })),
   });
+
   await adapters.updateConversation({ conversationId: conversation.id, hubId: conversation.hubId, patch: { aiResolved: true } });
-  
   return true;
 }
 
@@ -554,48 +422,9 @@ function validateInput(text: string, type: string): boolean {
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text.trim());
     case 'phone':
       return /^\+?[\d\s\-()]{7,}$/.test(text.trim());
-    case 'number':
-      return !isNaN(parseFloat(text)) && isFinite(Number(text));
-    case 'url':
-      try { new URL(text); return true; } catch { return false; }
-    case 'text':
     default:
       return text.length > 0;
   }
-}
-
-function evaluateCondition(value: any, operator: string, comparison: any): boolean {
-  switch (operator) {
-    case 'exists':
-      return value !== null && value !== undefined && value !== '';
-    case 'equals':
-      return String(value) === String(comparison);
-    case 'not_equals':
-      return String(value) !== String(comparison);
-    case 'contains':
-      return String(value).toLowerCase().includes(String(comparison).toLowerCase());
-    case 'gt':
-      return Number(value) > Number(comparison);
-    case 'lt':
-      return Number(value) < Number(comparison);
-    default:
-      return !!value;
-  }
-}
-
-/**
- * Categorize free-text input against defined intent paths.
- */
-async function classifyIntent(text: string, intentPaths: { id: string; label: string; description?: string }[]): Promise<string | null> {
-    if (!text || intentPaths.length === 0) return null;
-    
-    const normalizedText = text.toLowerCase();
-    for (const path of intentPaths) {
-        if (normalizedText.includes(path.label.toLowerCase())) {
-            return path.id;
-        }
-    }
-    return null;
 }
 
 function containsAny(haystack: string, needles: string[]) {
