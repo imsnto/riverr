@@ -1,8 +1,18 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { User as AppUser, Space, SpaceMember, Invite, Hub } from '@/lib/data';
-import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword as firebaseSignIn, updateProfile } from 'firebase/auth';
+import { 
+  onAuthStateChanged, 
+  User as FirebaseUser, 
+  signOut as firebaseSignOut, 
+  signInWithRedirect, 
+  getRedirectResult,
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword as firebaseSignIn, 
+  updateProfile 
+} from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
 import { getUser, addUser, addSpace, getSpacesForUser, seedDatabase, updateUser, subscribeToUserSpaces } from '@/lib/db';
 import { useRouter } from 'next/navigation';
@@ -67,6 +77,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     seedDatabase();
+    
+    // Handle redirect results (errors or successes from signInWithRedirect)
+    getRedirectResult(auth).catch((error) => {
+      console.error("Error during redirect sign-in:", error);
+      setStatus('unauthenticated');
+    });
+
     try {
         const cachedUser = localStorage.getItem(LOCAL_STORAGE_KEY_USER);
         const cachedSpace = localStorage.getItem(LOCAL_STORAGE_KEY_ACTIVE_SPACE);
@@ -182,9 +199,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signInWithGoogle = async () => {
     setStatus('loading');
     try {
-      await signInWithPopup(auth, googleProvider);
+      // Switched to Redirect to avoid popup blockers
+      await signInWithRedirect(auth, googleProvider);
     } catch (error) {
-      console.error("Error during Google Sign-In:", error);
+      console.error("Error initiating Google Sign-In:", error);
       setStatus('unauthenticated');
     }
   };
