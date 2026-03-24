@@ -1,5 +1,4 @@
 
-// src/components/dashboard/help-center-layout.tsx
 'use client';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -34,7 +33,7 @@ interface HelpCenterLayoutProps {
 }
 
 export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterLayoutProps) {
-    const [sidebarView, setSidebarView] = useState<HelpCenterSidebarView>('support-intelligence');
+    const [sidebarView, setSidebarView] = useState<HelpCenterSidebarView | null>(null);
     const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
     const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
     const [activeHelpCenterId, setActiveHelpCenterId] = useState<string | null>(null);
@@ -56,7 +55,14 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
     
     const refreshData = () => {
         if (activeHub) {
-            db.getHelpCenters(activeHub.id).then(setHelpCenters);
+            db.getHelpCenters(activeHub.id).then(hcs => {
+                setHelpCenters(hcs);
+                // If no view or library is selected, pick the first library as default
+                if (!activeHelpCenterId && !sidebarView && hcs.length > 0) {
+                    const mainKb = hcs.find(h => h.name !== 'Support Intelligence') || hcs[0];
+                    setActiveHelpCenterId(mainKb.id);
+                }
+            });
             db.getHelpCenterCollections(activeHub.id).then(setCollections);
             db.getHelpCenterArticles(activeHub.id).then(setArticles);
         }
@@ -120,6 +126,7 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
     
     const handleSelectHelpCenter = (id: string | null) => {
         setActiveHelpCenterId(id);
+        setSidebarView(null); // Reset special views when a specific library is picked
         setSelectedCollectionId(null);
         setSelectedArticleId(null);
         showContentOnMobile();
@@ -180,11 +187,14 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
         />
     );
 
+    const isIntelligenceView = (sidebarView === 'support-intelligence') || 
+                               (activeHelpCenterId && helpCenters.find(h => h.id === activeHelpCenterId)?.name === 'Support Intelligence');
+
     const mainContentComponent = (
         <main className="p-4 md:p-6 flex flex-col h-full overflow-hidden">
             {sidebarView === 'patterns' ? (
                 <PatternsView clusters={topics} />
-            ) : sidebarView === 'support-intelligence' || (activeHelpCenterId && helpCenters.find(h => h.id === activeHelpCenterId)?.name === 'Support Intelligence') ? (
+            ) : isIntelligenceView ? (
                 <SupportIntelligenceView insights={insights} topics={topics} allUsers={allUsers} />
             ) : (
                 <>

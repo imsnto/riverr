@@ -38,7 +38,7 @@ interface HelpCenterSidebarProps {
   onNewHelpCenter: () => void;
   onEditHelpCenter: (hc: HelpCenter) => void;
   unassignedContentCount: number;
-  sidebarView: HelpCenterSidebarView;
+  sidebarView: HelpCenterSidebarView | null;
   onViewChange: (view: HelpCenterSidebarView) => void;
   onImport: () => void;
 }
