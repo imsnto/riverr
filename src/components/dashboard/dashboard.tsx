@@ -33,6 +33,8 @@ import {
   Deal,
   EscalationIntakeRule,
   Contact,
+  Insight,
+  Topic,
 } from '@/lib/data';
 import * as db from '@/lib/db';
 import { useRouter } from 'next/navigation';
@@ -85,6 +87,8 @@ export default function Dashboard({ view }: { view: string }) {
   const messageUnsubscribeRef = useRef<(() => void) | null>(null);
   const conversationUnsubscribeRef = useRef<(() => void) | null>(null);
   const contactsUnsubscribeRef = useRef<(() => void) | null>(null);
+  const intelligenceUnsubscribeRef = useRef<(() => void) | null>(null);
+  const topicsUnsubscribeRef = useRef<(() => void) | null>(null);
   const [hideMobileBottomNav, setHideMobileBottomNav] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -103,6 +107,8 @@ export default function Dashboard({ view }: { view: string }) {
   const [bots, setBots] = useState<Bot[]>([]);
   const [escalationRules, setEscalationIntakeRules] = useState<EscalationIntakeRule[]>([]);
   const [helpCenters, setHelpCenters] = useState<HelpCenter[]>([]);
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
   const [lastMentionsRead, setLastMentionsRead] = useState<string | null>(null);
   const [unreadMentions, setUnreadMentions] = useState<any[]>([]);
   const [jobFlowTemplates, setJobFlowTemplates] = useState<JobFlowTemplate[]>([]);
@@ -141,6 +147,14 @@ export default function Dashboard({ view }: { view: string }) {
         contactsUnsubscribeRef.current();
         contactsUnsubscribeRef.current = null;
     }
+    if (intelligenceUnsubscribeRef.current) {
+        intelligenceUnsubscribeRef.current();
+        intelligenceUnsubscribeRef.current = null;
+    }
+    if (topicsUnsubscribeRef.current) {
+        topicsUnsubscribeRef.current();
+        topicsUnsubscribeRef.current = null;
+    }
 
     contactsUnsubscribeRef.current = db.subscribeToContacts(activeSpace.id, (updatedContacts) => {
         updatedContacts.sort((a, b) => {
@@ -150,6 +164,9 @@ export default function Dashboard({ view }: { view: string }) {
         });
         setContacts(updatedContacts);
     });
+
+    intelligenceUnsubscribeRef.current = db.subscribeToInsights(activeSpace.id, setInsights);
+    topicsUnsubscribeRef.current = db.subscribeToTopics(activeSpace.id, setTopics);
 
     const hubs = await db.getHubsForSpace(activeSpace.id);
     const hubIds = hubs.map(h => h.id);
@@ -241,6 +258,8 @@ export default function Dashboard({ view }: { view: string }) {
         if (messageUnsubscribeRef.current) messageUnsubscribeRef.current(); 
         if (conversationUnsubscribeRef.current) conversationUnsubscribeRef.current();
         if (contactsUnsubscribeRef.current) contactsUnsubscribeRef.current();
+        if (intelligenceUnsubscribeRef.current) intelligenceUnsubscribeRef.current();
+        if (topicsUnsubscribeRef.current) topicsUnsubscribeRef.current();
     };
   }, [appUser?.id, activeSpace?.id, activeHub?.id]);
 
@@ -528,7 +547,7 @@ export default function Dashboard({ view }: { view: string }) {
       );
       case 'tickets': return <TicketsBoard tickets={tickets} onUpdateTickets={handleUpdateTickets} conversations={chatConversations} activeHub={activeHub!} activeSpace={activeSpace!} allHubs={allHubs} allUsers={allUsers} onUpdateActiveHub={handleUpdateActiveHub} onNavigateToSettings={() => router.push(`/space/${activeSpace?.id}/hub/${activeHub?.id}/settings`)} escalationRules={escalationRules} projects={projects} contacts={contacts} onDataRefresh={fetchData} onCreateTicket={handleCreateTicket} onEscalateTicket={handleEscalateTicket} allTasks={tasks} onTaskSelect={setSelectedTask} />;
       case 'deals': return <DealsBoard deals={deals} onUpdateDeals={handleUpdateDeals} onAddDeal={handleAddDeal} onDataRefresh={fetchData} contacts={contacts} activeHub={activeHub!} activeSpace={activeSpace!} allUsers={allUsers} onUpdateActiveHub={handleUpdateActiveHub} onNavigateToSettings={() => router.push(`/space/${activeSpace?.id}/hub/${activeHub?.id}/settings`)} />;
-      case 'help-center': return <HelpCenterLayout bots={bots} />;
+      case 'help-center': return <HelpCenterLayout bots={bots} insights={insights} topics={topics} />;
       case 'contacts': return <ContactsLayout activeSpace={activeSpace} contacts={contacts} />;
       case 'settings': return <SettingsLayout {...sp} />;
       case 'team-timesheets': return <TeamTimesheets allSpaces={userSpaces} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser!} activeHub={activeHub} />;

@@ -1,10 +1,9 @@
+
 // src/components/dashboard/support-intelligence-view.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Insight, Cluster, User } from '@/lib/data';
-import * as db from '@/lib/db';
-import { useAuth } from '@/hooks/use-auth';
+import React, { useState, useMemo } from 'react';
+import { Insight, Topic, User } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
@@ -32,27 +31,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '../ui/input';
 import { Separator } from '../ui/separator';
 
+interface SupportIntelligenceViewProps {
+    insights: Insight[];
+    topics: Topic[];
+    allUsers: User[];
+}
+
 type SubFilter = 'all' | 'ungrouped' | 'recent' | 'high-signal';
 
-export default function SupportIntelligenceView() {
-    const { activeSpace, allUsers } = useAuth();
-    const [insights, setInsights] = useState<Insight[]>([]);
-    const [clusters, setClusters] = useState<Cluster[]>([]);
+export default function SupportIntelligenceView({ insights, topics, allUsers }: SupportIntelligenceViewProps) {
     const [selectedInsightId, setSelectedInsightId] = useState<string | null>(null);
     const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'topics' | 'insights'>('topics');
     const [subFilter, setSubFilter] = useState<SubFilter>('all');
     const [searchQuery, setSearchQuery] = useState('');
-
-    useEffect(() => {
-        if (!activeSpace) return;
-        const unsubInsights = db.subscribeToInsights(activeSpace.id, setInsights);
-        const unsubClusters = db.subscribeToClusters(activeSpace.id, setClusters);
-        return () => {
-            unsubInsights();
-            unsubClusters();
-        };
-    }, [activeSpace]);
 
     const filteredInsights = useMemo(() => {
         let list = [...insights];
@@ -67,7 +59,7 @@ export default function SupportIntelligenceView() {
         }
 
         if (subFilter === 'ungrouped') {
-            list = list.filter(i => !i.clusterId || i.clusteringStatus === 'unclustered');
+            list = list.filter(i => !i.topicId || i.groupingStatus === 'ungrouped');
         } else if (subFilter === 'high-signal') {
             list = list.filter(i => (i.signalScore || 0) > 0.8);
         } else if (subFilter === 'recent') {
@@ -78,15 +70,13 @@ export default function SupportIntelligenceView() {
     }, [insights, subFilter, searchQuery]);
 
     const selectedTopic = useMemo(() => {
-        return clusters.find(c => c.id === selectedTopicId);
-    }, [clusters, selectedTopicId]);
+        return topics.find(t => t.id === selectedTopicId);
+    }, [topics, selectedTopicId]);
 
     const topicInsights = useMemo(() => {
         if (!selectedTopicId) return [];
-        return insights.filter(i => i.clusterId === selectedTopicId);
+        return insights.filter(i => i.topicId === selectedTopicId);
     }, [insights, selectedTopicId]);
-
-    if (!activeSpace) return null;
 
     const renderSignalBadge = (level: string, count: number) => {
         if (level === 'high' || count > 10) {
@@ -118,9 +108,9 @@ export default function SupportIntelligenceView() {
                 </p>
                 <div className="flex items-center justify-between mt-auto">
                     <div className="flex items-center gap-2">
-                        {insight.clusterId ? (
+                        {insight.topicId ? (
                             <Badge variant="outline" className="text-[9px] border-white/10 text-muted-foreground bg-white/5 h-5 px-1.5 font-bold truncate max-w-[150px]">
-                                Topic: {clusters.find(c => c.id === insight.clusterId)?.title || 'Assigned'}
+                                Topic: {topics.find(t => t.id === insight.topicId)?.title || 'Assigned'}
                             </Badge>
                         ) : (
                             <Badge variant="outline" className="text-[9px] border-amber-500/20 text-amber-500/70 bg-amber-500/5 h-5 px-1.5 font-bold uppercase">
@@ -139,10 +129,9 @@ export default function SupportIntelligenceView() {
     return (
         <div className="flex h-full min-h-0 bg-background overflow-hidden relative">
             <div className="flex-1 flex flex-col min-w-0">
-                {/* Unified Header */}
                 <header className="p-6 border-b shrink-0 space-y-6 bg-card/30">
                     <div className="flex items-center justify-between gap-8">
-                        <div className="space-y-1">
+                        <div className="space-y-1 text-left">
                             <h1 className="text-2xl font-bold tracking-tight">Support Intelligence</h1>
                             <p className="text-sm text-muted-foreground font-medium">AI is learning from support conversations automatically</p>
                         </div>
@@ -181,13 +170,12 @@ export default function SupportIntelligenceView() {
                     <div className="p-6 max-w-6xl mx-auto min-h-full flex flex-col">
                         {activeTab === 'topics' ? (
                             selectedTopicId && selectedTopic ? (
-                                /* TOPIC DETAIL VIEW */
                                 <div className="space-y-8 animate-in fade-in slide-in-from-left-2 duration-300">
                                     <div className="flex flex-col gap-4">
                                         <Button variant="ghost" size="sm" className="w-fit -ml-2 h-8 text-muted-foreground hover:text-foreground" onClick={() => setSelectedTopicId(null)}>
                                             <ArrowLeft className="h-4 w-4 mr-2" /> Back to Topics
                                         </Button>
-                                        <div className="flex flex-col md:flex-row justify-between md:items-end gap-6">
+                                        <div className="flex flex-col md:flex-row justify-between md:items-end gap-6 text-left">
                                             <div className="space-y-2">
                                                 <div className="flex items-center gap-3">
                                                     {renderSignalBadge(selectedTopic.signalLevel, selectedTopic.insightCount)}
@@ -213,36 +201,35 @@ export default function SupportIntelligenceView() {
                                     </div>
                                 </div>
                             ) : (
-                                /* TOPICS LIST VIEW */
                                 <div className="space-y-4 animate-in fade-in duration-300">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {clusters.map((cluster) => (
+                                        {topics.map((topic) => (
                                             <Card 
-                                                key={cluster.id} 
-                                                className="border-white/5 bg-[#161616] hover:bg-[#1a1a1a] transition-all cursor-pointer group"
-                                                onClick={() => setSelectedTopicId(cluster.id)}
+                                                key={topic.id} 
+                                                className="border-white/5 bg-[#161616] hover:bg-[#1a1a1a] transition-all cursor-pointer group text-left"
+                                                onClick={() => setSelectedTopicId(topic.id)}
                                             >
                                                 <CardContent className="p-6">
                                                     <div className="flex items-start justify-between mb-4">
                                                         <div className="space-y-1">
-                                                            {renderSignalBadge(cluster.signalLevel, cluster.insightCount)}
-                                                            <h3 className="text-lg font-bold text-white leading-snug pt-1">{cluster.title}</h3>
+                                                            {renderSignalBadge(topic.signalLevel, topic.insightCount)}
+                                                            <h3 className="text-lg font-bold text-white leading-snug pt-1">{topic.title}</h3>
                                                         </div>
                                                         <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity"><ChevronRight className="h-4 w-4" /></Button>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mb-6 font-medium">
-                                                        {cluster.description || `Identifying recurring issues across ${cluster.insightCount} individual support interactions...`}
+                                                        {topic.summary || `Identifying recurring issues across ${topic.insightCount} individual support interactions...`}
                                                     </p>
                                                     <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">
-                                                        <span>{cluster.insightCount} insights</span>
-                                                        <span>Seen {formatDistanceToNow(new Date(cluster.updatedAt), { addSuffix: true })}</span>
+                                                        <span>{topic.insightCount} insights</span>
+                                                        <span>Seen {formatDistanceToNow(new Date(topic.updatedAt), { addSuffix: true })}</span>
                                                     </div>
                                                 </CardContent>
                                             </Card>
                                         ))}
                                     </div>
 
-                                    {clusters.length === 0 && (
+                                    {topics.length === 0 && (
                                         <div className="text-center py-32 border-2 border-dashed rounded-3xl border-white/5 bg-white/[0.01]">
                                             <Target className="mx-auto h-12 w-12 text-muted-foreground opacity-10 mb-4" />
                                             <h3 className="text-lg font-bold text-white/50">No patterns yet</h3>
@@ -254,7 +241,6 @@ export default function SupportIntelligenceView() {
                                 </div>
                             )
                         ) : (
-                            /* INSIGHTS VIEW */
                             <div className="space-y-6 animate-in fade-in duration-300">
                                 <div className="flex flex-wrap items-center gap-2">
                                     {(['all', 'ungrouped', 'recent', 'high-signal'] as SubFilter[]).map((f) => (
@@ -289,7 +275,6 @@ export default function SupportIntelligenceView() {
                 </ScrollArea>
             </div>
 
-            {/* DETAIL PANEL OVERLAY */}
             {selectedInsightId && insights.find(i => i.id === selectedInsightId) && (
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-[100] animate-in fade-in duration-200">
                     <div className="absolute right-0 top-0 bottom-0 w-full max-w-xl shadow-2xl animate-in slide-in-from-right duration-300">

@@ -95,71 +95,64 @@ export interface Insight {
   id: string;
   spaceId: string;
   hubId?: string | null;
-  libraryId: string;
-  clusterId?: string | null;
+  topicId?: string | null;
 
-  title?: string | null;
-  content: string; // Structured text (Issue/Resolution)
-  summary?: string | null;
+  title: string;
+  summary: string;
+  content: string; // Structured text (Issue/Resolution/Context)
 
-  type: 'support_resolution';
+  kind: 'support_resolution';
 
   source: {
     type: 'conversation_message';
-    messageId: string;
     conversationId: string;
+    messageId: string;
     channel: 'webchat' | 'sms' | 'email' | 'voice' | 'other';
     provider?: string | null;
   };
 
-  visibility: 'private';
-  origin: 'automatic';
+  author: {
+    userId?: string | null;
+    name?: string | null;
+  };
 
-  signalScore?: number | null;
-  signalReason?: string | null;
-
-  processingStatus: 'pending' | 'processing' | 'completed' | 'failed';
-  clusteringStatus: 'unclustered' | 'clustered' | 'ignored';
-
-  createdByUserId?: string | null;
-  createdByName?: string | null;
-
-  participants?: Array<{
+  customer?: {
+    contactId?: string | null;
     name?: string | null;
     email?: string | null;
     phone?: string | null;
-  }>;
-
-  usage: {
-    internalOnly: true;
-    externalVisible: false;
-    description?: string | null;
   };
+
+  issueLabel?: string | null;
+  resolutionLabel?: string | null;
+
+  signalScore?: number | null;
+  signalLevel?: 'low' | 'medium' | 'high';
+
+  processingStatus: 'pending' | 'processing' | 'completed' | 'failed';
+  groupingStatus: 'ungrouped' | 'grouped' | 'ignored';
+
+  visibility: 'private';
+  origin: 'automatic';
 
   createdAt: string;
   updatedAt: string;
   ingestedAt: string;
 
-  rawContext?: {
-    messageExcerpt?: string | null;
-    conversationExcerpt?: string | null;
-  } | null;
-
   embedding?: number[];
 }
 
-export interface Cluster {
+export interface Topic {
   id: string;
   spaceId: string;
-  libraryId: string;
 
   title: string;
-  description?: string | null;
+  summary?: string | null;
 
   insightCount: number;
-
   signalLevel: 'low' | 'medium' | 'high';
-  status: 'active' | 'ignored';
+
+  articleId?: string | null;
 
   createdAt: string;
   updatedAt: string;

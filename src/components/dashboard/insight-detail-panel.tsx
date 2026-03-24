@@ -1,3 +1,4 @@
+
 // src/components/dashboard/insight-detail-panel.tsx
 'use client';
 
@@ -28,10 +29,10 @@ interface InsightDetailPanelProps {
 }
 
 export default function InsightDetailPanel({ insight, onClose, allUsers }: InsightDetailPanelProps) {
-    const creator = allUsers.find(u => u.id === insight.createdByUserId);
+    const creator = allUsers.find(u => u.id === insight.author.userId);
 
     return (
-        <div className="flex flex-col h-full bg-[#0d1117] border-l border-white/10">
+        <div className="flex flex-col h-full bg-[#0d1117] border-l border-white/10 text-left">
             <header className="p-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/20">
                 <div className="flex items-center gap-3">
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-white" onClick={onClose}>
@@ -47,7 +48,6 @@ export default function InsightDetailPanel({ insight, onClose, allUsers }: Insig
 
             <ScrollArea className="flex-1">
                 <div className="p-8 space-y-10 pb-32 max-w-2xl mx-auto">
-                    {/* Header Info */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-2">
                             <Badge variant="outline" className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20 text-[10px] uppercase font-black tracking-tight px-1.5 h-5">
@@ -60,6 +60,7 @@ export default function InsightDetailPanel({ insight, onClose, allUsers }: Insig
                             )}
                         </div>
                         <h2 className="text-2xl font-bold leading-tight text-white">{insight.title}</h2>
+                        <p className="text-sm text-muted-foreground leading-relaxed italic">"{insight.summary}"</p>
                         
                         <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 space-y-2">
                             <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-indigo-400">
@@ -73,11 +74,10 @@ export default function InsightDetailPanel({ insight, onClose, allUsers }: Insig
 
                     <Separator className="bg-white/5" />
 
-                    {/* Content Section */}
                     <div className="space-y-8">
                         <div className="space-y-4">
                             <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-50 flex items-center gap-2">
-                                <Info className="h-3.5 w-3.5" /> Extracted Memory
+                                <Info className="h-3.5 w-3.5" /> Memory Content
                             </h4>
                             <div className="space-y-6 bg-black/40 rounded-3xl border border-white/5 p-6">
                                 <div className="prose prose-sm prose-invert max-w-none">
@@ -94,7 +94,7 @@ export default function InsightDetailPanel({ insight, onClose, allUsers }: Insig
                                 <p className="text-xs font-bold uppercase text-white">{insight.source.channel}</p>
                             </div>
                             <div className="p-4 rounded-2xl border border-white/5 bg-white/[0.02] space-y-1">
-                                <p className="text-[9px] font-black uppercase text-muted-foreground/50 tracking-wider">Ingestion</p>
+                                <p className="text-[9px] font-black uppercase text-muted-foreground/50 tracking-wider">Origin</p>
                                 <p className="text-xs font-bold capitalize text-white">{insight.origin}</p>
                             </div>
                         </div>
@@ -102,18 +102,17 @@ export default function InsightDetailPanel({ insight, onClose, allUsers }: Insig
 
                     <Separator className="bg-white/5" />
 
-                    {/* Source Attribution */}
                     <div className="space-y-4">
                         <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-50 flex items-center gap-2">
-                            <History className="h-3.5 w-3.5" /> Context & Attribution
+                            <History className="h-3.5 w-3.5" /> Attribution
                         </h4>
                         <div className="flex items-center gap-4 p-4 rounded-2xl border border-white/5 bg-white/[0.02]">
                             <Avatar className="h-10 w-10 ring-2 ring-primary/20">
                                 <AvatarImage src={creator?.avatarUrl} />
-                                <AvatarFallback className="bg-zinc-800 text-[10px] font-bold">{getInitials(insight.createdByName || 'U')}</AvatarFallback>
+                                <AvatarFallback className="bg-zinc-800 text-[10px] font-bold">{getInitials(insight.author.name || 'U')}</AvatarFallback>
                             </Avatar>
                             <div className="min-w-0 flex-1">
-                                <p className="text-sm font-bold text-white truncate">{insight.createdByName || 'System Agent'}</p>
+                                <p className="text-sm font-bold text-white truncate">{insight.author.name || 'System Agent'}</p>
                                 <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tight">Extracted {format(new Date(insight.createdAt), "MMM d, yyyy · HH:mm")}</p>
                             </div>
                             <Button variant="outline" size="sm" className="h-8 rounded-lg text-[10px] font-black uppercase gap-2 px-3">
@@ -122,11 +121,10 @@ export default function InsightDetailPanel({ insight, onClose, allUsers }: Insig
                         </div>
                     </div>
 
-                    {/* Footer Meta */}
                     <div className="pt-8 border-t border-white/5">
                         <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-20">
                             <span>ID: {insight.id.substring(0, 12)}</span>
-                            <span>Confidence: {Math.round((insight.signalScore || 0) * 100)}%</span>
+                            <span>Grouped: {insight.groupingStatus}</span>
                         </div>
                     </div>
                 </div>

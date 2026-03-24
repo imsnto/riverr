@@ -45,7 +45,7 @@ export const onChatMessageCreatedForInsight = onDocumentCreated(
 
     try {
       // 2. AI EVALUATION
-      logger.info("onChatMessageCreatedForInsight: evaluating for insight", { messageId: event.params.messageId });
+      logger.info("onChatMessageCreatedForInsight: evaluating for intelligence", { messageId: event.params.messageId });
       
       const result = await evaluateSupportInsight({
         messageText: message.content,
@@ -62,29 +62,6 @@ export const onChatMessageCreatedForInsight = onDocumentCreated(
       const insightRef = db.collection("insights").doc();
       const spaceId = convo.spaceId || "default";
       
-      // Auto-resolve Library
-      const libraryQuery = await db.collection("help_centers")
-        .where("spaceId", "==", spaceId)
-        .where("name", "==", "Support Intelligence")
-        .limit(1)
-        .get();
-      
-      let libraryId = "";
-      if (libraryQuery.empty) {
-        const libRef = await db.collection("help_centers").add({
-            spaceId,
-            hubId: convo.hubId,
-            name: "Support Intelligence",
-            visibility: "internal",
-            origin: "automatic",
-            createdAt: now,
-            updatedAt: now
-        });
-        libraryId = libRef.id;
-      } else {
-        libraryId = libraryQuery.docs[0].id;
-      }
-
       const structuredText = `
 Issue:
 ${result.structuredContent.issue}
@@ -94,29 +71,39 @@ ${result.structuredContent.resolution}
 
 Context:
 ${result.structuredContent.context || 'General'}
+
+Original Response:
+${message.content}
       `.trim();
 
       const insightData: any = {
         spaceId,
         hubId: convo.hubId,
-        libraryId,
         title: result.title,
-        content: structuredText,
         summary: result.structuredContent.resolution.substring(0, 200) + "...",
-        type: 'support_resolution',
+        content: structuredText,
+        kind: 'support_resolution',
         source: {
             type: 'conversation_message',
-            messageId: event.params.messageId,
             conversationId,
+            messageId: event.params.messageId,
             channel: convo.channel || 'webchat'
         },
+        author: {
+            userId: message.authorId,
+            name: convo.lastMessageAuthor
+        },
+        customer: {
+            contactId: convo.contactId || null,
+            name: convo.visitorName || null,
+            email: convo.visitorEmail || null
+        },
+        signalScore: result.confidence,
+        signalLevel: result.confidence > 0.8 ? 'high' : result.confidence > 0.5 ? 'medium' : 'low',
+        processingStatus: 'processing',
+        groupingStatus: 'ungrouped',
         visibility: 'private',
         origin: 'automatic',
-        signalScore: result.confidence,
-        processingStatus: 'processing',
-        clusteringStatus: 'unclustered',
-        createdByUserId: message.authorId,
-        createdByName: convo.lastMessageAuthor,
         createdAt: now,
         updatedAt: now,
         ingestedAt: now
@@ -124,13 +111,12 @@ ${result.structuredContent.context || 'General'}
 
       await insightRef.set(insightData);
 
-      // 4. GENERATE EMBEDDING & CLUSTER
+      // 4. GENERATE EMBEDDING & TOPIC MATCHING
       const embedding = await generateDocumentEmbedding(structuredText);
       if (embedding) {
-        // Find similar insights for clustering
-        const similarQuery = (db.collection('insights') as any)
+        // Find similar topics for grouping
+        const similarQuery = (db.collection('topics') as any)
             .where('spaceId', '==', spaceId)
-            .where('processingStatus', '==', 'completed')
             .findNearest({
                 vectorField: 'embedding',
                 queryVector: admin.firestore.FieldValue.vector(embedding),
@@ -139,25 +125,25 @@ ${result.structuredContent.context || 'General'}
             });
         
         const similarSnap = await similarQuery.get();
-        let clusterId = null;
+        let topicId = null;
 
         if (!similarSnap.empty) {
             const topMatch = similarSnap.docs[0];
             const distance = similarSnap.docs[0].get('distance') || 0;
             if (distance < 0.15) { // Similarity > 0.85
-                clusterId = topMatch.data().clusterId || null;
+                topicId = topMatch.id;
             }
         }
 
         await insightRef.update({
             embedding: admin.firestore.FieldValue.vector(embedding),
-            clusterId,
+            topicId,
             processingStatus: 'completed',
-            clusteringStatus: clusterId ? 'clustered' : 'unclustered'
+            groupingStatus: topicId ? 'grouped' : 'ungrouped'
         });
 
-        if (clusterId) {
-            await db.doc(`clusters/${clusterId}`).update({
+        if (topicId) {
+            await db.doc(`topics/${topicId}`).update({
                 insightCount: admin.firestore.FieldValue.increment(1),
                 updatedAt: now
             });

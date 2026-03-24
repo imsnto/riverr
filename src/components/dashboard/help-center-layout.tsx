@@ -3,7 +3,7 @@
 'use client';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
-import { HelpCenter, HelpCenterCollection, HelpCenterArticle, User, Bot, Cluster, Insight } from '@/lib/data';
+import { HelpCenter, HelpCenterCollection, HelpCenterArticle, User, Bot, Topic, Insight } from '@/lib/data';
 import HelpCenterArticleEditor from './help-center-article-editor';
 import { useAuth } from '@/hooks/use-auth';
 import { Button, buttonVariants } from '../ui/button';
@@ -29,6 +29,8 @@ import AddArticlesToLibraryDialog from './add-articles-to-collection-dialog';
 
 interface HelpCenterLayoutProps {
     bots: Bot[];
+    insights: Insight[];
+    topics: Topic[];
 }
 
 const Breadcrumbs = ({ crumbs, onCrumbClick }: { crumbs: HelpCenterCollection[], onCrumbClick: (id: string | null) => void }) => {
@@ -45,18 +47,16 @@ const Breadcrumbs = ({ crumbs, onCrumbClick }: { crumbs: HelpCenterCollection[],
     );
 }
 
-export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
-    const [sidebarView, setSidebarView] = useState<HelpCenterSidebarView>('patterns');
+export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterLayoutProps) {
+    const [sidebarView, setSidebarView] = useState<HelpCenterSidebarView>('support-intelligence');
     const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
     const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
     const [activeHelpCenterId, setActiveHelpCenterId] = useState<string | null>(null);
-    const { appUser, activeHub, activeSpace } = useAuth();
+    const { appUser, activeHub, activeSpace, allUsers } = useAuth();
     
     const [helpCenters, setHelpCenters] = useState<HelpCenter[]>([]);
     const [collections, setCollections] = useState<HelpCenterCollection[]>([]);
     const [articles, setArticles] = useState<HelpCenterArticle[]>([]);
-    const [clusters, setClusters] = useState<Cluster[]>([]);
-    const [insights, setInsights] = useState<Insight[]>([]);
     
     const [isCollectionDialogOpen, setIsCollectionDialogOpen] = useState(false);
     const [editingCollection, setEditingCollection] = useState<HelpCenterCollection | null>(null);
@@ -76,10 +76,6 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
             db.getHelpCenters(activeHub.id).then(setHelpCenters);
             db.getHelpCenterCollections(activeHub.id).then(setCollections);
             db.getHelpCenterArticles(activeHub.id).then(setArticles);
-        }
-        if (activeSpace) {
-            db.getClusters(activeSpace.id).then(setClusters);
-            db.getInsights(activeSpace.id).then(setInsights);
         }
     }
 
@@ -125,8 +121,6 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     }, [sidebarView, selectedCollectionId, activeHelpCenterId, articles, collections, helpCenters]);
 
     const unassignedCount = useMemo(() => articles.filter(a => !a.helpCenterId).length, [articles]);
-    const unassignedArticles = useMemo(() => articles.filter(a => !a.helpCenterId), [articles]);
-    const activeHelpCenter = helpCenters.find(hc => hc.id === activeHelpCenterId);
 
     const showContentOnMobile = () => {
         if (isMobile) setMobileContentVisible(true);
@@ -217,19 +211,19 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     const mainContentComponent = (
         <main className="p-4 md:p-6 flex flex-col h-full overflow-hidden">
             {sidebarView === 'patterns' ? (
-                <PatternsView clusters={clusters} />
-            ) : sidebarView === 'support-intelligence' || activeHelpCenter?.name === 'Support Intelligence' ? (
-                <SupportIntelligenceView />
+                <PatternsView clusters={topics} />
+            ) : sidebarView === 'support-intelligence' ? (
+                <SupportIntelligenceView insights={insights} topics={topics} allUsers={allUsers} />
             ) : (
                 <>
                     <div className="flex flex-col md:flex-row justify-between md:items-start mb-4 gap-4 shrink-0">
                         <div className='flex-1 min-w-0'>
                             <h1 className="text-3xl font-bold truncate">{title}</h1>
-                            {activeHelpCenter && (
+                            {activeHelpCenterId && (
                                 <div className="flex items-center gap-3 mt-3">
                                     <div className="bg-muted/50 px-2 py-1 rounded-md border text-xs text-muted-foreground flex items-center gap-1.5">
-                                        {activeHelpCenter.visibility === 'internal' ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
-                                        <span className="capitalize">{activeHelpCenter.visibility}</span>
+                                        {helpCenters.find(h => h.id === activeHelpCenterId)?.visibility === 'internal' ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
+                                        <span className="capitalize">{helpCenters.find(h => h.id === activeHelpCenterId)?.visibility}</span>
                                     </div>
                                 </div>
                             )}
