@@ -137,9 +137,13 @@ export interface SourceChunk {
   chunkType: 'semantic_section' | 'message_group' | 'page_block' | 'record_group';
   content: string;
 
-  embedding?: number[];
-  embeddingModel?: string;
-  tokenCount?: number | null;
+  internalOnly: true;
+
+  embeddingStatus?: 'pending' | 'ready' | 'failed';
+  embeddingModel?: string | null;
+  embeddingVersion?: 'v2' | string | null;
+  vectorDocId?: string | null;
+  embeddingUpdatedAt?: string | null;
 
   sourceMetadata?: {
     page?: number | null;
@@ -204,16 +208,21 @@ export interface Insight {
   visibility: 'private';
   origin: 'automatic' | 'manual' | 'imported';
 
+  embeddingStatus?: 'pending' | 'ready' | 'failed';
+  embeddingModel?: string | null;
+  embeddingVersion?: 'v2' | string | null;
+  vectorDocId?: string | null;
+  embeddingUpdatedAt?: string | null;
+
   createdAt: string;
   updatedAt: string;
   ingestedAt: string;
-
-  embedding?: number[];
 }
 
 export interface Topic {
   id: string;
   spaceId: string;
+  hubId?: string | null;
 
   title: string;
   summary?: string | null;
@@ -223,10 +232,14 @@ export interface Topic {
 
   articleId?: string | null; // If promoted to an article
 
+  embeddingStatus?: 'pending' | 'ready' | 'failed';
+  embeddingModel?: string | null;
+  embeddingVersion?: 'v2' | string | null;
+  vectorDocId?: string | null;
+  embeddingUpdatedAt?: string | null;
+
   createdAt: string;
   updatedAt: string;
-
-  embedding?: number[];
 }
 
 export interface Article {
@@ -249,10 +262,15 @@ export interface Article {
   status: 'draft' | 'published';
 
   authorId: string;
+
+  embeddingStatus?: 'pending' | 'ready' | 'failed';
+  embeddingModel?: string | null;
+  embeddingVersion?: 'v2' | string | null;
+  vectorDocId?: string | null;
+  embeddingUpdatedAt?: string | null;
+
   createdAt: string;
   updatedAt: string;
-
-  embedding?: number[];
 }
 
 // --- Core Workspace Entities ---
@@ -841,7 +859,7 @@ export interface HelpCenterArticle {
 // --- Brain Jobs ---
 export interface BrainJob {
     id: string;
-    type: 'ingest_conversations' | 'distill_support_intents' | 'distill_sales_intelligence' | 'cluster_sales_personas' | 'process_imported_source';
+    type: 'ingest_conversations' | 'distill_support_intents' | 'distill_sales_intelligence' | 'cluster_sales_personas' | 'process_imported_source' | 'process_imported_source_v2';
     status: 'pending' | 'running' | 'completed' | 'failed';
     params: Record<string, any>;
     createdAt: string;

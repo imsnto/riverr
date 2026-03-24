@@ -175,7 +175,7 @@ export const updateHub = async (hubId: string, data: Partial<Hub>) => {
   await updateDoc(docRef, data);
 };
 
-// --- Intelligence Pipeline CRUD ---
+// --- Intelligence Pipeline CRUD (Vertex-Backed) ---
 
 export const createImportedSource = async (source: Omit<ImportedSource, 'id'>): Promise<ImportedSource> => {
   const docRef = await addDoc(collection(db, 'imported_sources'), source);
@@ -208,25 +208,44 @@ export const subscribeToTopics = (spaceId: string, callback: (topics: Topic[]) =
 };
 
 export const addInsight = async (insight: Omit<Insight, 'id'>): Promise<Insight> => {
-  const docRef = await addDoc(collection(db, 'insights'), insight);
+  const docRef = await addDoc(collection(db, 'insights'), {
+    ...insight,
+    embeddingStatus: 'pending',
+    embeddingVersion: 'v2',
+    embeddingModel: 'text-embedding-004'
+  });
   return { id: docRef.id, ...insight };
 };
 
 export const updateInsight = async (id: string, data: Partial<Insight>) => {
-  await updateDoc(doc(db, 'insights', id), data);
+  await updateDoc(doc(db, 'insights', id), { ...data, updatedAt: new Date().toISOString() });
 };
 
 export const addTopic = async (topic: Omit<Topic, 'id'>): Promise<Topic> => {
-  const docRef = await addDoc(collection(db, 'topics'), topic);
+  const docRef = await addDoc(collection(db, 'topics'), {
+    ...topic,
+    embeddingStatus: 'pending',
+    embeddingVersion: 'v2',
+    embeddingModel: 'text-embedding-004'
+  });
   return { id: docRef.id, ...topic };
 };
 
 export const updateTopic = async (id: string, data: Partial<Topic>) => {
-  await updateDoc(doc(db, 'topics', id), data);
+  await updateDoc(doc(db, 'topics', id), { ...data, updatedAt: new Date().toISOString() });
 };
 
+/**
+ * 🔥 CANONICAL ARTICLE CRUD: Points to the 'articles' collection.
+ * Existing 'help_center_articles' will be re-indexed here.
+ */
 export const addArticle = async (article: Omit<Article, 'id'>): Promise<Article> => {
-  const docRef = await addDoc(collection(db, 'articles'), article);
+  const docRef = await addDoc(collection(db, 'articles'), {
+    ...article,
+    embeddingStatus: 'pending',
+    embeddingVersion: 'v2',
+    embeddingModel: 'text-embedding-004'
+  });
   return { id: docRef.id, ...article };
 };
 
@@ -237,7 +256,7 @@ export const getArticles = async (spaceId: string): Promise<Article[]> => {
 };
 
 export const updateArticle = async (id: string, data: Partial<Article>) => {
-  await updateDoc(doc(db, 'articles', id), data);
+  await updateDoc(doc(db, 'articles', id), { ...data, updatedAt: new Date().toISOString() });
 };
 
 export const deleteArticle = async (id: string) => {
@@ -328,7 +347,7 @@ export const startBrainJob = async (type: BrainJob['type'], params: Record<strin
 
 export const getBrainChunks = async (hubId: string): Promise<any[]> => {
   const q = query(
-    collection(db, 'brain_chunks'), 
+    collection(db, 'source_chunks'), 
     where('hubId', '==', hubId), 
     limit(100)
   );
@@ -337,7 +356,7 @@ export const getBrainChunks = async (hubId: string): Promise<any[]> => {
     const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     return docs.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
   } catch (err) {
-    const fallbackQ = query(collection(db, 'brain_chunks'), where('hubId', '==', hubId), limit(100));
+    const fallbackQ = query(collection(db, 'source_chunks'), where('hubId', '==', hubId), limit(100));
     const fallbackSnap = await getDocs(fallbackQ);
     return fallbackSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   }
@@ -683,7 +702,7 @@ export const updateVisitorActivity = async (conversationId: string) => {
   });
 };
 
-export const resolveConversation = async (id: string, userId: string, userName: string, source: ResolutionSource, summary?: string) => {
+export const resolveConversation = async (id: string, userId: string, userName: string, source: ResolutionStatus, summary?: string) => {
   const convoRef = doc(db, 'conversations', id);
   await updateDoc(convoRef, {
     status: 'closed',
