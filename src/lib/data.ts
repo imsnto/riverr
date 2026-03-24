@@ -86,10 +86,57 @@ export interface Hub {
   closingStatusName?: string;
   ticketClosingStatusName?: string;
   dealClosingStatusName?: string;
-  webChatAgentId?: string | null; // DEPRECATED - Now per-widget
 }
 
-// --- Support Intelligence Models ---
+// --- Intelligence Pipeline Models ---
+
+export interface ImportedSource {
+  id: string;
+  spaceId: string;
+  hubId?: string | null;
+
+  sourceType: 'pdf' | 'json' | 'csv' | 'email_export' | 'text' | 'other';
+  filename?: string | null;
+  originalMimeType?: string | null;
+  uploadedByUserId?: string | null;
+  uploadedByName?: string | null;
+
+  status: 'uploaded' | 'parsing' | 'extracting' | 'completed' | 'failed';
+  visibility: 'private';
+
+  stats?: {
+    rawUnitCount?: number;
+    chunkCount?: number;
+    insightCount?: number;
+    topicMatches?: number;
+  };
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SourceChunk {
+  id: string;
+  spaceId: string;
+  importedSourceId: string;
+
+  chunkType: 'semantic_section' | 'message_group' | 'page_block' | 'record_group';
+  content: string;
+
+  embedding?: number[];
+  embeddingModel?: string;
+  tokenCount?: number | null;
+
+  sourceMetadata?: {
+    page?: number | null;
+    sectionTitle?: string | null;
+    threadId?: string | null;
+    messageIds?: string[];
+  };
+
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface Insight {
   id: string;
@@ -101,14 +148,22 @@ export interface Insight {
   summary: string;
   content: string; // Structured text (Issue/Resolution/Context)
 
-  kind: 'support_resolution';
+  kind: 
+    | 'support_resolution' 
+    | 'operational_knowledge' 
+    | 'policy_clarification' 
+    | 'product_behavior' 
+    | 'imported_learning';
 
   source: {
-    type: 'conversation_message';
-    conversationId: string;
-    messageId: string;
-    channel: 'webchat' | 'sms' | 'email' | 'voice' | 'other';
+    type: 'conversation_message' | 'imported_source' | 'manual_entry';
+    importedSourceId?: string | null;
+    chunkIds?: string[];
+    conversationId?: string | null;
+    messageId?: string | null;
+    channel?: 'webchat' | 'sms' | 'email' | 'voice' | 'other';
     provider?: string | null;
+    label?: string | null;
   };
 
   author: {
@@ -123,9 +178,6 @@ export interface Insight {
     phone?: string | null;
   };
 
-  issueLabel?: string | null;
-  resolutionLabel?: string | null;
-
   signalScore?: number | null;
   signalLevel?: 'low' | 'medium' | 'high';
 
@@ -133,7 +185,7 @@ export interface Insight {
   groupingStatus: 'ungrouped' | 'grouped' | 'ignored';
 
   visibility: 'private';
-  origin: 'automatic';
+  origin: 'automatic' | 'manual' | 'imported';
 
   createdAt: string;
   updatedAt: string;
@@ -152,47 +204,41 @@ export interface Topic {
   insightCount: number;
   signalLevel: 'low' | 'medium' | 'high';
 
-  articleId?: string | null;
+  articleId?: string | null; // If promoted to an article
 
   createdAt: string;
   updatedAt: string;
+
+  embedding?: number[];
 }
 
-// --- Email Configs (Support Email) ---
-export type EmailProviderName = "google" | "microsoft" | "imap";
-
-export interface EmailTokens {
-  accessToken: string;
-  refreshToken: string;
-  tokenExpiry: string; // ISO string
-}
-
-export interface WatchConfig {
-  historyId?: string;           // Gmail
-  subscriptionId?: string;      // Microsoft
-  expiresAt: string;            // ISO string
-}
-
-export interface EmailConfig {
+export interface Article {
   id: string;
-  provider: EmailProviderName;
-  emailAddress: string;
-  label: string;
-  connected: boolean;
-  accessToken: string; // Encrypted
-  refreshToken: string; // Encrypted
-  tokenExpiry: string; // ISO
-  watchConfig?: WatchConfig;
-  aiMode: "draft" | "auto" | "off";
-  aiGreeting?: string;
-  connectedAt: string; // ISO
-  connectedBy: string; // userId
-  lastSyncedAt?: string; // ISO
-  // No-Agent Default behavior
-  autoAckEnabled?: boolean;
-  autoAckSubject?: string;
-  autoAckBody?: string;
+  spaceId: string;
+  hubId: string;
+
+  sourceType: 'topic' | 'insight' | 'manual';
+  sourceTopicId?: string | null;
+  sourceInsightId?: string | null;
+
+  destinationLibraryId: string;
+  visibility: 'private' | 'public';
+
+  title: string;
+  subtitle?: string;
+  body: string;
+  summary?: string | null;
+
+  status: 'draft' | 'published';
+
+  authorId: string;
+  createdAt: string;
+  updatedAt: string;
+
+  embedding?: number[];
 }
+
+// --- Core Workspace Entities ---
 
 export interface Project {
   id: string;
@@ -212,30 +258,26 @@ export interface Task {
   taskKey?: string; // e.g., "XY-1"
   name: string;
   description?: string;
-  project_id: string | null; // Can be null if it's a job flow task
-  hubId: string; // Hub scope
+  project_id: string | null; 
+  hubId: string;
   spaceId: string;
   status: string;
-  createdAt?: string; // ISO String
-  createdBy?: string; // user ID
-  assigned_to?: string | null; // user ID
-  due_date?: string | null; // ISO string
-  startDate?: string | null; // ISO string for Timeline
-  endDate?: string | null; // ISO string for Timeline
+  createdAt?: string;
+  createdBy?: string;
+  assigned_to?: string | null;
+  due_date?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   sortOrder?: number | null;
   priority?: 'Low' | 'Medium' | 'High' | 'Urgent' | null;
   sprint_points?: number | null;
   tags?: string[];
-  time_estimate?: number | null; // in hours
-  parentId?: string | null; // For subtasks
+  time_estimate?: number | null; 
+  parentId?: string | null; 
   relationships?: TaskRelationship[];
   comments?: Comment[];
   attachments?: Attachment[];
-  // Escalation fields
   linkedTicketId?: string;
-  sourceHubId?: string;
-  intakeRuleId?: string;
-  contactId?: string;
 }
 
 export interface Ticket {
@@ -276,40 +318,39 @@ export interface Deal {
   id: string;
   hubId: string;
   spaceId: string;
-  status: string; // This is the Kanban column/stage name
+  status: string;
   title: string;
   description: string | null;
   value: number | null;
   currency: string | null;
-  closeDate: string | null; // ISO String
-  nextStep: string | null; // e.g. “Call”, “Demo”, “Follow-up”
-  nextStepAt: string | null; // ISO String
-  assignedTo: string | null; // userId
+  closeDate: string | null;
+  nextStep: string | null;
+  nextStepAt: string | null;
+  assignedTo: string | null;
   contactId: string | null;
   source: 'Inbound Chat' | 'Referral' | 'Website' | 'Manual' | 'Import' | null;
   tags?: string[];
   isStale?: boolean;
-  createdAt: string; // ISO String
-  createdBy: string; // userId
-  updatedAt: string; // ISO String
-  lastActivityAt: string; // ISO String
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+  lastActivityAt: string;
 }
 
 export interface EscalationIntakeRule {
   id: string;
-  hubId: string; // The Dev Hub that owns this rule
+  hubId: string;
   enabled: boolean;
   name: string;
   allowedSourceHubIds: string[];
   allowedTypes: ("bug" | "feature" | "investigation")[];
-  destinationBoardId: string; // Project ID in the Dev Hub
+  destinationBoardId: string;
   destinationStatus: string;
   defaultAssigneeId: string | null;
   createdAt: string;
   updatedAt: string;
   createdBy: string;
 }
-
 
 export interface DealAutomationRule {
     id: string;
@@ -323,26 +364,25 @@ export interface DealAutomationRule {
     };
     action: {
         type: 'send_email' | 'create_task' | 'update_field' | 'send_notification';
-        templateId?: string; // for email
-        taskTitle?: string; // for task
-        assignTo?: string; // for task
-        field?: string; // for update_field
-        value?: any; // for update_field
-        channel?: string; // for notification
-        message?: string; // for notification
+        templateId?: string;
+        taskTitle?: string;
+        assignTo?: string;
+        field?: string;
+        value?: any;
+        channel?: string;
+        message?: string;
     };
     isEnabled: boolean;
     createdAt: string;
     createdBy: string;
 }
 
-
 export interface Document {
   id: string;
   name: string;
   content: string;
   spaceId: string;
-  hubId: string; // Hub scope
+  hubId: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -354,28 +394,18 @@ export interface Document {
   comments: DocumentComment[];
 }
 
-export interface Channel {
-  id:string;
-  name: string;
-  description?: string;
-  space_id: string;
-  hubId: string; // Hub scope
-  members: string[]; // Array of user IDs
-}
-
 export interface Message {
   id: string;
   channel_id: string;
   user_id: string;
   content: string;
-  timestamp: string; // ISO String
+  timestamp: string;
   attachments?: Attachment[];
   reactions: Reaction[];
   thread_id?: string;
   reply_count?: number;
   linked_task_id?: string;
 }
-
 
 // --- Supporting Interfaces ---
 export interface Status {
@@ -401,7 +431,7 @@ export interface DocumentComment {
   id: string;
   userId: string;
   content: string;
-  createdAt: string; // ISO string
+  createdAt: string;
 }
 
 export interface Activity {
@@ -409,10 +439,10 @@ export interface Activity {
   user_id: string;
   timestamp: string;
   type: 'task_creation' | 'status_change' | 'assignee_change' | 'comment' | 'priority_change' | 'due_date_change' | 'subtask_completion' | 'ticket_creation';
-  from?: string; // Previous value
-  to?: string; // New value
-  comment_id?: string; // Link to a comment
-  comment?: string; // The comment text
+  from?: string;
+  to?: string;
+  comment_id?: string;
+  comment?: string;
   subtask_name?: string;
 }
 
@@ -436,9 +466,9 @@ export interface TimeEntry {
   task_id?: string;
   source: 'Timer' | 'Manual';
   notes: string;
-  start_time: string; // ISO String
-  end_time: string; // ISO String
-  duration: number; // in hours
+  start_time: string;
+  end_time: string;
+  duration: number;
   spaceId: string;
 }
 
@@ -446,8 +476,8 @@ export interface SlackMeetingLog {
     id: string;
     user_id: string;
     channel_name: string;
-    meeting_start: string; // ISO string
-    duration: number; // in hours
+    meeting_start: string;
+    duration: number;
     project_id?: string;
 }
 
@@ -459,13 +489,12 @@ export interface Invite {
   spaceRole: 'Member' | 'Admin' | 'Viewer';
   hubAccess?: { [hubId: string]: 'Hub Admin' | 'Member' | 'Viewer' | 'None' };
   status: 'pending' | 'accepted' | 'expired';
-  expiresAt?: any; // Firestore Timestamp
+  expiresAt?: any;
   createdBy: string;
-  createdAt: any; // Firestore Timestamp
+  createdAt: any;
   tokenHash?: string;
-  sentAt?: any; // Firestore Timestamp
+  sentAt?: any;
 }
-
 
 // --- Job Flow Interfaces ---
 export interface JobFlowTemplate {
@@ -511,21 +540,19 @@ export interface Job {
   hubId: string;
   currentPhaseIndex: number;
   status: 'active' | 'completed' | 'on-hold';
-  createdAt: string; // ISO string
-  createdBy: string; // userId
-  roleUserMapping: Record<string, string>; // Maps defaultAssigneeId from template to a real userId
+  createdAt: string;
+  createdBy: string;
+  roleUserMapping: Record<string, string>;
 }
 
-// Represents the link between a job and a created task
 export interface JobFlowTask {
   id: string;
   jobId: string;
   taskId: string;
   phaseIndex: number;
   createdAt: string;
-  reviewedBy?: string; // userId of reviewer
+  reviewedBy?: string;
 }
-
 
 // --- Template Interfaces (for building blocks) ---
 
@@ -561,7 +588,7 @@ export interface AutomationNode {
   data: {
     text?: string;
     buttons?: { id: string; label: string; nextStepId?: string }[];
-    defaultNextStepId?: string; // For "free text" or fallback
+    defaultNextStepId?: string;
     variableName?: string;
     prompt?: string;
     conditionField?: 'email' | 'name' | 'identified';
@@ -597,29 +624,17 @@ export interface Bot {
   type: 'agent' | 'widget';
   hubId: string;
   spaceId: string;
-  name: string; // Internal name
-  webAgentName?: string; // Public agent name (one word)
+  name: string;
+  webAgentName?: string;
   roleTitle?: string;
   isEnabled?: boolean;
   aiEnabled?: boolean;
   
-  // General Personality
   tone?: 'formal' | 'friendly' | 'expert' | 'direct' | 'warm';
   voiceNotes?: string;
   primaryGoal?: string;
   closingTemplate?: string;
 
-  // Shared Escalation
-  escalationRules?: {
-    orderValueThresholdEnabled: boolean;
-    orderValueThreshold: number;
-    frustrationEnabled: boolean;
-    unansweredLoopEnabled: boolean;
-    complexRequestEnabled: boolean;
-    notifyEmail: string;
-  };
-
-  // Knowledge Context
   businessContext?: {
     businessName: string;
     location?: string;
@@ -632,14 +647,8 @@ export interface Bot {
     forbiddenTopics?: string;
   };
   
-  products?: { id: string; name: string; price?: string; description: string; triggers: string }[];
-  faqs?: { id: string; question: string; answer: string }[];
-  objections?: { id: string; objection: string; response: string }[];
-  qualificationFlow?: { id: string; question: string; note?: string; goal: string; pricingPolicy: string }[];
-
-  welcomeMessage?: string; // Used as Greeting for widgets
-  noAgentFallbackMessage?: string; // For widgets when assignedAgentId is null
-  assignedAgentId?: string | null; // For widgets
+  welcomeMessage?: string;
+  assignedAgentId?: string | null;
   layout: 'default' | 'compact';
   styleSettings?: {
     primaryColor: string;
@@ -671,45 +680,12 @@ export interface Bot {
     quickReplies?: string[];
   };
   flow?: AutomationFlow; 
-  escalationTriggers: {
-    billingKeywords?: string[];
-    sentimentThreshold?: number;
-  };
   channelConfig?: {
     web?: { 
       enabled: boolean;
-      displayOverrides?: { name?: string };
       greeting?: { text: string; returningText?: string };
-      quickReplies?: { name: string; trigger: string; options: string[] }[];
-      handoffKeywords?: string[];
-    };
-    sms?: { 
-      enabled: boolean;
-      openingText: string;
-      maxLength: 160 | 320 | 0;
-      allowMms: boolean;
-      capture: { email: 'none' | 'natural' | 'early'; name: 'none' | 'natural'; message: string };
-      escalation: { keywords: string[]; message: string; sentiment: boolean };
-      afterHours: { mode: string; message: string };
-    };
-    email?: { 
-      enabled: boolean;
-      workflow: { approval: string; delay: string; threading: string };
-      format: { signOff: string; length: string; alwaysInclude: string; subject: string };
-      escalation: { holdForValue: boolean; holdForFrustration: boolean; holdForLegal: boolean; holdForAttachment: boolean; holdForVip: boolean; keywords: string[]; sentiment: boolean };
-    };
-    phone?: { 
-      enabled: boolean;
-      mode: string;
-      transferNumber?: string;
-      scripts: { greeting: string; handoff?: string; voicemail?: string };
-      behaviour: { transcribe: boolean; afterHoursAiOnly: boolean; voicemailFallback: boolean; greetingEnabled: boolean; maxDuration: string; keywords: string[] };
-      afterHours: { mode: string; redirectNumber?: string };
     };
   };
-  ownerType: 'hub' | 'user';
-  ownerId: string;
-  escalateToTeamInbox?: boolean;
 }
 
 export interface Visitor {
@@ -720,13 +696,6 @@ export interface Visitor {
   avatarUrl?: string;
   location?: {pathname: string, domain: string};
   lastSeen?: string;
-  companyName?: string;
-  sessions?: number;
-  companyId?: string;
-  companyUsers?: number;
-  companyPlan?: string;
-  companyPlanColor?: string;
-  companySpend?: string;
   contactId?: string;
 }
 
@@ -739,119 +708,49 @@ export interface Conversation {
   assigneeId: string | null;
   assignedAgentIds?: string[];
   status: ConversationStatus;
-  lastResponderType?: ResponderType;
-  aiAttempted?: boolean;
-  aiResolved?: boolean;
-  customerIdentified?: boolean;
   lastMessage: string;
-  lastMessageAt: string; // ISO String
+  lastMessageAt: string;
   lastMessageAuthor: string | null;
-  lastMessagePreview?: string;
-  updatedAt?: string;
-  escalated?: boolean;
-  escalationReason?: string;
   visitorName?: string;
   visitorEmail?: string;
   visitorPhone?: string;
-  state?: ConversationState;
-  lastIntent?: string | null;
-  lastVisitorActiveAt?: string;
-  lastVisitorSeenAt?: string;
-  lastVisitorMessageAt?: string;
-  lastAgentMessageAt?: string;
-  lastAgentSeenAtByAgent?: Record<string, string>;
-  lastAckEmailAt?: string;
-  lastAgentReplyEmailAt?: string;
-  agentReplyEmailCount?: number;
-  handoff?: {
-    status: "none" | "offered" | "declined" | "completed";
-    reason?: string;
-    offeredAt?: string; // ISO
-  } | null;
   channel: 'webchat' | 'sms' | 'voice' | 'email';
-  channelProvider?: 'twilio' | 'google' | 'microsoft' | 'imap';
-  channelAddress?: string; // E.164 or Email
-  externalAddress?: string; // Phone or Email
-  twilioSubaccountSid?: string;
-  emailConfigId?: string;
-  emailThreadId?: string;
-  emailSubject?: string;
-  emailFromAddress?: string;
-  emailFromName?: string;
   ownerType: 'hub' | 'user';
   ownerAgentId: string | null;
   sharedWithTeam: boolean;
-  crmContactId: string | null;
   typing?: Record<string, boolean>;
+  lastAgentSeenAtByAgent?: Record<string, string>;
 }
 
 export interface ChatMessage {
   id: string;
   conversationId: string;
-  authorId: string; // Can be a Visitor ID or a User ID
+  authorId: string;
   type: 'message' | 'note' | 'event';
   responderType?: ResponderType;
-  eventType?: 'call_started' | 'call_ringing' | 'call_answered' | 'call_missed' | 'call_ended' | 'voicemail_recorded';
   content: string;
-  timestamp: string; // ISO String
+  timestamp: string;
   senderType?: 'visitor' | 'agent' | 'bot' | 'contact';
-  visitorId?: string;
-  spaceId?: string;
-  from?: string;
-  to?: string;
-  linked_ticket_id?: string;
   attachments?: Attachment[];
-  visibility?: 'public' | 'internal';
-  isInternal?: boolean;
-  channel?: 'webchat' | 'sms' | 'voice' | 'email';
-  provider?: 'internal' | 'twilio' | 'google' | 'microsoft' | 'imap';
-  providerMessageId?: string;
-  providerCallId?: string;
   deliveryStatus?: 'created'|'queued'|'sent'|'delivered'|'failed'|'undelivered';
-  errorCode?: string;
-  errorMessage?: string;
-  media?: { url: string; contentType?: string }[];
-  durationSeconds?: number;
-  recordingUrl?: string;
   emailHeaders?: {
     messageId: string;
     inReplyTo?: string;
     references?: string;
   };
-  emptyBody?: boolean;
-  hasAttachments?: boolean;
 }
 
-// --- Comms Config (Lookups) ---
+// --- Comms Config ---
 export interface PhoneChannelLookup {
-  id: string; // twilio_{type}_{normalized_number}
+  id: string;
   spaceId: string;
   hubId: string;
   channelAddress: string;
   isActive: boolean;
   twilioSubaccountSid: string;
   label?: string;
-  
-  // No-Agent Default / Fallback
   autoAckEnabled?: boolean;
   autoAckText?: string;
-  basicCallHoldMessage?: string;
-  basicCallBehavior?: 'ring' | 'voicemail';
-  voicemailTranscriptionEnabled?: boolean;
-
-  // AI Voice Behavior (if assigned)
-  aiCallMode?: 'full_ai' | 'triage' | 'agent_only';
-  handoffTarget?: 'any' | 'assigned' | 'team';
-  handoffTeamId?: string;
-  handoffTimeout?: number;
-  handoffFallback?: 'voicemail' | 'ai_attempt' | 'callback';
-  
-  aiGreetingEnabled?: boolean;
-  transcriptionEnabled?: boolean;
-  afterHoursAiOnly?: boolean;
-  voicemailFallback?: boolean;
-  greetingScript?: string;
-  
   updatedAt: any;
 }
 
@@ -877,35 +776,10 @@ export interface HelpCenterCollection {
   updatedAt?: string;
 }
 
-export interface HelpCenterArticle {
-  id: string;
-  title: string;
-  subtitle?: string;
-  content: string;
-  status: 'draft' | 'published';
-  folderId: string | null;
-  helpCenterId: string;
-  type: 'article' | 'snippet' | 'pdf' | 'playbook';
-  authorId: string;
-  createdAt: string; // ISO String
-  updatedAt: string; // ISO String
-  hubId: string;
-  spaceId: string;
-  visibility: 'public' | 'internal' | 'private';
-  allowedUserIds: string[];
-  isAiIndexed: boolean;
-  isSeoIndexed: boolean;
-  slug?: string;
-  publicUrl?: string;
-  language?: string;
-}
-
-
-// --- Business Brain Schemas ---
-
+// --- Brain Jobs ---
 export interface BrainJob {
     id: string;
-    type: 'ingest_conversations' | 'distill_support' | 'distill_sales' | 'update_lead_states' | 'embed_node' | 'distill_support_intents' | 'distill_sales_intelligence' | 'cluster_sales_personas';
+    type: 'ingest_conversations' | 'distill_support_intents' | 'distill_sales_intelligence' | 'cluster_sales_personas' | 'process_imported_source';
     status: 'pending' | 'running' | 'completed' | 'failed';
     params: Record<string, any>;
     createdAt: string;
@@ -917,179 +791,4 @@ export interface BrainJob {
         total: number;
         message: string;
     }
-}
-
-export interface RawConversationNode {
-  id: string;
-  spaceId: string;
-  hubId?: string;
-  type: 'raw_conversation';
-  sourceType: 'gmail'|'m365'|'intercom'|'zendesk'|'slack'|'hubspot'|string;
-  channel: 'support'|'sales'|'success'|'ops';
-  participants: { id?: string; email?: string; name?: string; role: 'customer'|'agent'|'rep'|'internal' }[];
-  startedAt: string;
-  lastAt: string;
-  messages: { at: string; fromRole: string; text: string; meta?: Record<string, any> }[];
-  outcome: {
-    support?: 'resolved'|'escalated'|'unresolved';
-    sales?: 'replied_positive'|'replied_negative'|'no_reply'|'meeting_booked'|'closed_won'|'closed_lost';
-  };
-  visibility: 'internal_only';
-  sources: { sourceType: string; sourceId: string; sourceUrl?: string }[];
-  normalized: { cleanedText: string; lastAgentOrRepMessage?: string };
-  textForEmbedding: string;
-  embedding?: number[];
-  embeddingModel?: string;
-  embeddedAt?: string;
-  processedForIntent?: boolean | 'failed' | null;
-  processedForSales?: boolean | 'failed' | null;
-}
-
-export interface RawInteractionNode {
-  id: string;
-  spaceId: string;
-  type: 'raw_interaction';
-  sourceType: 'web'|'crm'|'product'|string;
-  channel: 'sales'|'support';
-  subjectId: 'lead:{id}'|'customer:{id}';
-  eventType: string; // 'pricing_page_view', 'demo_request'
-  payload: Record<string, any>;
-  visibility: 'internal_only' | 'public';
-}
-
-export interface SupportIntentNode {
-  id: string;
-  spaceId: string;
-  hubId: string;
-  type: 'support_intent';
-  intentKey: string;
-  title: string;
-  description: string;
-  requiredContext: { key: string; question: string }[];
-  safeAnswerPolicy: { mustNot: string[]; requiresHumanIf: string[] };
-  answerVariants: { variantId: string; style: string; template: string; whenToUse: string }[];
-  escalationRule: { maxAttempts: number; escalateIfMissingContextKeys?: string[]; escalateIfsentimentBelow?: number };
-  learnedFromNodeIds: string[];
-  confidence: number;
-  freshnessHalfLifeDays: number;
-  visibility: 'support_only';
-  // Embedding fields
-  embedding?: number[];
-  embeddingModel?: string;
-  embeddedAt?: string;
-  textForEmbedding?: string;
-}
-
-export interface SalesPersonaSegmentNode {
-  id: string;
-  spaceId: string;
-  type: 'sales_persona_segment';
-  segmentKey: string;
-  summary: string;
-  commonPains: string[];
-  commonObjections: string[];
-  winningAngles: string[];
-  exampleLines: { openers: string[]; proofPoints: string[]; ctas: string[] };
-  learnedFromNodeIds: string[];
-  confidence: number;
-  freshnessHalfLifeDays: number;
-  visibility: 'sales_only';
-  embedding?: number[];
-  embeddingModel?: string;
-  embeddedAt?: string;
-  textForEmbedding?: string;
-}
-
-export interface SalesMessagePatternNode {
-  id: string;
-  spaceId: string;
-  type: 'sales_message_pattern';
-  patternKey: string; // The hash
-  pattern: { // The signature
-    purpose: string;
-    bodyStructure: 'pain->proof->cta'|'proof->pain->cta'|'value_drop->cta'|'question_only'|'other';
-    ctaStyle: 'question'|'calendar_link'|'value_offer'|'soft_close'|'hard_close'|'other';
-    openerStyle: 'personal'|'pain'|'compliment'|'reference'|'straight_ask'|'other';
-    toneTagsSorted: string[];
-    lengthBucket: 'short'|'medium'|'long';
-  };
-  performance: {
-    sampleSize: number;
-    successCount?: number;
-    replyRate?: number;
-    meetingRate?: number;
-    bySegment?: Record<string, { // key is segmentKey
-        sampleSize: number;
-        successCount?: number;
-        replyRate?: number;
-        meetingRate?: number;
-    }>;
-  };
-  learnedFromNodeIds: string[];
-  confidence: number;
-  freshnessHalfLifeDays: number;
-  visibility: 'sales_only';
-  embedding?: number[];
-  embeddingModel?: string;
-  embeddedAt?: string;
-  textForEmbedding?: string;
-}
-
-
-export interface LeadStateNode {
-  id: string; // Corresponds to leadId
-  spaceId: string;
-  type: 'lead_state';
-  leadId: string;
-  status: 'never_contacted'|'contacted'|'replied'|'meeting'|'closed';
-  lastTouchAt?: string;
-  warmScore: number; // 0..100
-  matchedPersonaSegmentKey?: string;
-  recommendedNextAction: string;
-  recommendedPatternKey?: string;
-  reasons: string[];
-  updatedAt: string;
-  visibility: 'sales_only';
-}
-
-
-export type MemoryNode = RawConversationNode | RawInteractionNode | SupportIntentNode | SalesPersonaSegmentNode | SalesMessagePatternNode | LeadStateNode;
-
-export interface Contact {
-  id: string;
-  spaceId: string;
-  providerId?: string; // New: SaaS provider scope
-  externalUserId?: string; // New: ID in host app
-  name: string | null;
-  company: string | null;
-  emails: string[];
-  phones: string[];
-  primaryEmail: string | null;
-  primaryPhone: string | null;
-  primaryPhoneE164?: string | null;
-  primaryPhoneNormalized?: string | null;
-  phoneNormalizationStatus?: 'e164'|'fallback'|'unknown';
-  source: 'webchat' | 'sms' | 'manual' | 'order' | 'call' | 'chat' | 'voice' | 'email';
-  externalIds: Record<string, string>;
-  customAttributes?: Record<string, any>;
-  tags: string[];
-  createdAt: any;
-  updatedAt: any;
-  lastSeenAt: any | null;
-  lastMessageAt: any | null;
-  lastOrderAt: any | null;
-  lastCallAt: any | null;
-  identifiedAt?: string; // New: when secure identify happened
-  mergeParentId: string | null;
-  isMerged: boolean;
-}
-
-export interface ProviderConfig {
-  id: string; // providerId
-  name: string;
-  secureModeEnabled: boolean;
-  secureModeSecret: string; // Never sent to client
-  allowedHubIds: string[];
-  allowedBotIds: string[];
-  allowEmailOnlyIdentify?: boolean;
 }

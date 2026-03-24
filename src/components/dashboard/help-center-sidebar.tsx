@@ -1,3 +1,4 @@
+
 // src/components/dashboard/help-center-sidebar.tsx
 'use client';
 import React from 'react';
@@ -95,7 +96,7 @@ export default function HelpCenterSidebar({
                                 id={intelligenceLibrary.id} 
                                 activeId={activeHelpCenterId} 
                                 icon={BrainCircuit} 
-                                label="Support Intelligence" 
+                                label="Intelligence" 
                                 onClick={onSelectHelpCenter}
                                 badgeColor="bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
                             />

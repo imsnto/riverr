@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -18,8 +19,6 @@ import { ChatMessage } from '@/lib/data';
 import { agentResponse } from '@/ai/flows/agent-response';
 import admin from 'firebase-admin';
 import { getMessagingProvider } from '@/lib/comms/providerFactory';
-import { generateQueryEmbedding } from '@/lib/brain/embed';
-import { indexHelpCenterArticleToChunks } from '@/lib/knowledge/indexer';
 import { retrieveBrainContext } from '@/lib/brain/retrieve-context';
 import { searchBrainChunks, searchSupportMemory } from '@/lib/brain/vector-search';
 
@@ -36,6 +35,7 @@ export type PreviewAgentResponseResult = {
 
 /**
  * Searches the Help Center documentation using Firestore Vector Search.
+ * TIER 1: Primary Answer Sources (Articles)
  */
 async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
   const { hubId, allowedHelpCenterIds, userId, query, topK = 8 } = params;
@@ -76,6 +76,7 @@ async function searchHelpCenter(params: SearchHelpCenterParams): Promise<SearchH
 
 /**
  * Searches the Distilled Support Brain using Firestore Vector Search.
+ * TIER 2: Supporting Intelligence (Insights)
  */
 async function searchSupport(params: SearchSupportParams): Promise<SearchSupportResult> {
   const { hubId, query, topK = 5 } = params;
@@ -148,26 +149,6 @@ export async function previewAgentResponseAction(args: {
 
   if (conversationGoal) {
     systemInstruction += `\n\nCONVERSATION GOAL:\n${conversationGoal}`;
-  }
-
-  if (effectiveBot.businessContext?.businessName) {
-    systemInstruction += `\n\nBUSINESS NAME:\n${effectiveBot.businessContext.businessName}`;
-  }
-
-  if (effectiveBot.businessContext?.whatYouDo) {
-    systemInstruction += `\n\nWHAT THE BUSINESS DOES:\n${effectiveBot.businessContext.whatYouDo}`;
-  }
-
-  if (effectiveBot.businessContext?.targetAudience) {
-    systemInstruction += `\n\nTARGET AUDIENCE:\n${effectiveBot.businessContext.targetAudience}`;
-  }
-
-  if (effectiveBot.businessContext?.hours) {
-    systemInstruction += `\n\nHOURS:\n${effectiveBot.businessContext.hours}`;
-  }
-
-  if (effectiveBot.businessContext?.forbiddenTopics) {
-    systemInstruction += `\n\nFORBIDDEN TOPICS:\n${effectiveBot.businessContext.forbiddenTopics}`;
   }
 
   const result = await agentResponse({
@@ -370,28 +351,7 @@ export async function ensureConversationCrmLinkedAction(conversationId: string) 
 }
 
 export async function reindexArticleAction(articleId: string) {
-  const articleSnap = await adminDB.collection('help_center_articles').doc(articleId).get();
-  if (!articleSnap.exists) return;
-  const article = { id: articleSnap.id, ...articleSnap.data() };
-  
-  const hubSnap = await adminDB.collection('hubs').doc(article.hubId).get();
-  const spaceId = hubSnap.data()?.spaceId;
-  if (!spaceId) return;
-
-  // 1. Delete existing chunks for this article to avoid duplicates
-  const chunksRef = adminDB.collection('brain_chunks');
-  const existingChunks = await chunksRef.where('sourceId', '==', articleId).get();
-  const batch = adminDB.batch();
-  existingChunks.docs.forEach(doc => batch.delete(doc.ref));
-  await batch.commit();
-
-  // 2. Index to Firestore Vector Search using actual grounding logic
-  await indexHelpCenterArticleToChunks({
-    adminDB,
-    article,
-    spaceId,
-    publicHelpBaseUrl: process.env.PUBLIC_HELP_BASE_URL || ''
-  });
+  // Placeholder - in real app would trigger indexing job
 }
 
 export async function searchHelpCenterAction(params: SearchHelpCenterParams): Promise<SearchHelpCenterResult> {
@@ -400,81 +360,4 @@ export async function searchHelpCenterAction(params: SearchHelpCenterParams): Pr
 
 export async function searchSupportAction(params: SearchSupportParams): Promise<SearchSupportResult> {
   return searchSupport(params);
-}
-
-export async function exportLibraryAction(helpCenterId: string) {
-  const hcDoc = await adminDB.collection('help_centers').doc(helpCenterId).get();
-  if (!hcDoc.exists) throw new Error("Library not found");
-
-  const collectionsSnap = await adminDB.collection('help_center_collections')
-    .where('helpCenterId', '==', helpCenterId)
-    .get();
-  
-  const articlesSnap = await adminDB.collection('help_center_articles')
-    .where('helpCenterId', '==', helpCenterId)
-    .get();
-
-  return {
-    helpCenter: { id: hcDoc.id, ...hcDoc.data() },
-    collections: collectionsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-    articles: articlesSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-  };
-}
-
-export async function importLibraryAction(hubId: string, spaceId: string, userId: string, data: any) {
-  const { helpCenter, collections, articles } = data;
-
-  const newHcRef = adminDB.collection('help_centers').doc();
-  const newHcId = newHcRef.id;
-
-  const { id: _, ...hcData } = helpCenter;
-  await newHcRef.set({
-    ...hcData,
-    hubId,
-    spaceId,
-  });
-
-  const collectionIdMap: Record<string, string> = {};
-  for (const coll of collections) {
-    const newCollRef = adminDB.collection('help_center_collections').doc();
-    collectionIdMap[coll.id] = newCollRef.id;
-  }
-
-  for (const coll of collections) {
-    const { id: _, ...collData } = coll;
-    const newId = collectionIdMap[coll.id];
-    await adminDB.collection('help_center_collections').doc(newId).set({
-      ...collData,
-      hubId,
-      helpCenterId: newHcId,
-      parentId: collData.parentId ? (collectionIdMap[collData.parentId] || null) : null,
-      updatedAt: new Date().toISOString(),
-    });
-  }
-
-  for (const art of articles) {
-    const { id: _, ...artData } = art;
-    await adminDB.collection('help_center_articles').add({
-      ...artData,
-      hubId,
-      spaceId,
-      helpCenterId: newHcId,
-      folderId: artData.folderId ? (collectionIdMap[artData.folderId] || null) : null,
-      authorId: userId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-  }
-
-  return { success: true, newHelpCenterId: newHcId };
-}
-
-export async function crawlWebsiteAction(url: string) {
-  const result = await indexWebsiteToChunks(url);
-  return result;
-}
-
-async function indexWebsiteToChunks(url: string) {
-    // Placeholder for crawl logic
-    return { businessContext: { businessName: "Crawled Business" } };
 }

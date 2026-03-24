@@ -19,32 +19,18 @@ import MoveToFolderDialog from './move-to-folder-dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { reindexArticleAction, exportLibraryAction, importLibraryAction } from '@/app/actions/chat';
+import { reindexArticleAction } from '@/app/actions/chat';
 import SupportIntelligenceView from './support-intelligence-view';
 import PatternsView from './patterns-view';
 import { Separator } from '../ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
-import AddArticlesToLibraryDialog from './add-articles-to-collection-dialog';
+import ImportDataDialog from './import-data-dialog';
 
 interface HelpCenterLayoutProps {
     bots: Bot[];
     insights: Insight[];
     topics: Topic[];
-}
-
-const Breadcrumbs = ({ crumbs, onCrumbClick }: { crumbs: HelpCenterCollection[], onCrumbClick: (id: string | null) => void }) => {
-    return (
-        <nav className="flex items-center text-sm text-muted-foreground mb-4">
-            <Button variant="link" className="p-0 h-auto text-muted-foreground" onClick={() => onCrumbClick(null)}>Content Library</Button>
-            {crumbs.map(crumb => (
-                <React.Fragment key={crumb.id}>
-                    <ChevronRight className="h-4 w-4 mx-1" />
-                    <Button variant="link" className="p-0 h-auto text-muted-foreground" onClick={() => onCrumbClick(crumb.id)}>{crumb.name}</Button>
-                </React.Fragment>
-            ))}
-        </nav>
-    );
 }
 
 export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterLayoutProps) {
@@ -62,11 +48,8 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
     const [editingCollection, setEditingCollection] = useState<HelpCenterCollection | null>(null);
     const [isHCDialogOpen, setIsHCDialogOpen] = useState(false);
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
-    const [isMoveToFolderOpen, setIsMoveToFolderOpen] = useState(false);
-    const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
-    const [isAddArticlesOpen, setIsAddArticlesOpen] = useState(false);
+    const [isImportDataOpen, setIsImportDataOpen] = useState(false);
 
-    const importInputRef = useRef<HTMLInputElement>(null);
     const isMobile = useIsMobile();
     const [mobileContentVisible, setMobileContentVisible] = useState(false);
     const { toast } = useToast();
@@ -83,10 +66,9 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
         refreshData();
     }, [activeHub, activeSpace]);
 
-    const { combinedItems, title, breadcrumbs } = React.useMemo(() => {
+    const { combinedItems, title } = React.useMemo(() => {
         let collectionsToShow: HelpCenterCollection[] = [];
         let articlesToShow: HelpCenterArticle[] = [];
-        let breadcrumbs: HelpCenterCollection[] = [];
         let viewTitle = 'Knowledge';
 
         if (sidebarView === 'patterns') {
@@ -101,13 +83,6 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
             if (selectedCollectionId) {
                 const collection = collections.find(c => c.id === selectedCollectionId);
                 viewTitle = collection?.name || 'Collection';
-                
-                let currentCollection = collection;
-                while (currentCollection) {
-                    breadcrumbs.unshift(currentCollection);
-                    currentCollection = collections.find(c => c.id === currentCollection!.parentId);
-                }
-
                 collectionsToShow = collections.filter(c => c.parentId === selectedCollectionId);
                 articlesToShow = articles.filter(a => a.folderId === selectedCollectionId);
             } else {
@@ -116,7 +91,10 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
             }
         }
         
-        return { combinedItems: [...collectionsToShow, ...articlesToShow].sort((a,b) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt)), title: viewTitle, breadcrumbs };
+        return { 
+            combinedItems: [...collectionsToShow, ...articlesToShow].sort((a,b) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt)), 
+            title: viewTitle 
+        };
 
     }, [sidebarView, selectedCollectionId, activeHelpCenterId, articles, collections, helpCenters]);
 
@@ -141,12 +119,6 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
     }
     
     const handleSelectHelpCenter = (id: string | null) => {
-        const hc = helpCenters.find(h => h.id === id);
-        if (hc?.name === 'Support Intelligence') {
-            setSidebarView('support-intelligence');
-        } else {
-            setSidebarView('knowledge-bases');
-        }
         setActiveHelpCenterId(id);
         setSelectedCollectionId(null);
         setSelectedArticleId(null);
@@ -204,7 +176,7 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
             sidebarView={sidebarView}
             onViewChange={handleViewChange}
             unassignedContentCount={unassignedCount}
-            onImport={() => importInputRef.current?.click()}
+            onImport={() => setIsImportDataOpen(true)}
         />
     );
 
@@ -212,13 +184,13 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
         <main className="p-4 md:p-6 flex flex-col h-full overflow-hidden">
             {sidebarView === 'patterns' ? (
                 <PatternsView clusters={topics} />
-            ) : sidebarView === 'support-intelligence' ? (
+            ) : sidebarView === 'support-intelligence' || (activeHelpCenterId && helpCenters.find(h => h.id === activeHelpCenterId)?.name === 'Support Intelligence') ? (
                 <SupportIntelligenceView insights={insights} topics={topics} allUsers={allUsers} />
             ) : (
                 <>
                     <div className="flex flex-col md:flex-row justify-between md:items-start mb-4 gap-4 shrink-0">
                         <div className='flex-1 min-w-0'>
-                            <h1 className="text-3xl font-bold truncate">{title}</h1>
+                            <h1 className="text-3xl font-bold truncate text-left">{title}</h1>
                             {activeHelpCenterId && (
                                 <div className="flex items-center gap-3 mt-3">
                                     <div className="bg-muted/50 px-2 py-1 rounded-md border text-xs text-muted-foreground flex items-center gap-1.5">
@@ -233,7 +205,7 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
                         </div>
                     </div>
                     <div className="flex-1 -mx-4 md:-mx-6 overflow-hidden">
-                        <ScrollArea className="h-full">
+                        <ScrollArea className="h-full text-left">
                             <div className="px-4 md:px-6">
                                 <HelpCenterArticleList
                                     items={combinedItems}
@@ -263,6 +235,7 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
             )}
             <HelpCenterFormDialog isOpen={isHCDialogOpen} onOpenChange={setIsHCDialogOpen} helpCenter={null} onSave={refreshData} />
             <HelpCenterCollectionFormDialog isOpen={isCollectionDialogOpen} onOpenChange={setIsCollectionDialogOpen} onSave={refreshData} collection={editingCollection} />
+            <ImportDataDialog isOpen={isImportDataOpen} onOpenChange={setIsImportDataOpen} onComplete={refreshData} />
         </div>
     );
 }
