@@ -139,7 +139,7 @@ export interface SourceChunk {
 
   internalOnly: true;
 
-  embeddingStatus?: 'pending' | 'ready' | 'failed';
+  embeddingStatus: 'pending' | 'ready' | 'failed';
   embeddingModel?: string | null;
   embeddingVersion?: 'v2' | string | null;
   vectorDocId?: string | null;
@@ -208,7 +208,7 @@ export interface Insight {
   visibility: 'private';
   origin: 'automatic' | 'manual' | 'imported';
 
-  embeddingStatus?: 'pending' | 'ready' | 'failed';
+  embeddingStatus: 'pending' | 'ready' | 'failed';
   embeddingModel?: string | null;
   embeddingVersion?: 'v2' | string | null;
   vectorDocId?: string | null;
@@ -232,7 +232,7 @@ export interface Topic {
 
   articleId?: string | null; // If promoted to an article
 
-  embeddingStatus?: 'pending' | 'ready' | 'failed';
+  embeddingStatus: 'pending' | 'ready' | 'failed';
   embeddingModel?: string | null;
   embeddingVersion?: 'v2' | string | null;
   vectorDocId?: string | null;
@@ -263,7 +263,7 @@ export interface Article {
 
   authorId: string;
 
-  embeddingStatus?: 'pending' | 'ready' | 'failed';
+  embeddingStatus: 'pending' | 'ready' | 'failed';
   embeddingModel?: string | null;
   embeddingVersion?: 'v2' | string | null;
   vectorDocId?: string | null;
@@ -859,7 +859,13 @@ export interface HelpCenterArticle {
 // --- Brain Jobs ---
 export interface BrainJob {
     id: string;
-    type: 'ingest_conversations' | 'distill_support_intents' | 'distill_sales_intelligence' | 'cluster_sales_personas' | 'process_imported_source' | 'process_imported_source_v2';
+    type: 
+      | 'ingest_conversations' 
+      | 'distill_support_intents' 
+      | 'distill_sales_intelligence' 
+      | 'cluster_sales_personas' 
+      | 'process_imported_source' 
+      | 'process_vector_indexing';
     status: 'pending' | 'running' | 'completed' | 'failed';
     params: Record<string, any>;
     createdAt: string;

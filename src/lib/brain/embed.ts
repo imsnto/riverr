@@ -4,10 +4,10 @@ import { VertexAI } from '@google-cloud/vertexai';
 const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || 'timeflow-6i3eo';
 const location = process.env.GOOGLE_CLOUD_LOCATION || process.env.VERTEX_LOCATION || 'us-central1';
 
-// ✅ v2 MODEL STANDARD: Gecko-class model for optimal balance of speed and semantic depth.
+// ✅ v2 MODEL STANDARD: Gemini Gecko text-embedding-004
 const EMBEDDING_MODEL = 'text-embedding-004';
 
-// ✅ FIRESTORE/VERTEX VECTOR CAP: Matches the output dimensionality of text-embedding-004.
+// ✅ FIRESTORE/VERTEX VECTOR CAP: 2048-dimensions
 const EMBEDDING_DIM = 2048;
 
 let vertexAIInstance: VertexAI | null = null;
@@ -30,7 +30,7 @@ export async function generateDocumentEmbedding(text: string): Promise<number[] 
   if (!text || !text.trim()) return null;
 
   try {
-    console.log(`[Embedding] Generating document embedding for: ${text.substring(0, 50)}...`);
+    console.log(`[Embedding] Generating document embedding (text-embedding-004) for: ${text.substring(0, 50)}...`);
     const vertexAI = getVertexAI();
     const embeddingModel = vertexAI.getGenerativeModel({
       model: EMBEDDING_MODEL,
@@ -63,7 +63,7 @@ export async function generateQueryEmbedding(text: string): Promise<number[] | n
   if (!text || !text.trim()) return null;
 
   try {
-    console.log(`[Embedding] Generating query embedding for: ${text.substring(0, 50)}...`);
+    console.log(`[Embedding] Generating query embedding (text-embedding-004) for: ${text.substring(0, 50)}...`);
     const vertexAI = getVertexAI();
     const embeddingModel = vertexAI.getGenerativeModel({
       model: EMBEDDING_MODEL,
