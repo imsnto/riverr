@@ -1,3 +1,4 @@
+
 'use client';
 import {
   collection,
@@ -49,6 +50,8 @@ import {
   Conversation,
   PhoneChannelLookup,
   EmailConfig,
+  Insight,
+  Cluster,
 } from './data';
 import { ContactEvent } from './contacts-types';
 import { generateWhimsicalName, normalizePhoneFallback } from './utils';
@@ -320,7 +323,7 @@ export const updateVisitor = async (visitorId: string, data: Partial<Visitor>) =
 
 export const updateVisitorActivity = async (conversationId: string) => {
   const docRef = doc(db, 'conversations', conversationId);
-  await updateDoc(docRef, {
+  await updateDoc(ref, {
     lastVisitorActiveAt: new Date().toISOString()
   });
 };
@@ -443,6 +446,35 @@ export const updateHelpCenterArticle = async (id: string, data: Partial<HelpCent
 export const deleteHelpCenterArticle = async (id: string) => {
   const docRef = doc(db, 'help_center_articles', id);
   await deleteDoc(docRef);
+};
+
+// --- Support Intelligence ---
+
+export const getInsights = async (spaceId: string, libraryId?: string): Promise<Insight[]> => {
+  let q = query(collection(db, 'insights'), where('spaceId', '==', spaceId));
+  if (libraryId) q = query(q, where('libraryId', '==', libraryId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as Insight));
+};
+
+export const subscribeToInsights = (spaceId: string, callback: (insights: Insight[]) => void) => {
+  const q = query(collection(db, 'insights'), where('spaceId', '==', spaceId), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Insight)));
+  });
+};
+
+export const getClusters = async (spaceId: string): Promise<Cluster[]> => {
+  const q = query(collection(db, 'clusters'), where('spaceId', '==', spaceId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as Cluster));
+};
+
+export const subscribeToClusters = (spaceId: string, callback: (clusters: Cluster[]) => void) => {
+  const q = query(collection(db, 'clusters'), where('spaceId', '==', spaceId), orderBy('updatedAt', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Cluster)));
+  });
 };
 
 // --- Documents ---
@@ -889,7 +921,7 @@ export const updateAgentEmailConfig = async (userId: string, configId: string, d
 
 export const deleteAgentEmailConfig = async (userId: string, configId: string) => {
   const docRef = doc(db, `users/${userId}/emailConfigs`, configId);
-  await deleteDoc(docRef);
+  await deleteDoc(docRef, data);
 };
 
 export const seedDatabase = async () => {};

@@ -1,3 +1,4 @@
+
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
 import { EmailConfig } from "../../src/lib/data";
@@ -60,3 +61,4 @@ export { twilioVoiceStatus } from "./http/twilioVoiceStatus";
 export { twilioVoiceRecording } from "./http/twilioVoiceRecording";
 export { twilioVoiceDialResult } from "./http/twilioVoiceDialResult";
 export { provisionTwilioSubaccount, searchNumbers, buyPhoneNumber } from "./twilio/provisioning";
+export { onChatMessageCreatedForInsight } from "./chat/insightTrigger";

@@ -89,6 +89,82 @@ export interface Hub {
   webChatAgentId?: string | null; // DEPRECATED - Now per-widget
 }
 
+// --- Support Intelligence Models ---
+
+export interface Insight {
+  id: string;
+  spaceId: string;
+  hubId?: string | null;
+  libraryId: string;
+  clusterId?: string | null;
+
+  title?: string | null;
+  content: string; // Structured text (Issue/Resolution)
+  summary?: string | null;
+
+  type: 'support_resolution';
+
+  source: {
+    type: 'conversation_message';
+    messageId: string;
+    conversationId: string;
+    channel: 'webchat' | 'sms' | 'email' | 'voice' | 'other';
+    provider?: string | null;
+  };
+
+  visibility: 'private';
+  origin: 'automatic';
+
+  signalScore?: number | null;
+  signalReason?: string | null;
+
+  processingStatus: 'pending' | 'processing' | 'completed' | 'failed';
+  clusteringStatus: 'unclustered' | 'clustered' | 'ignored';
+
+  createdByUserId?: string | null;
+  createdByName?: string | null;
+
+  participants?: Array<{
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  }>;
+
+  usage: {
+    internalOnly: true;
+    externalVisible: false;
+    description?: string | null;
+  };
+
+  createdAt: string;
+  updatedAt: string;
+  ingestedAt: string;
+
+  rawContext?: {
+    messageExcerpt?: string | null;
+    conversationExcerpt?: string | null;
+  } | null;
+
+  embedding?: number[];
+}
+
+export interface Cluster {
+  id: string;
+  spaceId: string;
+  libraryId: string;
+
+  title: string;
+  description?: string | null;
+
+  insightCount: number;
+
+  signalLevel: 'low' | 'medium' | 'high';
+  status: 'active' | 'ignored';
+
+  createdAt: string;
+  updatedAt: string;
+}
+
 // --- Email Configs (Support Email) ---
 export type EmailProviderName = "google" | "microsoft" | "imap";
 
@@ -730,7 +806,6 @@ export interface ChatMessage {
   spaceId?: string;
   from?: string;
   to?: string;
-  linked_ticket_id?: string;
   linked_ticket_id?: string;
   attachments?: Attachment[];
   visibility?: 'public' | 'internal';
