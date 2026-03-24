@@ -45,6 +45,11 @@ const BOOSTS = {
 /**
  * Policy-Aware Retrieval Orchestrator.
  * Given a question and policy, determines the best answer mode and candidates.
+ * 
+ * Tiers:
+ * 1. Curated Articles (Highest Trust)
+ * 2. Intelligence Topics (Pattern supported)
+ * 3. Insights (Hidden signal for customers, full access for internal)
  */
 export async function orchestrateRetrieval(args: {
   message: string;
@@ -64,7 +69,9 @@ export async function orchestrateRetrieval(args: {
     searchPromises.push(searchTopics({ query: message, spaceId }));
   }
 
-  if (policy.accessLevel === 'insights_hidden_support' || policy.accessLevel === 'internal_full_access') {
+  // Insights are only searched if allowed by access level
+  const shouldSearchInsights = policy.accessLevel === 'insights_hidden_support' || policy.accessLevel === 'internal_full_access';
+  if (shouldSearchInsights) {
     searchPromises.push(searchInsights({ query: message, hubId }));
   }
 
@@ -77,22 +84,26 @@ export async function orchestrateRetrieval(args: {
   const scoredTopics = topics.map((t: VectorSearchResult) => ({ ...t, sourceType: 'topic' as const, weightedScore: t.score * boostMap.topic }));
   const scoredInsights = insights.map((i: VectorSearchResult) => ({ ...i, sourceType: 'insight' as const, weightedScore: i.score * boostMap.insight }));
 
-  // 3. Selection Logic
-  const bestArticle = scoredArticles.sort((a: any, b: any) => b.weightedScore - a.weightedScore)[0];
-  const bestTopic = scoredTopics.sort((a: any, b: any) => b.weightedScore - a.weightedScore)[0];
-  const bestInsight = scoredInsights.sort((a: any, b: any) => b.weightedScore - a.weightedScore)[0];
+  // 3. Selection Logic (Tiered Precedence)
+  const sortedArticles = scoredArticles.sort((a: any, b: any) => b.weightedScore - a.weightedScore);
+  const sortedTopics = scoredTopics.sort((a: any, b: any) => b.weightedScore - a.weightedScore);
+  const sortedInsights = scoredInsights.sort((a: any, b: any) => b.weightedScore - a.weightedScore);
 
-  // A. Article Grounded
+  const bestArticle = sortedArticles[0];
+  const bestTopic = sortedTopics[0];
+  const bestInsight = sortedInsights[0];
+
+  // TIER 1: Article Grounded (Direct citation allowed)
   if (bestArticle && bestArticle.score >= CONFIDENCE_THRESHOLDS.ARTICLE) {
     return {
       answerMode: 'article_grounded',
-      chosenCandidates: scoredArticles.slice(0, 3),
+      chosenCandidates: sortedArticles.slice(0, 3),
       confidence: bestArticle.score,
       rationale: "Strong article match found."
     };
   }
 
-  // B. Topic Supported
+  // TIER 2: Topic Supported (Pattern supported, cite cautiously)
   if (bestTopic && bestTopic.score >= CONFIDENCE_THRESHOLDS.TOPIC) {
     return {
       answerMode: 'topic_supported',
@@ -102,7 +113,7 @@ export async function orchestrateRetrieval(args: {
     };
   }
 
-  // C. Insight Supported (Hidden or Direct)
+  // TIER 3: Insight Supported (Hidden signal for customers, direct for internal)
   if (bestInsight && bestInsight.score >= CONFIDENCE_THRESHOLDS.INSIGHT) {
     const mode = policy.isCustomerFacing ? 'insight_supported_hidden' : 'internal_evidence_only';
     return {
@@ -113,7 +124,7 @@ export async function orchestrateRetrieval(args: {
     };
   }
 
-  // D. Fallback
+  // FALLBACK
   return {
     answerMode: 'escalate',
     chosenCandidates: [],

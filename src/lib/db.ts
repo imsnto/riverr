@@ -224,9 +224,13 @@ export const updateTopic = async (id: string, data: Partial<Topic>) => {
   await updateDoc(doc(db, 'topics', id), data);
 };
 
-export const promoteToArticle = async (article: Omit<Article, 'id'>): Promise<Article> => {
+export const addArticle = async (article: Omit<Article, 'id'>): Promise<Article> => {
   const docRef = await addDoc(collection(db, 'articles'), article);
   return { id: docRef.id, ...article };
+};
+
+export const promoteToArticle = async (article: Omit<Article, 'id'>): Promise<Article> => {
+  return addArticle(article);
 };
 
 // --- Projects ---

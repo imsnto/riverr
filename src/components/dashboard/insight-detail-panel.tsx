@@ -1,9 +1,8 @@
 
-// src/components/dashboard/insight-detail-panel.tsx
 'use client';
 
-import React from 'react';
-import { Insight, User } from '@/lib/data';
+import React, { useState } from 'react';
+import { Insight, User, Article, HelpCenter } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 import { 
@@ -11,16 +10,29 @@ import {
     ArrowLeft, 
     Share2, 
     ExternalLink, 
-    MessageSquare, 
     ShieldCheck,
     History,
-    Info
+    Info,
+    ArrowUpRight,
+    Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Separator } from '../ui/separator';
 import { getInitials } from '@/lib/utils';
+import * as db from '@/lib/db';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface InsightDetailPanelProps {
     insight: Insight;
@@ -29,7 +41,54 @@ interface InsightDetailPanelProps {
 }
 
 export default function InsightDetailPanel({ insight, onClose, allUsers }: InsightDetailPanelProps) {
+    const { toast } = useToast();
+    const [isPromoting, setIsPromoting] = useState(false);
+    const [isPromotionDialogOpen, setIsPromotionDialogOpen] = useState(false);
+    const [libraries, setLibraries] = useState<HelpCenter[]>([]);
+    const [selectedLibraryId, setSelectedLibraryId] = useState<string>('');
+    
     const creator = allUsers.find(u => u.id === insight.author.userId);
+
+    const handlePromoteClick = async () => {
+        if (!insight.hubId) return;
+        const fetchedLibs = await db.getHelpCenters(insight.hubId);
+        setLibraries(fetchedLibs);
+        if (fetchedLibs.length > 0) setSelectedLibraryId(fetchedLibs[0].id);
+        setIsPromotionDialogOpen(true);
+    };
+
+    const handleConfirmPromotion = async () => {
+        if (!selectedLibraryId) return;
+        setIsPromoting(true);
+        try {
+            const articleData: Omit<Article, 'id'> = {
+                spaceId: insight.spaceId,
+                hubId: insight.hubId!,
+                sourceType: 'insight',
+                sourceInsightId: insight.id,
+                destinationLibraryId: selectedLibraryId,
+                visibility: libraries.find(l => l.id === selectedLibraryId)?.visibility || 'private',
+                title: insight.title,
+                body: insight.content,
+                summary: insight.summary,
+                status: 'draft',
+                authorId: insight.author.userId || 'system',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+            };
+            
+            await db.addArticle(articleData);
+            await db.updateInsight(insight.id, { groupingStatus: 'grouped' });
+            
+            toast({ title: "Article Created", description: "The insight has been promoted to a draft article." });
+            setIsPromotionDialogOpen(false);
+            onClose();
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Promotion failed" });
+        } finally {
+            setIsPromoting(false);
+        }
+    };
 
     return (
         <div className="flex flex-col h-full bg-[#0d1117] border-l border-white/10 text-left">
@@ -41,7 +100,9 @@ export default function InsightDetailPanel({ insight, onClose, allUsers }: Insig
                     <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Intelligence Detail</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"><Share2 className="h-4 w-4" /></Button>
+                    <Button size="sm" className="h-8 rounded-lg font-bold gap-2" onClick={handlePromoteClick}>
+                        <ArrowUpRight className="h-3.5 w-3.5" /> Promote to Article
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={onClose}><X className="h-4 w-4" /></Button>
                 </div>
             </header>
@@ -91,7 +152,7 @@ export default function InsightDetailPanel({ insight, onClose, allUsers }: Insig
                         <div className="grid grid-cols-2 gap-4">
                             <div className="p-4 rounded-2xl border border-white/5 bg-white/[0.02] space-y-1">
                                 <p className="text-[9px] font-black uppercase text-muted-foreground/50 tracking-wider">Source Channel</p>
-                                <p className="text-xs font-bold uppercase text-white">{insight.source.channel}</p>
+                                <p className="text-xs font-bold uppercase text-white">{insight.source.channel || 'webchat'}</p>
                             </div>
                             <div className="p-4 rounded-2xl border border-white/5 bg-white/[0.02] space-y-1">
                                 <p className="text-[9px] font-black uppercase text-muted-foreground/50 tracking-wider">Origin</p>
@@ -120,15 +181,41 @@ export default function InsightDetailPanel({ insight, onClose, allUsers }: Insig
                             </Button>
                         </div>
                     </div>
-
-                    <div className="pt-8 border-t border-white/5">
-                        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-20">
-                            <span>ID: {insight.id.substring(0, 12)}</span>
-                            <span>Grouped: {insight.groupingStatus}</span>
-                        </div>
-                    </div>
                 </div>
             </ScrollArea>
+
+            <Dialog open={isPromotionDialogOpen} onOpenChange={setIsPromotionDialogOpen}>
+                <DialogContent className="sm:max-w-md bg-[#0d1117] border-white/10 text-white">
+                    <DialogHeader>
+                        <DialogTitle>Promote to Article</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
+                            Create a curated documentation draft from this insight.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-6 space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-xs uppercase font-bold text-muted-foreground">Select Destination Library</Label>
+                            <Select value={selectedLibraryId} onValueChange={setSelectedLibraryId}>
+                                <SelectTrigger className="bg-white/5 border-white/10 h-12">
+                                    <SelectValue placeholder="Choose a library..." />
+                                </SelectTrigger>
+                                <SelectContent className="bg-[#0d1117] border-white/10">
+                                    {libraries.map(lib => (
+                                        <SelectItem key={lib.id} value={lib.id}>{lib.name} ({lib.visibility})</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsPromotionDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleConfirmPromotion} disabled={isPromoting || !selectedLibraryId} className="px-8 font-bold">
+                            {isPromoting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                            Create Draft Article
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

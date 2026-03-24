@@ -192,10 +192,13 @@ export interface Insight {
     phone?: string | null;
   };
 
+  issueLabel?: string | null;
+  resolutionLabel?: string | null;
+
   signalScore?: number | null;
   signalLevel?: 'low' | 'medium' | 'high';
 
-  processingStatus: 'pending' | 'processing' | 'completed' | 'failed';
+  processingStatus: 'pending' | 'processing' | 'completed' | 'failed' | 'pending_resolution';
   groupingStatus: 'ungrouped' | 'grouped' | 'ignored';
 
   visibility: 'private';
@@ -812,6 +815,29 @@ export interface HelpCenterCollection {
   updatedAt?: string;
 }
 
+export interface HelpCenterArticle {
+  id: string;
+  title: string;
+  subtitle?: string;
+  content: string;
+  status: 'draft' | 'published';
+  folderId: string | null;
+  helpCenterId: string;
+  authorId: string;
+  createdAt: string;
+  updatedAt: string;
+  hubId: string;
+  spaceId: string;
+  type: 'article' | 'snippet' | 'playbook' | 'pdf';
+  visibility: 'public' | 'private';
+  allowedUserIds?: string[];
+  isAiIndexed: boolean;
+  isSeoIndexed: boolean;
+  publicUrl?: string;
+  chunkCount?: number;
+  chunkedAt?: string;
+}
+
 // --- Brain Jobs ---
 export interface BrainJob {
     id: string;
@@ -827,4 +853,35 @@ export interface BrainJob {
         total: number;
         message: string;
     }
+}
+
+export interface EmailTokens {
+  accessToken: string;
+  refreshToken: string;
+  tokenExpiry: string;
+}
+
+export interface WatchConfig {
+  historyId: string;
+  expiresAt: string;
+}
+
+export type EmailProviderName = 'google' | 'microsoft' | 'imap';
+
+export interface EmailConfig {
+  id: string;
+  label: string;
+  provider: EmailProviderName;
+  emailAddress: string;
+  connected: boolean;
+  accessToken: string;
+  refreshToken: string;
+  tokenExpiry: string;
+  watchConfig?: WatchConfig;
+  connectedBy: string;
+  connectedAt: string;
+  aiMode: 'off' | 'suggest' | 'auto';
+  autoAckEnabled?: boolean;
+  autoAckSubject?: string;
+  autoAckBody?: string;
 }
