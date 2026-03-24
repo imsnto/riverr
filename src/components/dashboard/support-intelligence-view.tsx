@@ -2,7 +2,7 @@
 // src/components/dashboard/support-intelligence-view.tsx
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Insight, Topic, User } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '../ui/badge';
@@ -21,7 +21,8 @@ import {
     Search,
     ArrowUpRight,
     Target,
-    AlertCircle
+    AlertCircle,
+    Sparkles
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { formatDistanceToNow } from 'date-fns';
@@ -35,16 +36,21 @@ interface SupportIntelligenceViewProps {
     insights: Insight[];
     topics: Topic[];
     allUsers: User[];
+    initialTab?: 'topics' | 'insights';
 }
 
 type SubFilter = 'all' | 'ungrouped' | 'recent' | 'high-signal';
 
-export default function SupportIntelligenceView({ insights, topics, allUsers }: SupportIntelligenceViewProps) {
+export default function SupportIntelligenceView({ insights, topics, allUsers, initialTab = 'topics' }: SupportIntelligenceViewProps) {
     const [selectedInsightId, setSelectedInsightId] = useState<string | null>(null);
     const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'topics' | 'insights'>('topics');
+    const [activeTab, setActiveTab] = useState<'topics' | 'insights'>(initialTab);
     const [subFilter, setSubFilter] = useState<SubFilter>('all');
     const [searchQuery, setSearchQuery] = useState('');
+
+    useEffect(() => {
+        setActiveTab(initialTab);
+    }, [initialTab]);
 
     const filteredInsights = useMemo(() => {
         let list = [...insights];
@@ -132,13 +138,17 @@ export default function SupportIntelligenceView({ insights, topics, allUsers }: 
                 <header className="p-6 border-b shrink-0 space-y-6 bg-card/30">
                     <div className="flex items-center justify-between gap-8">
                         <div className="space-y-1 text-left">
-                            <h1 className="text-2xl font-bold tracking-tight">Support Intelligence</h1>
-                            <p className="text-sm text-muted-foreground font-medium">AI is learning from support conversations automatically</p>
+                            <h1 className="text-2xl font-bold tracking-tight">{activeTab === 'topics' ? 'Topics' : 'Insights'}</h1>
+                            <p className="text-sm text-muted-foreground font-medium">
+                                {activeTab === 'topics' 
+                                    ? 'Recurring issues and themes detected from support learnings.' 
+                                    : 'Individual learnings extracted from conversations and imports.'}
+                            </p>
                         </div>
                         <div className="relative w-full max-w-sm hidden md:block">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
-                                placeholder="Search insights..." 
+                                placeholder="Search intelligence..." 
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-9 bg-white/5 border-white/10 h-10 focus-visible:ring-primary/50" 
@@ -153,6 +163,7 @@ export default function SupportIntelligenceView({ insights, topics, allUsers }: 
                             className={cn("h-8 px-6 text-xs font-bold rounded-md", activeTab === 'topics' ? "bg-white text-black hover:bg-white hover:text-black" : "text-muted-foreground")}
                             onClick={() => { setActiveTab('topics'); setSelectedTopicId(null); }}
                         >
+                            <Sparkles className="mr-2 h-3.5 w-3.5" />
                             Topics
                         </Button>
                         <Button 
@@ -161,6 +172,7 @@ export default function SupportIntelligenceView({ insights, topics, allUsers }: 
                             className={cn("h-8 px-6 text-xs font-bold rounded-md", activeTab === 'insights' ? "bg-white text-black hover:bg-white hover:text-black" : "text-muted-foreground")}
                             onClick={() => { setActiveTab('insights'); setSelectedTopicId(null); }}
                         >
+                            <Target className="mr-2 h-3.5 w-3.5" />
                             Insights
                         </Button>
                     </div>
@@ -232,7 +244,7 @@ export default function SupportIntelligenceView({ insights, topics, allUsers }: 
                                     {topics.length === 0 && (
                                         <div className="text-center py-32 border-2 border-dashed rounded-3xl border-white/5 bg-white/[0.01]">
                                             <Target className="mx-auto h-12 w-12 text-muted-foreground opacity-10 mb-4" />
-                                            <h3 className="text-lg font-bold text-white/50">No patterns yet</h3>
+                                            <h3 className="text-lg font-bold text-white/50">No topics detected yet</h3>
                                             <p className="text-sm text-muted-foreground max-w-xs mx-auto mt-2 italic font-medium">
                                                 As your team answers support questions, we’ll automatically group recurring issues here.
                                             </p>
@@ -264,9 +276,10 @@ export default function SupportIntelligenceView({ insights, topics, allUsers }: 
                                 </div>
 
                                 {filteredInsights.length === 0 && (
-                                    <div className="text-center py-32 opacity-20">
-                                        <MessageSquare className="mx-auto h-12 w-12 mb-4" />
-                                        <p className="text-sm font-bold uppercase tracking-widest">No insights found</p>
+                                    <div className="text-center py-32 opacity-20 text-left">
+                                        <Target className="mx-auto h-12 w-12 mb-4" />
+                                        <p className="text-sm font-bold uppercase tracking-widest text-center">No insights yet</p>
+                                        <p className="text-xs text-muted-foreground text-center mt-2">Individual learnings will appear here automatically.</p>
                                     </div>
                                 )}
                             </div>

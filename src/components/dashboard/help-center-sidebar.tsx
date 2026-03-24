@@ -16,7 +16,10 @@ import {
     Globe,
     ChevronRight,
     ShieldAlert,
-    BrainCircuit
+    BrainCircuit,
+    Target,
+    MessageSquare,
+    Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '../ui/input';
@@ -24,7 +27,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 
-export type HelpCenterSidebarView = 'all-articles' | 'inbox' | 'patterns' | 'knowledge-bases' | 'support-intelligence';
+export type HelpCenterSidebarView = 'topics' | 'insights' | 'all-articles' | 'inbox' | 'knowledge-bases' | 'support-intelligence';
 
 interface HelpCenterSidebarProps {
   collections: HelpCenterCollection[];
@@ -56,7 +59,6 @@ export default function HelpCenterSidebar({
 
     const publicLibraries = helpCenters.filter(hc => hc.visibility !== 'internal' && hc.name !== 'Support Intelligence');
     const privateLibraries = helpCenters.filter(hc => hc.visibility === 'internal' && hc.name !== 'Support Intelligence');
-    const intelligenceLibrary = helpCenters.find(hc => hc.name === 'Support Intelligence');
 
     const NavButton = ({ id, activeId, icon: Icon, label, onClick, badge, badgeColor = "bg-primary/10 text-primary border-primary/20" }: any) => (
         <div className={cn("group flex items-center justify-between rounded-lg pr-1 transition-all duration-200", activeId === id && "bg-white/5 border border-white/5 shadow-inner")}>
@@ -89,36 +91,28 @@ export default function HelpCenterSidebar({
 
             <ScrollArea className="flex-1">
                 <div className="p-2 space-y-8">
-                    {/* SYSTEM LIBS */}
-                    <div className="space-y-1">
-                        {intelligenceLibrary && (
+                    {/* INTELLIGENCE SECTION */}
+                    <div className="space-y-2">
+                        <div className="px-3 text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-40">Intelligence</div>
+                        <div className="space-y-1">
                             <NavButton 
-                                id={intelligenceLibrary.id} 
-                                activeId={activeHelpCenterId} 
-                                icon={BrainCircuit} 
-                                label="Intelligence" 
-                                onClick={onSelectHelpCenter}
+                                id="topics" 
+                                activeId={sidebarView} 
+                                icon={Sparkles} 
+                                label="Topics" 
+                                onClick={() => onViewChange('topics')}
                                 badgeColor="bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
                             />
-                        )}
-                        <NavButton 
-                            id="patterns" 
-                            activeId={sidebarView} 
-                            icon={Zap} 
-                            label="Patterns" 
-                            onClick={() => onViewChange('patterns')}
-                            badge="3"
-                            badgeColor="bg-amber-500/10 text-amber-500 border-amber-500/20"
-                        />
-                        <NavButton 
-                            id="inbox" 
-                            activeId={sidebarView} 
-                            icon={Inbox} 
-                            label="Inbox" 
-                            onClick={() => onViewChange('inbox')}
-                            badge={unassignedContentCount}
-                            badgeColor="bg-rose-500/10 text-rose-500 border-rose-500/20"
-                        />
+                            <NavButton 
+                                id="insights" 
+                                activeId={sidebarView} 
+                                icon={Target} 
+                                label="Insights" 
+                                onClick={() => onViewChange('insights')}
+                                badge={unassignedContentCount > 0 ? unassignedContentCount : undefined}
+                                badgeColor="bg-rose-500/10 text-rose-500 border-rose-500/20"
+                            />
+                        </div>
                     </div>
 
                     {/* PRIVATE LIBS */}

@@ -1,4 +1,5 @@
 
+// src/components/dashboard/help-center-layout.tsx
 'use client';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import HelpCenterSidebar, { HelpCenterSidebarView } from './help-center-sidebar';
@@ -33,7 +34,7 @@ interface HelpCenterLayoutProps {
 }
 
 export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterLayoutProps) {
-    const [sidebarView, setSidebarView] = useState<HelpCenterSidebarView | null>(null);
+    const [sidebarView, setSidebarView] = useState<HelpCenterSidebarView | null>('topics');
     const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
     const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
     const [activeHelpCenterId, setActiveHelpCenterId] = useState<string | null>(null);
@@ -57,11 +58,6 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
         if (activeHub) {
             db.getHelpCenters(activeHub.id).then(hcs => {
                 setHelpCenters(hcs);
-                // If no view or library is selected, pick the first library as default
-                if (!activeHelpCenterId && !sidebarView && hcs.length > 0) {
-                    const mainKb = hcs.find(h => h.name !== 'Support Intelligence') || hcs[0];
-                    setActiveHelpCenterId(mainKb.id);
-                }
             });
             db.getHelpCenterCollections(activeHub.id).then(setCollections);
             db.getHelpCenterArticles(activeHub.id).then(setArticles);
@@ -77,11 +73,10 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
         let articlesToShow: HelpCenterArticle[] = [];
         let viewTitle = 'Knowledge';
 
-        if (sidebarView === 'patterns') {
-            viewTitle = 'Patterns';
-        } else if (sidebarView === 'inbox') {
-            viewTitle = "Unassigned";
-            articlesToShow = articles.filter(a => !a.helpCenterId);
+        if (sidebarView === 'topics') {
+            viewTitle = 'Topics';
+        } else if (sidebarView === 'insights') {
+            viewTitle = 'Insights';
         } else if (activeHelpCenterId) {
             const hc = helpCenters.find(h => h.id === activeHelpCenterId);
             viewTitle = hc?.name || 'Library';
@@ -104,7 +99,7 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
 
     }, [sidebarView, selectedCollectionId, activeHelpCenterId, articles, collections, helpCenters]);
 
-    const unassignedCount = useMemo(() => articles.filter(a => !a.helpCenterId).length, [articles]);
+    const unassignedCount = useMemo(() => insights.filter(i => !i.topicId).length, [insights]);
 
     const showContentOnMobile = () => {
         if (isMobile) setMobileContentVisible(true);
@@ -126,7 +121,7 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
     
     const handleSelectHelpCenter = (id: string | null) => {
         setActiveHelpCenterId(id);
-        setSidebarView(null); // Reset special views when a specific library is picked
+        setSidebarView(null);
         setSelectedCollectionId(null);
         setSelectedArticleId(null);
         showContentOnMobile();
@@ -187,15 +182,17 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
         />
     );
 
-    const isIntelligenceView = (sidebarView === 'support-intelligence') || 
-                               (activeHelpCenterId && helpCenters.find(h => h.id === activeHelpCenterId)?.name === 'Support Intelligence');
+    const isIntelligenceView = sidebarView === 'topics' || sidebarView === 'insights';
 
     const mainContentComponent = (
         <main className="p-4 md:p-6 flex flex-col h-full overflow-hidden">
-            {sidebarView === 'patterns' ? (
-                <PatternsView clusters={topics} />
-            ) : isIntelligenceView ? (
-                <SupportIntelligenceView insights={insights} topics={topics} allUsers={allUsers} />
+            {isIntelligenceView ? (
+                <SupportIntelligenceView 
+                    insights={insights} 
+                    topics={topics} 
+                    allUsers={allUsers} 
+                    initialTab={sidebarView === 'topics' ? 'topics' : 'insights'} 
+                />
             ) : (
                 <>
                     <div className="flex flex-col md:flex-row justify-between md:items-start mb-4 gap-4 shrink-0">
