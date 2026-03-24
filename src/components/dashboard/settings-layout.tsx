@@ -144,7 +144,7 @@ export default function SettingsLayout(props: SettingsLayoutProps) {
   const spaceNavItems = [
     { key: 'users' as SettingsView, label: 'Members', icon: UserIcon },
     { key: 'space-general' as SettingsView, label: 'Space Settings', icon: Building2 },
-    { key: 'brain' as SettingsView, label: 'Business Brain', icon: BrainCircuit },
+    { key: 'brain' as SettingsView, label: 'Business Brain', icon: BrainCircuit, hidden: true },
     { key: 'phone' as SettingsView, label: 'Phone & SMS', icon: Phone, hidden: !isSpaceAdmin },
   ];
 
