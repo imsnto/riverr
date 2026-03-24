@@ -155,27 +155,6 @@ export default function SupportIntelligenceView({ insights, topics, allUsers, in
                             />
                         </div>
                     </div>
-
-                    <div className="flex items-center gap-1 bg-white/5 border border-white/10 p-1 rounded-lg w-fit">
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className={cn("h-8 px-6 text-xs font-bold rounded-md", activeTab === 'topics' ? "bg-white text-black hover:bg-white hover:text-black" : "text-muted-foreground")}
-                            onClick={() => { setActiveTab('topics'); setSelectedTopicId(null); }}
-                        >
-                            <Sparkles className="mr-2 h-3.5 w-3.5" />
-                            Topics
-                        </Button>
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className={cn("h-8 px-6 text-xs font-bold rounded-md", activeTab === 'insights' ? "bg-white text-black hover:bg-white hover:text-black" : "text-muted-foreground")}
-                            onClick={() => { setActiveTab('insights'); setSelectedTopicId(null); }}
-                        >
-                            <Target className="mr-2 h-3.5 w-3.5" />
-                            Insights
-                        </Button>
-                    </div>
                 </header>
 
                 <ScrollArea className="flex-1">
