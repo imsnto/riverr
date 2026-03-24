@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
@@ -79,9 +78,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     seedDatabase();
     
     // Handle redirect results (errors or successes from signInWithRedirect)
-    getRedirectResult(auth).catch((error) => {
+    getRedirectResult(auth).then((result) => {
+      if (result) {
+        console.log("Redirect sign-in successful");
+      }
+    }).catch((error) => {
       console.error("Error during redirect sign-in:", error);
-      setStatus('unauthenticated');
+      // If we hit a 403 on redirect return, it's almost certainly Authorized Domains
+      if (error.code === 'auth/unauthorized-domain') {
+        window.location.href = '/unauthorized';
+      }
     });
 
     try {
@@ -111,8 +117,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setFirebaseUser(user);
-        const token = await user.getIdToken();
-        document.cookie = `token=${token}; path=/; max-age=3600`;
+        
+        // Ensure token cookie is set for server-side checks (e.g. admin page)
+        const token = await user.getIdToken(true);
+        document.cookie = `token=${token}; path=/; max-age=3600; samesite=lax`;
         
         let userProfile = await getUser(user.uid);
 
@@ -199,7 +207,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signInWithGoogle = async () => {
     setStatus('loading');
     try {
-      // Switched to Redirect to avoid popup blockers
+      // Switched to Redirect to avoid popup blockers and 403 popup issues
       await signInWithRedirect(auth, googleProvider);
     } catch (error) {
       console.error("Error initiating Google Sign-In:", error);
