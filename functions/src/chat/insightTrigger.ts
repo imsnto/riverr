@@ -1,5 +1,5 @@
 
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import { logger } from "firebase-functions";
 import { evaluateSupportInsight } from "../../../src/ai/flows/evaluate-support-insight";
@@ -16,6 +16,8 @@ const FILLER_KEYWORDS = [
 
 /**
  * Automatically evaluates every human agent message for Support Intelligence.
+ * Note: Initial evaluation happens on message creation, but final ingestion
+ * should only happen if the conversation reaches a resolution state.
  */
 export const onChatMessageCreatedForInsight = onDocumentCreated(
   {
@@ -57,7 +59,8 @@ export const onChatMessageCreatedForInsight = onDocumentCreated(
         return;
       }
 
-      // 3. CREATE INSIGHT
+      // 3. ENQUEUE INSIGHT (Pending Resolution)
+      // We create the insight but mark it as 'pending_resolution'
       const now = new Date().toISOString();
       const insightRef = db.collection("insights").doc();
       const spaceId = convo.spaceId || "default";
@@ -100,7 +103,7 @@ ${message.content}
         },
         signalScore: result.confidence,
         signalLevel: result.confidence > 0.8 ? 'high' : result.confidence > 0.5 ? 'medium' : 'low',
-        processingStatus: 'processing',
+        processingStatus: 'pending_resolution', // Gated until convo resolved
         groupingStatus: 'ungrouped',
         visibility: 'private',
         origin: 'automatic',
@@ -110,51 +113,94 @@ ${message.content}
       };
 
       await insightRef.set(insightData);
-
-      // 4. GENERATE EMBEDDING & TOPIC MATCHING
-      const embedding = await generateDocumentEmbedding(structuredText);
-      if (embedding) {
-        // Find similar topics for grouping
-        const similarQuery = (db.collection('topics') as any)
-            .where('spaceId', '==', spaceId)
-            .findNearest({
-                vectorField: 'embedding',
-                queryVector: admin.firestore.FieldValue.vector(embedding),
-                limit: 1,
-                distanceMeasure: 'COSINE'
-            });
-        
-        const similarSnap = await similarQuery.get();
-        let topicId = null;
-
-        if (!similarSnap.empty) {
-            const topMatch = similarSnap.docs[0];
-            const distance = similarSnap.docs[0].get('distance') || 0;
-            if (distance < 0.15) { // Similarity > 0.85
-                topicId = topMatch.id;
-            }
-        }
-
-        await insightRef.update({
-            embedding: admin.firestore.FieldValue.vector(embedding),
-            topicId,
-            processingStatus: 'completed',
-            groupingStatus: topicId ? 'grouped' : 'ungrouped'
-        });
-
-        if (topicId) {
-            await db.doc(`topics/${topicId}`).update({
-                insightCount: admin.firestore.FieldValue.increment(1),
-                updatedAt: now
-            });
-        }
-      }
+      logger.info("onChatMessageCreatedForInsight: Created pending insight", { insightId: insightRef.id });
 
     } catch (err: any) {
       logger.error("onChatMessageCreatedForInsight: failed", {
         messageId: event.params.messageId,
         error: err?.message ?? err,
       });
+    }
+  }
+);
+
+/**
+ * Triggers full processing of pending insights when a conversation is resolved.
+ */
+export const onConversationResolvedForInsight = onDocumentUpdated(
+  {
+    document: "conversations/{convoId}",
+  },
+  async (event) => {
+    const after = event.data?.after.data();
+    const before = event.data?.before.data();
+    if (!after || !before) return;
+
+    // RULE: Only trigger when resolutionStatus changes to 'resolved'
+    const isNowResolved = after.resolutionStatus === 'resolved' && before.resolutionStatus !== 'resolved';
+    if (!isNowResolved) return;
+
+    const convoId = event.params.convoId;
+    const spaceId = after.spaceId;
+
+    try {
+      // Find all pending insights for this conversation
+      const pendingSnap = await db.collection("insights")
+        .where("source.conversationId", "==", convoId)
+        .where("processingStatus", "==", "pending_resolution")
+        .get();
+
+      if (pendingSnap.empty) return;
+
+      logger.info(`Processing ${pendingSnap.size} pending insights for resolved convo ${convoId}`);
+
+      for (const insightDoc of pendingSnap.docs) {
+        const insight = insightDoc.data();
+        
+        // 4. GENERATE EMBEDDING & TOPIC MATCHING
+        const embedding = await generateDocumentEmbedding(insight.content);
+        if (embedding) {
+          // Find similar topics for grouping
+          const similarQuery = (db.collection('topics') as any)
+              .where('spaceId', '==', spaceId)
+              .findNearest({
+                  vectorField: 'embedding',
+                  queryVector: admin.firestore.FieldValue.vector(embedding),
+                  limit: 1,
+                  distanceMeasure: 'COSINE'
+              });
+          
+          const similarSnap = await similarQuery.get();
+          let topicId = null;
+
+          if (!similarSnap.empty) {
+              const topMatch = similarSnap.docs[0];
+              const distance = similarSnap.docs[0].get('distance') || 0;
+              if (distance < 0.15) { // Similarity > 0.85
+                  topicId = topMatch.id;
+              }
+          }
+
+          await insightDoc.ref.update({
+              embedding: admin.firestore.FieldValue.vector(embedding),
+              topicId,
+              processingStatus: 'completed',
+              groupingStatus: topicId ? 'grouped' : 'ungrouped',
+              updatedAt: new Date().toISOString()
+          });
+
+          if (topicId) {
+              await db.doc(`topics/${topicId}`).update({
+                  insightCount: admin.firestore.FieldValue.increment(1),
+                  updatedAt: new Date().toISOString()
+              });
+          }
+        } else {
+          await insightDoc.ref.update({ processingStatus: 'failed' });
+        }
+      }
+    } catch (err: any) {
+      logger.error("onConversationResolvedForInsight: processing failed", { convoId, error: err?.message });
     }
   }
 );

@@ -1,3 +1,4 @@
+
 'use client';
 import {
   collection,
@@ -57,6 +58,8 @@ import {
   HelpCenter,
   HelpCenterCollection,
   HelpCenterArticle,
+  ResolutionStatus,
+  ResolutionSource,
 } from './data';
 
 // --- Users ---
@@ -186,16 +189,20 @@ export const getImportedSources = async (spaceId: string): Promise<ImportedSourc
 };
 
 export const subscribeToInsights = (spaceId: string, callback: (insights: Insight[]) => void) => {
-  const q = query(collection(db, 'insights'), where('spaceId', '==', spaceId), orderBy('createdAt', 'desc'));
+  const q = query(collection(db, 'insights'), where('spaceId', '==', spaceId));
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Insight)));
+    const insights = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Insight));
+    insights.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    callback(insights);
   });
 };
 
 export const subscribeToTopics = (spaceId: string, callback: (topics: Topic[]) => void) => {
-  const q = query(collection(db, 'topics'), where('spaceId', '==', spaceId), orderBy('updatedAt', 'desc'));
+  const q = query(collection(db, 'topics'), where('spaceId', '==', spaceId));
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Topic)));
+    const topics = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Topic));
+    topics.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    callback(topics);
   });
 };
 
@@ -308,12 +315,13 @@ export const getBrainChunks = async (hubId: string): Promise<any[]> => {
   const q = query(
     collection(db, 'brain_chunks'), 
     where('hubId', '==', hubId), 
-    orderBy('createdAt', 'desc'),
     limit(100)
   );
   try {
     const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    docs.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    return docs;
   } catch (err) {
     const fallbackQ = query(collection(db, 'brain_chunks'), where('hubId', '==', hubId), limit(100));
     const fallbackSnap = await getDocs(fallbackQ);
@@ -658,6 +666,28 @@ export const updateVisitorActivity = async (conversationId: string) => {
   const convoRef = doc(db, 'conversations', conversationId);
   await updateDoc(convoRef, {
     lastVisitorActiveAt: new Date().toISOString()
+  });
+};
+
+export const resolveConversation = async (id: string, userId: string, userName: string, source: ResolutionSource, summary?: string) => {
+  const convoRef = doc(db, 'conversations', id);
+  await updateDoc(convoRef, {
+    status: 'closed',
+    resolutionStatus: 'resolved',
+    resolutionSource: source,
+    resolvedAt: new Date().toISOString(),
+    resolvedByUserId: userId,
+    resolvedByName: userName,
+    resolutionSummary: summary || null,
+    updatedAt: new Date().toISOString()
+  });
+};
+
+export const setWaitingOnCustomer = async (id: string) => {
+  const convoRef = doc(db, 'conversations', id);
+  await updateDoc(convoRef, {
+    status: 'waiting_on_customer',
+    updatedAt: new Date().toISOString()
   });
 };
 

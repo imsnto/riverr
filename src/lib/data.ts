@@ -59,8 +59,22 @@ export interface Space {
   };
 }
 
-export type ConversationStatus = 'new' | 'automated' | 'ai_active' | 'waiting_human' | 'resolved' | 'open' | 'unassigned';
+export type ConversationStatus = 'new' | 'automated' | 'ai_active' | 'waiting_human' | 'resolved' | 'open' | 'unassigned' | 'waiting_on_customer' | 'closed';
 export type ResponderType = 'automation' | 'ai' | 'human' | 'system';
+
+export type ResolutionStatus =
+  | 'unresolved'
+  | 'resolved'
+  | 'resolution_uncertain'
+  | 'unresolved_abandoned'
+  | 'unresolved_escalated';
+
+export type ResolutionSource =
+  | 'agent_marked'
+  | 'customer_confirmed'
+  | 'ai_inferred'
+  | 'system_timeout'
+  | 'phone_disposition';
 
 export type ConversationState =
   | "ai_active"
@@ -718,6 +732,18 @@ export interface Conversation {
   assigneeId: string | null;
   assignedAgentIds?: string[];
   status: ConversationStatus;
+  
+  // Resolution System
+  resolutionStatus: ResolutionStatus;
+  resolutionSource?: ResolutionSource | null;
+  resolvedAt?: string | null;
+  resolvedByUserId?: string | null;
+  resolvedByName?: string | null;
+  resolutionSummary?: string | null;
+  customerConfirmed?: boolean;
+  customerConfirmationAt?: string | null;
+  disposition?: string | null;
+
   lastMessage: string;
   lastMessageAt: string;
   lastMessageAuthor: string | null;

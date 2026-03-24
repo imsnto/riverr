@@ -1,3 +1,4 @@
+
 // functions/src/chatNotifications/metadataTriggers.ts
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
@@ -6,6 +7,11 @@ import { logger } from "firebase-functions";
 if (!admin.apps.length) admin.initializeApp();
 
 const db = admin.firestore();
+
+const CONFIRMATION_PHRASES = [
+  "fixed it", "works now", "that worked", "resolved", "all set",
+  "thanks so much", "thank you", "perfect", "great", "got it"
+];
 
 function safeSnippet(text: string, maxLen = 180) {
   if (!text) return "";
@@ -60,7 +66,22 @@ export const onChatMessageCreated = onDocumentCreated(
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 
-        // Track per-sender latest
+        // 1. Detect Customer Confirmation
+        if (senderType === "visitor" || senderType === "contact") {
+          const lowerContent = content.toLowerCase();
+          if (CONFIRMATION_PHRASES.some(phrase => lowerContent.includes(phrase))) {
+            updates.customerConfirmed = true;
+            updates.customerConfirmationAt = msgTs;
+            // Also suggest auto-resolution for certain channels
+            if (conv.resolutionStatus === 'unresolved') {
+              updates.resolutionStatus = 'resolved';
+              updates.resolutionSource = 'customer_confirmed';
+              updates.resolvedAt = msgTs;
+            }
+          }
+        }
+
+        // 2. Track per-sender latest
         if (senderType === "visitor" || senderType === "contact") {
           const lastVisitorMs = conv?.lastVisitorMessageAt ? conv.lastVisitorMessageAt.toMillis() : 0;
           if (msgMs >= lastVisitorMs) {
