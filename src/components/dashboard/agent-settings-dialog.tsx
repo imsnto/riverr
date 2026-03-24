@@ -476,6 +476,7 @@ export default function AgentSettingsDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden bg-[#0d1117] border-white/10 text-left">
+        <DialogTitle className="sr-only">Agent Configuration</DialogTitle>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
             <header className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#090c10] shrink-0 z-[100]">
@@ -1014,7 +1015,7 @@ export default function AgentSettingsDialog({
                               <h4 className="text-xs font-bold uppercase tracking-widest text-primary">After Hours</h4>
                               <FormField control={form.control} name="channelConfig.sms.afterHoursMode" render={({ field }) => (
                                 <FormItem><FormLabel className="text-xs">After-hours mode</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="ai_only">AI Only</SelectItem><SelectItem value="delayed_human">Set Delayed Human Expectation</SelectItem></SelectContent></Select></FormItem>
-                              )} />
+                                )} />
                               <FormField control={form.control} name="channelConfig.sms.afterHoursMessage" render={({ field }) => (
                                 <FormItem><FormLabel className="text-xs">After-hours auto-reply</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                               )} />
