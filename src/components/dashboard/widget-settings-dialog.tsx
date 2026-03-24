@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
@@ -22,7 +23,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Bot as BotData, User } from '@/lib/data';
+import { Bot as BotData, User, Hub, Space } from '@/lib/data';
 import { 
   X, 
   Plus, 
@@ -91,6 +92,8 @@ interface WidgetSettingsDialogProps {
   onSave: (data: BotData | Omit<BotData, 'id' | 'hubId'>) => void;
   allUsers: User[];
   hubAgents: BotData[]; 
+  activeHub: Hub | null;
+  activeSpace: Space | null;
 }
 
 export default function WidgetSettingsDialog({
@@ -100,6 +103,8 @@ export default function WidgetSettingsDialog({
   onSave,
   allUsers,
   hubAgents,
+  activeHub,
+  activeSpace,
 }: WidgetSettingsDialogProps) {
   const [activeTab, setActiveTab] = useState('style');
   const [isUploading, setIsUploading] = useState(false);
@@ -164,18 +169,31 @@ export default function WidgetSettingsDialog({
 
   const simulatorBotData = useMemo(() => {
     const agent = hubAgents.find(a => a.id === watchedValues.assignedAgentId);
+    
+    // Base data includes routing context required for RAG
+    const baseData = {
+      ...watchedValues,
+      hubId: watchedValues.hubId || activeHub?.id,
+      spaceId: watchedValues.spaceId || activeSpace?.id,
+      type: 'widget' as const
+    };
+
     if (agent) {
       return {
-        ...watchedValues,
+        ...baseData,
         name: agent.name,
         webAgentName: agent.webAgentName || agent.name,
         welcomeMessage: agent.channelConfig?.web?.greeting?.text || agent.welcomeMessage || watchedValues.welcomeMessage || 'Hi! How can I help?',
         flow: agent.flow || { nodes: [], edges: [] },
-        agentIds: agent.agentIds?.length ? agent.agentIds : watchedValues.agentIds
+        agentIds: agent.agentIds?.length ? agent.agentIds : watchedValues.agentIds,
+        // PLUMBING: Propagate library connections and intelligence settings to the simulator
+        allowedHelpCenterIds: agent.allowedHelpCenterIds || [],
+        intelligenceAccessLevel: agent.intelligenceAccessLevel || 'topics_only',
+        hubId: agent.hubId || baseData.hubId // Use agent's origin hub for grounding lookup
       };
     }
-    return watchedValues;
-  }, [watchedValues, hubAgents]);
+    return baseData;
+  }, [watchedValues, hubAgents, activeHub, activeSpace]);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

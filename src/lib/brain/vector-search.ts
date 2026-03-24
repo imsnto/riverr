@@ -1,3 +1,4 @@
+
 import { adminDB } from '@/lib/firebase-admin';
 import { generateQueryEmbedding } from '@/lib/brain/embed';
 import admin from 'firebase-admin';
@@ -20,14 +21,17 @@ export type VectorSearchResult = {
 /**
  * Searches the curated Help Center Articles index.
  * Tier 1: Highest Trust
+ * Updated to fix cross-hub grounding issues by relaxing hubId filter
+ * when specific libraries are targeted.
  */
 export async function searchArticles(args: {
   query: string;
   hubId: string;
+  spaceId: string;
   allowedHelpCenterIds?: string[];
   limit?: number;
 }): Promise<VectorSearchResult[]> {
-  const { query, hubId, allowedHelpCenterIds, limit = 8 } = args;
+  const { query, hubId, spaceId, allowedHelpCenterIds, limit = 8 } = args;
   
   // PLUMBING: If a whitelist is provided but is empty, the agent has no grounded articles.
   if (allowedHelpCenterIds && allowedHelpCenterIds.length === 0) {
@@ -42,13 +46,18 @@ export async function searchArticles(args: {
     
     // Base filters
     let q = (coll as any)
-      .where('hubId', '==', hubId)
+      .where('spaceId', '==', spaceId) // Essential for multi-tenant security
       .where('sourceType', '==', 'help_center_article')
       .where('status', '==', 'active');
 
     // Filter by specifically authorized help centers
     if (allowedHelpCenterIds && allowedHelpCenterIds.length > 0) {
+      // FIX: If library IDs are provided, we search those specific libraries regardless of their hub.
+      // This allows an Agent from Hub A to answer from its libraries when assigned to a Widget in Hub B.
       q = q.where('helpCenterId', 'in', allowedHelpCenterIds.slice(0, 10));
+    } else {
+      // If no explicit whitelist, default to searching the current hub's knowledge.
+      q = q.where('hubId', '==', hubId);
     }
 
     const vectorQuery = q.findNearest({

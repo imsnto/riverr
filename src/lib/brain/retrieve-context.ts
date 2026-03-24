@@ -3,7 +3,7 @@ import { searchArticles, searchTopics, searchInsights, VectorSearchResult } from
 import { IntelligenceAccessLevel } from '@/lib/data';
 
 export interface AgentKnowledgePolicy {
-  agentId: string;
+  agentId?: string; // Optional for unsaved bots
   isCustomerFacing: boolean;
   accessLevel: IntelligenceAccessLevel;
   allowedLibraryIds: string[];
@@ -62,7 +62,12 @@ export async function orchestrateRetrieval(args: {
 
   // 1. Parallel Multi-Index Search
   const searchPromises: Promise<any>[] = [
-    searchArticles({ query: message, hubId, allowedHelpCenterIds: policy.allowedLibraryIds })
+    searchArticles({ 
+      query: message, 
+      hubId, 
+      spaceId, 
+      allowedHelpCenterIds: policy.allowedLibraryIds 
+    })
   ];
 
   if (policy.accessLevel !== 'none') {

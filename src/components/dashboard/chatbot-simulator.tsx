@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -184,7 +185,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
       setIsThinking(true);
       try {
         const result = await previewAgentResponseAction({
-          widgetBotId: String(botData.id),
+          botData: botData, // Pass the merged configuration for live preview
           message: submittedText,
           visitor: {
             name: previewName || undefined,
@@ -239,7 +240,7 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
         setIsThinking(true);
         try {
           const result = await previewAgentResponseAction({
-            widgetBotId: String(botData.id),
+            botData: botData,
             message: submittedText,
             visitor: {
               name: previewName || undefined,

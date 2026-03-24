@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -242,7 +243,7 @@ export default function InboxSettings({
                 <CardContent className="bg-muted/30 pt-6 border-t border-white/5">
                   <div className="space-y-4">
                     <div className="flex flex-col gap-2">
-                      <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">AI Agent Assignment</Label>
+                      <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">AI Agent Brain</Label>
                       <Select 
                         value={bot.assignedAgentId || 'none'} 
                         onValueChange={(val) => onBotUpdate(bot.id, { assignedAgentId: val === 'none' ? null : val })}
@@ -314,6 +315,8 @@ export default function InboxSettings({
           onSave={handleSaveBot}
           allUsers={hubMembers}
           hubAgents={agentsList}
+          activeHub={activeHub}
+          activeSpace={activeSpace}
         />
       ) : (
         <AgentSettingsDialog
@@ -322,6 +325,7 @@ export default function InboxSettings({
           bot={selectedBot}
           onSave={handleSaveBot}
           appUser={appUser}
+          allUsers={[]}
           helpCenters={helpCenters}
         />
       )}

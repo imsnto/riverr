@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -28,9 +29,10 @@ export type PreviewAgentResponseResult = {
 
 /**
  * Non-mutating version of the agent logic used for settings previews.
+ * Updated to accept full botData for live previews of unsaved changes.
  */
 export async function previewAgentResponseAction(args: {
-  widgetBotId: string;
+  botData: any;
   message: string;
   visitor?: {
     name?: string;
@@ -38,16 +40,13 @@ export async function previewAgentResponseAction(args: {
     phone?: string;
   };
 }): Promise<PreviewAgentResponseResult> {
-  const widgetBotId = String(args.widgetBotId || '').trim();
   const message = String(args.message || '').trim();
+  const effectiveBot = args.botData;
 
-  if (!widgetBotId) throw new Error('widgetBotId is required');
+  if (!effectiveBot) throw new Error('botData is required');
   if (!message) return { answer: '', usedAgentName: 'Assistant', sources: [] };
 
-  const resolved = await resolveRuntimeBot(widgetBotId);
-  if (!resolved) throw new Error('Unable to resolve runtime bot');
-
-  const { effectiveBot, webAgentName } = resolved;
+  const webAgentName = effectiveBot.webAgentName || effectiveBot.name || 'Assistant';
 
   // PLUMBING: Policy derives from Bot Config
   const policy: AgentKnowledgePolicy = {
