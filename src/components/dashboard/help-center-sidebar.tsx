@@ -1,9 +1,10 @@
 
+// src/components/dashboard/help-center-sidebar.tsx
 'use client';
 import React, { useState } from 'react';
 import { HelpCenter, HelpCenterCollection } from '@/lib/data';
 import { Button } from '../ui/button';
-import { Book, ChevronRight, Folder, Layers, Search, File, CircleDot, MoreHorizontal, Edit, Plus, GripVertical, FileText, Settings, ExternalLink, Library, Inbox, BookOpen, Users, DollarSign, Briefcase, HelpCircle, MessageSquare, Code, Database, GitBranch, Archive, Shield, Globe, Home, Rocket, Lightbulb, Server, Cloud, Component, Package, Puzzle, Heart, Lock, Download, Upload } from 'lucide-react';
+import { Book, ChevronRight, Folder, Search, MoreHorizontal, Edit, Plus, Library, Inbox, BookOpen, Lock, Upload, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '../ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -13,47 +14,19 @@ import { Separator } from '../ui/separator';
 import Link from 'next/link';
 import { Badge } from '../ui/badge';
 
-export type HelpCenterSidebarView = 'knowledge-bases' | 'inbox' | 'all-articles';
+export type HelpCenterSidebarView = 'knowledge-bases' | 'inbox' | 'all-articles' | 'support-intelligence';
 
-const iconMap: Record<string, React.ReactNode> = {
-  Library: <Library className="mr-2 h-4 w-4 shrink-0" />,
-  Book: <Book className="mr-2 h-4 w-4 shrink-0" />,
-  BookOpen: <BookOpen className="mr-2 h-4 w-4 shrink-0" />,
-  Folder: <Folder className="mr-2 h-4 w-4 shrink-0" />,
-  Users: <Users className="mr-2 h-4 w-4 shrink-0" />,
-  Settings: <Settings className="mr-2 h-4 w-4 shrink-0" />,
-  DollarSign: <DollarSign className="mr-2 h-4 w-4 shrink-0" />,
-  Briefcase: <Briefcase className="mr-2 h-4 w-4 shrink-0" />,
-  HelpCircle: <HelpCircle className="mr-2 h-4 w-4 shrink-0" />,
-  MessageSquare: <MessageSquare className="mr-2 h-4 w-4 shrink-0" />,
-  Code: <Code className="mr-2 h-4 w-4 shrink-0" />,
-  Database: <Database className="mr-2 h-4 w-4 shrink-0" />,
-  GitBranch: <GitBranch className="mr-2 h-4 w-4 shrink-0" />,
-  FileText: <FileText className="mr-2 h-4 w-4 shrink-0" />,
-  Archive: <Archive className="mr-2 h-4 w-4 shrink-0" />,
-  Inbox: <Inbox className="mr-2 h-4 w-4 shrink-0" />,
-  Shield: <Shield className="mr-2 h-4 w-4 shrink-0" />,
-  Globe: <Globe className="mr-2 h-4 w-4 shrink-0" />,
-  Home: <Home className="mr-2 h-4 w-4 shrink-0" />,
-  Rocket: <Rocket className="mr-2 h-4 w-4 shrink-0" />,
-  Lightbulb: <Lightbulb className="mr-2 h-4 w-4 shrink-0" />,
-  Server: <Server className="mr-2 h-4 w-4 shrink-0" />,
-  Cloud: <Cloud className="mr-2 h-4 w-4 shrink-0" />,
-  Component: <Component className="mr-2 h-4 w-4 shrink-0" />,
-  Package: <Package className="mr-2 h-4 w-4 shrink-0" />,
-  Puzzle: <Puzzle className="mr-2 h-4 w-4 shrink-0" />,
-  Heart: <Heart className="mr-2 h-4 w-4 shrink-0" />,
-  default: <Book className="mr-2 h-4 w-4 shrink-0" />
+const iconMap: Record<string, React.ElementType> = {
+  Library: Library,
+  Book: Book,
+  BookOpen: BookOpen,
+  default: Book
 };
-
-const normalizeIconKey = (s?: string | null) =>
-  (s ?? "").trim().replace(/\s+/g, "").replace(/[-_]/g, "");
 
 const LibraryIcon = ({ name }: { name?: string | null }) => {
-  const key = normalizeIconKey(name);
-  return (iconMap as any)[key] ?? iconMap.default;
+  const Icon = (iconMap as any)[name || ''] || iconMap.default;
+  return <Icon className="mr-2 h-4 w-4 shrink-0" />;
 };
-
 
 interface HelpCenterSidebarProps {
   collections: HelpCenterCollection[];
@@ -61,143 +34,16 @@ interface HelpCenterSidebarProps {
   onSelectCollection: (id: string | null) => void;
   onNewCollection: (parentId?: string) => void;
   onEditCollection: (collection: HelpCenterCollection) => void;
-  
   helpCenters: HelpCenter[];
   activeHelpCenterId: string | null;
   onSelectHelpCenter: (id: string | null) => void;
   onNewHelpCenter: () => void;
   onEditHelpCenter: (hc: HelpCenter) => void;
-  
   unassignedContentCount: number;
-
   sidebarView: HelpCenterSidebarView;
   onViewChange: (view: HelpCenterSidebarView) => void;
   onImport: () => void;
 }
-
-interface FolderTreeProps {
-  collections: HelpCenterCollection[];
-  parentId: string | null;
-  level: number;
-  activeCollectionId: string | null;
-  onSelectCollection: (id: string | null) => void;
-  onNewCollection: (parentId?: string) => void;
-  onEditCollection: (collection: HelpCenterCollection) => void;
-}
-
-const FolderTree: React.FC<FolderTreeProps> = ({ collections, parentId, level, activeCollectionId, onSelectCollection, onNewCollection, onEditCollection }) => {
-  const children = collections.filter(c => c.parentId === parentId);
-  if (children.length === 0) return null;
-
-  return (
-    <div className={cn(level > 0 && 'pl-4')}>
-      {children.map(collection => {
-        const hasChildren = collections.some(c => c.parentId === collection.id);
-        return (
-          <Collapsible key={collection.id} defaultOpen={true}>
-            <div className={cn("group flex items-center justify-between rounded-md pr-1", activeCollectionId === collection.id && "bg-primary/10")}>
-              
-              <div className="flex items-center flex-1 min-w-0">
-                  <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="icon" className={cn("h-8 w-8 shrink-0", !hasChildren && "invisible")}>
-                          <ChevronRight className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-90" />
-                      </Button>
-                  </CollapsibleTrigger>
-                  <Button
-                      variant="ghost"
-                      className="w-full justify-start text-left text-sm h-9 px-2 min-w-0"
-                      onClick={() => onSelectCollection(collection.id)}
-                  >
-                      <Folder className="mr-2 h-4 w-4 shrink-0" />
-                      <span className="block flex-1 min-w-0 truncate">{collection.name}</span>
-                  </Button>
-              </div>
-
-              <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 md:opacity-0 md:group-hover:opacity-100">
-                          <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => onNewCollection(collection.id)}>
-                          <Plus className="mr-2 h-4 w-4" /> Add sub-collection
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEditCollection(collection)}>
-                          <Edit className="mr-2 h-4 w-4" /> Rename
-                      </DropdownMenuItem>
-                  </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <CollapsibleContent>
-              {hasChildren && (
-                <FolderTree
-                  collections={collections}
-                  parentId={collection.id}
-                  level={level + 1}
-                  activeCollectionId={activeCollectionId}
-                  onSelectCollection={onSelectCollection}
-                  onNewCollection={onNewCollection}
-                  onEditCollection={onEditCollection}
-                />
-              )}
-            </CollapsibleContent>
-          </Collapsible>
-        );
-      })}
-    </div>
-  );
-};
-
-
-const LibraryList: React.FC<{ helpCenters: HelpCenter[], activeHelpCenterId: string | null, onSelect: (id: string | null) => void, onEdit: (hc: HelpCenter) => void }> = ({ helpCenters, activeHelpCenterId, onSelect, onEdit }) => (
-    <div className="space-y-1">
-        {helpCenters.map(hc => (
-            <div
-                key={hc.id}
-                className={cn(
-                    "group flex items-center justify-between rounded-md pr-1 transition-colors", 
-                    activeHelpCenterId === hc.id && "bg-indigo-500/10 border border-indigo-500/20"
-                )}
-            >
-                <Button
-                    variant='ghost'
-                    className={cn(
-                        "w-full justify-start text-left text-sm h-9 px-2 min-w-0",
-                        activeHelpCenterId === hc.id ? "text-foreground" : "text-foreground"
-                    )}
-                    onClick={() => onSelect(hc.id)}
-                >
-                    <LibraryIcon name={hc.icon} />
-                    <span className="block flex-1 min-w-0 truncate text-left">{hc.name}</span>
-                    {hc.visibility === 'internal' && <Lock className="ml-2 h-3 w-3 text-muted-foreground" />}
-                </Button>
-
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                         <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 md:opacity-0 md:group-hover:opacity-100">
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuItem onSelect={() => onEdit(hc)}>
-                            <Settings className="mr-2 h-4 w-4" /> Settings
-                        </DropdownMenuItem>
-                        {hc.visibility !== 'internal' && (
-                            <DropdownMenuItem asChild>
-                                <Link href={`/hc/${hc.id}`} target="_blank" rel="noopener noreferrer">
-                                    <ExternalLink className="mr-2 h-4 w-4" />
-                                    <span>View Live</span>
-                                </Link>
-                            </DropdownMenuItem>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-        ))}
-    </div>
-);
-
 
 export default function HelpCenterSidebar({ 
     collections,
@@ -216,6 +62,24 @@ export default function HelpCenterSidebar({
     onImport,
 }: HelpCenterSidebarProps) {
 
+    const publicLibraries = helpCenters.filter(hc => hc.visibility !== 'internal' && hc.name !== 'Support Intelligence');
+    const privateLibraries = helpCenters.filter(hc => hc.visibility === 'internal' && hc.name !== 'Support Intelligence');
+    const supportIntel = helpCenters.find(hc => hc.name === 'Support Intelligence');
+
+    const NavButton = ({ id, activeId, icon: Icon, label, onClick, children }: any) => (
+        <div className={cn("group flex items-center justify-between rounded-md pr-1 transition-colors", activeId === id && "bg-accent/50")}>
+            <Button
+                variant='ghost'
+                className={cn("w-full justify-start text-left text-sm h-9 px-2 min-w-0", activeId === id ? "text-foreground font-semibold" : "text-muted-foreground")}
+                onClick={() => onClick(id)}
+            >
+                <Icon className="mr-2 h-4 w-4 shrink-0" />
+                <span className="block flex-1 min-w-0 truncate text-left">{label}</span>
+            </Button>
+            {children}
+        </div>
+    );
+
     return (
         <aside className="w-full md:w-72 min-w-0 border-r bg-card p-2 flex flex-col">
             <div className="p-2 shrink-0">
@@ -227,67 +91,81 @@ export default function HelpCenterSidebar({
             </div>
 
             <ScrollArea className="flex-1">
-                <div className="p-2 space-y-2">
-                    <div>
-                        <div className="px-2 mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider text-left">
-                            LIBRARIES
-                        </div>
-                        <LibraryList 
-                            helpCenters={helpCenters} 
-                            activeHelpCenterId={activeHelpCenterId}
-                            onSelect={onSelectHelpCenter}
-                            onEdit={onEditHelpCenter}
+                <div className="p-2 space-y-6">
+                    <div className="space-y-1">
+                        <NavButton 
+                            id="all-articles" 
+                            activeId={sidebarView} 
+                            icon={BookOpen} 
+                            label="All Content" 
+                            onClick={() => onViewChange('all-articles')} 
                         />
-                         <Button variant="ghost" className="w-full justify-start text-sm h-9 mt-1" onClick={onNewHelpCenter}>
+                        <NavButton 
+                            id="support-intelligence" 
+                            activeId={sidebarView} 
+                            icon={Zap} 
+                            label="Patterns" 
+                            onClick={() => onViewChange('support-intelligence')}
+                        >
+                            <Badge variant="secondary" className="h-4 px-1 text-[8px] bg-primary/10 text-primary border-primary/20">3</Badge>
+                        </NavButton>
+                    </div>
+
+                    <Separator />
+
+                    {publicLibraries.length > 0 && (
+                        <div>
+                            <div className="px-2 mb-2 text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Public</div>
+                            <div className="space-y-1">
+                                {publicLibraries.map(hc => (
+                                    <NavButton 
+                                        key={hc.id} 
+                                        id={hc.id} 
+                                        activeId={activeHelpCenterId} 
+                                        icon={Library} 
+                                        label={hc.name} 
+                                        onClick={onSelectHelpCenter}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div>
+                        <div className="px-2 mb-2 text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Private</div>
+                        <div className="space-y-1">
+                            {supportIntel && (
+                                <NavButton 
+                                    id={supportIntel.id} 
+                                    activeId={activeHelpCenterId} 
+                                    icon={Bot} 
+                                    label="Support Intel" 
+                                    onClick={onSelectHelpCenter}
+                                />
+                            )}
+                            {privateLibraries.map(hc => (
+                                <NavButton 
+                                    key={hc.id} 
+                                    id={hc.id} 
+                                    activeId={activeHelpCenterId} 
+                                    icon={Lock} 
+                                    label={hc.name} 
+                                    onClick={onSelectHelpCenter}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-1">
+                        <Button variant="ghost" className="w-full justify-start text-sm h-9" onClick={onNewHelpCenter}>
                             <Plus className="mr-2 h-4 w-4 text-muted-foreground" />
                             <span className="text-muted-foreground">New Library</span>
                         </Button>
-                        <Button variant="ghost" className="w-full justify-start text-sm h-9 mt-1" onClick={onImport}>
+                        <Button variant="ghost" className="w-full justify-start text-sm h-9" onClick={onImport}>
                             <Upload className="mr-2 h-4 w-4 text-muted-foreground" />
                             <span className="text-muted-foreground">Import Library</span>
-                        </Button>
-                    </div>
-                
-                    {sidebarView === 'knowledge-bases' && activeHelpCenterId && (
-                        <>
-                            <Separator />
-                            <FolderTree
-                                collections={collections.filter(c => c.helpCenterId === activeHelpCenterId)}
-                                parentId={null}
-                                level={0}
-                                activeCollectionId={activeCollectionId}
-                                onSelectCollection={(id) => {
-                                    onSelectCollection(id);
-                                    onViewChange('knowledge-bases');
-                                }}
-                                onNewCollection={onNewCollection}
-                                onEditCollection={onEditCollection}
-                            />
-                        </>
-                    )}
-
-                    <Separator />
-                    
-                     <div>
-                        <div className="px-2 mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider text-left">
-                            INBOX
-                        </div>
-                        <Button variant={sidebarView === 'inbox' ? 'secondary' : 'ghost'} className="w-full justify-between text-sm h-9" onClick={() => onViewChange('inbox')}>
-                            <div className="flex items-center gap-2">
-                                <Inbox className="h-4 w-4"/> Unassigned
-                            </div>
-                            {unassignedContentCount > 0 && <Badge variant="secondary" className="bg-amber-500/10 text-amber-300 border border-amber-500/20">{unassignedContentCount}</Badge>}
-                        </Button>
-                    </div>
-
-                    <Separator />
-
-                    <div>
-                        <div className="px-2 mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider text-left">
-                            Views
-                        </div>
-                        <Button variant={sidebarView === 'all-articles' ? 'secondary' : 'ghost'} className="w-full justify-start text-sm h-9" onClick={() => onViewChange('all-articles')}>
-                            <FileText className="mr-2 h-4 w-4"/> All Content
                         </Button>
                     </div>
                 </div>

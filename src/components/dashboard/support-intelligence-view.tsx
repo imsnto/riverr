@@ -1,4 +1,5 @@
 
+// src/components/dashboard/support-intelligence-view.tsx
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -22,21 +23,29 @@ import {
     ArrowLeft,
     Share2,
     Lock,
-    ExternalLink
+    ExternalLink,
+    ChevronDown,
+    Plus,
+    CheckCircle2
 } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import InsightDetailPanel from './insight-detail-panel';
+import { Separator } from '../ui/separator';
 
-export default function SupportIntelligenceView() {
+interface SupportIntelligenceViewProps {
+    onBack?: () => void;
+}
+
+export default function SupportIntelligenceView({ onBack }: SupportIntelligenceViewProps) {
     const { activeSpace, allUsers } = useAuth();
     const [insights, setInsights] = useState<Insight[]>([]);
     const [clusters, setClusters] = useState<Cluster[]>([]);
     const [selectedInsightId, setSelectedInsightId] = useState<string | null>(null);
+    const [expandedClusterId, setExpandedClusterId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filter, setFilter] = useState<'all' | 'unclustered' | 'completed'>('all');
 
     useEffect(() => {
         if (!activeSpace) return;
@@ -48,154 +57,161 @@ export default function SupportIntelligenceView() {
         };
     }, [activeSpace]);
 
-    const filteredInsights = useMemo(() => {
-        return insights.filter(insight => {
-            const matchesSearch = insight.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                insight.content.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesFilter = filter === 'all' || 
-                                (filter === 'unclustered' && insight.clusteringStatus === 'unclustered') ||
-                                (filter === 'completed' && insight.processingStatus === 'completed');
-            return matchesSearch && matchesFilter;
-        });
-    }, [insights, searchTerm, filter]);
+    const unclusteredInsights = useMemo(() => {
+        return insights.filter(i => !i.clusterId || i.clusteringStatus === 'unclustered');
+    }, [insights]);
 
-    const selectedInsight = insights.find(i => i.id === selectedInsightId);
+    const filteredClusters = useMemo(() => {
+        return clusters.filter(c => 
+            c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [clusters, searchTerm]);
 
     if (!activeSpace) return null;
 
     return (
-        <div className="flex h-full min-h-0 bg-background overflow-hidden">
+        <div className="flex h-full min-h-0 bg-background overflow-hidden relative">
             <div className="flex-1 flex flex-col min-w-0">
-                <header className="p-6 border-b shrink-0 space-y-4">
+                <header className="p-6 border-b shrink-0 space-y-6">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                                <BrainCircuit className="h-6 w-6" />
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                                Private · AI ingestion on
                             </div>
-                            <div>
-                                <h1 className="text-2xl font-bold">Support Intelligence</h1>
-                                <p className="text-sm text-muted-foreground">Automatic support memory extracted from human conversations.</p>
+                            <h1 className="text-3xl font-bold flex items-center gap-3">
+                                Support Intelligence
+                            </h1>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                                <span>{clusters.length} clusters</span>
+                                <span>·</span>
+                                <span>{insights.length} notes</span>
+                                <span>·</span>
+                                <span>0 articles promoted</span>
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="bg-indigo-500/5 border-indigo-500/20 text-indigo-400 font-bold uppercase tracking-tighter h-6">
-                                <Lock className="h-3 w-3 mr-1.5" /> Internal Only
-                            </Badge>
+                            <Button variant="outline" size="sm" className="bg-muted/50 border-white/5 h-9">Settings</Button>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                                placeholder="Search extracted insights..." 
-                                className="pl-9 h-10 bg-muted/20 border-white/5"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex items-center bg-muted/30 border border-white/5 rounded-lg p-1">
-                            {(['all', 'unclustered', 'completed'] as const).map(f => (
-                                <button
-                                    key={f}
-                                    onClick={() => setFilter(f)}
-                                    className={cn(
-                                        "px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all",
-                                        filter === f ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-                                    )}
-                                >
-                                    {f}
-                                </button>
-                            ))}
-                        </div>
+                    <div className="flex gap-2">
+                        <Button variant="secondary" size="sm" className="rounded-full px-6 h-9 font-bold bg-white text-black hover:bg-white/90">Clusters</Button>
+                        <Button variant="ghost" size="sm" className="rounded-full px-6 h-9 font-bold text-muted-foreground">Articles</Button>
                     </div>
                 </header>
 
                 <ScrollArea className="flex-1">
-                    <div className="p-6">
-                        <div className="grid grid-cols-1 gap-4">
-                            {filteredInsights.map((insight) => (
-                                <Card 
-                                    key={insight.id}
-                                    onClick={() => setSelectedInsightId(insight.id)}
-                                    className={cn(
-                                        "cursor-pointer hover:border-indigo-500/30 transition-all group overflow-hidden border-white/5 bg-white/[0.02]",
-                                        selectedInsightId === insight.id && "ring-2 ring-indigo-500/50 border-indigo-500/50"
-                                    )}
-                                >
-                                    <CardContent className="p-0">
-                                        <div className="flex items-stretch">
-                                            <div className={cn(
-                                                "w-1 shrink-0",
-                                                insight.signalScore && insight.signalScore > 0.8 ? "bg-emerald-500" : "bg-indigo-500/20"
-                                            )} />
-                                            <div className="p-4 flex-1 space-y-3">
-                                                <div className="flex items-start justify-between">
-                                                    <div className="space-y-1">
-                                                        <h3 className="font-bold text-base group-hover:text-indigo-400 transition-colors">
-                                                            {insight.title || "Untitiled Resolution"}
-                                                        </h3>
-                                                        <p className="text-xs text-muted-foreground line-clamp-2 italic opacity-70">
-                                                            "{insight.summary}"
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex flex-col items-end gap-2 shrink-0 ml-4">
-                                                        <Badge variant="secondary" className="bg-white/5 text-[9px] uppercase font-black tracking-tight h-5">
-                                                            {insight.source.channel}
-                                                        </Badge>
-                                                        <p className="text-[9px] text-muted-foreground font-bold uppercase">
-                                                            {formatDistanceToNow(new Date(insight.createdAt), { addSuffix: true })}
-                                                        </p>
-                                                    </div>
-                                                </div>
+                    <div className="p-6 max-w-5xl mx-auto space-y-4">
+                        {/* Cluster Cards */}
+                        {filteredClusters.map((cluster) => {
+                            const clusterInsights = insights.filter(i => i.clusterId === cluster.id);
+                            const isExpanded = expandedClusterId === cluster.id;
+                            const isHighSignal = cluster.signalLevel === 'high' || cluster.insightCount > 10;
 
-                                                <div className="flex items-center gap-4 text-[10px] uppercase font-black tracking-widest text-muted-foreground opacity-50">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Sparkles className="h-3 w-3" />
-                                                        <span>{Math.round((insight.signalScore || 0) * 100)}% Confidence</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <UserIcon className="h-3 w-3" />
-                                                        <span>By {insight.createdByName || 'Unknown'}</span>
-                                                    </div>
-                                                    {insight.clusterId && (
-                                                        <div className="flex items-center gap-1.5 text-indigo-400">
-                                                            <Zap className="h-3 w-3" />
-                                                            <span>Clustered</span>
-                                                        </div>
-                                                    )}
+                            return (
+                                <div key={cluster.id} className="space-y-2">
+                                    <Card 
+                                        className={cn(
+                                            "cursor-pointer border-white/5 bg-[#1a1a1a] hover:bg-[#222] transition-all overflow-hidden",
+                                            isExpanded && "ring-1 ring-primary/50"
+                                        )}
+                                        onClick={() => setExpandedClusterId(isExpanded ? null : cluster.id)}
+                                    >
+                                        <div className="p-5 flex items-center justify-between">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-3 mb-1.5">
+                                                    <h3 className="text-lg font-bold text-white truncate">{cluster.title}</h3>
+                                                    <Badge variant="outline" className={cn(
+                                                        "text-[9px] uppercase font-black px-1.5 h-5 border-none",
+                                                        isHighSignal ? "bg-amber-500/10 text-amber-500" : "bg-zinc-500/10 text-zinc-400"
+                                                    )}>
+                                                        {isHighSignal ? 'high signal' : 'low signal'}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                                                    <span>{cluster.insightCount} notes</span>
+                                                    <span>·</span>
+                                                    <span>last added {formatDistanceToNow(new Date(cluster.updatedAt), { addSuffix: true })}</span>
+                                                    <span>·</span>
+                                                    <span>no article yet</span>
                                                 </div>
                                             </div>
+                                            <div className="flex items-center gap-3">
+                                                <Button size="sm" variant="outline" className="h-8 gap-1.5 font-bold border-white/10 hover:bg-white/5">
+                                                    + article <ExternalLink className="h-3 w-3 opacity-50" />
+                                                </Button>
+                                                <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", isExpanded && "rotate-180")} />
+                                            </div>
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
+                                    </Card>
 
-                            {filteredInsights.length === 0 && (
-                                <div className="text-center py-24 space-y-4 opacity-50">
-                                    <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mx-auto">
-                                        <MessageSquare className="h-8 w-8 text-muted-foreground" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold">No insights yet</h3>
-                                        <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                                            The brain automatically extracts insights from your human support responses. Keep chatting to train the memory!
-                                        </p>
-                                    </div>
+                                    {isExpanded && (
+                                        <div className="pl-4 space-y-2 animate-in slide-in-from-top-2 duration-200">
+                                            {clusterInsights.map(insight => (
+                                                <div 
+                                                    key={insight.id} 
+                                                    className="p-4 rounded-xl border border-white/5 bg-black/20 hover:bg-white/[0.02] cursor-pointer flex items-center justify-between group"
+                                                    onClick={() => setSelectedInsightId(insight.id)}
+                                                >
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                        <p className="text-sm font-medium truncate pr-4">{insight.title || insight.summary}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 shrink-0">
+                                                        <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground opacity-40">{insight.source.channel}</span>
+                                                        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all" />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                            )}
+                            );
+                        })}
+
+                        {/* Unclustered Notes Section */}
+                        <div className="pt-8">
+                            <Card className="border-white/5 bg-[#1a1a1a]/50 border-dashed">
+                                <div className="p-5 flex items-center justify-between">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-3 mb-1.5">
+                                            <h3 className="text-lg font-bold text-zinc-400">Unclustered notes</h3>
+                                            <Badge variant="outline" className="text-[9px] uppercase font-black px-1.5 h-5 bg-zinc-500/10 text-zinc-500 border-none">ungrouped</Badge>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground font-medium">{unclusteredInsights.length} notes · not enough signal to cluster yet</p>
+                                    </div>
+                                    <ChevronDown className="h-5 w-5 text-zinc-600" />
+                                </div>
+                            </Card>
                         </div>
+
+                        {clusters.length === 0 && (
+                            <div className="text-center py-24 space-y-4 opacity-50">
+                                <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mx-auto">
+                                    <BrainCircuit className="h-8 w-8 text-muted-foreground" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold">Building your intelligence...</h3>
+                                    <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                                        As your team answers support questions, Finn will extract patterns and group them into clusters here.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </ScrollArea>
             </div>
 
-            {selectedInsight && (
-                <div className="w-[450px] border-l bg-card shrink-0 h-full overflow-hidden animate-in slide-in-from-right duration-300">
-                    <InsightDetailPanel 
-                        insight={selectedInsight} 
-                        onClose={() => setSelectedInsightId(null)}
-                        allUsers={allUsers}
-                    />
+            {selectedInsightId && insights.find(i => i.id === selectedInsightId) && (
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-[100] animate-in fade-in duration-200">
+                    <div className="absolute right-0 top-0 bottom-0 w-full max-w-xl shadow-2xl animate-in slide-in-from-right duration-300">
+                        <InsightDetailPanel 
+                            insight={insights.find(i => i.id === selectedInsightId)!} 
+                            onClose={() => setSelectedInsightId(null)}
+                            allUsers={allUsers}
+                        />
+                    </div>
                 </div>
             )}
         </div>

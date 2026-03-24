@@ -1,3 +1,4 @@
+
 // src/components/dashboard/help-center-layout.tsx
 'use client';
 import React, { useState, useEffect, useMemo, useTransition, useRef } from 'react';
@@ -9,7 +10,7 @@ import { Button, buttonVariants } from '../ui/button';
 import * as db from '@/lib/db';
 import { useToast } from '@/hooks/use-toast';
 import HelpCenterArticleList from './help-center-article-list';
-import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2, Bot as BotIcon, Lock, Globe, Wand2, Upload, Loader2, Image as ImageIcon, Download, ExternalLink, HelpCircle, CheckCircle2, AlertCircle, MoreVertical, Star, Edit } from 'lucide-react';
+import { FolderPlus, Plus, Search, ChevronRight, Move, ArrowLeft, Trash2, Bot as BotIcon, Lock, Globe, Wand2, Upload, Loader2, Image as ImageIcon, Download, ExternalLink, HelpCircle, CheckCircle2, AlertCircle, MoreVertical, Star, Edit, Zap } from 'lucide-react';
 import HelpCenterCollectionFormDialog from './help-center-collection-form-dialog';
 import HelpCenterFormDialog, { HelpCenterFormValues } from './help-center-form-dialog';
 import { Input } from '../ui/input';
@@ -33,6 +34,7 @@ import { generateCoverImage } from '@/ai/flows/generate-cover-image';
 import Link from 'next/link';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { Badge } from '../ui/badge';
+import SupportIntelligenceView from './support-intelligence-view';
 
 interface HelpCenterLayoutProps {
     bots: Bot[];
@@ -98,7 +100,8 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
 
     useEffect(() => {
         if (sidebarView === 'knowledge-bases' && !activeHelpCenterId && helpCenters.length > 0) {
-            setActiveHelpCenterId(helpCenters[0].id);
+            const first = helpCenters.find(h => h.name !== 'Support Intelligence') || helpCenters[0];
+            setActiveHelpCenterId(first.id);
         }
     }, [helpCenters, activeHelpCenterId, sidebarView]);
     
@@ -112,6 +115,8 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
             viewTitle = 'All Content';
             articlesToShow = articles;
             collectionsToShow = collections;
+        } else if (sidebarView === 'support-intelligence') {
+            viewTitle = 'Support Intelligence';
         } else if (sidebarView === 'knowledge-bases' && activeHelpCenterId) {
             const hc = helpCenters.find(h => h.id === activeHelpCenterId);
             viewTitle = hc?.name || 'Library';
@@ -147,11 +152,7 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
     const unassignedArticles = useMemo(() => articles.filter(a => !a.helpCenterId), [articles]);
     
     const activeHelpCenter = helpCenters.find(hc => hc.id === activeHelpCenterId);
-    
-    const connectedAgents = useMemo(() => {
-        if (!activeHelpCenterId) return [];
-        return bots.filter(bot => bot.allowedHelpCenterIds?.includes(activeHelpCenterId));
-    }, [bots, activeHelpCenterId]);
+    const isSupportIntelActive = sidebarView === 'support-intelligence' || (activeHelpCenter?.name === 'Support Intelligence');
 
     const showContentOnMobile = () => {
         if (isMobile) {
@@ -298,19 +299,26 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
         if (view !== 'knowledge-bases') {
             setActiveHelpCenterId(null);
         }
+        if (view === 'support-intelligence') {
+            const intel = helpCenters.find(hc => hc.name === 'Support Intelligence');
+            if (intel) setActiveHelpCenterId(intel.id);
+        }
         setSelectedArticleId(null);
         setEditingHelpCenter(null);
         showContentOnMobile();
     }
     
     const handleSelectHelpCenter = (id: string | null) => {
+        const hc = helpCenters.find(h => h.id === id);
+        if (hc?.name === 'Support Intelligence') {
+            setSidebarView('support-intelligence');
+        } else {
+            setSidebarView('knowledge-bases');
+        }
         setActiveHelpCenterId(id);
         setSelectedCollectionId(null);
         setSelectedArticleId(null);
         setEditingHelpCenter(null);
-        if (id) {
-            handleViewChange('knowledge-bases');
-        }
         showContentOnMobile();
     }
 
@@ -543,112 +551,114 @@ export default function HelpCenterLayout({ bots }: HelpCenterLayoutProps) {
                     </Button>
                 </div>
             )}
-            {sidebarView === 'knowledge-bases' && breadcrumbs.length > 0 && !isMobile && (
-                <Breadcrumbs crumbs={breadcrumbs} onCrumbClick={(id) => {
-                    setSelectedCollectionId(id);
-                }} />
-            )}
-            <div className="flex flex-col md:flex-row justify-between md:items-start mb-4 gap-4 shrink-0">
-                <div className='flex-1 min-w-0'>
-                    <h1 className="text-3xl font-bold leading-tight truncate">
-                        {title}
-                    </h1>
+            
+            {isSupportIntelActive ? (
+                <SupportIntelligenceView onBack={() => handleViewChange('all-articles')} />
+            ) : (
+                <>
+                    {sidebarView === 'knowledge-bases' && breadcrumbs.length > 0 && !isMobile && (
+                        <Breadcrumbs crumbs={breadcrumbs} onCrumbClick={(id) => {
+                            setSelectedCollectionId(id);
+                        }} />
+                    )}
+                    <div className="flex flex-col md:flex-row justify-between md:items-start mb-4 gap-4 shrink-0">
+                        <div className='flex-1 min-w-0'>
+                            <h1 className="text-3xl font-bold leading-tight truncate">
+                                {title}
+                            </h1>
 
-                    {sidebarView === 'knowledge-bases' && activeHelpCenter && (
-                        <div className="flex items-center gap-3 mt-3 flex-nowrap">
-                            <div className="flex items-center gap-1.5 shrink-0 bg-muted/50 px-2.5 py-1 rounded-md border text-xs text-muted-foreground">
-                                {activeHelpCenter.visibility === 'internal' ? (
-                                    <><Lock className="h-3.5 w-3.5" /> <span className="font-medium">Internal</span></>
-                                ) : (
-                                    <><Globe className="h-3.5 w-3.5" /> <span className="font-medium">Public</span></>
-                                )}
-                            </div>
-
-                            <Separator orientation="vertical" className="h-4 bg-border/50" />
-
-                            <div className="flex items-center gap-2 overflow-hidden bg-muted/50 px-2.5 py-1 rounded-md border text-xs text-muted-foreground shrink-0">
-                                <div className="flex items-center gap-1.5 shrink-0 pr-2">
-                                    <BotIcon className="h-3.5 w-3.5" />
-                                    <span className="font-medium">Agents</span>
-                                </div>
-                                {connectedAgents.length > 0 ? (
-                                    <div className="flex items-center -space-x-1.5 shrink-0">
-                                        <TooltipProvider>
-                                            {connectedAgents.slice(0, 3).map(agent => (
-                                                <Tooltip key={agent.id}>
-                                                    <TooltipTrigger asChild>
-                                                        <Avatar className="h-5 w-5 border-2 border-background ring-1 ring-border/50">
-                                                            <AvatarImage src={agent.styleSettings?.logoUrl} />
-                                                            <AvatarFallback className="bg-muted">
-                                                                <BotIcon className="h-3 w-3"/>
-                                                            </AvatarFallback>
-                                                        </Avatar>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent><p>{agent.name}</p></TooltipContent>
-                                                </Tooltip>
-                                            ))}
-                                        </TooltipProvider>
-                                        {connectedAgents.length > 3 && (
-                                            <Avatar className="h-5 w-5 border-2 border-background ring-1 ring-border/50 bg-muted">
-                                                <AvatarFallback className="text-[8px]">+{connectedAgents.length - 3}</AvatarFallback>
-                                            </Avatar>
+                            {sidebarView === 'knowledge-bases' && activeHelpCenter && (
+                                <div className="flex items-center gap-3 mt-3 flex-nowrap">
+                                    <div className="flex items-center gap-1.5 shrink-0 bg-muted/50 px-2.5 py-1 rounded-md border text-xs text-muted-foreground">
+                                        {activeHelpCenter.visibility === 'internal' ? (
+                                            <><Lock className="h-3.5 w-3.5" /> <span className="font-medium">Internal</span></>
+                                        ) : (
+                                            <><Globe className="h-3.5 w-3.5" /> <span className="font-medium">Public</span></>
                                         )}
                                     </div>
-                                ) : (
-                                    <span className="italic opacity-60">None</span>
-                                )}
-                            </div>
+
+                                    <Separator orientation="vertical" className="h-4 bg-border/50" />
+
+                                    <div className="flex items-center gap-2 overflow-hidden bg-muted/50 px-2.5 py-1 rounded-md border text-xs text-muted-foreground shrink-0">
+                                        <div className="flex items-center gap-1.5 shrink-0 pr-2">
+                                            <BotIcon className="h-3.5 w-3.5" />
+                                            <span className="font-medium">Agents</span>
+                                        </div>
+                                        {bots.filter(b => b.allowedHelpCenterIds?.includes(activeHelpCenter.id)).length > 0 ? (
+                                            <div className="flex items-center -space-x-1.5 shrink-0">
+                                                {bots.filter(b => b.allowedHelpCenterIds?.includes(activeHelpCenter.id)).slice(0, 3).map(agent => (
+                                                    <TooltipProvider key={agent.id}>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Avatar className="h-5 w-5 border-2 border-background ring-1 ring-border/50">
+                                                                    <AvatarImage src={agent.styleSettings?.logoUrl} />
+                                                                    <AvatarFallback className="bg-muted">
+                                                                        <BotIcon className="h-3 w-3"/>
+                                                                    </AvatarFallback>
+                                                                </Avatar>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent><p>{agent.name}</p></TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span className="italic opacity-60">None</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                            {sidebarView === 'knowledge-bases' && activeHelpCenterId && !selectedCollectionId && (
+                                <Button variant="outline" size="sm" onClick={() => setIsAddArticlesOpen(true)}>Add Articles</Button>
+                            )}
+                            {sidebarView === 'knowledge-bases' && (
+                                <Button variant="outline" size="sm" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
+                                    <FolderPlus className="mr-2 h-4 w-4" /> New Collection
+                                </Button>
+                            )}
+                            <Button onClick={handleCreateArticle} className="hidden md:flex">
+                                <Plus className="mr-2 h-4 w-4" /> New Article
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="flex justify-between items-center mb-4 gap-2 shrink-0">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="Search..." className="pl-9 h-9" />
+                        </div>
+                    </div>
+                    {selectedItems.length > 0 && (
+                        <div className="flex items-center gap-2 mb-4 p-2 border rounded-md bg-muted/50 shrink-0">
+                            <span className="text-sm font-medium">{selectedItems.length} item(s) selected</span>
+                            <Button variant="secondary" size="sm" onClick={() => setIsMoveToFolderOpen(true)}>
+                                <Move className="mr-2 h-4 w-4" /> Move...
+                            </Button>
+                            <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteDialogOpen(true)}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </Button>
                         </div>
                     )}
-                </div>
-                 <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-                    {sidebarView === 'knowledge-bases' && activeHelpCenterId && !selectedCollectionId && (
-                        <Button variant="outline" size="sm" onClick={() => setIsAddArticlesOpen(true)}>Add Articles</Button>
-                    )}
-                    {sidebarView === 'knowledge-bases' && (
-                        <Button variant="outline" size="sm" onClick={() => handleNewCollection(selectedCollectionId || undefined)}>
-                            <FolderPlus className="mr-2 h-4 w-4" /> New Collection
-                        </Button>
-                    )}
-                    <Button onClick={handleCreateArticle} className="hidden md:flex">
-                        <Plus className="mr-2 h-4 w-4" /> New Article
-                    </Button>
-                </div>
-            </div>
-             <div className="flex justify-between items-center mb-4 gap-2 shrink-0">
-                <div className="relative flex-1">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search..." className="pl-9 h-9" />
-                </div>
-             </div>
-             {selectedItems.length > 0 && (
-                 <div className="flex items-center gap-2 mb-4 p-2 border rounded-md bg-muted/50 shrink-0">
-                    <span className="text-sm font-medium">{selectedItems.length} item(s) selected</span>
-                    <Button variant="secondary" size="sm" onClick={() => setIsMoveToFolderOpen(true)}>
-                        <Move className="mr-2 h-4 w-4" /> Move...
-                    </Button>
-                     <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteDialogOpen(true)}>
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                    </Button>
-                 </div>
-             )}
-            <div className="flex-1 -mx-4 md:-mx-6 overflow-hidden">
-                <ScrollArea className="h-full">
-                  <div className="px-4 md:px-6">
-                    <HelpCenterArticleList
-                        items={combinedItems}
-                        helpCenters={helpCenters}
-                        onSelectItem={(id, type) => type === 'article' ? handleSelectArticle(id) : setSelectedCollectionId(id)}
-                        selectedItems={selectedItems}
-                        onToggleSelectItem={handleToggleSelectItem}
-                        onToggleAll={handleToggleAll}
-                        isAllSelected={combinedItems.length > 0 && selectedItems.length === combinedItems.length}
-                        isMobile={isMobile}
-                    />
-                  </div>
-                </ScrollArea>
-            </div>
-             {isMobile && (
+                    <div className="flex-1 -mx-4 md:-mx-6 overflow-hidden">
+                        <ScrollArea className="h-full">
+                        <div className="px-4 md:px-6">
+                            <HelpCenterArticleList
+                                items={combinedItems}
+                                helpCenters={helpCenters}
+                                onSelectItem={(id, type) => type === 'article' ? handleSelectArticle(id) : setSelectedCollectionId(id)}
+                                selectedItems={selectedItems}
+                                onToggleSelectItem={handleToggleSelectItem}
+                                onToggleAll={handleToggleAll}
+                                isAllSelected={combinedItems.length > 0 && selectedItems.length === combinedItems.length}
+                                isMobile={isMobile}
+                            />
+                        </div>
+                        </ScrollArea>
+                    </div>
+                </>
+            )}
+             {isMobile && !isSupportIntelActive && (
                 <Button className="absolute bottom-24 right-4 h-14 w-14 rounded-full shadow-lg" onClick={handleCreateArticle}>
                    <Plus className="h-6 w-6" />
                 </Button>

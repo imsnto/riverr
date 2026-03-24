@@ -21,9 +21,8 @@ import {
   DollarSign,
   Grid2X2,
   Plus,
-  BrainCircuit,
 } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { Separator } from "../ui/separator";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { Space, Hub, User } from "@/lib/data";
@@ -188,7 +187,6 @@ const allMiddleItems: {
   { key: "inbox", icon: MessageCircle, label: 'Inbox' },
   { key: "contacts", icon: Users, label: 'Contacts' },
   { key: 'help-center', icon: BookOpen, label: 'Knowledge' },
-  { key: 'support-intelligence', icon: BrainCircuit, label: 'Intelligence' },
 ];
 
 const allBottomItems: {
@@ -269,7 +267,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     (item) => item.fixed || hubComponents.includes(item.key)
   );
   const middleItems = allMiddleItems.filter(
-    (item) => item.fixed || hubComponents.includes(item.key) || item.key === 'support-intelligence'
+    (item) => item.fixed || hubComponents.includes(item.key)
   );
   const bottomItems = allBottomItems.filter(
     (item) => item.fixed || hubComponents.includes(item.key)

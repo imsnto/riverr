@@ -1,4 +1,5 @@
 
+// src/components/dashboard/dashboard.tsx
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -56,7 +57,6 @@ import DealsBoard from './deals-board';
 import { DealFormValues } from './create-deal-dialog';
 import { reindexArticleAction, addChatMessage as addChatMessageAction } from '@/app/actions/chat';
 import TicketsBoard from './tickets-board';
-import SupportIntelligenceView from './support-intelligence-view';
 import { ContentSkeleton } from './content-skeleton';
 import { LayoutTemplate } from 'lucide-react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -498,7 +498,7 @@ export default function Dashboard({ view }: { view: string }) {
   };
 
   const renderView = () => {
-    const hubRequiredViews = ['overview', 'tasks', 'tickets', 'deals', 'inbox', 'help-center', 'support-intelligence'];
+    const hubRequiredViews = ['overview', 'tasks', 'tickets', 'deals', 'inbox', 'help-center'];
     const isHubRequired = hubRequiredViews.includes(view);
 
     if (isHubRequired && !activeHub) {
@@ -529,7 +529,6 @@ export default function Dashboard({ view }: { view: string }) {
       case 'tickets': return <TicketsBoard tickets={tickets} onUpdateTickets={handleUpdateTickets} conversations={chatConversations} activeHub={activeHub!} activeSpace={activeSpace!} allHubs={allHubs} allUsers={allUsers} onUpdateActiveHub={handleUpdateActiveHub} onNavigateToSettings={() => router.push(`/space/${activeSpace?.id}/hub/${activeHub?.id}/settings`)} escalationRules={escalationRules} projects={projects} contacts={contacts} onDataRefresh={fetchData} onCreateTicket={handleCreateTicket} onEscalateTicket={handleEscalateTicket} allTasks={tasks} onTaskSelect={setSelectedTask} />;
       case 'deals': return <DealsBoard deals={deals} onUpdateDeals={handleUpdateDeals} onAddDeal={handleAddDeal} onDataRefresh={fetchData} contacts={contacts} activeHub={activeHub!} activeSpace={activeSpace!} allUsers={allUsers} onUpdateActiveHub={handleUpdateActiveHub} onNavigateToSettings={() => router.push(`/space/${activeSpace?.id}/hub/${activeHub?.id}/settings`)} />;
       case 'help-center': return <HelpCenterLayout bots={bots} />;
-      case 'support-intelligence': return <SupportIntelligenceView />;
       case 'contacts': return <ContactsLayout activeSpace={activeSpace} contacts={contacts} />;
       case 'settings': return <SettingsLayout {...sp} />;
       case 'team-timesheets': return <TeamTimesheets allSpaces={userSpaces} allUsers={allUsers} projects={projects} tasks={tasks} timeEntries={timeEntries} appUser={appUser!} activeHub={activeHub} />;
