@@ -1,12 +1,13 @@
+
 import { VertexAI } from '@google-cloud/vertexai';
 
 const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || 'timeflow-6i3eo';
 const location = process.env.GOOGLE_CLOUD_LOCATION || process.env.VERTEX_LOCATION || 'us-central1';
 
-// Standardized model for high-fidelity retrieval
-const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'gemini-embedding-2-preview';
+// ✅ v2 MODEL STANDARD: Gecko-class model for optimal balance of speed and semantic depth.
+const EMBEDDING_MODEL = 'text-embedding-004';
 
-// Firestore vector search supports a maximum of 2048 dimensions.
+// ✅ FIRESTORE VECTOR CAP: Matches the output dimensionality of text-embedding-004.
 const EMBEDDING_DIM = 2048;
 
 let vertexAIInstance: VertexAI | null = null;
@@ -22,7 +23,7 @@ function getVertexAI() {
 }
 
 /**
- * Generates an embedding for documentation content (articles, PDFs, etc).
+ * Generates an embedding for documentation content (articles, topics, etc).
  * Uses taskType: RETRIEVAL_DOCUMENT for optimal indexing.
  */
 export async function generateDocumentEmbedding(text: string): Promise<number[] | null> {

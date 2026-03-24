@@ -12,6 +12,7 @@ export type VectorSearchResult = {
   sourceId?: string;
   sourceType?: string;
   helpCenterId?: string | null;
+  libraryId?: string | null;
   visibility?: string;
   allowedUserIds?: string[];
   intentKey?: string;
@@ -19,22 +20,19 @@ export type VectorSearchResult = {
 };
 
 /**
- * Searches the curated Help Center Articles index.
- * Tier 1: Highest Trust
- * Updated to fix cross-hub grounding issues by relaxing hubId filter
- * when specific libraries are targeted.
+ * Searches the canonical curated Articles index.
+ * Tier 1: Highest Trust (Promoted Documentation)
  */
 export async function searchArticles(args: {
   query: string;
   hubId: string;
   spaceId: string;
-  allowedHelpCenterIds?: string[];
+  allowedLibraryIds?: string[];
   limit?: number;
 }): Promise<VectorSearchResult[]> {
-  const { query, hubId, spaceId, allowedHelpCenterIds, limit = 8 } = args;
+  const { query, hubId, spaceId, allowedLibraryIds, limit = 8 } = args;
   
-  // PLUMBING: If a whitelist is provided but is empty, the agent has no grounded articles.
-  if (allowedHelpCenterIds && allowedHelpCenterIds.length === 0) {
+  if (allowedLibraryIds && allowedLibraryIds.length === 0) {
     return [];
   }
 
@@ -42,21 +40,16 @@ export async function searchArticles(args: {
   if (!embedding) return [];
 
   try {
-    const coll = adminDB.collection('brain_chunks');
+    // Search the canonical articles collection
+    const coll = adminDB.collection('articles');
     
-    // Base filters
     let q = (coll as any)
-      .where('spaceId', '==', spaceId) // Essential for multi-tenant security
-      .where('sourceType', '==', 'help_center_article')
-      .where('status', '==', 'active');
+      .where('spaceId', '==', spaceId)
+      .where('status', '==', 'published');
 
-    // Filter by specifically authorized help centers
-    if (allowedHelpCenterIds && allowedHelpCenterIds.length > 0) {
-      // FIX: If library IDs are provided, we search those specific libraries regardless of their hub.
-      // This allows an Agent from Hub A to answer from its libraries when assigned to a Widget in Hub B.
-      q = q.where('helpCenterId', 'in', allowedHelpCenterIds.slice(0, 10));
+    if (allowedLibraryIds && allowedLibraryIds.length > 0) {
+      q = q.where('destinationLibraryId', 'in', allowedLibraryIds.slice(0, 10));
     } else {
-      // If no explicit whitelist, default to searching the current hub's knowledge.
       q = q.where('hubId', '==', hubId);
     }
 
@@ -72,15 +65,12 @@ export async function searchArticles(args: {
       const data = doc.data();
       return {
         id: doc.id,
-        text: data.text,
+        text: data.body,
         title: data.title,
-        url: data.url,
-        sourceId: data.sourceId,
         sourceType: 'article',
-        helpCenterId: data.helpCenterId,
+        libraryId: data.destinationLibraryId,
         visibility: data.visibility || 'public',
-        allowedUserIds: data.allowedUserIds || [],
-        score: typeof doc.distance === 'number' ? 1 - doc.distance : 0.8,
+        score: typeof doc.distance === 'number' ? 1 - doc.distance : 0.85,
       };
     });
   } catch (err) {
@@ -90,8 +80,8 @@ export async function searchArticles(args: {
 }
 
 /**
- * Searches the semantic Topics index (recurring patterns).
- * Tier 2: Medium Trust
+ * Searches the semantic Topics index.
+ * Tier 2: Medium Trust (Grouped Intelligence)
  */
 export async function searchTopics(args: {
   query: string;
@@ -121,7 +111,7 @@ export async function searchTopics(args: {
         title: data.title,
         text: data.summary || data.title,
         sourceType: 'topic',
-        score: typeof doc.distance === 'number' ? 1 - doc.distance : 0.75,
+        score: typeof doc.distance === 'number' ? 1 - doc.distance : 0.8,
       };
     });
   } catch (err) {
@@ -131,8 +121,8 @@ export async function searchTopics(args: {
 }
 
 /**
- * Searches the raw Insights index (learned memories).
- * Tier 3: Lower Trust / Internal Learning
+ * Searches individual Insights.
+ * Tier 3: Supporting Internal Signal
  */
 export async function searchInsights(args: {
   query: string;
@@ -163,7 +153,7 @@ export async function searchInsights(args: {
         title: data.title,
         text: data.content,
         sourceType: 'insight',
-        score: typeof doc.distance === 'number' ? 1 - doc.distance : 0.7,
+        score: typeof doc.distance === 'number' ? 1 - doc.distance : 0.75,
       };
     });
   } catch (err) {

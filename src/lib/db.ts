@@ -183,9 +183,10 @@ export const createImportedSource = async (source: Omit<ImportedSource, 'id'>): 
 };
 
 export const getImportedSources = async (spaceId: string): Promise<ImportedSource[]> => {
-  const q = query(collection(db, 'imported_sources'), where('spaceId', '==', spaceId), orderBy('createdAt', 'desc'), limit(50));
+  const q = query(collection(db, 'imported_sources'), where('spaceId', '==', spaceId), limit(50));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as ImportedSource));
+  const results = snap.docs.map(d => ({ id: d.id, ...d.data() } as ImportedSource));
+  return results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 };
 
 export const subscribeToInsights = (spaceId: string, callback: (insights: Insight[]) => void) => {
@@ -229,8 +230,18 @@ export const addArticle = async (article: Omit<Article, 'id'>): Promise<Article>
   return { id: docRef.id, ...article };
 };
 
-export const promoteToArticle = async (article: Omit<Article, 'id'>): Promise<Article> => {
-  return addArticle(article);
+export const getArticles = async (spaceId: string): Promise<Article[]> => {
+  const q = query(collection(db, 'articles'), where('spaceId', '==', spaceId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as Article));
+};
+
+export const updateArticle = async (id: string, data: Partial<Article>) => {
+  await updateDoc(doc(db, 'articles', id), data);
+};
+
+export const deleteArticle = async (id: string) => {
+  await deleteDoc(doc(db, 'articles', id));
 };
 
 // --- Projects ---
@@ -324,8 +335,7 @@ export const getBrainChunks = async (hubId: string): Promise<any[]> => {
   try {
     const snap = await getDocs(q);
     const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    docs.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-    return docs;
+    return docs.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
   } catch (err) {
     const fallbackQ = query(collection(db, 'brain_chunks'), where('hubId', '==', hubId), limit(100));
     const fallbackSnap = await getDocs(fallbackQ);
