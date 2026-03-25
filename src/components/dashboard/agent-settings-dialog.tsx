@@ -262,6 +262,47 @@ interface AgentSettingsDialogProps {
   allUsers: User[];
 }
 
+const DEFAULT_AGENT_VALUES: Partial<AgentSettingsFormValues> = {
+  name: '',
+  webAgentName: '',
+  roleTitle: '',
+  intelligenceAccessLevel: 'topics_only',
+  tone: 'friendly',
+  voiceNotes: '',
+  responseLength: 'balanced',
+  primaryGoal: '',
+  secondaryGoal: '',
+  closingTemplate: '',
+  successCriteria: '',
+  businessContext: {
+    businessName: '',
+    location: '',
+    description: '',
+    targetAudience: '',
+    businessHours: '',
+    minOrder: '',
+    turnaround: '',
+    differentiators: '',
+    forbiddenTopics: '',
+  },
+  escalation: {
+    enabled: true,
+    notifyEmail: '',
+    highValue: { enabled: false, threshold: 500 },
+    frustration: true,
+    repeatedFailures: true,
+    complexRequests: true,
+    maxFailures: 2,
+  },
+  safety: {
+    neverPretendHuman: true,
+    askClarifyingWhenUnsure: true,
+    offerHumanWhenUnsure: true,
+    avoidHallucination: true,
+    strictMode: false,
+  }
+};
+
 export default function AgentSettingsDialog({
   isOpen,
   onOpenChange,
@@ -277,7 +318,7 @@ export default function AgentSettingsDialog({
 
   const form = useForm<AgentSettingsFormValues>({
     resolver: zodResolver(agentSettingsSchema),
-    defaultValues: bot ? (bot as any) : undefined,
+    defaultValues: bot ? { ...DEFAULT_AGENT_VALUES, ...(bot as any) } : DEFAULT_AGENT_VALUES as any,
   });
 
   const { fields: productFields, append: appendProduct, remove: removeProduct } = useFieldArray({ control: form.control, name: "products" });
@@ -289,7 +330,7 @@ export default function AgentSettingsDialog({
 
   useEffect(() => {
     if (isOpen && bot) {
-      form.reset(bot as any);
+      form.reset({ ...DEFAULT_AGENT_VALUES, ...(bot as any) });
     }
   }, [bot, form, isOpen]);
 
@@ -363,13 +404,13 @@ export default function AgentSettingsDialog({
                       </div>
                       <div className="grid grid-cols-2 gap-6">
                         <FormField control={form.control} name="webAgentName" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Public Agent Name</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Public Agent Name</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="name" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Internal ID</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Internal ID</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="roleTitle" render={({ field }) => (
-                          <FormItem className="col-span-2"><FormLabel className="text-xs">Official Role / Job Title</FormLabel><FormControl><Input {...field} placeholder="e.g. Customer Support" /></FormControl></FormItem>
+                          <FormItem className="col-span-2"><FormLabel className="text-xs">Official Role / Job Title</FormLabel><FormControl><Input {...field} value={field.value || ''} placeholder="e.g. Customer Support" /></FormControl></FormItem>
                         )} />
                       </div>
                     </section>
@@ -431,7 +472,7 @@ export default function AgentSettingsDialog({
                           </FormItem>
                         )} />
                         <FormField control={form.control} name="voiceNotes" render={({ field }) => (
-                          <FormItem className="col-span-2"><FormLabel className="text-xs">Custom Voice & Style Constraints</FormLabel><FormControl><Textarea rows={3} {...field} placeholder="e.g. Never use emojis. Use industry terminology." /></FormControl></FormItem>
+                          <FormItem className="col-span-2"><FormLabel className="text-xs">Custom Voice & Style Constraints</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value || ''} placeholder="e.g. Never use emojis. Use industry terminology." /></FormControl></FormItem>
                         )} />
                       </div>
                     </section>
@@ -443,13 +484,13 @@ export default function AgentSettingsDialog({
                       </div>
                       <div className="grid gap-6">
                         <FormField control={form.control} name="primaryGoal" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Primary Conversation Objective</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Primary Conversation Objective</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value || ''} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="secondaryGoal" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Secondary Objective</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Secondary Objective</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value || ''} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="closingTemplate" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Default Closing Signature</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Default Closing Signature</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value || ''} /></FormControl></FormItem>
                         )} />
                       </div>
                     </section>
@@ -465,28 +506,28 @@ export default function AgentSettingsDialog({
                       </div>
                       <div className="grid grid-cols-2 gap-6">
                         <FormField control={form.control} name="businessContext.businessName" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Legal/Official Name</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Legal/Official Name</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="businessContext.location" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Service Area / HQ</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Service Area / HQ</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="businessContext.description" render={({ field }) => (
-                          <FormItem className="col-span-2"><FormLabel className="text-xs">What You Actually Do</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
+                          <FormItem className="col-span-2"><FormLabel className="text-xs">What You Actually Do</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="businessContext.targetAudience" render={({ field }) => (
-                          <FormItem className="col-span-2"><FormLabel className="text-xs">Ideal Customer Profile</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                          <FormItem className="col-span-2"><FormLabel className="text-xs">Ideal Customer Profile</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="businessContext.businessHours" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Business Hours</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Business Hours</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="businessContext.minOrder" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Minimum Order / Lead Time</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className="text-xs">Minimum Order / Lead Time</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="businessContext.differentiators" render={({ field }) => (
-                          <FormItem className="col-span-2"><FormLabel className="text-xs">Key Differentiators (Why Us?)</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                          <FormItem className="col-span-2"><FormLabel className="text-xs">Key Differentiators (Why Us?)</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value || ''} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="businessContext.forbiddenTopics" render={({ field }) => (
-                          <FormItem className="col-span-2"><FormLabel className="text-xs">Strict Forbidden Topics</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                          <FormItem className="col-span-2"><FormLabel className="text-xs">Strict Forbidden Topics</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
                         )} />
                       </div>
                     </section>
@@ -556,10 +597,10 @@ export default function AgentSettingsDialog({
                               </h4>
                               <div className="grid gap-6">
                                 <FormField control={form.control} name="channelConfig.web.greeting.text" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Initial greeting</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
+                                  <FormItem><FormLabel className="text-xs">Initial greeting</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl></FormItem>
                                 )} />
                                 <FormField control={form.control} name="channelConfig.web.greeting.returningText" render={({ field }) => (
-                                  <FormItem><FormLabel className="text-xs">Returning visitor greeting</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                                  <FormItem><FormLabel className="text-xs">Returning visitor greeting</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value || ''} /></FormControl></FormItem>
                                 )} />
                               </div>
                             </section>

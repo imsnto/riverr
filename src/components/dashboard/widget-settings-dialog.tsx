@@ -96,6 +96,31 @@ interface WidgetSettingsDialogProps {
   activeSpace: Space | null;
 }
 
+const DEFAULT_WIDGET_VALUES: WidgetSettingsFormValues = {
+  name: '',
+  welcomeMessage: 'Hi! How can we help you today?',
+  agentIds: [],
+  assignedAgentId: null,
+  styleSettings: {
+    primaryColor: '#3b82f6',
+    backgroundColor: '#111827',
+    headerTextColor: '#ffffff',
+    customerTextColor: '#ffffff',
+    agentMessageBackgroundColor: '#374151',
+    agentMessageTextColor: '#ffffff',
+    chatbotIconsColor: '#3b82f6',
+    chatbotIconsTextColor: '#ffffff',
+    logoUrl: '',
+  },
+  identityCapture: {
+    enabled: false,
+    required: false,
+    timing: 'after',
+    captureMessage: '',
+    fields: { name: true, email: true, phone: false },
+  },
+};
+
 export default function WidgetSettingsDialog({
   isOpen,
   onOpenChange,
@@ -111,56 +136,33 @@ export default function WidgetSettingsDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const defaultValues: WidgetSettingsFormValues = {
-    name: 'New Web Chat',
-    welcomeMessage: 'Hi! How can we help you today?',
-    agentIds: [],
-    styleSettings: {
-      primaryColor: '#3b82f6',
-      backgroundColor: '#111827',
-      headerTextColor: '#ffffff',
-      customerTextColor: '#ffffff',
-      agentMessageBackgroundColor: '#374151',
-      agentMessageTextColor: '#ffffff',
-      chatbotIconsColor: '#3b82f6',
-      chatbotIconsTextColor: '#ffffff',
-      logoUrl: '',
-    },
-    identityCapture: {
-      enabled: false,
-      required: false,
-      timing: 'after',
-      fields: { name: true, email: true, phone: false },
-    },
-  };
-
   const form = useForm<WidgetSettingsFormValues>({
     resolver: zodResolver(widgetSettingsSchema),
-    defaultValues,
+    defaultValues: bot ? { ...DEFAULT_WIDGET_VALUES, ...bot } as any : DEFAULT_WIDGET_VALUES,
   });
 
   useEffect(() => {
     if (isOpen) {
       if (bot) {
         const mergedValues = {
-          ...defaultValues,
+          ...DEFAULT_WIDGET_VALUES,
           ...bot,
           styleSettings: {
-            ...defaultValues.styleSettings,
+            ...DEFAULT_WIDGET_VALUES.styleSettings,
             ...(bot.styleSettings || {})
           },
           identityCapture: {
-            ...defaultValues.identityCapture,
+            ...DEFAULT_WIDGET_VALUES.identityCapture,
             ...(bot.identityCapture || {}),
             fields: {
-              ...defaultValues.identityCapture.fields,
+              ...DEFAULT_WIDGET_VALUES.identityCapture.fields,
               ...(bot.identityCapture?.fields || {})
             }
           }
         };
         form.reset(mergedValues as any);
       } else {
-        form.reset(defaultValues);
+        form.reset(DEFAULT_WIDGET_VALUES);
       }
     }
   }, [bot, form, isOpen]);
@@ -335,7 +337,7 @@ export default function WidgetSettingsDialog({
                             <FormField control={form.control} name="welcomeMessage" render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-xs">Default Greeting</FormLabel>
-                                <FormControl><Textarea rows={4} placeholder="Hi! How can we help you?" {...field} /></FormControl>
+                                <FormControl><Textarea rows={4} placeholder="Hi! How can we help you?" {...field} value={field.value || ''} /></FormControl>
                               </FormItem>
                             )} />
                           </section>
@@ -468,12 +470,12 @@ function ColorInput({ form, name, label }: { form: any, name: string, label: str
             <FormControl>
               <div className="relative flex-1">
                 <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded shadow-inner border border-white/10" style={{ backgroundColor: field.value }} />
-                <Input {...field} className="pl-9 font-mono text-xs h-9 uppercase" />
+                <Input {...field} value={field.value || ''} className="pl-9 font-mono text-xs h-9 uppercase" />
               </div>
             </FormControl>
             <input 
               type="color" 
-              value={field.value} 
+              value={field.value || '#000000'} 
               onChange={(e) => field.onChange(e.target.value)} 
               className="w-9 h-9 rounded-md border border-white/10 bg-transparent p-1 cursor-pointer shrink-0" 
             />
