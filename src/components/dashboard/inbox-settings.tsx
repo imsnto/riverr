@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Bot as BotIcon, Edit, MoreHorizontal, Plus, Trash2, Copy, Check } from 'lucide-react';
+import { Bot as BotIcon, Edit, MoreHorizontal, Plus, Trash2, Copy, Check, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -181,16 +180,16 @@ export default function InboxSettings({
   return (
     <>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center text-left">
             <div>
                 <h1 className="text-2xl font-bold">{isWebChatMode ? 'Web Chat Widgets' : 'AI Agents'}</h1>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                     {isWebChatMode 
                         ? 'Manage your website chat interfaces and branding.' 
                         : 'Configure high-intelligence brains to handle your conversations.'}
                 </p>
             </div>
-            <Button onClick={handleNewBot}>
+            <Button onClick={handleNewBot} className="rounded-full shadow-lg shadow-primary/20">
                 <Plus className="mr-2 h-4 w-4" />
                 {isWebChatMode ? 'Create Widget' : 'Create Agent'}
             </Button>
@@ -198,7 +197,7 @@ export default function InboxSettings({
 
         <div className="space-y-4">
           {displayBots.map((bot) => (
-            <Card key={bot.id} className="overflow-hidden border border-white/10">
+            <Card key={bot.id} className="overflow-hidden border border-white/10 text-left">
               <CardHeader className="pb-4">
                 <div className="flex justify-between items-center">
                   <CardTitle className="flex items-center gap-3">
@@ -294,7 +293,7 @@ export default function InboxSettings({
 
           {displayBots.length === 0 && (
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
-              <BotIcon className="mx-auto h-12 w-12 text-muted-foreground" />
+              <BotIcon className="mx-auto h-12 w-12 text-muted-foreground opacity-20" />
               <h3 className="mt-2 text-lg font-semibold text-foreground">
                 No {isWebChatMode ? 'Widgets' : 'Agents'} Created
               </h3>
