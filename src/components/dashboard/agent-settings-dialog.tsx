@@ -20,6 +20,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { Bot as BotData, User, HelpCenter } from '@/lib/data';
 import { 
   BookOpen, 
