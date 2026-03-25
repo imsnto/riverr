@@ -1,25 +1,28 @@
 
 /**
- * @fileOverview Policy-Aware Retrieval Orchestrator (Vertex-Backed).
- * Implements the tiered trust model: Articles > Topics > Insights.
+ * @fileOverview Policy-Aware Retrieval Orchestrator (Vertex-backed)
  */
 
-import { vertexSearch, SearchParams, VectorSearchResult } from './vertex-search-service';
-import { IntelligenceAccessLevel } from '@/lib/data';
+import { searchArticles, searchTopics, searchInsights } from './vector-search';
 
 export interface AgentKnowledgePolicy {
   agentId?: string;
   isCustomerFacing: boolean;
-  accessLevel: IntelligenceAccessLevel;
+  accessLevel:
+    | 'none'
+    | 'articles_only'
+    | 'topics_allowed'
+    | 'insights_hidden_support'
+    | 'internal_full_access';
   allowedLibraryIds: string[];
 }
 
-export type AnswerMode = 
-  | 'article_grounded' 
-  | 'topic_supported' 
-  | 'insight_supported_hidden' 
-  | 'internal_evidence_only' 
-  | 'clarify' 
+export type AnswerMode =
+  | 'article_grounded'
+  | 'topic_supported'
+  | 'insight_supported_hidden'
+  | 'internal_evidence_only'
+  | 'clarify'
   | 'escalate';
 
 export interface RetrievalDecision {
@@ -38,21 +41,15 @@ export interface RetrievalDecision {
 
 const CONFIDENCE_THRESHOLDS = {
   ARTICLE: 0.78,
-  TOPIC: 0.80,
-  INSIGHT: 0.84,
+  TOPIC: 0.75,
+  INSIGHT: 0.70,
 };
 
 const BOOSTS = {
-  PUBLIC: { article: 1.0, topic: 0.75, insight: 0.45 },
-  INTERNAL: { article: 1.0, topic: 0.9, insight: 0.8 }
+  PUBLIC: { article: 1.0, topic: 0.8, insight: 0.5 },
+  INTERNAL: { article: 1.0, topic: 0.9, insight: 0.85 },
 };
 
-/**
- * TIERED RETRIEVAL ORCHESTRATOR
- * 1. Articles (Canonical Docs)
- * 2. Topics (Recurring Patterns)
- * 3. Insights (Internal Memories)
- */
 export async function orchestrateRetrieval(args: {
   message: string;
   hubId: string;
@@ -61,92 +58,112 @@ export async function orchestrateRetrieval(args: {
 }): Promise<RetrievalDecision> {
   const { message, hubId, spaceId, policy } = args;
 
-  console.log(`[Orchestrator] Running tiered retrieval for policy: ${policy.isCustomerFacing ? 'Public' : 'Internal'} (${policy.accessLevel})`);
-
-  // 1. Parallel Multi-Corpus Search via Vertex
-  const searchPromises: Promise<VectorSearchResult[]>[] = [
-    vertexSearch.search({
-      query: message,
-      sourceType: 'article',
-      spaceId,
-      libraryIds: policy.allowedLibraryIds,
-      limit: 5
-    })
-  ];
-
-  if (policy.accessLevel !== 'none') {
-    searchPromises.push(vertexSearch.search({
-      query: message,
-      sourceType: 'topic',
-      spaceId,
-      limit: 3
-    }));
-  }
-
-  const shouldSearchInsights = policy.accessLevel === 'insights_hidden_support' || policy.accessLevel === 'internal_full_access';
-  if (shouldSearchInsights) {
-    searchPromises.push(vertexSearch.search({
-      query: message,
-      sourceType: 'insight',
-      spaceId,
-      limit: 3
-    }));
-  }
-
-  const [articleRes = [], topicRes = [], insightRes = []] = await Promise.all(searchPromises);
-
-  // 2. Score Normalization & Weighing
   const boostMap = policy.isCustomerFacing ? BOOSTS.PUBLIC : BOOSTS.INTERNAL;
 
-  const scoredArticles = articleRes.map(r => ({ ...r, sourceType: 'article' as const, text: r.metadata.body, title: r.metadata.title, weightedScore: r.score * boostMap.article }));
-  const scoredTopics = topicRes.map(r => ({ ...r, sourceType: 'topic' as const, text: r.metadata.summary || r.metadata.title, title: r.metadata.title, weightedScore: r.score * boostMap.topic }));
-  const scoredInsights = insightRes.map(r => ({ ...r, sourceType: 'insight' as const, text: r.metadata.content, title: r.metadata.title, weightedScore: r.score * boostMap.insight }));
+  // 🧠 PARALLEL SEARCHES
+  const [articles, topics, insights] = await Promise.all([
+    searchArticles({
+      query: message,
+      hubId,
+      spaceId,
+      allowedHelpCenterIds: policy.allowedLibraryIds,
+    }),
 
-  // 3. Selection Hierarchy
-  const bestArticle = scoredArticles.sort((a, b) => b.weightedScore - a.weightedScore)[0];
-  const bestTopic = scoredTopics.sort((a, b) => b.weightedScore - a.weightedScore)[0];
-  const bestInsight = scoredInsights.sort((a, b) => b.weightedScore - a.weightedScore)[0];
+    policy.accessLevel !== 'none' && policy.accessLevel !== 'articles_only'
+      ? searchTopics({
+          query: message,
+          spaceId,
+          hubId,
+        })
+      : Promise.resolve([]),
 
-  // TIER 1: Curated Knowledge (Article)
+    policy.accessLevel === 'insights_hidden_support' ||
+    policy.accessLevel === 'internal_full_access'
+      ? searchInsights({
+          query: message,
+          hubId,
+          spaceId,
+        })
+      : Promise.resolve([]),
+  ]);
+
+  // 🎯 APPLY WEIGHTS
+  const scoredArticles = articles.map((a) => ({
+    ...a,
+    weightedScore: a.score * boostMap.article,
+  }));
+
+  const scoredTopics = topics.map((t) => ({
+    ...t,
+    weightedScore: t.score * boostMap.topic,
+  }));
+
+  const scoredInsights = insights.map((i) => ({
+    ...i,
+    weightedScore: i.score * boostMap.insight,
+  }));
+
+  // 🧮 SORT
+  scoredArticles.sort((a, b) => b.weightedScore - a.weightedScore);
+  scoredTopics.sort((a, b) => b.weightedScore - a.weightedScore);
+  scoredInsights.sort((a, b) => b.weightedScore - a.weightedScore);
+
+  const bestArticle = scoredArticles[0];
+  const bestTopic = scoredTopics[0];
+  const bestInsight = scoredInsights[0];
+
+  // ============================
+  // 🥇 TIER 1: ARTICLE (Highest Trust)
+  // ============================
   if (bestArticle && bestArticle.score >= CONFIDENCE_THRESHOLDS.ARTICLE) {
-    console.log(`[Orchestrator] Selection: article_grounded (Score: ${bestArticle.score.toFixed(3)})`);
     return {
       answerMode: 'article_grounded',
-      chosenCandidates: [bestArticle],
+      chosenCandidates: scoredArticles.slice(0, 3).map(a => ({...a, sourceType: 'article'})),
       confidence: bestArticle.score,
-      rationale: `Strong match in library: ${bestArticle.title}`
+      rationale: 'Strong article match found.',
     };
   }
 
-  // TIER 2: Pattern Supported (Topic)
+  // ============================
+  // 🥈 TIER 2: TOPIC (Pattern-based)
+  // ============================
   if (bestTopic && bestTopic.score >= CONFIDENCE_THRESHOLDS.TOPIC) {
-    console.log(`[Orchestrator] Selection: topic_supported (Score: ${bestTopic.score.toFixed(3)})`);
     return {
       answerMode: 'topic_supported',
-      chosenCandidates: [bestTopic],
+      chosenCandidates: [bestTopic].map(t => ({...t, sourceType: 'topic'})),
       confidence: bestTopic.score,
-      rationale: `Pattern detected: ${bestTopic.title}`
+      rationale: 'Recurring issue pattern matched (topic).',
     };
   }
 
-  // TIER 3: Intelligence Memory (Insight)
+  // ============================
+  // 🥉 TIER 3: INSIGHTS (Support memory)
+  // ============================
   if (bestInsight && bestInsight.score >= CONFIDENCE_THRESHOLDS.INSIGHT) {
-    const mode = policy.isCustomerFacing ? 'insight_supported_hidden' : 'internal_evidence_only';
-    console.log(`[Orchestrator] Selection: ${mode} (Score: ${bestInsight.score.toFixed(3)})`);
+    if (policy.isCustomerFacing) {
+      return {
+        answerMode: 'insight_supported_hidden',
+        chosenCandidates: [bestInsight].map(i => ({...i, sourceType: 'insight'})),
+        confidence: bestInsight.score,
+        rationale: 'Internal support knowledge used (hidden from user).',
+      };
+    }
+
     return {
-      answerMode: mode,
-      chosenCandidates: [bestInsight],
+      answerMode: 'internal_evidence_only',
+      chosenCandidates: [bestInsight].map(i => ({...i, sourceType: 'insight'})),
       confidence: bestInsight.score,
-      rationale: `Internal intelligence found: ${bestInsight.title}`
+      rationale: 'Internal-only insight used directly.',
     };
   }
 
-  // FALLBACK
-  console.log(`[Orchestrator] Selection: escalate (No high-confidence sources found)`);
+  // ============================
+  // 🆘 FALLBACK
+  // ============================
   return {
-    answerMode: 'escalate',
+    answerMode: policy.isCustomerFacing ? 'clarify' : 'escalate',
     chosenCandidates: [],
     confidence: 0,
-    rationale: "No curated articles or intelligence patterns met confidence threshold."
+    rationale: 'No high-confidence knowledge found.',
   };
 }

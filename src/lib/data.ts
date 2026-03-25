@@ -657,7 +657,8 @@ export interface AutomationFlow {
 
 export type IntelligenceAccessLevel = 
   | 'none' 
-  | 'topics_only' 
+  | 'articles_only' 
+  | 'topics_allowed' 
   | 'insights_hidden_support' 
   | 'internal_full_access';
 

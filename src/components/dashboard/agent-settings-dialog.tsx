@@ -77,7 +77,7 @@ const agentSettingsSchema = z.object({
   roleTitle: z.string().optional(),
 
   // Intelligence - Knowledge Retrieval Policy
-  intelligenceAccessLevel: z.enum(['none', 'topics_only', 'insights_hidden_support', 'internal_full_access']).default('topics_only'),
+  intelligenceAccessLevel: z.enum(['none', 'articles_only', 'topics_allowed', 'insights_hidden_support', 'internal_full_access']).default('topics_allowed'),
 
   // Intelligence - Personality
   tone: z.enum(['friendly', 'formal', 'expert', 'direct', 'warm']).default('friendly'),
@@ -266,7 +266,7 @@ const DEFAULT_AGENT_VALUES: Partial<AgentSettingsFormValues> = {
   name: '',
   webAgentName: '',
   roleTitle: '',
-  intelligenceAccessLevel: 'topics_only',
+  intelligenceAccessLevel: 'topics_allowed',
   tone: 'friendly',
   voiceNotes: '',
   responseLength: 'balanced',
@@ -426,8 +426,9 @@ export default function AgentSettingsDialog({
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                             <SelectContent>
-                              <SelectItem value="none">Library Articles Only (Strict)</SelectItem>
-                              <SelectItem value="topics_only">Articles + Topic Patterns</SelectItem>
+                              <SelectItem value="none">Disabled (No Context)</SelectItem>
+                              <SelectItem value="articles_only">Library Articles Only (Strict)</SelectItem>
+                              <SelectItem value="topics_allowed">Articles + Intelligence Topics</SelectItem>
                               <SelectItem value="insights_hidden_support">Articles + Hidden Support Signal</SelectItem>
                               <SelectItem value="internal_full_access">Full Internal Memory (Internal Copilot)</SelectItem>
                             </SelectContent>
