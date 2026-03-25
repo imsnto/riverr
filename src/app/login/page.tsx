@@ -39,6 +39,20 @@ function LoginContent() {
         }
     }, [status, router, redirectUrl]);
 
+    const handleGoogleSignIn = async () => {
+        try {
+            await signInWithGoogle();
+        } catch (error: any) {
+            if (error.code !== 'auth/popup-closed-by-user') {
+                toast({
+                    variant: 'destructive',
+                    title: 'Google Login Failed',
+                    description: 'Please try again or use email login. Ensure your domain is authorized in Firebase.',
+                });
+            }
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -86,7 +100,8 @@ function LoginContent() {
                 </div>
                 
                 <div className="space-y-4">
-                     <Button variant="outline" className="w-full h-12 text-base" onClick={signInWithGoogle}>
+                     <Button variant="outline" className="w-full h-12 text-base" onClick={handleGoogleSignIn} disabled={status === 'loading'}>
+                        {status === 'loading' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         <GoogleIcon />
                         Continue with Google
                     </Button>
@@ -115,7 +130,7 @@ function LoginContent() {
                             <Label htmlFor="password">Password</Label>
                             <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
                         </div>
-                        <Button type="submit" className="w-full h-12 text-base" disabled={loading}>
+                        <Button type="submit" className="w-full h-12 text-base" disabled={loading || status === 'loading'}>
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Continue with Email')}
                         </Button>

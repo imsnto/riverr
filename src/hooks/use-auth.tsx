@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
@@ -6,6 +7,7 @@ import {
   onAuthStateChanged, 
   User as FirebaseUser, 
   signOut as firebaseSignOut, 
+  signInWithPopup,
   signInWithRedirect, 
   getRedirectResult,
   createUserWithEmailAndPassword, 
@@ -207,11 +209,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signInWithGoogle = async () => {
     setStatus('loading');
     try {
-      // Switched to Redirect to avoid popup blockers and 403 popup issues
-      await signInWithRedirect(auth, googleProvider);
-    } catch (error) {
-      console.error("Error initiating Google Sign-In:", error);
+      // Use Popup for better reliability in modern browsers
+      await signInWithPopup(auth, googleProvider);
+    } catch (error: any) {
+      console.error("Error during Google Sign-In:", error);
       setStatus('unauthenticated');
+      
+      // If popup is blocked or we hit an unauthorized domain, handle accordingly
+      if (error.code === 'auth/unauthorized-domain') {
+        window.location.href = '/unauthorized';
+      }
+      throw error; // Rethrow to allow component to handle UI feedback
     }
   };
 
