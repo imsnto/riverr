@@ -173,7 +173,8 @@ interface AgentSettingsDialogProps {
   allUsers: User[];
 }
 
-const DEFAULT_AGENT_VALUES: Partial<AgentSettingsFormValues> = {
+const DEFAULT_AGENT_VALUES: AgentSettingsFormValues = {
+  type: 'agent',
   name: '',
   webAgentName: '',
   roleTitle: '',
@@ -182,6 +183,14 @@ const DEFAULT_AGENT_VALUES: Partial<AgentSettingsFormValues> = {
   voiceNotes: '',
   responseLength: 'balanced',
   primaryGoal: 'Provide helpful support answers.',
+  secondaryGoal: '',
+  closingTemplate: '',
+  escalation: {
+    enabled: true,
+    notifyEmail: '',
+    frustration: true,
+    repeatedFailures: true,
+  },
   businessContext: {
     businessName: '',
     location: '',
@@ -198,10 +207,29 @@ const DEFAULT_AGENT_VALUES: Partial<AgentSettingsFormValues> = {
   objections: [],
   allowedHelpCenterIds: [],
   channelConfig: {
-    web: { enabled: true, greeting: { text: 'Hi! How can I help today?', returningText: 'Welcome back!' } },
-    sms: { enabled: false, openingText: 'Hi! How can I help?', maxResponseLength: 160, leadCaptureMessage: '', handoffKeywords: [] },
-    phone: { enabled: false, operationMode: 'handoff', greetingScript: '', voicemailScript: '', transcribeCalls: true },
-    email: { enabled: false, approvalMode: 'auto_exceptions', standardSignoff: '' }
+    web: {
+      enabled: true,
+      greeting: { text: 'Hi! How can I help today?', returningText: 'Welcome back. How can I help today?' }
+    },
+    sms: {
+      enabled: false,
+      openingText: 'Hi! How can I help?',
+      maxResponseLength: 160,
+      leadCaptureMessage: "If you'd like, I can grab your email and have the team follow up with more details.",
+      handoffKeywords: ['agent', 'human', 'person', 'call me'],
+    },
+    phone: {
+      enabled: false,
+      operationMode: 'handoff',
+      greetingScript: 'Thank you for calling. How can I help today?',
+      voicemailScript: 'We’re unavailable right now. Please leave a message.',
+      transcribeCalls: true,
+    },
+    email: {
+      enabled: false,
+      approvalMode: 'auto_exceptions',
+      standardSignoff: 'Best regards, {{agent_name}}',
+    }
   }
 };
 
@@ -220,7 +248,7 @@ export default function AgentSettingsDialog({
 
   const form = useForm<AgentSettingsFormValues>({
     resolver: zodResolver(agentSettingsSchema),
-    defaultValues: bot ? { ...DEFAULT_AGENT_VALUES, ...(bot as any) } : DEFAULT_AGENT_VALUES as any,
+    defaultValues: bot ? { ...DEFAULT_AGENT_VALUES, ...bot } as any : DEFAULT_AGENT_VALUES,
   });
 
   const { fields: productFields, append: appendProduct, remove: removeProduct } = useFieldArray({ control: form.control, name: "products" });
@@ -230,9 +258,9 @@ export default function AgentSettingsDialog({
   useEffect(() => {
     if (isOpen) {
       if (bot) {
-        form.reset({ ...DEFAULT_AGENT_VALUES, ...(bot as any) });
+        form.reset({ ...DEFAULT_AGENT_VALUES, ...bot } as any);
       } else {
-        form.reset(DEFAULT_AGENT_VALUES as any);
+        form.reset(DEFAULT_AGENT_VALUES);
       }
     }
   }, [bot, form, isOpen]);
@@ -240,6 +268,7 @@ export default function AgentSettingsDialog({
   const watchedValues = form.watch();
 
   const onSubmit = (values: AgentSettingsFormValues) => {
+    console.log('Submitting Agent Settings:', values);
     const payload: BotData | Omit<BotData, 'id' | 'hubId'> = {
       ...(bot || {}),
       ...values,
@@ -248,6 +277,15 @@ export default function AgentSettingsDialog({
 
     onSave(payload);
     onOpenChange(false);
+  };
+
+  const onError = (errors: any) => {
+    console.error('Agent Settings Validation Errors:', errors);
+    toast({
+      variant: 'destructive',
+      title: 'Missing required fields',
+      description: 'Please ensure Internal Name, Public Name, and Primary Goal are filled out.',
+    });
   };
 
   return (
@@ -289,7 +327,7 @@ export default function AgentSettingsDialog({
               </div>
 
               <div className="flex items-center gap-4">
-                <Button onClick={form.handleSubmit(onSubmit)} className="rounded-full h-9 px-6 font-bold">Save Agent</Button>
+                <Button onClick={form.handleSubmit(onSubmit, onError)} className="rounded-full h-9 px-6 font-bold">Save Agent</Button>
                 <Button type="button" variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="rounded-full"><X className="h-5 w-5" /></Button>
               </div>
             </div>
@@ -297,7 +335,7 @@ export default function AgentSettingsDialog({
 
         <ScrollArea className="flex-1">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="p-10 max-w-4xl mx-auto pb-32 space-y-16">
+            <form onSubmit={form.handleSubmit(onSubmit, onError)} className="p-10 max-w-4xl mx-auto pb-32 space-y-16">
                 {activeTab === 'intelligence' && (
                   <div className="space-y-16 animate-in fade-in duration-300">
                     <section className="space-y-6">
@@ -381,6 +419,20 @@ export default function AgentSettingsDialog({
                         )} />
                       </div>
                     </section>
+
+                    <section className="space-y-6">
+                      <div className="flex items-center gap-2 text-primary">
+                        <Target className="h-4 w-4" />
+                        <h3 className="text-sm font-bold uppercase tracking-widest">Primary Goal</h3>
+                      </div>
+                      <FormField control={form.control} name="primaryGoal" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">What is the primary objective of this agent?</FormLabel>
+                          <FormControl><Textarea rows={3} {...field} value={field.value || ''} placeholder="e.g. Help users troubleshoot login issues and navigate documentation." /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </section>
                   </div>
                 )}
 
@@ -434,17 +486,17 @@ export default function AgentSettingsDialog({
                             <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100" onClick={() => removeProduct(idx)}><Trash2 className="h-4 w-4 text-rose-500" /></Button>
                             <div className="grid grid-cols-2 gap-4">
                               <FormField control={form.control} name={`products.${idx}.name`} render={({ field }) => (
-                                <FormItem><FormLabel className="text-[10px]">Product Name</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                                <FormItem><FormLabel className="text-[10px]">Product Name</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
                               )} />
                               <FormField control={form.control} name={`products.${idx}.price`} render={({ field }) => (
-                                <FormItem><FormLabel className="text-[10px]">Price/Range</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                                <FormItem><FormLabel className="text-[10px]">Price/Range</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
                               )} />
                             </div>
                             <FormField control={form.control} name={`products.${idx}.description`} render={({ field }) => (
-                              <FormItem><FormLabel className="text-[10px]">Description</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                              <FormItem><FormLabel className="text-[10px]">Description</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value || ''} /></FormControl></FormItem>
                             )} />
                             <FormField control={form.control} name={`products.${idx}.triggers`} render={({ field }) => (
-                              <FormItem><FormLabel className="text-[10px]">When to recommend this?</FormLabel><FormControl><Input {...field} placeholder="Keywords or situations" /></FormControl></FormItem>
+                              <FormItem><FormLabel className="text-[10px]">When to recommend this?</FormLabel><FormControl><Input {...field} value={field.value || ''} placeholder="Keywords or situations" /></FormControl></FormItem>
                             )} />
                           </div>
                         ))}
@@ -468,10 +520,10 @@ export default function AgentSettingsDialog({
                           <div key={item.id} className="p-4 rounded-xl border border-white/5 bg-white/[0.02] space-y-4 relative group">
                             <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100" onClick={() => removeFaq(idx)}><Trash2 className="h-4 w-4 text-rose-500" /></Button>
                             <FormField control={form.control} name={`faqs.${idx}.question`} render={({ field }) => (
-                              <FormItem><FormLabel className="text-[10px]">Question</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                              <FormItem><FormLabel className="text-[10px]">Question</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
                             )} />
                             <FormField control={form.control} name={`faqs.${idx}.answer`} render={({ field }) => (
-                              <FormItem><FormLabel className="text-[10px]">Answer</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                              <FormItem><FormLabel className="text-[10px]">Answer</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value || ''} /></FormControl></FormItem>
                             )} />
                           </div>
                         ))}
@@ -545,7 +597,7 @@ export default function AgentSettingsDialog({
                             )} />
                             <div className="grid grid-cols-2 gap-6">
                               <FormField control={form.control} name="channelConfig.sms.maxResponseLength" render={({ field }) => (
-                                <FormItem><FormLabel className="text-xs">Max Character Limit</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription className="text-[9px]">Sms segments are ~160 chars.</FormDescription></FormItem>
+                                <FormItem><FormLabel className="text-xs">Max Character Limit</FormLabel><FormControl><Input type="number" {...field} value={field.value || ''} /></FormControl><FormDescription className="text-[9px]">Sms segments are ~160 chars.</FormDescription></FormItem>
                               )} />
                             </div>
                             <FormField control={form.control} name="channelConfig.sms.leadCaptureMessage" render={({ field }) => (
