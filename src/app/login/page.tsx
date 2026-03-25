@@ -100,8 +100,8 @@ function LoginContent() {
                 </div>
                 
                 <div className="space-y-4">
-                     <Button variant="outline" className="w-full h-12 text-base" onClick={handleGoogleSignIn} disabled={status === 'loading'}>
                         {status === 'loading' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                     <Button variant="outline" className="w-full h-12 text-base" onClick={handleGoogleSignIn} disabled={status === 'loading'}>
                         <GoogleIcon />
                         Continue with Google
                     </Button>

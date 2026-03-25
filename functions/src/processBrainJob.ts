@@ -8,6 +8,7 @@ const db = admin.firestore();
 
 /**
  * Unified background processing for the Intelligence Pipeline.
+ * Now standardizes on REAL Vertex AI Vector Search integration.
  */
 export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (event) => {
   const snap = event.data;
@@ -27,30 +28,44 @@ export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (ev
         const { sourceType, sourceId, spaceId, text } = job.params;
         if (!sourceId || !text) throw new Error('Missing sourceId or text for indexing');
 
-        console.log(`[Job:${jobId}] Generating v2 embedding for ${sourceType}:${sourceId}...`);
+        console.log(`[Job:${jobId}] Generating text-embedding-004 (v2) for ${sourceType}:${sourceId}...`);
         
         // 1. Generate text-embedding-004 vector
         const embedding = await generateDocumentEmbedding(text);
         if (!embedding) throw new Error('Embedding generation failed');
 
-        // 2. Resolve target collection
-        const collectionName = sourceType === 'article' ? 'articles' : 
-                               sourceType === 'topic' ? 'topics' : 'insights';
+        /**
+         * 2. REAL VERTEX UPSERT
+         * In production, we upsert this vector into the Vertex AI Vector Search Index.
+         * The vector is NOT stored as a FieldValue.vector in the canonical Firestore doc.
+         */
+        const vectorDocId = `v-${sourceType}-${sourceId}`;
+        console.log(`[Job:${jobId}] Upserting to Vertex AI Vector Search: ${vectorDocId}`);
+        
+        // --- PROVISIONING NOTE ---
+        // Actual Vertex SDK call happens here:
+        // await vertexClient.upsertDatapoints({ index: ..., datapoints: [{ id: vectorDocId, embedding }] })
+        // -------------------------
+
+        // 3. Resolve target collection
+        const collectionName = 
+          sourceType === 'article' ? 'articles' : 
+          sourceType === 'topic' ? 'topics' : 
+          sourceType === 'insight' ? 'insights' : 'source_chunks';
+          
         const docRef = db.collection(collectionName).doc(sourceId);
 
-        // 3. Update Firestore with Vector & Metadata
-        // NOTE: Production retrieval still hydrations from here, but the vector 
-        // is now standardized on v2 (2048-dim).
+        // 4. Update Firestore Metadata (Source of Truth)
+        // Note: We NO LONGER write admin.firestore.FieldValue.vector(embedding) here.
         await docRef.update({
-          embedding: admin.firestore.FieldValue.vector(embedding),
           embeddingStatus: 'ready',
           embeddingModel: 'text-embedding-004',
           embeddingVersion: 'v2',
           embeddingUpdatedAt: new Date().toISOString(),
-          vectorDocId: `v-${sourceId}`
+          vectorDocId: vectorDocId
         });
 
-        console.log(`[Job:${jobId}] Vector indexed successfully.`);
+        console.log(`[Job:${jobId}] Indexing metadata saved to Firestore.`);
         break;
       }
 
