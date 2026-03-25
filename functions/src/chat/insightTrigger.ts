@@ -1,4 +1,3 @@
-
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import { logger } from "firebase-functions";
@@ -8,9 +7,8 @@ if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
 /**
- * PRODUCTION GATED INGESTION:
  * Triggers Insight creation ONLY when a conversation is resolved.
- * This refactor moves heavy vector processing to a separate job queue.
+ * Deduplicates and enqueues indexing job for Vertex Vector Search.
  */
 export const onConversationResolvedForInsight = onDocumentUpdated(
   {
@@ -31,7 +29,6 @@ export const onConversationResolvedForInsight = onDocumentUpdated(
     try {
       logger.info(`[Intelligence] Conversation ${convoId} resolved. Evaluating for insights...`);
 
-      // 1. Fetch agent messages (the source of knowledge)
       const messagesSnap = await db.collection("chat_messages")
         .where("conversationId", "==", convoId)
         .where("senderType", "==", "agent")
@@ -42,7 +39,16 @@ export const onConversationResolvedForInsight = onDocumentUpdated(
       for (const msgDoc of messagesSnap.docs) {
         const message = msgDoc.data();
         
-        // 2. AI EVALUATION: Extract structured reusable finding
+        // Dedupe check
+        const existingSnap = await db.collection('insights')
+          .where('source.conversationId', '==', convoId)
+          .where('source.messageId', '==', msgDoc.id)
+          .limit(1)
+          .get();
+        
+        if (!existingSnap.empty) continue;
+
+        // AI EVALUATION: Extract structured reusable finding
         const result = await evaluateSupportInsight({
           messageText: message.content,
           conversationContext: `Last Message from Customer: ${after.lastMessage || 'N/A'}`
@@ -53,13 +59,12 @@ export const onConversationResolvedForInsight = onDocumentUpdated(
           continue;
         }
 
-        // 3. PERSIST CANONICAL INSIGHT (Private & Pending)
         const now = new Date().toISOString();
         const insightRef = db.collection("insights").doc();
         
         const insightData = {
           spaceId,
-          hubId: after.hubId,
+          hubId: after.hubId || null,
           title: result.title || "Support Resolution",
           summary: result.structuredContent.resolution.substring(0, 200) + "...",
           content: `Issue: ${result.structuredContent.issue}\nResolution: ${result.structuredContent.resolution}`,
@@ -90,7 +95,7 @@ export const onConversationResolvedForInsight = onDocumentUpdated(
 
         await insightRef.set(insightData);
         
-        // 4. ENQUEUE VECTOR INDEXING JOB
+        // ENQUEUE VECTOR INDEXING JOB
         await db.collection('brain_jobs').add({
           type: 'process_vector_indexing',
           status: 'pending',

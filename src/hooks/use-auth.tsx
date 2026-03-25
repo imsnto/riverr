@@ -212,6 +212,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Use Popup for better reliability in modern browsers
       // await signInWithPopup(auth, googleProvider);
       await signInWithRedirect(auth, googleProvider);
+      localStorage.setItem('redirectAfterLogin', '/dashboard');
     } catch (error: any) {
       console.error("Error during Google Sign-In:", error);
       setStatus('unauthenticated');

@@ -1,14 +1,62 @@
-
 import * as admin from 'firebase-admin';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { logger } from 'firebase-functions';
+import { IndexServiceClient } from '@google-cloud/aiplatform';
 import { generateDocumentEmbedding } from '../../src/lib/brain/embed';
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
+const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+const VECTOR_INDEX_RESOURCE_NAME = process.env.VERTEX_VECTOR_INDEX_RESOURCE_NAME || '';
+
+const indexClient = new IndexServiceClient({
+  apiEndpoint: `${location}-aiplatform.googleapis.com`,
+});
+
+type SourceType = 'article' | 'topic' | 'insight' | 'chunk';
+
+function getCollectionName(sourceType: SourceType): string {
+  switch (sourceType) {
+    case 'article': return 'articles';
+    case 'topic': return 'topics';
+    case 'insight': return 'insights';
+    case 'chunk': return 'source_chunks';
+    default: throw new Error(`Unsupported sourceType: ${sourceType}`);
+  }
+}
+
+function buildRestricts(params: {
+  sourceType: SourceType;
+  spaceId: string;
+  hubId?: string | null;
+  libraryId?: string | null;
+  visibility?: 'public' | 'private';
+  internalOnly?: boolean;
+  origin?: 'automatic' | 'manual' | 'imported';
+  signalLevel?: 'low' | 'medium' | 'high' | null;
+}) {
+  const restricts: Array<{ namespace: string; allowList: string[] }> = [
+    { namespace: 'sourceType', allowList: [params.sourceType] },
+    { namespace: 'spaceId', allowList: [params.spaceId] },
+  ];
+
+  if (params.hubId) restricts.push({ namespace: 'hubId', allowList: [params.hubId] });
+  if (params.libraryId) restricts.push({ namespace: 'libraryId', allowList: [params.libraryId] });
+  if (params.visibility) restricts.push({ namespace: 'visibility', allowList: [params.visibility] });
+  if (typeof params.internalOnly === 'boolean') {
+    restricts.push({ namespace: 'internalOnly', allowList: [String(params.internalOnly)] });
+  }
+  if (params.origin) restricts.push({ namespace: 'origin', allowList: [params.origin] });
+  if (params.signalLevel) restricts.push({ namespace: 'signalLevel', allowList: [params.signalLevel] });
+
+  return restricts;
+}
+
 /**
- * Unified background processing for the Intelligence Pipeline.
- * Now standardizes on REAL Vertex AI Vector Search integration.
+ * Real Vertex-backed indexing job.
+ * Generates embeddings, upserts datapoints to Vertex Vector Search,
+ * and writes only vector linkage metadata back to Firestore.
  */
 export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (event) => {
   const snap = event.data;
@@ -25,52 +73,67 @@ export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (ev
   try {
     switch (job.type) {
       case 'process_vector_indexing': {
-        const { sourceType, sourceId, spaceId, text } = job.params;
-        if (!sourceId || !text) throw new Error('Missing sourceId or text for indexing');
+        const { sourceType, sourceId, text } = job.params as {
+          sourceType: SourceType;
+          sourceId: string;
+          text?: string;
+        };
 
-        console.log(`[Job:${jobId}] Generating text-embedding-004 (v2) for ${sourceType}:${sourceId}...`);
-        
-        // 1. Generate text-embedding-004 vector
-        const embedding = await generateDocumentEmbedding(text);
-        if (!embedding) throw new Error('Embedding generation failed');
+        if (!VECTOR_INDEX_RESOURCE_NAME) throw new Error('Missing VERTEX_VECTOR_INDEX_RESOURCE_NAME');
+        if (!sourceType || !sourceId) throw new Error('Missing sourceType or sourceId');
 
-        /**
-         * 2. REAL VERTEX UPSERT
-         * In production, we upsert this vector into the Vertex AI Vector Search Index.
-         * The vector is NOT stored as a FieldValue.vector in the canonical Firestore doc.
-         */
-        const vectorDocId = `v-${sourceType}-${sourceId}`;
-        console.log(`[Job:${jobId}] Upserting to Vertex AI Vector Search: ${vectorDocId}`);
-        
-        // --- PROVISIONING NOTE ---
-        // Actual Vertex SDK call happens here:
-        // await vertexClient.upsertDatapoints({ index: ..., datapoints: [{ id: vectorDocId, embedding }] })
-        // -------------------------
-
-        // 3. Resolve target collection
-        const collectionName = 
-          sourceType === 'article' ? 'articles' : 
-          sourceType === 'topic' ? 'topics' : 
-          sourceType === 'insight' ? 'insights' : 'source_chunks';
-          
+        const collectionName = getCollectionName(sourceType);
         const docRef = db.collection(collectionName).doc(sourceId);
+        const docSnap = await docRef.get();
 
-        // 4. Update Firestore Metadata (Source of Truth)
-        // Note: We NO LONGER write admin.firestore.FieldValue.vector(embedding) here.
+        if (!docSnap.exists) throw new Error(`Source doc not found: ${collectionName}/${sourceId}`);
+
+        const docData = docSnap.data()!;
+        const normalizedText = text || [docData.title ?? '', docData.summary ?? '', docData.body ?? '', docData.content ?? ''].filter(Boolean).join('\n\n').trim();
+
+        if (!normalizedText) throw new Error(`No text available to embed for ${sourceType}:${sourceId}`);
+
+        logger.info(`[Job:${jobId}] Generating embedding for ${sourceType}:${sourceId}`);
+        const embedding = await generateDocumentEmbedding(normalizedText);
+        if (!embedding || embedding.length === 0) throw new Error('Embedding generation failed');
+
+        const vectorDocId = `${sourceType}:${sourceId}`;
+        const restricts = buildRestricts({
+          sourceType,
+          spaceId: docData.spaceId,
+          hubId: docData.hubId,
+          libraryId: docData.libraryId ?? docData.destinationLibraryId,
+          visibility: docData.visibility,
+          internalOnly: sourceType === 'chunk' ? true : docData.visibility === 'private',
+          origin: docData.origin,
+          signalLevel: docData.signalLevel,
+        });
+
+        logger.info(`[Job:${jobId}] Upserting datapoint to Vertex index`, { vectorDocId });
+
+        await indexClient.upsertDatapoints({
+          index: VECTOR_INDEX_RESOURCE_NAME,
+          datapoints: [
+            {
+              datapointId: vectorDocId,
+              featureVector: embedding,
+              restricts,
+            },
+          ],
+        });
+
         await docRef.update({
           embeddingStatus: 'ready',
           embeddingModel: 'text-embedding-004',
           embeddingVersion: 'v2',
           embeddingUpdatedAt: new Date().toISOString(),
-          vectorDocId: vectorDocId
+          vectorDocId,
         });
 
-        console.log(`[Job:${jobId}] Indexing metadata saved to Firestore.`);
         break;
       }
-
       default:
-        console.warn(`[Job:${jobId}] Unsupported job type: ${job.type}`);
+        logger.warn(`[Job:${jobId}] Unsupported job type: ${job.type}`);
     }
 
     await snap.ref.update({
@@ -78,7 +141,7 @@ export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (ev
       completedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   } catch (error: any) {
-    console.error(`[Job:${jobId}] FAILED:`, error);
+    logger.error(`[Job:${jobId}] FAILED`, error);
     await snap.ref.update({
       status: 'failed',
       error: error?.message || 'Unknown error',
