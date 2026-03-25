@@ -235,7 +235,7 @@ export default function WidgetSettingsDialog({
                 <div className="flex items-center gap-3 shrink-0 text-left">
                   <div className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
                   <div>
-                    <h2 className="text-sm font-bold text-white leading-none">{watchedValues.name}</h2>
+                    <h2 className="text-sm font-bold text-white leading-none">{watchedValues.name || 'Unnamed Widget'}</h2>
                     <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground opacity-50 mt-1">Web Stage</p>
                   </div>
                 </div>
@@ -272,6 +272,19 @@ export default function WidgetSettingsDialog({
               <ScrollArea className="flex-1">
                 <div className="p-10 max-w-2xl mx-auto pb-32 space-y-12">
                   
+                  {/* Global Identity - Always visible at top */}
+                  <section className="space-y-6">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Identity</h3>
+                    <FormField control={form.control} name="name" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Widget Name (Internal)</FormLabel>
+                        <FormControl><Input placeholder="e.g. Website Support Chat" {...field} value={field.value || ''} /></FormControl>
+                        <FormDescription className="text-[10px]">How this widget is identified in your dashboard.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </section>
+
                   {activeTab === 'style' && (
                     <div className="space-y-12 animate-in fade-in duration-300">
                       <section className="space-y-6">

@@ -329,8 +329,12 @@ export default function AgentSettingsDialog({
   const { fields: scriptFields, append: appendScript, remove: removeScript } = useFieldArray({ control: form.control, name: "scripts" });
 
   useEffect(() => {
-    if (isOpen && bot) {
-      form.reset({ ...DEFAULT_AGENT_VALUES, ...(bot as any) });
+    if (isOpen) {
+      if (bot) {
+        form.reset({ ...DEFAULT_AGENT_VALUES, ...(bot as any) });
+      } else {
+        form.reset(DEFAULT_AGENT_VALUES as any);
+      }
     }
   }, [bot, form, isOpen]);
 
@@ -404,13 +408,21 @@ export default function AgentSettingsDialog({
                       </div>
                       <div className="grid grid-cols-2 gap-6">
                         <FormField control={form.control} name="webAgentName" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Public Agent Name</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
+                          <FormItem>
+                            <FormLabel className="text-xs">Public Agent Name</FormLabel>
+                            <FormControl><Input {...field} value={field.value || ''} placeholder="What customers call the agent" /></FormControl>
+                            <FormMessage />
+                          </FormItem>
                         )} />
                         <FormField control={form.control} name="name" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Internal ID</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
+                          <FormItem>
+                            <FormLabel className="text-xs">Internal Name</FormLabel>
+                            <FormControl><Input {...field} value={field.value || ''} placeholder="How you identify this brain" /></FormControl>
+                            <FormMessage />
+                          </FormItem>
                         )} />
                         <FormField control={form.control} name="roleTitle" render={({ field }) => (
-                          <FormItem className="col-span-2"><FormLabel className="text-xs">Official Role / Job Title</FormLabel><FormControl><Input {...field} value={field.value || ''} placeholder="e.g. Customer Support" /></FormControl></FormItem>
+                          <FormItem className="col-span-2"><FormLabel className="text-xs">Official Role / Job Title</FormLabel><FormControl><Input {...field} value={field.value || ''} placeholder="e.g. Customer Support Specialist" /></FormControl></FormItem>
                         )} />
                       </div>
                     </section>

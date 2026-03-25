@@ -150,7 +150,8 @@ export default function InboxSettings({
 
     const sanitizedData = deepSanitize(botData);
 
-    if ('id' in sanitizedData && sanitizedData.id) {
+    // Robust ID check: If it has an ID and it's not empty, update it.
+    if ('id' in sanitizedData && sanitizedData.id && typeof sanitizedData.id === 'string' && sanitizedData.id.trim() !== '') {
       onBotUpdate(sanitizedData.id, sanitizedData as any);
     } else if (activeHub) {
       const dataWithDefaults = { 
@@ -160,6 +161,8 @@ export default function InboxSettings({
         type: isWebChatMode ? 'widget' : 'agent'
       };
       onBotAdd(dataWithDefaults as Omit<BotData, 'id'>);
+    } else {
+      toast({ variant: 'destructive', title: 'Cannot save: Hub context missing.' });
     }
   };
 
