@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
@@ -71,15 +70,11 @@ const widgetSettingsSchema = z.object({
     agentMessageTextColor: z.string().default('#ffffff'),
   }),
   identityCapture: z.object({
-    enabled: z.boolean().default(false),
-    required: z.boolean().default(false),
-    timing: z.enum(['before', 'after']).default('after'),
-    captureMessage: z.string().optional(),
-    fields: z.object({
-      name: z.boolean().default(true),
-      email: z.boolean().default(true),
-      phone: z.boolean().default(false),
-    }),
+    askForName: z.boolean().default(false),
+    askForEmail: z.boolean().default(true),
+    askForPhone: z.boolean().default(false),
+    trigger: z.enum(['before_escalation', 'before_quote', 'after_helpful_answer', 'never']).default('after_helpful_answer'),
+    leadCaptureMessage: z.string().default('Before we continue, could I grab your name and email?'),
   }),
 });
 
@@ -113,11 +108,11 @@ const DEFAULT_WIDGET_VALUES: WidgetSettingsFormValues = {
     logoUrl: '',
   },
   identityCapture: {
-    enabled: false,
-    required: false,
-    timing: 'after',
-    captureMessage: '',
-    fields: { name: true, email: true, phone: false },
+    askForName: false,
+    askForEmail: true,
+    askForPhone: false,
+    trigger: 'after_helpful_answer',
+    leadCaptureMessage: 'Before we continue, could I grab your name and email?',
   },
 };
 
@@ -138,29 +133,13 @@ export default function WidgetSettingsDialog({
 
   const form = useForm<WidgetSettingsFormValues>({
     resolver: zodResolver(widgetSettingsSchema),
-    defaultValues: bot ? { ...DEFAULT_WIDGET_VALUES, ...bot } as any : DEFAULT_WIDGET_VALUES,
+    defaultValues: bot ? ({ ...DEFAULT_WIDGET_VALUES, ...bot } as any) : DEFAULT_WIDGET_VALUES,
   });
 
   useEffect(() => {
     if (isOpen) {
       if (bot) {
-        const mergedValues = {
-          ...DEFAULT_WIDGET_VALUES,
-          ...bot,
-          styleSettings: {
-            ...DEFAULT_WIDGET_VALUES.styleSettings,
-            ...(bot.styleSettings || {})
-          },
-          identityCapture: {
-            ...DEFAULT_WIDGET_VALUES.identityCapture,
-            ...(bot.identityCapture || {}),
-            fields: {
-              ...DEFAULT_WIDGET_VALUES.identityCapture.fields,
-              ...(bot.identityCapture?.fields || {})
-            }
-          }
-        };
-        form.reset(mergedValues as any);
+        form.reset({ ...DEFAULT_WIDGET_VALUES, ...bot } as any);
       } else {
         form.reset(DEFAULT_WIDGET_VALUES);
       }
@@ -171,8 +150,6 @@ export default function WidgetSettingsDialog({
 
   const simulatorBotData = useMemo(() => {
     const agent = hubAgents.find(a => a.id === watchedValues.assignedAgentId);
-    
-    // Base data includes routing context required for RAG
     const baseData = {
       ...watchedValues,
       hubId: watchedValues.hubId || activeHub?.id,
@@ -183,15 +160,9 @@ export default function WidgetSettingsDialog({
     if (agent) {
       return {
         ...baseData,
-        name: agent.name,
-        webAgentName: agent.webAgentName || agent.name,
-        welcomeMessage: agent.channelConfig?.web?.greeting?.text || agent.welcomeMessage || watchedValues.welcomeMessage || 'Hi! How can I help?',
-        flow: agent.flow || { nodes: [], edges: [] },
-        agentIds: agent.agentIds?.length ? agent.agentIds : watchedValues.agentIds,
-        // PLUMBING: Propagate library connections and intelligence settings to the simulator
-        allowedHelpCenterIds: agent.allowedHelpCenterIds || [],
-        intelligenceAccessLevel: agent.intelligenceAccessLevel || 'topics_only',
-        hubId: agent.hubId || baseData.hubId // Use agent's origin hub for grounding lookup
+        ...agent,
+        styleSettings: watchedValues.styleSettings, // Prefer widget style
+        assignedAgentId: watchedValues.assignedAgentId,
       };
     }
     return baseData;
@@ -264,15 +235,13 @@ export default function WidgetSettingsDialog({
 
               <div className="flex items-center gap-4">
                 <Button type="submit" className="rounded-full h-9 px-6 font-black">Save Changes</Button>
-                <Button type="button" variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="rounded-full"><X className="h-5 w-5" /></Button>
+                <Button type="button" variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="rounded-full h-10 w-10"><X className="h-5 w-5" /></Button>
               </div>
             </header>
 
             <div className="flex-1 flex overflow-hidden">
               <ScrollArea className="flex-1">
                 <div className="p-10 max-w-2xl mx-auto pb-32 space-y-12">
-                  
-                  {/* Global Identity - Always visible at top */}
                   <section className="space-y-6">
                     <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Identity</h3>
                     <FormField control={form.control} name="name" render={({ field }) => (
@@ -335,18 +304,13 @@ export default function WidgetSettingsDialog({
                                 ))}
                               </SelectContent>
                             </Select>
-                            <FormDescription>When a brain is assigned, the simulator and live widget will use that agent's greeting and logic.</FormDescription>
-                          </FormItem>
+                          </Select>
                         )} />
                       </section>
 
-                      {!watchedValues.assignedAgentId || watchedValues.assignedAgentId === 'none' ? (
+                      {(!watchedValues.assignedAgentId || watchedValues.assignedAgentId === 'none') && (
                         <div className="space-y-12 animate-in slide-in-from-top-2 duration-300">
                           <section className="space-y-6">
-                            <div className="flex items-center gap-2 text-amber-500">
-                              <Settings2 className="h-4 w-4" />
-                              <h3 className="text-sm font-bold uppercase tracking-widest">Fallback Behavior</h3>
-                            </div>
                             <FormField control={form.control} name="welcomeMessage" render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-xs">Default Greeting</FormLabel>
@@ -357,61 +321,21 @@ export default function WidgetSettingsDialog({
 
                           <section className="space-y-6">
                             <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Lead Capture</h3>
-                            <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02]">
-                              <Label className="text-sm font-bold">Enable Lead Capture</Label>
-                              <Switch checked={watchedValues.identityCapture?.enabled} onCheckedChange={(val) => form.setValue('identityCapture.enabled', val)} />
-                            </div>
-
-                            {watchedValues.identityCapture?.enabled && (
-                              <div className="space-y-6 pl-4 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
-                                <div className="space-y-3">
-                                  <Label className="text-xs uppercase font-bold text-muted-foreground">Capture Timing</Label>
-                                  <RadioGroup onValueChange={(v) => form.setValue('identityCapture.timing', v as 'before' | 'after')} value={watchedValues.identityCapture?.timing} className="flex gap-4">
-                                    <div className="flex items-center gap-2"><RadioGroupItem value="before" id="t-before" /><Label htmlFor="t-before">Before chat</Label></div>
-                                    <div className="flex items-center gap-2"><RadioGroupItem value="after" id="t-after" /><Label htmlFor="t-after">On request</Label></div>
-                                  </RadioGroup>
-                                </div>
-                                <div className="grid grid-cols-3 gap-4">
-                                  <div className="flex items-center gap-2">
-                                    <Checkbox 
-                                      checked={watchedValues.identityCapture?.fields?.name} 
-                                      onCheckedChange={(v) => form.setValue('identityCapture.fields.name', !!v)} 
-                                      id="f-name" 
-                                    />
-                                    <Label htmlFor="f-name">Name</Label>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Checkbox 
-                                      checked={watchedValues.identityCapture?.fields?.email} 
-                                      onCheckedChange={(v) => form.setValue('identityCapture.fields.email', !!v)} 
-                                      id="f-email" 
-                                    />
-                                    <Label htmlFor="f-email">Email</Label>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Checkbox 
-                                      checked={watchedValues.identityCapture?.fields?.phone} 
-                                      onCheckedChange={(v) => form.setValue('identityCapture.fields.phone', !!v)} 
-                                      id="f-phone" 
-                                    />
-                                    <Label htmlFor="f-phone">Phone</Label>
-                                  </div>
-                                </div>
+                            <div className="grid grid-cols-3 gap-4">
+                              <div className="flex items-center gap-2">
+                                <Checkbox checked={watchedValues.identityCapture?.askForName} onCheckedChange={(v) => form.setValue('identityCapture.askForName', !!v)} id="f-name" />
+                                <Label htmlFor="f-name">Name</Label>
                               </div>
-                            )}
+                              <div className="flex items-center gap-2">
+                                <Checkbox checked={watchedValues.identityCapture?.askForEmail} onCheckedChange={(v) => form.setValue('identityCapture.askForEmail', !!v)} id="f-email" />
+                                <Label htmlFor="f-email">Email</Label>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Checkbox checked={watchedValues.identityCapture?.askForPhone} onCheckedChange={(v) => form.setValue('identityCapture.askForPhone', !!v)} id="f-phone" />
+                                <Label htmlFor="f-phone">Phone</Label>
+                              </div>
+                            </div>
                           </section>
-                        </div>
-                      ) : (
-                        <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10 space-y-4 animate-in zoom-in-95 duration-300">
-                          <div className="flex items-center gap-2 text-primary font-bold text-sm">
-                            <Sparkles className="h-4 w-4" /> 
-                            AI Agent Overrides Active
-                          </div>
-                          <p className="text-sm text-muted-foreground leading-relaxed">
-                            This widget is using the greeting, logic, and knowledge from <span className="font-bold text-foreground">
-                              {hubAgents.find(a => a.id === watchedValues.assignedAgentId)?.name}
-                            </span>. Fallback behavior settings are hidden.
-                          </p>
                         </div>
                       )}
                     </div>
@@ -420,7 +344,6 @@ export default function WidgetSettingsDialog({
                   {activeTab === 'team' && (
                     <div className="space-y-8 animate-in fade-in duration-300">
                       <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Human Team</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">Select which members of this Hub are responsible for responding to chats on this widget.</p>
                       <div className="grid grid-cols-2 gap-3">
                         {allUsers.map((user) => (
                           <div key={user.id} className="flex items-center justify-between p-3 border rounded-xl hover:bg-white/[0.02] transition-colors">
@@ -443,11 +366,9 @@ export default function WidgetSettingsDialog({
                       </div>
                     </div>
                   )}
-
                 </div>
               </ScrollArea>
 
-              {/* Preview Panel */}
               <aside className="hidden md:flex w-[400px] border-l border-white/10 bg-[#090c10] flex-col overflow-hidden shrink-0">
                 <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
                   <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-50">Live Simulator</span>

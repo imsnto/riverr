@@ -1,4 +1,3 @@
-
 // src/lib/data.ts
 
 // --- Core Entities ---
@@ -678,14 +677,16 @@ export interface Bot {
 
   tone?: 'formal' | 'friendly' | 'expert' | 'direct' | 'warm';
   voiceNotes?: string;
+  responseLength?: 'short' | 'balanced' | 'detailed';
   primaryGoal?: string;
+  secondaryGoal?: string;
   closingTemplate?: string;
 
   businessContext?: {
-    businessName: string;
+    businessName?: string;
     location?: string;
-    whatYouDo: string;
-    targetAudience: string;
+    description?: string;
+    targetAudience?: string;
     hours?: string;
     minOrder?: string;
     turnaround?: string;
@@ -693,6 +694,38 @@ export interface Bot {
     forbiddenTopics?: string;
   };
   
+  behavior: {
+    mode: 'support' | 'sales' | 'hybrid';
+    proactiveness: 'low' | 'medium' | 'high';
+    askClarifyingQuestions: boolean;
+    recommendNextStep: boolean;
+    revealUncertainty: boolean;
+  };
+
+  confidenceHandling: {
+    high: 'answer' | 'answer_softly' | 'clarify' | 'escalate';
+    medium: 'answer' | 'answer_softly' | 'clarify' | 'escalate';
+    low: 'answer' | 'answer_softly' | 'clarify' | 'escalate';
+  };
+
+  escalation: {
+    enabled: boolean;
+    notifyEmail?: string;
+    frustration: boolean;
+    repeatedFailures: boolean;
+    offerOnce: boolean;
+    fallbackMessage: string;
+    forceTriggers: string[];
+  };
+
+  identityCapture: {
+    askForName: boolean;
+    askForEmail: boolean;
+    askForPhone: boolean;
+    trigger: 'before_escalation' | 'before_quote' | 'after_helpful_answer' | 'never';
+    leadCaptureMessage: string;
+  };
+
   welcomeMessage?: string;
   assignedAgentId?: string | null;
   layout: 'default' | 'compact';
@@ -708,28 +741,57 @@ export interface Bot {
     agentMessageTextColor?: string;
   };
   agentIds: string[];
-  allowedHelpCenterIds?: string[];
-  identityCapture: {
-    enabled: boolean;
-    required: boolean;
-    timing: 'before' | 'after';
-    captureMessage?: string;
-    fields: {
-      name: boolean;
-      email: boolean;
-      phone: boolean;
-    };
-  };
-  conversationGoal?: string; 
+  allowedHelpCenterIds: string[];
+  
+  products: {
+    id: string;
+    name: string;
+    price?: string;
+    description?: string;
+    triggers?: string;
+  }[];
+  faqs: {
+    id: string;
+    question: string;
+    answer: string;
+  }[];
+  objections: {
+    id: string;
+    objection: string;
+    response: string;
+  }[];
+
   automations?: {
     handoffKeywords?: string[];
     quickReplies?: string[];
   };
   flow?: AutomationFlow; 
-  channelConfig?: {
-    web?: { 
+  channelConfig: {
+    web: { 
       enabled: boolean;
-      greeting?: { text: string; returningText?: string };
+      greeting: { text: string; returningText: string };
+    };
+    sms: {
+      enabled: boolean;
+      openingText: string;
+      maxResponseLength: number;
+      leadCaptureMessage: string;
+      handoffKeywords: string[];
+      allowMultiMessageReplies: boolean;
+    };
+    phone: {
+      enabled: boolean;
+      operationMode: 'full_ai' | 'handoff' | 'receptionist';
+      greetingScript: string;
+      voicemailScript: string;
+      transcribeCalls: boolean;
+      maxCallMinutes: number;
+    };
+    email: {
+      enabled: boolean;
+      approvalMode: 'auto' | 'auto_exceptions' | 'manual';
+      standardSignoff: string;
+      toneOverride: 'inherit' | 'formal' | 'friendly';
     };
   };
 }

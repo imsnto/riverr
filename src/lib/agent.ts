@@ -10,7 +10,7 @@ export type MessageRole = "user" | "assistant" | "internal";
 
 export interface BotConfig {
   id: string;
-  type: 'agent' | 'widget'; // REQUIRED PLUMBING
+  type: 'agent' | 'widget';
   hubId: string;
   name: string;
   webAgentName?: string;
@@ -21,10 +21,15 @@ export interface BotConfig {
   quickReplies?: string[];
   flow?: { nodes: AutomationNode[], edges: AutomationEdge[] };
   conversationGoal?: string;
-  identityCapture?: {
-    timing: 'before' | 'after';
-    fields: { name: boolean; email: boolean; phone: boolean };
-  };
+  
+  // Intelligence Posture
+  behavior?: Bot['behavior'];
+  confidenceHandling?: Bot['confidenceHandling'];
+  escalation: Bot['escalation'];
+  identityCapture: Bot['identityCapture'];
+  channelConfig: Bot['channelConfig'];
+  tone?: Bot['tone'];
+  responseLength?: Bot['responseLength'];
 }
 
 export type Conversation = ImportedConversation & {
@@ -146,6 +151,24 @@ export async function handleIncomingMessage(args: {
       return;
   }
 
+  // FORCE TRIGGERS from operator cockpit
+  const forceTriggers = bot.escalation?.forceTriggers || [];
+  if (forceTriggers.length > 0) {
+    const triggerMap: Record<string, string[]> = {
+      'billing': ['billing', 'invoice', 'payment', 'charge', 'subscription'],
+      'refunds': ['refund', 'money back'],
+      'angry_customer': ['upset', 'angry', 'terrible', 'awful', 'frustrated'],
+      'legal': ['legal', 'lawsuit', 'lawyer'],
+      'custom_quote': ['quote', 'pricing', 'enterprise']
+    };
+    for (const t of forceTriggers) {
+      if (containsAny(text, triggerMap[t] || [])) {
+        await escalateNow(adapters, conversation, `Sensitive topic detected: ${t}`);
+        return;
+      }
+    }
+  }
+
   // ---- 3. HYBRID FLOW EXECUTION ----
   if (bot.flow?.nodes?.length) {
     await executeHybridFlow(args);
@@ -216,7 +239,7 @@ async function executeHybridFlow(args: {
             await adapters.updateConversation({ conversationId: conversation.id, hubId: conversation.hubId, patch });
           }
         }
-        const nextEdge = edges.find(e => e.source === currentFlowStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+        const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
         currentStepId = nextEdge?.target;
       } else {
         await adapters.persistAssistantMessage({
@@ -229,13 +252,13 @@ async function executeHybridFlow(args: {
       }
     } else if (currentNode.type === 'identity_form') {
       if (conversation.visitorEmail || conversation.contactId) {
-        const nextEdge = edges.find(e => e.source === currentFlowStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+        const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
         currentStepId = nextEdge?.target;
       } else {
         return;
       }
     } else {
-      const nextEdge = edges.find(e => e.source === currentFlowStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
+      const nextEdge = edges.find(e => e.source === currentStepId && (!e.sourceHandle || e.sourceHandle === 'next'));
       currentStepId = nextEdge?.target;
     }
   }
@@ -352,7 +375,7 @@ async function executeAiPhase(args: {
       patch: { aiAttempted: true, status: 'open' }
   });
 
-  // 1. Policy-Aware Retrieval Decision (PLUMBING: derive isCustomerFacing from bot type)
+  // 1. Policy-Aware Retrieval Decision
   const isCustomerFacing = bot.type === 'widget';
 
   const decision = await adapters.retrieveContext({
@@ -361,18 +384,42 @@ async function executeAiPhase(args: {
     spaceId: conversation.spaceId,
     policy: {
       isCustomerFacing,
-      accessLevel: bot.intelligenceAccessLevel || 'topics_only',
+      accessLevel: bot.intelligenceAccessLevel || 'topics_allowed',
       allowedLibraryIds: bot.allowedHelpCenterIds || []
     }
   });
+
+  // 1.5 Apply Confidence Handling Strategy
+  const score = decision.confidence;
+  const level = score >= 0.8 ? 'high' : score >= 0.5 ? 'medium' : 'low';
+  const strategy = bot.confidenceHandling?.[level] || (level === 'low' ? 'clarify' : 'answer');
+
+  if (strategy === 'escalate') {
+    await escalateNow(adapters, conversation, "Auto-escalated: match confidence below threshold for direct answer.");
+    return true;
+  }
 
   // 2. Adaptive System Instruction
   let systemInstruction = `You are ${botName}, a helpful AI assistant. Be conversational, warm, and accurate.`;
   
   if (decision.answerMode === 'insight_supported_hidden') {
-    systemInstruction += `\n\nCRITICAL POLICY: Your answer is based on internal support signals. DO NOT cite sources. DO NOT reveal internal language or customer names. Keep the tone helpful but cautious.`;
+    systemInstruction += `\n\nCRITICAL POLICY: Your answer is based on internal support signals. DO NOT cite sources. Keep the tone helpful but cautious.`;
   } else if (decision.answerMode === 'topic_supported') {
-    systemInstruction += `\n\nPOLICY: This information is based on recurring patterns. Avoid presenting it as absolute official policy if it sounds like a guarantee.`;
+    systemInstruction += `\n\nPOLICY: This information is based on recurring patterns. Avoid presenting it as absolute official policy.`;
+  }
+
+  if (strategy === 'answer_softly') {
+    systemInstruction += "\n\nCRITICAL: Answer cautiously. Use phrases like 'Based on our documentation...' or 'It appears...'. If you aren't certain, offer to connect to a human.";
+  }
+  
+  if (bot.behavior?.revealUncertainty && level !== 'high') {
+    systemInstruction += "\n\nPOLITE DISCLOSURE: Be open about your level of certainty if the documentation isn't perfectly clear.";
+  }
+
+  if (bot.behavior?.mode === 'sales') {
+    systemInstruction += "\n\nSALES POSTURE: Be consultative and focused on value. Move the user towards a meeting or quote.";
+  } else if (bot.behavior?.mode === 'support') {
+    systemInstruction += "\n\nSUPPORT POSTURE: Be helpful, troubleshooting-focused, and thorough.";
   }
 
   if (bot.conversationGoal) {
@@ -389,7 +436,7 @@ async function executeAiPhase(args: {
   });
 
   if (!answer || answer.trim() === "") {
-      if (decision.answerMode === 'escalate') {
+      if (decision.answerMode === 'escalate' || strategy === 'escalate') {
         await escalateNow(adapters, conversation, "No trusted knowledge sources found.");
         return true;
       }

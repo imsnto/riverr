@@ -14,24 +14,7 @@ export type ResolvedRuntimeBot = {
 
 function normalizeIdentityCaptureFromAgent(agent?: Bot | null): Bot['identityCapture'] | undefined {
   if (!agent) return undefined;
-
-  if (agent.identityCapture) {
-    return agent.identityCapture;
-  }
-
-  const capture = agent.channelConfig?.web?.capture;
-  if (!capture) return undefined;
-
-  return {
-    enabled: true,
-    required: false,
-    timing: capture.timing || 'after',
-    fields: {
-      name: !!capture.fields?.name,
-      email: !!capture.fields?.email,
-      phone: !!capture.fields?.phone,
-    },
-  };
+  return agent.identityCapture;
 }
 
 function getAgentWebGreeting(agent?: Bot | null): string | undefined {
@@ -62,20 +45,18 @@ function mergeStageAndActor(widget: Bot, actor?: Bot | null): ResolvedRuntimeBot
       ? widget.agentIds
       : actor?.agentIds || [];
 
-  // PLUMBING: Actor (Agent Brain) defines the knowledge policy
   const allowedHelpCenterIds =
     actor?.allowedHelpCenterIds || widget.allowedHelpCenterIds || [];
 
   const intelligenceAccessLevel = 
-    actor?.intelligenceAccessLevel || widget.intelligenceAccessLevel || 'topics_only';
+    actor?.intelligenceAccessLevel || widget.intelligenceAccessLevel || 'topics_allowed';
 
-  // The effective bot is what the Agent Engine actually interacts with
   const effectiveBot: Bot = {
     ...widget,
     ...(actor || {}),
     id: actor?.id || widget.id,
     hubId: actor?.hubId || widget.hubId,
-    type: widget.type || 'widget', // Keep the identity of the entry point
+    type: widget.type || 'widget', 
     assignedAgentId: widget.assignedAgentId || null,
     styleSettings: widget.styleSettings,
     agentIds: humanAgentIds,
@@ -84,6 +65,10 @@ function mergeStageAndActor(widget: Bot, actor?: Bot | null): ResolvedRuntimeBot
     welcomeMessage: resolvedGreeting,
     identityCapture: resolvedIdentityCapture,
     webAgentName: getAgentName(actor || widget),
+    behavior: actor?.behavior || widget.behavior,
+    confidenceHandling: actor?.confidenceHandling || widget.confidenceHandling,
+    escalation: actor?.escalation || widget.escalation,
+    channelConfig: actor?.channelConfig || widget.channelConfig,
   };
 
   return {
@@ -104,7 +89,6 @@ export async function resolveRuntimeBot(botId: string): Promise<ResolvedRuntimeB
 
   const bot = { id: botDoc.id, ...botDoc.data() } as Bot;
 
-  // If we provided an Agent ID directly (e.g. internal assistant)
   if (bot.type === 'agent') {
     const identityCapture = normalizeIdentityCaptureFromAgent(bot);
 
@@ -126,7 +110,6 @@ export async function resolveRuntimeBot(botId: string): Promise<ResolvedRuntimeB
     };
   }
 
-  // If we provided a Widget ID (Standard customer-facing flow)
   if (bot.type === 'widget' && bot.assignedAgentId) {
     const actorDoc = await adminDB.collection('bots').doc(bot.assignedAgentId).get();
     const actor = actorDoc.exists

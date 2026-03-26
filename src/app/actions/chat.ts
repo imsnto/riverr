@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDB } from '@/lib/firebase-admin';
@@ -29,7 +28,6 @@ export type PreviewAgentResponseResult = {
 
 /**
  * Non-mutating version of the agent logic used for settings previews.
- * Updated to accept full botData for live previews of unsaved changes.
  */
 export async function previewAgentResponseAction(args: {
   botData: any;
@@ -48,7 +46,6 @@ export async function previewAgentResponseAction(args: {
 
   const webAgentName = effectiveBot.webAgentName || effectiveBot.name || 'Assistant';
 
-  // PLUMBING: Policy derives from Bot Config
   const policy: AgentKnowledgePolicy = {
     agentId: effectiveBot.id,
     isCustomerFacing: effectiveBot.type === 'widget',
@@ -65,10 +62,20 @@ export async function previewAgentResponseAction(args: {
 
   let systemInstruction = `You are ${webAgentName}, a helpful AI assistant. Be conversational, warm, and accurate.`;
   
-  if (decision.answerMode === 'insight_supported_hidden') {
-    systemInstruction += `\n\nCRITICAL POLICY: Your answer is based on internal support signals. DO NOT cite sources. DO NOT reveal internal language or customer names. Keep the tone helpful but cautious.`;
-  } else if (decision.answerMode === 'topic_supported') {
-    systemInstruction += `\n\nPOLICY: This information is based on recurring patterns. Avoid presenting it as absolute official policy if it sounds like a guarantee.`;
+  const score = decision.confidence;
+  const level = score >= 0.8 ? 'high' : score >= 0.5 ? 'medium' : 'low';
+  const strategy = effectiveBot.confidenceHandling?.[level] || (level === 'low' ? 'clarify' : 'answer');
+
+  if (strategy === 'answer_softly') {
+    systemInstruction += "\n\nCRITICAL: Answer cautiously. Use phrases like 'Based on our documentation...' or 'It appears...'. If you aren't certain, offer to connect to a human.";
+  }
+  
+  if (effectiveBot.behavior?.revealUncertainty && level !== 'high') {
+    systemInstruction += "\n\nPOLITE DISCLOSURE: Be open about your level of certainty if the documentation isn't perfectly clear.";
+  }
+
+  if (effectiveBot.behavior?.mode === 'sales') {
+    systemInstruction += "\n\nSALES POSTURE: Be consultative and focused on value. Move the user towards a meeting or quote.";
   }
 
   if (effectiveBot.conversationGoal) {
@@ -109,7 +116,6 @@ export async function invokeAgent(args: {
 
   const adapters: AgentAdapters = {
     retrieveContext: async (params) => {
-      // PLUMBING: Pass resolved bot type to set customer-facing flag
       return orchestrateRetrieval({
         ...params,
         policy: {
@@ -186,7 +192,6 @@ export async function invokeAgent(args: {
     },
   };
 
-  // PLUMBING: Map BotConfig fields correctly from effectiveBot
   const botConfig: BotConfig = {
     id: effectiveBot.id,
     type: effectiveBot.type || 'widget', 
@@ -205,15 +210,13 @@ export async function invokeAgent(args: {
       effectiveBot.conversationGoal ||
       effectiveBot.primaryGoal ||
       'Provide information and let customer decide',
-    identityCapture:
-      effectiveBot.identityCapture || {
-        timing: 'after',
-        fields: {
-          name: true,
-          email: true,
-          phone: false,
-        },
-      },
+    behavior: effectiveBot.behavior,
+    confidenceHandling: effectiveBot.confidenceHandling,
+    escalation: effectiveBot.escalation,
+    identityCapture: effectiveBot.identityCapture,
+    channelConfig: effectiveBot.channelConfig,
+    tone: effectiveBot.tone,
+    responseLength: effectiveBot.responseLength,
   };
 
   await handleIncomingMessage({
@@ -302,14 +305,12 @@ export async function reindexArticleAction(articleId: string) {
   const spaceId = hubDoc.data()?.spaceId;
   if (!spaceId) return;
 
-  // 1. Cleanup existing chunks for this article to prevent duplicates
   const chunksRef = adminDB.collection('brain_chunks');
   const existingChunks = await chunksRef.where('sourceId', '==', articleId).get();
   const batch = adminDB.batch();
   existingChunks.docs.forEach(d => batch.delete(d.ref));
   await batch.commit();
 
-  // 2. Run indexer to create new chunks + embeddings
   await indexHelpCenterArticleToChunks({
     adminDB,
     article,

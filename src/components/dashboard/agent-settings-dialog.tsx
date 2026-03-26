@@ -1,9 +1,48 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
+import {
+  AlertCircle,
+  ArrowRight,
+  Ban,
+  BookOpen,
+  Bot,
+  BrainCircuit,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Globe,
+  GraduationCap,
+  HelpCircle,
+  Library,
+  Mail,
+  MessageSquare,
+  Mic,
+  Package,
+  Palette,
+  Phone,
+  Plus,
+  Settings2,
+  ShieldAlert,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Target,
+  Trash2,
+  UserCircle2,
+  Users,
+  Wand2,
+  X,
+  Zap,
+} from 'lucide-react';
+
+import { Bot as BotData, HelpCenter, User } from '@/lib/data';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,79 +60,111 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Bot as BotData, User, HelpCenter } from '@/lib/data';
-import { 
-  BookOpen, 
-  Globe, 
-  X, 
-  Plus, 
-  Trash2, 
-  MessageSquare, 
-  Smartphone, 
-  Phone, 
-  Mail, 
-  BrainCircuit,
-  Users,
-  Palette,
-  CheckCircle2,
-  ShieldCheck,
-  Target,
-  Zap,
-  Mic,
-  Settings2,
-  AlertCircle,
-  Clock,
-  ArrowRight,
-  ShieldAlert,
-  GraduationCap,
-  Package,
-  HelpCircle,
-  Ban
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '../ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '../ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '../ui/checkbox';
-import { Badge } from '../ui/badge';
-import { Separator } from '../ui/separator';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
+
+const behaviorModes = ['support', 'sales', 'hybrid'] as const;
+const proactivenessLevels = ['low', 'medium', 'high'] as const;
+const confidenceStrategies = ['answer', 'answer_softly', 'clarify', 'escalate'] as const;
+const escalationTopics = ['billing', 'refunds', 'angry_customer', 'legal', 'custom_quote'] as const;
+const captureTriggers = ['before_escalation', 'before_quote', 'after_helpful_answer', 'never'] as const;
+
+const productSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, 'Product name is required'),
+  price: z.string().optional(),
+  description: z.string().optional(),
+  triggers: z.string().optional(),
+});
+
+const faqSchema = z.object({
+  id: z.string(),
+  question: z.string().min(1, 'Question is required'),
+  answer: z.string().min(1, 'Answer is required'),
+});
+
+const objectionSchema = z.object({
+  id: z.string(),
+  objection: z.string().min(1, 'Objection is required'),
+  response: z.string().min(1, 'Response is required'),
+});
 
 const agentSettingsSchema = z.object({
   id: z.string().optional(),
   type: z.literal('agent').default('agent'),
 
-  // Intelligence - Identity
+  // Identity
   name: z.string().min(1, 'Internal Name is required'),
   webAgentName: z.string().min(1, 'Public Agent Name is required'),
   roleTitle: z.string().optional(),
 
-  // Intelligence - Knowledge Retrieval Policy
-  intelligenceAccessLevel: z.enum(['none', 'articles_only', 'topics_allowed', 'insights_hidden_support', 'internal_full_access']).default('topics_allowed'),
+  // Intelligence access
+  intelligenceAccessLevel: z
+    .enum(['none', 'articles_only', 'topics_allowed', 'insights_hidden_support', 'internal_full_access'])
+    .default('topics_allowed'),
 
-  // Intelligence - Personality
+  // Tone
   tone: z.enum(['friendly', 'formal', 'expert', 'direct', 'warm']).default('friendly'),
-  voiceNotes: z.string().optional(),
   responseLength: z.enum(['short', 'balanced', 'detailed']).default('balanced'),
+  voiceNotes: z.string().optional(),
 
-  // Intelligence - Goals
+  // Mission
   primaryGoal: z.string().min(1, 'Primary goal is required'),
   secondaryGoal: z.string().optional(),
   closingTemplate: z.string().optional(),
 
-  // Intelligence - Escalation
+  // Behavior engine
+  behavior: z.object({
+    mode: z.enum(behaviorModes).default('hybrid'),
+    proactiveness: z.enum(proactivenessLevels).default('medium'),
+    askClarifyingQuestions: z.boolean().default(true),
+    recommendNextStep: z.boolean().default(true),
+    revealUncertainty: z.boolean().default(true),
+  }),
+
+  // Confidence handling
+  confidenceHandling: z.object({
+    high: z.enum(confidenceStrategies).default('answer'),
+    medium: z.enum(confidenceStrategies).default('answer_softly'),
+    low: z.enum(confidenceStrategies).default('clarify'),
+  }),
+
+  // Escalation
   escalation: z.object({
     enabled: z.boolean().default(true),
     notifyEmail: z.string().optional(),
     frustration: z.boolean().default(true),
     repeatedFailures: z.boolean().default(true),
+    offerOnce: z.boolean().default(true),
+    fallbackMessage: z.string().default('I can connect you with a teammate who can help further.'),
+    forceTriggers: z.array(z.enum(escalationTopics)).default(['billing', 'angry_customer']),
   }),
 
-  // Knowledge - Business Context
+  // Identity capture
+  identityCapture: z.object({
+    askForName: z.boolean().default(false),
+    askForEmail: z.boolean().default(true),
+    askForPhone: z.boolean().default(false),
+    trigger: z.enum(captureTriggers).default('before_escalation'),
+    leadCaptureMessage: z
+      .string()
+      .default('Before I connect you, can I grab your email so our team can follow up?'),
+  }),
+
+  // Business context
   businessContext: z.object({
     businessName: z.string().optional(),
     location: z.string().optional(),
@@ -106,29 +177,13 @@ const agentSettingsSchema = z.object({
     forbiddenTopics: z.string().optional(),
   }),
 
-  // Knowledge - Sources
+  // Sources
   allowedHelpCenterIds: z.array(z.string()).default([]),
 
-  // Knowledge - Repeatable Lists
-  products: z.array(z.object({
-    id: z.string(),
-    name: z.string(),
-    price: z.string().optional(),
-    description: z.string(),
-    triggers: z.string(),
-  })).default([]),
-
-  faqs: z.array(z.object({
-    id: z.string(),
-    question: z.string(),
-    answer: z.string(),
-  })).default([]),
-
-  objections: z.array(z.object({
-    id: z.string(),
-    objection: z.string(),
-    response: z.string(),
-  })).default([]),
+  // Manual knowledge
+  products: z.array(productSchema).default([]),
+  faqs: z.array(faqSchema).default([]),
+  objections: z.array(objectionSchema).default([]),
 
   // Channels
   channelConfig: z.object({
@@ -145,6 +200,7 @@ const agentSettingsSchema = z.object({
       maxResponseLength: z.coerce.number().default(160),
       leadCaptureMessage: z.string().default("If you'd like, I can grab your email and have the team follow up with more details."),
       handoffKeywords: z.array(z.string()).default(['agent', 'human', 'person', 'call me']),
+      allowMultiMessageReplies: z.boolean().default(false),
     }),
     phone: z.object({
       enabled: z.boolean().default(false),
@@ -152,13 +208,15 @@ const agentSettingsSchema = z.object({
       greetingScript: z.string().default('Thank you for calling. How can I help today?'),
       voicemailScript: z.string().default('We’re unavailable right now. Please leave a message.'),
       transcribeCalls: z.boolean().default(true),
+      maxCallMinutes: z.coerce.number().default(8),
     }),
     email: z.object({
       enabled: z.boolean().default(false),
       approvalMode: z.enum(['auto', 'auto_exceptions', 'manual']).default('auto_exceptions'),
       standardSignoff: z.string().default('Best regards, {{agent_name}}'),
-    })
-  })
+      toneOverride: z.enum(['inherit', 'formal', 'friendly']).default('inherit'),
+    }),
+  }),
 });
 
 type AgentSettingsFormValues = z.infer<typeof agentSettingsSchema>;
@@ -180,16 +238,38 @@ const DEFAULT_AGENT_VALUES: AgentSettingsFormValues = {
   roleTitle: '',
   intelligenceAccessLevel: 'topics_allowed',
   tone: 'friendly',
-  voiceNotes: '',
   responseLength: 'balanced',
-  primaryGoal: 'Provide helpful support answers.',
+  voiceNotes: '',
+  primaryGoal: 'Understand the user’s need, provide helpful guidance, and move them toward a clear next step.',
   secondaryGoal: '',
-  closingTemplate: '',
+  closingTemplate: 'Let me know if you’d like me to connect you with someone from our team.',
+  behavior: {
+    mode: 'hybrid',
+    proactiveness: 'medium',
+    askClarifyingQuestions: true,
+    recommendNextStep: true,
+    revealUncertainty: true,
+  },
+  confidenceHandling: {
+    high: 'answer',
+    medium: 'answer_softly',
+    low: 'clarify',
+  },
   escalation: {
     enabled: true,
     notifyEmail: '',
     frustration: true,
     repeatedFailures: true,
+    offerOnce: true,
+    fallbackMessage: 'I can connect you with a teammate who can help further.',
+    forceTriggers: ['billing', 'angry_customer'],
+  },
+  identityCapture: {
+    askForName: false,
+    askForEmail: true,
+    askForPhone: false,
+    trigger: 'before_escalation',
+    leadCaptureMessage: 'Before I connect you, can I grab your email so our team can follow up?',
   },
   businessContext: {
     businessName: '',
@@ -202,14 +282,17 @@ const DEFAULT_AGENT_VALUES: AgentSettingsFormValues = {
     differentiation: '',
     forbiddenTopics: '',
   },
+  allowedHelpCenterIds: [],
   products: [],
   faqs: [],
   objections: [],
-  allowedHelpCenterIds: [],
   channelConfig: {
     web: {
       enabled: true,
-      greeting: { text: 'Hi! How can I help today?', returningText: 'Welcome back. How can I help today?' }
+      greeting: {
+        text: 'Hi! How can I help today?',
+        returningText: 'Welcome back. How can I help today?',
+      },
     },
     sms: {
       enabled: false,
@@ -217,6 +300,7 @@ const DEFAULT_AGENT_VALUES: AgentSettingsFormValues = {
       maxResponseLength: 160,
       leadCaptureMessage: "If you'd like, I can grab your email and have the team follow up with more details.",
       handoffKeywords: ['agent', 'human', 'person', 'call me'],
+      allowMultiMessageReplies: false,
     },
     phone: {
       enabled: false,
@@ -224,14 +308,73 @@ const DEFAULT_AGENT_VALUES: AgentSettingsFormValues = {
       greetingScript: 'Thank you for calling. How can I help today?',
       voicemailScript: 'We’re unavailable right now. Please leave a message.',
       transcribeCalls: true,
+      maxCallMinutes: 8,
     },
     email: {
       enabled: false,
       approvalMode: 'auto_exceptions',
       standardSignoff: 'Best regards, {{agent_name}}',
-    }
-  }
+      toneOverride: 'inherit',
+    },
+  },
 };
+
+function SectionHeader({
+  icon: Icon,
+  title,
+  description,
+  right,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description?: string;
+  right?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 text-left">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-primary">{title}</h3>
+          {description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}
+        </div>
+      </div>
+      {right}
+    </div>
+  );
+}
+
+function SidebarStep({
+  active,
+  complete,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  complete?: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition-all',
+        active ? 'border-primary/40 bg-primary/10 text-white' : 'border-white/5 bg-white/[0.02] text-muted-foreground hover:text-white'
+      )}
+    >
+      <span className="text-xs font-bold uppercase tracking-[0.15em]">{label}</span>
+      {complete ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <ChevronRight className="h-4 w-4" />}
+    </button>
+  );
+}
+
+function FieldCard({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={cn('rounded-2xl border border-white/5 bg-white/[0.02] p-5 text-left', className)}>{children}</div>;
+}
 
 export default function AgentSettingsDialog({
   isOpen,
@@ -242,33 +385,56 @@ export default function AgentSettingsDialog({
   helpCenters,
   allUsers,
 }: AgentSettingsDialogProps) {
-  const [activeTab, setActiveTab] = useState('intelligence');
-  const [activeChannel, setActiveChannel] = useState('web');
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<'intelligence' | 'knowledge' | 'channels'>('intelligence');
+  const [activeChannel, setActiveChannel] = useState<'web' | 'sms' | 'phone' | 'email'>('web');
+  const [activeSubpanel, setActiveSubpanel] = useState<string>('identity');
 
   const form = useForm<AgentSettingsFormValues>({
     resolver: zodResolver(agentSettingsSchema),
-    defaultValues: bot ? { ...DEFAULT_AGENT_VALUES, ...bot } as any : DEFAULT_AGENT_VALUES,
+    defaultValues: bot ? ({ ...DEFAULT_AGENT_VALUES, ...bot } as any) : DEFAULT_AGENT_VALUES,
   });
 
-  const { fields: productFields, append: appendProduct, remove: removeProduct } = useFieldArray({ control: form.control, name: "products" });
-  const { fields: faqFields, append: appendFaq, remove: removeFaq } = useFieldArray({ control: form.control, name: "faqs" });
-  const { fields: objectionFields, append: appendObjection, remove: removeObjection } = useFieldArray({ control: form.control, name: "objections" });
+  const watched = form.watch();
+
+  const { fields: productFields, append: appendProduct, remove: removeProduct } = useFieldArray({
+    control: form.control,
+    name: 'products',
+  });
+  const { fields: faqFields, append: appendFaq, remove: removeFaq } = useFieldArray({
+    control: form.control,
+    name: 'faqs',
+  });
+  const { fields: objectionFields, append: appendObjection, remove: removeObjection } = useFieldArray({
+    control: form.control,
+    name: 'objections',
+  });
 
   useEffect(() => {
-    if (isOpen) {
-      if (bot) {
-        form.reset({ ...DEFAULT_AGENT_VALUES, ...bot } as any);
-      } else {
-        form.reset(DEFAULT_AGENT_VALUES);
-      }
+    if (!isOpen) return;
+    if (bot) {
+      form.reset({ ...DEFAULT_AGENT_VALUES, ...bot } as any);
+    } else {
+      form.reset(DEFAULT_AGENT_VALUES);
     }
   }, [bot, form, isOpen]);
 
-  const watchedValues = form.watch();
+  useEffect(() => {
+    if (activeTab === 'intelligence') setActiveSubpanel('identity');
+    if (activeTab === 'knowledge') setActiveSubpanel('sources');
+    if (activeTab === 'channels') setActiveSubpanel('web');
+  }, [activeTab]);
+
+  const completion = useMemo(() => {
+    return {
+      identity: !!watched.name && !!watched.webAgentName,
+      mission: !!watched.primaryGoal,
+      sources: watched.allowedHelpCenterIds.length > 0 || watched.products.length > 0 || watched.faqs.length > 0,
+      channels: !!watched.channelConfig.web.enabled || !!watched.channelConfig.sms.enabled || !!watched.channelConfig.phone.enabled || !!watched.channelConfig.email.enabled,
+    };
+  }, [watched]);
 
   const onSubmit = (values: AgentSettingsFormValues) => {
-    console.log('Submitting Agent Settings:', values);
     const payload: BotData | Omit<BotData, 'id' | 'hubId'> = {
       ...(bot || {}),
       ...values,
@@ -280,437 +446,877 @@ export default function AgentSettingsDialog({
   };
 
   const onError = (errors: any) => {
-    console.error('Agent Settings Validation Errors:', errors);
+    console.error("Agent Validation Errors:", errors);
     toast({
       variant: 'destructive',
       title: 'Missing required fields',
-      description: 'Please ensure Internal Name, Public Name, and Primary Goal are filled out.',
+      description: 'Please complete the agent identity and mission before saving.',
     });
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden bg-[#0d1117] border-white/10 text-left">
-        <DialogHeader className="p-0 shrink-0">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#090c10] shrink-0 z-[100]">
-              <div className="flex items-center gap-10">
-                <div className="flex items-center gap-3 shrink-0 text-left">
-                  <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                    <BrainCircuit className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <DialogTitle className="text-sm font-bold text-white leading-none">{watchedValues.webAgentName || 'Unnamed Agent'}</DialogTitle>
-                    <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground opacity-50 mt-1">Intelligence Configuration</p>
-                  </div>
-                </div>
+  const renderIntelligence = () => (
+    <div className="grid gap-8 lg:grid-cols-[250px_minmax(0,1fr)]">
+      <div className="space-y-3">
+        <SidebarStep active={activeSubpanel === 'identity'} complete={completion.identity} label="Identity" onClick={() => setActiveSubpanel('identity')} />
+        <SidebarStep active={activeSubpanel === 'mission'} complete={completion.mission} label="Mission" onClick={() => setActiveSubpanel('mission')} />
+        <SidebarStep active={activeSubpanel === 'behavior'} label="Behavior Engine" onClick={() => setActiveSubpanel('behavior')} />
+        <SidebarStep active={activeSubpanel === 'confidence'} label="Confidence" onClick={() => setActiveSubpanel('confidence')} />
+        <SidebarStep active={activeSubpanel === 'escalation'} label="Escalation" onClick={() => setActiveSubpanel('escalation')} />
+        <SidebarStep active={activeSubpanel === 'capture'} label="Lead Capture" onClick={() => setActiveSubpanel('capture')} />
+        <SidebarStep active={activeSubpanel === 'style'} label="Tone & Style" onClick={() => setActiveSubpanel('style')} />
+      </div>
 
-                <nav className="flex items-center bg-white/[0.03] rounded-full p-1 border border-white/5">
-                  {[
-                    { id: 'intelligence', label: 'Intelligence', icon: BrainCircuit },
-                    { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
-                    { id: 'channels', label: 'Channels', icon: Globe }
-                  ].map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setActiveTab(item.id)}
-                      className={cn(
-                        "flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all",
-                        activeTab === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-white"
-                      )}
-                    >
-                      <item.icon className="h-3.5 w-3.5" />
-                      {item.label}
-                    </button>
-                  ))}
-                </nav>
+      <div className="space-y-8">
+        {activeSubpanel === 'identity' && (
+          <FieldCard>
+            <SectionHeader icon={UserCircle2} title="Identity" description="Define who this agent is, both publicly and internally." />
+            <div className="mt-6 grid gap-6 md:grid-cols-2">
+              <FormField control={form.control} name="webAgentName" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Public Agent Name</FormLabel>
+                  <FormControl><Input {...field} value={field.value || ''} placeholder="What customers see" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="name" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Internal Name</FormLabel>
+                  <FormControl><Input {...field} value={field.value || ''} placeholder="Internal reference name" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="roleTitle" render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Role / Title</FormLabel>
+                  <FormControl><Input {...field} value={field.value || ''} placeholder="Support assistant, sales concierge, intake specialist..." /></FormControl>
+                </FormItem>
+              )} />
+            </div>
+          </FieldCard>
+        )}
+
+        {activeSubpanel === 'mission' && (
+          <FieldCard>
+            <SectionHeader icon={Target} title="Mission" description="This is the north star. It should describe the outcome, not just the tone." />
+            <div className="mt-6 space-y-6">
+              <FormField control={form.control} name="primaryGoal" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Primary Mission</FormLabel>
+                  <FormControl><Textarea rows={4} {...field} value={field.value || ''} placeholder="Understand the user’s need, provide helpful guidance, and move them toward a clear next step." /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="secondaryGoal" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Secondary Mission</FormLabel>
+                  <FormControl><Textarea rows={3} {...field} value={field.value || ''} placeholder="Optional supporting objective, like collecting lead details or reducing support load." /></FormControl>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="closingTemplate" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Default Next-Step Prompt</FormLabel>
+                  <FormControl><Textarea rows={3} {...field} value={field.value || ''} placeholder="Would you like me to connect you with someone from our team?" /></FormControl>
+                  <FormDescription>Used when the agent should naturally move the conversation forward.</FormDescription>
+                </FormItem>
+              )} />
+            </div>
+          </FieldCard>
+        )}
+
+        {activeSubpanel === 'behavior' && (
+          <FieldCard>
+            <SectionHeader icon={Zap} title="Behavior Engine" description="How the AI thinks and operates, not just how it sounds." />
+            <div className="mt-6 grid gap-6 md:grid-cols-2">
+              <FormField control={form.control} name="behavior.mode" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Behavior Mode</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="support">Support</SelectItem>
+                      <SelectItem value="sales">Sales</SelectItem>
+                      <SelectItem value="hybrid">Hybrid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="behavior.proactiveness" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Proactiveness</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )} />
+            </div>
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              {[
+                ['behavior.askClarifyingQuestions', 'Ask clarifying questions', 'When intent is fuzzy, the agent pauses and probes.'],
+                ['behavior.recommendNextStep', 'Recommend next step', 'Prompt for booking, quote, follow-up, or escalation when helpful.'],
+                ['behavior.revealUncertainty', 'Reveal uncertainty', 'The agent can admit when confidence is lower than ideal.'],
+              ].map(([name, label, desc]) => (
+                <FormField
+                  key={name}
+                  control={form.control}
+                  name={name as any}
+                  render={({ field }) => (
+                    <FieldCard className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold text-white">{label}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{desc}</p>
+                        </div>
+                        <FormControl><Switch checked={!!field.value} onCheckedChange={field.onChange} /></FormControl>
+                      </div>
+                    </FieldCard>
+                  )}
+                />
+              ))}
+            </div>
+          </FieldCard>
+        )}
+
+        {activeSubpanel === 'confidence' && (
+          <FieldCard>
+            <SectionHeader icon={ShieldCheck} title="Confidence Handling" description="Choose how the agent behaves based on confidence in the answer." />
+            <div className="mt-6 grid gap-6 md:grid-cols-3">
+              {[
+                ['confidenceHandling.high', 'High confidence'],
+                ['confidenceHandling.medium', 'Medium confidence'],
+                ['confidenceHandling.low', 'Low confidence'],
+              ].map(([name, label]) => (
+                <FormField
+                  key={name}
+                  control={form.control}
+                  name={name as any}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{label}</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="answer">Answer directly</SelectItem>
+                          <SelectItem value="answer_softly">Answer carefully</SelectItem>
+                          <SelectItem value="clarify">Ask a clarifying question</SelectItem>
+                          <SelectItem value="escalate">Escalate to human</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+              ))}
+            </div>
+          </FieldCard>
+        )}
+
+        {activeSubpanel === 'escalation' && (
+          <FieldCard>
+            <SectionHeader icon={ShieldAlert} title="Escalation" description="Decide when the agent hands the baton to a human." />
+            <div className="mt-6 space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                {[
+                  ['escalation.enabled', 'Escalation enabled', 'Allow human handoff when needed.'],
+                  ['escalation.frustration', 'Escalate frustrated users', 'Detect upset or frustrated tone.'],
+                  ['escalation.repeatedFailures', 'Escalate repeated failures', 'After repeated confusion or failed answers.'],
+                  ['escalation.offerOnce', 'Offer once only', 'Avoid repeating the same handoff offer over and over.'],
+                ].map(([name, label, desc]) => (
+                  <FormField
+                    key={name}
+                    control={form.control}
+                    name={name as any}
+                    render={({ field }) => (
+                      <FieldCard className="p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-semibold text-white">{label}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{desc}</p>
+                          </div>
+                          <FormControl><Switch checked={!!field.value} onCheckedChange={field.onChange} /></FormControl>
+                        </div>
+                      </FieldCard>
+                    )}
+                  />
+                ))}
               </div>
 
-              <div className="flex items-center gap-4">
-                <Button onClick={form.handleSubmit(onSubmit, onError)} className="rounded-full h-9 px-6 font-bold">Save Agent</Button>
-                <Button type="button" variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="rounded-full"><X className="h-5 w-5" /></Button>
+              <FormField control={form.control} name="escalation.notifyEmail" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Escalation Notification Email</FormLabel>
+                  <FormControl><Input {...field} value={field.value || ''} placeholder="team@company.com" /></FormControl>
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="escalation.fallbackMessage" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Fallback Escalation Message</FormLabel>
+                  <FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl>
+                </FormItem>
+              )} />
+
+              <div>
+                <Label className="text-sm font-semibold">Force Escalation Topics</Label>
+                <p className="mt-1 text-xs text-muted-foreground">These topics should bypass normal AI confidence rules and move toward a human.</p>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  {escalationTopics.map((topic) => (
+                    <FormField
+                      key={topic}
+                      control={form.control}
+                      name="escalation.forceTriggers"
+                      render={({ field }) => {
+                        const selected = field.value || [];
+                        const checked = selected.includes(topic);
+                        return (
+                          <label className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3 cursor-pointer">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(state) => {
+                                if (state) field.onChange([...selected, topic]);
+                                else field.onChange(selected.filter((item) => item !== topic));
+                              }}
+                            />
+                            <span className="text-sm capitalize text-white">{topic.replaceAll('_', ' ')}</span>
+                          </label>
+                        );
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
+          </FieldCard>
+        )}
+
+        {activeSubpanel === 'capture' && (
+          <FieldCard>
+            <SectionHeader icon={Users} title="Lead Capture" description="Tell the agent when and how to collect identity details." />
+            <div className="mt-6 space-y-6">
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  ['identityCapture.askForName', 'Ask for name'],
+                  ['identityCapture.askForEmail', 'Ask for email'],
+                  ['identityCapture.askForPhone', 'Ask for phone'],
+                ].map(([name, label]) => (
+                  <FormField
+                    key={name}
+                    control={form.control}
+                    name={name as any}
+                    render={({ field }) => (
+                      <FieldCard className="p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-white">{label}</p>
+                          <FormControl><Switch checked={!!field.value} onCheckedChange={field.onChange} /></FormControl>
+                        </div>
+                      </FieldCard>
+                    )}
+                  />
+                ))}
+              </div>
+
+              <FormField control={form.control} name="identityCapture.trigger" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>When should the agent ask?</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="before_escalation">Before escalation</SelectItem>
+                      <SelectItem value="before_quote">Before quote / pricing follow-up</SelectItem>
+                      <SelectItem value="after_helpful_answer">After a helpful answer</SelectItem>
+                      <SelectItem value="never">Never</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="identityCapture.leadCaptureMessage" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Lead Capture Prompt</FormLabel>
+                  <FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl>
+                </FormItem>
+              )} />
+            </div>
+          </FieldCard>
+        )}
+
+        {activeSubpanel === 'style' && (
+          <FieldCard>
+            <SectionHeader icon={Palette} title="Tone & Style" description="The outer voice of the agent." />
+            <div className="mt-6 grid gap-6 md:grid-cols-2">
+              <FormField control={form.control} name="tone" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Primary Tone</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="friendly">Friendly & approachable</SelectItem>
+                      <SelectItem value="formal">Professional & formal</SelectItem>
+                      <SelectItem value="expert">Expert & authoritative</SelectItem>
+                      <SelectItem value="direct">Direct & concise</SelectItem>
+                      <SelectItem value="warm">Warm & empathic</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="responseLength" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Response Length</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="short">Short</SelectItem>
+                      <SelectItem value="balanced">Balanced</SelectItem>
+                      <SelectItem value="detailed">Detailed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="voiceNotes" render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Additional Style Notes</FormLabel>
+                  <FormControl><Textarea rows={4} {...field} value={field.value || ''} placeholder="Examples: Never sound pushy. Use simple language. Mention turnaround only when asked." /></FormControl>
+                </FormItem>
+              )} />
+            </div>
+          </FieldCard>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderKnowledge = () => (
+    <div className="grid gap-8 lg:grid-cols-[250px_minmax(0,1fr)]">
+      <div className="space-y-3">
+        <SidebarStep active={activeSubpanel === 'sources'} complete={completion.sources} label="Connected Sources" onClick={() => setActiveSubpanel('sources')} />
+        <SidebarStep active={activeSubpanel === 'business'} label="Business Context" onClick={() => setActiveSubpanel('business')} />
+        <SidebarStep active={activeSubpanel === 'products'} label="Products & Services" onClick={() => setActiveSubpanel('products')} />
+        <SidebarStep active={activeSubpanel === 'faqs'} label="Fixed FAQs" onClick={() => setActiveSubpanel('faqs')} />
+        <SidebarStep active={activeSubpanel === 'objections'} label="Objections" onClick={() => setActiveSubpanel('objections')} />
+      </div>
+
+      <div className="space-y-8">
+        {activeSubpanel === 'sources' && (
+          <FieldCard>
+            <SectionHeader
+              icon={Library}
+              title="Connected Sources"
+              description="Attach the real brain. Public help centers and internal libraries should be chosen here."
+              right={<Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary">{watched.allowedHelpCenterIds.length} attached</Badge>}
+            />
+            <div className="mt-6 space-y-3">
+              {helpCenters.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-sm text-muted-foreground">
+                  No libraries or help centers available yet.
+                </div>
+              ) : (
+                helpCenters.map((center) => (
+                  <FormField
+                    key={center.id}
+                    control={form.control}
+                    name="allowedHelpCenterIds"
+                    render={({ field }) => {
+                      const selected = field.value || [];
+                      const checked = selected.includes(center.id);
+                      const visibility = (center as any).visibility || 'public';
+                      return (
+                        <label className="flex items-start gap-3 rounded-2xl border border-white/5 bg-white/[0.02] p-4 hover:border-primary/20 cursor-pointer">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(state) => {
+                              if (state) field.onChange([...selected, center.id]);
+                              else field.onChange(selected.filter((id) => id !== center.id));
+                            }}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-white">{center.name}</p>
+                              <Badge variant="outline" className="text-[10px] uppercase">{visibility}</Badge>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {(center as any).description || 'Connected knowledge source'}
+                            </p>
+                          </div>
+                        </label>
+                      );
+                    }}
+                  />
+                ))
+              )}
+            </div>
+          </FieldCard>
+        )}
+
+        {activeSubpanel === 'business' && (
+          <FieldCard>
+            <SectionHeader icon={GraduationCap} title="Business Context" description="Manual context the agent should keep in its head at all times." />
+            <div className="mt-6 grid gap-6 md:grid-cols-2">
+              <FormField control={form.control} name="businessContext.businessName" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Official Business Name</FormLabel>
+                  <FormControl><Input {...field} value={field.value || ''} /></FormControl>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="businessContext.hours" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Operating Hours</FormLabel>
+                  <FormControl><Input {...field} value={field.value || ''} placeholder="Mon-Fri 9am-5pm EST" /></FormControl>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="businessContext.location" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Location</FormLabel>
+                  <FormControl><Input {...field} value={field.value || ''} placeholder="City, state, service area..." /></FormControl>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="businessContext.targetAudience" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Target Audience</FormLabel>
+                  <FormControl><Input {...field} value={field.value || ''} placeholder="Local businesses, schools, churches..." /></FormControl>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="businessContext.minOrder" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Minimum Order</FormLabel>
+                  <FormControl><Input {...field} value={field.value || ''} placeholder="Optional" /></FormControl>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="businessContext.turnaround" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Typical Turnaround</FormLabel>
+                  <FormControl><Input {...field} value={field.value || ''} placeholder="3-5 business days" /></FormControl>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="businessContext.description" render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>What We Do</FormLabel>
+                  <FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="businessContext.differentiation" render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Why Choose Us</FormLabel>
+                  <FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="businessContext.forbiddenTopics" render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Strictly Forbidden Topics</FormLabel>
+                  <FormControl><Textarea rows={3} {...field} value={field.value || ''} placeholder="Things the agent should never discuss." /></FormControl>
+                </FormItem>
+              )} />
+            </div>
+          </FieldCard>
+        )}
+
+        {activeSubpanel === 'products' && (
+          <FieldCard>
+            <SectionHeader
+              icon={Package}
+              title="Products & Services"
+              description="Use these for recommendation nudges and context-specific answers."
+              right={<Button type="button" size="sm" variant="outline" onClick={() => appendProduct({ id: Date.now().toString(), name: '', price: '', description: '', triggers: '' })}><Plus className="mr-1 h-3.5 w-3.5" /> Add Product</Button>}
+            />
+            <div className="mt-6 space-y-4">
+              {productFields.length === 0 && <div className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-muted-foreground text-center">No products added yet.</div>}
+              {productFields.map((item, idx) => (
+                <FieldCard key={item.id}>
+                  <div className="mb-4 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-white">Product #{idx + 1}</p>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeProduct(idx)}><Trash2 className="h-4 w-4 text-rose-500" /></Button>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField control={form.control} name={`products.${idx}.name`} render={({ field }) => (
+                      <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField control={form.control} name={`products.${idx}.price`} render={({ field }) => (
+                      <FormItem><FormLabel>Price / Range</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name={`products.${idx}.description`} render={({ field }) => (
+                      <FormItem className="md:col-span-2"><FormLabel>Description</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name={`products.${idx}.triggers`} render={({ field }) => (
+                      <FormItem className="md:col-span-2"><FormLabel>When should the agent recommend this?</FormLabel><FormControl><Input {...field} value={field.value || ''} placeholder="Keywords, use cases, or buying signals" /></FormControl></FormItem>
+                    )} />
+                  </div>
+                </FieldCard>
+              ))}
+            </div>
+          </FieldCard>
+        )}
+
+        {activeSubpanel === 'faqs' && (
+          <FieldCard>
+            <SectionHeader
+              icon={HelpCircle}
+              title="Fixed FAQs"
+              description="Pinned answers that should remain stable, even before RAG comes into play."
+              right={<Button type="button" size="sm" variant="outline" onClick={() => appendFaq({ id: Date.now().toString(), question: '', answer: '' })}><Plus className="mr-1 h-3.5 w-3.5" /> Add FAQ</Button>}
+            />
+            <div className="mt-6 space-y-4">
+              {faqFields.length === 0 && <div className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-muted-foreground text-center">No FAQs added yet.</div>}
+              {faqFields.map((item, idx) => (
+                <FieldCard key={item.id}>
+                  <div className="mb-4 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-white">FAQ #{idx + 1}</p>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeFaq(idx)}><Trash2 className="h-4 w-4 text-rose-500" /></Button>
+                  </div>
+                  <div className="space-y-4">
+                    <FormField control={form.control} name={`faqs.${idx}.question`} render={({ field }) => (
+                      <FormItem><FormLabel>Question</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField control={form.control} name={`faqs.${idx}.answer`} render={({ field }) => (
+                      <FormItem><FormLabel>Answer</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                  </div>
+                </FieldCard>
+              ))}
+            </div>
+          </FieldCard>
+        )}
+
+        {activeSubpanel === 'objections' && (
+          <FieldCard>
+            <SectionHeader
+              icon={AlertCircle}
+              title="Objections & Responses"
+              description="This is where the sales brain gets sharper."
+              right={<Button type="button" size="sm" variant="outline" onClick={() => appendObjection({ id: Date.now().toString(), objection: '', response: '' })}><Plus className="mr-1 h-3.5 w-3.5" /> Add Objection</Button>}
+            />
+            <div className="mt-6 space-y-4">
+              {objectionFields.length === 0 && <div className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-muted-foreground text-center">No objections added yet.</div>}
+              {objectionFields.map((item, idx) => (
+                <FieldCard key={item.id}>
+                  <div className="mb-4 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-white">Objection #{idx + 1}</p>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeObjection(idx)}><Trash2 className="h-4 w-4 text-rose-500" /></Button>
+                  </div>
+                  <div className="space-y-4">
+                    <FormField control={form.control} name={`objections.${idx}.objection`} render={({ field }) => (
+                      <FormItem><FormLabel>Objection</FormLabel><FormControl><Input {...field} value={field.value || ''} placeholder="It’s too expensive. We’re not ready. I need approval..." /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField control={form.control} name={`objections.${idx}.response`} render={({ field }) => (
+                      <FormItem><FormLabel>Recommended Response</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                  </div>
+                </FieldCard>
+              ))}
+            </div>
+          </FieldCard>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderChannels = () => (
+    <div className="space-y-10">
+      <Tabs value={activeChannel} onValueChange={(v) => { setActiveChannel(v as any); setActiveSubpanel(v); }}>
+        <TabsList className="h-12 border border-white/10 bg-white/[0.03] p-1">
+          {[
+            { id: 'web', icon: MessageSquare, label: 'Web', enabled: watched.channelConfig.web.enabled },
+            { id: 'sms', icon: Smartphone, label: 'SMS', enabled: watched.channelConfig.sms.enabled },
+            { id: 'phone', icon: Phone, label: 'Phone', enabled: watched.channelConfig.phone.enabled },
+            { id: 'email', icon: Mail, label: 'Email', enabled: watched.channelConfig.email.enabled },
+          ].map((item) => (
+            <TabsTrigger key={item.id} value={item.id} className="relative gap-2 text-xs font-bold">
+              <item.icon className="h-3.5 w-3.5" />
+              {item.label}
+              {item.enabled ? <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-emerald-500" /> : null}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value="web" className="mt-8 space-y-6">
+          <FieldCard>
+            <SectionHeader icon={MessageSquare} title="Web Widget" description="Best default channel. Keep this on for most agents." />
+            <div className="mt-6 space-y-6">
+              <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-4">
+                <div>
+                  <p className="text-sm font-semibold text-white">Enable for web</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Allow the agent to respond in the site widget.</p>
+                </div>
+                <FormField control={form.control} name="channelConfig.web.enabled" render={({ field }) => <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>} />
+              </div>
+              {watched.channelConfig.web.enabled && (
+                <div className="grid gap-6">
+                  <FormField control={form.control} name="channelConfig.web.greeting.text" render={({ field }) => (
+                    <FormItem><FormLabel>Initial Greeting</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="channelConfig.web.greeting.returningText" render={({ field }) => (
+                    <FormItem><FormLabel>Returning Visitor Greeting</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl></FormItem>
+                  )} />
+                </div>
+              )}
+            </div>
+          </FieldCard>
+        </TabsContent>
+
+        <TabsContent value="sms" className="mt-8 space-y-6">
+          <FieldCard>
+            <SectionHeader icon={Smartphone} title="SMS" description="Keep replies short, sharp, and segment-aware." />
+            <div className="mt-6 space-y-6">
+              <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-4">
+                <div>
+                  <p className="text-sm font-semibold text-white">Enable for SMS</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Respond to text messages automatically.</p>
+                </div>
+                <FormField control={form.control} name="channelConfig.sms.enabled" render={({ field }) => <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>} />
+              </div>
+              {watched.channelConfig.sms.enabled && (
+                <div className="grid gap-6 md:grid-cols-2">
+                  <FormField control={form.control} name="channelConfig.sms.openingText" render={({ field }) => (
+                    <FormItem className="md:col-span-2"><FormLabel>First Text Response</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="channelConfig.sms.maxResponseLength" render={({ field }) => (
+                    <FormItem><FormLabel>Max Character Limit</FormLabel><FormControl><Input type="number" {...field} value={field.value || ''} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="channelConfig.sms.allowMultiMessageReplies" render={({ field }) => (
+                    <FormItem className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="text-left">
+                          <FormLabel>Allow multi-message replies</FormLabel>
+                          <FormDescription>Useful when a single segment is too cramped.</FormDescription>
+                        </div>
+                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                      </div>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="channelConfig.sms.leadCaptureMessage" render={({ field }) => (
+                    <FormItem className="md:col-span-2"><FormLabel>Lead Capture Prompt</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl></FormItem>
+                  )} />
+                </div>
+              )}
+            </div>
+          </FieldCard>
+        </TabsContent>
+
+        <TabsContent value="phone" className="mt-8 space-y-6">
+          <FieldCard>
+            <SectionHeader icon={Phone} title="Phone" description="Voice AI needs guardrails, not just greetings." />
+            <div className="mt-6 space-y-6">
+              <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-4">
+                <div>
+                  <p className="text-sm font-semibold text-white">Enable for voice</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Handle phone calls with AI voice.</p>
+                </div>
+                <FormField control={form.control} name="channelConfig.phone.enabled" render={({ field }) => <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>} />
+              </div>
+              {watched.channelConfig.phone.enabled && (
+                <div className="grid gap-6 md:grid-cols-2">
+                  <FormField control={form.control} name="channelConfig.phone.operationMode" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Call Handling Mode</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="full_ai">Full AI resolution</SelectItem>
+                          <SelectItem value="handoff">Triage & transfer</SelectItem>
+                          <SelectItem value="receptionist">Simple receptionist</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="channelConfig.phone.maxCallMinutes" render={({ field }) => (
+                    <FormItem><FormLabel>Max Call Minutes</FormLabel><FormControl><Input type="number" {...field} value={field.value || ''} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="channelConfig.phone.greetingScript" render={({ field }) => (
+                    <FormItem className="md:col-span-2"><FormLabel>Greeting Script</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="channelConfig.phone.voicemailScript" render={({ field }) => (
+                    <FormItem className="md:col-span-2"><FormLabel>Voicemail Instructions</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="channelConfig.phone.transcribeCalls" render={({ field }) => (
+                    <FormItem className="md:col-span-2 rounded-xl border border-white/5 bg-white/[0.02] p-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="text-left">
+                          <FormLabel>Record & transcribe calls</FormLabel>
+                          <FormDescription>Stores call transcripts for review and intelligence.</FormDescription>
+                        </div>
+                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                      </div>
+                    </FormItem>
+                  )} />
+                </div>
+              )}
+            </div>
+          </FieldCard>
+        </TabsContent>
+
+        <TabsContent value="email" className="mt-8 space-y-6">
+          <FieldCard>
+            <SectionHeader icon={Mail} title="Email" description="Email needs stricter approval rails than chat." />
+            <div className="mt-6 space-y-6">
+              <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-4">
+                <div>
+                  <p className="text-sm font-semibold text-white">Enable for email</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Draft or send replies automatically.</p>
+                </div>
+                <FormField control={form.control} name="channelConfig.email.enabled" render={({ field }) => <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>} />
+              </div>
+              {watched.channelConfig.email.enabled && (
+                <div className="grid gap-6 md:grid-cols-2">
+                  <FormField control={form.control} name="channelConfig.email.approvalMode" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reply Approval Mode</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="auto">Fully automated</SelectItem>
+                          <SelectItem value="auto_exceptions">Auto except risky cases</SelectItem>
+                          <SelectItem value="manual">Manual approval only</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="channelConfig.email.toneOverride" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Tone Override</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="inherit">Inherit agent tone</SelectItem>
+                          <SelectItem value="formal">Force formal</SelectItem>
+                          <SelectItem value="friendly">Force friendly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="channelConfig.email.standardSignoff" render={({ field }) => (
+                    <FormItem className="md:col-span-2"><FormLabel>Signature / Sign-off</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl></FormItem>
+                  )} />
+                </div>
+              )}
+            </div>
+          </FieldCard>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="h-[92vh] w-[96vw] max-w-[1440px] overflow-hidden border-white/10 bg-[#0d1117] p-0 text-left text-white">
+        <DialogHeader className="border-b border-white/10 bg-[#090c10] p-0">
+          <div className="flex items-center justify-between gap-6 px-6 py-4">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary shrink-0">
+                <BrainCircuit className="h-6 w-6" />
+              </div>
+              <div className="min-w-0 text-left">
+                <DialogTitle className="truncate text-lg font-bold text-white leading-none">
+                  {watched.webAgentName || 'New Agent'}
+                </DialogTitle>
+                <p className="mt-1.5 text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground opacity-50">
+                  Intelligence configuration
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="hidden rounded-full border border-white/10 bg-white/[0.03] p-1 md:flex">
+                {[
+                  ['intelligence', BrainCircuit, 'Intelligence'],
+                  ['knowledge', BookOpen, 'Knowledge'],
+                  ['channels', Globe, 'Channels'],
+                ].map(([id, Icon, label]) => (
+                  <button
+                    key={id as string}
+                    type="button"
+                    onClick={() => setActiveTab(id as any)}
+                    className={cn(
+                      'flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-all',
+                      activeTab === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-white'
+                    )}
+                  >
+                    {React.createElement(Icon as any, { className: 'h-4 w-4' })}
+                    {label as string}
+                  </button>
+                ))}
+              </div>
+              <Button onClick={form.handleSubmit(onSubmit, onError)} className="rounded-full px-6 font-bold h-10">Save Agent</Button>
+              <Button type="button" variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="rounded-full h-10 w-10">
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
         </DialogHeader>
 
         <ScrollArea className="flex-1">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit, onError)} className="p-10 max-w-4xl mx-auto pb-32 space-y-16">
-                {activeTab === 'intelligence' && (
-                  <div className="space-y-16 animate-in fade-in duration-300">
-                    <section className="space-y-6">
-                      <div className="flex items-center gap-2 text-primary">
-                        <Users className="h-4 w-4" />
-                        <h3 className="text-sm font-bold uppercase tracking-widest">Identity</h3>
-                      </div>
-                      <div className="grid grid-cols-2 gap-6">
-                        <FormField control={form.control} name="webAgentName" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Public Agent Name</FormLabel>
-                            <FormControl><Input {...field} value={field.value || ''} placeholder="What customers call the agent" /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="name" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Internal Name</FormLabel>
-                            <FormControl><Input {...field} value={field.value || ''} placeholder="How you identify this brain" /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                      </div>
-                    </section>
+            <form onSubmit={form.handleSubmit(onSubmit, onError)} className="mx-auto max-w-7xl space-y-10 px-6 py-8 pb-24">
+              <div className="grid gap-4 md:hidden">
+                {[
+                  ['intelligence', BrainCircuit, 'Intelligence'],
+                  ['knowledge', BookOpen, 'Knowledge'],
+                  ['channels', Globe, 'Channels'],
+                ].map(([id, Icon, label]) => (
+                  <button
+                    key={id as string}
+                    type="button"
+                    onClick={() => setActiveTab(id as any)}
+                    className={cn(
+                      'flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold',
+                      activeTab === id ? 'border-primary/30 bg-primary/10 text-white' : 'border-white/10 bg-white/[0.03] text-muted-foreground'
+                    )}
+                  >
+                    {React.createElement(Icon as any, { className: 'h-4 w-4' })}
+                    {label as string}
+                  </button>
+                ))}
+              </div>
 
-                    <section className="space-y-6">
-                      <div className="flex items-center gap-2 text-primary">
-                        <ShieldCheck className="h-4 w-4" />
-                        <h3 className="text-sm font-bold uppercase tracking-widest">Knowledge Policy</h3>
-                      </div>
-                      <FormField control={form.control} name="intelligenceAccessLevel" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Intelligence Access Level</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                            <SelectContent>
-                              <SelectItem value="none">Disabled (No Context)</SelectItem>
-                              <SelectItem value="articles_only">Library Articles Only (Strict)</SelectItem>
-                              <SelectItem value="topics_allowed">Articles + Intelligence Topics</SelectItem>
-                              <SelectItem value="insights_hidden_support">Articles + Hidden Support Signal</SelectItem>
-                              <SelectItem value="internal_full_access">Full Internal Memory</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )} />
-                    </section>
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="space-y-8 min-w-0">
+                  {activeTab === 'intelligence' && renderIntelligence()}
+                  {activeTab === 'knowledge' && renderKnowledge()}
+                  {activeTab === 'channels' && renderChannels()}
+                </div>
 
-                    <section className="space-y-6">
-                      <div className="flex items-center gap-2 text-primary">
-                        <Palette className="h-4 w-4" />
-                        <h3 className="text-sm font-bold uppercase tracking-widest">Personality & Style</h3>
-                      </div>
-                      <div className="grid grid-cols-2 gap-6">
-                        <FormField control={form.control} name="tone" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Primary Tone</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                              <SelectContent>
-                                <SelectItem value="friendly">Friendly & Approachable</SelectItem>
-                                <SelectItem value="formal">Professional & Formal</SelectItem>
-                                <SelectItem value="expert">Expert & Authoritative</SelectItem>
-                                <SelectItem value="direct">Direct & Concise</SelectItem>
-                                <SelectItem value="warm">Warm & Empathic</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="responseLength" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Response Length</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                              <SelectContent>
-                                <SelectItem value="short">Short (One sentence)</SelectItem>
-                                <SelectItem value="balanced">Balanced (2-3 sentences)</SelectItem>
-                                <SelectItem value="detailed">Detailed (In-depth help)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )} />
-                      </div>
-                    </section>
-
-                    <section className="space-y-6">
-                      <div className="flex items-center gap-2 text-primary">
-                        <Target className="h-4 w-4" />
-                        <h3 className="text-sm font-bold uppercase tracking-widest">Primary Goal</h3>
-                      </div>
-                      <FormField control={form.control} name="primaryGoal" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">What is the primary objective of this agent?</FormLabel>
-                          <FormControl><Textarea rows={3} {...field} value={field.value || ''} placeholder="e.g. Help users troubleshoot login issues and navigate documentation." /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                    </section>
-                  </div>
-                )}
-
-                {activeTab === 'knowledge' && (
-                  <div className="space-y-16 animate-in fade-in duration-300">
-                    <section className="space-y-6">
-                      <div className="flex items-center gap-2 text-primary">
-                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20"><GraduationCap className="h-3 w-3 mr-1" /> Training</Badge>
-                        <h3 className="text-sm font-bold uppercase tracking-widest">Business Context</h3>
-                      </div>
-                      <div className="grid grid-cols-2 gap-6">
-                        <FormField control={form.control} name="businessContext.businessName" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Official Business Name</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
-                        )} />
-                        <FormField control={form.control} name="businessContext.hours" render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">Operating Hours</FormLabel><FormControl><Input {...field} value={field.value || ''} placeholder="e.g. Mon-Fri 9am-5pm EST" /></FormControl></FormItem>
-                        )} />
-                        <FormField control={form.control} name="businessContext.description" render={({ field }) => (
-                          <FormItem className="col-span-2"><FormLabel className="text-xs">Business Description (What we do)</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl></FormItem>
-                        )} />
-                        <FormField control={form.control} name="businessContext.differentiation" render={({ field }) => (
-                          <FormItem className="col-span-2"><FormLabel className="text-xs">Key Differentiators (Why us?)</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value || ''} /></FormControl></FormItem>
-                        )} />
-                        <FormField control={form.control} name="businessContext.forbiddenTopics" render={({ field }) => (
-                          <FormItem className="col-span-2">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Ban className="h-3.5 w-3.5 text-rose-500" />
-                                <FormLabel className="text-xs">Strictly Forbidden Topics</FormLabel>
-                            </div>
-                            <FormControl><Input {...field} value={field.value || ''} placeholder="Topics the agent must never discuss" /></FormControl>
-                          </FormItem>
-                        )} />
-                      </div>
-                    </section>
-
-                    <Separator className="border-white/5" />
-
-                    <section className="space-y-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-primary">
-                          <Package className="h-4 w-4" />
-                          <h3 className="text-sm font-bold uppercase tracking-widest">Key Products/Services</h3>
+                <div className="space-y-6">
+                  <FieldCard className="sticky top-6">
+                    <SectionHeader icon={Sparkles} title="Agent Preview" description="A quick pulse-check before you save." />
+                    <div className="mt-6 space-y-4">
+                      <div className="rounded-2xl border border-white/5 bg-black/20 p-4">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <Bot className="h-4 w-4" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-sm font-semibold text-white truncate">{watched.webAgentName || 'Unnamed Agent'}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tight">{watched.behavior.mode} • {watched.tone} • {watched.responseLength}</p>
+                          </div>
                         </div>
-                        <Button type="button" variant="outline" size="sm" onClick={() => appendProduct({ id: Date.now().toString(), name: '', description: '', triggers: '' })}>
-                          <Plus className="h-3.5 w-3.5 mr-1" /> Add Product
-                        </Button>
+                        <p className="mt-4 text-sm text-white/90 leading-relaxed">{watched.primaryGoal || 'No mission yet.'}</p>
                       </div>
-                      <div className="space-y-4">
-                        {productFields.map((item, idx) => (
-                          <div key={item.id} className="p-4 rounded-xl border border-white/5 bg-white/[0.02] space-y-4 relative group">
-                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100" onClick={() => removeProduct(idx)}><Trash2 className="h-4 w-4 text-rose-500" /></Button>
-                            <div className="grid grid-cols-2 gap-4">
-                              <FormField control={form.control} name={`products.${idx}.name`} render={({ field }) => (
-                                <FormItem><FormLabel className="text-[10px]">Product Name</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
-                              )} />
-                              <FormField control={form.control} name={`products.${idx}.price`} render={({ field }) => (
-                                <FormItem><FormLabel className="text-[10px]">Price/Range</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
-                              )} />
-                            </div>
-                            <FormField control={form.control} name={`products.${idx}.description`} render={({ field }) => (
-                              <FormItem><FormLabel className="text-[10px]">Description</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value || ''} /></FormControl></FormItem>
-                            )} />
-                            <FormField control={form.control} name={`products.${idx}.triggers`} render={({ field }) => (
-                              <FormItem><FormLabel className="text-[10px]">When to recommend this?</FormLabel><FormControl><Input {...field} value={field.value || ''} placeholder="Keywords or situations" /></FormControl></FormItem>
-                            )} />
+
+                      <div className="grid gap-3">
+                        {[
+                          ['Sources', watched.allowedHelpCenterIds.length],
+                          ['FAQs', watched.faqs.length],
+                          ['Products', watched.products.length],
+                          ['Objections', watched.objections.length]
+                        ].map(([label, count]) => (
+                          <div key={label as string} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2">
+                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground opacity-50">{label as string}</span>
+                            <span className="text-sm font-semibold text-white">{count}</span>
                           </div>
                         ))}
                       </div>
-                    </section>
 
-                    <Separator className="border-white/5" />
-
-                    <section className="space-y-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-primary">
-                          <HelpCircle className="h-4 w-4" />
-                          <h3 className="text-sm font-bold uppercase tracking-widest">Fixed FAQs</h3>
-                        </div>
-                        <Button type="button" variant="outline" size="sm" onClick={() => appendFaq({ id: Date.now().toString(), question: '', answer: '' })}>
-                          <Plus className="h-3.5 w-3.5 mr-1" /> Add FAQ
-                        </Button>
+                      <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4 text-left">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Default posture</p>
+                        <p className="mt-2 text-xs text-white/90 leading-relaxed">
+                          {watched.behavior.askClarifyingQuestions ? 'Clarifies when needed, ' : 'Does not clarify, '}
+                          {watched.behavior.recommendNextStep ? 'recommends next steps, ' : 'stays passive, '}
+                          and {watched.escalation.enabled ? 'can escalate to humans.' : 'keeps everything AI-only.'}
+                        </p>
                       </div>
-                      <div className="space-y-4">
-                        {faqFields.map((item, idx) => (
-                          <div key={item.id} className="p-4 rounded-xl border border-white/5 bg-white/[0.02] space-y-4 relative group">
-                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100" onClick={() => removeFaq(idx)}><Trash2 className="h-4 w-4 text-rose-500" /></Button>
-                            <FormField control={form.control} name={`faqs.${idx}.question`} render={({ field }) => (
-                              <FormItem><FormLabel className="text-[10px]">Question</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
-                            )} />
-                            <FormField control={form.control} name={`faqs.${idx}.answer`} render={({ field }) => (
-                              <FormItem><FormLabel className="text-[10px]">Answer</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value || ''} /></FormControl></FormItem>
-                            )} />
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  </div>
-                )}
-
-                {activeTab === 'channels' && (
-                  <div className="space-y-12 animate-in fade-in duration-300">
-                    <Tabs value={activeChannel} onValueChange={setActiveChannel}>
-                      <TabsList className="bg-white/5 border border-white/10 h-11 p-1 mb-10">
-                        <TabsTrigger value="web" className="text-xs font-bold gap-2 relative">
-                          <MessageSquare className="h-3.5 w-3.5" /> Web
-                          {watchedValues.channelConfig?.web?.enabled && (
-                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] border-2 border-[#0d1117]" />
-                          )}
-                        </TabsTrigger>
-                        <TabsTrigger value="sms" className="text-xs font-bold gap-2 relative">
-                          <Smartphone className="h-3.5 w-3.5" /> SMS
-                          {watchedValues.channelConfig?.sms?.enabled && (
-                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] border-2 border-[#0d1117]" />
-                          )}
-                        </TabsTrigger>
-                        <TabsTrigger value="phone" className="text-xs font-bold gap-2 relative">
-                          <Phone className="h-3.5 w-3.5" /> Phone
-                          {watchedValues.channelConfig?.phone?.enabled && (
-                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] border-2 border-[#0d1117]" />
-                          )}
-                        </TabsTrigger>
-                        <TabsTrigger value="email" className="text-xs font-bold gap-2 relative">
-                          <Mail className="h-3.5 w-3.5" /> Email
-                          {watchedValues.channelConfig?.email?.enabled && (
-                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] border-2 border-[#0d1117]" />
-                          )}
-                        </TabsTrigger>
-                      </TabsList>
-                      
-                      <TabsContent value="web" className="space-y-10">
-                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02] border-white/5">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500"><MessageSquare className="h-5 w-5" /></div>
-                            <div>
-                              <p className="text-sm font-bold text-white">Enable for Web Widget</p>
-                              <p className="text-[10px] text-muted-foreground">Allow this agent to respond on the website chat.</p>
-                            </div>
-                          </div>
-                          <FormField control={form.control} name="channelConfig.web.enabled" render={({ field }) => (
-                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                          )} />
-                        </div>
-                        
-                        {watchedValues.channelConfig.web.enabled && (
-                          <div className="space-y-8 pl-6 border-l-2 border-primary/20 animate-in slide-in-from-left-2 duration-300">
-                            <FormField control={form.control} name="channelConfig.web.greeting.text" render={({ field }) => (
-                              <FormItem><FormLabel className="text-xs">Initial Greeting</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value || ''} /></FormControl></FormItem>
-                            )} />
-                            <FormField control={form.control} name="channelConfig.web.greeting.returningText" render={({ field }) => (
-                              <FormItem><FormLabel className="text-xs">Returning Visitor Greeting</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value || ''} /></FormControl></FormItem>
-                            )} />
-                          </div>
-                        )}
-                      </TabsContent>
-
-                      <TabsContent value="sms" className="space-y-10">
-                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02] border-white/5">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500"><Smartphone className="h-5 w-5" /></div>
-                            <div>
-                              <p className="text-sm font-bold text-white">Enable for SMS</p>
-                              <p className="text-[10px] text-muted-foreground">Respond to text messages automatically.</p>
-                            </div>
-                          </div>
-                          <FormField control={form.control} name="channelConfig.sms.enabled" render={({ field }) => (
-                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                          )} />
-                        </div>
-
-                        {watchedValues.channelConfig.sms.enabled && (
-                          <div className="space-y-8 pl-6 border-l-2 border-emerald-500/20 animate-in slide-in-from-left-2 duration-300">
-                            <FormField control={form.control} name="channelConfig.sms.openingText" render={({ field }) => (
-                              <FormItem><FormLabel className="text-xs">First Text Response</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>
-                            )} />
-                            <div className="grid grid-cols-2 gap-6">
-                              <FormField control={form.control} name="channelConfig.sms.maxResponseLength" render={({ field }) => (
-                                <FormItem><FormLabel className="text-xs">Max Character Limit</FormLabel><FormControl><Input type="number" {...field} value={field.value || ''} /></FormControl><FormDescription className="text-[9px]">Sms segments are ~160 chars.</FormDescription></FormItem>
-                              )} />
-                            </div>
-                            <FormField control={form.control} name="channelConfig.sms.leadCaptureMessage" render={({ field }) => (
-                              <FormItem><FormLabel className="text-xs">Lead Capture Request (SMS Style)</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value || ''} /></FormControl></FormItem>
-                            )} />
-                          </div>
-                        )}
-                      </TabsContent>
-
-                      <TabsContent value="phone" className="space-y-10">
-                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02] border-white/5">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500"><Phone className="h-5 w-5" /></div>
-                            <div>
-                              <p className="text-sm font-bold text-white">Enable for Voice</p>
-                              <p className="text-[10px] text-muted-foreground">Handle phone calls with AI Voice.</p>
-                            </div>
-                          </div>
-                          <FormField control={form.control} name="channelConfig.phone.enabled" render={({ field }) => (
-                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                          )} />
-                        </div>
-
-                        {watchedValues.channelConfig.phone.enabled && (
-                          <div className="space-y-8 pl-6 border-l-2 border-orange-500/20 animate-in slide-in-from-left-2 duration-300">
-                            <FormField control={form.control} name="channelConfig.phone.operationMode" render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs">Call Handling Mode</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="full_ai">Full AI Resolution</SelectItem>
-                                    <SelectItem value="handoff">Triage & Transfer</SelectItem>
-                                    <SelectItem value="receptionist">Simple Receptionist</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </FormItem>
-                            )} />
-                            <FormField control={form.control} name="channelConfig.phone.greetingScript" render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs">Greeting Script (Text-to-Speech)</FormLabel>
-                                <FormControl><Textarea rows={3} {...field} value={field.value || ''} placeholder="What the AI says when it picks up." /></FormControl>
-                              </FormItem>
-                            )} />
-                            <FormField control={form.control} name="channelConfig.phone.voicemailScript" render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs">Voicemail Instructions</FormLabel>
-                                <FormControl><Textarea rows={2} {...field} value={field.value || ''} /></FormControl>
-                              </FormItem>
-                            )} />
-                            <div className="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-white/[0.01]">
-                              <div className="flex items-center gap-2">
-                                <Mic className="h-4 w-4 text-muted-foreground" />
-                                <Label className="text-xs">Record & Transcribe Calls</Label>
-                              </div>
-                              <FormField control={form.control} name="channelConfig.phone.transcribeCalls" render={({ field }) => (
-                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                              )} />
-                            </div>
-                          </div>
-                        )}
-                      </TabsContent>
-
-                      <TabsContent value="email" className="space-y-10">
-                        <div className="flex items-center justify-between p-4 border rounded-xl bg-white/[0.02] border-white/5">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500"><Mail className="h-5 w-5" /></div>
-                            <div>
-                              <p className="text-sm font-bold text-white">Enable for Email</p>
-                              <p className="text-[10px] text-muted-foreground">Draft or send email replies automatically.</p>
-                            </div>
-                          </div>
-                          <FormField control={form.control} name="channelConfig.email.enabled" render={({ field }) => (
-                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                          )} />
-                        </div>
-
-                        {watchedValues.channelConfig.email.enabled && (
-                          <div className="space-y-8 pl-6 border-l-2 border-indigo-500/20 animate-in slide-in-from-left-2 duration-300">
-                            <FormField control={form.control} name="channelConfig.email.approvalMode" render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs">Reply Approval Mode</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                  <FormControl><SelectTrigger><SelectValue placeholder="Select an action" /></SelectTrigger></FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="auto">Fully Automated (Risky)</SelectItem>
-                                    <SelectItem value="auto_exceptions">Auto-reply (except high value/frustrated)</SelectItem>
-                                    <SelectItem value="manual">Manual Approval Only (Drafts only)</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </FormItem>
-                            )} />
-                            <FormField control={form.control} name="channelConfig.email.standardSignoff" render={({ field }) => (
-                              <FormItem><FormLabel className="text-xs">Signature / Sign-off</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value || ''} placeholder="Best regards, {{agent_name}}" /></FormControl></FormItem>
-                            )} />
-                          </div>
-                        )}
-                      </TabsContent>
-                    </Tabs>
-                  </div>
-                )}
+                    </div>
+                  </FieldCard>
+                </div>
+              </div>
             </form>
           </Form>
         </ScrollArea>

@@ -71,7 +71,6 @@ export default function InboxSettings({
 
   const isWebChatMode = mode === 'web-chat';
 
-  // Filter bots by type
   const displayBots = useMemo(() => {
     return bots.filter(b => {
       const type = b.type || 'widget';
@@ -79,24 +78,18 @@ export default function InboxSettings({
     });
   }, [bots, isWebChatMode]);
 
-  // Filter agents for brain assignment
   const agentsList = useMemo(() => {
     return bots.filter(b => b.type === 'agent' && b.isEnabled);
   }, [bots]);
 
-  // Filter users specifically for the current Hub context
   const hubMembers = useMemo(() => {
     if (!activeHub || !activeSpace) return [];
-    
     let memberIds: string[] | undefined;
-
-    // Use explicit hub members if private, otherwise use all space members
     if (activeHub.isPrivate && activeHub.memberIds) {
       memberIds = activeHub.memberIds;
     } else {
       memberIds = Object.keys(activeSpace.members);
     }
-    
     return allUsers.filter(u => memberIds?.includes(u.id));
   }, [activeHub, activeSpace, allUsers]);
 
@@ -112,7 +105,6 @@ export default function InboxSettings({
 
   const handleDuplicateBot = (bot: BotData) => {
     const { id, ...rest } = bot;
-    
     const deepSanitize = (obj: any): any => {
       if (Array.isArray(obj)) return obj.map(deepSanitize);
       if (obj !== null && typeof obj === 'object') {
@@ -127,11 +119,11 @@ export default function InboxSettings({
 
     const duplicatedData: Omit<BotData, 'id'> = {
       ...deepSanitize(rest),
-      name: `Copy of ${bot.name}`,
+      name: `${bot.name} (Copy)`,
       isEnabled: false,
     } as any;
     onBotAdd(duplicatedData);
-    toast({ title: `${isWebChatMode ? 'Widget' : 'Agent'} Duplicated` });
+    toast({ title: 'Duplicated successfully' });
   };
 
   const handleSaveBot = (botData: BotData | Omit<BotData, 'id' | 'hubId'>) => {
@@ -149,8 +141,7 @@ export default function InboxSettings({
 
     const sanitizedData = deepSanitize(botData);
 
-    // Robust ID check: If it has an ID and it's not empty, update it.
-    if ('id' in sanitizedData && sanitizedData.id && typeof sanitizedData.id === 'string' && sanitizedData.id.trim() !== '') {
+    if ('id' in sanitizedData && sanitizedData.id) {
       onBotUpdate(sanitizedData.id, sanitizedData as any);
     } else if (activeHub) {
       const dataWithDefaults = { 
@@ -160,8 +151,6 @@ export default function InboxSettings({
         type: isWebChatMode ? 'widget' : 'agent'
       };
       onBotAdd(dataWithDefaults as Omit<BotData, 'id'>);
-    } else {
-      toast({ variant: 'destructive', title: 'Cannot save: Hub context missing.' });
     }
   };
 
@@ -189,7 +178,7 @@ export default function InboxSettings({
                         : 'Configure high-intelligence brains to handle your conversations.'}
                 </p>
             </div>
-            <Button onClick={handleNewBot} className="rounded-full shadow-lg shadow-primary/20">
+            <Button onClick={handleNewBot} className="rounded-full shadow-lg shadow-primary/20 h-10">
                 <Plus className="mr-2 h-4 w-4" />
                 {isWebChatMode ? 'Create Widget' : 'Create Agent'}
             </Button>
@@ -261,30 +250,6 @@ export default function InboxSettings({
                         </SelectContent>
                       </Select>
                     </div>
-                    
-                    <div className="p-3 rounded-xl border border-white/5 bg-background/50 flex items-center gap-3">
-                      {bot.assignedAgentId ? (
-                        <>
-                          <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center text-green-500">
-                            <Check className="h-4 w-4" />
-                          </div>
-                          <p className="text-xs font-medium">
-                            <span className="font-bold text-foreground">
-                              {agentsList.find(a => a.id === bot.assignedAgentId)?.name || 'Agent'}
-                            </span> is active on this widget
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
-                            <BotIcon className="h-4 w-4" />
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Conversations route to inbox. <span className="font-bold">No AI involvement.</span>
-                          </p>
-                        </>
-                      )}
-                    </div>
                   </div>
                 </CardContent>
               )}
@@ -327,7 +292,7 @@ export default function InboxSettings({
           bot={selectedBot}
           onSave={handleSaveBot}
           appUser={appUser}
-          allUsers={[]}
+          allUsers={hubMembers}
           helpCenters={helpCenters}
         />
       )}
