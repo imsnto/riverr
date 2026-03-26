@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
 
 const GoogleIcon = () => (
     <svg className="mr-2 h-4 w-4" viewBox="0 0 48 48">
@@ -43,11 +41,18 @@ function LoginContent() {
         try {
             await signInWithGoogle();
         } catch (error: any) {
-            if (error.code !== 'auth/popup-closed-by-user') {
+            console.error("Login component error:", error);
+            if (error.code === 'auth/unauthorized-domain') {
                 toast({
                     variant: 'destructive',
-                    title: 'Google Login Failed',
-                    description: 'Please try again or use email login. Ensure your domain is authorized in Firebase.',
+                    title: 'Domain not authorized',
+                    description: 'Please add this domain to your Authorized Domains in the Firebase Console.',
+                });
+            } else if (error.code !== 'auth/popup-closed-by-user') {
+                toast({
+                    variant: 'destructive',
+                    title: 'Login Failed',
+                    description: error.message || 'An unexpected error occurred during login.',
                 });
             }
         }
@@ -71,7 +76,7 @@ function LoginContent() {
             toast({
                 variant: 'destructive',
                 title: 'Authentication Failed',
-                description: 'Please check your credentials and try again.',
+                description: error.message || 'Please check your credentials and try again.',
             });
         } finally {
             setLoading(false);
@@ -87,26 +92,22 @@ function LoginContent() {
                     width={48}
                     height={48}
                     alt="Manowar Logo"
-                    data-ai-hint="logo"
                 />
             </div>
             <div className="w-full max-w-sm">
                 <div className="text-center mb-8">
-                    {isSignUp ? (
-                        <h1 className="text-2xl font-bold tracking-tight">Manowar: The AI command center for your business.</h1>
-                    ) : (
-                        <h1 className="text-2xl font-bold tracking-tight">Log in to Manowar</h1>
-                    )}
+                    <h1 className="text-2xl font-bold tracking-tight">
+                        {isSignUp ? 'Sign up for Manowar' : 'Log in to Manowar'}
+                    </h1>
                 </div>
                 
                 <div className="space-y-4">
-                        {status === 'loading' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                     <Button variant="outline" className="w-full h-12 text-base" onClick={handleGoogleSignIn} disabled={status === 'loading'}>
-                        <GoogleIcon />
+                     <Button variant="outline" className="w-full h-12 text-base font-bold" onClick={handleGoogleSignIn} disabled={status === 'loading'}>
+                        {status === 'loading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon />}
                         Continue with Google
                     </Button>
                     
-                    <div className="relative">
+                    <div className="relative py-2">
                         <div className="absolute inset-0 flex items-center">
                             <span className="w-full border-t" />
                         </div>
@@ -130,16 +131,15 @@ function LoginContent() {
                             <Label htmlFor="password">Password</Label>
                             <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
                         </div>
-                        <Button type="submit" className="w-full h-12 text-base" disabled={loading || status === 'loading'}>
-                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Continue with Email')}
+                        <Button type="submit" className="w-full h-12 text-base font-bold" disabled={loading || status === 'loading'}>
+                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isSignUp ? 'Create Account' : 'Log In')}
                         </Button>
                     </form>
 
-                     <div className="text-center text-sm">
-                        <p className="text-muted-foreground">
+                     <div className="text-center text-sm pt-2">
+                        <p className="text-muted-foreground font-medium">
                             {isSignUp ? "Already have an account?" : "Don't have an account?"}{' '}
-                            <Button variant="link" className="p-0" onClick={() => setIsSignUp(!isSignUp)}>
+                            <Button variant="link" className="p-0 h-auto font-bold" onClick={() => setIsSignUp(!isSignUp)}>
                                 {isSignUp ? "Log In" : "Sign Up"}
                             </Button>
                         </p>

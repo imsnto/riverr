@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
@@ -8,14 +7,12 @@ import {
   User as FirebaseUser, 
   signOut as firebaseSignOut, 
   signInWithPopup,
-  signInWithRedirect, 
-  getRedirectResult,
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword as firebaseSignIn, 
   updateProfile 
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { getUser, addUser, addSpace, getSpacesForUser, seedDatabase, updateUser, subscribeToUserSpaces } from '@/lib/db';
+import { getUser, addUser, addSpace, seedDatabase, subscribeToUserSpaces } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 
 
@@ -79,19 +76,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     seedDatabase();
     
-    // Handle redirect results (errors or successes from signInWithRedirect)
-    getRedirectResult(auth).then((result) => {
-      if (result) {
-        console.log("Redirect sign-in successful");
-      }
-    }).catch((error) => {
-      console.error("Error during redirect sign-in:", error);
-      // If we hit a 403 on redirect return, it's almost certainly Authorized Domains
-      if (error.code === 'auth/unauthorized-domain') {
-        window.location.href = '/unauthorized';
-      }
-    });
-
     try {
         const cachedUser = localStorage.getItem(LOCAL_STORAGE_KEY_USER);
         const cachedSpace = localStorage.getItem(LOCAL_STORAGE_KEY_ACTIVE_SPACE);
@@ -120,7 +104,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (user) {
         setFirebaseUser(user);
         
-        // Ensure token cookie is set for server-side checks (e.g. admin page)
         const token = await user.getIdToken(true);
         document.cookie = `token=${token}; path=/; max-age=3600; samesite=lax`;
         
@@ -131,7 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             name: user.displayName || 'New User',
             email: user.email!,
             avatarUrl: user.photoURL || `https://placehold.co/100x100.png?text=${user.displayName?.[0] || 'U'}`,
-            role: 'Admin', // Default global role
+            role: 'Admin',
             onboardingComplete: false,
           };
           userProfile = await addUser(newUser, user.uid);
@@ -147,29 +130,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         setAppUser(userProfile);
 
-        // Setup real-time listener for spaces
         if (spacesUnsubRef.current) spacesUnsubRef.current();
         spacesUnsubRef.current = subscribeToUserSpaces(user.uid, (spaces) => {
             setUserSpaces(spaces);
             
-            // Sync with current active space if its metadata changed, but preserve ID-based context
             _setActiveSpace(prev => {
                 if (!prev) return null;
                 const updated = spaces.find(s => s.id === prev.id);
-                // If we find the space in the list, keep it active (with updated metadata)
                 if (updated) {
                     localStorage.setItem(LOCAL_STORAGE_KEY_ACTIVE_SPACE, JSON.stringify(updated));
                     return updated;
                 }
-                return prev; // Fallback to current memory if list is empty or pending
+                return prev;
             });
 
-            // Update admin status
             const realSpaces = spaces.filter(s => !s.isSystem);
             const isAdminInAnySpace = realSpaces.some(s => s.members[userProfile!.id]?.role === 'Admin');
             setIsUserAdmin(isAdminInAnySpace);
 
-            // Synchronize localStorage
             localStorage.setItem(LOCAL_STORAGE_KEY_USER, JSON.stringify({ 
                 appUser: userProfile, 
                 firebaseUser: user, 
@@ -209,19 +187,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signInWithGoogle = async () => {
     setStatus('loading');
     try {
-      // Use Popup for better reliability in modern browsers
-      // await signInWithPopup(auth, googleProvider);
-      await signInWithRedirect(auth, googleProvider);
-      localStorage.setItem('redirectAfterLogin', '/dashboard');
+      await signInWithPopup(auth, googleProvider);
     } catch (error: any) {
-      console.error("Error during Google Sign-In:", error);
+      console.error("Google login error:", error);
       setStatus('unauthenticated');
-      
-      // If popup is blocked or we hit an unauthorized domain, handle accordingly
-      if (error.code === 'auth/unauthorized-domain') {
-        window.location.href = '/unauthorized';
-      }
-      throw error; // Rethrow to allow component to handle UI feedback
+      throw error;
     }
   };
 
@@ -231,7 +201,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCredential.user, { displayName: name });
     } catch (error) {
-      console.error("Error during Email/Password Sign-Up:", error);
       setStatus('unauthenticated');
       throw error;
     }
@@ -242,7 +211,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await firebaseSignIn(auth, email, password);
     } catch (error) {
-      console.error("Error during Email/Password Sign-In:", error);
       setStatus('unauthenticated');
       throw error;
     }
@@ -251,7 +219,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const getUserPermissions = (spaceId: string) => {
     const space = userSpaces.find(s => s.id === spaceId);
     if (!space || !appUser) return null;
-    return space.members[appUser.id] || null;
+    return space.members[appUser.id] as any || null;
   }
 
   const value: AuthContextType = {

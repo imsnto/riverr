@@ -36,20 +36,20 @@ import {
   Users,
   BrainCircuit,
   Sparkles,
+  ChevronRight,
+  FileIcon,
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '../ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '../ui/label';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '../ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import ChatbotSimulator from './chatbot-simulator';
 import { uploadBotLogo } from '@/lib/db';
-import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 
 const widgetSettingsSchema = z.object({
@@ -152,8 +152,8 @@ export default function WidgetSettingsDialog({
     const agent = hubAgents.find(a => a.id === watchedValues.assignedAgentId);
     const baseData = {
       ...watchedValues,
-      hubId: watchedValues.hubId || activeHub?.id,
-      spaceId: watchedValues.spaceId || activeSpace?.id,
+      hubId: (watchedValues as any).hubId || activeHub?.id,
+      spaceId: (watchedValues as any).spaceId || activeSpace?.id,
       type: 'widget' as const
     };
 
@@ -161,7 +161,7 @@ export default function WidgetSettingsDialog({
       return {
         ...baseData,
         ...agent,
-        styleSettings: watchedValues.styleSettings, // Prefer widget style
+        styleSettings: watchedValues.styleSettings,
         assignedAgentId: watchedValues.assignedAgentId,
       };
     }
@@ -176,7 +176,7 @@ export default function WidgetSettingsDialog({
       const url = await uploadBotLogo(file, bot.id);
       form.setValue('styleSettings.logoUrl', url);
       toast({ title: 'Logo uploaded' });
-    } catch (e) {
+    } catch (err) {
       toast({ variant: 'destructive', title: 'Upload failed' });
     } finally {
       setIsUploading(false);
@@ -194,13 +194,19 @@ export default function WidgetSettingsDialog({
     onOpenChange(false);
   };
 
+  const navItems = [
+    { id: 'style', label: 'Style & Branding', icon: Palette },
+    { id: 'behavior', label: 'Chat Behavior', icon: BrainCircuit },
+    { id: 'team', label: 'Human Team', icon: Users }
+  ];
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] w-[1200px] h-[90vh] p-0 flex flex-col overflow-hidden bg-[#0d1117] border-white/10">
         <DialogTitle className="sr-only">Web Stage Settings</DialogTitle>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden text-left">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden text-left text-white">
             <header className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#090c10] shrink-0 z-[100]">
               <div className="flex items-center gap-10">
                 <div className="flex items-center gap-3 shrink-0 text-left">
@@ -212,11 +218,7 @@ export default function WidgetSettingsDialog({
                 </div>
 
                 <nav className="flex items-center bg-white/[0.03] rounded-full p-1 border border-white/5">
-                  {[
-                    { id: 'style', label: 'Style & Branding', icon: Palette },
-                    { id: 'behavior', label: 'Chat Behavior', icon: BrainCircuit },
-                    { id: 'team', label: 'Human Team', icon: Users }
-                  ].map((item) => (
+                  {navItems.map((item) => (
                     <button
                       key={item.id}
                       type="button"
@@ -226,7 +228,7 @@ export default function WidgetSettingsDialog({
                         activeTab === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-white"
                       )}
                     >
-                      <item.icon className="h-3.5 w-3.5" />
+                      {React.createElement(item.icon, { className: "h-3.5 w-3.5" })}
                       {item.label}
                     </button>
                   ))}
@@ -273,7 +275,7 @@ export default function WidgetSettingsDialog({
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-8">
+                        <div className="grid grid-cols-2 gap-8 text-left">
                           <ColorInput form={form} name="styleSettings.primaryColor" label="Primary Theme Color" />
                           <ColorInput form={form} name="styleSettings.backgroundColor" label="Background Color" />
                           <ColorInput form={form} name="styleSettings.headerTextColor" label="Header Text Color" />
@@ -304,7 +306,7 @@ export default function WidgetSettingsDialog({
                                 ))}
                               </SelectContent>
                             </Select>
-                          </Select>
+                          </FormItem>
                         )} />
                       </section>
 
