@@ -399,7 +399,7 @@ export default function AgentSettingsDialog({
                                 <SelectItem value="formal">Professional & Formal</SelectItem>
                                 <SelectItem value="expert">Expert & Authoritative</SelectItem>
                                 <SelectItem value="direct">Direct & Concise</SelectItem>
-                                <SelectItem value="warm">Warm & Empathetic</SelectItem>
+                                <SelectItem value="warm">Warm & Empathic</SelectItem>
                               </SelectContent>
                             </Select>
                           </FormItem>
@@ -536,17 +536,29 @@ export default function AgentSettingsDialog({
                   <div className="space-y-12 animate-in fade-in duration-300">
                     <Tabs value={activeChannel} onValueChange={setActiveChannel}>
                       <TabsList className="bg-white/5 border border-white/10 h-11 p-1 mb-10">
-                        <TabsTrigger value="web" className="text-xs font-bold gap-2">
+                        <TabsTrigger value="web" className="text-xs font-bold gap-2 relative">
                           <MessageSquare className="h-3.5 w-3.5" /> Web
+                          {watchedValues.channelConfig?.web?.enabled && (
+                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] border-2 border-[#0d1117]" />
+                          )}
                         </TabsTrigger>
-                        <TabsTrigger value="sms" className="text-xs font-bold gap-2">
+                        <TabsTrigger value="sms" className="text-xs font-bold gap-2 relative">
                           <Smartphone className="h-3.5 w-3.5" /> SMS
+                          {watchedValues.channelConfig?.sms?.enabled && (
+                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] border-2 border-[#0d1117]" />
+                          )}
                         </TabsTrigger>
-                        <TabsTrigger value="phone" className="text-xs font-bold gap-2">
+                        <TabsTrigger value="phone" className="text-xs font-bold gap-2 relative">
                           <Phone className="h-3.5 w-3.5" /> Phone
+                          {watchedValues.channelConfig?.phone?.enabled && (
+                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] border-2 border-[#0d1117]" />
+                          )}
                         </TabsTrigger>
-                        <TabsTrigger value="email" className="text-xs font-bold gap-2">
+                        <TabsTrigger value="email" className="text-xs font-bold gap-2 relative">
                           <Mail className="h-3.5 w-3.5" /> Email
+                          {watchedValues.channelConfig?.email?.enabled && (
+                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] border-2 border-[#0d1117]" />
+                          )}
                         </TabsTrigger>
                       </TabsList>
                       
@@ -681,7 +693,7 @@ export default function AgentSettingsDialog({
                               <FormItem>
                                 <FormLabel className="text-xs">Reply Approval Mode</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
-                                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                  <FormControl><SelectTrigger><SelectValue placeholder="Select an action" /></SelectTrigger></FormControl>
                                   <SelectContent>
                                     <SelectItem value="auto">Fully Automated (Risky)</SelectItem>
                                     <SelectItem value="auto_exceptions">Auto-reply (except high value/frustrated)</SelectItem>
