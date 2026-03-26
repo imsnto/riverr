@@ -79,7 +79,8 @@ export default function InboxSettings({
   }, [bots, isWebChatMode]);
 
   const agentsList = useMemo(() => {
-    return bots.filter(b => b.type === 'agent' && b.isEnabled);
+    // Show all agents that are not explicitly disabled
+    return bots.filter(b => b.type === 'agent' && b.isEnabled !== false);
   }, [bots]);
 
   const hubMembers = useMemo(() => {
@@ -148,7 +149,8 @@ export default function InboxSettings({
         ...sanitizedData, 
         hubId: activeHub.id, 
         spaceId: activeHub.spaceId,
-        type: isWebChatMode ? 'widget' : 'agent'
+        type: isWebChatMode ? 'widget' : 'agent',
+        isEnabled: true
       };
       onBotAdd(dataWithDefaults as Omit<BotData, 'id'>);
     }

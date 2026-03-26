@@ -105,6 +105,7 @@ const objectionSchema = z.object({
 const agentSettingsSchema = z.object({
   id: z.string().optional(),
   type: z.literal('agent').default('agent'),
+  isEnabled: z.boolean().default(true),
 
   // Identity
   name: z.string().min(1, 'Internal Name is required'),
@@ -233,6 +234,7 @@ interface AgentSettingsDialogProps {
 
 const DEFAULT_AGENT_VALUES: AgentSettingsFormValues = {
   type: 'agent',
+  isEnabled: true,
   name: '',
   webAgentName: '',
   roleTitle: '',
