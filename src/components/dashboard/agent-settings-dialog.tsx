@@ -360,7 +360,7 @@ export default function AgentSettingsDialog({
   allUsers,
 }: AgentSettingsDialogProps) {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'intelligence' | 'knowledge' | 'channels'>('intelligence');
+  const [activeTab, setActiveTab] = useState<'intelligence' | 'knowledge' | 'channels' | 'preview'>('intelligence');
   const [activeChannel, setActiveChannel] = useState<'web' | 'sms' | 'phone' | 'email'>('web');
   const [activeSubpanel, setActiveSubpanel] = useState<string>('identity');
 
@@ -995,7 +995,7 @@ export default function AgentSettingsDialog({
             { id: 'email', icon: Mail, label: 'Email', enabled: watched.channelConfig.email.enabled },
           ].map((item) => (
             <TabsTrigger key={item.id} value={item.id} className="relative gap-2 text-xs font-bold">
-              <item.icon className="h-3.5 w-3.5" />
+              {React.createElement(item.icon, { className: "h-3.5 w-3.5" })}
               {item.label}
               {item.enabled ? <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-emerald-500" /> : null}
             </TabsTrigger>
@@ -1169,6 +1169,53 @@ export default function AgentSettingsDialog({
     </div>
   );
 
+  const renderPreview = () => (
+    <div className="flex justify-center items-start pt-10 min-h-[500px]">
+      <FieldCard className="max-w-2xl w-full sticky top-6 shadow-2xl shadow-primary/5">
+        <SectionHeader icon={Sparkles} title="Agent Preview" description="A quick pulse-check before you save." />
+        <div className="mt-6 space-y-4">
+          <div className="rounded-2xl border border-white/5 bg-black/20 p-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Bot className="h-6 w-6" />
+              </div>
+              <div className="text-left">
+                <p className="text-lg font-bold text-white truncate">{watched.webAgentName || 'Unnamed Agent'}</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.1em]">{watched.behavior.mode} • {watched.tone} • {watched.responseLength}</p>
+              </div>
+            </div>
+            <p className="mt-6 text-sm text-white/90 leading-relaxed text-left font-medium italic">
+              "{watched.primaryGoal || 'Mission pending configuration...'}"
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              ['Sources', watched.allowedHelpCenterIds.length],
+              ['FAQs', watched.faqs.length],
+              ['Products', watched.products.length],
+              ['Objections', watched.objections.length]
+            ].map(([label, count]) => (
+              <div key={label as string} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground opacity-50">{label as string}</span>
+                <span className="text-sm font-bold text-white">{count}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-2xl border border-primary/10 bg-primary/5 p-5 text-left">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Intelligence Profile</p>
+            <p className="mt-3 text-xs text-white/90 leading-relaxed">
+              {watched.behavior.askClarifyingQuestions ? 'Proactively clarifies intent, ' : 'Answers based on initial prompt, '}
+              {watched.behavior.recommendNextStep ? 'guides users to next actions, ' : 'remains passive, '}
+              and {watched.escalation.enabled ? 'smoothly transitions to human support when needed.' : 'operates in fully automated mode.'}
+            </p>
+          </div>
+        </div>
+      </FieldCard>
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="h-[92vh] w-[96vw] max-w-[1440px] overflow-hidden border-white/10 bg-[#0d1117] p-0 text-left text-white">
@@ -1194,6 +1241,7 @@ export default function AgentSettingsDialog({
                   ['intelligence', BrainCircuit, 'Intelligence'],
                   ['knowledge', BookOpen, 'Knowledge'],
                   ['channels', Globe, 'Channels'],
+                  ['preview', Sparkles, 'Preview'],
                 ].map(([id, Icon, label]) => (
                   <button
                     key={id as string}
@@ -1225,6 +1273,7 @@ export default function AgentSettingsDialog({
                   ['intelligence', BrainCircuit, 'Intelligence'],
                   ['knowledge', BookOpen, 'Knowledge'],
                   ['channels', Globe, 'Channels'],
+                  ['preview', Sparkles, 'Preview'],
                 ].map(([id, Icon, label]) => (
                   <button
                     key={id as string}
@@ -1241,55 +1290,11 @@ export default function AgentSettingsDialog({
                 ))}
               </div>
 
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="space-y-8 min-w-0">
-                  {activeTab === 'intelligence' && renderIntelligence()}
-                  {activeTab === 'knowledge' && renderKnowledge()}
-                  {activeTab === 'channels' && renderChannels()}
-                </div>
-
-                <div className="space-y-6">
-                  <FieldCard className="sticky top-6">
-                    <SectionHeader icon={Sparkles} title="Agent Preview" description="A quick pulse-check before you save." />
-                    <div className="mt-6 space-y-4">
-                      <div className="rounded-2xl border border-white/5 bg-black/20 p-4">
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                            <Bot className="h-4 w-4" />
-                          </div>
-                          <div className="text-left">
-                            <p className="text-sm font-semibold text-white truncate">{watched.webAgentName || 'Unnamed Agent'}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tight">{watched.behavior.mode} • {watched.tone} • {watched.responseLength}</p>
-                          </div>
-                        </div>
-                        <p className="mt-4 text-sm text-white/90 leading-relaxed text-left">{watched.primaryGoal || 'No mission yet.'}</p>
-                      </div>
-
-                      <div className="grid gap-3">
-                        {[
-                          ['Sources', watched.allowedHelpCenterIds.length],
-                          ['FAQs', watched.faqs.length],
-                          ['Products', watched.products.length],
-                          ['Objections', watched.objections.length]
-                        ].map(([label, count]) => (
-                          <div key={label as string} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2">
-                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground opacity-50">{label as string}</span>
-                            <span className="text-sm font-semibold text-white">{count}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4 text-left">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Default posture</p>
-                        <p className="mt-2 text-xs text-white/90 leading-relaxed">
-                          {watched.behavior.askClarifyingQuestions ? 'Clarifies when needed, ' : 'Does not clarify, '}
-                          {watched.behavior.recommendNextStep ? 'recommends next steps, ' : 'stays passive, '}
-                          and {watched.escalation.enabled ? 'can escalate to humans.' : 'keeps everything AI-only.'}
-                        </p>
-                      </div>
-                    </div>
-                  </FieldCard>
-                </div>
+              <div className="min-w-0">
+                {activeTab === 'intelligence' && renderIntelligence()}
+                {activeTab === 'knowledge' && renderKnowledge()}
+                {activeTab === 'channels' && renderChannels()}
+                {activeTab === 'preview' && renderPreview()}
               </div>
             </form>
           </Form>
