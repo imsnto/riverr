@@ -1,4 +1,3 @@
-
 // src/components/dashboard/help-center-layout.tsx
 'use client';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -111,6 +110,41 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
         reindexArticleAction(article.id).catch(console.error);
     };
 
+    const handleSaveHelpCenter = async (values: HelpCenterFormValues) => {
+        if (!activeHub) return;
+        try {
+            await db.addHelpCenter({
+                ...values,
+                hubId: activeHub.id,
+            });
+            setIsHCDialogOpen(false);
+            refreshData();
+            toast({ title: 'Library Created' });
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Failed to create library' });
+        }
+    };
+
+    const handleSaveCollection = async (values: any, id?: string) => {
+        if (!activeHub || !activeHelpCenterId) {
+            toast({ variant: 'destructive', title: 'Please select a library first' });
+            return;
+        }
+        try {
+            await db.saveHelpCenterCollection(activeHub.id, {
+                ...values,
+                helpCenterId: activeHelpCenterId,
+                parentId: editingCollection ? editingCollection.parentId : (selectedCollectionId || null),
+            }, id);
+            setIsCollectionDialogOpen(false);
+            setEditingCollection(null);
+            refreshData();
+            toast({ title: id ? 'Collection Updated' : 'Collection Created' });
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Failed to save collection' });
+        }
+    };
+
     const handleViewChange = (view: HelpCenterSidebarView) => {
         setSidebarView(view);
         setSelectedCollectionId(null);
@@ -196,8 +230,8 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
             ) : (
                 <>
                     <div className="flex flex-col md:flex-row justify-between md:items-start mb-4 gap-4 shrink-0">
-                        <div className='flex-1 min-w-0'>
-                            <h1 className="text-3xl font-bold truncate text-left">{title}</h1>
+                        <div className='flex-1 min-w-0 text-left'>
+                            <h1 className="text-3xl font-bold truncate">{title}</h1>
                             {activeHelpCenterId && (
                                 <div className="flex items-center gap-3 mt-3">
                                     <div className="bg-muted/50 px-2 py-1 rounded-md border text-xs text-muted-foreground flex items-center gap-1.5">
@@ -208,6 +242,11 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
                             )}
                         </div>
                         <div className="flex items-center gap-2">
+                            {activeHelpCenterId && (
+                                <Button variant="outline" onClick={() => setIsCollectionDialogOpen(true)}>
+                                    <FolderPlus className="mr-2 h-4 w-4" /> New Collection
+                                </Button>
+                            )}
                             <Button onClick={handleCreateArticle}><Plus className="mr-2 h-4 w-4" /> New Article</Button>
                         </div>
                     </div>
@@ -240,8 +279,8 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
                     {mainContentComponent}
                 </React.Fragment>
             )}
-            <HelpCenterFormDialog isOpen={isHCDialogOpen} onOpenChange={setIsHCDialogOpen} helpCenter={null} onSave={refreshData} />
-            <HelpCenterCollectionFormDialog isOpen={isCollectionDialogOpen} onOpenChange={setIsCollectionDialogOpen} onSave={refreshData} collection={editingCollection} />
+            <HelpCenterFormDialog isOpen={isHCDialogOpen} onOpenChange={setIsHCDialogOpen} helpCenter={null} onSave={handleSaveHelpCenter} />
+            <HelpCenterCollectionFormDialog isOpen={isCollectionDialogOpen} onOpenChange={setIsCollectionDialogOpen} onSave={handleSaveCollection} collection={editingCollection} />
             <ImportDataDialog isOpen={isImportDataOpen} onOpenChange={setIsImportDataOpen} onComplete={refreshData} />
         </div>
     );

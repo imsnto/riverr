@@ -1,4 +1,3 @@
-
 'use client';
 import {
   collection,
@@ -372,6 +371,10 @@ export const getHelpCenters = async (hubId: string): Promise<HelpCenter[]> => {
 export const addHelpCenter = async (hc: Omit<HelpCenter, 'id'>): Promise<HelpCenter> => {
   const docRef = await addDoc(collection(db, 'help_centers'), hc);
   return { id: docRef.id, ...hc };
+};
+
+export const updateHelpCenter = async (id: string, data: Partial<HelpCenter>) => {
+  await updateDoc(doc(db, 'help_centers', id), data);
 };
 
 export const getHelpCenterCollections = async (hubId: string): Promise<HelpCenterCollection[]> => {
