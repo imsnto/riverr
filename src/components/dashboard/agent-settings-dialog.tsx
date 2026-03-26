@@ -346,32 +346,6 @@ function SectionHeader({
   );
 }
 
-function SidebarStep({
-  active,
-  complete,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  complete?: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition-all',
-        active ? 'border-primary/40 bg-primary/10 text-white' : 'border-white/5 bg-white/[0.02] text-muted-foreground hover:text-white'
-      )}
-    >
-      <span className="text-xs font-bold uppercase tracking-[0.15em]">{label}</span>
-      {complete ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <ChevronRight className="h-4 w-4" />}
-    </button>
-  );
-}
-
 function FieldCard({ children, className }: { children: React.ReactNode; className?: string }) {
   return <div className={cn('rounded-2xl border border-white/5 bg-white/[0.02] p-5 text-left', className)}>{children}</div>;
 }
@@ -455,20 +429,20 @@ export default function AgentSettingsDialog({
   };
 
   const renderIntelligence = () => (
-    <div className="grid gap-8 lg:grid-cols-[250px_minmax(0,1fr)]">
-      <div className="space-y-3">
-        <SidebarStep active={activeSubpanel === 'identity'} complete={completion.identity} label="Identity" onClick={() => setActiveSubpanel('identity')} />
-        <SidebarStep active={activeSubpanel === 'mission'} complete={completion.mission} label="Mission" onClick={() => setActiveSubpanel('mission')} />
-        <SidebarStep active={activeSubpanel === 'behavior'} label="Behavior Engine" onClick={() => setActiveSubpanel('behavior')} />
-        <SidebarStep active={activeSubpanel === 'confidence'} label="Confidence" onClick={() => setActiveSubpanel('confidence')} />
-        <SidebarStep active={activeSubpanel === 'escalation'} label="Escalation" onClick={() => setActiveSubpanel('escalation')} />
-        <SidebarStep active={activeSubpanel === 'capture'} label="Lead Capture" onClick={() => setActiveSubpanel('capture')} />
-        <SidebarStep active={activeSubpanel === 'style'} label="Tone & Style" onClick={() => setActiveSubpanel('style')} />
-      </div>
+    <Tabs value={activeSubpanel} onValueChange={setActiveSubpanel} className="space-y-8">
+      <TabsList className="bg-white/5 border border-white/10 p-1 h-11 w-full justify-start overflow-x-auto">
+        <TabsTrigger value="identity" className="text-xs font-bold uppercase tracking-widest px-6">Identity</TabsTrigger>
+        <TabsTrigger value="mission" className="text-xs font-bold uppercase tracking-widest px-6">Mission</TabsTrigger>
+        <TabsTrigger value="behavior" className="text-xs font-bold uppercase tracking-widest px-6">Behavior</TabsTrigger>
+        <TabsTrigger value="confidence" className="text-xs font-bold uppercase tracking-widest px-6">Confidence</TabsTrigger>
+        <TabsTrigger value="escalation" className="text-xs font-bold uppercase tracking-widest px-6">Escalation</TabsTrigger>
+        <TabsTrigger value="capture" className="text-xs font-bold uppercase tracking-widest px-6">Lead Capture</TabsTrigger>
+        <TabsTrigger value="style" className="text-xs font-bold uppercase tracking-widest px-6">Style</TabsTrigger>
+      </TabsList>
 
-      <div className="space-y-8">
+      <div className="space-y-8 min-h-[400px]">
         {activeSubpanel === 'identity' && (
-          <FieldCard>
+          <FieldCard className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <SectionHeader icon={UserCircle2} title="Identity" description="Define who this agent is, both publicly and internally." />
             <div className="mt-6 grid gap-6 md:grid-cols-2">
               <FormField control={form.control} name="webAgentName" render={({ field }) => (
@@ -496,7 +470,7 @@ export default function AgentSettingsDialog({
         )}
 
         {activeSubpanel === 'mission' && (
-          <FieldCard>
+          <FieldCard className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <SectionHeader icon={Target} title="Mission" description="This is the north star. It should describe the outcome, not just the tone." />
             <div className="mt-6 space-y-6">
               <FormField control={form.control} name="primaryGoal" render={({ field }) => (
@@ -524,7 +498,7 @@ export default function AgentSettingsDialog({
         )}
 
         {activeSubpanel === 'behavior' && (
-          <FieldCard>
+          <FieldCard className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <SectionHeader icon={Zap} title="Behavior Engine" description="How the AI thinks and operates, not just how it sounds." />
             <div className="mt-6 grid gap-6 md:grid-cols-2">
               <FormField control={form.control} name="behavior.mode" render={({ field }) => (
@@ -582,7 +556,7 @@ export default function AgentSettingsDialog({
         )}
 
         {activeSubpanel === 'confidence' && (
-          <FieldCard>
+          <FieldCard className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <SectionHeader icon={ShieldCheck} title="Confidence Handling" description="Choose how the agent behaves based on confidence in the answer." />
             <div className="mt-6 grid gap-6 md:grid-cols-3">
               {[
@@ -615,7 +589,7 @@ export default function AgentSettingsDialog({
         )}
 
         {activeSubpanel === 'escalation' && (
-          <FieldCard>
+          <FieldCard className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <SectionHeader icon={ShieldAlert} title="Escalation" description="Decide when the agent hands the baton to a human." />
             <div className="mt-6 space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
@@ -692,7 +666,7 @@ export default function AgentSettingsDialog({
         )}
 
         {activeSubpanel === 'capture' && (
-          <FieldCard>
+          <FieldCard className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <SectionHeader icon={Users} title="Lead Capture" description="Tell the agent when and how to collect identity details." />
             <div className="mt-6 space-y-6">
               <div className="grid gap-4 md:grid-cols-3">
@@ -743,7 +717,7 @@ export default function AgentSettingsDialog({
         )}
 
         {activeSubpanel === 'style' && (
-          <FieldCard>
+          <FieldCard className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <SectionHeader icon={Palette} title="Tone & Style" description="The outer voice of the agent." />
             <div className="mt-6 grid gap-6 md:grid-cols-2">
               <FormField control={form.control} name="tone" render={({ field }) => (
@@ -784,22 +758,22 @@ export default function AgentSettingsDialog({
           </FieldCard>
         )}
       </div>
-    </div>
+    </Tabs>
   );
 
   const renderKnowledge = () => (
-    <div className="grid gap-8 lg:grid-cols-[250px_minmax(0,1fr)]">
-      <div className="space-y-3">
-        <SidebarStep active={activeSubpanel === 'sources'} complete={completion.sources} label="Connected Sources" onClick={() => setActiveSubpanel('sources')} />
-        <SidebarStep active={activeSubpanel === 'business'} label="Business Context" onClick={() => setActiveSubpanel('business')} />
-        <SidebarStep active={activeSubpanel === 'products'} label="Products & Services" onClick={() => setActiveSubpanel('products')} />
-        <SidebarStep active={activeSubpanel === 'faqs'} label="Fixed FAQs" onClick={() => setActiveSubpanel('faqs')} />
-        <SidebarStep active={activeSubpanel === 'objections'} label="Objections" onClick={() => setActiveSubpanel('objections')} />
-      </div>
+    <Tabs value={activeSubpanel} onValueChange={setActiveSubpanel} className="space-y-8">
+      <TabsList className="bg-white/5 border border-white/10 p-1 h-11 w-full justify-start overflow-x-auto">
+        <TabsTrigger value="sources" className="text-xs font-bold uppercase tracking-widest px-6">Sources</TabsTrigger>
+        <TabsTrigger value="business" className="text-xs font-bold uppercase tracking-widest px-6">Context</TabsTrigger>
+        <TabsTrigger value="products" className="text-xs font-bold uppercase tracking-widest px-6">Products</TabsTrigger>
+        <TabsTrigger value="faqs" className="text-xs font-bold uppercase tracking-widest px-6">FAQs</TabsTrigger>
+        <TabsTrigger value="objections" className="text-xs font-bold uppercase tracking-widest px-6">Objections</TabsTrigger>
+      </TabsList>
 
-      <div className="space-y-8">
+      <div className="space-y-8 min-h-[400px]">
         {activeSubpanel === 'sources' && (
-          <FieldCard>
+          <FieldCard className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <SectionHeader
               icon={Library}
               title="Connected Sources"
@@ -850,7 +824,7 @@ export default function AgentSettingsDialog({
         )}
 
         {activeSubpanel === 'business' && (
-          <FieldCard>
+          <FieldCard className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <SectionHeader icon={GraduationCap} title="Business Context" description="Manual context the agent should keep in its head at all times." />
             <div className="mt-6 grid gap-6 md:grid-cols-2">
               <FormField control={form.control} name="businessContext.businessName" render={({ field }) => (
@@ -912,7 +886,7 @@ export default function AgentSettingsDialog({
         )}
 
         {activeSubpanel === 'products' && (
-          <FieldCard>
+          <FieldCard className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <SectionHeader
               icon={Package}
               title="Products & Services"
@@ -948,7 +922,7 @@ export default function AgentSettingsDialog({
         )}
 
         {activeSubpanel === 'faqs' && (
-          <FieldCard>
+          <FieldCard className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <SectionHeader
               icon={HelpCircle}
               title="Fixed FAQs"
@@ -978,7 +952,7 @@ export default function AgentSettingsDialog({
         )}
 
         {activeSubpanel === 'objections' && (
-          <FieldCard>
+          <FieldCard className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <SectionHeader
               icon={AlertCircle}
               title="Objections & Responses"
@@ -1007,7 +981,7 @@ export default function AgentSettingsDialog({
           </FieldCard>
         )}
       </div>
-    </div>
+    </Tabs>
   );
 
   const renderChannels = () => (
@@ -1029,7 +1003,7 @@ export default function AgentSettingsDialog({
         </TabsList>
 
         <TabsContent value="web" className="mt-8 space-y-6">
-          <FieldCard>
+          <FieldCard className="animate-in fade-in duration-300">
             <SectionHeader icon={MessageSquare} title="Web Widget" description="Best default channel. Keep this on for most agents." />
             <div className="mt-6 space-y-6">
               <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-4">
@@ -1054,7 +1028,7 @@ export default function AgentSettingsDialog({
         </TabsContent>
 
         <TabsContent value="sms" className="mt-8 space-y-6">
-          <FieldCard>
+          <FieldCard className="animate-in fade-in duration-300">
             <SectionHeader icon={Smartphone} title="SMS" description="Keep replies short, sharp, and segment-aware." />
             <div className="mt-6 space-y-6">
               <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-4">
@@ -1093,7 +1067,7 @@ export default function AgentSettingsDialog({
         </TabsContent>
 
         <TabsContent value="phone" className="mt-8 space-y-6">
-          <FieldCard>
+          <FieldCard className="animate-in fade-in duration-300">
             <SectionHeader icon={Phone} title="Phone" description="Voice AI needs guardrails, not just greetings." />
             <div className="mt-6 space-y-6">
               <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-4">
@@ -1145,7 +1119,7 @@ export default function AgentSettingsDialog({
         </TabsContent>
 
         <TabsContent value="email" className="mt-8 space-y-6">
-          <FieldCard>
+          <FieldCard className="animate-in fade-in duration-300">
             <SectionHeader icon={Mail} title="Email" description="Email needs stricter approval rails than chat." />
             <div className="mt-6 space-y-6">
               <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-4">
@@ -1288,7 +1262,7 @@ export default function AgentSettingsDialog({
                             <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tight">{watched.behavior.mode} • {watched.tone} • {watched.responseLength}</p>
                           </div>
                         </div>
-                        <p className="mt-4 text-sm text-white/90 leading-relaxed">{watched.primaryGoal || 'No mission yet.'}</p>
+                        <p className="mt-4 text-sm text-white/90 leading-relaxed text-left">{watched.primaryGoal || 'No mission yet.'}</p>
                       </div>
 
                       <div className="grid gap-3">
