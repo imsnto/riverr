@@ -203,7 +203,7 @@ export default function WidgetSettingsDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] w-[1200px] h-[90vh] p-0 flex flex-col overflow-hidden bg-[#0d1117] border-white/10">
-        <DialogTitle className="sr-only">Web Stage Settings</DialogTitle>
+        <DialogTitle className="sr-only">Chat Widget Settings</DialogTitle>
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden text-left text-white">
@@ -213,7 +213,7 @@ export default function WidgetSettingsDialog({
                   <div className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
                   <div>
                     <h2 className="text-sm font-bold text-white leading-none">{watchedValues.name || 'Unnamed Widget'}</h2>
-                    <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground opacity-50 mt-1">Web Stage</p>
+                    <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground opacity-50 mt-1">Chat Widget</p>
                   </div>
                 </div>
 
@@ -244,20 +244,20 @@ export default function WidgetSettingsDialog({
             <div className="flex-1 flex overflow-hidden">
               <ScrollArea className="flex-1">
                 <div className="p-10 max-w-2xl mx-auto pb-32 space-y-12">
-                  <section className="space-y-6">
-                    <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Identity</h3>
-                    <FormField control={form.control} name="name" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Widget Name (Internal)</FormLabel>
-                        <FormControl><Input placeholder="e.g. Website Support Chat" {...field} value={field.value || ''} /></FormControl>
-                        <FormDescription className="text-[10px]">How this widget is identified in your dashboard.</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </section>
-
                   {activeTab === 'style' && (
                     <div className="space-y-12 animate-in fade-in duration-300">
+                      <section className="space-y-6">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Identity</h3>
+                        <FormField control={form.control} name="name" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Widget Name (Internal)</FormLabel>
+                            <FormControl><Input placeholder="e.g. Website Support Chat" {...field} value={field.value || ''} /></FormControl>
+                            <FormDescription className="text-[10px]">How this widget is identified in your dashboard.</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                      </section>
+
                       <section className="space-y-6">
                         <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Branding & Visuals</h3>
                         <div className="flex items-center gap-6">
