@@ -36,6 +36,7 @@ export async function generateDocumentEmbedding(text: string): Promise<number[] 
       model: EMBEDDING_MODEL,
     });
 
+    // @ts-ignore - SDK types mismatch
     const result = await embeddingModel.embedContent({
       content: {
         role: 'user',
@@ -69,6 +70,7 @@ export async function generateQueryEmbedding(text: string): Promise<number[] | n
       model: EMBEDDING_MODEL,
     });
 
+    // @ts-ignore - SDK types mismatch
     const result = await embeddingModel.embedContent({
       content: {
         role: 'user',
@@ -86,4 +88,35 @@ export async function generateQueryEmbedding(text: string): Promise<number[] | n
     console.error('generateQueryEmbedding failed:', error);
     return null;
   }
+}
+
+// ==========================================
+// V2 ENTITY TEXT COMPOSERS (Per Client Spec)
+// ==========================================
+
+/**
+ * Articles embed: Title + Summary + Body
+ */
+export function composeArticleEmbeddingText(article: { title: string; summary?: string; body: string }): string {
+  return [article.title, article.summary, article.body]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+/**
+ * Topics embed: Title + Summary
+ */
+export function composeTopicEmbeddingText(topic: { title: string; summary?: string }): string {
+  return [topic.title, topic.summary]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+/**
+ * Insights embed: Title + Content (Issue & Resolution)
+ */
+export function composeInsightEmbeddingText(insight: { title: string; content: string }): string {
+  return [insight.title, insight.content]
+    .filter(Boolean)
+    .join('\n\n');
 }

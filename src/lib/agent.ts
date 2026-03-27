@@ -4,7 +4,7 @@
  * Implements conversational AI reasoning + deterministic subflow execution.
  */
 
-import type { Conversation as ImportedConversation, SupportIntentNode, ConversationStatus, ResponderType, AutomationNode, AutomationEdge, Bot, IntelligenceAccessLevel } from "./data";
+import type { Conversation as ImportedConversation, ConversationStatus, ResponderType, AutomationNode, AutomationEdge, Bot, IntelligenceAccessLevel } from "./data";
 
 export type MessageRole = "user" | "assistant" | "internal";
 
@@ -389,6 +389,16 @@ async function executeAiPhase(args: {
     }
   });
 
+  // Hard contract: if retrieval decides we cannot answer confidently, escalate now.
+  if (decision.answerMode === 'escalate') {
+    await escalateNow(
+      adapters,
+      conversation,
+      "Auto-escalated: no sufficiently trusted knowledge found."
+    );
+    return true;
+  }
+
   // 1.5 Apply Confidence Handling Strategy
   const score = decision.confidence;
   const level = score >= 0.8 ? 'high' : score >= 0.5 ? 'medium' : 'low';
@@ -436,7 +446,7 @@ async function executeAiPhase(args: {
   });
 
   if (!answer || answer.trim() === "") {
-      if (decision.answerMode === 'escalate' || strategy === 'escalate') {
+      if (decision.answerMode === 'escalate' || (strategy as string) === 'escalate') {
         await escalateNow(adapters, conversation, "No trusted knowledge sources found.");
         return true;
       }

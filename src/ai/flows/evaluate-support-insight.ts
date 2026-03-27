@@ -9,13 +9,13 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-const EvaluateInsightInputSchema = z.object({
+export const EvaluateInsightInputSchema = z.object({
   messageText: z.string().describe('The content of the agent message to evaluate.'),
   conversationContext: z.string().optional().describe('Recent message history for context.'),
 });
 export type EvaluateInsightInput = z.infer<typeof EvaluateInsightInputSchema>;
 
-const EvaluateInsightOutputSchema = z.object({
+export const EvaluateInsightOutputSchema = z.object({
   shouldCreateInsight: z.boolean().describe('Whether this response contains a valuable, reusable resolution.'),
   confidence: z.number().min(0).max(1).describe('Confidence score for the decision.'),
   reason: z.string().describe('Why this was or was not selected.'),

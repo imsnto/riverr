@@ -79,9 +79,10 @@ export const onConversationResolvedForInsight = onDocumentUpdated(
               userId: message.authorId,
               name: after.lastMessageAuthor
           },
-          signalScore: result.confidence,
+          // Topic grouping runs on verified insights (client-spec behavior)
+          status: 'verified',
+          confidence: result.confidence,
           signalLevel: result.confidence > 0.8 ? 'high' : result.confidence > 0.5 ? 'medium' : 'low',
-          processingStatus: 'pending',
           groupingStatus: 'ungrouped',
           visibility: 'private',
           origin: 'automatic',
@@ -94,21 +95,8 @@ export const onConversationResolvedForInsight = onDocumentUpdated(
         };
 
         await insightRef.set(insightData);
-        
-        // ENQUEUE VECTOR INDEXING JOB
-        await db.collection('brain_jobs').add({
-          type: 'process_vector_indexing',
-          status: 'pending',
-          params: {
-            sourceType: 'insight',
-            sourceId: insightRef.id,
-            spaceId: spaceId,
-            text: insightData.content
-          },
-          createdAt: now
-        });
 
-        logger.info(`[Intelligence] Created canonical insight ${insightRef.id}. Vector job enqueued.`);
+        logger.info(`[Intelligence] Created canonical insight ${insightRef.id}. Waiting for Vertex embedding.`);
       }
     } catch (err: any) {
       logger.error(`[Intelligence] Failed processing for convo ${convoId}:`, err);

@@ -7,8 +7,11 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 export const DistillSupportIntentInputSchema = z.object({
-  conversationText: z.string().describe('The full text of a support conversation, with roles prefixed (e.g., "Customer: ...", "Agent: ...").'),
-  lastAgentMessage: z.string().optional().describe('The final message from the support agent, which likely contains the resolution.'),
+  conversationId: z.string().describe('The ID of the conversation being distilled.'),
+  conversationText: z.string().describe('The full text of a support conversation, with roles prefixed.'),
+  lastAgentMessage: z.string().optional(),
+  resolutionStatus: z.string().describe('Must be "resolved" for knowledge extraction.'),
+  resolutionSource: z.string().describe('Must be "agent_marked" or "customer_confirmed".'),
 });
 export type DistillSupportIntentInput = z.infer<typeof DistillSupportIntentInputSchema>;
 
@@ -28,7 +31,18 @@ export const DistillSupportIntentOutputSchema = z.object({
 export type DistillSupportIntentOutput = z.infer<typeof DistillSupportIntentOutputSchema>;
 
 
-export async function distillSupportIntent(input: DistillSupportIntentInput): Promise<DistillSupportIntentOutput> {
+export async function distillSupportIntent(input: DistillSupportIntentInput): Promise<DistillSupportIntentOutput | null> {
+  // CLIENT REQUIREMENT: Only distill insights from successfully resolved conversations
+  if (input.resolutionStatus !== 'resolved') {
+    console.warn(`[Distill] Skipping conversation ${input.conversationId}: not resolved.`);
+    return null;
+  }
+  
+  if (!['agent_marked', 'customer_confirmed'].includes(input.resolutionSource)) {
+    console.warn(`[Distill] Skipping conversation ${input.conversationId}: resolution source (${input.resolutionSource}) not trusted.`);
+    return null;
+  }
+
   return distillSupportIntentFlow(input);
 }
 

@@ -1,0 +1,81 @@
+ ~/Desktop/riverr$ gcloud ai indexes create \
+  --display-name="manowar-intelligence-v2" \
+  --metadata-file="documents/index_metadata.json" \
+  --region="us-central1" \
+  --project="timeflow-6i3eo"
+Using endpoint [https://us-central1-aiplatform.googleapis.com/]
+API [aiplatform.googleapis.com] not enabled on project 
+[timeflow-6i3eo]. Would you like to enable and retry (this will take a 
+few minutes)? (y/N)?  y
+
+Enabling service [aiplatform.googleapis.com] on project [timeflow-6i3eo]...
+Operation "operations/acat.p2-209410404537-f9b003a1-b8b3-42ae-b014-7d5cafac0cf8" finished successfully.
+The create index operation [projects/209410404537/locations/us-central1/indexes/1987593766600441856/operations/1083895478875062272] was submitted successfully.
+
+You may view the status of your operation with the command
+
+  $ gcloud ai operations describe 1083895478875062272 --index=1987593766600441856 --region=us-central1 [--project=timeflow-6i3eo]
+imsnto@imsnto-ThinkPad-E570:~/Desktop/riverr$ gcloud ai operations describe 1083895478875062272 --index=1987593766600441856 --region=us-central1 [--project=timeflow-6i3eo]
+ERROR: (gcloud.ai.operations.describe) unrecognized arguments: [--project=timeflow-6i3eo] (did you mean '--project'?) 
+
+To search the help text of gcloud commands, run:
+  gcloud help -- SEARCH_TERMS
+imsnto@imsnto-ThinkPad-E570:~/Desktop/riverr$ gcloud ai operations describe 1083895478875062272 --index=1987593766600441856 --region=us-central1 --project=timeflow-6i3eo
+Using endpoint [https://us-central1-aiplatform.googleapis.com/]
+metadata:
+  '@type': type.googleapis.com/google.cloud.aiplatform.v1.CreateIndexOperationMetadata
+  genericMetadata:
+    createTime: '2026-03-26T06:56:55.084356Z'
+    updateTime: '2026-03-26T06:56:55.084356Z'
+name: projects/209410404537/locations/us-central1/indexes/1987593766600441856/operations/1083895478875062272
+
+
+ 
+ gcloud ai operations describe 1083895478875062272 --index=1987593766600441856 --region=us-central1 --project=timeflow-6i3eo
+Using endpoint [https://us-central1-aiplatform.googleapis.com/]
+metadata:
+  '@type': type.googleapis.com/google.cloud.aiplatform.v1.CreateIndexOperationMetadata
+  genericMetadata:
+    createTime: '2026-03-26T06:56:55.084356Z'
+    updateTime: '2026-03-26T06:56:55.084356Z'
+name: projects/209410404537/locations/us-central1/indexes/1987593766600441856/operations/1083895478875062272
+imsnto@imsnto-ThinkPad-E570:~/Desktop/riverr$ 
+
+
+INDEX_ID = 1987593766600441856
+
+:~/Desktop/riverr$ gcloud ai index-endpoints create --display-name="manowar-intelligence-endpoint" --region="us-central1" --project="timeflow-6i3eo"
+Using endpoint [https://us-central1-aiplatform.googleapis.com/]
+Waiting for operation [222668388432032563
+2]...done.                               
+Created Vertex AI index endpoint: projects/209410404537/locations/us-central1/indexEndpoints/6837495576255266816.
+
+
+
+~/Desktop/riverr$ gcloud ai index-endpoints deploy-index 6837495576255266816 \
+>   --index=1987593766600441856 \
+>   --deployed-index-id="manowar_v2_deployed" \
+>   --display-name="Production Intelligence Deployment" \
+>   --region="us-central1" \
+>   --project="timeflow-6i3eo"
+Using endpoint [https://us-central1-aiplatform.googleapis.com/]
+ERROR: (gcloud.ai.index-endpoints.deploy-index) NOT_FOUND: Index `projects/timeflow-6i3eo/locations/us-central1/indexes/1987593766600441856` is not found. This command is authenticated as slmnsnto@gmail.com which is the active account specified by the [core/account] property.
+imsnto@imsnto-ThinkPad-E570:~/Desktop/riverr$ 
+imsnto@imsnto-ThinkPad-E570:~/Desktop/riverr$ ^C
+imsnto@imsnto-ThinkPad-E570:~/Desktop/riverr$ gcloud ai operations describe 1083895478875062272 --index=1987593766600441856 --region=us-central1 --project=timeflow-6i3eo
+Using endpoint [https://us-central1-aiplatform.googleapis.com/]
+done: true
+error:
+  code: 5
+  message: code=NOT_FOUND, message=The GCS bucket "timeflow-6i3eo-vector-data" does
+    not exist. Please check the path and try again., cause=null
+metadata:
+  '@type': type.googleapis.com/google.cloud.aiplatform.v1.CreateIndexOperationMetadata
+  genericMetadata:
+    createTime: '2026-03-26T06:56:55.084356Z'
+    updateTime: '2026-03-26T07:00:32.098088Z'
+name: projects/209410404537/locations/us-central1/indexes/1987593766600441856/operations/1083895478875062272
+imsnto@imsnto-ThinkPad-E570:~/Desktop/riverr$ gsutil mb -p timeflow-6i3eo -l us-central1 gs://timeflow-6i3eo-vector-data/
+Google recommends using Gcloud storage CLI (https://docs.cloud.google.com/storage/docs/discover-object-storage-gcloud) instead of gsutil. Please refer to migration guide (https://docs.cloud.google.com/storage/docs/gsutil-transition-to-gcloud) for assistance.
+Creating gs://timeflow-6i3eo-vector-data/...
+imsnto@imsnto-ThinkPad-E570:~/Desktop/riverr$ 

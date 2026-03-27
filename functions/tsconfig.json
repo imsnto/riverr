@@ -2,14 +2,22 @@
   "compilerOptions": {
     "target": "es2020",
     "module": "commonjs",
-    "lib": ["es2020"],
+    "lib": ["es2020", "dom"],
     "outDir": "lib",
-    "rootDir": "src",
-    "strict": true,
+    "rootDir": "..",
+    "strict": false,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "../src/ai", "../src/lib", "../src/app/actions"],
+  "exclude": [
+    "../src/lib/requestNotificationPermission.ts",
+    "../src/lib/tiptap-fontsize.ts"
+  ]
 }

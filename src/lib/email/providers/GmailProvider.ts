@@ -47,7 +47,8 @@ export class GmailProvider implements EmailProvider {
   async refreshTokens(refreshToken: string): Promise<EmailTokens> {
     const client = this.getOAuthClient();
     client.setCredentials({ refresh_token: refreshToken });
-    const { tokens } = await client.refreshAccessToken();
+    const { credentials } = await client.refreshAccessToken();
+    const tokens = credentials;
     return {
       accessToken: tokens.access_token!,
       refreshToken: tokens.refresh_token || refreshToken,

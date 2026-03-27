@@ -1,8 +1,9 @@
 
-import { EmailProvider, EmailProviderName } from "./EmailProvider";
+import { EmailProvider } from "./EmailProvider";
+import { EmailProviderName } from "@/lib/data";
 import { GmailProvider } from "./providers/GmailProvider";
 import { MicrosoftProvider } from "./providers/MicrosoftProvider";
-import { IMAPProvider } from "./providers/IMAPProvider";
+
 
 /**
  * Returns an instance of the requested email provider.
@@ -13,8 +14,7 @@ export function getEmailProvider(provider: EmailProviderName): EmailProvider {
       return new GmailProvider();
     case "microsoft":
       return new MicrosoftProvider();
-    case "imap":
-      return new IMAPProvider();
+
     default:
       throw new Error(`Unsupported email provider: ${provider}`);
   }

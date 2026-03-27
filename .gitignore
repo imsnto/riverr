@@ -1,6 +1,7 @@
 # Node dependencies
 node_modules/
 functions/node_modules/
+documents/
 
 # Next.js build output
 .next/

@@ -1,7 +1,13 @@
 import { MatchServiceClient } from '@google-cloud/aiplatform';
 import { adminDB } from '../firebase-admin';
 import { generateQueryEmbedding } from './embed';
-import { db as firestore } from 'firebase-admin';
+import { validateVertexEnv } from './env-validation';
+
+// Validate environment at module load
+const envValidation = validateVertexEnv();
+if (!envValidation.valid) {
+  console.warn('[VertexSearchService] Missing environment variables:', envValidation.missing);
+}
 
 export type VectorSourceType = 'article' | 'topic' | 'insight' | 'chunk';
 
@@ -21,9 +27,16 @@ export interface SearchParams {
   limit?: number;
 }
 
-const INDEX_ENDPOINT_RESOURCE_NAME = process.env.VERTEX_VECTOR_INDEX_ENDPOINT_RESOURCE_NAME || '';
-const DEPLOYED_INDEX_ID = process.env.VERTEX_VECTOR_DEPLOYED_INDEX_ID || '';
-const PUBLIC_ENDPOINT_DOMAIN = process.env.VERTEX_VECTOR_PUBLIC_ENDPOINT_DOMAIN || '';
+const PROJECT    = process.env.GOOGLE_CLOUD_PROJECT || 'timeflow-6i3eo';
+const LOCATION   = process.env.VERTEX_API_LOCATION  || 'us-central1';
+const INDEX_ID   = process.env.VERTEX_AI_INDEX_ID   || '';
+const ENDPOINT_ID = process.env.VERTEX_AI_INDEX_ENDPOINT_ID || '';
+const DEPLOYED_INDEX_ID  = process.env.VERTEX_AI_DEPLOYED_INDEX_ID || 'manowar_v2_deployed';
+const PUBLIC_ENDPOINT_DOMAIN = process.env.VERTEX_AI_PUBLIC_ENDPOINT_DOMAIN || '';
+
+const INDEX_ENDPOINT_RESOURCE_NAME = ENDPOINT_ID 
+  ? `projects/${PROJECT}/locations/${LOCATION}/indexEndpoints/${ENDPOINT_ID}`
+  : '';
 
 function getCollectionName(sourceType: VectorSourceType): string {
   switch (sourceType) {
@@ -36,19 +49,32 @@ function getCollectionName(sourceType: VectorSourceType): string {
 }
 
 function buildQueryRestricts(params: SearchParams) {
-  const restricts: Array<{ namespace: string; allowList: string[] }> = [
-    { namespace: 'sourceType', allowList: [params.sourceType] },
-    { namespace: 'spaceId', allowList: [params.spaceId] },
+  const restricts: Array<{ name: string; allowTokens: string[] }> = [
+    { name: 'sourceType', allowTokens: [params.sourceType] },
+    { name: 'spaceId', allowTokens: [params.spaceId] },
   ];
 
-  if (params.hubId) restricts.push({ namespace: 'hubId', allowList: [params.hubId] });
-  if (params.visibility) restricts.push({ namespace: 'visibility', allowList: [params.visibility] });
+  if (params.hubId) restricts.push({ name: 'hubId', allowTokens: [params.hubId] });
+  if (params.visibility) restricts.push({ name: 'visibility', allowTokens: [params.visibility] });
   if (params.libraryIds && params.libraryIds.length > 0) {
-    restricts.push({ namespace: 'libraryId', allowList: params.libraryIds.slice(0, 10) });
+    restricts.push({ name: 'libraryId', allowTokens: params.libraryIds.slice(0, 10) });
   }
 
   return restricts;
 }
+
+// Spec-required Telemetry Logger
+const Telemetry = {
+  log: (event: string, payload: Record<string, any>) => {
+    console.log(JSON.stringify({
+      severity: 'INFO',
+      component: 'VertexSearchService',
+      event,
+      timestamp: new Date().toISOString(),
+      ...payload
+    }));
+  }
+};
 
 class VertexVectorSearchService {
   private matchClient: MatchServiceClient;
@@ -68,13 +94,18 @@ class VertexVectorSearchService {
   async search(params: SearchParams): Promise<VectorSearchResult[]> {
     const { query, sourceType, spaceId, limit = 10 } = params;
 
-    if (!INDEX_ENDPOINT_RESOURCE_NAME || !DEPLOYED_INDEX_ID || !PUBLIC_ENDPOINT_DOMAIN) {
+    if (!ENDPOINT_ID || !DEPLOYED_INDEX_ID || !PUBLIC_ENDPOINT_DOMAIN) {
       console.warn('[VertexSearch] Infrastructure not fully configured. Falling back to empty results.');
       return [];
     }
 
     const queryVector = await generateQueryEmbedding(query);
     if (!queryVector || queryVector.length === 0) return [];
+
+    Telemetry.log('vectorQuery_generated', { 
+      queryText: query, 
+      dimension: queryVector.length 
+    });
 
     const restricts = buildQueryRestricts(params);
 
@@ -89,10 +120,11 @@ class VertexVectorSearchService {
               featureVector: queryVector,
             },
             neighborCount: limit,
-            restricts,
+            // @ts-ignore - The types locally in v3.31.0 of the SDK are mismatched with the actual JS API 
+            restricts: restricts,
           },
         ],
-      });
+      }) as unknown as [any, any, any];
 
       const nearest = response.nearestNeighbors?.[0]?.neighbors ?? [];
       if (nearest.length === 0) return [];
@@ -108,6 +140,11 @@ class VertexVectorSearchService {
 
       if (ids.length === 0) return [];
 
+      Telemetry.log('retrievedCandidateIds', { 
+        count: ids.length, 
+        candidates: ids.slice(0, 5) // top 5
+      });
+
       const collectionName = getCollectionName(sourceType);
       const hydrated = new Map<string, any>();
 
@@ -118,6 +155,12 @@ class VertexVectorSearchService {
           .get();
         snap.docs.forEach(doc => hydrated.set(doc.id, doc.data()));
       }
+
+      Telemetry.log('FirestoreHydration_completed', {
+        requested: ids.length,
+        hydrated: hydrated.size,
+        collection: collectionName
+      });
 
       const results: VectorSearchResult[] = [];
       for (const neighbor of nearest) {

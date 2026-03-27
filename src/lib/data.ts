@@ -169,13 +169,15 @@ export interface Insight {
     | 'support_resolution' 
     | 'operational_knowledge' 
     | 'policy_clarification' 
-    | 'product_behavior' 
-    | 'imported_learning';
+    | 'product_feature'     // RENAMED from product_behavior
+    | 'unparsed_learning';  // RENAMED from imported_learning
 
   source: {
-    type: 'conversation_message' | 'imported_source' | 'manual_entry';
-    importedSourceId?: string | null;
+    type: 'conversation_message' | 'external_source' | 'manual_entry'; // RENAMED external_source
+    ref?: string | null;     // NEW: Replaces conversationId/messageId etc for universal linking
     chunkIds?: string[];
+    // Legacy fields kept optional for backward compatibility during migration
+    importedSourceId?: string | null;
     conversationId?: string | null;
     messageId?: string | null;
     channel?: 'webchat' | 'sms' | 'email' | 'voice' | 'other';
@@ -198,10 +200,11 @@ export interface Insight {
   issueLabel?: string | null;
   resolutionLabel?: string | null;
 
-  signalScore?: number | null;
+  confidence?: number | null; // RENAMED from signalScore
   signalLevel?: 'low' | 'medium' | 'high';
 
-  processingStatus: 'pending' | 'processing' | 'completed' | 'failed' | 'pending_resolution';
+  status: 'draft' | 'verified' | 'used' | 'closed'; // NEW standard status field
+  processingStatus?: 'pending' | 'processing' | 'completed' | 'failed' | 'pending_resolution'; // Kept for background jobs
   groupingStatus: 'ungrouped' | 'grouped' | 'ignored';
 
   visibility: 'private';
@@ -312,6 +315,7 @@ export interface Task {
   comments?: Comment[];
   attachments?: Attachment[];
   linkedTicketId?: string;
+  activities?: Activity[];
 }
 
 export interface Ticket {
@@ -840,6 +844,13 @@ export interface Conversation {
   sharedWithTeam: boolean;
   typing?: Record<string, boolean>;
   lastAgentSeenAtByAgent?: Record<string, string>;
+
+  // Email specific
+  emailConfigId?: string;
+  emailThreadId?: string;
+  emailSubject?: string;
+  emailFromAddress?: string;
+  emailFromName?: string;
 }
 
 export interface ChatMessage {
@@ -858,6 +869,11 @@ export interface ChatMessage {
     inReplyTo?: string;
     references?: string;
   };
+  channel?: string;
+  provider?: string;
+  hasAttachments?: boolean;
+  emptyBody?: boolean;
+  providerMessageId?: string;
 }
 
 // --- Comms Config ---

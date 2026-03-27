@@ -7,8 +7,23 @@ import { generateDocumentEmbedding } from '../../src/lib/brain/embed';
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
-const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
-const VECTOR_INDEX_RESOURCE_NAME = process.env.VERTEX_VECTOR_INDEX_RESOURCE_NAME || '';
+const PROJECT =
+  (process.env.GOOGLE_CLOUD_PROJECT ||
+    process.env.GCLOUD_PROJECT ||
+    process.env.FIREBASE_ADMIN_PROJECT_ID ||
+    'timeflow-6i3eo').trim();
+
+const location =
+  process.env.GOOGLE_CLOUD_LOCATION ||
+  process.env.VERTEX_API_LOCATION ||
+  process.env.VERTEX_LOCATION ||
+  'us-central1';
+
+const VECTOR_INDEX_RESOURCE_NAME =
+  process.env.VERTEX_VECTOR_INDEX_RESOURCE_NAME ||
+  (process.env.VERTEX_AI_INDEX_ID
+    ? `projects/${PROJECT}/locations/${location}/indexes/${process.env.VERTEX_AI_INDEX_ID}`
+    : '');
 
 const indexClient = new IndexServiceClient({
   apiEndpoint: `${location}-aiplatform.googleapis.com`,

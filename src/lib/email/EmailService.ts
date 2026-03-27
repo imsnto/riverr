@@ -155,10 +155,85 @@ export class EmailService {
     const indexData = indexSnap.data()!;
 
     if (indexData.type === 'hub') {
+      const configRef = adminDB.doc(`spaces/${indexData.spaceId}/hubs/${indexData.hubId}/emailConfigs/${indexData.emailConfigId}`);
+      const configSnap = await configRef.get();
+      if (!configSnap.exists) return;
+      const configData = configSnap.data() as EmailConfig;
+      const tokens = await this.getFreshTokens(configData, configRef.path);
       await this.handleHubInboundEmail(indexData.spaceId, indexData.hubId, indexData.emailConfigId, provider, tokens);
     } else if (indexData.type === 'agent') {
       await this.handleAgentInboundEmail(indexData.userId, indexData.emailConfigId, provider);
     }
+  }
+
+  private async handleHubInboundEmail(spaceId: string, hubId: string, emailConfigId: string, provider: any, tokens: EmailTokens) {
+    const configPath = `spaces/${spaceId}/hubs/${hubId}/emailConfigs/${emailConfigId}`;
+    const configSnap = await adminDB.doc(configPath).get();
+    if (!configSnap.exists) return;
+    const configData = configSnap.data() as EmailConfig;
+
+    const newEmails = await provider.fetchNewMessages(tokens, configData.watchConfig!);
+
+    for (const email of newEmails) {
+      if (email.isAutoReply) continue;
+
+      const existingMsgQuery = await adminDB.collection("chat_messages").where("providerMessageId", "==", email.providerMessageId).limit(1).get();
+      if (!existingMsgQuery.empty) continue;
+
+      const isSentBySupport = email.fromAddress.toLowerCase() === configData.emailAddress.toLowerCase();
+      const conversationId = await this.matchOrCreateHubConversation(spaceId, hubId, email, emailConfigId);
+
+      const messageData: Omit<ChatMessage, "id"> = {
+        conversationId,
+        authorId: isSentBySupport ? "agent" : "visitor",
+        type: "message",
+        content: email.bodyText || "No message body",
+        timestamp: email.receivedAt.toISOString(),
+        senderType: isSentBySupport ? "agent" : "visitor",
+        channel: "email",
+        emailHeaders: email.headers,
+      };
+      await adminDB.collection("chat_messages").add(messageData);
+
+      await adminDB.collection("conversations").doc(conversationId).update({
+        lastMessageAt: messageData.timestamp,
+        lastMessage: email.bodyText.slice(0, 140),
+        lastMessageAuthor: email.fromName || email.fromAddress,
+        updatedAt: new Date().toISOString()
+      });
+    }
+  }
+
+  private async matchOrCreateHubConversation(spaceId: string, hubId: string, email: ParsedEmail, emailConfigId: string): Promise<string> {
+    const byThread = await adminDB.collection("conversations")
+      .where("spaceId", "==", spaceId)
+      .where("hubId", "==", hubId)
+      .where("emailThreadId", "==", email.providerThreadId)
+      .limit(1)
+      .get();
+
+    if (!byThread.empty) return byThread.docs[0].id;
+
+    const convoRef = await adminDB.collection("conversations").add({
+      spaceId,
+      hubId,
+      ownerType: 'hub',
+      ownerAgentId: null,
+      sharedWithTeam: true,
+      channel: "email",
+      emailConfigId,
+      emailThreadId: email.providerThreadId,
+      emailSubject: email.subject,
+      emailFromAddress: email.fromAddress,
+      emailFromName: email.fromName,
+      status: "new",
+      lastMessage: email.bodyText.slice(0, 140),
+      lastMessageAt: email.receivedAt.toISOString(),
+      lastMessageAuthor: email.fromName || email.fromAddress,
+      updatedAt: new Date().toISOString()
+    });
+
+    return convoRef.id;
   }
 
   private async handleAgentInboundEmail(userId: string, emailConfigId: string, provider: any) {

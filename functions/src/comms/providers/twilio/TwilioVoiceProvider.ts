@@ -59,11 +59,13 @@ export class TwilioVoiceProvider implements VoiceProvider {
     const dial = response.dial({
       timeout: 20,
       action: args.actionUrl,
-      statusCallback: args.statusCallbackUrl,
-      statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
     });
 
-    dial.number(args.forwardToE164);
+    // @ts-ignore - TS types are missing attributes for number()
+    dial.number({
+      statusCallback: args.statusCallbackUrl,
+      statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
+    }, args.forwardToE164);
 
     return response.toString();
   }

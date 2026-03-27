@@ -14,6 +14,7 @@ export async function searchArticles(args: {
   hubId: string;
   spaceId: string;
   allowedHelpCenterIds?: string[];
+  visibility?: 'public' | 'private';
   limit?: number;
 }): Promise<Array<{
   id: string;
@@ -30,6 +31,7 @@ export async function searchArticles(args: {
     hubId,
     spaceId,
     allowedHelpCenterIds,
+    visibility,
     limit = 8,
   } = args;
 
@@ -44,6 +46,7 @@ export async function searchArticles(args: {
     spaceId,
     hubId,
     libraryIds: allowedHelpCenterIds,
+    visibility,
     limit,
   });
 

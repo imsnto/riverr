@@ -1,18 +1,7 @@
 import type { Firestore } from "firebase-admin/firestore";
-import admin from "firebase-admin";
-import { chunkArticleHtml } from "./chunking";
-import { generateDocumentEmbedding } from '@/lib/brain/embed';
-
-function safeSlug(s: string) {
-  return (s ?? "")
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, "-")
-    .replace(/(^-|-$)/g, "")
-    .slice(0, 60);
-}
 
 /**
- * Indexes a help center article into Firestore vector search.
+ * Indexes a help center article into the canonical Vertex-backed `articles` index.
  */
 export async function indexHelpCenterArticleToChunks(args: {
   adminDB: Firestore;
@@ -31,80 +20,59 @@ export async function indexHelpCenterArticleToChunks(args: {
 
   const articleId = article.id;
   const articleTitle = article.title ?? "Untitled";
-  
-  const specs = chunkArticleHtml({
-    html: article.content ?? "",
-    maxTokens: 220,
-    overlapTokens: 60,
-  });
 
-  console.log(`INDEXER: Processing article ${articleId} into ${specs.length} specs`);
+  const now = new Date().toISOString();
 
-  const modelName = process.env.EMBEDDING_MODEL || 'gemini-embedding-2-preview';
+  // Normalize a single canonical "article doc" that VertexQueue can embed.
+  // This replaces legacy `brain_chunks` + `FieldValue.vector(...)` writes.
+  const url = article.publicUrl
+    ? (String(article.publicUrl).startsWith("http") ? String(article.publicUrl) : `${publicHelpBaseUrl}${article.publicUrl}`)
+    : `${publicHelpBaseUrl}/hc/${helpCenterId}/articles/${articleId}`;
 
-  // FIX 4: Parallelize embedding generation for 5-10x speedup
-  console.log(`INDEXER: Generating ${specs.length} embeddings in parallel...`);
-  const results = await Promise.all(
-    specs.map(async (c) => {
-      try {
-        const embedding = await generateDocumentEmbedding(c.text);
-        return { spec: c, embedding };
-      } catch (err) {
-        console.error(`INDEXER: Embedding failed for chunk ${c.chunkIndex} of article ${articleId}`, err);
-        return { spec: c, embedding: null };
-      }
-    })
-  );
+  const destinationLibraryId = helpCenterId;
+  const visibility = (article.visibility === "public" ? "public" : "private") as "public" | "private";
 
-  let chunkCount = 0;
+  // Preserve createdAt if the doc exists already.
+  const existingSnap = await adminDB.collection("articles").doc(articleId).get();
+  const existingCreatedAt = existingSnap.exists ? (existingSnap.data()?.createdAt as string | undefined) : undefined;
+  const createdAt = existingCreatedAt || now;
 
-  for (const { spec, embedding } of results) {
-    if (!embedding) continue;
-
-    const anchor = spec.headingPath.length
-        ? safeSlug(spec.headingPath.join("-")) + `-${spec.chunkIndex}`
-        : `chunk-${spec.chunkIndex}`;
-
-    const url = article.publicUrl
-      ? (article.publicUrl.startsWith("http") ? article.publicUrl : `${publicHelpBaseUrl}${article.publicUrl}`)
-      : `${publicHelpBaseUrl}/hc/${helpCenterId}/articles/${articleId}`;
-
-    const chunkData = {
-        hubId,
-        spaceId,
-        sourceType: 'help_center_article',
-        sourceId: articleId,
-        helpCenterId,
-        title: articleTitle,
-        text: spec.text,
-        url: url + (anchor ? `#${anchor}` : ""),
-        visibility: article.visibility || 'public',
-        allowedUserIds: article.allowedUserIds || [],
-        status: 'active',
-        // Firestore Vector write
-        embedding: (admin.firestore.FieldValue as any).vector(embedding),
-        embeddingModel: modelName,
-        embeddingDim: 2048,
-        // FIX 5: Use serverTimestamp for accurate ordering
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        headingPath: spec.headingPath,
-        chunkIndex: spec.chunkIndex,
-    };
-
-    await adminDB.collection('brain_chunks').add(chunkData);
-    chunkCount++;
-  }
-
-  // Update index metadata
-  await adminDB.collection("help_center_articles").doc(articleId).set(
+  await adminDB.collection("articles").doc(articleId).set(
     {
-      chunkCount: chunkCount,
-      chunkedAt: new Date().toISOString(),
+      id: articleId,
+      hubId,
+      spaceId,
+      destinationLibraryId,
+      visibility,
+      title: articleTitle,
+      subtitle: article.subtitle ?? null,
+      body: article.content ?? "",
+      summary: article.subtitle ?? null,
+      status: "published",
+      authorId: article.authorId ?? "system",
+      // Expose URL to match existing retrieval mapping (`url`/`slug`)
+      url,
+
+      embeddingStatus: "pending",
+      embeddingModel: "text-embedding-004",
+      embeddingVersion: "v2",
+      vectorDocId: null,
+      embeddingUpdatedAt: null,
+
+      createdAt,
+      updatedAt: now,
     },
     { merge: true }
   );
 
-  console.log(`INDEXER: Successfully indexed ${chunkCount} chunks for ${articleId}`);
-  return { chunkCount };
+  // Keep legacy metadata fields updated for existing UI/dashboard pages.
+  await adminDB.collection("help_center_articles").doc(articleId).set(
+    {
+      chunkCount: 1,
+      chunkedAt: now,
+    },
+    { merge: true }
+  );
+
+  return { chunkCount: 1 };
 }

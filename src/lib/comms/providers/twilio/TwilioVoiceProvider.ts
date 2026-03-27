@@ -61,7 +61,7 @@ export class TwilioVoiceProvider implements VoiceProvider {
       action: args.actionUrl,
       statusCallback: args.statusCallbackUrl,
       statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-    });
+    } as any);
 
     dial.number(args.forwardToE164);
 

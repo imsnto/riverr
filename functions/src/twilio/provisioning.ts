@@ -104,7 +104,7 @@ export const searchNumbers = onCall(
       if (type === 'tollFree') {
         numbers = await client.availablePhoneNumbers(countryCode).tollFree.list({ limit: 10 });
       } else {
-        numbers = await client.availablePhoneNumbers(countryCode).local.list({ areaCode, limit: 10 });
+        numbers = await client.availablePhoneNumbers(countryCode).local.list({ areaCode: areaCode ? Number(areaCode) : undefined, limit: 10 });
       }
 
       return { numbers: numbers.map(n => ({ 

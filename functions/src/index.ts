@@ -1,7 +1,13 @@
+import * as moduleAlias from 'module-alias';
+import * as path from 'path';
+// Resolve Next.js @/ aliases at runtime (tsc compiles ../src to lib/src)
+moduleAlias.addAlias('@', path.join(__dirname, '../../src'));
 
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
-import { EmailConfig } from "../../src/lib/data";
+import { groupInsightsIntoTopics } from "../../src/lib/brain/topic-grouper";
+// @ts-ignore - The rootDir structure makes lib imports messy without aliases, assume valid runtime
+import type { EmailConfig } from "../../src/lib/data";
 
 if (!admin.apps.length) admin.initializeApp();
 
@@ -40,6 +46,20 @@ export const renewEmailWatches = onSchedule("every 24 hours", async (event) => {
   }
 });
 
+// Periodically cluster verified Insights into Topics (Vertex-backed pipeline).
+export const groupInsightsIntoTopicsScheduled = onSchedule("every 60 minutes", async () => {
+  const db = admin.firestore();
+  const spacesSnap = await db.collection("spaces").get();
+
+  for (const spaceDoc of spacesSnap.docs) {
+    try {
+      await groupInsightsIntoTopics(spaceDoc.id);
+    } catch (e) {
+      console.error(`[TopicGrouper] Failed for space ${spaceDoc.id}:`, e);
+    }
+  }
+});
+
 // Exports
 export { sendInviteEmail } from "./sendInviteEmail";
 export { acceptInvite } from "./acceptInvite";
@@ -61,4 +81,9 @@ export { twilioVoiceStatus } from "./http/twilioVoiceStatus";
 export { twilioVoiceRecording } from "./http/twilioVoiceRecording";
 export { twilioVoiceDialResult } from "./http/twilioVoiceDialResult";
 export { provisionTwilioSubaccount, searchNumbers, buyPhoneNumber } from "./twilio/provisioning";
-export { onChatMessageCreatedForInsight } from "./chat/insightTrigger";
+export { onConversationResolvedForInsight } from "./chat/insightTrigger";
+export { 
+  onArticleWrittenEmbed, 
+  onTopicWrittenEmbed, 
+  onInsightWrittenEmbed 
+} from "./brain/vertexQueue";

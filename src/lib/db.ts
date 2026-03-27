@@ -42,7 +42,6 @@ import {
   Ticket,
   Deal,
   EscalationIntakeRule,
-  Contact,
   Visitor,
   ChatMessage,
   BrainJob,
@@ -61,6 +60,9 @@ import {
   ResolutionStatus,
   ResolutionSource,
 } from './data';
+import { Contact } from './contacts-types';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getApp } from 'firebase/app';
 
 // --- Users ---
 export const getUser = async (userId: string): Promise<User | null> => {
@@ -186,14 +188,14 @@ export const getImportedSources = async (spaceId: string): Promise<ImportedSourc
   const q = query(collection(db, 'imported_sources'), where('spaceId', '==', spaceId), limit(50));
   const snap = await getDocs(q);
   const results = snap.docs.map(d => ({ id: d.id, ...d.data() } as ImportedSource));
-  return results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return results.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 };
 
 export const subscribeToInsights = (spaceId: string, callback: (insights: Insight[]) => void) => {
   const q = query(collection(db, 'insights'), where('spaceId', '==', spaceId));
   return onSnapshot(q, (snapshot) => {
     const insights = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Insight));
-    insights.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    insights.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     callback(insights);
   });
 };
@@ -202,7 +204,7 @@ export const subscribeToTopics = (spaceId: string, callback: (topics: Topic[]) =
   const q = query(collection(db, 'topics'), where('spaceId', '==', spaceId));
   return onSnapshot(q, (snapshot) => {
     const topics = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Topic));
-    topics.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    topics.sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     callback(topics);
   });
 };
@@ -671,7 +673,7 @@ export const getMessagesForConversations = (convoIds: string[], callback: (messa
   return onSnapshot(q, (snapshot) => {
     let msgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ChatMessage));
     if (publicOnly) msgs = msgs.filter(m => m.type !== 'note');
-    msgs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    msgs.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     callback(msgs);
   });
 };

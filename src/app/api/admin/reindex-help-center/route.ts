@@ -35,13 +35,6 @@ export async function POST(req: Request) {
         );
       }
       
-      // Cleanup existing chunks for this article
-      const chunksRef = adminDB.collection('brain_chunks');
-      const existingChunks = await chunksRef.where('sourceId', '==', articleId).get();
-      const batch = adminDB.batch();
-      existingChunks.docs.forEach(d => batch.delete(d.ref));
-      await batch.commit();
-
       const article = { id: docSnap.id, ...docSnap.data() };
       const res = await indexHelpCenterArticleToChunks({
         adminDB,
@@ -65,11 +58,6 @@ export async function POST(req: Request) {
 
     for (const doc of snap.docs) {
       const article = { id: doc.id, ...doc.data() };
-      
-      const existingChunks = await adminDB.collection('brain_chunks').where('sourceId', '==', article.id).get();
-      const batch = adminDB.batch();
-      existingChunks.docs.forEach(d => batch.delete(d.ref));
-      await batch.commit();
 
       const res = await indexHelpCenterArticleToChunks({
         adminDB,
