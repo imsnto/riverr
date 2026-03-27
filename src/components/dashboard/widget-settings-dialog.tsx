@@ -38,6 +38,8 @@ import {
   Sparkles,
   ChevronRight,
   FileIcon,
+  Code,
+  Copy,
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -183,6 +185,11 @@ export default function WidgetSettingsDialog({
     }
   };
 
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: 'Copied to clipboard' });
+  };
+
   const onSubmit = (values: WidgetSettingsFormValues) => {
     const payload: BotData | Omit<BotData, 'id' | 'hubId'> = {
       ...(bot || {}),
@@ -197,8 +204,33 @@ export default function WidgetSettingsDialog({
   const navItems = [
     { id: 'style', label: 'Style & Branding', icon: Palette },
     { id: 'behavior', label: 'Chat Behavior', icon: BrainCircuit },
-    { id: 'team', label: 'Human Team', icon: Users }
+    { id: 'team', label: 'Human Team', icon: Users },
+    { id: 'installation', label: 'Installation', icon: Code }
   ];
+
+  const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://app.riverr.app';
+  
+  const basicEmbedCode = `<!-- Manowar Chat Widget -->
+<script>
+  window.manowarSettings = {
+    botId: "${bot?.id || 'YOUR_BOT_ID'}",
+    hubId: "${bot?.hubId || 'YOUR_HUB_ID'}"
+  };
+</script>
+<script src="${appOrigin}/widget.js" async></script>`;
+
+  const identityEmbedCode = `<!-- Manowar Identity-Aware Widget -->
+<script>
+  window.manowarSettings = {
+    botId: "${bot?.id || 'YOUR_BOT_ID'}",
+    hubId: "${bot?.hubId || 'YOUR_HUB_ID'}",
+    user_id: "USER_ID_FROM_YOUR_DB", // REQUIRED for identity
+    name: "User Name",
+    email: "user@example.com",
+    // user_hash: "HMAC_SHA256_HASH" // Recommended for Secure Mode
+  };
+</script>
+<script src="${appOrigin}/widget.js" async></script>`;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -366,6 +398,55 @@ export default function WidgetSettingsDialog({
                           </div>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {activeTab === 'installation' && (
+                    <div className="space-y-12 animate-in fade-in duration-300">
+                      <section className="space-y-6">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Standard Installation</h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          Paste this code right before the closing <code>&lt;/body&gt;</code> tag on every page where you want the chat to appear.
+                        </p>
+                        <div className="relative group">
+                          <pre className="bg-black/40 p-5 rounded-2xl border border-white/5 text-[11px] font-mono overflow-x-auto text-zinc-300 leading-relaxed">
+                            {basicEmbedCode}
+                          </pre>
+                          <Button 
+                            type="button" 
+                            variant="secondary" 
+                            size="sm" 
+                            className="absolute top-3 right-3 h-8 text-[10px] font-black uppercase tracking-widest"
+                            onClick={() => handleCopy(basicEmbedCode)}
+                          >
+                            <Copy className="h-3 w-3 mr-1.5" /> Copy Code
+                          </Button>
+                        </div>
+                      </section>
+
+                      <section className="space-y-6">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Identify Known Users</h3>
+                          <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[9px] uppercase font-black">Advanced</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          If your users are already logged in, you can pass their details to Manowar. This ensures conversations are linked to their CRM profile automatically.
+                        </p>
+                        <div className="relative group">
+                          <pre className="bg-black/40 p-5 rounded-2xl border border-white/5 text-[11px] font-mono overflow-x-auto text-zinc-300 leading-relaxed">
+                            {identityEmbedCode}
+                          </pre>
+                          <Button 
+                            type="button" 
+                            variant="secondary" 
+                            size="sm" 
+                            className="absolute top-3 right-3 h-8 text-[10px] font-black uppercase tracking-widest"
+                            onClick={() => handleCopy(identityEmbedCode)}
+                          >
+                            <Copy className="h-3 w-3 mr-1.5" /> Copy Code
+                          </Button>
+                        </div>
+                      </section>
                     </div>
                   )}
                 </div>
