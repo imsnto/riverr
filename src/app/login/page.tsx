@@ -48,7 +48,7 @@ function LoginContent() {
                     title: 'Domain not authorized',
                     description: 'Please add this domain to your Authorized Domains in the Firebase Console.',
                 });
-            } else if (error.code !== 'auth/popup-closed-by-user') {
+            } else {
                 toast({
                     variant: 'destructive',
                     title: 'Login Failed',

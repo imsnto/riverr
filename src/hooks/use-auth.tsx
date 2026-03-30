@@ -6,7 +6,7 @@ import {
   onAuthStateChanged, 
   User as FirebaseUser, 
   signOut as firebaseSignOut, 
-  signInWithPopup,
+  signInWithRedirect,
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword as firebaseSignIn, 
   updateProfile 
@@ -187,7 +187,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signInWithGoogle = async () => {
     setStatus('loading');
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithRedirect(auth, googleProvider);
     } catch (error: any) {
       console.error("Google login error:", error);
       setStatus('unauthenticated');
