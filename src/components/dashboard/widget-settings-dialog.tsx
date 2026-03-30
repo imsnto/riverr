@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
@@ -53,6 +54,7 @@ import { useToast } from '@/hooks/use-toast';
 import ChatbotSimulator from './chatbot-simulator';
 import { uploadBotLogo } from '@/lib/db';
 import { Badge } from '../ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const widgetSettingsSchema = z.object({
   id: z.string().optional(),
@@ -235,266 +237,297 @@ export default function WidgetSettingsDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] w-[1200px] h-[90vh] p-0 flex flex-col overflow-hidden bg-[#0d1117] border-white/10">
-        <DialogTitle className="sr-only">Chat Widget Settings</DialogTitle>
-        
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden text-left text-white">
-            <header className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#090c10] shrink-0 z-[100]">
-              <div className="flex items-center gap-10">
-                <div className="flex items-center gap-3 shrink-0 text-left">
-                  <div className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                  <div>
-                    <h2 className="text-sm font-bold text-white leading-none">{watchedValues.name || 'Unnamed Widget'}</h2>
-                    <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground opacity-50 mt-1">Chat Widget</p>
-                  </div>
-                </div>
+        <DialogHeader className="border-b border-white/10 bg-[#090c10] p-0 shrink-0 z-[100]">
+          <div className="flex items-center justify-between gap-6 px-6 py-4">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary shrink-0">
+                <MessageSquare className="h-6 w-6" />
+              </div>
+              <div className="min-w-0 text-left">
+                <DialogTitle className="truncate text-lg font-bold text-white leading-none">
+                  {watchedValues.name || 'New Chat Widget'}
+                </DialogTitle>
+                <p className="mt-1.5 text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground opacity-50">
+                  Chat Widget Configuration
+                </p>
+              </div>
+            </div>
 
-                <nav className="flex items-center bg-white/[0.03] rounded-full p-1 border border-white/5">
+            <div className="flex items-center gap-3">
+              <div className="hidden rounded-full border border-white/10 bg-white/[0.03] p-1 lg:flex">
+                {navItems.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActiveTab(item.id)}
+                    className={cn(
+                      'flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-all',
+                      activeTab === item.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-white'
+                    )}
+                  >
+                    {React.createElement(item.icon, { className: 'h-4 w-4' })}
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <Button onClick={form.handleSubmit(onSubmit)} className="rounded-full px-6 font-bold h-10">Save Widget</Button>
+              <Button type="button" variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="rounded-full h-10 w-10">
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="flex-1 flex overflow-hidden">
+          <ScrollArea className="flex-1">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="mx-auto max-w-3xl space-y-10 px-6 py-8 pb-32 text-left">
+                <div className="grid gap-4 lg:hidden">
                   {navItems.map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => setActiveTab(item.id)}
                       className={cn(
-                        "flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all",
-                        activeTab === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-white"
+                        'flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold',
+                        activeTab === item.id ? 'border-primary/30 bg-primary/10 text-white' : 'border-white/10 bg-white/[0.03] text-muted-foreground'
                       )}
                     >
-                      {React.createElement(item.icon, { className: "h-3.5 w-3.5" })}
+                      {React.createElement(item.icon, { className: 'h-4 w-4' })}
                       {item.label}
                     </button>
                   ))}
-                </nav>
-              </div>
+                </div>
 
-              <div className="flex items-center gap-4">
-                <Button type="submit" className="rounded-full h-9 px-6 font-black">Save Changes</Button>
-                <Button type="button" variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="rounded-full h-10 w-10"><X className="h-5 w-5" /></Button>
-              </div>
-            </header>
+                {activeTab === 'style' && (
+                  <div className="space-y-12 animate-in fade-in duration-300">
+                    <section className="space-y-6">
+                      <h3 className="text-sm font-black uppercase tracking-widest text-primary">Identity</h3>
+                      <FormField control={form.control} name="name" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-bold">Widget Name (Internal)</FormLabel>
+                          <FormControl><Input placeholder="e.g. Website Support Chat" {...field} value={field.value || ''} /></FormControl>
+                          <FormDescription className="text-[10px]">How this widget is identified in your dashboard.</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </section>
 
-            <div className="flex-1 flex overflow-hidden">
-              <ScrollArea className="flex-1">
-                <div className="p-10 max-w-2xl mx-auto pb-32 space-y-12">
-                  {activeTab === 'style' && (
-                    <div className="space-y-12 animate-in fade-in duration-300">
-                      <section className="space-y-6">
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Identity</h3>
-                        <FormField control={form.control} name="name" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Widget Name (Internal)</FormLabel>
-                            <FormControl><Input placeholder="e.g. Website Support Chat" {...field} value={field.value || ''} /></FormControl>
-                            <FormDescription className="text-[10px]">How this widget is identified in your dashboard.</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                      </section>
-
-                      <section className="space-y-6">
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Branding & Visuals</h3>
-                        <div className="flex items-center gap-6">
-                          <Avatar className="h-20 w-20 ring-4 ring-primary/10">
-                            <AvatarImage src={watchedValues.styleSettings?.logoUrl} />
-                            <AvatarFallback className="text-xl">LG</AvatarFallback>
-                          </Avatar>
-                          <div className="space-y-2">
-                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
-                            <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isUploading || !bot?.id}>
-                              {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-                              Upload Widget Logo
-                            </Button>
-                            {!bot?.id && <p className="text-[10px] text-amber-500 font-bold">Save widget to enable uploads.</p>}
-                          </div>
+                    <section className="space-y-6">
+                      <h3 className="text-sm font-black uppercase tracking-widest text-primary">Branding & Visuals</h3>
+                      <div className="flex items-center gap-6">
+                        <Avatar className="h-20 w-20 ring-4 ring-primary/10">
+                          <AvatarImage src={watchedValues.styleSettings?.logoUrl} />
+                          <AvatarFallback className="text-xl">LG</AvatarFallback>
+                        </Avatar>
+                        <div className="space-y-2">
+                          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                          <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isUploading || !bot?.id} className="h-10 rounded-xl">
+                            {isUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                            Upload Widget Logo
+                          </Button>
+                          {!bot?.id && <p className="text-[10px] text-amber-500 font-bold">Save widget to enable logo uploads.</p>}
                         </div>
-
-                        <div className="grid grid-cols-2 gap-8 text-left">
-                          <ColorInput form={form} name="styleSettings.primaryColor" label="Primary Theme Color" />
-                          <ColorInput form={form} name="styleSettings.backgroundColor" label="Background Color" />
-                          <ColorInput form={form} name="styleSettings.headerTextColor" label="Header Text Color" />
-                          <ColorInput form={form} name="styleSettings.customerTextColor" label="Customer Bubble Text" />
-                          <ColorInput form={form} name="styleSettings.agentMessageBackgroundColor" label="Agent Bubble Color" />
-                          <ColorInput form={form} name="styleSettings.agentMessageTextColor" label="Agent Bubble Text" />
-                        </div>
-                      </section>
-                    </div>
-                  )}
-
-                  {activeTab === 'behavior' && (
-                    <div className="space-y-12 animate-in fade-in duration-300">
-                      <section className="space-y-6">
-                        <div className="flex items-center gap-2 text-primary">
-                          <BrainCircuit className="h-4 w-4" />
-                          <h3 className="text-sm font-bold uppercase tracking-widest">AI Agent Brain</h3>
-                        </div>
-                        <FormField control={form.control} name="assignedAgentId" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Select an AI Brain</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                              <FormControl><SelectTrigger className="h-12"><SelectValue placeholder="No Agent Brain (Human Only)" /></SelectTrigger></FormControl>
-                              <SelectContent>
-                                <SelectItem value="none">None (Use Fallback Behavior)</SelectItem>
-                                {hubAgents.map(agent => (
-                                  <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )} />
-                      </section>
-
-                      {(!watchedValues.assignedAgentId || watchedValues.assignedAgentId === 'none') && (
-                        <div className="space-y-12 animate-in slide-in-from-top-2 duration-300">
-                          <section className="space-y-6">
-                            <FormField control={form.control} name="welcomeMessage" render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs">Default Greeting</FormLabel>
-                                <FormControl><Textarea rows={4} placeholder="Hi! How can we help you?" {...field} value={field.value || ''} /></FormControl>
-                              </FormItem>
-                            )} />
-                          </section>
-
-                          <section className="space-y-6">
-                            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Lead Capture</h3>
-                            <div className="grid grid-cols-3 gap-4">
-                              <div className="flex items-center gap-2">
-                                <Checkbox checked={watchedValues.identityCapture?.askForName} onCheckedChange={(v) => form.setValue('identityCapture.askForName', !!v)} id="f-name" />
-                                <Label htmlFor="f-name">Name</Label>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Checkbox checked={watchedValues.identityCapture?.askForEmail} onCheckedChange={(v) => form.setValue('identityCapture.askForEmail', !!v)} id="f-email" />
-                                <Label htmlFor="f-email">Email</Label>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Checkbox checked={watchedValues.identityCapture?.askForPhone} onCheckedChange={(v) => form.setValue('identityCapture.askForPhone', !!v)} id="f-phone" />
-                                <Label htmlFor="f-phone">Phone</Label>
-                              </div>
-                            </div>
-                          </section>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {activeTab === 'team' && (
-                    <div className="space-y-8 animate-in fade-in duration-300">
-                      <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Human Team</h3>
-                      <div className="grid grid-cols-2 gap-3">
-                        {allUsers.map((user) => (
-                          <div key={user.id} className="flex items-center justify-between p-3 border rounded-xl hover:bg-white/[0.02] transition-colors">
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-8 w-8"><AvatarImage src={user.avatarUrl} /><AvatarFallback>{getInitials(user.name)}</AvatarFallback></Avatar>
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold truncate">{user.name}</p>
-                                <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
-                              </div>
-                            </div>
-                            <Checkbox 
-                              checked={watchedValues.agentIds?.includes(user.id)} 
-                              onCheckedChange={(checked) => {
-                                const current = watchedValues.agentIds || [];
-                                form.setValue('agentIds', checked ? [...current, user.id] : current.filter(id => id !== user.id));
-                              }} 
-                            />
-                          </div>
-                        ))}
                       </div>
+
+                      <div className="grid gap-8 sm:grid-cols-2">
+                        <ColorInput form={form} name="styleSettings.primaryColor" label="Primary Theme Color" />
+                        <ColorInput form={form} name="styleSettings.backgroundColor" label="Background Color" />
+                        <ColorInput form={form} name="styleSettings.headerTextColor" label="Header Text Color" />
+                        <ColorInput form={form} name="styleSettings.customerTextColor" label="Customer Bubble Text" />
+                        <ColorInput form={form} name="styleSettings.agentMessageBackgroundColor" label="Agent Bubble Color" />
+                        <ColorInput form={form} name="styleSettings.agentMessageTextColor" label="Agent Bubble Text" />
+                      </div>
+                    </section>
+                  </div>
+                )}
+
+                {activeTab === 'behavior' && (
+                  <div className="space-y-12 animate-in fade-in duration-300">
+                    <section className="space-y-6">
+                      <div className="flex items-center gap-2 text-primary">
+                        <BrainCircuit className="h-4 w-4" />
+                        <h3 className="text-sm font-black uppercase tracking-widest">AI Agent Brain</h3>
+                      </div>
+                      <FormField control={form.control} name="assignedAgentId" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-bold">Select an AI Brain</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                            <FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="No Agent Brain (Human Only)" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">None (Use Fallback Behavior)</SelectItem>
+                              {hubAgents.map(agent => (
+                                <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )} />
+                    </section>
+
+                    {(!watchedValues.assignedAgentId || watchedValues.assignedAgentId === 'none') && (
+                      <div className="space-y-12 animate-in slide-in-from-top-2 duration-300">
+                        <section className="space-y-6">
+                          <FormField control={form.control} name="welcomeMessage" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs font-bold">Default Greeting</FormLabel>
+                              <FormControl><Textarea rows={4} placeholder="Hi! How can we help you?" {...field} value={field.value || ''} className="rounded-xl bg-white/[0.02]" /></FormControl>
+                            </FormItem>
+                          )} />
+                        </section>
+
+                        <section className="space-y-6">
+                          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground opacity-50">Lead Capture</h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            {[
+                              { id: 'f-name', name: 'identityCapture.askForName', label: 'Name' },
+                              { id: 'f-email', name: 'identityCapture.askForEmail', label: 'Email' },
+                              { id: 'f-phone', name: 'identityCapture.askForPhone', label: 'Phone' },
+                            ].map((item) => (
+                              <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/[0.02]">
+                                <Label htmlFor={item.id} className="text-sm font-bold">{item.label}</Label>
+                                <Switch checked={!!form.getValues(item.name as any)} onCheckedChange={(v) => form.setValue(item.name as any, v)} id={item.id} />
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'team' && (
+                  <div className="space-y-8 animate-in fade-in duration-300">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-primary">Human Team</h3>
+                    <p className="text-sm text-muted-foreground">Select team members who should be notified or assigned to new conversations from this widget.</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {allUsers.map((user) => (
+                        <div key={user.id} className="flex items-center justify-between p-4 border border-white/5 bg-white/[0.02] rounded-2xl hover:bg-white/[0.04] transition-colors">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10 ring-2 ring-primary/10">
+                              <AvatarImage src={user.avatarUrl} />
+                              <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold truncate text-white">{user.name}</p>
+                              <p className="text-[10px] font-medium text-muted-foreground truncate">{user.email}</p>
+                            </div>
+                          </div>
+                          <Checkbox 
+                            checked={watchedValues.agentIds?.includes(user.id)} 
+                            onCheckedChange={(checked) => {
+                              const current = watchedValues.agentIds || [];
+                              form.setValue('agentIds', checked ? [...current, user.id] : current.filter(id => id !== user.id));
+                            }} 
+                          />
+                        </div>
+                      ))}
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {activeTab === 'installation' && (
-                    <div className="space-y-12 animate-in fade-in duration-300">
-                      <section className="space-y-6">
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Standard Installation</h3>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          Paste this code right before the closing <code>&lt;/body&gt;</code> tag on every page where you want the chat to appear.
-                        </p>
-                        <div className="relative group">
-                          <pre className="bg-black/40 p-5 rounded-2xl border border-white/5 text-[11px] font-mono overflow-x-auto text-zinc-300 leading-relaxed">
-                            {basicEmbedCode}
-                          </pre>
-                          <Button 
-                            type="button" 
-                            variant="secondary" 
-                            size="sm" 
-                            className="absolute top-3 right-3 h-8 text-[10px] font-black uppercase tracking-widest"
-                            onClick={() => handleCopy(basicEmbedCode)}
-                          >
-                            <Copy className="h-3 w-3 mr-1.5" /> Copy Code
-                          </Button>
-                        </div>
-                      </section>
+                {activeTab === 'installation' && (
+                  <div className="space-y-12 animate-in fade-in duration-300">
+                    <section className="space-y-6">
+                      <h3 className="text-sm font-black uppercase tracking-widest text-primary">Standard Installation</h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Paste this code right before the closing <code>&lt;/body&gt;</code> tag on every page where you want the chat to appear.
+                      </p>
+                      <div className="relative group">
+                        <pre className="bg-black/40 p-6 rounded-2xl border border-white/5 text-[11px] font-mono overflow-x-auto text-zinc-300 leading-relaxed shadow-inner">
+                          {basicEmbedCode}
+                        </pre>
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          size="sm" 
+                          className="absolute top-3 right-3 h-8 text-[10px] font-black uppercase tracking-widest rounded-lg shadow-lg"
+                          onClick={() => handleCopy(basicEmbedCode)}
+                        >
+                          <Copy className="h-3 w-3 mr-1.5" /> Copy Code
+                        </Button>
+                      </div>
+                    </section>
 
-                      <section className="space-y-6">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Identify Known Users</h3>
-                          <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[9px] uppercase font-black">Advanced</Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          If your users are already logged in, you can pass their details to Manowar. This ensures conversations are linked to their CRM profile automatically.
-                        </p>
-                        <div className="relative group">
-                          <pre className="bg-black/40 p-5 rounded-2xl border border-white/5 text-[11px] font-mono overflow-x-auto text-zinc-300 leading-relaxed">
-                            {identityEmbedCode}
-                          </pre>
-                          <Button 
-                            type="button" 
-                            variant="secondary" 
-                            size="sm" 
-                            className="absolute top-3 right-3 h-8 text-[10px] font-black uppercase tracking-widest"
-                            onClick={() => handleCopy(identityEmbedCode)}
-                          >
-                            <Copy className="h-3 w-3 mr-1.5" /> Copy Code
-                          </Button>
-                        </div>
-                      </section>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
+                    <section className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-black uppercase tracking-widest text-primary">Identify Known Users</h3>
+                        <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[9px] uppercase font-black px-2 h-5">Advanced</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        If your users are already logged in, you can pass their details to Manowar. This ensures conversations are linked to their CRM profile automatically.
+                      </p>
+                      <div className="relative group">
+                        <pre className="bg-black/40 p-6 rounded-2xl border border-white/5 text-[11px] font-mono overflow-x-auto text-zinc-300 leading-relaxed shadow-inner">
+                          {identityEmbedCode}
+                        </pre>
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          size="sm" 
+                          className="absolute top-3 right-3 h-8 text-[10px] font-black uppercase tracking-widest rounded-lg shadow-lg"
+                          onClick={() => handleCopy(identityEmbedCode)}
+                        >
+                          <Copy className="h-3 w-3 mr-1.5" /> Copy Code
+                        </Button>
+                      </div>
+                    </section>
+                  </div>
+                )}
+              </form>
+            </Form>
+          </ScrollArea>
 
-              <aside className="hidden md:flex w-[400px] border-l border-white/10 bg-[#090c10] flex-col overflow-hidden shrink-0">
-                <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-50">Live Simulator</span>
-                  <Badge variant="outline" className="text-[9px] h-4 uppercase font-bold border-white/10">Preview Mode</Badge>
-                </div>
-                <div className="flex-1 relative">
-                  <ChatbotSimulator 
-                    isOpen={true} 
-                    onClose={() => {}} 
-                    botData={simulatorBotData as any} 
-                    flow={simulatorBotData.flow || { nodes: [], edges: [] }} 
-                    agents={allUsers.filter(u => simulatorBotData.agentIds?.includes(u.id))}
-                  />
-                </div>
-              </aside>
+          <aside className="hidden xl:flex w-[400px] border-l border-white/10 bg-[#090c10] flex-col overflow-hidden shrink-0">
+            <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-50">Live Simulator</span>
+              <Badge variant="outline" className="text-[9px] h-4 uppercase font-bold border-white/10 text-primary bg-primary/5 px-2">Preview Mode</Badge>
             </div>
-          </form>
-        </Form>
+            <div className="flex-1 relative">
+              <ChatbotSimulator 
+                isOpen={true} 
+                onClose={() => {}} 
+                botData={simulatorBotData as any} 
+                flow={simulatorBotData.flow || { nodes: [], edges: [] }} 
+                agents={allUsers.filter(u => simulatorBotData.agentIds?.includes(u.id))}
+              />
+            </div>
+          </aside>
+        </div>
       </DialogContent>
     </Dialog>
   );
 }
 
 function ColorInput({ form, name, label }: { form: any, name: string, label: string }) {
+  const value = form.watch(name);
+  
   return (
     <FormField
       control={form.control}
       name={name}
       render={({ field }) => (
-        <FormItem className="space-y-2">
+        <FormItem className="space-y-3">
           <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">{label}</FormLabel>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <FormControl>
               <div className="relative flex-1">
-                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded shadow-inner border border-white/10" style={{ backgroundColor: field.value }} />
-                <Input {...field} value={field.value || ''} className="pl-9 font-mono text-xs h-9 uppercase" />
+                <div 
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-md shadow-inner border border-white/10" 
+                  style={{ backgroundColor: field.value }} 
+                />
+                <Input 
+                  {...field} 
+                  value={field.value || ''} 
+                  className="pl-11 font-mono text-xs h-11 uppercase bg-white/[0.02] border-white/10" 
+                />
               </div>
             </FormControl>
             <input 
               type="color" 
               value={field.value || '#000000'} 
               onChange={(e) => field.onChange(e.target.value)} 
-              className="w-9 h-9 rounded-md border border-white/10 bg-transparent p-1 cursor-pointer shrink-0" 
+              className="w-11 h-11 rounded-xl border border-white/10 bg-transparent p-1.5 cursor-pointer shrink-0 hover:scale-105 transition-transform" 
             />
           </div>
         </FormItem>
