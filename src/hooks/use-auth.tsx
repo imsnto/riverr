@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
@@ -6,7 +7,7 @@ import {
   onAuthStateChanged, 
   User as FirebaseUser, 
   signOut as firebaseSignOut, 
-  signInWithRedirect,
+  signInWithPopup,
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword as firebaseSignIn, 
   updateProfile 
@@ -187,7 +188,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signInWithGoogle = async () => {
     setStatus('loading');
     try {
-      await signInWithRedirect(auth, googleProvider);
+      await signInWithPopup(auth, googleProvider);
     } catch (error: any) {
       console.error("Google login error:", error);
       setStatus('unauthenticated');

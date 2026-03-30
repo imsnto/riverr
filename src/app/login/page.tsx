@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -47,6 +48,12 @@ function LoginContent() {
                     variant: 'destructive',
                     title: 'Domain not authorized',
                     description: 'Please add this domain to your Authorized Domains in the Firebase Console.',
+                });
+            } else if (error.code === 'auth/popup-blocked') {
+                toast({
+                    variant: 'destructive',
+                    title: 'Popup Blocked',
+                    description: 'Your browser blocked the login popup. Please enable popups for this site and try again.',
                 });
             } else {
                 toast({
