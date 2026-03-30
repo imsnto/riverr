@@ -4,17 +4,10 @@ import * as admin from 'firebase-admin';
 import * as postmark from 'postmark';
 import { gmailAdapter } from '../../lib/brain/adapters/gmail';
 import { RawConversationNode, SupportIntentNode } from '../../lib/data';
-import { genkit, type GenkitError } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
-import { distillSupportIntent } from '../../ai/flows/distill-support-intent';
-import { extractSalesConversation } from '../../ai/flows/distill-sales-intelligence';
+
+const PYTHON_AI_SERVICE_URL = process.env.PYTHON_AI_SERVICE_URL || 'http://localhost:8000';
 
 admin.initializeApp();
-
-// Initialize genkit for use in this cloud function
-const ai = genkit({
-  plugins: [googleAI()],
-});
 
 // ✅ Use your verified Postmark info
 const POSTMARK_API_KEY = 'eed163d1-398a-40f8-b555-8ec1c5a53ae5';
@@ -96,14 +89,16 @@ export const processBrainJob = functions.firestore
                 const normalizedThread = gmailAdapter.normalize(rawThread);
                 const rawNode = gmailAdapter.toRawNode(normalizedThread);
 
-                // --- REAL EMBEDDING STEP ---
-                const { embedding } = await ai.embed({
-                    model: 'googleai/embedding-004',
-                    content: rawNode.textForEmbedding,
-                });
+                // --- GET EMBEDDING FROM PYTHON SERVICE ---
+                const embResponse = await fetch(`${PYTHON_AI_SERVICE_URL}/api/embed`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ text: rawNode.textForEmbedding })
+                }).then(res => res.json());
+                const embedding = embResponse.embedding || [];
                 const embeddedAt = new Date().toISOString();
-                const embeddingModel = "embedding-004";
-                // --- END REAL EMBEDDING ---
+                const embeddingModel = "text-embedding-004";
+                // --- END EMBEDDING ---
 
                 const finalNode: Omit<RawConversationNode, 'id'> = {
                     ...(rawNode as Omit<RawConversationNode, 'id'>),
@@ -143,10 +138,14 @@ export const processBrainJob = functions.firestore
                 const node = rawDoc.data() as RawConversationNode;
                 
                 try {
-                    const result = await distillSupportIntent({
+                    const result = await fetch(`${PYTHON_AI_SERVICE_URL}/api/flows/distill-support-intent`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
                         conversationText: node.normalized.cleanedText,
                         lastAgentMessage: node.normalized.lastAgentOrRepMessage,
-                    });
+                      })
+                    }).then(res => res.json());
 
                     // Check if an intent with this key already exists for the space
                     const intentQuery = admin.firestore().collection('memory_nodes')
@@ -160,12 +159,14 @@ export const processBrainJob = functions.firestore
                     if (intentSnapshot.empty) {
                         // --- EMBEDDING STEP ---
                         const textForEmbedding = `${result.customerQuestion}\n${result.resolution}`;
-                        const { embedding } = await ai.embed({
-                            model: 'googleai/embedding-004',
-                            content: textForEmbedding,
-                        });
+                        const embResponse = await fetch(`${PYTHON_AI_SERVICE_URL}/api/embed`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ text: textForEmbedding })
+                        }).then(res => res.json());
+                        const embedding = embResponse.embedding || [];
                         const embeddedAt = new Date().toISOString();
-                        const embeddingModel = "embedding-004";
+                        const embeddingModel = "text-embedding-004";
                         // --- END EMBEDDING ---
 
                         // --- CREATE NEW INTENT NODE ---
@@ -228,10 +229,6 @@ export const processBrainJob = functions.firestore
 
                 } catch (e: any) {
                     console.error(`Failed to distill intent for node ${rawDoc.id}:`, e.message || e);
-                    const error = e as GenkitError;
-                    if (error.data?.llmResponse) {
-                        console.error("LLM Response:", JSON.stringify(error.data.llmResponse, null, 2));
-                    }
                     // Mark as failed to avoid retrying problematic conversations
                     await rawDoc.ref.update({ processedForIntent: 'failed' });
                 }
@@ -259,18 +256,24 @@ export const processBrainJob = functions.firestore
                 const node = rawDoc.data() as RawConversationNode;
                 
                 try {
-                    const extraction = await extractSalesConversation({
+                    const extraction = await fetch(`${PYTHON_AI_SERVICE_URL}/api/flows/distill-sales-intelligence`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
                         conversationText: node.normalized.cleanedText,
                         participants: node.participants,
-                    });
+                      })
+                    }).then(res => res.json());
                     
                     // --- EMBED PERSONA TEXT ---
-                    const { embedding } = await ai.embed({
-                        model: 'googleai/embedding-004',
-                        content: extraction.recommendedPersonaClusterText,
-                    });
+                    const embResponse = await fetch(`${PYTHON_AI_SERVICE_URL}/api/embed`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ text: extraction.recommendedPersonaClusterText })
+                    }).then(res => res.json());
+                    const embedding = embResponse.embedding || [];
                     const embeddedAt = new Date().toISOString();
-                    const embeddingModel = "embedding-004";
+                    const embeddingModel = "text-embedding-004";
                     // --- END EMBEDDING ---
 
                     const finalExtraction = {
@@ -293,10 +296,6 @@ export const processBrainJob = functions.firestore
 
                 } catch (e: any) {
                     console.error(`Failed to distill sales intelligence for node ${rawDoc.id}:`, e.message || e);
-                    const error = e as GenkitError;
-                    if (error.data?.llmResponse) {
-                        console.error("LLM Response:", JSON.stringify(error.data.llmResponse, null, 2));
-                    }
                     // Mark as failed to avoid retrying problematic conversations
                     await rawDoc.ref.update({ processedForSales: 'failed' });
                 }

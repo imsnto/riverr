@@ -1,7 +1,8 @@
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import { logger } from "firebase-functions";
-import { evaluateSupportInsight } from "../../../src/ai/flows/evaluate-support-insight";
+
+const PYTHON_AI_SERVICE_URL = process.env.PYTHON_AI_SERVICE_URL || 'http://localhost:8000';
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
@@ -48,10 +49,19 @@ export const onConversationResolvedForInsight = onDocumentUpdated(
         
         if (!existingSnap.empty) continue;
 
-        // AI EVALUATION: Extract structured reusable finding
-        const result = await evaluateSupportInsight({
-          messageText: message.content,
-          conversationContext: `Last Message from Customer: ${after.lastMessage || 'N/A'}`
+        // AI EVALUATION: Extract structured reusable finding from Python service
+        const result = await fetch(`${PYTHON_AI_SERVICE_URL}/api/flows/evaluate-support-insight`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messageText: message.content,
+            conversationContext: `Last Message from Customer: ${after.lastMessage || 'N/A'}`
+          }),
+        }).then(res => res.json()).catch(err => {
+          logger.error(`Failed to call Python service for insight evaluation:`, err);
+          return { shouldCreateInsight: false, reason: 'Service error' };
         });
 
         if (!result.shouldCreateInsight || !result.structuredContent) {
