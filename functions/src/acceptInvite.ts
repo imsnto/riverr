@@ -9,7 +9,7 @@ function sha256Hex(input: string) {
   return crypto.createHash("sha256").update(input).digest("hex");
 }
 
-export const acceptInvite = onCall(async (request) => {
+export const acceptInvite = onCall({ memory: "512MiB" }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "You must be signed in.");
 

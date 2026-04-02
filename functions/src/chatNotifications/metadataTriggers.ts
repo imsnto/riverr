@@ -28,6 +28,7 @@ function safeSnippet(text: string, maxLen = 180) {
 export const onChatMessageCreated = onDocumentCreated(
   {
     document: "chat_messages/{messageId}",
+     memory: "512MiB",
   },
   async (event) => {
     const snap = event.data;

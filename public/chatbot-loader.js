@@ -51,7 +51,10 @@
   });
 
   const origin = window.location.origin;
-  iframe.src = `https://manowar.cloud/chatbot/${hubId}/${botId}?parentOrigin=${encodeURIComponent(origin)}`;
+  // Use localhost for testing, manowar.cloud for production
+  const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+  const baseUrl = isLocalhost ? 'http://localhost:3000' : 'https://manowar.cloud';
+  iframe.src = `${baseUrl}/chatbot/${hubId}/${botId}?parentOrigin=${encodeURIComponent(origin)}`;
   
   document.body.appendChild(launcher);
   document.body.appendChild(iframe);

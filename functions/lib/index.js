@@ -1,555 +1,114 @@
 "use strict";
-// import * as functions from 'firebase-functions';
-// import * as admin from 'firebase-admin';
-// import { gmailAdapter } from '../../src/lib/brain/adapters/gmail';
-// import { RawConversationNode, SalesMessagePatternNode, SalesPersonaSegmentNode, SupportIntentNode, Contact, LeadStateNode } from '../../src/lib/data';
-// import { genkit, type GenkitError } from 'genkit';
-// import { googleAI } from '@genkit-ai/google-genai';
-// import { distillSupportIntent } from '../../src/ai/flows/distill-support-intent';
-// import { extractSalesConversation } from '../../src/ai/flows/distill-sales-intelligence';
-// import { getTypesenseAdmin, getTypesenseSearch } from '../../src/lib/typesense';
-// import { summarizeSalesCluster } from '../../src/ai/flows/summarize-sales-cluster';
-// import { createHash } from 'crypto';
-// import { recommendNextSalesAction } from '../../src/ai/flows/recommend-next-sales-action';
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resendInvite = exports.acceptInvite = exports.sendInviteEmail = void 0;
+exports.onArticleDeleted = exports.onArticleUpdated = exports.onHelpCenterArticleDeleted = exports.onHelpCenterArticleUpdated = exports.onConversationResolvedForInsight = exports.buyPhoneNumber = exports.searchNumbers = exports.provisionTwilioSubaccount = exports.twilioVoiceDialResult = exports.twilioVoiceRecording = exports.twilioVoiceStatus = exports.twilioVoiceInbound = exports.sendCommsMessage = exports.twilioSmsStatus = exports.twilioSmsInbound = exports.onSmsMessageCreated = exports.scheduledAcknowledgementEmail = exports.sendVisitorReplyEmail = exports.sendAgentChatAlertEmail = exports.onChatMessageCreated = exports.processBrainJob = exports.onVisitorMessageCreated = exports.resendInvite = exports.acceptInvite = exports.sendInviteEmail = exports.renewEmailWatches = void 0;
+const scheduler_1 = require("firebase-functions/v2/scheduler");
+const admin = __importStar(require("firebase-admin"));
+if (!admin.apps.length)
+    admin.initializeApp();
+// Daily Email Watch Renewal
+exports.renewEmailWatches = (0, scheduler_1.onSchedule)({ schedule: "every 24 hours", memory: "512MiB" }, async (event) => {
+    const db = admin.firestore();
+    const now = new Date();
+    const cutoff = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000); // 2 days buffer
+    // 1. Renew Hub Watches
+    const hubQuerySnap = await db.collectionGroup("emailConfigs")
+        .where("connected", "==", true)
+        .where("watchConfig.expiresAt", "<=", cutoff.toISOString())
+        .get();
+    for (const doc of hubQuerySnap.docs) {
+        console.log(`Renewing hub watch for ${doc.data().emailAddress}`);
+    }
+    // 2. Renew Agent Watches
+    const agentIndexSnap = await db.collection("emailIndex")
+        .where("type", "==", "agent")
+        .get();
+    for (const indexDoc of agentIndexSnap.docs) {
+        const { userId, emailConfigId } = indexDoc.data();
+        const configRef = db.doc(`users/${userId}/emailConfigs/${emailConfigId}`);
+        const configSnap = await configRef.get();
+        if (configSnap.exists) {
+            const config = configSnap.data();
+            if (config.connected && config.watchConfig?.expiresAt && new Date(config.watchConfig.expiresAt) <= cutoff) {
+                console.log(`Renewing agent watch for ${config.emailAddress}`);
+            }
+        }
+    }
+});
+// Exports
 var sendInviteEmail_1 = require("./sendInviteEmail");
 Object.defineProperty(exports, "sendInviteEmail", { enumerable: true, get: function () { return sendInviteEmail_1.sendInviteEmail; } });
 var acceptInvite_1 = require("./acceptInvite");
 Object.defineProperty(exports, "acceptInvite", { enumerable: true, get: function () { return acceptInvite_1.acceptInvite; } });
 var resendInvite_1 = require("./resendInvite");
 Object.defineProperty(exports, "resendInvite", { enumerable: true, get: function () { return resendInvite_1.resendInvite; } });
-// admin.initializeApp();
-// // Initialize genkit for use in this cloud function
-// const ai = genkit({
-//   plugins: [googleAI()],
-// });
-// // --- Helper Functions for Step 5C ---
-// function classifyCTA(cta: string): 'question'|'calendar_link'|'value_offer'|'soft_close'|'hard_close'|'other' {
-//     const c = cta.toLowerCase();
-//     if (c.includes('book.com') || c.includes('calendar.com') || c.includes('schedule a call')) return 'calendar_link';
-//     if (c.endsWith('?')) return 'question';
-//     if (c.includes('check out') || c.includes('learn more') || c.includes('download')) return 'value_offer';
-//     if (c.includes('let me know your thoughts') || c.includes('worth exploring?')) return 'soft_close';
-//     if (c.includes('sign up now') || c.includes('buy now')) return 'hard_close';
-//     return 'other';
-// }
-// function classifyOpener(opener: string): 'personal'|'pain'|'compliment'|'reference'|'straight_ask'|'other' {
-//     const o = opener.toLowerCase();
-//     if (o.includes('saw your post') || o.includes('noticed your background')) return 'personal';
-//     if (o.includes('congrats on') || o.includes('impressed by')) return 'compliment';
-//     if (o.includes('spoke with') || o.includes('was referred by')) return 'reference';
-//     if (o.includes('struggling with') || o.includes('problem of')) return 'pain';
-//     if (o.includes('are you responsible for') || o.includes('quick question about')) return 'straight_ask';
-//     return 'other';
-// }
-// function generatePatternKey(message: any): string {
-//     const signature = {
-//         purpose: message.purpose,
-//         bodyStructure: message.bodyStructure,
-//         ctaStyle: classifyCTA(message.cta),
-//         openerStyle: classifyOpener(message.opener),
-//         toneTagsSorted: [...message.toneTags].sort(),
-//         lengthBucket: message.lengthBucket
-//     };
-//     const hash = createHash('sha256');
-//     hash.update(JSON.stringify(signature));
-//     return hash.digest('hex').substring(0, 16);
-// }
-// Cloud Function to process jobs from the Business Brain queue
-// export const processBrainJob = functions.runWith({ memory: '1GB', timeoutSeconds: 300 }).firestore
-//   .document('brain_jobs/{jobId}')
-//   .onCreate(async (snap, context) => {
-//     const job = snap.data();
-//     const jobId = context.params.jobId;
-//     if (!job) {
-//       console.error(`Job ${jobId} has no data.`);
-//       return;
-//     }
-//     // Update job status to 'running'
-//     await snap.ref.update({
-//       status: 'running',
-//       startedAt: admin.firestore.FieldValue.serverTimestamp(),
-//     });
-//     try {
-//       console.log(`🧠 Processing job ${jobId} of type: ${job.type}`);
-//       // Future logic will go here based on job.type
-//       switch (job.type) {
-//         case 'ingest_conversations':
-//           {
-//             console.log(`Starting conversation ingestion for source: ${job.params.source}`);
-//             if (job.params.source !== 'gmail') {
-//                 throw new Error(`Unsupported ingestion source: ${job.params.source}`);
-//             }
-//             const rawThreads = await gmailAdapter.fetchBatch({ query: job.params.query, maxResults: 50 });
-//             const batch = admin.firestore().batch();
-//             let processedCount = 0;
-//             for (const rawThread of rawThreads) {
-//                 const normalizedThread = gmailAdapter.normalize(rawThread);
-//                 const rawNode = gmailAdapter.toRawNode(normalizedThread);
-//                 // --- REAL EMBEDDING STEP ---
-//                 const { embedding } = await ai.embed({
-//                     model: 'googleai/embedding-004',
-//                     content: rawNode.textForEmbedding,
-//                 });
-//                 const embeddedAt = new Date().toISOString();
-//                 const embeddingModel = "embedding-004";
-//                 // --- END REAL EMBEDDING ---
-//                 const finalNode: Omit<RawConversationNode, 'id'> = {
-//                     ...(rawNode as Omit<RawConversationNode, 'id'>),
-//                     spaceId: job.params.spaceId,
-//                     channel: job.params.channel,
-//                     embedding: embedding,
-//                     embeddingModel: embeddingModel,
-//                     embeddedAt: embeddedAt,
-//                 };
-//                 const nodeRef = admin.firestore().collection('memory_nodes').doc();
-//                 batch.set(nodeRef, finalNode);
-//                 processedCount++;
-//             }
-//             await batch.commit();
-//             console.log(`Ingested and embedded ${processedCount} conversation(s).`);
-//           }
-//           break;
-//         case 'distill_support_intents':
-//           {
-//             console.log('Starting support intent distillation...');
-//             const rawNodesSnapshot = await admin.firestore().collection('memory_nodes')
-//                 .where('type', '==', 'raw_conversation')
-//                 .where('channel', '==', 'support')
-//                 .where('processedForIntent', '==', null) // Only get unprocessed nodes
-//                 .limit(10) // Process in batches
-//                 .get();
-//             if (rawNodesSnapshot.empty) {
-//                 console.log('No new support conversations to distill.');
-//                 break;
-//             }
-//             console.log(`Found ${rawNodesSnapshot.docs.length} conversations to process.`);
-//             for (const rawDoc of rawNodesSnapshot.docs) {
-//                 const node = rawDoc.data() as RawConversationNode;
-//                 try {
-//                     const result = await distillSupportIntent({
-//                         conversationText: node.normalized.cleanedText,
-//                         lastAgentMessage: node.normalized.lastAgentOrRepMessage,
-//                     });
-//                     // Check if an intent with this key already exists for the space
-//                     const intentQuery = admin.firestore().collection('memory_nodes')
-//                         .where('type', '==', 'support_intent')
-//                         .where('spaceId', '==', node.spaceId)
-//                         .where('intentKey', '==', result.intentKey)
-//                         .limit(1);
-//                     const intentSnapshot = await intentQuery.get();
-//                     if (intentSnapshot.empty) {
-//                         // --- EMBEDDING STEP ---
-//                         const textForEmbedding = `${result.customerQuestion}\n${result.resolution}`;
-//                         const { embedding } = await ai.embed({
-//                             model: 'googleai/embedding-004',
-//                             content: textForEmbedding,
-//                         });
-//                         const embeddedAt = new Date().toISOString();
-//                         const embeddingModel = "embedding-004";
-//                         // --- END EMBEDDING ---
-//                         // --- CREATE NEW INTENT NODE ---
-//                         const newIntentNode: Omit<SupportIntentNode, 'id'> = {
-//                             type: 'support_intent',
-//                             spaceId: node.spaceId,
-//                             hubId: node.hubId || '',
-//                             intentKey: result.intentKey,
-//                             title: result.customerQuestion,
-//                             description: result.resolution,
-//                             requiredContext: result.requiredContext,
-//                             safeAnswerPolicy: result.safetyCriteria,
-//                             answerVariants: [{
-//                                 variantId: 'default',
-//                                 style: 'professional',
-//                                 template: result.resolution,
-//                                 whenToUse: 'All situations',
-//                             }],
-//                             escalationRule: { maxAttempts: 2 },
-//                             learnedFromNodeIds: [rawDoc.id],
-//                             confidence: 0.75, // Starting confidence
-//                             freshnessHalfLifeDays: 365,
-//                             visibility: 'support_only',
-//                             embedding,
-//                             embeddingModel,
-//                             embeddedAt,
-//                             textForEmbedding,
-//                         };
-//                         await admin.firestore().collection('memory_nodes').add(newIntentNode);
-//                         console.log(`Created and embedded new intent '${result.intentKey}' from node ${rawDoc.id}.`);
-//                     } else {
-//                         // --- UPDATE EXISTING INTENT NODE ---
-//                         const existingDoc = intentSnapshot.docs[0];
-//                         const existingIntent = existingDoc.data() as SupportIntentNode;
-//                         const updates: { [key: string]: any } = {
-//                             learnedFromNodeIds: admin.firestore.FieldValue.arrayUnion(rawDoc.id),
-//                         };
-//                         const resolutionExists = existingIntent.answerVariants.some(v => v.template === result.resolution);
-//                         if (!resolutionExists) {
-//                             const newVariant = {
-//                                 variantId: `variant-${Date.now()}`,
-//                                 style: 'professional',
-//                                 template: result.resolution,
-//                                 whenToUse: 'Learned from new example',
-//                             };
-//                             updates.answerVariants = admin.firestore.FieldValue.arrayUnion(newVariant);
-//                         }
-//                         await existingDoc.ref.update(updates);
-//                         console.log(`Updated existing intent '${result.intentKey}' with data from node ${rawDoc.id}.`);
-//                     }
-//                     // Mark raw node as processed
-//                     await rawDoc.ref.update({ processedForIntent: true });
-//                 } catch (e: any) {
-//                     console.error(`Failed to distill intent for node ${rawDoc.id}:`, e.message || e);
-//                     const error = e as GenkitError;
-//                     if (error.data?.llmResponse) {
-//                         console.error("LLM Response:", JSON.stringify(error.data.llmResponse, null, 2));
-//                     }
-//                     // Mark as failed to avoid retrying problematic conversations
-//                     await rawDoc.ref.update({ processedForIntent: 'failed' });
-//                 }
-//             }
-//           }
-//           break;
-//         case 'distill_sales_intelligence':
-//           {
-//             console.log('Starting sales intelligence distillation...');
-//             const rawNodesSnapshot = await admin.firestore().collection('memory_nodes')
-//                 .where('type', '==', 'raw_conversation')
-//                 .where('channel', '==', 'sales')
-//                 .where('processedForSales', '==', null)
-//                 .limit(10) // Process in batches
-//                 .get();
-//             if (rawNodesSnapshot.empty) {
-//                 console.log('No new sales conversations to distill.');
-//                 break;
-//             }
-//             console.log(`Found ${rawNodesSnapshot.docs.length} sales conversations to process.`);
-//             for (const rawDoc of rawNodesSnapshot.docs) {
-//                 const node = rawDoc.data() as RawConversationNode;
-//                 try {
-//                     const extraction = await extractSalesConversation({
-//                         conversationText: node.normalized.cleanedText,
-//                         participants: node.participants,
-//                     });
-//                     // --- EMBED PERSONA TEXT ---
-//                     const { embedding } = await ai.embed({
-//                         model: 'googleai/embedding-004',
-//                         content: extraction.recommendedPersonaClusterText,
-//                     });
-//                     const embeddedAt = new Date().toISOString();
-//                     const embeddingModel = "embedding-004";
-//                     // --- END EMBEDDING ---
-//                     const finalExtraction = {
-//                         ...extraction,
-//                         spaceId: node.spaceId,
-//                         sourceNodeId: rawDoc.id,
-//                         embedding,
-//                         embeddingModel,
-//                         embeddedAt
-//                     };
-//                     // Save extraction to a separate collection
-//                     const extractionRef = admin.firestore().collection('sales_extractions').doc();
-//                     await extractionRef.set(finalExtraction);
-//                     console.log(`Saved and embedded sales extraction for node ${rawDoc.id}.`);
-//                     // --- STEP 5C: Process outbound messages for pattern analysis ---
-//                     const isSuccess = extraction.outcome === 'replied_positive' || extraction.outcome === 'meeting_booked';
-//                     for (const outboundMsg of extraction.outboundMessages) {
-//                         const patternKey = generatePatternKey(outboundMsg);
-//                         const patternRef = admin.firestore().collection('memory_nodes').doc(`pattern-${patternKey}`);
-//                         await admin.firestore().runTransaction(async (transaction) => {
-//                             const patternDoc = await transaction.get(patternRef);
-//                             if (!patternDoc.exists) {
-//                                 const newPatternNode: Omit<SalesMessagePatternNode, 'id'> = {
-//                                     type: 'sales_message_pattern',
-//                                     spaceId: node.spaceId,
-//                                     patternKey: patternKey,
-//                                     pattern: {
-//                                         purpose: outboundMsg.purpose,
-//                                         bodyStructure: outboundMsg.bodyStructure,
-//                                         ctaStyle: classifyCTA(outboundMsg.cta),
-//                                         openerStyle: classifyOpener(outboundMsg.opener),
-//                                         toneTagsSorted: [...outboundMsg.toneTags].sort(),
-//                                         lengthBucket: outboundMsg.lengthBucket,
-//                                     },
-//                                     performance: {
-//                                         sampleSize: 1,
-//                                         successCount: isSuccess ? 1 : 0,
-//                                         replyRate: isSuccess ? 1 : 0,
-//                                     },
-//                                     learnedFromNodeIds: [rawDoc.id],
-//                                     confidence: 0.5,
-//                                     freshnessHalfLifeDays: 90,
-//                                     visibility: 'sales_only',
-//                                 };
-//                                 transaction.set(patternRef, newPatternNode);
-//                             } else {
-//                                 const existingData = patternDoc.data() as SalesMessagePatternNode;
-//                                 const newSampleSize = (existingData.performance.sampleSize || 0) + 1;
-//                                 const newSuccessCount = (existingData.performance.successCount || 0) + (isSuccess ? 1 : 0);
-//                                 const newReplyRate = newSuccessCount / newSampleSize;
-//                                 transaction.update(patternRef, {
-//                                     'performance.sampleSize': newSampleSize,
-//                                     'performance.successCount': newSuccessCount,
-//                                     'performance.replyRate': newReplyRate,
-//                                     'learnedFromNodeIds': admin.firestore.FieldValue.arrayUnion(rawDoc.id),
-//                                 });
-//                             }
-//                         });
-//                     }
-//                     console.log(`Processed ${extraction.outboundMessages.length} outbound messages for pattern analysis.`);
-//                     // --- INDEX IN TYPESENSE ---
-//                     const typesenseClient = getTypesenseAdmin();
-//                     try {
-//                         const { leadPersonaHints, ...restOfExtraction } = finalExtraction;
-//                         const typesenseDoc = {
-//                             id: extractionRef.id,
-//                             ...restOfExtraction,
-//                             industry: leadPersonaHints.industry,
-//                             role: leadPersonaHints.role,
-//                             orgSize: leadPersonaHints.orgSize,
-//                         };
-//                         await typesenseClient.collections('sales_extractions').documents().create(typesenseDoc);
-//                         console.log(`Indexed sales extraction ${extractionRef.id} in Typesense.`);
-//                     } catch (tsError: any) {
-//                         console.error(`Failed to index extraction ${extractionRef.id} in Typesense:`, tsError.importResults?.[0]?.error || tsError);
-//                         // We don't fail the whole job for a Typesense error, just log it.
-//                     }
-//                     // Mark raw node as processed
-//                     await rawDoc.ref.update({ processedForSales: true });
-//                 } catch (e: any) {
-//                     console.error(`Failed to distill sales intelligence for node ${rawDoc.id}:`, e.message || e);
-//                     const error = e as GenkitError;
-//                     if (error.data?.llmResponse) {
-//                         console.error("LLM Response:", JSON.stringify(error.data.llmResponse, null, 2));
-//                     }
-//                     // Mark as failed to avoid retrying problematic conversations
-//                     await rawDoc.ref.update({ processedForSales: 'failed' });
-//                 }
-//             }
-//           }
-//           break;
-//         case 'cluster_sales_personas':
-//           {
-//             console.log(`Starting sales persona clustering for space: ${job.params.spaceId}`);
-//             // 1. Fetch all sales_extractions for the spaceId.
-//             const extractionsSnapshot = await admin.firestore().collection('sales_extractions')
-//                 .where('spaceId', '==', job.params.spaceId)
-//                 .get();
-//             if (extractionsSnapshot.empty) {
-//                 console.log('No sales extractions found to cluster for this space.');
-//                 break;
-//             }
-//             const extractions = extractionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
-//             console.log(`Found ${extractions.length} extractions to cluster.`);
-//             // A simple clustering approach: group by a composite key of industry and role.
-//             const groupedByPersona = new Map<string, any[]>();
-//             extractions.forEach(e => {
-//                 const industry = e.leadPersonaHints?.industry || 'unknown';
-//                 const role = e.leadPersonaHints?.role || 'unknown';
-//                 const key = `${industry}-${role}`.toLowerCase();
-//                 if (!groupedByPersona.has(key)) {
-//                     groupedByPersona.set(key, []);
-//                 }
-//                 groupedByPersona.get(key)!.push(e);
-//             });
-//             const clusters = Array.from(groupedByPersona.values());
-//             console.log(`Created ${clusters.length} cluster(s) based on industry and role.`);
-//             // 3. For each cluster, call LLM to generate summary/name.
-//             for (const cluster of clusters) {
-//                 if (cluster.length === 0) continue;
-//                 const aggregatedPains = cluster.flatMap(e => e.pains || []);
-//                 const aggregatedObjections = cluster.flatMap(e => e.objections || []);
-//                 const aggregatedBuyingSignals = cluster.flatMap(e => e.buyingSignals || []);
-//                 const examplePersonas = cluster.map(e => e.recommendedPersonaClusterText).slice(0, 10); // Limit examples
-//                 const summary = await summarizeSalesCluster({
-//                     aggregatedPains,
-//                     aggregatedObjections,
-//                     aggregatedBuyingSignals,
-//                     examplePersonas,
-//                 });
-//                 const textForEmbedding = `${summary.segmentKey}: ${summary.summary}. Pains: ${summary.commonPains.join(', ')}. Winning Angles: ${summary.winningAngles.join(', ')}`;
-//                 const { embedding } = await ai.embed({
-//                     model: 'googleai/embedding-004',
-//                     content: textForEmbedding,
-//                 });
-//                 const embeddedAt = new Date().toISOString();
-//                 const embeddingModel = "embedding-004";
-//                 // 4. Upsert sales_persona_segment nodes.
-//                 const segmentQuery = admin.firestore().collection('memory_nodes')
-//                     .where('type', '==', 'sales_persona_segment')
-//                     .where('spaceId', '==', job.params.spaceId)
-//                     .where('segmentKey', '==', summary.segmentKey)
-//                     .limit(1);
-//                 const segmentSnapshot = await segmentQuery.get();
-//                 const learnedFromNodeIds = cluster.map(e => e.sourceNodeId);
-//                 if (segmentSnapshot.empty) {
-//                     const newSegmentNode: Omit<SalesPersonaSegmentNode, 'id'> = {
-//                         type: 'sales_persona_segment',
-//                         spaceId: job.params.spaceId,
-//                         segmentKey: summary.segmentKey,
-//                         summary: summary.summary,
-//                         commonPains: summary.commonPains,
-//                         commonObjections: summary.commonObjections,
-//                         winningAngles: summary.winningAngles,
-//                         exampleLines: { openers: [], proofPoints: [], ctas: [] }, // Placeholder
-//                         learnedFromNodeIds: learnedFromNodeIds,
-//                         confidence: 0.75,
-//                         freshnessHalfLifeDays: 120,
-//                         visibility: 'sales_only',
-//                         embedding,
-//                         embeddingModel,
-//                         embeddedAt,
-//                         textForEmbedding,
-//                     };
-//                     await admin.firestore().collection('memory_nodes').add(newSegmentNode);
-//                     console.log(`Created new persona segment: ${summary.segmentKey}`);
-//                 } else {
-//                     const existingDoc = segmentSnapshot.docs[0];
-//                     await existingDoc.ref.update({
-//                         summary: summary.summary, // Overwrite with latest summary
-//                         commonPains: summary.commonPains,
-//                         commonObjections: summary.commonObjections,
-//                         winningAngles: summary.winningAngles,
-//                         learnedFromNodeIds: admin.firestore.FieldValue.arrayUnion(...learnedFromNodeIds),
-//                         embedding,
-//                         embeddingModel,
-//                         embeddedAt,
-//                         textForEmbedding,
-//                     });
-//                     console.log(`Updated existing persona segment: ${summary.segmentKey}`);
-//                 }
-//             }
-//           }
-//           break;
-//         case 'update_lead_states':
-//           {
-//             console.log(`Starting lead state generation/update for space: ${job.params.spaceId}`);
-//             const spaceId = job.params.spaceId;
-//             const typesenseClient = getTypesenseSearch();
-//             // 1. Fetch leads (contacts) for the space.
-//             const leadsSnapshot = await admin.firestore().collection('contacts').where('spaceId', '==', spaceId).get();
-//             const leads = leadsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Contact }));
-//             if (leads.length === 0) {
-//               console.log('No leads found for this space.');
-//               break;
-//             }
-//             console.log(`Found ${leads.length} leads to process.`);
-//             // 2. Fetch all sales persona segments with embeddings for this space.
-//             const personasSnapshot = await admin.firestore().collection('memory_nodes')
-//                 .where('spaceId', '==', spaceId)
-//                 .where('type', '==', 'sales_persona_segment')
-//                 .get();
-//             const personas = personasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as SalesPersonaSegmentNode }));
-//             if (personas.length === 0) {
-//                 console.log("No sales personas found. Cannot match leads.");
-//                 break;
-//             }
-//              // 3. Fetch the best performing message pattern
-//             const patternsSnapshot = await admin.firestore().collection('memory_nodes')
-//                 .where('spaceId', '==', spaceId)
-//                 .where('type', '==', 'sales_message_pattern')
-//                 .orderBy('performance.replyRate', 'desc')
-//                 .limit(1).get();
-//             const bestPattern = patternsSnapshot.empty ? null : patternsSnapshot.docs[0].data() as SalesMessagePatternNode;
-//             // 4. For each lead, find matching persona and recommend next action.
-//             for (const lead of leads) {
-//                 try {
-//                     // a. Create a text representation of the lead for embedding
-//                     const leadText = `Lead: ${lead.name || 'Unknown'}. Email: ${lead.primaryEmail || 'none'}. Company: ${lead.company || 'unknown'}.`;
-//                     // b. Generate embedding for the lead
-//                     const { embedding: leadEmbedding } = await ai.embed({
-//                         model: 'googleai/embedding-004',
-//                         content: leadText,
-//                     });
-//                     // c. Find matching persona via vector search in Typesense
-//                     let matchedPersona: SalesPersonaSegmentNode | null = null;
-//                     try {
-//                         const searchRequest = {
-//                             'searches': [{
-//                                 'collection': 'memory_nodes',
-//                                 'q': '*',
-//                                 'vector_query': `embedding:(${JSON.stringify(leadEmbedding)}, k:1)`,
-//                                 'filter_by': `spaceId:=${spaceId} && type:='sales_persona_segment'`
-//                             }]
-//                         };
-//                         const searchResult = await typesenseClient.multiSearch.perform(searchRequest, {});
-//                         const hits = searchResult.results[0]?.hits;
-//                         if (hits && hits.length > 0) {
-//                             matchedPersona = hits[0].document as SalesPersonaSegmentNode;
-//                         }
-//                     } catch (e: any) {
-//                         if (e.httpStatus === 404) {
-//                             console.warn(`Typesense search failed for lead ${lead.id}: collection not found. Skipping persona match.`);
-//                         } else {
-//                             // Don't fail the whole job, just log the error for this lead.
-//                             console.error(`Error during Typesense search for lead ${lead.id}:`, e.message || e);
-//                         }
-//                     }
-//                     // d. Recommend next best action and message pattern.
-//                     const recommendation = await recommendNextSalesAction({
-//                         lead: {
-//                             id: lead.id,
-//                             name: lead.name || undefined,
-//                             company: lead.company || undefined,
-//                             primaryEmail: lead.primaryEmail || undefined,
-//                             lastSeenAt: lead.lastSeenAt ? new Date(lead.lastSeenAt.seconds * 1000).toISOString() : undefined
-//                         },
-//                         matchedPersona: matchedPersona ? {
-//                             segmentKey: matchedPersona.segmentKey,
-//                             summary: matchedPersona.summary,
-//                             commonPains: matchedPersona.commonPains,
-//                             winningAngles: matchedPersona.winningAngles,
-//                         } : undefined,
-//                         bestMessagePattern: bestPattern ? {
-//                             patternKey: bestPattern.patternKey,
-//                             purpose: bestPattern.pattern.purpose,
-//                             bodyStructure: bestPattern.pattern.bodyStructure,
-//                             ctaStyle: bestPattern.pattern.ctaStyle,
-//                             openerStyle: bestPattern.pattern.openerStyle,
-//                             toneTagsSorted: bestPattern.pattern.toneTagsSorted,
-//                         } : undefined
-//                     });
-//                     // e. Upsert LeadStateNode.
-//                     const leadStateRef = admin.firestore().collection('lead_states').doc(lead.id);
-//                     const leadStateData: LeadStateNode = {
-//                         id: lead.id,
-//                         spaceId: spaceId,
-//                         type: 'lead_state',
-//                         leadId: lead.id,
-//                         status: 'contacted', // Assuming we are recommending an action.
-//                         warmScore: matchedPersona ? 75 : 25, // simple scoring
-//                         matchedPersonaSegmentKey: matchedPersona?.segmentKey,
-//                         recommendedNextAction: recommendation.recommendedNextAction,
-//                         recommendedPatternKey: recommendation.recommendedPatternKey,
-//                         reasons: [recommendation.reason],
-//                         updatedAt: new Date().toISOString(),
-//                         visibility: 'sales_only',
-//                     };
-//                     await leadStateRef.set(leadStateData, { merge: true });
-//                     console.log(`Updated lead state for ${lead.id} (${lead.name}). Recommended: ${recommendation.recommendedNextAction}`);
-//                 } catch (e: any) {
-//                     console.error(`Failed to process lead ${lead.id}:`, e.message || e);
-//                 }
-//             }
-//           }
-//           break;
-//         default:
-//           console.warn(`Unknown job type: ${job.type}`);
-//           throw new Error(`Unknown job type: ${job.type}`);
-//       }
-//       // If successful, update status to 'completed'
-//       await snap.ref.update({
-//         status: 'completed',
-//         completedAt: admin.firestore.FieldValue.serverTimestamp(),
-//       });
-//       console.log(`✅ Successfully completed job ${jobId}`);
-//     } catch (error: any) {
-//       console.error(`❌ Failed to process job ${jobId}:`, error);
-//       await snap.ref.update({
-//         status: 'failed',
-//         completedAt: admin.firestore.FieldValue.serverTimestamp(),
-//         error: error.message,
-//       });
-//     }
-//   });
+var onVisitorMessageCreated_1 = require("./onVisitorMessageCreated");
+Object.defineProperty(exports, "onVisitorMessageCreated", { enumerable: true, get: function () { return onVisitorMessageCreated_1.onVisitorMessageCreated; } });
+var processBrainJob_1 = require("./processBrainJob");
+Object.defineProperty(exports, "processBrainJob", { enumerable: true, get: function () { return processBrainJob_1.processBrainJob; } });
+var metadataTriggers_1 = require("./chatNotifications/metadataTriggers");
+Object.defineProperty(exports, "onChatMessageCreated", { enumerable: true, get: function () { return metadataTriggers_1.onChatMessageCreated; } });
+var emailNotifications_1 = require("./chatNotifications/emailNotifications");
+Object.defineProperty(exports, "sendAgentChatAlertEmail", { enumerable: true, get: function () { return emailNotifications_1.sendAgentChatAlertEmail; } });
+Object.defineProperty(exports, "sendVisitorReplyEmail", { enumerable: true, get: function () { return emailNotifications_1.sendVisitorReplyEmail; } });
+Object.defineProperty(exports, "scheduledAcknowledgementEmail", { enumerable: true, get: function () { return emailNotifications_1.scheduledAcknowledgementEmail; } });
+var botTrigger_1 = require("./chat/botTrigger");
+Object.defineProperty(exports, "onSmsMessageCreated", { enumerable: true, get: function () { return botTrigger_1.onSmsMessageCreated; } });
+var twilioSmsInbound_1 = require("./http/twilioSmsInbound");
+Object.defineProperty(exports, "twilioSmsInbound", { enumerable: true, get: function () { return twilioSmsInbound_1.twilioSmsInbound; } });
+var twilioSmsStatus_1 = require("./http/twilioSmsStatus");
+Object.defineProperty(exports, "twilioSmsStatus", { enumerable: true, get: function () { return twilioSmsStatus_1.twilioSmsStatus; } });
+var sendCommsMessage_1 = require("./http/sendCommsMessage");
+Object.defineProperty(exports, "sendCommsMessage", { enumerable: true, get: function () { return sendCommsMessage_1.sendCommsMessage; } });
+var twilioVoiceInbound_1 = require("./http/twilioVoiceInbound");
+Object.defineProperty(exports, "twilioVoiceInbound", { enumerable: true, get: function () { return twilioVoiceInbound_1.twilioVoiceInbound; } });
+var twilioVoiceStatus_1 = require("./http/twilioVoiceStatus");
+Object.defineProperty(exports, "twilioVoiceStatus", { enumerable: true, get: function () { return twilioVoiceStatus_1.twilioVoiceStatus; } });
+var twilioVoiceRecording_1 = require("./http/twilioVoiceRecording");
+Object.defineProperty(exports, "twilioVoiceRecording", { enumerable: true, get: function () { return twilioVoiceRecording_1.twilioVoiceRecording; } });
+var twilioVoiceDialResult_1 = require("./http/twilioVoiceDialResult");
+Object.defineProperty(exports, "twilioVoiceDialResult", { enumerable: true, get: function () { return twilioVoiceDialResult_1.twilioVoiceDialResult; } });
+var provisioning_1 = require("./twilio/provisioning");
+Object.defineProperty(exports, "provisionTwilioSubaccount", { enumerable: true, get: function () { return provisioning_1.provisionTwilioSubaccount; } });
+Object.defineProperty(exports, "searchNumbers", { enumerable: true, get: function () { return provisioning_1.searchNumbers; } });
+Object.defineProperty(exports, "buyPhoneNumber", { enumerable: true, get: function () { return provisioning_1.buyPhoneNumber; } });
+var insightTrigger_1 = require("./chat/insightTrigger");
+Object.defineProperty(exports, "onConversationResolvedForInsight", { enumerable: true, get: function () { return insightTrigger_1.onConversationResolvedForInsight; } });
+var onHelpCenterArticleUpdated_1 = require("./onHelpCenterArticleUpdated");
+Object.defineProperty(exports, "onHelpCenterArticleUpdated", { enumerable: true, get: function () { return onHelpCenterArticleUpdated_1.onHelpCenterArticleUpdated; } });
+Object.defineProperty(exports, "onHelpCenterArticleDeleted", { enumerable: true, get: function () { return onHelpCenterArticleUpdated_1.onHelpCenterArticleDeleted; } });
+var onArticleUpdated_1 = require("./onArticleUpdated");
+Object.defineProperty(exports, "onArticleUpdated", { enumerable: true, get: function () { return onArticleUpdated_1.onArticleUpdated; } });
+Object.defineProperty(exports, "onArticleDeleted", { enumerable: true, get: function () { return onArticleUpdated_1.onArticleDeleted; } });

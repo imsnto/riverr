@@ -74,6 +74,19 @@ export async function GET(request: NextRequest) {
       welcomeMessage: resolvedGreeting,
       identityCapture: resolvedIdentityCapture,
       assignedAgentId: widget?.assignedAgentId || null,
+      // CRITICAL: AI configuration fields needed for response generation
+      aiEnabled: effectiveBot.aiEnabled,
+      flow: effectiveBot.flow,
+      behavior: effectiveBot.behavior,
+      confidenceHandling: effectiveBot.confidenceHandling,
+      escalation: effectiveBot.escalation,
+      channelConfig: effectiveBot.channelConfig,
+      tone: effectiveBot.tone,
+      responseLength: effectiveBot.responseLength,
+      intelligenceAccessLevel: effectiveBot.intelligenceAccessLevel,
+      allowedHelpCenterIds: effectiveBot.allowedHelpCenterIds,
+      agentIds: effectiveBot.agentIds,
+      hubId: effectiveBot.hubId,
     };
 
     return NextResponse.json(safeSettings, { headers: corsHeaders });

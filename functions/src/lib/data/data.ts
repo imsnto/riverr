@@ -852,13 +852,6 @@ export interface ChatMessage {
   timestamp: string;
   senderType?: 'visitor' | 'agent' | 'bot' | 'contact';
   attachments?: Attachment[];
-  sources?: Array<{
-    articleId: string;
-    title: string;
-    url: string;
-    score: number;
-  }>;
-  meta?: Record<string, unknown>;
   deliveryStatus?: 'created'|'queued'|'sent'|'delivered'|'failed'|'undelivered';
   emailHeaders?: {
     messageId: string;

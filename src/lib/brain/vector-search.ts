@@ -49,12 +49,21 @@ export async function searchArticles(args: {
 
   return results.map((r) => ({
     id: r.id,
-    text: r.metadata.body || r.metadata.summary || r.metadata.title || '',
+    text:
+      r.metadata.content ||
+      r.metadata.body ||
+      r.metadata.summary ||
+      r.metadata.subtitle ||
+      r.metadata.title ||
+      '',
     title: r.metadata.title,
     sourceType: 'article' as const,
-    libraryId: r.metadata.libraryId || r.metadata.destinationLibraryId,
+    libraryId: r.metadata.libraryId || r.metadata.destinationLibraryId || r.metadata.helpCenterId,
     visibility: (r.metadata.visibility || 'public') as 'public' | 'private',
-    url: r.metadata.url || r.metadata.slug || undefined,
+    url:
+      r.metadata.url ||
+      r.metadata.slug ||
+      (r.metadata.helpCenterId ? `/hc/${r.metadata.helpCenterId}/articles/${r.id}` : undefined),
     score: r.score,
   }));
 }

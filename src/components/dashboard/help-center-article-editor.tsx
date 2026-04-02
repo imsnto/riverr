@@ -3,7 +3,7 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { HelpCenterArticle, User, Document } from '@/lib/data';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Bot, Trash2, MessageSquare, Loader2, Share2, Star, MoreHorizontal, ArrowLeft, ExternalLink, CheckCircle2, Undo, Redo } from 'lucide-react';
+import { Bot, Trash2, MessageSquare, Loader2, Share2, Star, MoreHorizontal, ArrowLeft, ExternalLink, CheckCircle2, Undo, Redo, Database } from 'lucide-react';
 import TiptapEditor from '@/components/document/TiptapEditor';
 import { Editor } from '@tiptap/react';
 import { useToast } from '@/hooks/use-toast';
@@ -46,6 +46,26 @@ const getInitials = (name: string) => {
     if (!name) return '';
     return name.split(' ').map(n => n[0]).join('');
 };
+
+const IndexStatusIndicator = ({ chunkCount, isMobile }: { chunkCount?: number, isMobile?: boolean }) => {
+    if (chunkCount === undefined) {
+        return (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground px-2">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                {!isMobile && <span>Indexing...</span>}
+            </div>
+        );
+    }
+    if (chunkCount > 0) {
+        return (
+            <div className="flex items-center gap-1.5 text-xs text-green-600 px-2" title={`${chunkCount} chunks indexed for AI search`}>
+                <Database className="h-3 w-3" />
+                {!isMobile && <span>Indexed ({chunkCount})</span>}
+            </div>
+        );
+    }
+    return null;
+}
 
 const SaveStatusIndicator = ({ isSaving, lastSaved, isMobile }: { isSaving: boolean, lastSaved: Date | null, isMobile?: boolean }) => {
     if (isSaving) {
@@ -211,6 +231,9 @@ export default function HelpCenterArticleEditor({ article: initialArticle, allAr
                             </Button>
                         </div>
                         <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} isMobile={true} />
+                        {article.status === 'published' && (
+                            <IndexStatusIndicator chunkCount={article.chunkCount} isMobile={true} />
+                        )}
                         <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={cn('hidden sm:flex', article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : '')}>
                             {article.status === 'draft' ? 'Draft' : 'Published'}
                         </Badge>
@@ -303,6 +326,9 @@ export default function HelpCenterArticleEditor({ article: initialArticle, allAr
                                     <Separator orientation="vertical" className="h-4 mx-1" />
                                 </div>
                                 <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
+                                {article.status === 'published' && (
+                                    <IndexStatusIndicator chunkCount={article.chunkCount} />
+                                )}
                                 <Badge variant={article.status === 'draft' ? 'secondary' : 'default'} className={article.status === 'published' ? 'bg-green-100 text-green-800 border-green-200' : ''}>
                                     {article.status === 'draft' ? 'Draft' : 'Published'}
                                 </Badge>

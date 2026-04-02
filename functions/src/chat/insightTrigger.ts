@@ -1,7 +1,8 @@
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import { logger } from "firebase-functions";
-import { evaluateSupportInsight } from "../../../src/ai/flows/evaluate-support-insight";
+// TODO: Move evaluateSupportInsight to shared lib
+// import { evaluateSupportInsight } from "../../../src/ai/flows/evaluate-support-insight";
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
@@ -13,6 +14,7 @@ const db = admin.firestore();
 export const onConversationResolvedForInsight = onDocumentUpdated(
   {
     document: "conversations/{convoId}",
+    memory: "1GiB",
   },
   async (event) => {
     const after = event.data?.after.data();
@@ -48,17 +50,29 @@ export const onConversationResolvedForInsight = onDocumentUpdated(
         
         if (!existingSnap.empty) continue;
 
-        // AI EVALUATION: Extract structured reusable finding
-        const result = await evaluateSupportInsight({
-          messageText: message.content,
-          conversationContext: `Last Message from Customer: ${after.lastMessage || 'N/A'}`
-        });
+        // TEMPORARILY DISABLED - evaluateSupportInsight imports frontend code
+        // const result = await evaluateSupportInsight({
+        //   messageText: message.content,
+        //   conversationContext: `Last Message from Customer: ${after.lastMessage || 'N/A'}`
+        // });
+        
+        // Stub result for now
+        const result = {
+          shouldCreateInsight: false,
+          reason: 'AI evaluation temporarily disabled in functions'
+        };
 
-        if (!result.shouldCreateInsight || !result.structuredContent) {
+        // if (!result.shouldCreateInsight || !result.structuredContent) {
+        if (!result.shouldCreateInsight) {
           logger.debug(`[Intelligence] Message ${msgDoc.id} skipped: ${result.reason}`);
           continue;
         }
 
+        // SKIP - insight creation temporarily disabled
+        logger.info(`[Intelligence] Skipped insight creation - AI evaluation disabled in functions`);
+        continue;
+        
+        /* Original code disabled:
         const now = new Date().toISOString();
         const insightRef = db.collection("insights").doc();
         
@@ -109,6 +123,7 @@ export const onConversationResolvedForInsight = onDocumentUpdated(
         });
 
         logger.info(`[Intelligence] Created canonical insight ${insightRef.id}. Vector job enqueued.`);
+        */
       }
     } catch (err: any) {
       logger.error(`[Intelligence] Failed processing for convo ${convoId}:`, err);

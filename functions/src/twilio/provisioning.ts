@@ -17,7 +17,8 @@ const db = admin.firestore();
  * Creates a Twilio subaccount for a Space.
  */
 export const provisionTwilioSubaccount = onCall(
-  { secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN] },
+  { memory: "512MiB",
+    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN] },
   async (request) => {
     const { spaceId } = request.data as { spaceId: string };
     if (!spaceId) throw new HttpsError("invalid-argument", "Missing spaceId");
@@ -71,7 +72,8 @@ export const provisionTwilioSubaccount = onCall(
  * Searches for available phone numbers in a subaccount.
  */
 export const searchNumbers = onCall(
-  { secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN] },
+  { memory: "512MiB",
+    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError("unauthenticated", "Must be logged in");
@@ -104,7 +106,8 @@ export const searchNumbers = onCall(
       if (type === 'tollFree') {
         numbers = await client.availablePhoneNumbers(countryCode).tollFree.list({ limit: 10 });
       } else {
-        numbers = await client.availablePhoneNumbers(countryCode).local.list({ areaCode, limit: 10 });
+        const areaCodeNum = areaCode ? parseInt(areaCode, 10) : undefined;
+        numbers = await client.availablePhoneNumbers(countryCode).local.list({ areaCode: areaCodeNum, limit: 10 });
       }
 
       return { numbers: numbers.map(n => ({ 
@@ -125,7 +128,8 @@ export const searchNumbers = onCall(
  * Buys a number and configures webhooks.
  */
 export const buyPhoneNumber = onCall(
-  { secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, PUBLIC_BASE_URL] },
+  { memory: "512MiB",
+    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, PUBLIC_BASE_URL] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError("unauthenticated", "Must be logged in");
@@ -180,7 +184,7 @@ export const buyPhoneNumber = onCall(
 /**
  * Assigns a number to a Hub server-side.
  */
-export const assignNumberToHub = onCall(async (request) => {
+export const assignNumberToHub = onCall({ memory: "512MiB" }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Must be logged in");
 

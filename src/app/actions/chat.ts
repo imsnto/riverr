@@ -92,15 +92,17 @@ export async function previewAgentResponseAction(args: {
   return {
     answer: (result?.answer || '').trim() || (decision.answerMode === 'escalate' ? `I'm not sure, let me connect you to a human.` : ''),
     usedAgentName: webAgentName,
-    sources: decision.chosenCandidates
-      .filter(c => c.sourceType === 'article')
-      .slice(0, 3)
-      .map((c) => ({
-        articleId: c.id,
-        title: c.title || 'Untitled',
-        url: c.url || '',
-        score: c.score,
-      })),
+    sources: result?.showSources
+      ? decision.chosenCandidates
+          .filter(c => c.sourceType === 'article')
+          .slice(0, 3)
+          .map((c) => ({
+            articleId: c.id,
+            title: c.title || 'Untitled',
+            url: c.url || '',
+            score: c.score,
+          }))
+      : [],
   };
 }
 
@@ -109,9 +111,12 @@ export async function invokeAgent(args: {
   conversation: Conversation;
   message: IncomingMessage;
 }) {
+  console.log("[invokeAgent] Starting with args:", { botId: args.bot?.id, convoId: args.conversation?.id });
+  
   let { bot, conversation } = args;
 
   const resolved = bot?.id ? await resolveRuntimeBot(bot.id) : null;
+  console.log("[invokeAgent] resolveRuntimeBot result:", resolved ? "found" : "not found");
   const effectiveBot = resolved?.effectiveBot || bot;
 
   const adapters: AgentAdapters = {
@@ -126,7 +131,10 @@ export async function invokeAgent(args: {
     },
     generateAnswer: async (params) => {
       const result = await agentResponse(params);
-      return result.answer;
+      return {
+        answer: result.answer,
+        showSources: result.showSources,
+      };
     },
     escalateToHuman: async ({ conversationId, reason }) => {
       await adminDB.collection('conversations').doc(conversationId).update({
@@ -219,12 +227,16 @@ export async function invokeAgent(args: {
     responseLength: effectiveBot.responseLength,
   };
 
+  console.log("[invokeAgent] Calling handleIncomingMessage with botConfig:", { id: botConfig.id, aiEnabled: botConfig.aiEnabled });
+  
   await handleIncomingMessage({
     ...args,
     conversation,
     bot: botConfig,
     adapters,
   });
+  
+  console.log("[invokeAgent] handleIncomingMessage completed");
 }
 
 export async function addChatMessage(message: Omit<ChatMessage, 'id'>) {

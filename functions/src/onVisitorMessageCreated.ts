@@ -13,6 +13,7 @@ if (!admin.apps.length) admin.initializeApp();
 export const onVisitorMessageCreated = onDocumentCreated(
   {
     document: "chat_messages/{messageId}",
+    memory: "512MiB",
     secrets: [APP_BASE_URL],
   },
   async (event) => {

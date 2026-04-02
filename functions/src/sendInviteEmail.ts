@@ -16,6 +16,7 @@ function sha256Hex(input: string) {
 export const sendInviteEmail = onDocumentCreated(
   {
     document: "invites/{inviteId}",
+    memory: "512MiB",
     secrets: [POSTMARK_SERVER_TOKEN, APP_BASE_URL],
   },
   async (event) => {

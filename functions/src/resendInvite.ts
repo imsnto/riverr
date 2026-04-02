@@ -13,7 +13,8 @@ function sha256Hex(input: string) {
   return crypto.createHash("sha256").update(input).digest("hex");
 }
 
-export const resendInvite = onCall({ secrets: [POSTMARK_SERVER_TOKEN, APP_BASE_URL] }, async (request) => {
+export const resendInvite = onCall({ memory: "512MiB",
+    secrets: [POSTMARK_SERVER_TOKEN, APP_BASE_URL] }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "You must be signed in to resend an invitation.");
 

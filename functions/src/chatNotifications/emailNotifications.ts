@@ -76,6 +76,7 @@ export const sendAgentChatAlertEmail = onDocumentCreated(
   {
     document: "chat_messages/{messageId}",
     secrets: [APP_BASE_URL, POSTMARK_SERVER_TOKEN],
+    memory: "512MiB",
   },
   async (event) => {
     const snap = event.data;
@@ -185,6 +186,7 @@ export const sendVisitorReplyEmail = onDocumentCreated(
   {
     document: "chat_messages/{messageId}",
     secrets: [APP_BASE_URL, POSTMARK_SERVER_TOKEN],
+    memory: "512MiB",
   },
   async (event) => {
     const snap = event.data;
@@ -268,6 +270,7 @@ export const scheduledAcknowledgementEmail = onSchedule(
     schedule: "every 10 minutes",
     secrets: [APP_BASE_URL, POSTMARK_SERVER_TOKEN],
     timeZone: "Asia/Kolkata",
+    memory: "512MiB",
   },
   async () => {
     const baseUrl = APP_BASE_URL.value();

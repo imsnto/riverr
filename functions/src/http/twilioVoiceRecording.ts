@@ -11,7 +11,9 @@ if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
 export const twilioVoiceRecording = onRequest(
-  { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN] },
+  { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN] ,
+    memory: "1GiB"
+  },
   async (req, res) => {
     const canonicalPublicBaseUrl = PUBLIC_BASE_URL.value();
     const { CallSid } = req.body;

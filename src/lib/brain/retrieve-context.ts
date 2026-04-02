@@ -160,6 +160,23 @@ export async function orchestrateRetrieval(args: {
   // ============================
   // 🆘 FALLBACK
   // ============================
+  const fallbackCandidates = [
+    ...scoredArticles.slice(0, 1).map((a) => ({ ...a, sourceType: 'article' as const })),
+    ...scoredTopics.slice(0, 1).map((t) => ({ ...t, sourceType: 'topic' as const })),
+    ...scoredInsights.slice(0, 1).map((i) => ({ ...i, sourceType: 'insight' as const })),
+  ]
+    .sort((a, b) => b.weightedScore - a.weightedScore)
+    .slice(0, 2);
+
+  if (fallbackCandidates.length > 0) {
+    return {
+      answerMode: 'clarify',
+      chosenCandidates: fallbackCandidates,
+      confidence: fallbackCandidates[0].score,
+      rationale: 'Only low-confidence matches found; clarify while using best available context.',
+    };
+  }
+
   return {
     answerMode: policy.isCustomerFacing ? 'clarify' : 'escalate',
     chosenCandidates: [],

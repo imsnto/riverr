@@ -4,7 +4,7 @@
  * Implements conversational AI reasoning + deterministic subflow execution.
  */
 
-import type { Conversation as ImportedConversation, SupportIntentNode, ConversationStatus, ResponderType, AutomationNode, AutomationEdge, Bot, IntelligenceAccessLevel } from "./data";
+import type { Conversation as ImportedConversation, ConversationStatus, ResponderType, AutomationNode, AutomationEdge, Bot, IntelligenceAccessLevel } from "./data";
 
 export type MessageRole = "user" | "assistant" | "internal";
 
@@ -98,7 +98,7 @@ export interface AgentAdapters {
     botName: string;
     context: Array<{ title: string; text: string; url?: string }>;
     greetingScript?: string;
-  }) => Promise<string>;
+  }) => Promise<{ answer: string; showSources: boolean }>;
 
   escalateToHuman: (args: {
     conversationId: string;
@@ -123,6 +123,20 @@ export interface AgentAdapters {
   }) => Promise<void>;
 }
 
+function normalizeSourceUrl(url?: string): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+
+  const base = (process.env.PUBLIC_HELP_BASE_URL || '').replace(/\/$/, '');
+  if (base && trimmed.startsWith('/')) {
+    return `${base}${trimmed}`;
+  }
+
+  return trimmed;
+}
+
 // -------------------------
 // Standard Hybrid Pipeline
 // -------------------------
@@ -133,12 +147,15 @@ export async function handleIncomingMessage(args: {
   message: IncomingMessage;
   adapters: AgentAdapters;
 }) {
+  console.log("[handleIncomingMessage] Starting...", { botId: args.bot.id, convoStatus: args.conversation.status, aiEnabled: args.bot.aiEnabled });
+  
   const { bot, adapters } = args;
   let conversation = args.conversation;
   const text = (args.message.text ?? "").trim();
 
   // ---- 1. ESCALATION GUARD ----
   if (conversation.status === 'waiting_human' || conversation.status === 'resolved') {
+    console.log("[handleIncomingMessage] Early return - conversation status:", conversation.status);
     return;
   }
 
@@ -147,6 +164,7 @@ export async function handleIncomingMessage(args: {
   const handoffKeywords = bot.handoffKeywords?.length ? bot.handoffKeywords : defaultHandoffKeywords;
   
   if (containsAny(text, handoffKeywords)) {
+      console.log("[handleIncomingMessage] Handoff keyword detected");
       await escalateNow(adapters, conversation, "Requested by user via keyword.");
       return;
   }
@@ -163,6 +181,7 @@ export async function handleIncomingMessage(args: {
     };
     for (const t of forceTriggers) {
       if (containsAny(text, triggerMap[t] || [])) {
+        console.log("[handleIncomingMessage] Force trigger detected:", t);
         await escalateNow(adapters, conversation, `Sensitive topic detected: ${t}`);
         return;
       }
@@ -171,17 +190,20 @@ export async function handleIncomingMessage(args: {
 
   // ---- 3. HYBRID FLOW EXECUTION ----
   if (bot.flow?.nodes?.length) {
+    console.log("[handleIncomingMessage] Executing hybrid flow");
     await executeHybridFlow(args);
     return;
   }
 
   // ---- 4. LEGACY AI FALLBACK ----
   if (bot.aiEnabled !== false) {
+    console.log("[handleIncomingMessage] Executing AI phase");
     await executeAiPhase(args);
     return;
   }
 
   // ---- 5. DEFAULT CLARIFICATION ----
+  console.log("[handleIncomingMessage] Default clarification - aiEnabled is false");
   await adapters.persistAssistantMessage({
       conversationId: conversation.id,
       hubId: conversation.hubId,
@@ -389,6 +411,18 @@ async function executeAiPhase(args: {
     }
   });
 
+  console.log("[executeAiPhase] retrieveContext decision:", {
+    confidence: decision.confidence,
+    answerMode: decision.answerMode,
+    candidatesCount: decision.chosenCandidates?.length,
+    candidates: decision.chosenCandidates?.map(c => ({
+      title: c.title,
+      score: c.score,
+      hasUrl: typeof c.url === 'string' && c.url.trim().length > 0,
+      url: c.url || null,
+    }))
+  });
+
   // 1.5 Apply Confidence Handling Strategy
   const score = decision.confidence;
   const level = score >= 0.8 ? 'high' : score >= 0.5 ? 'medium' : 'low';
@@ -426,17 +460,24 @@ async function executeAiPhase(args: {
     systemInstruction += `\n\nCONVERSATION GOAL:\n${bot.conversationGoal}`;
   }
 
+  // Handle empty knowledge case - provide generic response
+  if (decision.chosenCandidates.length === 0) {
+    systemInstruction += "\n\nOFF-TOPIC STYLE: Give a short direct reply (1-2 lines), then gently redirect to support/account/product scope. Avoid defensive phrasing and avoid mentioning missing knowledge, missing context, or documentation limits.";
+  }
+
   // 3. Generate Answer
   const context = decision.chosenCandidates.map(c => ({ title: c.title || 'Source', text: c.text, url: c.url }));
-  const answer = await adapters.generateAnswer({
+  const aiResult = await adapters.generateAnswer({
       query: text,
       botName: botName,
       context,
       greetingScript: systemInstruction
   });
 
+  const answer = aiResult?.answer || '';
+
   if (!answer || answer.trim() === "") {
-      if (decision.answerMode === 'escalate' || strategy === 'escalate') {
+      if (decision.answerMode === 'escalate') {
         await escalateNow(adapters, conversation, "No trusted knowledge sources found.");
         return true;
       }
@@ -444,14 +485,26 @@ async function executeAiPhase(args: {
   }
 
   // 4. Persist result with tiered sources
+  const persistedSources = aiResult?.showSources
+    ? decision.chosenCandidates
+        .filter(c => c.sourceType === 'article')
+        .map(c => ({ title: c.title || 'Untitled', url: normalizeSourceUrl(c.url), articleId: c.id, score: c.score }))
+        .filter(s => s.url.length > 0)
+    : [];
+
+  console.log('[executeAiPhase] persisting sources:', {
+    totalCandidates: decision.chosenCandidates.length,
+    aiShowSources: !!aiResult?.showSources,
+    persistedSourcesCount: persistedSources.length,
+    persistedSourceUrls: persistedSources.map(s => s.url),
+  });
+
   await adapters.persistAssistantMessage({
       conversationId: conversation.id,
       hubId: conversation.hubId,
       text: answer,
       responderType: 'ai',
-      sources: decision.chosenCandidates
-        .filter(c => c.sourceType === 'article') // Only expose curated sources to UI
-        .map(c => ({ title: c.title || 'Untitled', url: c.url || '', articleId: c.id, score: c.score })),
+      sources: persistedSources,
   });
 
   await adapters.updateConversation({ conversationId: conversation.id, hubId: conversation.hubId, patch: { aiResolved: true } });

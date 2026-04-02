@@ -500,6 +500,12 @@ export const getSlackMeetingLogsInSpace = async (spaceId: string): Promise<Slack
 };
 
 // --- Bots & Agents ---
+export const getBot = async (botId: string): Promise<Bot | null> => {
+  const docRef = doc(db, 'bots', botId);
+  const docSnap = await getDoc(docRef);
+  return docSnap.exists() ? ({ id: docSnap.id, ...docSnap.data() } as Bot) : null;
+};
+
 export const getBots = async (hubId: string): Promise<Bot[]> => {
   const q = query(collection(db, 'bots'), where('hubId', '==', hubId));
   const querySnapshot = await getDocs(q);

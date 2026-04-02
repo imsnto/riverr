@@ -3,6 +3,20 @@ import admin from "firebase-admin";
 import { chunkArticleHtml } from "./chunking";
 import { generateDocumentEmbedding } from '@/lib/brain/embed';
 
+/**
+ * ⚠️ DEPRECATED: Firestore brain_chunks indexing is being phased out in favor of Vertex AI Vector Search.
+ * 
+ * This function is kept for backward compatibility during migration.
+ * New code should use the unified Vertex AI indexing via brain_jobs collection.
+ * 
+ * Migration plan:
+ * 1. Articles are now indexed to Vertex AI via onArticleUpdated cloud function
+ * 2. Topics and Insights already use Vertex AI via processBrainJob
+ * 3. After full migration, this file will be removed
+ * 
+ * See: @/functions/src/onArticleUpdated.ts for new implementation
+ */
+
 function safeSlug(s: string) {
   return (s ?? "")
     .toLowerCase()
@@ -84,11 +98,11 @@ export async function indexHelpCenterArticleToChunks(args: {
         // Firestore Vector write
         embedding: (admin.firestore.FieldValue as any).vector(embedding),
         embeddingModel: modelName,
-        embeddingDim: 2048,
+        embeddingDim: 1536,
         // FIX 5: Use serverTimestamp for accurate ordering
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        headingPath: spec.headingPath,
+        headingPath: spec.headingPath?.filter((h): h is string => typeof h === 'string') || [],
         chunkIndex: spec.chunkIndex,
     };
 

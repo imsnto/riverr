@@ -1,3 +1,15 @@
+AGENTS.md
+docs/MIGRATION-v2-to-v3.md
+docs/genai.txt
+docs/vertex-debug-cheatsheet.md
+docs/vertex.txt
+documents/
+scripts/
+service-account.json
+timeflow-6i3eo-42a8739a1134.json
+functions/deploy.log
+
+
 # Node dependencies
 node_modules/
 functions/node_modules/

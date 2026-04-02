@@ -81,6 +81,7 @@ export default function ChatbotWidgetPage() {
   const [capturedEmail, setCapturedEmail] = useState('');
 
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [expandedSourceByMessageId, setExpandedSourceByMessageId] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -387,9 +388,17 @@ export default function ChatbotWidgetPage() {
   };
 
   const handleSendMessage = async (customText?: string, meta?: any) => {
+    console.log("[Chatbot] handleSendMessage called", { customText, identityCaptureStep, hasVisitor: !!visitor, hasSpaceId: !!spaceId, hasBot: !!bot });
+    
     const textToSend = customText ?? messageText;
-    if (!textToSend.trim() && attachments.length === 0) return;
-    if (!visitor || !spaceId || !bot) return;
+    if (!textToSend.trim() && attachments.length === 0) {
+      console.log("[Chatbot] handleSendMessage - empty message, returning");
+      return;
+    }
+    if (!visitor || !spaceId || !bot) {
+      console.log("[Chatbot] handleSendMessage - missing required data", { visitor: !!visitor, spaceId: !!spaceId, bot: !!bot });
+      return;
+    }
 
     let currentConversation = conversation;
     setLoading(true);
@@ -467,12 +476,19 @@ export default function ChatbotWidgetPage() {
         try {
             setIsBotTyping(true);
             setTimeout(async () => {
-              await invokeAgent({
-                  bot: bot,
-                  conversation: JSON.parse(JSON.stringify(currentConversation)),
-                  message: incomingMessage,
-              });
-              setIsBotTyping(false);
+              try {
+                console.log("[Chatbot] Calling invokeAgent with message:", incomingMessage);
+                await invokeAgent({
+                    bot: bot,
+                    conversation: JSON.parse(JSON.stringify(currentConversation)),
+                    message: incomingMessage,
+                });
+                console.log("[Chatbot] invokeAgent completed successfully");
+              } catch (err) {
+                console.error("[Chatbot] invokeAgent failed:", err);
+              } finally {
+                setIsBotTyping(false);
+              }
             }, 2500);
         } catch (e) {
             console.error("Agent failed to answer:", e);
@@ -507,6 +523,13 @@ export default function ChatbotWidgetPage() {
 
   const handleQuickReply = (btn: { id: string; label: string }) => {
     handleSendMessage(btn.label, { buttonId: btn.id });
+  };
+
+  const toggleSourceExpansion = (messageId: string) => {
+    setExpandedSourceByMessageId(prev => ({
+      ...prev,
+      [messageId]: !prev[messageId],
+    }));
   };
 
   if (isLoading || !bot) {
@@ -572,6 +595,11 @@ export default function ChatbotWidgetPage() {
             const contentHtml = isAI ? marked.parse(msg.content) : msg.content;
             const meta = (msg as any).meta;
             const buttons = meta?.buttons as { id: string; label: string }[];
+            const messageSources = Array.isArray(msg.sources)
+              ? msg.sources.filter(s => typeof s?.url === 'string' && s.url.trim().length > 0)
+              : [];
+            const isSourceExpanded = !!expandedSourceByMessageId[msg.id];
+            const visibleSourceLinks = isSourceExpanded ? messageSources : messageSources.slice(0, 1);
 
             if (msg.type === 'event') {
                 return (
@@ -590,6 +618,41 @@ export default function ChatbotWidgetPage() {
                     <div className="min-w-0 flex flex-col items-start text-left">
                         <div className="p-3 rounded-xl rounded-bl-sm max-w-xs" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
                         {msg.content && <div className="text-sm prose prose-sm prose-invert max-w-none break-words overflow-hidden [&_a]:break-all [&_a]:whitespace-normal" style={{ color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }} dangerouslySetInnerHTML={{ __html: contentHtml as string }} />}
+                        {isAgent && messageSources.length > 0 && (
+                          <div className="mt-3 space-y-1.5 border-t border-white/10 pt-2">
+                            <p className="text-[10px] uppercase font-black tracking-widest opacity-60">Source</p>
+                            {visibleSourceLinks.map(source => (
+                              <a
+                                key={`${msg.id}-${source.articleId}`}
+                                href={source.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[11px] rounded-md border border-white/10 bg-black/20 px-2 py-1.5 flex items-center justify-between gap-2 hover:bg-black/30"
+                              >
+                                <span className="truncate flex-1 font-bold">{source.title}</span>
+                                <ChevronRight className="h-3 w-3 opacity-40" />
+                              </a>
+                            ))}
+                            {messageSources.length > 1 ? (
+                              <button
+                                type="button"
+                                onClick={() => toggleSourceExpansion(msg.id)}
+                                className="text-[10px] uppercase font-black tracking-widest opacity-70 hover:opacity-100"
+                              >
+                                {isSourceExpanded ? 'See less' : `See more (${messageSources.length - 1})`}
+                              </button>
+                            ) : (
+                              <a
+                                href={messageSources[0].url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex text-[10px] uppercase font-black tracking-widest opacity-80 hover:opacity-100"
+                              >
+                                See more
+                              </a>
+                            )}
+                          </div>
+                        )}
                         </div>
                         <p className="text-[10px] uppercase font-black tracking-widest text-zinc-500 mt-1">
                             {isAI ? `${agentDisplayName}` : isAutomation ? agentDisplayName : (agent?.name || 'Team member')}

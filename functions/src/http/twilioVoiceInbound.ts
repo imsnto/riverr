@@ -13,7 +13,9 @@ if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
 export const twilioVoiceInbound = onRequest(
-  { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID] },
+  { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID] ,
+    memory: "1GiB"
+  },
   async (req, res) => {
     const canonicalPublicBaseUrl = PUBLIC_BASE_URL.value();
     const b = req.body;

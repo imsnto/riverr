@@ -26,7 +26,9 @@ function mapCallStatusToEventType(status: string): string | null {
 }
 
 export const twilioVoiceStatus = onRequest(
-  { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN] },
+  { secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN] ,
+    memory: "1GiB",
+  },
   async (req, res) => {
     const canonicalPublicBaseUrl = PUBLIC_BASE_URL.value();
     const { CallSid } = req.body;

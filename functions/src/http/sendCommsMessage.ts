@@ -20,6 +20,7 @@ const db = admin.firestore();
 export const sendCommsMessage = onCall(
   { 
     // Secrets included here are automatically mounted to process.env during execution
+    memory: "512MiB",
     secrets: [PUBLIC_BASE_URL, TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID] 
   },
   async (request) => {

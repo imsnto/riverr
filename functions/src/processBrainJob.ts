@@ -1,24 +1,63 @@
 import * as admin from 'firebase-admin';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions';
-import { IndexServiceClient } from '@google-cloud/aiplatform';
-import { generateDocumentEmbedding } from '../../src/lib/brain/embed';
+import { IndexServiceClient, protos } from '@google-cloud/aiplatform';
+import { generateDocumentEmbedding } from './lib/brain/embed';
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
 const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
 const VECTOR_INDEX_RESOURCE_NAME = process.env.VERTEX_VECTOR_INDEX_RESOURCE_NAME || '';
+const VECTOR_INDEX_NUMERIC_ID = process.env.VERTEX_AI_INDEX_ID || '';
+const GCP_PROJECT = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || '';
 
 const indexClient = new IndexServiceClient({
   apiEndpoint: `${location}-aiplatform.googleapis.com`,
 });
 
-type SourceType = 'article' | 'topic' | 'insight' | 'chunk';
+function resolveIndexResourceName(): string {
+  // Prefer explicit numeric index id when available.
+  // This avoids stale VERTEX_VECTOR_INDEX_RESOURCE_NAME values (often set to endpoint ids by mistake).
+  if (VECTOR_INDEX_NUMERIC_ID && GCP_PROJECT) {
+    const computed = `projects/${GCP_PROJECT}/locations/${location}/indexes/${VECTOR_INDEX_NUMERIC_ID}`;
+    const configured = VECTOR_INDEX_RESOURCE_NAME.trim();
+    if (configured && configured !== computed) {
+      logger.warn('VERTEX_VECTOR_INDEX_RESOURCE_NAME differs from computed index resource; using VERTEX_AI_INDEX_ID value instead.', {
+        configured,
+        computed,
+      });
+    }
+    return computed;
+  }
+
+  const configured = VECTOR_INDEX_RESOURCE_NAME.trim();
+
+  if (configured) {
+    if (configured.includes('/indexEndpoints/')) {
+      throw new Error(
+        'VERTEX_VECTOR_INDEX_RESOURCE_NAME is set to an Index Endpoint resource. Use an Index resource: projects/<project>/locations/<location>/indexes/<indexId>'
+      );
+    }
+    if (!configured.includes('/indexes/')) {
+      throw new Error(
+        'VERTEX_VECTOR_INDEX_RESOURCE_NAME format is invalid. Expected: projects/<project>/locations/<location>/indexes/<indexId>'
+      );
+    }
+    return configured;
+  }
+
+  throw new Error(
+    'Missing Vertex index config. Set VERTEX_VECTOR_INDEX_RESOURCE_NAME or both GOOGLE_CLOUD_PROJECT and VERTEX_AI_INDEX_ID.'
+  );
+}
+
+type SourceType = 'article' | 'help_center_article' | 'topic' | 'insight' | 'chunk';
 
 function getCollectionName(sourceType: SourceType): string {
   switch (sourceType) {
-    case 'article': return 'articles';
+    case 'article': return 'documents';
+    case 'help_center_article': return 'help_center_articles';
     case 'topic': return 'topics';
     case 'insight': return 'insights';
     case 'chunk': return 'source_chunks';
@@ -31,18 +70,20 @@ function buildRestricts(params: {
   spaceId: string;
   hubId?: string | null;
   libraryId?: string | null;
+  helpCenterId?: string | null;
   visibility?: 'public' | 'private';
   internalOnly?: boolean;
   origin?: 'automatic' | 'manual' | 'imported';
   signalLevel?: 'low' | 'medium' | 'high' | null;
-}) {
-  const restricts: Array<{ namespace: string; allowList: string[] }> = [
+}): protos.google.cloud.aiplatform.v1.IndexDatapoint.IRestriction[] {
+  const restricts: protos.google.cloud.aiplatform.v1.IndexDatapoint.IRestriction[] = [
     { namespace: 'sourceType', allowList: [params.sourceType] },
     { namespace: 'spaceId', allowList: [params.spaceId] },
   ];
 
   if (params.hubId) restricts.push({ namespace: 'hubId', allowList: [params.hubId] });
   if (params.libraryId) restricts.push({ namespace: 'libraryId', allowList: [params.libraryId] });
+  if (params.helpCenterId) restricts.push({ namespace: 'helpCenterId', allowList: [params.helpCenterId] });
   if (params.visibility) restricts.push({ namespace: 'visibility', allowList: [params.visibility] });
   if (typeof params.internalOnly === 'boolean') {
     restricts.push({ namespace: 'internalOnly', allowList: [String(params.internalOnly)] });
@@ -58,7 +99,12 @@ function buildRestricts(params: {
  * Generates embeddings, upserts datapoints to Vertex Vector Search,
  * and writes only vector linkage metadata back to Firestore.
  */
-export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (event) => {
+export const processBrainJob = onDocumentCreated(
+  {
+    document: 'brain_jobs/{jobId}',
+    memory: '1GiB',
+  },
+  async (event) => {
   const snap = event.data;
   if (!snap) return;
 
@@ -79,7 +125,7 @@ export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (ev
           text?: string;
         };
 
-        if (!VECTOR_INDEX_RESOURCE_NAME) throw new Error('Missing VERTEX_VECTOR_INDEX_RESOURCE_NAME');
+        const indexResourceName = resolveIndexResourceName();
         if (!sourceType || !sourceId) throw new Error('Missing sourceType or sourceId');
 
         const collectionName = getCollectionName(sourceType);
@@ -102,30 +148,43 @@ export const processBrainJob = onDocumentCreated('brain_jobs/{jobId}', async (ev
           sourceType,
           spaceId: docData.spaceId,
           hubId: docData.hubId,
-          libraryId: docData.libraryId ?? docData.destinationLibraryId,
+          libraryId: docData.libraryId ?? docData.destinationLibraryId ?? docData.helpCenterId,
+          helpCenterId: docData.helpCenterId,
           visibility: docData.visibility,
           internalOnly: sourceType === 'chunk' ? true : docData.visibility === 'private',
           origin: docData.origin,
           signalLevel: docData.signalLevel,
         });
 
-        logger.info(`[Job:${jobId}] Upserting datapoint to Vertex index`, { vectorDocId });
+        logger.info(`[Job:${jobId}] Upserting datapoint to Vertex index`, {
+          vectorDocId,
+          indexResourceName,
+          embeddingDim: embedding.length,
+        });
+
+        // Build proper datapoint using protobuf types
+        const datapoint = new protos.google.cloud.aiplatform.v1.IndexDatapoint({
+          datapointId: vectorDocId,
+          featureVector: embedding,
+        });
+        
+        if (restricts.length > 0) {
+          datapoint.restricts = restricts.map(r => new protos.google.cloud.aiplatform.v1.IndexDatapoint.Restriction({
+            namespace: r.namespace,
+            allowList: r.allowList,
+          }));
+        }
 
         await indexClient.upsertDatapoints({
-          index: VECTOR_INDEX_RESOURCE_NAME,
-          datapoints: [
-            {
-              datapointId: vectorDocId,
-              featureVector: embedding,
-              restricts,
-            },
-          ],
+          index: indexResourceName,
+          datapoints: [datapoint],
         });
 
         await docRef.update({
           embeddingStatus: 'ready',
-          embeddingModel: 'text-embedding-004',
-          embeddingVersion: 'v2',
+          embeddingModel: 'gemini-embedding-001',
+          embeddingVersion: 'v3',
+          embeddingDim: 1536,
           embeddingUpdatedAt: new Date().toISOString(),
           vectorDocId,
         });

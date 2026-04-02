@@ -1,12 +1,19 @@
 
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
-import { EmailConfig } from "../../src/lib/data";
+// Simple EmailConfig type for this function
+type EmailConfig = {
+  connected?: boolean;
+  watchConfig?: {
+    expiresAt?: string;
+  };
+  emailAddress?: string;
+};
 
 if (!admin.apps.length) admin.initializeApp();
 
 // Daily Email Watch Renewal
-export const renewEmailWatches = onSchedule("every 24 hours", async (event) => {
+export const renewEmailWatches = onSchedule({schedule: "every 24 hours",  memory: "512MiB"}, async (event) => {
   const db = admin.firestore();
   const now = new Date();
   const cutoff = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000); // 2 days buffer
@@ -61,4 +68,6 @@ export { twilioVoiceStatus } from "./http/twilioVoiceStatus";
 export { twilioVoiceRecording } from "./http/twilioVoiceRecording";
 export { twilioVoiceDialResult } from "./http/twilioVoiceDialResult";
 export { provisionTwilioSubaccount, searchNumbers, buyPhoneNumber } from "./twilio/provisioning";
-export { onChatMessageCreatedForInsight } from "./chat/insightTrigger";
+export { onConversationResolvedForInsight } from "./chat/insightTrigger";
+export { onHelpCenterArticleUpdated, onHelpCenterArticleDeleted } from "./onHelpCenterArticleUpdated";
+export { onArticleUpdated, onArticleDeleted } from "./onArticleUpdated";

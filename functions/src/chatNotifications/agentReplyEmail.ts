@@ -5,6 +5,7 @@ import { sendSystemEmail } from "../email/sendSystemEmail";
 export const onAgentReplyEmail = onDocumentUpdated(
   {
     document: "conversations/{convId}",
+     memory: "512MiB", 
   },
   async (event) => {
     const after = event.data?.after.data() as any;
@@ -42,9 +43,11 @@ export const onAgentReplyEmail = onDocumentUpdated(
       });
 
       // Update cooldown flag
-      await event?.data.after.ref.update({
-        lastAgentReplyEmailAt: new Date().toISOString()
-      });
+      if (event.data?.after) {
+        await event.data.after.ref.update({
+          lastAgentReplyEmailAt: new Date().toISOString()
+        });
+      }
     }
   }
 );

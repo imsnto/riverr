@@ -3,10 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || 'timeflow-6i3eo';
 const location = process.env.GOOGLE_CLOUD_LOCATION || process.env.VERTEX_LOCATION || 'us-central1';
 
-// v3 MODEL: Gemini Embedding gemini-embedding-001
 const EMBEDDING_MODEL = 'gemini-embedding-001';
-
-// RECOMMENDED DIMENSION: 1536 (using Matryoshka Representation Learning)
 const EMBEDDING_DIM = 1536;
 
 let genAIInstance: GoogleGenAI | null = null;
@@ -24,11 +21,9 @@ function getGenAI(): GoogleGenAI {
 
 export async function generateDocumentEmbedding(text: string): Promise<number[] | null> {
   if (!text || !text.trim()) return null;
-
   try {
     console.log(`[Embedding] Generating document embedding (${EMBEDDING_MODEL}, dim=${EMBEDDING_DIM}) for: ${text.substring(0, 50)}...`);
     const ai = getGenAI();
-    
     const response = await ai.models.embedContent({
       model: EMBEDDING_MODEL,
       contents: text.trim(),
@@ -37,7 +32,6 @@ export async function generateDocumentEmbedding(text: string): Promise<number[] 
         outputDimensionality: EMBEDDING_DIM,
       }
     });
-
     const values = response.embeddings?.[0]?.values;
     return values && values.length > 0 ? values : null;
   } catch (error) {
@@ -48,11 +42,9 @@ export async function generateDocumentEmbedding(text: string): Promise<number[] 
 
 export async function generateQueryEmbedding(text: string): Promise<number[] | null> {
   if (!text || !text.trim()) return null;
-
   try {
     console.log(`[Embedding] Generating query embedding (${EMBEDDING_MODEL}, dim=${EMBEDDING_DIM}) for: ${text.substring(0, 50)}...`);
     const ai = getGenAI();
-    
     const response = await ai.models.embedContent({
       model: EMBEDDING_MODEL,
       contents: text.trim(),
@@ -61,7 +53,6 @@ export async function generateQueryEmbedding(text: string): Promise<number[] | n
         outputDimensionality: EMBEDDING_DIM,
       }
     });
-
     const values = response.embeddings?.[0]?.values;
     return values && values.length > 0 ? values : null;
   } catch (error) {
