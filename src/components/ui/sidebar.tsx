@@ -81,14 +81,14 @@ const SidebarProvider = React.forwardRef<
   const state = open ? "expanded" : "collapsed"
 
   return (
-    <SidebarContext value={{ state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar }}>
+    <SidebarContext.Provider value={{ state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar }}>
       <TooltipProvider delayDuration={0}>
         <div
           style={{
             "--sidebar-width": SIDEBAR_WIDTH,
             "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
             ...style,
-          }}
+          } as React.CSSProperties}
           className={cn("group/sidebar-wrapper flex min-h-svh w-full min-w-0 overflow-x-hidden has-[[data-variant=inset]]:bg-sidebar", className)}
           ref={ref}
           {...props}
@@ -96,7 +96,7 @@ const SidebarProvider = React.forwardRef<
           {children}
         </div>
       </TooltipProvider>
-    </SidebarContext>
+    </SidebarContext.Provider>
   )
 })
 SidebarProvider.displayName = "SidebarProvider"
@@ -126,7 +126,7 @@ const Sidebar = React.forwardRef<
           data-sidebar="sidebar"
           data-mobile="true"
           className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
-          style={{ "--sidebar-width": SIDEBAR_WIDTH_MOBILE }}
+          style={{ "--sidebar-width": SIDEBAR_WIDTH_MOBILE } as React.CSSProperties}
           side={side}
         >
           <div className="flex h-full w-full flex-col">{children}</div>

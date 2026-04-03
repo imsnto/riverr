@@ -85,16 +85,28 @@ export async function previewAgentResponseAction(args: {
   const result = await agentResponse({
     query: message,
     botName: webAgentName,
-    context: decision.chosenCandidates.map(c => ({ title: c.title || 'Source', text: c.text, url: c.url })),
+    context: decision.chosenCandidates.map((c) => ({
+      sourceId: c.id,
+      sourceType: c.sourceType,
+      title: c.title || 'Source',
+      text: c.text,
+      url: c.url,
+    })),
     greetingScript: systemInstruction,
   });
+
+  const selectedSourceIds = new Set(
+    (result?.selectedSourceIds || [])
+      .map((id) => String(id || '').trim())
+      .filter((id) => id.length > 0)
+  );
 
   return {
     answer: (result?.answer || '').trim() || (decision.answerMode === 'escalate' ? `I'm not sure, let me connect you to a human.` : ''),
     usedAgentName: webAgentName,
     sources: result?.showSources
       ? decision.chosenCandidates
-          .filter(c => c.sourceType === 'article')
+          .filter((c) => c.sourceType === 'article' && selectedSourceIds.has(c.id))
           .slice(0, 3)
           .map((c) => ({
             articleId: c.id,
@@ -134,6 +146,7 @@ export async function invokeAgent(args: {
       return {
         answer: result.answer,
         showSources: result.showSources,
+        selectedSourceIds: result.selectedSourceIds,
       };
     },
     escalateToHuman: async ({ conversationId, reason }) => {

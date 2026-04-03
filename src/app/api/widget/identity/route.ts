@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDB } from '@/lib/firebase-admin';
-import admin from 'firebase-admin';
+import admin from '@/lib/firebase-admin';
 import crypto from 'crypto';
 
 const corsHeaders = {

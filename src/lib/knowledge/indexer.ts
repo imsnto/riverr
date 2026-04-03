@@ -1,5 +1,5 @@
 import type { Firestore } from "firebase-admin/firestore";
-import admin from "firebase-admin";
+import admin from "@/lib/firebase-admin";
 import { chunkArticleHtml } from "./chunking";
 import { generateDocumentEmbedding } from '@/lib/brain/embed';
 

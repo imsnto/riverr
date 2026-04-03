@@ -633,7 +633,7 @@ export default function ChatbotWidgetPage() {
                                 <ChevronRight className="h-3 w-3 opacity-40" />
                               </a>
                             ))}
-                            {messageSources.length > 1 ? (
+                            {messageSources.length > 1 && (
                               <button
                                 type="button"
                                 onClick={() => toggleSourceExpansion(msg.id)}
@@ -641,15 +641,6 @@ export default function ChatbotWidgetPage() {
                               >
                                 {isSourceExpanded ? 'See less' : `See more (${messageSources.length - 1})`}
                               </button>
-                            ) : (
-                              <a
-                                href={messageSources[0].url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex text-[10px] uppercase font-black tracking-widest opacity-80 hover:opacity-100"
-                              >
-                                See more
-                              </a>
                             )}
                           </div>
                         )}

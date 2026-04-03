@@ -47,6 +47,8 @@ export async function searchArticles(args: {
     limit,
   });
 
+  console.log('Raw article search results:', results);
+
   return results.map((r) => ({
     id: r.id,
     text:

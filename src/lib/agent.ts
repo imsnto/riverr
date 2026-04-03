@@ -96,9 +96,15 @@ export interface AgentAdapters {
   generateAnswer: (args: {
     query: string;
     botName: string;
-    context: Array<{ title: string; text: string; url?: string }>;
+    context: Array<{
+      sourceId: string;
+      sourceType: 'article' | 'topic' | 'insight' | 'chunk';
+      title: string;
+      text: string;
+      url?: string;
+    }>;
     greetingScript?: string;
-  }) => Promise<{ answer: string; showSources: boolean }>;
+  }) => Promise<{ answer: string; showSources: boolean; selectedSourceIds: string[] }>;
 
   escalateToHuman: (args: {
     conversationId: string;
@@ -466,7 +472,13 @@ async function executeAiPhase(args: {
   }
 
   // 3. Generate Answer
-  const context = decision.chosenCandidates.map(c => ({ title: c.title || 'Source', text: c.text, url: c.url }));
+  const context = decision.chosenCandidates.map(c => ({
+    sourceId: c.id,
+    sourceType: c.sourceType,
+    title: c.title || 'Source',
+    text: c.text,
+    url: c.url,
+  }));
   const aiResult = await adapters.generateAnswer({
       query: text,
       botName: botName,
@@ -485,16 +497,25 @@ async function executeAiPhase(args: {
   }
 
   // 4. Persist result with tiered sources
+  const selectedSourceIds = new Set(
+    (aiResult?.selectedSourceIds || [])
+      .map((id) => String(id || '').trim())
+      .filter((id) => id.length > 0)
+  );
+
   const persistedSources = aiResult?.showSources
     ? decision.chosenCandidates
-        .filter(c => c.sourceType === 'article')
-        .map(c => ({ title: c.title || 'Untitled', url: normalizeSourceUrl(c.url), articleId: c.id, score: c.score }))
-        .filter(s => s.url.length > 0)
+        .filter((c) => c.sourceType === 'article' && selectedSourceIds.has(c.id))
+        .map((c) => ({ title: c.title || 'Untitled', url: normalizeSourceUrl(c.url), articleId: c.id, score: c.score }))
+        .filter((s) => s.url.length > 0)
+        .filter((s, index, arr) => arr.findIndex((v) => v.articleId === s.articleId) === index)
+        .slice(0, 3)
     : [];
 
   console.log('[executeAiPhase] persisting sources:', {
     totalCandidates: decision.chosenCandidates.length,
     aiShowSources: !!aiResult?.showSources,
+    aiSelectedSourceIds: Array.from(selectedSourceIds),
     persistedSourcesCount: persistedSources.length,
     persistedSourceUrls: persistedSources.map(s => s.url),
   });

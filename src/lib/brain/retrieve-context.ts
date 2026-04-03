@@ -69,6 +69,8 @@ export async function orchestrateRetrieval(args: {
       allowedHelpCenterIds: policy.allowedLibraryIds,
     }),
 
+    
+
     policy.accessLevel !== 'none' && policy.accessLevel !== 'articles_only'
       ? searchTopics({
           query: message,
@@ -86,6 +88,8 @@ export async function orchestrateRetrieval(args: {
         })
       : Promise.resolve([]),
   ]);
+
+  console.log('Search results:', { articles, topics, insights });
 
   // 🎯 APPLY WEIGHTS
   const scoredArticles = articles.map((a) => ({
@@ -112,13 +116,32 @@ export async function orchestrateRetrieval(args: {
   const bestTopic = scoredTopics[0];
   const bestInsight = scoredInsights[0];
 
+  const topArticles = scoredArticles
+    .slice(0, 3)
+    .map((a) => ({ ...a, sourceType: 'article' as const }));
+  const topTopics = scoredTopics
+    .slice(0, 3)
+    .map((t) => ({ ...t, sourceType: 'topic' as const }));
+  const topInsights = scoredInsights
+    .slice(0, 3)
+    .map((i) => ({ ...i, sourceType: 'insight' as const }));
+
+  const contextCandidates = [...topArticles, ...topTopics, ...topInsights];
+
+  console.log('Retrieval context payload:', {
+    articleCount: topArticles.length,
+    topicCount: topTopics.length,
+    insightCount: topInsights.length,
+    totalCount: contextCandidates.length,
+  });
+
   // ============================
   // 🥇 TIER 1: ARTICLE (Highest Trust)
   // ============================
   if (bestArticle && bestArticle.score >= CONFIDENCE_THRESHOLDS.ARTICLE) {
     return {
       answerMode: 'article_grounded',
-      chosenCandidates: scoredArticles.slice(0, 3).map(a => ({...a, sourceType: 'article'})),
+      chosenCandidates: contextCandidates,
       confidence: bestArticle.score,
       rationale: 'Strong article match found.',
     };
@@ -130,7 +153,7 @@ export async function orchestrateRetrieval(args: {
   if (bestTopic && bestTopic.score >= CONFIDENCE_THRESHOLDS.TOPIC) {
     return {
       answerMode: 'topic_supported',
-      chosenCandidates: [bestTopic].map(t => ({...t, sourceType: 'topic'})),
+      chosenCandidates: contextCandidates,
       confidence: bestTopic.score,
       rationale: 'Recurring issue pattern matched (topic).',
     };
@@ -143,7 +166,7 @@ export async function orchestrateRetrieval(args: {
     if (policy.isCustomerFacing) {
       return {
         answerMode: 'insight_supported_hidden',
-        chosenCandidates: [bestInsight].map(i => ({...i, sourceType: 'insight'})),
+        chosenCandidates: contextCandidates,
         confidence: bestInsight.score,
         rationale: 'Internal support knowledge used (hidden from user).',
       };
@@ -151,7 +174,7 @@ export async function orchestrateRetrieval(args: {
 
     return {
       answerMode: 'internal_evidence_only',
-      chosenCandidates: [bestInsight].map(i => ({...i, sourceType: 'insight'})),
+      chosenCandidates: contextCandidates,
       confidence: bestInsight.score,
       rationale: 'Internal-only insight used directly.',
     };
@@ -171,7 +194,7 @@ export async function orchestrateRetrieval(args: {
   if (fallbackCandidates.length > 0) {
     return {
       answerMode: 'clarify',
-      chosenCandidates: fallbackCandidates,
+      chosenCandidates: contextCandidates,
       confidence: fallbackCandidates[0].score,
       rationale: 'Only low-confidence matches found; clarify while using best available context.',
     };
