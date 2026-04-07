@@ -4,6 +4,7 @@
  */
 
 import { searchArticles, searchTopics, searchInsights } from './vector-search';
+import { adminDB } from '@/lib/firebase-admin';
 
 export interface AgentKnowledgePolicy {
   agentId?: string;
@@ -61,7 +62,7 @@ export async function orchestrateRetrieval(args: {
   const boostMap = policy.isCustomerFacing ? BOOSTS.PUBLIC : BOOSTS.INTERNAL;
 
   // 🧠 PARALLEL SEARCHES
-  const [articles, topics, insights] = await Promise.all([
+  const [articles, rawTopics, insights] = await Promise.all([
     searchArticles({
       query: message,
       hubId,
@@ -88,6 +89,9 @@ export async function orchestrateRetrieval(args: {
         })
       : Promise.resolve([]),
   ]);
+
+  // Expand topics: fetch actual insight content from Firestore so LLM gets real resolution steps
+  const topics = await expandTopicsWithInsights(rawTopics);
 
   console.log('Search results:', { articles, topics, insights });
 
@@ -134,6 +138,13 @@ export async function orchestrateRetrieval(args: {
     insightCount: topInsights.length,
     totalCount: contextCandidates.length,
   });
+
+  console.log('=== RETRIEVAL CANDIDATES (FULL) ===');
+  contextCandidates.forEach((c, i) => {
+    console.log(`[${i + 1}] [${c.sourceType.toUpperCase()}] score=${c.score.toFixed(4)} title="${c.title}"`);
+    console.log(`    text (${c.text.length} chars): ${c.text.substring(0, 500)}${c.text.length > 500 ? '...' : ''}`);
+  });
+  console.log('=== END RETRIEVAL CANDIDATES ===');
 
   // ============================
   // 🥇 TIER 1: ARTICLE (Highest Trust)
@@ -206,4 +217,47 @@ export async function orchestrateRetrieval(args: {
     confidence: 0,
     rationale: 'No high-confidence knowledge found.',
   };
+}
+
+type TopicResult = Awaited<ReturnType<typeof searchTopics>>[number];
+
+/**
+ * For each topic, fetch its grouped insights from Firestore and append their
+ * content to the topic's text so the LLM receives actual resolution steps.
+ */
+async function expandTopicsWithInsights(topics: TopicResult[]): Promise<TopicResult[]> {
+  if (topics.length === 0) return topics;
+
+  return Promise.all(
+    topics.map(async (topic) => {
+      try {
+        // Simple single-field query — no composite index needed
+        const snap = await adminDB
+          .collection('insights')
+          .where('topicId', '==', topic.id)
+          .limit(5)
+          .get();
+
+        console.log(`[expandTopics] topic="${topic.title}" → ${snap.size} insights found`);
+
+        if (snap.empty) return topic;
+
+        const insightTexts = snap.docs
+          .map((d) => d.data().content as string | undefined)
+          .filter((c): c is string => !!c && c.trim().length > 0);
+
+        console.log(`[expandTopics] insightTexts count=${insightTexts.length}, total expanded chars=${insightTexts.reduce((s, t) => s + t.length, 0)}`);
+
+        if (insightTexts.length === 0) return topic;
+
+        return {
+          ...topic,
+          text: [topic.text, ...insightTexts].join('\n\n---\n\n'),
+        };
+      } catch (err) {
+        console.error(`[expandTopics] Failed for topic ${topic.id}:`, err);
+        return topic;
+      }
+    })
+  );
 }

@@ -2,20 +2,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Insight, User, Article, HelpCenter } from '@/lib/data';
+import { Insight, User } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 import {
     X,
     ArrowLeft,
-    Share2,
     ExternalLink,
     ShieldCheck,
     History,
     Info,
-    ArrowUpRight,
     Loader2,
-    Plus
+    Trash2,
+    Unlink
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '../ui/badge';
@@ -32,62 +31,49 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Label } from '../ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface InsightDetailPanelProps {
     insight: Insight;
     onClose: () => void;
     allUsers: User[];
+    onDelete?: (id: string) => void;
+    onUngroup?: (id: string) => void;
 }
 
-export default function InsightDetailPanel({ insight, onClose, allUsers }: InsightDetailPanelProps) {
+export default function InsightDetailPanel({ insight, onClose, allUsers, onDelete, onUngroup }: InsightDetailPanelProps) {
     const { toast } = useToast();
-    const [isPromoting, setIsPromoting] = useState(false);
-    const [isPromotionDialogOpen, setIsPromotionDialogOpen] = useState(false);
-    const [libraries, setLibraries] = useState<HelpCenter[]>([]);
-    const [selectedLibraryId, setSelectedLibraryId] = useState<string>('');
-    
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isUngrouping, setIsUngrouping] = useState(false);
+
     const creator = allUsers.find(u => u.id === insight.author.userId);
 
-    const handlePromoteClick = async () => {
-        if (!insight.hubId) return;
-        const fetchedLibs = await db.getHelpCenters(insight.hubId);
-        setLibraries(fetchedLibs);
-        if (fetchedLibs.length > 0) setSelectedLibraryId(fetchedLibs[0].id);
-        setIsPromotionDialogOpen(true);
+    const handleDelete = async () => {
+        setIsDeleting(true);
+        try {
+            await db.deleteInsight(insight.id);
+            toast({ title: 'Insight deleted' });
+            onDelete?.(insight.id);
+            onClose();
+        } catch {
+            toast({ variant: 'destructive', title: 'Delete failed' });
+        } finally {
+            setIsDeleting(false);
+            setIsDeleteDialogOpen(false);
+        }
     };
 
-    const handleConfirmPromotion = async () => {
-        if (!selectedLibraryId) return;
-        setIsPromoting(true);
+    const handleUngroup = async () => {
+        setIsUngrouping(true);
         try {
-            const articleData: Omit<Article, 'id'> = {
-                spaceId: insight.spaceId,
-                hubId: insight.hubId!,
-                sourceType: 'insight',
-                sourceInsightId: insight.id,
-                destinationLibraryId: selectedLibraryId,
-                visibility: libraries.find(l => l.id === selectedLibraryId)?.visibility || 'private',
-                title: insight.title,
-                body: insight.content,
-                summary: insight.summary,
-                status: 'draft',
-                authorId: insight.author.userId || 'system',
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            };
-            
-            await db.addArticle(articleData);
-            await db.updateInsight(insight.id, { groupingStatus: 'grouped' });
-            
-            toast({ title: "Article Created", description: "The insight has been promoted to a draft article." });
-            setIsPromotionDialogOpen(false);
+            await db.ungroupInsight(insight.id);
+            toast({ title: 'Insight removed from topic' });
+            onUngroup?.(insight.id);
             onClose();
-        } catch (e) {
-            toast({ variant: 'destructive', title: "Promotion failed" });
+        } catch {
+            toast({ variant: 'destructive', title: 'Failed to ungroup' });
         } finally {
-            setIsPromoting(false);
+            setIsUngrouping(false);
         }
     };
 
@@ -101,8 +87,25 @@ export default function InsightDetailPanel({ insight, onClose, allUsers }: Insig
                     <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Intelligence Detail</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button size="sm" className="h-8 rounded-lg font-bold gap-2" onClick={handlePromoteClick}>
-                        <ArrowUpRight className="h-3.5 w-3.5" /> Promote to Article
+                    {insight.topicId && (
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 rounded-lg font-bold gap-2 text-muted-foreground hover:text-orange-400"
+                            onClick={handleUngroup}
+                            disabled={isUngrouping}
+                        >
+                            {isUngrouping ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
+                            Remove from Topic
+                        </Button>
+                    )}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full text-muted-foreground hover:text-red-400"
+                        onClick={() => setIsDeleteDialogOpen(true)}
+                    >
+                        <Trash2 className="h-4 w-4" />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={onClose}><X className="h-4 w-4" /></Button>
                 </div>
@@ -123,7 +126,7 @@ export default function InsightDetailPanel({ insight, onClose, allUsers }: Insig
                         </div>
                         <h2 className="text-2xl font-bold leading-tight text-white">{insight.title}</h2>
                         <p className="text-sm text-muted-foreground leading-relaxed italic">"{insight.summary}"</p>
-                        
+
                         <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 space-y-2">
                             <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-indigo-400">
                                 <ShieldCheck className="h-3.5 w-3.5" /> AI Usage Policy
@@ -185,34 +188,19 @@ export default function InsightDetailPanel({ insight, onClose, allUsers }: Insig
                 </div>
             </ScrollArea>
 
-            <Dialog open={isPromotionDialogOpen} onOpenChange={setIsPromotionDialogOpen}>
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <DialogContent className="sm:max-w-md bg-[#0d1117] border-white/10 text-white">
                     <DialogHeader>
-                        <DialogTitle>Promote to Article</DialogTitle>
+                        <DialogTitle>Delete Insight</DialogTitle>
                         <DialogDescription className="text-muted-foreground">
-                            Create a curated documentation draft from this insight.
+                            This insight will be permanently deleted and removed from any topic it belongs to. This cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="py-6 space-y-4">
-                        <div className="space-y-2">
-                            <Label className="text-xs uppercase font-bold text-muted-foreground">Select Destination Library</Label>
-                            <Select value={selectedLibraryId} onValueChange={setSelectedLibraryId}>
-                                <SelectTrigger className="bg-white/5 border-white/10 h-12">
-                                    <SelectValue placeholder="Choose a library..." />
-                                </SelectTrigger>
-                                <SelectContent className="bg-[#0d1117] border-white/10">
-                                    {libraries.map(lib => (
-                                        <SelectItem key={lib.id} value={lib.id}>{lib.name} ({lib.visibility})</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsPromotionDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleConfirmPromotion} disabled={isPromoting || !selectedLibraryId} className="px-8 font-bold">
-                            {isPromoting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                            Create Draft Article
+                        <Button variant="ghost" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={isDeleting} className="px-8 font-bold">
+                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                            Delete
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -165,7 +165,20 @@ export async function invokeAgent(args: {
         // history is optional, continue without it
       }
 
-      const result = await agentResponse({ ...params, history });
+      const llmInput = { ...params, history };
+      console.log('\n==================== LLM INPUT ====================');
+      console.log('[query]', llmInput.query);
+      console.log('[botName]', llmInput.botName);
+      console.log('[greetingScript]', llmInput.greetingScript);
+      console.log('[history]', JSON.stringify(llmInput.history, null, 2));
+      console.log('[context chunks]');
+      (llmInput.context || []).forEach((c, i) => {
+        console.log(`  [${i + 1}] sourceType=${c.sourceType} id=${c.sourceId} title="${c.title}"`);
+        console.log(`       text (${c.text.length} chars): ${c.text.substring(0, 600)}${c.text.length > 600 ? '...' : ''}`);
+      });
+      console.log('==================== END LLM INPUT ====================\n');
+
+      const result = await agentResponse(llmInput);
       return {
         answer: result.answer,
         showSources: result.showSources,
@@ -244,7 +257,7 @@ export async function invokeAgent(args: {
     name: effectiveBot.name,
     webAgentName: effectiveBot.webAgentName || effectiveBot.name,
     allowedHelpCenterIds: effectiveBot.allowedHelpCenterIds || [],
-    intelligenceAccessLevel: effectiveBot.intelligenceAccessLevel || 'topics_only',
+    intelligenceAccessLevel: effectiveBot.intelligenceAccessLevel || 'insights_hidden_support',
     aiEnabled: effectiveBot.aiEnabled !== false,
     handoffKeywords:
       effectiveBot.channelConfig?.web?.handoffKeywords ||

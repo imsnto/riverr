@@ -220,6 +220,18 @@ export const updateInsight = async (id: string, data: Partial<Insight>) => {
   await updateDoc(doc(db, 'insights', id), { ...data, updatedAt: new Date().toISOString() });
 };
 
+export const deleteInsight = async (id: string) => {
+  await deleteDoc(doc(db, 'insights', id));
+};
+
+export const ungroupInsight = async (id: string) => {
+  await updateDoc(doc(db, 'insights', id), {
+    topicId: null,
+    groupingStatus: 'ungrouped',
+    updatedAt: new Date().toISOString(),
+  });
+};
+
 export const addTopic = async (topic: Omit<Topic, 'id'>): Promise<Topic> => {
   const docRef = await addDoc(collection(db, 'topics'), {
     ...topic,
@@ -232,6 +244,17 @@ export const addTopic = async (topic: Omit<Topic, 'id'>): Promise<Topic> => {
 
 export const updateTopic = async (id: string, data: Partial<Topic>) => {
   await updateDoc(doc(db, 'topics', id), { ...data, updatedAt: new Date().toISOString() });
+};
+
+export const deleteTopic = async (id: string, spaceId: string) => {
+  // Ungroup all insights that belong to this topic
+  const insightsSnap = await getDocs(query(collection(db, 'insights'), where('topicId', '==', id), where('spaceId', '==', spaceId)));
+  await Promise.all(
+    insightsSnap.docs.map((d) =>
+      updateDoc(d.ref, { topicId: null, groupingStatus: 'ungrouped', updatedAt: new Date().toISOString() })
+    )
+  );
+  await deleteDoc(doc(db, 'topics', id));
 };
 
 /**

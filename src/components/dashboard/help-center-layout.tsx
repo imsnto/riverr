@@ -222,11 +222,12 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
     const mainContentComponent = (
         <main className="p-4 md:p-6 flex flex-col h-full overflow-hidden">
             {isIntelligenceView ? (
-                <SupportIntelligenceView 
-                    insights={insights} 
-                    topics={topics} 
-                    allUsers={allUsers} 
-                    initialTab={sidebarView === 'topics' ? 'topics' : 'insights'} 
+                <SupportIntelligenceView
+                    insights={insights}
+                    topics={topics}
+                    allUsers={allUsers}
+                    helpCenters={helpCenters}
+                    initialTab={sidebarView === 'topics' ? 'topics' : 'insights'}
                 />
             ) : (
                 <>

@@ -27,7 +27,9 @@ function getIndexClient(): IndexServiceClient {
 let genAIInstance: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI {
   if (!genAIInstance) {
-    genAIInstance = new GoogleGenAI({ vertexai: true, project: GCP_PROJECT || 'timeflow-6i3eo', location });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
+    genAIInstance = new GoogleGenAI({ apiKey });
   }
   return genAIInstance;
 }
@@ -326,7 +328,7 @@ export const processBrainJob = onDocumentCreated(
           if (!queryVector) throw new Error('Failed to generate query embedding for insight');
 
           // Step 1: Look for a matching existing topic
-          const TOPIC_MATCH_THRESHOLD = 0.82;
+          const TOPIC_MATCH_THRESHOLD = 0.65;
           const topicNeighbors = await queryVertexNeighbors({
             queryVector,
             sourceType: 'topic',
@@ -367,7 +369,7 @@ export const processBrainJob = onDocumentCreated(
           }
 
           // Step 2: Check if enough similar insights exist to create a new topic
-          const INSIGHT_CLUSTER_THRESHOLD = 0.80;
+          const INSIGHT_CLUSTER_THRESHOLD = 0.70;
           const MIN_CLUSTER_SIZE = 2;
 
           const insightNeighbors = await queryVertexNeighbors({

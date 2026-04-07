@@ -1,8 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
 
-const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || 'timeflow-6i3eo';
-const location = process.env.GOOGLE_CLOUD_LOCATION || process.env.VERTEX_LOCATION || 'us-central1';
-
 const EMBEDDING_MODEL = 'gemini-embedding-001';
 const EMBEDDING_DIM = 1536;
 
@@ -10,11 +7,9 @@ let genAIInstance: GoogleGenAI | null = null;
 
 function getGenAI(): GoogleGenAI {
   if (!genAIInstance) {
-    genAIInstance = new GoogleGenAI({
-      vertexai: true,
-      project: project,
-      location: location,
-    });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
+    genAIInstance = new GoogleGenAI({ apiKey });
   }
   return genAIInstance;
 }

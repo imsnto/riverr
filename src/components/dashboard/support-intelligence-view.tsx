@@ -3,54 +3,125 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Insight, Topic, User } from '@/lib/data';
+import { Insight, Topic, User, HelpCenter } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
-import { 
-    MessageSquare, 
-    ChevronRight, 
-    ChevronDown, 
-    BrainCircuit,
-    Zap,
-    Clock,
-    User as UserIcon,
-    History,
+import {
     ArrowLeft,
-    Filter,
     Search,
     ArrowUpRight,
     Target,
-    AlertCircle,
-    Sparkles
+    ChevronRight,
+    Loader2
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import InsightDetailPanel from './insight-detail-panel';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '../ui/input';
 import { Separator } from '../ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Label } from '../ui/label';
+import * as db from '@/lib/db';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 interface SupportIntelligenceViewProps {
     insights: Insight[];
     topics: Topic[];
     allUsers: User[];
+    helpCenters?: HelpCenter[];
     initialTab?: 'topics' | 'insights';
 }
 
 type SubFilter = 'all' | 'ungrouped' | 'recent' | 'high-signal';
 
-export default function SupportIntelligenceView({ insights, topics, allUsers, initialTab = 'topics' }: SupportIntelligenceViewProps) {
+export default function SupportIntelligenceView({ insights, topics, allUsers, helpCenters = [], initialTab = 'topics' }: SupportIntelligenceViewProps) {
+    const { toast } = useToast();
+    const { appUser, activeHub } = useAuth();
     const [selectedInsightId, setSelectedInsightId] = useState<string | null>(null);
     const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'topics' | 'insights'>(initialTab);
     const [subFilter, setSubFilter] = useState<SubFilter>('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [isDeleteTopicDialogOpen, setIsDeleteTopicDialogOpen] = useState(false);
+    const [isDeletingTopic, setIsDeletingTopic] = useState(false);
+    const [isCreateArticleDialogOpen, setIsCreateArticleDialogOpen] = useState(false);
+    const [isCreatingArticle, setIsCreatingArticle] = useState(false);
+    const [articleLibraries, setArticleLibraries] = useState<HelpCenter[]>([]);
+    const [selectedArticleLibraryId, setSelectedArticleLibraryId] = useState('');
 
     useEffect(() => {
         setActiveTab(initialTab);
     }, [initialTab]);
+
+    const handleCreateArticleClick = () => {
+        setArticleLibraries(helpCenters);
+        if (helpCenters.length > 0) setSelectedArticleLibraryId(helpCenters[0].id);
+        setIsCreateArticleDialogOpen(true);
+    };
+
+    const handleConfirmCreateArticle = async () => {
+        if (!selectedTopic || !selectedArticleLibraryId || !appUser) return;
+        setIsCreatingArticle(true);
+        try {
+            const insightSections = topicInsights.map(i =>
+                `<h2>${i.title}</h2><p>${i.content.replace(/\n/g, '<br/>')}</p>`
+            ).join('\n');
+
+            const content = [
+                selectedTopic.summary ? `<h2>Overview</h2><p>${selectedTopic.summary}</p>` : '',
+                insightSections,
+            ].filter(Boolean).join('\n');
+
+            const lib = articleLibraries.find(l => l.id === selectedArticleLibraryId);
+
+            const newArticle = await db.addHelpCenterArticle({
+                title: selectedTopic.title,
+                subtitle: '',
+                content: content || '<p></p>',
+                status: 'draft',
+                folderId: null,
+                helpCenterId: selectedArticleLibraryId,
+                authorId: appUser.id,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                hubId: selectedTopic.hubId || activeHub?.id || '',
+                spaceId: selectedTopic.spaceId,
+                type: 'article',
+                visibility: lib?.visibility === 'public' ? 'public' : 'private',
+                allowedUserIds: [appUser.id],
+                isAiIndexed: true,
+                isSeoIndexed: false,
+            });
+
+            await db.updateTopic(selectedTopic.id, { articleId: newArticle.id });
+
+            toast({ title: 'Draft article created', description: 'Find it in your library to edit and publish.' });
+            setIsCreateArticleDialogOpen(false);
+        } catch {
+            toast({ variant: 'destructive', title: 'Failed to create article' });
+        } finally {
+            setIsCreatingArticle(false);
+        }
+    };
+
+    const handleDeleteTopic = async () => {
+        if (!selectedTopicId || !selectedTopic) return;
+        setIsDeletingTopic(true);
+        try {
+            await db.deleteTopic(selectedTopicId, selectedTopic.spaceId);
+            toast({ title: 'Topic removed', description: 'All insights have been ungrouped.' });
+            setIsDeleteTopicDialogOpen(false);
+            setSelectedTopicId(null);
+        } catch {
+            toast({ variant: 'destructive', title: 'Failed to remove topic' });
+        } finally {
+            setIsDeletingTopic(false);
+        }
+    };
 
     const filteredInsights = useMemo(() => {
         let list = [...insights];
@@ -175,10 +246,10 @@ export default function SupportIntelligenceView({ insights, topics, allUsers, in
                                                 <h2 className="text-3xl font-bold text-white leading-tight">{selectedTopic.title}</h2>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <Button size="sm" className="font-bold h-9 px-4 rounded-xl gap-2">
+                                                <Button size="sm" className="font-bold h-9 px-4 rounded-xl gap-2" onClick={handleCreateArticleClick}>
                                                     <ArrowUpRight className="h-4 w-4" /> Create Article
                                                 </Button>
-                                                <Button size="sm" variant="ghost" className="font-bold h-9 px-4 rounded-xl text-muted-foreground">
+                                                <Button size="sm" variant="ghost" className="font-bold h-9 px-4 rounded-xl text-muted-foreground hover:text-red-400" onClick={() => setIsDeleteTopicDialogOpen(true)}>
                                                     Ignore Topic
                                                 </Button>
                                             </div>
@@ -278,6 +349,55 @@ export default function SupportIntelligenceView({ insights, topics, allUsers, in
                     </div>
                 </div>
             )}
+
+            <Dialog open={isCreateArticleDialogOpen} onOpenChange={setIsCreateArticleDialogOpen}>
+                <DialogContent className="sm:max-w-md bg-[#0d1117] border-white/10 text-white">
+                    <DialogHeader>
+                        <DialogTitle>Create Article</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
+                            A draft article will be created from this topic's insights. Select a destination library.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-2">
+                        <Label className="text-xs uppercase font-bold text-muted-foreground">Destination Library</Label>
+                        <Select value={selectedArticleLibraryId} onValueChange={setSelectedArticleLibraryId}>
+                            <SelectTrigger className="bg-white/5 border-white/10 h-12">
+                                <SelectValue placeholder="Choose a library..." />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#0d1117] border-white/10">
+                                {articleLibraries.map(lib => (
+                                    <SelectItem key={lib.id} value={lib.id}>{lib.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsCreateArticleDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleConfirmCreateArticle} disabled={isCreatingArticle || !selectedArticleLibraryId} className="px-8 font-bold">
+                            {isCreatingArticle ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowUpRight className="h-4 w-4 mr-2" />}
+                            Create Draft
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isDeleteTopicDialogOpen} onOpenChange={setIsDeleteTopicDialogOpen}>
+                <DialogContent className="sm:max-w-md bg-[#0d1117] border-white/10 text-white">
+                    <DialogHeader>
+                        <DialogTitle>Ignore Topic</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
+                            This topic will be deleted and all its insights will be ungrouped. This cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsDeleteTopicDialogOpen(false)}>Cancel</Button>
+                        <Button variant="destructive" onClick={handleDeleteTopic} disabled={isDeletingTopic} className="px-8 font-bold">
+                            {isDeletingTopic ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            Ignore Topic
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
