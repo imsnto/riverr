@@ -37,7 +37,8 @@ export default function HelpCenterLayout({ bots, insights, topics }: HelpCenterL
     const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
     const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
     const [activeHelpCenterId, setActiveHelpCenterId] = useState<string | null>(null);
-    const { appUser, activeHub, activeSpace, allUsers } = useAuth();
+    const { appUser, activeHub, activeSpace } = useAuth();
+    const allUsers: User[] = [];
     
     const [helpCenters, setHelpCenters] = useState<HelpCenter[]>([]);
     const [collections, setCollections] = useState<HelpCenterCollection[]>([]);

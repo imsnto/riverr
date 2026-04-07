@@ -5,16 +5,17 @@ import React, { useState } from 'react';
 import { Insight, User, Article, HelpCenter } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '../ui/scroll-area';
-import { 
-    X, 
-    ArrowLeft, 
-    Share2, 
-    ExternalLink, 
+import {
+    X,
+    ArrowLeft,
+    Share2,
+    ExternalLink,
     ShieldCheck,
     History,
     Info,
     ArrowUpRight,
-    Loader2
+    Loader2,
+    Plus
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '../ui/badge';
