@@ -69,5 +69,6 @@ export { twilioVoiceRecording } from "./http/twilioVoiceRecording";
 export { twilioVoiceDialResult } from "./http/twilioVoiceDialResult";
 export { provisionTwilioSubaccount, searchNumbers, buyPhoneNumber } from "./twilio/provisioning";
 export { onConversationResolvedForInsight } from "./chat/insightTrigger";
+export { scheduledAiFollowUp } from "./chatNotifications/aiFollowUpScheduler";
 export { onHelpCenterArticleUpdated, onHelpCenterArticleDeleted } from "./onHelpCenterArticleUpdated";
 export { onArticleUpdated, onArticleDeleted } from "./onArticleUpdated";

@@ -104,7 +104,7 @@ export interface AgentAdapters {
       url?: string;
     }>;
     greetingScript?: string;
-  }) => Promise<{ answer: string; showSources: boolean; selectedSourceIds: string[] }>;
+  }) => Promise<{ answer: string; showSources: boolean; selectedSourceIds: string[]; requestsHumanHandoff?: boolean }>;
 
   escalateToHuman: (args: {
     conversationId: string;
@@ -160,9 +160,25 @@ export async function handleIncomingMessage(args: {
   const text = (args.message.text ?? "").trim();
 
   // ---- 1. ESCALATION GUARD ----
-  if (conversation.status === 'waiting_human' || conversation.status === 'resolved') {
-    console.log("[handleIncomingMessage] Early return - conversation status:", conversation.status);
+  if (conversation.status === 'waiting_human') {
+    console.log("[handleIncomingMessage] Early return - conversation status: waiting_human");
     return;
+  }
+
+  // Auto-reopen resolved/closed conversations when customer sends a new message
+  if (conversation.status === 'resolved' || conversation.status === 'closed') {
+    console.log("[handleIncomingMessage] Auto-reopening conversation from status:", conversation.status);
+    await adapters.updateConversation({
+      conversationId: conversation.id,
+      hubId: conversation.hubId,
+      patch: {
+        status: 'ai_active',
+        resolutionStatus: 'unresolved',
+        resolvedAt: null,
+        reopenCount: ((conversation as any).reopenCount ?? 0) + 1,
+      } as any,
+    });
+    conversation = { ...conversation, status: 'ai_active' };
   }
 
   // ---- 2. GLOBAL HANDOFF TRIGGERS ----
@@ -449,7 +465,7 @@ async function executeAiPhase(args: {
   }
 
   if (strategy === 'answer_softly') {
-    systemInstruction += "\n\nCRITICAL: Answer cautiously. Use phrases like 'Based on our documentation...' or 'It appears...'. If you aren't certain, offer to connect to a human.";
+    systemInstruction += "\n\nCRITICAL: Answer cautiously but confidently. If you aren't fully certain, offer to connect to a human. Do NOT use phrases like 'Based on our documentation' or 'It appears'.";
   }
   
   if (bot.behavior?.revealUncertainty && level !== 'high') {
@@ -466,9 +482,9 @@ async function executeAiPhase(args: {
     systemInstruction += `\n\nCONVERSATION GOAL:\n${bot.conversationGoal}`;
   }
 
-  // Handle empty knowledge case - provide generic response
+  // Handle empty knowledge case - brief general reply + offer human handoff
   if (decision.chosenCandidates.length === 0) {
-    systemInstruction += "\n\nOFF-TOPIC STYLE: Give a short direct reply (1-2 lines), then gently redirect to support/account/product scope. Avoid defensive phrasing and avoid mentioning missing knowledge, missing context, or documentation limits.";
+    systemInstruction += "\n\nOFF-TOPIC INSTRUCTIONS: The knowledge base has no relevant information for this question. Do the following:\n1. Give a brief, helpful 1-2 sentence reply using general knowledge about the topic.\n2. Then on a new line, add exactly: \"If you'd like, I can connect you with our team!\"\nDo NOT say you don't have information. Do NOT redirect to support scope. Just answer briefly then offer the team connection.";
   }
 
   // 3. Generate Answer
@@ -487,6 +503,12 @@ async function executeAiPhase(args: {
   });
 
   const answer = aiResult?.answer || '';
+
+  // AI decided user wants human handoff
+  if (aiResult?.requestsHumanHandoff) {
+    await escalateNow(adapters, conversation, "User requested human handoff (detected by AI).");
+    return true;
+  }
 
   if (!answer || answer.trim() === "") {
       if (decision.answerMode === 'escalate') {

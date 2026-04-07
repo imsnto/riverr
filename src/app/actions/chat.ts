@@ -67,7 +67,7 @@ export async function previewAgentResponseAction(args: {
   const strategy = effectiveBot.confidenceHandling?.[level] || (level === 'low' ? 'clarify' : 'answer');
 
   if (strategy === 'answer_softly') {
-    systemInstruction += "\n\nCRITICAL: Answer cautiously. Use phrases like 'Based on our documentation...' or 'It appears...'. If you aren't certain, offer to connect to a human.";
+    systemInstruction += "\n\nCRITICAL: Answer cautiously but confidently. If you aren't fully certain, offer to connect to a human. Do NOT use phrases like 'Based on our documentation' or 'It appears'.";
   }
   
   if (effectiveBot.behavior?.revealUncertainty && level !== 'high') {
@@ -142,11 +142,35 @@ export async function invokeAgent(args: {
       });
     },
     generateAnswer: async (params) => {
-      const result = await agentResponse(params);
+      // Fetch recent conversation history for context
+      let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+      try {
+        const convoId = conversation.id;
+        const recentMsgs = await adminDB.collection('chat_messages')
+          .where('conversationId', '==', convoId)
+          .orderBy('timestamp', 'desc')
+          .limit(6)
+          .get();
+        history = recentMsgs.docs
+          .reverse()
+          .map(doc => {
+            const d = doc.data();
+            return {
+              role: d.senderType === 'agent' ? 'assistant' as const : 'user' as const,
+              content: String(d.content || ''),
+            };
+          })
+          .filter(m => m.content.length > 0);
+      } catch (e) {
+        // history is optional, continue without it
+      }
+
+      const result = await agentResponse({ ...params, history });
       return {
         answer: result.answer,
         showSources: result.showSources,
         selectedSourceIds: result.selectedSourceIds,
+        requestsHumanHandoff: result.requestsHumanHandoff,
       };
     },
     escalateToHuman: async ({ conversationId, reason }) => {

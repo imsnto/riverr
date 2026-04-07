@@ -711,17 +711,54 @@ export const updateVisitorActivity = async (conversationId: string) => {
   });
 };
 
-export const resolveConversation = async (id: string, userId: string, userName: string, source: ResolutionStatus, summary?: string) => {
+export const RESOLVED_STATUSES: ResolutionStatus[] = [
+  'resolved', 'resolved_ai', 'resolved_human', 'resolved_user_confirmed'
+];
+
+export const isConversationResolved = (status: ResolutionStatus): boolean =>
+  RESOLVED_STATUSES.includes(status);
+
+export const resolveConversation = async (
+  id: string,
+  userId: string,
+  userName: string,
+  resolutionType: 'resolved_ai' | 'resolved_human' | 'resolved_user_confirmed',
+  summary?: string
+): Promise<void> => {
   const convoRef = doc(db, 'conversations', id);
+  const now = new Date().toISOString();
   await updateDoc(convoRef, {
     status: 'closed',
-    resolutionStatus: 'resolved',
-    resolutionSource: source,
-    resolvedAt: new Date().toISOString(),
+    resolutionStatus: resolutionType,
+    resolutionSource: resolutionType === 'resolved_human'
+      ? 'agent_marked'
+      : resolutionType === 'resolved_user_confirmed'
+        ? 'customer_confirmed'
+        : 'system_timeout',
+    resolvedAt: now,
+    lastResolvedAt: now,
     resolvedByUserId: userId,
     resolvedByName: userName,
     resolutionSummary: summary || null,
-    updatedAt: new Date().toISOString()
+    aiFollowUpScheduledFor: null,
+    aiFollowUpSentAt: null,
+    updatedAt: now,
+  });
+};
+
+export const reopenConversation = async (
+  id: string,
+  routeTo: 'ai_active' | 'human_assigned'
+): Promise<void> => {
+  const convoRef = doc(db, 'conversations', id);
+  await updateDoc(convoRef, {
+    status: routeTo === 'human_assigned' ? 'open' : 'ai_active',
+    resolutionStatus: 'unresolved',
+    resolvedAt: null,
+    aiFollowUpScheduledFor: null,
+    aiFollowUpSentAt: null,
+    reopenCount: increment(1),
+    updatedAt: new Date().toISOString(),
   });
 };
 

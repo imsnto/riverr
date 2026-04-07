@@ -11,7 +11,7 @@ import { Textarea } from '../ui/textarea';
 import { cn, getInitials } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
-import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check, Bot, Smartphone, Phone, PhoneMissed, PhoneIncoming, PhoneOutgoing, Mic, Share2, Mail, Loader2, CheckCircle2, Clock } from 'lucide-react';
+import { PanelLeftClose, ArrowLeft, Info, Send, Plus, StickyNote, User as UserIcon, Ticket as TicketIcon, ChevronRight, FileIcon, Check, Bot, Smartphone, Phone, PhoneMissed, PhoneIncoming, PhoneOutgoing, Mic, Share2, Mail, Loader2, CheckCircle2, Clock, RotateCcw } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card } from '../ui/card';
@@ -202,10 +202,20 @@ export default function InboxConversationView({
 
   const handleResolve = async () => {
     try {
-      await db.resolveConversation(conversation.id, appUser.id, appUser.name, 'agent_marked');
+      await db.resolveConversation(conversation.id, appUser.id, appUser.name, 'resolved_human');
       toast({ title: 'Conversation resolved' });
     } catch (e) {
       toast({ variant: 'destructive', title: 'Failed to resolve' });
+    }
+  };
+
+  const handleReopen = async () => {
+    try {
+      const routeTo = conversation.assigneeId ? 'human_assigned' : 'ai_active';
+      await db.reopenConversation(conversation.id, routeTo);
+      toast({ title: 'Conversation reopened' });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Failed to reopen' });
     }
   };
 
@@ -410,9 +420,14 @@ export default function InboxConversationView({
                             <Mail className="h-2 w-2" /> Email
                         </Badge>
                         )}
-                        {conversation.resolutionStatus === 'resolved' && (
+                        {db.isConversationResolved(conversation.resolutionStatus) && (
                           <Badge variant="outline" className="h-4 px-1 text-[9px] border-green-500/50 text-green-500 bg-green-500/5">
-                            <CheckCircle2 className="h-2 w-2 mr-1" /> Resolved
+                            <CheckCircle2 className="h-2 w-2 mr-1" />
+                            {conversation.resolutionStatus === 'resolved_user_confirmed'
+                              ? 'Confirmed'
+                              : conversation.resolutionStatus === 'resolved_ai'
+                              ? 'Auto-resolved'
+                              : 'Resolved'}
                           </Badge>
                         )}
                     </div>
@@ -523,15 +538,25 @@ export default function InboxConversationView({
               >
                 <Clock className="h-3.5 w-3.5" /> Waiting on Customer
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="h-8 text-xs font-bold gap-1.5 border-green-500/20 text-green-500 hover:bg-green-500/10"
                 onClick={handleResolve}
-                disabled={conversation.resolutionStatus === 'resolved'}
+                disabled={db.isConversationResolved(conversation.resolutionStatus)}
               >
                 <CheckCircle2 className="h-3.5 w-3.5" /> Resolve
               </Button>
+              {db.isConversationResolved(conversation.resolutionStatus) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs font-bold gap-1.5"
+                  onClick={handleReopen}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" /> Reopen
+                </Button>
+              )}
             </div>
             {!isMobile && (
               <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
@@ -595,6 +620,12 @@ export default function InboxConversationView({
                     <CheckCircle2 className="mr-2 h-4 w-4"/>
                     Resolve Conversation
                 </DropdownMenuItem>
+                {db.isConversationResolved(conversation.resolutionStatus) && (
+                  <DropdownMenuItem onSelect={handleReopen}>
+                    <RotateCcw className="mr-2 h-4 w-4"/>
+                    Reopen Conversation
+                  </DropdownMenuItem>
+                )}
                 </DropdownMenuContent>
             </DropdownMenu>
 

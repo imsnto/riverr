@@ -1,8 +1,7 @@
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import { logger } from "firebase-functions";
-// TODO: Move evaluateSupportInsight to shared lib
-// import { evaluateSupportInsight } from "../../../src/ai/flows/evaluate-support-insight";
+import { evaluateInsight } from "../lib/brain/evaluate-insight";
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
@@ -21,8 +20,11 @@ export const onConversationResolvedForInsight = onDocumentUpdated(
     const before = event.data?.before.data();
     if (!after || !before) return;
 
-    // RULE: Only trigger when resolutionStatus transitions to 'resolved'
-    const isNowResolved = after.resolutionStatus === 'resolved' && before.resolutionStatus !== 'resolved';
+    // RULE: Trigger when resolutionStatus transitions to any resolved state
+    const RESOLVED = ['resolved', 'resolved_ai', 'resolved_human', 'resolved_user_confirmed'];
+    const isNowResolved =
+      RESOLVED.includes(after.resolutionStatus) &&
+      !RESOLVED.includes(before.resolutionStatus);
     if (!isNowResolved) return;
 
     const convoId = event.params.convoId;
@@ -40,90 +42,92 @@ export const onConversationResolvedForInsight = onDocumentUpdated(
 
       for (const msgDoc of messagesSnap.docs) {
         const message = msgDoc.data();
-        
+
         // Dedupe check
         const existingSnap = await db.collection('insights')
           .where('source.conversationId', '==', convoId)
           .where('source.messageId', '==', msgDoc.id)
           .limit(1)
           .get();
-        
+
         if (!existingSnap.empty) continue;
 
-        // TEMPORARILY DISABLED - evaluateSupportInsight imports frontend code
-        // const result = await evaluateSupportInsight({
-        //   messageText: message.content,
-        //   conversationContext: `Last Message from Customer: ${after.lastMessage || 'N/A'}`
-        // });
-        
-        // Stub result for now
-        const result = {
-          shouldCreateInsight: false,
-          reason: 'AI evaluation temporarily disabled in functions'
-        };
+        let result;
+        try {
+          result = await evaluateInsight({
+            messageText: message.content,
+            conversationContext: `Last Message from Customer: ${after.lastMessage || 'N/A'}`
+          });
+          logger.info(`[Intelligence] evaluateInsight result for ${msgDoc.id}: shouldCreate=${result.shouldCreateInsight}, reason=${result.reason}, confidence=${result.confidence}`);
+        } catch (evalErr: any) {
+          logger.error(`[Intelligence] evaluateInsight threw for ${msgDoc.id}:`, evalErr?.message || evalErr);
+          continue;
+        }
 
-        // if (!result.shouldCreateInsight || !result.structuredContent) {
-        if (!result.shouldCreateInsight) {
+        if (!result.shouldCreateInsight || !result.structuredContent) {
           logger.debug(`[Intelligence] Message ${msgDoc.id} skipped: ${result.reason}`);
           continue;
         }
 
-        // SKIP - insight creation temporarily disabled
-        logger.info(`[Intelligence] Skipped insight creation - AI evaluation disabled in functions`);
-        continue;
-        
-        /* Original code disabled:
         const now = new Date().toISOString();
+        const signalLevel = result.confidence >= 0.8 ? 'high' : result.confidence >= 0.5 ? 'medium' : 'low';
+        const isLowSignal = signalLevel === 'low';
+
         const insightRef = db.collection("insights").doc();
-        
+
         const insightData = {
           spaceId,
           hubId: after.hubId || null,
+          topicId: null,
           title: result.title || "Support Resolution",
-          summary: result.structuredContent.resolution.substring(0, 200) + "...",
-          content: `Issue: ${result.structuredContent.issue}\nResolution: ${result.structuredContent.resolution}`,
+          summary: result.structuredContent.resolution.substring(0, 200),
+          content: `Issue: ${result.structuredContent.issue}\nResolution: ${result.structuredContent.resolution}${result.structuredContent.context ? `\nContext: ${result.structuredContent.context}` : ''}`,
           kind: 'support_resolution',
           source: {
-              type: 'conversation_message',
-              conversationId: convoId,
-              messageId: msgDoc.id,
-              channel: after.channel || 'webchat'
+            type: 'conversation_message',
+            conversationId: convoId,
+            messageId: msgDoc.id,
+            channel: after.channel || 'webchat',
+            provider: null,
+            label: null,
           },
           author: {
-              userId: message.authorId,
-              name: after.lastMessageAuthor
+            userId: message.authorId || null,
+            name: after.lastMessageAuthor || null,
           },
+          issueLabel: result.issueLabel || null,
+          resolutionLabel: result.resolutionLabel || null,
           signalScore: result.confidence,
-          signalLevel: result.confidence > 0.8 ? 'high' : result.confidence > 0.5 ? 'medium' : 'low',
+          signalLevel,
           processingStatus: 'pending',
-          groupingStatus: 'ungrouped',
+          groupingStatus: isLowSignal ? 'ignored' : 'ungrouped',
           visibility: 'private',
           origin: 'automatic',
           embeddingStatus: 'pending',
-          embeddingModel: 'text-embedding-004',
-          embeddingVersion: 'v2',
+          embeddingModel: null,
+          embeddingVersion: null,
+          vectorDocId: null,
+          embeddingUpdatedAt: null,
           createdAt: now,
           updatedAt: now,
-          ingestedAt: now
+          ingestedAt: now,
         };
 
         await insightRef.set(insightData);
-        
-        // ENQUEUE VECTOR INDEXING JOB
+
         await db.collection('brain_jobs').add({
           type: 'process_vector_indexing',
           status: 'pending',
           params: {
             sourceType: 'insight',
             sourceId: insightRef.id,
-            spaceId: spaceId,
-            text: insightData.content
+            spaceId,
+            text: insightData.content,
           },
-          createdAt: now
+          createdAt: now,
         });
 
-        logger.info(`[Intelligence] Created canonical insight ${insightRef.id}. Vector job enqueued.`);
-        */
+        logger.info(`[Intelligence] Created insight ${insightRef.id} (signalLevel=${signalLevel}, groupingStatus=${insightData.groupingStatus}). Vector job enqueued.`);
       }
     } catch (err: any) {
       logger.error(`[Intelligence] Failed processing for convo ${convoId}:`, err);

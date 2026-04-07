@@ -198,6 +198,7 @@ export default function ChatbotWidgetPage() {
             lastMessage: messageText || "Sent an attachment",
             lastMessageAt: new Date().toISOString(),
             lastMessageAuthor: visitor.name,
+            reopenCount: 0,
         };
 
       const newConvo = await db.addConversation(newConvoData);

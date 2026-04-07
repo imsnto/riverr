@@ -63,7 +63,10 @@ export type ResponderType = 'automation' | 'ai' | 'human' | 'system';
 
 export type ResolutionStatus =
   | 'unresolved'
-  | 'resolved'
+  | 'resolved'                 // legacy — no new writes, kept for existing Firestore docs
+  | 'resolved_ai'              // AI answered, user silent 15 min → auto-resolved
+  | 'resolved_human'           // agent manually clicked Resolve
+  | 'resolved_user_confirmed'  // visitor confirmed "that helped"
   | 'resolution_uncertain'
   | 'unresolved_abandoned'
   | 'unresolved_escalated';
@@ -77,9 +80,13 @@ export type ResolutionSource =
 
 export type ConversationState =
   | "ai_active"
+  | "waiting_for_user"
   | "escalation_offered"
   | "escalation_declined"
   | "human_assigned"
+  | "resolved"
+  | "reopened"
+  | "archived"
   | "closed";
 
 export interface Hub {
@@ -827,6 +834,11 @@ export interface Conversation {
   customerConfirmed?: boolean;
   customerConfirmationAt?: string | null;
   disposition?: string | null;
+  reopenCount?: number;
+  lastResolvedAt?: string | null;
+  tags?: string[];
+  aiFollowUpScheduledFor?: string | null;
+  aiFollowUpSentAt?: string | null;
 
   lastMessage: string;
   lastMessageAt: string;

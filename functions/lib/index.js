@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onArticleDeleted = exports.onArticleUpdated = exports.onHelpCenterArticleDeleted = exports.onHelpCenterArticleUpdated = exports.onConversationResolvedForInsight = exports.buyPhoneNumber = exports.searchNumbers = exports.provisionTwilioSubaccount = exports.twilioVoiceDialResult = exports.twilioVoiceRecording = exports.twilioVoiceStatus = exports.twilioVoiceInbound = exports.sendCommsMessage = exports.twilioSmsStatus = exports.twilioSmsInbound = exports.onSmsMessageCreated = exports.scheduledAcknowledgementEmail = exports.sendVisitorReplyEmail = exports.sendAgentChatAlertEmail = exports.onChatMessageCreated = exports.processBrainJob = exports.onVisitorMessageCreated = exports.resendInvite = exports.acceptInvite = exports.sendInviteEmail = exports.renewEmailWatches = void 0;
+exports.onArticleDeleted = exports.onArticleUpdated = exports.onHelpCenterArticleDeleted = exports.onHelpCenterArticleUpdated = exports.scheduledAiFollowUp = exports.onConversationResolvedForInsight = exports.buyPhoneNumber = exports.searchNumbers = exports.provisionTwilioSubaccount = exports.twilioVoiceDialResult = exports.twilioVoiceRecording = exports.twilioVoiceStatus = exports.twilioVoiceInbound = exports.sendCommsMessage = exports.twilioSmsStatus = exports.twilioSmsInbound = exports.onSmsMessageCreated = exports.scheduledAcknowledgementEmail = exports.sendVisitorReplyEmail = exports.sendAgentChatAlertEmail = exports.onChatMessageCreated = exports.processBrainJob = exports.onVisitorMessageCreated = exports.resendInvite = exports.acceptInvite = exports.sendInviteEmail = exports.renewEmailWatches = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const admin = __importStar(require("firebase-admin"));
 if (!admin.apps.length)
@@ -106,6 +106,8 @@ Object.defineProperty(exports, "searchNumbers", { enumerable: true, get: functio
 Object.defineProperty(exports, "buyPhoneNumber", { enumerable: true, get: function () { return provisioning_1.buyPhoneNumber; } });
 var insightTrigger_1 = require("./chat/insightTrigger");
 Object.defineProperty(exports, "onConversationResolvedForInsight", { enumerable: true, get: function () { return insightTrigger_1.onConversationResolvedForInsight; } });
+var aiFollowUpScheduler_1 = require("./chatNotifications/aiFollowUpScheduler");
+Object.defineProperty(exports, "scheduledAiFollowUp", { enumerable: true, get: function () { return aiFollowUpScheduler_1.scheduledAiFollowUp; } });
 var onHelpCenterArticleUpdated_1 = require("./onHelpCenterArticleUpdated");
 Object.defineProperty(exports, "onHelpCenterArticleUpdated", { enumerable: true, get: function () { return onHelpCenterArticleUpdated_1.onHelpCenterArticleUpdated; } });
 Object.defineProperty(exports, "onHelpCenterArticleDeleted", { enumerable: true, get: function () { return onHelpCenterArticleUpdated_1.onHelpCenterArticleDeleted; } });

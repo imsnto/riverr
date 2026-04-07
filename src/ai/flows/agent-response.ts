@@ -18,11 +18,17 @@ const ContextChunkSchema = z.object({
   url: z.string().optional(),
 });
 
+const ChatHistoryItemSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string(),
+});
+
 const AgentResponseInputSchema = z.object({
   query: z.string().describe('The user\'s latest question.'),
   botName: z.string().describe('The name of the AI agent.'),
   context: z.array(ContextChunkSchema).describe('Relevant information retrieved from the knowledge base.'),
   greetingScript: z.string().optional().describe('An optional custom greeting or instruction for this specific channel.'),
+  history: z.array(ChatHistoryItemSchema).optional().describe('Recent conversation history (last few turns) for context.'),
 });
 export type AgentResponseInput = z.infer<typeof AgentResponseInputSchema>;
 
@@ -32,6 +38,7 @@ const AgentResponseOutputSchema = z.object({
   selectedSourceIds: z
     .array(z.string())
     .describe('Source IDs from context that directly support the final answer. Return [] when no source should be shown.'),
+  requestsHumanHandoff: z.boolean().describe('True if the user wants to be connected to a human agent or team member — either explicitly ("talk to human", "connect me") or implicitly (e.g. saying "yes", "sure", "ok", "go ahead" in response to the bot offering to connect them with the team).'),
 });
 export type AgentResponseOutput = z.infer<typeof AgentResponseOutputSchema>;
 
@@ -59,6 +66,13 @@ Source: {{{url}}}
 ---
 {{/each}}
 
+{{#if history}}
+**Recent Conversation History:**
+{{#each history}}
+{{role}}: {{{content}}}
+{{/each}}
+{{/if}}
+
 **User Question:**
 "{{{query}}}"
 
@@ -75,6 +89,10 @@ Source: {{{url}}}
   - "I can't provide"
   - "I don't have enough information"
   - "Based on the documentation I have"
+  - "Based on our documentation"
+  - "According to our documentation"
+  - "It appears"
+  - "It seems"
 6. Do NOT mention internal retrieval limits (for example: "no context found", "knowledge base does not contain", "documentation says").
 7. For off-topic queries, use this style:
   - One short direct line about the topic (if it's common general knowledge),
@@ -88,6 +106,11 @@ Source: {{{url}}}
 13. If showSources=true, selectedSourceIds must include only Source ID values from Context Information that were actually used to answer.
 14. Never include unrelated Source ID values.
 15. Keep selectedSourceIds focused and short (max 3 IDs).
+16. Set requestsHumanHandoff=true when the user's intent is clearly to talk to a real person. This includes:
+   - Direct requests: "talk to human", "connect me", "I want to speak with someone", "can I chat with your team"
+   - Acceptance responses: "yes", "sure", "ok", "please", "go ahead", "yes please", "that would be great" — when the previous bot message offered to connect them with the team
+   - Any phrasing that clearly accepts or asks for human assistance
+17. Set requestsHumanHandoff=false for all other cases, including general questions, follow-up questions, or off-topic queries.
 `,
 });
 

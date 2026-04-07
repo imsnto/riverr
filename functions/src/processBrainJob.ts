@@ -2,7 +2,9 @@ import * as admin from 'firebase-admin';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions';
 import { IndexServiceClient, protos } from '@google-cloud/aiplatform';
-import { generateDocumentEmbedding } from './lib/brain/embed';
+import { generateDocumentEmbedding, generateQueryEmbedding } from './lib/brain/embed';
+import { queryVertexNeighbors } from './lib/brain/vertex-query';
+import { GoogleGenAI } from '@google/genai';
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
@@ -12,13 +14,25 @@ const VECTOR_INDEX_RESOURCE_NAME = process.env.VERTEX_VECTOR_INDEX_RESOURCE_NAME
 const VECTOR_INDEX_NUMERIC_ID = process.env.VERTEX_AI_INDEX_ID || '';
 const GCP_PROJECT = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || '';
 
-const indexClient = new IndexServiceClient({
-  apiEndpoint: `${location}-aiplatform.googleapis.com`,
-});
+let indexClientInstance: IndexServiceClient | null = null;
+function getIndexClient(): IndexServiceClient {
+  if (!indexClientInstance) {
+    indexClientInstance = new IndexServiceClient({
+      apiEndpoint: `${location}-aiplatform.googleapis.com`,
+    });
+  }
+  return indexClientInstance;
+}
+
+let genAIInstance: GoogleGenAI | null = null;
+function getGenAI(): GoogleGenAI {
+  if (!genAIInstance) {
+    genAIInstance = new GoogleGenAI({ vertexai: true, project: GCP_PROJECT || 'timeflow-6i3eo', location });
+  }
+  return genAIInstance;
+}
 
 function resolveIndexResourceName(): string {
-  // Prefer explicit numeric index id when available.
-  // This avoids stale VERTEX_VECTOR_INDEX_RESOURCE_NAME values (often set to endpoint ids by mistake).
   if (VECTOR_INDEX_NUMERIC_ID && GCP_PROJECT) {
     const computed = `projects/${GCP_PROJECT}/locations/${location}/indexes/${VECTOR_INDEX_NUMERIC_ID}`;
     const configured = VECTOR_INDEX_RESOURCE_NAME.trim();
@@ -94,10 +108,56 @@ function buildRestricts(params: {
   return restricts;
 }
 
+type SignalLevel = 'low' | 'medium' | 'high';
+
+function deriveTopicSignalLevel(
+  topicSignalLevel: SignalLevel,
+  insightSignalLevel: SignalLevel
+): SignalLevel {
+  const rank: Record<SignalLevel, number> = { low: 0, medium: 1, high: 2 };
+  const levels: SignalLevel[] = ['low', 'medium', 'high'];
+  return levels[Math.max(rank[topicSignalLevel] ?? 0, rank[insightSignalLevel] ?? 0)];
+}
+
+function deriveSignalLevelFromInsights(insights: admin.firestore.DocumentData[]): SignalLevel {
+  if (insights.some((i) => i.signalLevel === 'high')) return 'high';
+  if (insights.some((i) => i.signalLevel === 'medium')) return 'medium';
+  return 'low';
+}
+
+async function generateTopicFromInsights(
+  insights: admin.firestore.DocumentData[]
+): Promise<{ title: string; summary: string }> {
+  try {
+    const ai = getGenAI();
+    const clusterText = insights
+      .map((ins, i) => `Insight ${i + 1}:\nTitle: ${ins.title ?? ''}\nIssue: ${(ins.content ?? '').split('\n')[0] ?? ''}`)
+      .join('\n\n');
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: `You are an internal knowledge management system. Given these related support insights, generate a canonical Topic title and summary.
+
+${clusterText}
+
+Respond with JSON: { "title": "...", "summary": "..." }
+Title: concise, ~5-8 words, internal-facing.
+Summary: 1-2 sentences describing the common pattern.`,
+      config: { responseMimeType: 'application/json' },
+    });
+
+    const parsed = JSON.parse(response.text ?? '{}');
+    return {
+      title: parsed.title ?? 'Recurring Support Issue',
+      summary: parsed.summary ?? '',
+    };
+  } catch {
+    return { title: 'Recurring Support Issue', summary: '' };
+  }
+}
+
 /**
- * Real Vertex-backed indexing job.
- * Generates embeddings, upserts datapoints to Vertex Vector Search,
- * and writes only vector linkage metadata back to Firestore.
+ * Processes brain_jobs for vector indexing, deletion, and topic grouping.
  */
 export const processBrainJob = onDocumentCreated(
   {
@@ -105,106 +165,302 @@ export const processBrainJob = onDocumentCreated(
     memory: '1GiB',
   },
   async (event) => {
-  const snap = event.data;
-  if (!snap) return;
+    const snap = event.data;
+    if (!snap) return;
 
-  const job = snap.data() as any;
-  const jobId = event.params.jobId;
+    const job = snap.data() as any;
+    const jobId = event.params.jobId;
 
-  await snap.ref.update({
-    status: 'running',
-    startedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+    await snap.ref.update({
+      status: 'running',
+      startedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
 
-  try {
-    switch (job.type) {
-      case 'process_vector_indexing': {
-        const { sourceType, sourceId, text } = job.params as {
-          sourceType: SourceType;
-          sourceId: string;
-          text?: string;
-        };
+    try {
+      switch (job.type) {
+        case 'process_vector_indexing': {
+          const { sourceType, sourceId, text } = job.params as {
+            sourceType: SourceType;
+            sourceId: string;
+            text?: string;
+          };
 
-        const indexResourceName = resolveIndexResourceName();
-        if (!sourceType || !sourceId) throw new Error('Missing sourceType or sourceId');
+          const indexResourceName = resolveIndexResourceName();
+          if (!sourceType || !sourceId) throw new Error('Missing sourceType or sourceId');
 
-        const collectionName = getCollectionName(sourceType);
-        const docRef = db.collection(collectionName).doc(sourceId);
-        const docSnap = await docRef.get();
+          const collectionName = getCollectionName(sourceType);
+          const docRef = db.collection(collectionName).doc(sourceId);
+          const docSnap = await docRef.get();
 
-        if (!docSnap.exists) throw new Error(`Source doc not found: ${collectionName}/${sourceId}`);
+          if (!docSnap.exists) throw new Error(`Source doc not found: ${collectionName}/${sourceId}`);
 
-        const docData = docSnap.data()!;
-        const normalizedText = text || [docData.title ?? '', docData.summary ?? '', docData.body ?? '', docData.content ?? ''].filter(Boolean).join('\n\n').trim();
+          const docData = docSnap.data()!;
+          const normalizedText = text || [docData.title ?? '', docData.summary ?? '', docData.body ?? '', docData.content ?? ''].filter(Boolean).join('\n\n').trim();
 
-        if (!normalizedText) throw new Error(`No text available to embed for ${sourceType}:${sourceId}`);
+          if (!normalizedText) throw new Error(`No text available to embed for ${sourceType}:${sourceId}`);
 
-        logger.info(`[Job:${jobId}] Generating embedding for ${sourceType}:${sourceId}`);
-        const embedding = await generateDocumentEmbedding(normalizedText);
-        if (!embedding || embedding.length === 0) throw new Error('Embedding generation failed');
+          logger.info(`[Job:${jobId}] Generating embedding for ${sourceType}:${sourceId}`);
+          const embedding = await generateDocumentEmbedding(normalizedText);
+          if (!embedding || embedding.length === 0) throw new Error('Embedding generation failed');
 
-        const vectorDocId = `${sourceType}:${sourceId}`;
-        const restricts = buildRestricts({
-          sourceType,
-          spaceId: docData.spaceId,
-          hubId: docData.hubId,
-          libraryId: docData.libraryId ?? docData.destinationLibraryId ?? docData.helpCenterId,
-          helpCenterId: docData.helpCenterId,
-          visibility: docData.visibility,
-          internalOnly: sourceType === 'chunk' ? true : docData.visibility === 'private',
-          origin: docData.origin,
-          signalLevel: docData.signalLevel,
-        });
+          const vectorDocId = `${sourceType}:${sourceId}`;
+          const restricts = buildRestricts({
+            sourceType,
+            spaceId: docData.spaceId,
+            hubId: docData.hubId,
+            libraryId: docData.libraryId ?? docData.destinationLibraryId ?? docData.helpCenterId,
+            helpCenterId: docData.helpCenterId,
+            visibility: docData.visibility,
+            internalOnly: sourceType === 'chunk' ? true : docData.visibility === 'private',
+            origin: docData.origin,
+            signalLevel: docData.signalLevel,
+          });
 
-        logger.info(`[Job:${jobId}] Upserting datapoint to Vertex index`, {
-          vectorDocId,
-          indexResourceName,
-          embeddingDim: embedding.length,
-        });
+          logger.info(`[Job:${jobId}] Upserting datapoint to Vertex index`, {
+            vectorDocId,
+            indexResourceName,
+            embeddingDim: embedding.length,
+          });
 
-        // Build proper datapoint using protobuf types
-        const datapoint = new protos.google.cloud.aiplatform.v1.IndexDatapoint({
-          datapointId: vectorDocId,
-          featureVector: embedding,
-        });
-        
-        if (restricts.length > 0) {
-          datapoint.restricts = restricts.map(r => new protos.google.cloud.aiplatform.v1.IndexDatapoint.Restriction({
-            namespace: r.namespace,
-            allowList: r.allowList,
-          }));
+          const datapoint = new protos.google.cloud.aiplatform.v1.IndexDatapoint({
+            datapointId: vectorDocId,
+            featureVector: embedding,
+          });
+
+          if (restricts.length > 0) {
+            datapoint.restricts = restricts.map(r => new protos.google.cloud.aiplatform.v1.IndexDatapoint.Restriction({
+              namespace: r.namespace,
+              allowList: r.allowList,
+            }));
+          }
+
+          await getIndexClient().upsertDatapoints({
+            index: indexResourceName,
+            datapoints: [datapoint],
+          });
+
+          await docRef.update({
+            embeddingStatus: 'ready',
+            embeddingModel: 'gemini-embedding-001',
+            embeddingVersion: 'v3',
+            embeddingDim: 1536,
+            embeddingUpdatedAt: new Date().toISOString(),
+            vectorDocId,
+          });
+
+          // Chain topic grouping job for ungrouped medium/high-signal insights
+          if (sourceType === 'insight' && docData.groupingStatus === 'ungrouped' && docData.signalLevel !== 'low') {
+            await db.collection('brain_jobs').add({
+              type: 'process_topic_grouping',
+              status: 'pending',
+              params: {
+                insightId: sourceId,
+                spaceId: docData.spaceId,
+                hubId: docData.hubId ?? null,
+                signalLevel: docData.signalLevel,
+              },
+              createdAt: new Date().toISOString(),
+            });
+            logger.info(`[Job:${jobId}] Chained process_topic_grouping for insight ${sourceId}`);
+          }
+
+          break;
         }
 
-        await indexClient.upsertDatapoints({
-          index: indexResourceName,
-          datapoints: [datapoint],
-        });
+        case 'process_vector_deletion': {
+          const { sourceType, sourceId } = job.params as {
+            sourceType: SourceType;
+            sourceId: string;
+          };
 
-        await docRef.update({
-          embeddingStatus: 'ready',
-          embeddingModel: 'gemini-embedding-001',
-          embeddingVersion: 'v3',
-          embeddingDim: 1536,
-          embeddingUpdatedAt: new Date().toISOString(),
-          vectorDocId,
-        });
+          if (!sourceType || !sourceId) throw new Error('Missing sourceType or sourceId');
 
-        break;
+          const vectorDocId = `${sourceType}:${sourceId}`;
+          const indexResourceName = resolveIndexResourceName();
+
+          logger.info(`[Job:${jobId}] Deleting datapoint from Vertex index`, { vectorDocId });
+
+          await getIndexClient().removeDatapoints({
+            index: indexResourceName,
+            datapointIds: [vectorDocId],
+          });
+
+          try {
+            await db.collection(getCollectionName(sourceType)).doc(sourceId).update({
+              embeddingStatus: 'failed',
+              vectorDocId: admin.firestore.FieldValue.delete(),
+              embeddingUpdatedAt: new Date().toISOString(),
+            });
+          } catch {
+            // Document already deleted — expected for article/insight deletions
+            logger.info(`[Job:${jobId}] Source doc already gone, skipping Firestore cleanup`);
+          }
+
+          break;
+        }
+
+        case 'process_topic_grouping': {
+          const { insightId, spaceId, hubId } = job.params as {
+            insightId: string;
+            spaceId: string;
+            hubId?: string | null;
+            signalLevel: SignalLevel;
+          };
+
+          if (!insightId || !spaceId) throw new Error('Missing insightId or spaceId');
+
+          const insightRef = db.collection('insights').doc(insightId);
+          const insightSnap = await insightRef.get();
+
+          if (!insightSnap.exists) throw new Error(`Insight not found: ${insightId}`);
+          const insight = insightSnap.data()!;
+
+          // Guard: skip if already grouped or ignored
+          if (insight.groupingStatus !== 'ungrouped') {
+            logger.info(`[Job:${jobId}] Insight ${insightId} already ${insight.groupingStatus}, skipping`);
+            break;
+          }
+
+          const queryText = [insight.title, insight.content].filter(Boolean).join('\n\n');
+          const queryVector = await generateQueryEmbedding(queryText);
+          if (!queryVector) throw new Error('Failed to generate query embedding for insight');
+
+          // Step 1: Look for a matching existing topic
+          const TOPIC_MATCH_THRESHOLD = 0.82;
+          const topicNeighbors = await queryVertexNeighbors({
+            queryVector,
+            sourceType: 'topic',
+            spaceId,
+            hubId,
+            limit: 5,
+          });
+
+          const matchingTopic = topicNeighbors.find((n) => n.score >= TOPIC_MATCH_THRESHOLD);
+
+          if (matchingTopic) {
+            const topicId = matchingTopic.datapointId.split(':')[1];
+            const topicRef = db.collection('topics').doc(topicId);
+
+            await db.runTransaction(async (tx) => {
+              const topicSnap = await tx.get(topicRef);
+              if (!topicSnap.exists) return;
+              const topic = topicSnap.data()!;
+
+              tx.update(insightRef, {
+                topicId,
+                groupingStatus: 'grouped',
+                updatedAt: new Date().toISOString(),
+              });
+
+              tx.update(topicRef, {
+                insightCount: (topic.insightCount ?? 0) + 1,
+                signalLevel: deriveTopicSignalLevel(
+                  topic.signalLevel as SignalLevel,
+                  insight.signalLevel as SignalLevel
+                ),
+                updatedAt: new Date().toISOString(),
+              });
+            });
+
+            logger.info(`[Job:${jobId}] Insight ${insightId} assigned to existing topic ${topicId}`);
+            break;
+          }
+
+          // Step 2: Check if enough similar insights exist to create a new topic
+          const INSIGHT_CLUSTER_THRESHOLD = 0.80;
+          const MIN_CLUSTER_SIZE = 2;
+
+          const insightNeighbors = await queryVertexNeighbors({
+            queryVector,
+            sourceType: 'insight',
+            spaceId,
+            hubId,
+            signalLevels: ['medium', 'high'],
+            limit: 10,
+          });
+
+          const similarInsights = insightNeighbors.filter((n) => {
+            const neighborId = n.datapointId.split(':')[1];
+            return neighborId !== insightId && n.score >= INSIGHT_CLUSTER_THRESHOLD;
+          });
+
+          if (similarInsights.length < MIN_CLUSTER_SIZE) {
+            logger.info(`[Job:${jobId}] Insight ${insightId}: only ${similarInsights.length} similar insights found (need ${MIN_CLUSTER_SIZE}). Staying ungrouped.`);
+            break;
+          }
+
+          // Step 3: Create a new topic from the cluster
+          const clusterInsightIds = [insightId, ...similarInsights.slice(0, 4).map((n) => n.datapointId.split(':')[1])];
+
+          const clusterSnaps = await Promise.all(
+            clusterInsightIds.map((id) => db.collection('insights').doc(id).get())
+          );
+          const clusterInsights = clusterSnaps.filter((s) => s.exists).map((s) => s.data()!);
+
+          const { title: topicTitle, summary: topicSummary } = await generateTopicFromInsights(clusterInsights);
+
+          const now = new Date().toISOString();
+          const topicRef = db.collection('topics').doc();
+
+          const topicData = {
+            spaceId,
+            hubId: hubId ?? null,
+            title: topicTitle,
+            summary: topicSummary,
+            insightCount: clusterInsights.length,
+            signalLevel: deriveSignalLevelFromInsights(clusterInsights),
+            articleId: null,
+            embeddingStatus: 'pending',
+            embeddingModel: null,
+            embeddingVersion: null,
+            vectorDocId: null,
+            embeddingUpdatedAt: null,
+            createdAt: now,
+            updatedAt: now,
+          };
+
+          const batch = db.batch();
+          batch.set(topicRef, topicData);
+          for (const id of clusterInsightIds) {
+            batch.update(db.collection('insights').doc(id), {
+              topicId: topicRef.id,
+              groupingStatus: 'grouped',
+              updatedAt: now,
+            });
+          }
+          await batch.commit();
+
+          await db.collection('brain_jobs').add({
+            type: 'process_vector_indexing',
+            status: 'pending',
+            params: {
+              sourceType: 'topic',
+              sourceId: topicRef.id,
+              spaceId,
+              text: `${topicTitle}\n\n${topicSummary}`,
+            },
+            createdAt: now,
+          });
+
+          logger.info(`[Job:${jobId}] Created topic ${topicRef.id} from ${clusterInsights.length} insights. Vector indexing enqueued.`);
+          break;
+        }
+
+        default:
+          logger.warn(`[Job:${jobId}] Unsupported job type: ${job.type}`);
       }
-      default:
-        logger.warn(`[Job:${jobId}] Unsupported job type: ${job.type}`);
-    }
 
-    await snap.ref.update({
-      status: 'completed',
-      completedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  } catch (error: any) {
-    logger.error(`[Job:${jobId}] FAILED`, error);
-    await snap.ref.update({
-      status: 'failed',
-      error: error?.message || 'Unknown error',
-      completedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+      await snap.ref.update({
+        status: 'completed',
+        completedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (error: any) {
+      logger.error(`[Job:${jobId}] FAILED`, error);
+      await snap.ref.update({
+        status: 'failed',
+        error: error?.message || 'Unknown error',
+        completedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
   }
-});
+);
