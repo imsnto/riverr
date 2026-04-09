@@ -328,7 +328,7 @@ export const processBrainJob = onDocumentCreated(
           if (!queryVector) throw new Error('Failed to generate query embedding for insight');
 
           // Step 1: Look for a matching existing topic
-          const TOPIC_MATCH_THRESHOLD = 0.65;
+          const TOPIC_MATCH_THRESHOLD = 0.78;
           const topicNeighbors = await queryVertexNeighbors({
             queryVector,
             sourceType: 'topic',
@@ -369,7 +369,7 @@ export const processBrainJob = onDocumentCreated(
           }
 
           // Step 2: Check if enough similar insights exist to create a new topic
-          const INSIGHT_CLUSTER_THRESHOLD = 0.70;
+          const INSIGHT_CLUSTER_THRESHOLD = 0.80;
           const MIN_CLUSTER_SIZE = 2;
 
           const insightNeighbors = await queryVertexNeighbors({
