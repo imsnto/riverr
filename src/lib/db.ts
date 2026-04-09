@@ -542,7 +542,9 @@ export const addBot = async (bot: Omit<Bot, 'id'>): Promise<Bot> => {
 
 export const updateBot = async (id: string, data: Partial<Bot>) => {
   const docRef = doc(db, 'bots', id);
-  await updateDoc(docRef, data);
+  // Firestore rejects undefined values — strip them out before saving
+  const sanitized = JSON.parse(JSON.stringify(data));
+  await updateDoc(docRef, sanitized);
 };
 
 export const deleteBot = async (id: string) => {

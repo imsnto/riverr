@@ -9,6 +9,8 @@ service-account.json
 timeflow-6i3eo-42a8739a1134.json
 functions/deploy.log
 .claude/
+SYSTEM_ARCHITECTURE.md
+
 
 # Node dependencies
 node_modules/

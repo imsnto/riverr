@@ -30,6 +30,16 @@ export interface BotConfig {
   channelConfig: Bot['channelConfig'];
   tone?: Bot['tone'];
   responseLength?: Bot['responseLength'];
+  voiceNotes?: Bot['voiceNotes'];
+  primaryGoal?: Bot['primaryGoal'];
+  secondaryGoal?: Bot['secondaryGoal'];
+  roleTitle?: Bot['roleTitle'];
+
+  // Knowledge
+  businessContext?: Bot['businessContext'];
+  products?: Bot['products'];
+  faqs?: Bot['faqs'];
+  objections?: Bot['objections'];
 }
 
 export type Conversation = ImportedConversation & {
@@ -480,6 +490,48 @@ async function executeAiPhase(args: {
 
   if (bot.conversationGoal) {
     systemInstruction += `\n\nCONVERSATION GOAL:\n${bot.conversationGoal}`;
+  }
+
+  // Business context
+  if (bot.businessContext) {
+    const bc = bot.businessContext;
+    const lines: string[] = [];
+    if (bc.businessName) lines.push(`Business: ${bc.businessName}`);
+    if (bc.location) lines.push(`Location: ${bc.location}`);
+    if (bc.hours) lines.push(`Operating Hours: ${bc.hours}`);
+    if (bc.description) lines.push(`What We Do: ${bc.description}`);
+    if (bc.targetAudience) lines.push(`Target Audience: ${bc.targetAudience}`);
+    if (bc.minOrder) lines.push(`Minimum Order: ${bc.minOrder}`);
+    if (bc.turnaround) lines.push(`Typical Turnaround: ${bc.turnaround}`);
+    if (bc.differentiation) lines.push(`Why Choose Us: ${bc.differentiation}`);
+    if (bc.forbiddenTopics) lines.push(`NEVER discuss: ${bc.forbiddenTopics}`);
+    if (lines.length > 0) {
+      systemInstruction += `\n\nBUSINESS CONTEXT:\n${lines.join('\n')}`;
+    }
+  }
+
+  // Products
+  if (bot.products?.length) {
+    const productLines = bot.products.map((p, i) => {
+      let line = `${i + 1}. ${p.name}`;
+      if (p.price) line += ` — ${p.price}`;
+      if (p.description) line += `\n   Description: ${p.description}`;
+      if (p.triggers) line += `\n   Recommend when: ${p.triggers}`;
+      return line;
+    });
+    systemInstruction += `\n\nPRODUCTS & SERVICES:\n${productLines.join('\n')}`;
+  }
+
+  // FAQs
+  if (bot.faqs?.length) {
+    const faqLines = bot.faqs.map((f, i) => `${i + 1}. Q: ${f.question}\n   A: ${f.answer}`);
+    systemInstruction += `\n\nFREQUENTLY ASKED QUESTIONS:\n${faqLines.join('\n')}`;
+  }
+
+  // Objections
+  if (bot.objections?.length) {
+    const objLines = bot.objections.map((o, i) => `${i + 1}. Objection: ${o.objection}\n   Response: ${o.response}`);
+    systemInstruction += `\n\nHOW TO HANDLE OBJECTIONS:\n${objLines.join('\n')}`;
   }
 
   // Handle empty knowledge case - brief general reply + offer human handoff

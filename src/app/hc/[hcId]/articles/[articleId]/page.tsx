@@ -58,8 +58,9 @@ async function getArticleData(articleId: string) {
     return { article, author, breadcrumbs, toc };
 }
 
-export default async function ArticlePage({ params }: { params: { hcId: string; articleId: string } }) {
-    const data = await getArticleData(params.articleId);
+export default async function ArticlePage({ params }: { params: Promise<{ hcId: string; articleId: string }> }) {
+    const { hcId, articleId } = await params;
+    const data = await getArticleData(articleId);
 
     if (!data) {
         return <div>Article not found.</div>;
@@ -70,11 +71,11 @@ export default async function ArticlePage({ params }: { params: { hcId: string; 
     return (
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <nav className="flex items-center text-sm text-muted-foreground mb-8">
-                <Link href={`/hc/${params.hcId}`} className="hover:underline">All Collections</Link>
+                <Link href={`/hc/${hcId}`} className="hover:underline">All Collections</Link>
                 {breadcrumbs.map(crumb => (
                      <React.Fragment key={crumb.id}>
                         <ChevronRight className="h-4 w-4 mx-1" />
-                        <Link href={`/hc/${params.hcId}/collections/${crumb.id}`} className="hover:underline">{crumb.name}</Link>
+                        <Link href={`/hc/${hcId}/collections/${crumb.id}`} className="hover:underline">{crumb.name}</Link>
                      </React.Fragment>
                 ))}
             </nav>

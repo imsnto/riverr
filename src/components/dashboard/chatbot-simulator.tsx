@@ -356,10 +356,10 @@ export default function ChatbotSimulator({ isOpen, onClose, botData, flow, agent
                                 <div className="mt-3 space-y-1.5 border-t border-white/10 pt-2">
                                   <p className="text-[8px] font-black uppercase tracking-widest opacity-50">Sources</p>
                                   {m.sources.map((source: any) => (
-                                    <div key={source.articleId} className="text-[9px] rounded-md border border-white/5 bg-black/20 px-2 py-1 flex items-center justify-between">
+                                    <a key={source.articleId} href={source.url} target="_blank" rel="noopener noreferrer" className="text-[9px] rounded-md border border-white/5 bg-black/20 px-2 py-1 flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer">
                                       <span className="truncate flex-1 font-bold">{source.title}</span>
                                       <ChevronRight className="h-2 w-2 ml-1 opacity-30" />
-                                    </div>
+                                    </a>
                                   ))}
                                 </div>
                               )}

@@ -1,14 +1,15 @@
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import { logger } from "firebase-functions";
-import { evaluateInsight } from "../lib/brain/evaluate-insight";
+import { evaluateInsightBatch } from "../lib/brain/evaluate-insight";
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
 /**
  * Triggers Insight creation ONLY when a conversation is resolved.
- * Deduplicates and enqueues indexing job for Vertex Vector Search.
+ * Sends all human agent messages in a single batch LLM call.
+ * Skips conversations that have already been processed.
  */
 export const onConversationResolvedForInsight = onDocumentUpdated(
   {
@@ -33,6 +34,18 @@ export const onConversationResolvedForInsight = onDocumentUpdated(
     try {
       logger.info(`[Intelligence] Conversation ${convoId} resolved. Evaluating for insights...`);
 
+      // Dedupe: skip if this conversation was already processed
+      const alreadyProcessed = await db.collection('insights')
+        .where('source.conversationId', '==', convoId)
+        .limit(1)
+        .get();
+
+      if (!alreadyProcessed.empty) {
+        logger.info(`[Intelligence] Conversation ${convoId} already has insights. Skipping.`);
+        return;
+      }
+
+      // Fetch human agent messages only (exclude AI messages)
       const messagesSnap = await db.collection("chat_messages")
         .where("conversationId", "==", convoId)
         .where("senderType", "==", "agent")
@@ -40,36 +53,63 @@ export const onConversationResolvedForInsight = onDocumentUpdated(
 
       if (messagesSnap.empty) return;
 
-      for (const msgDoc of messagesSnap.docs) {
-        const message = msgDoc.data();
+      const humanMessages = messagesSnap.docs.filter(
+        doc => doc.data().authorId !== 'ai_agent'
+      );
 
-        // Dedupe check
-        const existingSnap = await db.collection('insights')
-          .where('source.conversationId', '==', convoId)
-          .where('source.messageId', '==', msgDoc.id)
-          .limit(1)
-          .get();
+      if (humanMessages.length === 0) {
+        logger.info(`[Intelligence] No human agent messages found for ${convoId}. Skipping.`);
+        return;
+      }
 
-        if (!existingSnap.empty) continue;
+      // Build conversation context from visitor questions
+      const visitorMessagesSnap = await db.collection("chat_messages")
+        .where("conversationId", "==", convoId)
+        .where("senderType", "in", ["visitor", "contact"])
+        .get();
 
-        let result;
-        try {
-          result = await evaluateInsight({
-            messageText: message.content,
-            conversationContext: `Last Message from Customer: ${after.lastMessage || 'N/A'}`
-          });
-          logger.info(`[Intelligence] evaluateInsight result for ${msgDoc.id}: shouldCreate=${result.shouldCreateInsight}, reason=${result.reason}, confidence=${result.confidence}`);
-        } catch (evalErr: any) {
-          logger.error(`[Intelligence] evaluateInsight threw for ${msgDoc.id}:`, evalErr?.message || evalErr);
-          continue;
-        }
+      const visitorQuestions = visitorMessagesSnap.docs
+        .sort((a, b) => {
+          const aTime = a.data().timestamp || '';
+          const bTime = b.data().timestamp || '';
+          return aTime < bTime ? -1 : aTime > bTime ? 1 : 0;
+        })
+        .map(d => d.data().content as string)
+        .filter(Boolean)
+        .slice(-5)
+        .join(' | ');
 
+      const conversationContext = [
+        'NOTE: This conversation was escalated to a human agent because the AI could not fully resolve the issue.',
+        `Customer questions: ${visitorQuestions || after.lastMessage || 'N/A'}`,
+      ].join('\n');
+
+      // Single batch LLM call for all human messages
+      const batchMessages = humanMessages.map((doc, i) => ({
+        index: i,
+        messageId: doc.id,
+        text: doc.data().content as string,
+      }));
+
+      logger.info(`[Intelligence] Sending ${batchMessages.length} human messages to batch evaluator for ${convoId}`);
+
+      const results = await evaluateInsightBatch({
+        messages: batchMessages,
+        conversationContext,
+      });
+
+      const now = new Date().toISOString();
+
+      for (const result of results) {
         if (!result.shouldCreateInsight || !result.structuredContent) {
-          logger.debug(`[Intelligence] Message ${msgDoc.id} skipped: ${result.reason}`);
+          logger.debug(`[Intelligence] Message index ${result.messageIndex} skipped: ${result.reason}`);
           continue;
         }
 
-        const now = new Date().toISOString();
+        const msgDoc = humanMessages[result.messageIndex];
+        if (!msgDoc) continue;
+
+        const message = msgDoc.data();
         const signalLevel = result.confidence >= 0.8 ? 'high' : result.confidence >= 0.5 ? 'medium' : 'low';
         const isLowSignal = signalLevel === 'low';
 
@@ -81,7 +121,7 @@ export const onConversationResolvedForInsight = onDocumentUpdated(
           topicId: null,
           title: result.title || "Support Resolution",
           summary: result.structuredContent.resolution.substring(0, 200),
-          content: `Issue: ${result.structuredContent.issue}\nResolution: ${result.structuredContent.resolution}${result.structuredContent.context ? `\nContext: ${result.structuredContent.context}` : ''}`,
+          content: message.content,
           kind: 'support_resolution',
           source: {
             type: 'conversation_message',
@@ -127,7 +167,7 @@ export const onConversationResolvedForInsight = onDocumentUpdated(
           createdAt: now,
         });
 
-        logger.info(`[Intelligence] Created insight ${insightRef.id} (signalLevel=${signalLevel}, groupingStatus=${insightData.groupingStatus}). Vector job enqueued.`);
+        logger.info(`[Intelligence] Created insight ${insightRef.id} (signalLevel=${signalLevel}). Vector job enqueued.`);
       }
     } catch (err: any) {
       logger.error(`[Intelligence] Failed processing for convo ${convoId}:`, err);

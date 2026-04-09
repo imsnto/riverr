@@ -78,8 +78,50 @@ export async function previewAgentResponseAction(args: {
     systemInstruction += "\n\nSALES POSTURE: Be consultative and focused on value. Move the user towards a meeting or quote.";
   }
 
-  if (effectiveBot.conversationGoal) {
-    systemInstruction += `\n\nCONVERSATION GOAL:\n${effectiveBot.conversationGoal}`;
+  if (effectiveBot.conversationGoal || effectiveBot.primaryGoal) {
+    systemInstruction += `\n\nCONVERSATION GOAL:\n${effectiveBot.conversationGoal || effectiveBot.primaryGoal}`;
+  }
+
+  // Business context
+  if (effectiveBot.businessContext) {
+    const bc = effectiveBot.businessContext;
+    const lines: string[] = [];
+    if (bc.businessName) lines.push(`Business: ${bc.businessName}`);
+    if (bc.location) lines.push(`Location: ${bc.location}`);
+    if (bc.hours) lines.push(`Operating Hours: ${bc.hours}`);
+    if (bc.description) lines.push(`What We Do: ${bc.description}`);
+    if (bc.targetAudience) lines.push(`Target Audience: ${bc.targetAudience}`);
+    if (bc.minOrder) lines.push(`Minimum Order: ${bc.minOrder}`);
+    if (bc.turnaround) lines.push(`Typical Turnaround: ${bc.turnaround}`);
+    if (bc.differentiation) lines.push(`Why Choose Us: ${bc.differentiation}`);
+    if (bc.forbiddenTopics) lines.push(`NEVER discuss: ${bc.forbiddenTopics}`);
+    if (lines.length > 0) {
+      systemInstruction += `\n\nBUSINESS CONTEXT:\n${lines.join('\n')}`;
+    }
+  }
+
+  // Products
+  if (effectiveBot.products?.length) {
+    const productLines = effectiveBot.products.map((p: any, i: number) => {
+      let line = `${i + 1}. ${p.name}`;
+      if (p.price) line += ` — ${p.price}`;
+      if (p.description) line += `\n   Description: ${p.description}`;
+      if (p.triggers) line += `\n   Recommend when: ${p.triggers}`;
+      return line;
+    });
+    systemInstruction += `\n\nPRODUCTS & SERVICES:\n${productLines.join('\n')}`;
+  }
+
+  // FAQs
+  if (effectiveBot.faqs?.length) {
+    const faqLines = effectiveBot.faqs.map((f: any, i: number) => `${i + 1}. Q: ${f.question}\n   A: ${f.answer}`);
+    systemInstruction += `\n\nFREQUENTLY ASKED QUESTIONS:\n${faqLines.join('\n')}`;
+  }
+
+  // Objections
+  if (effectiveBot.objections?.length) {
+    const objLines = effectiveBot.objections.map((o: any, i: number) => `${i + 1}. Objection: ${o.objection}\n   Response: ${o.response}`);
+    systemInstruction += `\n\nHOW TO HANDLE OBJECTIONS:\n${objLines.join('\n')}`;
   }
 
   const result = await agentResponse({
@@ -275,6 +317,14 @@ export async function invokeAgent(args: {
     channelConfig: effectiveBot.channelConfig,
     tone: effectiveBot.tone,
     responseLength: effectiveBot.responseLength,
+    voiceNotes: effectiveBot.voiceNotes,
+    primaryGoal: effectiveBot.primaryGoal,
+    secondaryGoal: effectiveBot.secondaryGoal,
+    roleTitle: effectiveBot.roleTitle,
+    businessContext: effectiveBot.businessContext,
+    products: effectiveBot.products,
+    faqs: effectiveBot.faqs,
+    objections: effectiveBot.objections,
   };
 
   console.log("[invokeAgent] Calling handleIncomingMessage with botConfig:", { id: botConfig.id, aiEnabled: botConfig.aiEnabled });

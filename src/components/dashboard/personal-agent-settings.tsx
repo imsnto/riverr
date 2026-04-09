@@ -132,9 +132,14 @@ export default function PersonalAgentSettings({ helpCenters }: PersonalAgentSett
 
     const handleSaveAgent = async (data: any) => {
         if ('id' in data) {
-            await db.updateBot(data.id, data);
-            toast({ title: 'Agent Updated' });
-            refreshAgents();
+            try {
+                await db.updateBot(data.id, data);
+                toast({ title: 'Agent Updated' });
+                refreshAgents();
+            } catch (e) {
+                console.error('Failed to save agent:', e);
+                toast({ variant: 'destructive', title: 'Failed to save agent' });
+            }
         }
     };
 
