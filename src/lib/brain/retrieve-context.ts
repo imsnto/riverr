@@ -59,6 +59,9 @@ export async function orchestrateRetrieval(args: {
 }): Promise<RetrievalDecision> {
   const { message, hubId, spaceId, policy } = args;
 
+  console.log('[orchestrateRetrieval] Policy:', { accessLevel: policy.accessLevel, isCustomerFacing: policy.isCustomerFacing, agentId: policy.agentId });
+  console.log('[orchestrateRetrieval] Will search insights?', policy.accessLevel === 'insights_hidden_support' || policy.accessLevel === 'internal_full_access');
+
   const boostMap = policy.isCustomerFacing ? BOOSTS.PUBLIC : BOOSTS.INTERNAL;
 
   // 🧠 PARALLEL SEARCHES

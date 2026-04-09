@@ -348,7 +348,20 @@ export default function InboxConversationView({
         <div className="min-w-0">
           <div className={cn("rounded-2xl p-3 max-w-md", isCustomer ? "bg-muted rounded-bl-none" : "bg-primary text-primary-foreground rounded-br-none")}>
              {isAI ? (
-                <div className="text-sm prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden [&_a]:break-all [&_a]:whitespace-normal [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:overflow-x-auto [&_code]:break-words" dangerouslySetInnerHTML={{ __html: contentHtml as string }}/>
+                <>
+                  <div className="text-sm prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden [&_a]:break-all [&_a]:whitespace-normal [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:overflow-x-auto [&_code]:break-words" dangerouslySetInnerHTML={{ __html: contentHtml as string }}/>
+                  {msg.sources && (msg.sources as any[]).length > 0 && (
+                    <div className="mt-3 space-y-1.5 border-t border-white/20 pt-2">
+                      <p className="text-[9px] font-black uppercase tracking-widest opacity-60">Sources</p>
+                      {(msg.sources as any[]).map((source: any) => (
+                        <a key={source.articleId} href={source.url} target="_blank" rel="noopener noreferrer" className="text-[10px] rounded-md border border-white/20 bg-black/20 px-2 py-1 flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer">
+                          <span className="truncate flex-1 font-bold">{source.title}</span>
+                          <span className="ml-1 opacity-50">›</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </>
             ) : (
                 <div className="text-sm whitespace-pre-wrap break-all">
                   {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}

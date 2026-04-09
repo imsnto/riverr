@@ -438,7 +438,7 @@ async function executeAiPhase(args: {
     spaceId: conversation.spaceId,
     policy: {
       isCustomerFacing,
-      accessLevel: bot.intelligenceAccessLevel || 'topics_allowed',
+      accessLevel: bot.intelligenceAccessLevel || 'insights_hidden_support',
       allowedLibraryIds: bot.allowedHelpCenterIds || []
     }
   });

@@ -140,6 +140,8 @@ export async function searchInsights(args: {
     limit = 5,
   } = args;
 
+  console.log('[searchInsights] Called with:', { query: query.substring(0, 80), hubId, spaceId, limit });
+
   const results: VectorSearchResult[] = await vertexSearch.search({
     query,
     sourceType: 'insight',
@@ -148,6 +150,8 @@ export async function searchInsights(args: {
     visibility: 'private',
     limit,
   });
+
+  console.log(`[searchInsights] Raw Vertex results: ${results.length}`, results.map(r => ({ id: r.id, score: r.score, title: r.metadata?.title })));
 
   return results.map((r) => ({
     id: r.id,

@@ -49,7 +49,7 @@ export async function previewAgentResponseAction(args: {
   const policy: AgentKnowledgePolicy = {
     agentId: effectiveBot.id,
     isCustomerFacing: effectiveBot.type === 'widget',
-    accessLevel: effectiveBot.intelligenceAccessLevel || 'topics_only',
+    accessLevel: effectiveBot.intelligenceAccessLevel || 'insights_hidden_support',
     allowedLibraryIds: effectiveBot.allowedHelpCenterIds || []
   };
 

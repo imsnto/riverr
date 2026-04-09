@@ -49,7 +49,7 @@ function mergeStageAndActor(widget: Bot, actor?: Bot | null): ResolvedRuntimeBot
     actor?.allowedHelpCenterIds || widget.allowedHelpCenterIds || [];
 
   const intelligenceAccessLevel = 
-    actor?.intelligenceAccessLevel || widget.intelligenceAccessLevel || 'topics_allowed';
+    actor?.intelligenceAccessLevel || widget.intelligenceAccessLevel || 'insights_hidden_support';
 
   const effectiveBot: Bot = {
     ...widget,

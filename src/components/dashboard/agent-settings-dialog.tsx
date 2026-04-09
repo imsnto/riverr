@@ -238,7 +238,7 @@ const DEFAULT_AGENT_VALUES: AgentSettingsFormValues = {
   name: '',
   webAgentName: '',
   roleTitle: '',
-  intelligenceAccessLevel: 'topics_allowed',
+  intelligenceAccessLevel: 'insights_hidden_support',
   tone: 'friendly',
   responseLength: 'balanced',
   voiceNotes: '',

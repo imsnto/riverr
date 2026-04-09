@@ -421,9 +421,14 @@ export const processBrainJob = onDocumentCreated(
             updatedAt: now,
           };
 
+          // Only update insights that still exist in Firestore
+          const existingInsightIds = clusterSnaps
+            .filter((s) => s.exists)
+            .map((s) => s.id);
+
           const batch = db.batch();
           batch.set(topicRef, topicData);
-          for (const id of clusterInsightIds) {
+          for (const id of existingInsightIds) {
             batch.update(db.collection('insights').doc(id), {
               topicId: topicRef.id,
               groupingStatus: 'grouped',

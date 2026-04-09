@@ -51,9 +51,9 @@
   });
 
   const origin = window.location.origin;
-  // Use localhost for testing, manowar.cloud for production
-  const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
-  const baseUrl = isLocalhost ? 'http://localhost:3000' : 'https://manowar.cloud';
+  const scriptSrc = script.src || '';
+  const isLocalScript = scriptSrc.includes('localhost') || scriptSrc.includes('127.0.0.1');
+  const baseUrl = isLocalScript ? 'http://localhost:3000' : 'https://timeflow-6i3eo.web.app';
   iframe.src = `${baseUrl}/chatbot/${hubId}/${botId}?parentOrigin=${encodeURIComponent(origin)}`;
   
   document.body.appendChild(launcher);
