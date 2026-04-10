@@ -323,18 +323,23 @@ export const processBrainJob = onDocumentCreated(
             break;
           }
 
-          const queryText = [insight.title, insight.content].filter(Boolean).join('\n\n');
+          const queryText = insight.content ?? insight.title ?? '';
           const queryVector = await generateQueryEmbedding(queryText);
           if (!queryVector) throw new Error('Failed to generate query embedding for insight');
 
           // Step 1: Look for a matching existing topic
-          const TOPIC_MATCH_THRESHOLD = 0.78;
+          const TOPIC_MATCH_THRESHOLD = 0.40;
           const topicNeighbors = await queryVertexNeighbors({
             queryVector,
             sourceType: 'topic',
             spaceId,
             hubId,
             limit: 5,
+          });
+
+          logger.info(`[Job:${jobId}] Topic search: ${topicNeighbors.length} results`, {
+            topics: topicNeighbors.map((n) => ({ id: n.datapointId, score: n.score })),
+            threshold: TOPIC_MATCH_THRESHOLD,
           });
 
           const matchingTopic = topicNeighbors.find((n) => n.score >= TOPIC_MATCH_THRESHOLD);
@@ -364,12 +369,12 @@ export const processBrainJob = onDocumentCreated(
               });
             });
 
-            logger.info(`[Job:${jobId}] Insight ${insightId} assigned to existing topic ${topicId}`);
+            logger.info(`[Job:${jobId}] Insight ${insightId} assigned to existing topic ${topicId} (score: ${matchingTopic.score.toFixed(4)})`);
             break;
           }
 
           // Step 2: Check if enough similar insights exist to create a new topic
-          const INSIGHT_CLUSTER_THRESHOLD = 0.80;
+          const INSIGHT_CLUSTER_THRESHOLD = 0.40;
           const MIN_CLUSTER_SIZE = 2;
 
           const insightNeighbors = await queryVertexNeighbors({
@@ -381,18 +386,65 @@ export const processBrainJob = onDocumentCreated(
             limit: 10,
           });
 
-          const similarInsights = insightNeighbors.filter((n) => {
-            const neighborId = n.datapointId.split(':')[1];
-            return neighborId !== insightId && n.score >= INSIGHT_CLUSTER_THRESHOLD;
+          const aboveThreshold = insightNeighbors.filter((n) => n.datapointId.split(':')[1] !== insightId && n.score >= INSIGHT_CLUSTER_THRESHOLD);
+          logger.info(`[Job:${jobId}] Insight search: ${insightNeighbors.length} results, ${aboveThreshold.length} above threshold (${INSIGHT_CLUSTER_THRESHOLD})`, {
+            allNeighbors: insightNeighbors.map((n) => ({ id: n.datapointId, score: n.score, pass: n.datapointId.split(':')[1] !== insightId && n.score >= INSIGHT_CLUSTER_THRESHOLD })),
           });
 
-          if (similarInsights.length < MIN_CLUSTER_SIZE) {
-            logger.info(`[Job:${jobId}] Insight ${insightId}: only ${similarInsights.length} similar insights found (need ${MIN_CLUSTER_SIZE}). Staying ungrouped.`);
+          // Check Firestore status of similar insights — some may already be grouped
+          const similarInsightDocs = await Promise.all(
+            aboveThreshold.map((n) => db.collection('insights').doc(n.datapointId.split(':')[1]).get())
+          );
+
+          // If any similar insight is already grouped, join their topic instead of creating a new one
+          const alreadyGrouped = similarInsightDocs.find(
+            (s) => s.exists && s.data()?.groupingStatus === 'grouped' && s.data()?.topicId
+          );
+
+          if (alreadyGrouped) {
+            const existingTopicId = alreadyGrouped.data()!.topicId as string;
+            const existingTopicRef = db.collection('topics').doc(existingTopicId);
+
+            await db.runTransaction(async (tx) => {
+              const topicSnap = await tx.get(existingTopicRef);
+              if (!topicSnap.exists) return;
+              const topic = topicSnap.data()!;
+
+              tx.update(insightRef, {
+                topicId: existingTopicId,
+                groupingStatus: 'grouped',
+                updatedAt: new Date().toISOString(),
+              });
+
+              tx.update(existingTopicRef, {
+                insightCount: (topic.insightCount ?? 0) + 1,
+                signalLevel: deriveTopicSignalLevel(
+                  topic.signalLevel as SignalLevel,
+                  insight.signalLevel as SignalLevel
+                ),
+                updatedAt: new Date().toISOString(),
+              });
+            });
+
+            logger.info(`[Job:${jobId}] Insight ${insightId} joined existing topic ${existingTopicId} via grouped neighbor`);
+            break;
+          }
+
+          // Only count ungrouped similar insights for cluster creation
+          const ungroupedIds = new Set(
+            similarInsightDocs
+              .filter((s) => s.exists && s.data()?.groupingStatus === 'ungrouped')
+              .map((s) => s.id)
+          );
+          const ungroupedSimilar = aboveThreshold.filter((n) => ungroupedIds.has(n.datapointId.split(':')[1]));
+
+          if (ungroupedSimilar.length < MIN_CLUSTER_SIZE) {
+            logger.info(`[Job:${jobId}] Insight ${insightId}: only ${ungroupedSimilar.length} ungrouped similar insights (need ${MIN_CLUSTER_SIZE}). Staying ungrouped.`);
             break;
           }
 
           // Step 3: Create a new topic from the cluster
-          const clusterInsightIds = [insightId, ...similarInsights.slice(0, 4).map((n) => n.datapointId.split(':')[1])];
+          const clusterInsightIds = [insightId, ...ungroupedSimilar.slice(0, 4).map((n) => n.datapointId.split(':')[1])];
 
           const clusterSnaps = await Promise.all(
             clusterInsightIds.map((id) => db.collection('insights').doc(id).get())

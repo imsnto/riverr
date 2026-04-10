@@ -78,7 +78,7 @@ export async function queryVertexNeighbors(params: VertexQueryParams): Promise<V
     return nearestNeighbors
       .map((n) => ({
         datapointId: n.datapoint?.datapointId ?? '',
-        score: 1 - (n.distance ?? 1),
+        score: n.distance ?? 0,
       }))
       .filter((n) => n.datapointId !== '');
   } catch (err) {
