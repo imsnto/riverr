@@ -5,6 +5,7 @@ import { IndexServiceClient, protos } from '@google-cloud/aiplatform';
 import { generateDocumentEmbedding, generateQueryEmbedding } from './lib/brain/embed';
 import { queryVertexNeighbors } from './lib/brain/vertex-query';
 import { GoogleGenAI } from '@google/genai';
+import { extractDocumentInsights, chunkText, parseCsvChunks } from './lib/brain/extract-document-insights';
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
@@ -266,6 +267,175 @@ export const processBrainJob = onDocumentCreated(
             logger.info(`[Job:${jobId}] Chained process_topic_grouping for insight ${sourceId}`);
           }
 
+          break;
+        }
+
+        case 'process_imported_source': {
+          const { sourceId, spaceId, fileUrl } = job.params as {
+            sourceId: string;
+            spaceId: string;
+            fileUrl: string;
+          };
+
+          if (!sourceId || !spaceId || !fileUrl) throw new Error('Missing sourceId, spaceId, or fileUrl');
+
+          const sourceRef = db.collection('imported_sources').doc(sourceId);
+          await sourceRef.update({ status: 'parsing', updatedAt: new Date().toISOString() });
+
+          // 1. Download the file
+          logger.info(`[Job:${jobId}] Downloading file: ${fileUrl}`);
+          const response = await fetch(fileUrl);
+          if (!response.ok) throw new Error(`Failed to download file: ${response.status}`);
+
+          const sourceSnap = await sourceRef.get();
+          const sourceData = sourceSnap.data() as any;
+          const filename = sourceData?.filename || 'file';
+          const sourceType = sourceData?.sourceType || 'text';
+
+          // 2. Extract text based on file type
+          let rawText = '';
+          let chunks: string[] = [];
+
+          if (sourceType === 'pdf') {
+            // Use Gemini's native PDF understanding — no external library needed
+            const arrayBuffer = await response.arrayBuffer();
+            const base64 = Buffer.from(arrayBuffer).toString('base64');
+            const ai = getGenAI();
+            const pdfExtractResponse = await ai.models.generateContent({
+              model: 'gemini-2.0-flash',
+              contents: [{
+                role: 'user',
+                parts: [
+                  { inlineData: { mimeType: 'application/pdf', data: base64 } },
+                  { text: 'Extract all text content from this PDF. Return only the raw text, preserving paragraph structure. No commentary.' },
+                ],
+              }],
+            });
+            rawText = pdfExtractResponse.text ?? '';
+            chunks = chunkText(rawText);
+
+          } else if (sourceType === 'csv') {
+            rawText = await response.text();
+            chunks = parseCsvChunks(rawText);
+
+          } else if (sourceType === 'json') {
+            const jsonText = await response.text();
+            try {
+              const parsed = JSON.parse(jsonText);
+              rawText = JSON.stringify(parsed, null, 2);
+            } catch {
+              rawText = jsonText;
+            }
+            chunks = chunkText(rawText);
+
+          } else {
+            // TXT or other
+            rawText = await response.text();
+            chunks = chunkText(rawText);
+          }
+
+          if (chunks.length === 0) {
+            await sourceRef.update({ status: 'failed', updatedAt: new Date().toISOString() });
+            throw new Error('No text content extracted from file');
+          }
+
+          logger.info(`[Job:${jobId}] Extracted ${chunks.length} chunks from ${filename}`);
+          await sourceRef.update({ status: 'extracting', updatedAt: new Date().toISOString() });
+
+          // 3. Extract insights from all chunks via LLM
+          const chunkInputs = chunks.map((text, i) => ({ index: i, text }));
+          const insights = await extractDocumentInsights({
+            chunks: chunkInputs,
+            filename,
+            sourceType,
+          });
+
+          logger.info(`[Job:${jobId}] LLM extracted ${insights.length} insights`);
+
+          // 4. Save insights to Firestore + enqueue vector indexing jobs
+          const now = new Date().toISOString();
+          let savedCount = 0;
+
+          for (const insight of insights) {
+            const signalLevel = insight.confidence >= 0.8 ? 'high' : insight.confidence >= 0.5 ? 'medium' : 'low';
+            const isLowSignal = signalLevel === 'low';
+
+            const insightRef = db.collection('insights').doc();
+            await insightRef.set({
+              spaceId,
+              hubId: sourceData?.hubId || null,
+              topicId: null,
+              title: insight.title,
+              summary: insight.summary,
+              content: insight.content,
+              kind: 'imported_learning',
+              source: {
+                type: 'imported_source',
+                importedSourceId: sourceId,
+                conversationId: null,
+                messageId: null,
+                channel: null,
+                provider: null,
+                label: filename,
+              },
+              author: { userId: sourceData?.uploadedByUserId || null, name: sourceData?.uploadedByName || null },
+              issueLabel: null,
+              resolutionLabel: null,
+              signalScore: insight.confidence,
+              signalLevel,
+              processingStatus: 'pending',
+              groupingStatus: isLowSignal ? 'ignored' : 'ungrouped',
+              visibility: 'private',
+              origin: 'imported',
+              embeddingStatus: 'pending',
+              embeddingModel: null,
+              embeddingVersion: null,
+              vectorDocId: null,
+              embeddingUpdatedAt: null,
+              createdAt: now,
+              updatedAt: now,
+              ingestedAt: now,
+            });
+
+            await db.collection('brain_jobs').add({
+              type: 'process_vector_indexing',
+              status: 'pending',
+              params: { sourceType: 'insight', sourceId: insightRef.id, spaceId, text: insight.content },
+              createdAt: now,
+            });
+
+            savedCount++;
+          }
+
+          // 5. Update source record with stats
+          await sourceRef.update({
+            status: 'completed',
+            stats: {
+              rawUnitCount: chunks.length,
+              chunkCount: chunks.length,
+              insightCount: savedCount,
+            },
+            updatedAt: now,
+          });
+
+          // 6. Re-trigger topic grouping for all ungrouped insights in this space
+          // so that newly imported insights can cluster with pre-existing ones.
+          const ungroupedSnap = await db.collection('insights')
+            .where('spaceId', '==', spaceId)
+            .where('groupingStatus', '==', 'ungrouped')
+            .get();
+
+          for (const doc of ungroupedSnap.docs) {
+            await db.collection('brain_jobs').add({
+              type: 'process_topic_grouping',
+              status: 'pending',
+              params: { insightId: doc.id, spaceId },
+              createdAt: now,
+            });
+          }
+          logger.info(`[Job:${jobId}] Re-enqueued topic grouping for ${ungroupedSnap.size} ungrouped insights`);
+
+          logger.info(`[Job:${jobId}] process_imported_source complete: ${savedCount} insights saved from ${filename}`);
           break;
         }
 

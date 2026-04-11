@@ -181,6 +181,12 @@ export const createImportedSource = async (source: Omit<ImportedSource, 'id'>): 
   return { id: docRef.id, ...source };
 };
 
+export const getImportedSource = async (sourceId: string): Promise<ImportedSource | null> => {
+  const snap = await getDoc(doc(db, 'imported_sources', sourceId));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() } as ImportedSource;
+};
+
 export const getImportedSources = async (spaceId: string): Promise<ImportedSource[]> => {
   const q = query(collection(db, 'imported_sources'), where('spaceId', '==', spaceId), limit(50));
   const snap = await getDocs(q);

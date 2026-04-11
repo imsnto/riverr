@@ -37,6 +37,8 @@ export default function ImportDataDialog({ isOpen, onOpenChange, onComplete }: I
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [resultStats, setResultStats] = useState({ insightCount: 0, chunkCount: 0 });
+  const [sourceId, setSourceId] = useState<string | null>(null);
   const { activeSpace, appUser } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -76,6 +78,8 @@ export default function ImportDataDialog({ isOpen, onOpenChange, onComplete }: I
         updatedAt: new Date().toISOString()
       });
 
+      setSourceId(source.id);
+
       // 3. Enqueue background job
       await db.startBrainJob('process_imported_source', {
         sourceId: source.id,
@@ -83,17 +87,42 @@ export default function ImportDataDialog({ isOpen, onOpenChange, onComplete }: I
         fileUrl
       });
 
-      // Mock progress for UI feel
+      // Animate progress while polling for real job completion
       let p = 0;
       const interval = setInterval(() => {
-        p += 5;
+        // Slow down as we approach 90 — wait for real completion
+        const step = p < 60 ? 4 : p < 85 ? 1 : 0;
+        p = Math.min(p + step, 90);
         setProgress(p);
-        if (p >= 100) {
-          clearInterval(interval);
-          setStep('result');
-          setIsUploading(false);
+      }, 300);
+
+      // Poll imported_sources doc for status=completed
+      const pollStart = Date.now();
+      const POLL_TIMEOUT = 3 * 60 * 1000; // 3 min max
+      const poller = setInterval(async () => {
+        try {
+          const snap = await db.getImportedSource(source.id);
+          if (snap?.status === 'completed') {
+            clearInterval(poller);
+            clearInterval(interval);
+            setProgress(100);
+            setResultStats({
+              insightCount: snap.stats?.insightCount ?? 0,
+              chunkCount: snap.stats?.chunkCount ?? 0,
+            });
+            setStep('result');
+            setIsUploading(false);
+          } else if (snap?.status === 'failed' || Date.now() - pollStart > POLL_TIMEOUT) {
+            clearInterval(poller);
+            clearInterval(interval);
+            toast({ variant: 'destructive', title: 'Processing failed', description: 'The import pipeline encountered an error.' });
+            setStep('upload');
+            setIsUploading(false);
+          }
+        } catch {
+          // ignore poll errors
         }
-      }, 150);
+      }, 4000);
 
     } catch (e) {
       toast({ variant: 'destructive', title: 'Import failed' });
@@ -235,12 +264,12 @@ export default function ImportDataDialog({ isOpen, onOpenChange, onComplete }: I
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-2xl border border-white/5 bg-white/[0.02] text-center">
-                  <p className="text-2xl font-black text-white">12</p>
+                  <p className="text-2xl font-black text-white">{resultStats.insightCount}</p>
                   <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground mt-1">Insights Extracted</p>
                 </div>
                 <div className="p-4 rounded-2xl border border-white/5 bg-white/[0.02] text-center">
-                  <p className="text-2xl font-black text-white">4</p>
-                  <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground mt-1">Matched Topics</p>
+                  <p className="text-2xl font-black text-white">{resultStats.chunkCount}</p>
+                  <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground mt-1">Chunks Processed</p>
                 </div>
               </div>
 
