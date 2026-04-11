@@ -230,17 +230,15 @@ export async function invokeAgent(args: {
     },
     escalateToHuman: async ({ conversationId, reason }) => {
       await adminDB.collection('conversations').doc(conversationId).update({
-        status: 'waiting_human',
         escalated: true,
         escalationReason: reason,
-        state: 'human_assigned',
       });
     },
     persistAssistantMessage: async ({ conversationId, text, responderType, meta, sources }) => {
       const convo = await adminDB.collection('conversations').doc(conversationId).get();
       const convoData = convo.data() as Conversation;
 
-      const messageData: Omit<ChatMessage, 'id'> = {
+      const messageData: Omit<ChatMessage, 'id'> & { meta?: any } = {
         conversationId,
         authorId: 'ai_agent',
         type: 'message',
@@ -250,7 +248,7 @@ export async function invokeAgent(args: {
         timestamp: new Date().toISOString(),
         attachments: [],
         sources: sources || null,
-        ...((meta as any) || {})
+        ...(meta ? { meta } : {}),
       };
 
       if (convoData?.channel === 'sms') {
@@ -290,6 +288,20 @@ export async function invokeAgent(args: {
     updateConversation: async ({ conversationId, patch }) => {
       await adminDB.collection('conversations').doc(conversationId).update(patch);
     },
+    getOnlineAgentIds: async ({ hubId }) => {
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      // Single-field query avoids needing a composite Firestore index.
+      // Filter lastSeenAt in memory.
+      const snap = await adminDB.collection('users')
+        .where('hubIds', 'array-contains', hubId)
+        .get();
+      return snap.docs
+        .filter(d => {
+          const lastSeen = d.data().lastSeenAt;
+          return lastSeen && lastSeen >= fiveMinAgo;
+        })
+        .map(d => d.id);
+    },
   };
 
   const botConfig: BotConfig = {
@@ -313,6 +325,7 @@ export async function invokeAgent(args: {
     behavior: effectiveBot.behavior,
     confidenceHandling: effectiveBot.confidenceHandling,
     escalation: effectiveBot.escalation,
+    offlineFollowup: effectiveBot.offlineFollowup,
     identityCapture: effectiveBot.identityCapture,
     channelConfig: effectiveBot.channelConfig,
     tone: effectiveBot.tone,
@@ -429,4 +442,92 @@ export async function reindexArticleAction(articleId: string) {
     spaceId,
     publicHelpBaseUrl: process.env.PUBLIC_HELP_BASE_URL || "",
   });
+}
+
+// -------------------------
+// Smart Handoff: Offline Contact Capture
+// -------------------------
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^[\d\s\-+().]{7,20}$/;
+
+export async function submitOfflineContact(args: {
+  conversationId: string;
+  contactMethod: 'email' | 'phone';
+  contactValue: string;
+  visitorName?: string;
+}) {
+  const { conversationId, contactMethod, contactValue, visitorName } = args;
+  const trimmed = contactValue.trim();
+  const trimmedName = visitorName?.trim() || '';
+
+  // Validate
+  if (contactMethod === 'email' && !EMAIL_RE.test(trimmed)) {
+    return { success: false, error: 'Invalid email address.' };
+  }
+  if (contactMethod === 'phone' && !PHONE_RE.test(trimmed)) {
+    return { success: false, error: 'Invalid phone number.' };
+  }
+
+  const convoRef = adminDB.collection('conversations').doc(conversationId);
+  const convoSnap = await convoRef.get();
+  if (!convoSnap.exists) {
+    return { success: false, error: 'Conversation not found.' };
+  }
+
+  const convo = convoSnap.data()!;
+  const now = new Date().toISOString();
+
+  // Update conversation with offline followup data
+  const patch: Record<string, any> = {
+    status: 'offline_followup_pending',
+    offlineFollowup: {
+      requested: true,
+      contactMethod,
+      contactValue: trimmed,
+      requestedAt: now,
+    },
+    updatedAt: now,
+  };
+
+  // Also enrich visitor contact fields
+  if (contactMethod === 'email') {
+    patch.visitorEmail = trimmed;
+  } else {
+    patch.visitorPhone = trimmed;
+  }
+  if (trimmedName) patch.visitorName = trimmedName;
+
+  await convoRef.update(patch);
+
+  // Update visitor record if exists
+  if (convo.visitorId) {
+    const visitorUpdate: Record<string, any> = {};
+    if (contactMethod === 'email') visitorUpdate.email = trimmed;
+    if (contactMethod === 'phone') visitorUpdate.phone = trimmed;
+    if (trimmedName) visitorUpdate.name = trimmedName;
+    visitorUpdate.updatedAt = now;
+    await adminDB.collection('visitors').doc(convo.visitorId).update(visitorUpdate).catch(() => {});
+  }
+
+  // Write confirmation message
+  const displayValue = contactMethod === 'email' ? trimmed : trimmed;
+  await adminDB.collection('chat_messages').add({
+    conversationId,
+    authorId: 'system',
+    type: 'message',
+    senderType: 'bot',
+    responderType: 'system',
+    content: `Thanks! Our team isn't available right now, but we'll reach out to you at ${displayValue} as soon as we can.`,
+    timestamp: now,
+    meta: { type: 'offline_followup_confirmation' },
+  });
+
+  // Mark as escalated so it appears in the human inbox
+  await convoRef.update({
+    escalated: true,
+    escalationReason: 'Offline followup requested',
+  });
+
+  return { success: true };
 }

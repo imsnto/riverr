@@ -513,6 +513,26 @@ export default function InboxConversationView({
                     <Bot className="h-3.5 w-3.5 text-indigo-400" />
                     <span className="text-sm font-semibold text-indigo-400">Handled by AI Agent</span>
                   </div>
+                ) : conversation.status === 'handoff_requested' || conversation.status === 'checking_availability' ? (
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-3.5 w-3.5 rounded-full border-2 border-yellow-400 animate-pulse" />
+                    <span className="text-sm font-semibold text-yellow-400">Checking availability...</span>
+                  </div>
+                ) : conversation.status === 'awaiting_contact_capture' ? (
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-3.5 w-3.5 rounded-full border-2 border-orange-400" />
+                    <span className="text-sm font-semibold text-orange-400">Collecting contact info</span>
+                  </div>
+                ) : conversation.status === 'offline_followup_pending' ? (
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-3.5 w-3.5 rounded-full bg-orange-500" />
+                    <span className="text-sm font-semibold text-orange-400">Offline followup pending</span>
+                  </div>
+                ) : conversation.status === 'human_assigned' ? (
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-3.5 w-3.5 rounded-full bg-green-500" />
+                    <span className="text-sm font-semibold text-green-400">Human assigned</span>
+                  </div>
                 ) : conversation.status === 'automated' ? (
                   <div className="flex items-center gap-1.5">
                     <div className="h-3.5 w-3.5 rounded-full border-2 border-zinc-400" />

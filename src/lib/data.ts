@@ -58,7 +58,20 @@ export interface Space {
   };
 }
 
-export type ConversationStatus = 'new' | 'automated' | 'ai_active' | 'waiting_human' | 'resolved' | 'open' | 'unassigned' | 'waiting_on_customer' | 'closed';
+export type ConversationStatus =
+  | 'new' | 'automated' | 'ai_active' | 'waiting_human' | 'resolved'
+  | 'open' | 'unassigned' | 'waiting_on_customer' | 'closed'
+  // Smart Handoff
+  | 'handoff_requested'
+  | 'checking_availability'
+  | 'human_assigned'
+  | 'awaiting_contact_capture'
+  | 'offline_followup_pending';
+
+export const HANDOFF_STATUSES: ConversationStatus[] = [
+  'handoff_requested', 'checking_availability', 'waiting_human',
+  'human_assigned', 'awaiting_contact_capture', 'offline_followup_pending',
+];
 export type ResponderType = 'automation' | 'ai' | 'human' | 'system';
 
 export type ResolutionStatus =
@@ -87,7 +100,12 @@ export type ConversationState =
   | "resolved"
   | "reopened"
   | "archived"
-  | "closed";
+  | "closed"
+  // Smart Handoff
+  | "handoff_requested"
+  | "checking_availability"
+  | "awaiting_contact_capture"
+  | "offline_followup_pending";
 
 export interface Hub {
   id: string;
@@ -695,6 +713,14 @@ export interface Bot {
     description?: string;
     targetAudience?: string;
     hours?: string;
+    structuredHours?: {
+      timezone: string;
+      schedule: Array<{
+        days: number[];
+        start: string;
+        end: string;
+      }>;
+    };
     minOrder?: string;
     turnaround?: string;
     differentiation?: string;
@@ -723,6 +749,12 @@ export interface Bot {
     offerOnce: boolean;
     fallbackMessage: string;
     forceTriggers: string[];
+  };
+
+  offlineFollowup?: {
+    enabled: boolean;
+    contactMethod: 'email' | 'phone' | 'either';
+    unavailableMessage?: string;
   };
 
   identityCapture: {
@@ -839,6 +871,17 @@ export interface Conversation {
   tags?: string[];
   aiFollowUpScheduledFor?: string | null;
   aiFollowUpSentAt?: string | null;
+
+  // Smart Handoff
+  handoffRequestedAt?: string | null;
+  handoffAvailabilityCheckedAt?: string | null;
+  liveHandoffAvailable?: boolean | null;
+  offlineFollowup?: {
+    requested: boolean;
+    contactMethod: 'email' | 'phone' | null;
+    contactValue: string | null;
+    requestedAt: string | null;
+  } | null;
 
   lastMessage: string;
   lastMessageAt: string;

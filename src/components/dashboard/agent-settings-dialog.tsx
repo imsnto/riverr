@@ -154,6 +154,13 @@ const agentSettingsSchema = z.object({
     forceTriggers: z.array(z.enum(escalationTopics)).default(['billing', 'angry_customer']),
   }),
 
+  // Offline Followup (Smart Handoff)
+  offlineFollowup: z.object({
+    enabled: z.boolean().default(false),
+    contactMethod: z.enum(['email', 'phone', 'either']).default('email'),
+    unavailableMessage: z.string().optional(),
+  }).default({ enabled: false, contactMethod: 'email' }),
+
   // Identity capture
   identityCapture: z.object({
     askForName: z.boolean().default(false),
@@ -176,6 +183,15 @@ const agentSettingsSchema = z.object({
     turnaround: z.string().optional(),
     differentiation: z.string().optional(),
     forbiddenTopics: z.string().optional(),
+    structuredHours: z.object({
+      timezone: z.string().default(''),
+      // 7 days: 0=Sun, 1=Mon, ..., 6=Sat
+      days: z.array(z.object({
+        enabled: z.boolean().default(false),
+        start: z.string().default('09:00'),
+        end: z.string().default('18:00'),
+      })).length(7),
+    }).optional(),
   }),
 
   // Sources
@@ -232,6 +248,51 @@ interface AgentSettingsDialogProps {
   allUsers: User[];
 }
 
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const BLANK_DAY = { enabled: false, start: '09:00', end: '18:00' };
+
+/** Convert bot's structuredHours schedule array → flat 7-day form array */
+function scheduleToFormDays(
+  structuredHours: { timezone: string; schedule: { days: number[]; start: string; end: string }[] } | undefined
+): { timezone: string; days: { enabled: boolean; start: string; end: string }[] } {
+  if (!structuredHours?.schedule?.length) {
+    return {
+      timezone: structuredHours?.timezone || '',
+      days: Array.from({ length: 7 }, (_, i) =>
+        i === 0 || i === 5 ? { enabled: false, start: '09:00', end: '18:00' }
+        : { enabled: true, start: '09:00', end: '18:00' }
+      ),
+    };
+  }
+  const days = Array.from({ length: 7 }, () => ({ ...BLANK_DAY }));
+  for (const slot of structuredHours.schedule) {
+    for (const d of slot.days) {
+      days[d] = { enabled: true, start: slot.start, end: slot.end };
+    }
+  }
+  return { timezone: structuredHours.timezone || '', days };
+}
+
+/** Convert flat 7-day form array → bot's structuredHours schedule array */
+function formDaysToSchedule(
+  formDays: { enabled: boolean; start: string; end: string }[],
+  timezone: string
+): { timezone: string; schedule: { days: number[]; start: string; end: string }[] } {
+  const slotMap = new Map<string, number[]>();
+  formDays.forEach((d, i) => {
+    if (!d.enabled) return;
+    const key = `${d.start}|${d.end}`;
+    if (!slotMap.has(key)) slotMap.set(key, []);
+    slotMap.get(key)!.push(i);
+  });
+  const schedule = Array.from(slotMap.entries()).map(([key, days]) => {
+    const [start, end] = key.split('|');
+    return { days, start, end };
+  });
+  return { timezone, schedule };
+}
+
 const DEFAULT_AGENT_VALUES: AgentSettingsFormValues = {
   type: 'agent',
   isEnabled: true,
@@ -266,6 +327,11 @@ const DEFAULT_AGENT_VALUES: AgentSettingsFormValues = {
     fallbackMessage: 'I can connect you with a teammate who can help further.',
     forceTriggers: ['billing', 'angry_customer'],
   },
+  offlineFollowup: {
+    enabled: false,
+    contactMethod: 'email',
+    unavailableMessage: '',
+  },
   identityCapture: {
     askForName: false,
     askForEmail: true,
@@ -283,6 +349,18 @@ const DEFAULT_AGENT_VALUES: AgentSettingsFormValues = {
     turnaround: '',
     differentiation: '',
     forbiddenTopics: '',
+    structuredHours: {
+      timezone: '',
+      days: [
+        { enabled: false, start: '09:00', end: '18:00' }, // Sun
+        { enabled: true,  start: '09:00', end: '18:00' }, // Mon
+        { enabled: true,  start: '09:00', end: '18:00' }, // Tue
+        { enabled: true,  start: '09:00', end: '18:00' }, // Wed
+        { enabled: true,  start: '09:00', end: '18:00' }, // Thu
+        { enabled: false, start: '09:00', end: '18:00' }, // Fri
+        { enabled: true,  start: '09:00', end: '18:00' }, // Sat
+      ],
+    },
   },
   allowedHelpCenterIds: [],
   products: [],
@@ -366,9 +444,19 @@ export default function AgentSettingsDialog({
   const [activeChannel, setActiveChannel] = useState<'web' | 'sms' | 'phone' | 'email'>('web');
   const [activeSubpanel, setActiveSubpanel] = useState<string>('identity');
 
+  const botToFormValues = (b: BotData): any => ({
+    ...DEFAULT_AGENT_VALUES,
+    ...b,
+    businessContext: {
+      ...DEFAULT_AGENT_VALUES.businessContext,
+      ...(b.businessContext || {}),
+      structuredHours: scheduleToFormDays((b.businessContext as any)?.structuredHours),
+    },
+  });
+
   const form = useForm<AgentSettingsFormValues>({
     resolver: zodResolver(agentSettingsSchema),
-    defaultValues: bot ? ({ ...DEFAULT_AGENT_VALUES, ...bot } as any) : DEFAULT_AGENT_VALUES,
+    defaultValues: bot ? botToFormValues(bot) : DEFAULT_AGENT_VALUES,
   });
 
   const watched = form.watch();
@@ -389,11 +477,11 @@ export default function AgentSettingsDialog({
   useEffect(() => {
     if (!isOpen) return;
     if (bot) {
-      form.reset({ ...DEFAULT_AGENT_VALUES, ...bot } as any);
+      form.reset(botToFormValues(bot));
     } else {
       form.reset(DEFAULT_AGENT_VALUES);
     }
-  }, [bot, form, isOpen]);
+  }, [bot, isOpen]);
 
   useEffect(() => {
     if (activeTab === 'intelligence') setActiveSubpanel('identity');
@@ -411,10 +499,21 @@ export default function AgentSettingsDialog({
   }, [watched]);
 
   const onSubmit = (values: AgentSettingsFormValues) => {
+    // Convert flat days form state back to structuredHours schedule array
+    const formDays = (values.businessContext as any)?.structuredHours?.days;
+    const timezone = (values.businessContext as any)?.structuredHours?.timezone || '';
+    const structuredHours = formDays && timezone
+      ? formDaysToSchedule(formDays, timezone)
+      : undefined;
+
     const payload: BotData | Omit<BotData, 'id' | 'hubId'> = {
       ...(bot || {}),
       ...values,
       type: 'agent',
+      businessContext: {
+        ...values.businessContext,
+        structuredHours: structuredHours || null,
+      },
     } as any;
 
     onSave(payload);
@@ -667,6 +766,64 @@ export default function AgentSettingsDialog({
           </FieldCard>
         )}
 
+        {activeSubpanel === 'escalation' && (
+          <FieldCard className="animate-in fade-in slide-in-from-bottom-2 duration-300 mt-6">
+            <SectionHeader icon={ShieldAlert} title="Offline Followup" description="When no agents are available, collect contact info for follow-up." />
+            <div className="mt-6 space-y-6">
+              <FormField
+                control={form.control}
+                name="offlineFollowup.enabled"
+                render={({ field }) => (
+                  <FieldCard className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-white">Enable offline followup</p>
+                        <p className="mt-1 text-xs text-muted-foreground">When no humans are available, collect visitor contact info instead of faking a live handoff.</p>
+                      </div>
+                      <FormControl><Switch checked={!!field.value} onCheckedChange={field.onChange} /></FormControl>
+                    </div>
+                  </FieldCard>
+                )}
+              />
+
+              {form.watch('offlineFollowup.enabled') && (
+                <>
+                  <FormField control={form.control} name="offlineFollowup.contactMethod" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Method</FormLabel>
+                      <Select value={field.value || 'email'} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="email">Email</SelectItem>
+                          <SelectItem value="phone">Phone</SelectItem>
+                          <SelectItem value="either">Either (let visitor choose)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+
+                  <FormField control={form.control} name="offlineFollowup.unavailableMessage" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Custom Unavailable Message</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={3}
+                          {...field}
+                          value={field.value || ''}
+                          placeholder="Our team isn't available right now, but if you share your email, someone will reach out..."
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">Leave blank for automatic messaging based on contact method.</p>
+                    </FormItem>
+                  )} />
+                </>
+              )}
+            </div>
+          </FieldCard>
+        )}
+
         {activeSubpanel === 'capture' && (
           <FieldCard className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <SectionHeader icon={Users} title="Lead Capture" description="Tell the agent when and how to collect identity details." />
@@ -837,7 +994,7 @@ export default function AgentSettingsDialog({
               )} />
               <FormField control={form.control} name="businessContext.hours" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Operating Hours</FormLabel>
+                  <FormLabel>Operating Hours <span className="text-muted-foreground text-xs font-normal">(display text for AI)</span></FormLabel>
                   <FormControl><Input {...field} value={field.value || ''} placeholder="Mon-Fri 9am-5pm EST" /></FormControl>
                 </FormItem>
               )} />
@@ -883,6 +1040,69 @@ export default function AgentSettingsDialog({
                   <FormControl><Textarea rows={3} {...field} value={field.value || ''} placeholder="Things the agent should never discuss." /></FormControl>
                 </FormItem>
               )} />
+            </div>
+
+            {/* Structured Business Hours */}
+            <div className="mt-8 border-t border-white/10 pt-6">
+              <div className="mb-4 flex items-center gap-2">
+                <Clock className="h-4 w-4 text-blue-400" />
+                <p className="text-sm font-semibold text-white">Availability Schedule</p>
+                <span className="text-xs text-muted-foreground">— used to check if agents are available for live handoff</span>
+              </div>
+              <div className="mb-4">
+                <FormField control={form.control} name={"businessContext.structuredHours.timezone" as any} render={({ field }) => (
+                  <FormItem className="max-w-xs">
+                    <FormLabel>Timezone</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select timezone" /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="Asia/Dhaka">Asia/Dhaka (UTC+6)</SelectItem>
+                        <SelectItem value="Asia/Kolkata">Asia/Kolkata (UTC+5:30)</SelectItem>
+                        <SelectItem value="Asia/Karachi">Asia/Karachi (UTC+5)</SelectItem>
+                        <SelectItem value="Asia/Dubai">Asia/Dubai (UTC+4)</SelectItem>
+                        <SelectItem value="Asia/Riyadh">Asia/Riyadh (UTC+3)</SelectItem>
+                        <SelectItem value="Europe/Istanbul">Europe/Istanbul (UTC+3)</SelectItem>
+                        <SelectItem value="Europe/London">Europe/London (UTC+0/+1)</SelectItem>
+                        <SelectItem value="America/New_York">America/New_York (UTC-5/-4)</SelectItem>
+                        <SelectItem value="America/Chicago">America/Chicago (UTC-6/-5)</SelectItem>
+                        <SelectItem value="America/Los_Angeles">America/Los_Angeles (UTC-8/-7)</SelectItem>
+                        <SelectItem value="UTC">UTC</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )} />
+              </div>
+              <div className="space-y-2">
+                {DAY_NAMES.map((dayName, idx) => (
+                  <div key={dayName} className="flex items-center gap-3">
+                    <div className="w-8 text-xs text-muted-foreground font-medium">{dayName}</div>
+                    <FormField control={form.control} name={`businessContext.structuredHours.days.${idx}.enabled` as any} render={({ field }) => (
+                      <FormItem className="flex items-center space-x-0 space-y-0">
+                        <FormControl>
+                          <input type="checkbox" checked={!!field.value} onChange={field.onChange} className="h-4 w-4 rounded accent-blue-500" />
+                        </FormControl>
+                      </FormItem>
+                    )} />
+                    {form.watch(`businessContext.structuredHours.days.${idx}.enabled` as any) ? (
+                      <div className="flex items-center gap-2">
+                        <FormField control={form.control} name={`businessContext.structuredHours.days.${idx}.start` as any} render={({ field }) => (
+                          <FormItem className="space-y-0">
+                            <FormControl><Input type="time" {...field} value={field.value || '09:00'} className="h-7 w-28 text-xs" /></FormControl>
+                          </FormItem>
+                        )} />
+                        <span className="text-xs text-muted-foreground">—</span>
+                        <FormField control={form.control} name={`businessContext.structuredHours.days.${idx}.end` as any} render={({ field }) => (
+                          <FormItem className="space-y-0">
+                            <FormControl><Input type="time" {...field} value={field.value || '18:00'} className="h-7 w-28 text-xs" /></FormControl>
+                          </FormItem>
+                        )} />
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Closed</span>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </FieldCard>
         )}

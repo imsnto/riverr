@@ -15,6 +15,12 @@ const CONFIRMATION_PHRASES = [
 
 const RESOLVED_STATUSES = ['resolved', 'resolved_ai', 'resolved_human', 'resolved_user_confirmed'];
 
+// Statuses where conversation is in the handoff flow — do NOT auto-reopen to ai_active
+const HANDOFF_STATUSES = [
+  'handoff_requested', 'checking_availability', 'waiting_human',
+  'human_assigned', 'awaiting_contact_capture', 'offline_followup_pending',
+];
+
 function safeSnippet(text: string, maxLen = 180) {
   if (!text) return "";
   const cleaned = text.trim().replace(/\s+/g, " ");
@@ -75,7 +81,8 @@ export const onChatMessageCreated = onDocumentCreated(
 
         if (senderType === "visitor" || senderType === "contact") {
           // 1. Auto-reopen resolved conversations when visitor sends a message
-          if (RESOLVED_STATUSES.includes(conv.resolutionStatus)) {
+          //    Skip if conversation is in handoff flow (awaiting_contact_capture, offline_followup_pending, etc.)
+          if (RESOLVED_STATUSES.includes(conv.resolutionStatus) && !HANDOFF_STATUSES.includes(conv.status)) {
             updates.resolutionStatus = 'unresolved';
             updates.resolvedAt = null;
             updates.aiFollowUpScheduledFor = null;

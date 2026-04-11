@@ -4,7 +4,9 @@
  * Implements conversational AI reasoning + deterministic subflow execution.
  */
 
+import { HANDOFF_STATUSES } from "./data";
 import type { Conversation as ImportedConversation, ConversationStatus, ResponderType, AutomationNode, AutomationEdge, Bot, IntelligenceAccessLevel } from "./data";
+import { checkHandoffAvailability } from "./availability";
 
 export type MessageRole = "user" | "assistant" | "internal";
 
@@ -26,6 +28,7 @@ export interface BotConfig {
   behavior?: Bot['behavior'];
   confidenceHandling?: Bot['confidenceHandling'];
   escalation: Bot['escalation'];
+  offlineFollowup?: Bot['offlineFollowup'];
   identityCapture: Bot['identityCapture'];
   channelConfig: Bot['channelConfig'];
   tone?: Bot['tone'];
@@ -54,9 +57,11 @@ export type Conversation = ImportedConversation & {
   userId?: string | null;
 
   handoff?: {
-    status: "none" | "offered" | "declined" | "completed";
+    status: "none" | "offered" | "declined" | "completed" | "checking" | "offline_capture";
     reason?: string;
     offeredAt?: string; // ISO
+    availabilityCheckedAt?: string;
+    liveAvailable?: boolean;
   } | null;
   meta?: {
     attemptCount?: number;
@@ -137,6 +142,8 @@ export interface AgentAdapters {
     hubId: string;
     patch: Partial<Conversation>;
   }) => Promise<void>;
+
+  getOnlineAgentIds?: (args: { hubId: string }) => Promise<string[]>;
 }
 
 function normalizeSourceUrl(url?: string): string {
@@ -169,9 +176,9 @@ export async function handleIncomingMessage(args: {
   let conversation = args.conversation;
   const text = (args.message.text ?? "").trim();
 
-  // ---- 1. ESCALATION GUARD ----
-  if (conversation.status === 'waiting_human') {
-    console.log("[handleIncomingMessage] Early return - conversation status: waiting_human");
+  // ---- 1. ESCALATION / HANDOFF GUARD ----
+  if (HANDOFF_STATUSES.includes(conversation.status)) {
+    console.log("[handleIncomingMessage] Early return - conversation in handoff flow:", conversation.status);
     return;
   }
 
@@ -197,7 +204,7 @@ export async function handleIncomingMessage(args: {
   
   if (containsAny(text, handoffKeywords)) {
       console.log("[handleIncomingMessage] Handoff keyword detected");
-      await escalateNow(adapters, conversation, "Requested by user via keyword.");
+      await initiateHandoff(adapters, bot, conversation, "Requested by user via keyword.");
       return;
   }
 
@@ -214,7 +221,7 @@ export async function handleIncomingMessage(args: {
     for (const t of forceTriggers) {
       if (containsAny(text, triggerMap[t] || [])) {
         console.log("[handleIncomingMessage] Force trigger detected:", t);
-        await escalateNow(adapters, conversation, `Sensitive topic detected: ${t}`);
+        await initiateHandoff(adapters, bot, conversation, `Sensitive topic detected: ${t}`);
         return;
       }
     }
@@ -398,7 +405,7 @@ async function executeHybridFlow(args: {
     }
 
     if (node.type === 'handoff') {
-      await escalateNow(adapters, conversation, "Handoff step triggered.", node.data.text);
+      await initiateHandoff(adapters, bot, conversation, "Handoff step triggered.");
       return;
     }
 
@@ -461,7 +468,7 @@ async function executeAiPhase(args: {
   const strategy = bot.confidenceHandling?.[level] || (level === 'low' ? 'clarify' : 'answer');
 
   if (strategy === 'escalate') {
-    await escalateNow(adapters, conversation, "Auto-escalated: match confidence below threshold for direct answer.");
+    await initiateHandoff(adapters, bot, conversation, "Auto-escalated: match confidence below threshold for direct answer.");
     return true;
   }
 
@@ -558,13 +565,13 @@ async function executeAiPhase(args: {
 
   // AI decided user wants human handoff
   if (aiResult?.requestsHumanHandoff) {
-    await escalateNow(adapters, conversation, "User requested human handoff (detected by AI).");
+    await initiateHandoff(adapters, bot, conversation, "User requested human handoff (detected by AI).");
     return true;
   }
 
   if (!answer || answer.trim() === "") {
       if (decision.answerMode === 'escalate') {
-        await escalateNow(adapters, conversation, "No trusted knowledge sources found.");
+        await initiateHandoff(adapters, bot, conversation, "No trusted knowledge sources found.");
         return true;
       }
       return false;
@@ -625,6 +632,116 @@ function validateInput(text: string, type: string): boolean {
 function containsAny(haystack: string, needles: string[]) {
   const h = (haystack ?? "").toLowerCase();
   return needles.some((n) => h.includes(n.toLowerCase()));
+}
+
+// -------------------------
+// Smart Human Handoff
+// -------------------------
+
+async function initiateHandoff(
+  adapters: AgentAdapters,
+  bot: BotConfig,
+  conversation: Conversation,
+  reason: string,
+) {
+  const now = new Date();
+  console.log("[initiateHandoff] Starting availability check...", { reason });
+
+  // Step 1: Mark handoff requested
+  await adapters.updateConversation({
+    conversationId: conversation.id,
+    hubId: conversation.hubId,
+    patch: {
+      status: 'handoff_requested' as ConversationStatus,
+      handoffRequestedAt: now.toISOString(),
+      lastResponderType: 'system',
+      handoff: { status: "checking", reason, offeredAt: now.toISOString() },
+    } as any,
+  });
+
+  await adapters.persistAssistantMessage({
+    conversationId: conversation.id,
+    hubId: conversation.hubId,
+    text: "Let me check if someone from our team is available.",
+    responderType: 'system',
+  });
+
+  // Step 2: Check availability
+  const onlineAgentIds = await adapters.getOnlineAgentIds?.({ hubId: conversation.hubId });
+  const availability = checkHandoffAvailability({ bot, onlineAgentIds, now });
+
+  console.log("[initiateHandoff] Availability result:", availability);
+
+  await adapters.updateConversation({
+    conversationId: conversation.id,
+    hubId: conversation.hubId,
+    patch: {
+      handoffAvailabilityCheckedAt: now.toISOString(),
+      liveHandoffAvailable: availability.available,
+    } as any,
+  });
+
+  // Step 3: Branch based on availability
+  if (availability.available) {
+    // Branch A: Live handoff
+    await escalateNow(adapters, conversation, reason);
+  } else if (bot.offlineFollowup?.enabled) {
+    // Branch B: Offline followup — collect contact info
+    await beginOfflineCapture(adapters, bot, conversation, availability.businessHoursLabel);
+  } else {
+    // Branch C: No offline followup configured — fallback to current behaviour
+    await escalateNow(adapters, conversation, reason,
+      bot.escalation?.fallbackMessage || "Our team isn't available right now, but we've noted your request. Someone will follow up as soon as possible."
+    );
+  }
+}
+
+async function beginOfflineCapture(
+  adapters: AgentAdapters,
+  bot: BotConfig,
+  conversation: Conversation,
+  businessHoursLabel?: string,
+) {
+  const method = bot.offlineFollowup?.contactMethod || 'email';
+
+  await adapters.updateConversation({
+    conversationId: conversation.id,
+    hubId: conversation.hubId,
+    patch: {
+      status: 'awaiting_contact_capture' as ConversationStatus,
+      lastResponderType: 'system',
+      handoff: { status: "offline_capture", reason: "No agents available", offeredAt: new Date().toISOString() },
+    } as any,
+  });
+
+  // Determine the message based on contact method
+  let message: string;
+  const customMsg = bot.offlineFollowup?.unavailableMessage;
+
+  if (customMsg) {
+    message = customMsg;
+  } else if (method === 'email') {
+    message = "Our team isn't available right now, but if you share your email, someone will reach out as soon as they're available.";
+  } else if (method === 'phone') {
+    message = "Our team isn't available right now, but if you share your phone number, someone will reach out when they're available.";
+  } else {
+    message = "Our team isn't available right now, but I can have someone follow up with you. Would you prefer email or phone?";
+  }
+
+  if (businessHoursLabel) {
+    message += `\n\nOur normal hours are ${businessHoursLabel}.`;
+  }
+
+  await adapters.persistAssistantMessage({
+    conversationId: conversation.id,
+    hubId: conversation.hubId,
+    text: message,
+    responderType: 'system',
+    meta: {
+      type: 'offline_contact_form',
+      contactMethod: method,
+    },
+  });
 }
 
 async function escalateNow(adapters: AgentAdapters, conversation: Conversation, reason: string, customMessage?: string) {

@@ -15,7 +15,7 @@ import { marked } from 'marked';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { invokeAgent, createConversationAndLinkCrm, ensureConversationCrmLinkedAction, updateConversation, addChatMessage as addChatMessageAction } from '@/app/actions/chat';
+import { invokeAgent, createConversationAndLinkCrm, ensureConversationCrmLinkedAction, updateConversation, addChatMessage as addChatMessageAction, submitOfflineContact } from '@/app/actions/chat';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -80,6 +80,12 @@ export default function ChatbotWidgetPage() {
   const [capturedName, setCapturedName] = useState('');
   const [capturedEmail, setCapturedEmail] = useState('');
 
+  // Smart Handoff: offline contact capture
+  const [offlineContactStep, setOfflineContactStep] = useState<'none' | 'collecting' | 'submitted'>('none');
+  const [offlineContactValue, setOfflineContactValue] = useState('');
+  const [offlineContactMethod, setOfflineContactMethod] = useState<'email' | 'phone'>('email');
+  const [offlineContactName, setOfflineContactName] = useState('');
+
   const [attachments, setAttachments] = useState<File[]>([]);
   const [expandedSourceByMessageId, setExpandedSourceByMessageId] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,6 +109,24 @@ export default function ChatbotWidgetPage() {
     return list;
   }, [messages, identityCaptureStep, visitor?.email, conversation?.visitorEmail]);
 
+  // Smart Handoff: detect offline contact form message and trigger form display
+  useEffect(() => {
+    if (offlineContactStep !== 'none') return;
+    if (conversation?.status !== 'awaiting_contact_capture') return;
+
+    const contactFormMsg = messages.find(m => (m as any).meta?.type === 'offline_contact_form');
+    if (contactFormMsg) {
+      const method = (contactFormMsg as any).meta?.contactMethod || 'email';
+      if (method === 'either') {
+        // Default to email, user can switch
+        setOfflineContactMethod('email');
+      } else {
+        setOfflineContactMethod(method);
+      }
+      setOfflineContactStep('collecting');
+    }
+  }, [conversation?.status, messages, offlineContactStep]);
+
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'riverr_chat_open') {
@@ -115,7 +139,7 @@ export default function ChatbotWidgetPage() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [visibleMessages, isBotTyping, isAgentTyping, identityCaptureStep]);
+  }, [visibleMessages, isBotTyping, isAgentTyping, identityCaptureStep, offlineContactStep]);
 
   const markAsSeen = async () => {
     if (conversation && !document.hidden) {
@@ -379,6 +403,41 @@ export default function ChatbotWidgetPage() {
     setCapturedName('');
     setCapturedEmail('');
   }
+
+  // Smart Handoff: submit offline contact info
+  const handleOfflineContactSubmit = async () => {
+    if (!conversation) return;
+    const value = offlineContactValue.trim();
+    if (!value) {
+      toast({ variant: 'destructive', title: 'Required', description: `Please enter your ${offlineContactMethod}.` });
+      return;
+    }
+
+    if (offlineContactMethod === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      toast({ variant: 'destructive', title: 'Invalid Email', description: 'Please enter a valid email address.' });
+      return;
+    }
+
+    if (offlineContactMethod === 'phone' && !/^[\d\s\-+().]{7,20}$/.test(value)) {
+      toast({ variant: 'destructive', title: 'Invalid Phone', description: 'Please enter a valid phone number.' });
+      return;
+    }
+
+    const result = await submitOfflineContact({
+      conversationId: conversation.id,
+      contactMethod: offlineContactMethod,
+      contactValue: value,
+      visitorName: offlineContactName.trim() || undefined,
+    });
+
+    if (result.success) {
+      setOfflineContactStep('submitted');
+      setOfflineContactValue('');
+      setOfflineContactName('');
+    } else {
+      toast({ variant: 'destructive', title: 'Error', description: result.error || 'Something went wrong.' });
+    }
+  };
 
   const uploadFileAndGetUrl = async (file: File, conversationId: string) => {
     const filePath = `chat_uploads/${conversationId}/${Date.now()}_${file.name}`;
@@ -703,6 +762,63 @@ export default function ChatbotWidgetPage() {
               </div>
            )}
 
+          {offlineContactStep === 'collecting' && (
+            <div className="flex items-end gap-2 text-left">
+              <div className="p-4 rounded-xl rounded-bl-sm max-w-xs break-words shadow-lg border border-white/10" style={{ backgroundColor: bot.styleSettings?.agentMessageBackgroundColor || '#374151', color: bot.styleSettings?.agentMessageTextColor || '#ffffff' }}>
+                <div className="space-y-3">
+                  {bot.offlineFollowup?.contactMethod === 'either' && (
+                    <div className="flex gap-2 mb-2">
+                      <Button
+                        size="sm"
+                        variant={offlineContactMethod === 'email' ? 'default' : 'outline'}
+                        onClick={() => setOfflineContactMethod('email')}
+                        className="flex-1 text-xs"
+                        style={offlineContactMethod === 'email' ? { backgroundColor: primary } : {}}
+                      >
+                        Email
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={offlineContactMethod === 'phone' ? 'default' : 'outline'}
+                        onClick={() => setOfflineContactMethod('phone')}
+                        className="flex-1 text-xs"
+                        style={offlineContactMethod === 'phone' ? { backgroundColor: primary } : {}}
+                      >
+                        Phone
+                      </Button>
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <Label className="text-xs uppercase font-bold tracking-wider opacity-70">Your Name</Label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. John Doe"
+                      value={offlineContactName}
+                      onChange={(e) => setOfflineContactName(e.target.value)}
+                      className="bg-zinc-800/50 border-white/10 text-white h-9 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs uppercase font-bold tracking-wider opacity-70">
+                      {offlineContactMethod === 'email' ? 'Email' : 'Phone'}
+                    </Label>
+                    <Input
+                      type={offlineContactMethod === 'email' ? 'email' : 'tel'}
+                      placeholder={offlineContactMethod === 'email' ? 'e.g. you@example.com' : 'e.g. +1 555 123 4567'}
+                      value={offlineContactValue}
+                      onChange={(e) => setOfflineContactValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleOfflineContactSubmit(); }}
+                      className="bg-zinc-800/50 border-white/10 text-white h-9 text-sm"
+                    />
+                  </div>
+                  <Button onClick={handleOfflineContactSubmit} size="sm" className="w-full mt-2 font-bold" style={{ backgroundColor: primary }}>
+                    Submit
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {(isBotTyping || isAgentTyping) && (
               <TypingBubble color={bot.styleSettings?.agentMessageBackgroundColor || '#374151'} textColor={bot.styleSettings?.agentMessageTextColor || '#ffffff'} />
             )}
@@ -728,9 +844,9 @@ export default function ChatbotWidgetPage() {
 
         <div className="relative flex-1">
           <Textarea
-            placeholder={identityCaptureStep === 'collecting' ? 'Please use the form above...' : 'Message...'}
+            placeholder={identityCaptureStep === 'collecting' || offlineContactStep === 'collecting' ? 'Please use the form above...' : 'Message...'}
             value={messageText}
-            disabled={identityCaptureStep === 'collecting'}
+            disabled={identityCaptureStep === 'collecting' || offlineContactStep === 'collecting'}
             onChange={handleInputChange}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -745,7 +861,7 @@ export default function ChatbotWidgetPage() {
             size="icon"
             variant="ghost"
             onClick={() => handleSendMessage()}
-            disabled={(!messageText.trim() && attachments.length === 0) || loading || identityCaptureStep === 'collecting'}
+            disabled={(!messageText.trim() && attachments.length === 0) || loading || identityCaptureStep === 'collecting' || offlineContactStep === 'collecting'}
             className="absolute right-1 bottom-1 h-8 w-8 hover:bg-zinc-700"
           >
             <Send className="h-4 w-4" />

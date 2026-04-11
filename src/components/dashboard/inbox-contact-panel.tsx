@@ -7,7 +7,7 @@ import { Visitor, User } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
-import { AtSign, Calendar, Briefcase, Clock, Compass, DollarSign, HardDrive, MapPin, Milestone, Users, PanelRightClose } from 'lucide-react';
+import { AtSign, Calendar, Briefcase, Clock, Compass, DollarSign, HardDrive, MapPin, Milestone, Users, PanelRightClose, Phone } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { getInitials } from '@/lib/utils';
@@ -64,6 +64,7 @@ export default function InboxContactPanel({ visitor, onToggle }: InboxContactPan
                     <div className="space-y-2">
                         <DetailRow icon={Milestone} label="User ID" value={visitor.id || '-'} />
                         <DetailRow icon={AtSign} label="Email" value={visitor.email || '-'} />
+                        <DetailRow icon={Phone} label="Phone" value={visitor.phone || '-'} />
                         <DetailRow icon={Calendar} label="Last Activity" value={visitor.lastSeen || '-'} />
                     </div>
                 </div>
