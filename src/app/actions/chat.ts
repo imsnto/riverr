@@ -173,6 +173,33 @@ export async function invokeAgent(args: {
   console.log("[invokeAgent] resolveRuntimeBot result:", resolved ? "found" : "not found");
   const effectiveBot = resolved?.effectiveBot || bot;
 
+  // Fetch conversation history once — shared by both retrieveContext and generateAnswer
+  let conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+  try {
+    const recentMsgs = await adminDB.collection('chat_messages')
+      .where('conversationId', '==', conversation.id)
+      .orderBy('timestamp', 'desc')
+      .limit(30)
+      .get();
+    conversationHistory = recentMsgs.docs
+      .reverse()
+      .map(doc => {
+        const d = doc.data();
+        return {
+          role: d.senderType === 'agent' ? 'assistant' as const : 'user' as const,
+          content: String(d.content || ''),
+        };
+      })
+      .filter(m => m.content.length > 0);
+  } catch (e) {
+    // history is optional, continue without it
+  }
+
+  const botContext = [
+    effectiveBot.businessContext?.businessName,
+    effectiveBot.businessContext?.description,
+  ].filter(Boolean).join(' — ') || effectiveBot.name || undefined;
+
   const adapters: AgentAdapters = {
     retrieveContext: async (params) => {
       return orchestrateRetrieval({
@@ -180,34 +207,13 @@ export async function invokeAgent(args: {
         policy: {
           ...params.policy,
           isCustomerFacing: effectiveBot.type === 'widget'
-        }
+        },
+        history: conversationHistory,
+        botContext,
       });
     },
     generateAnswer: async (params) => {
-      // Fetch recent conversation history for context
-      let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
-      try {
-        const convoId = conversation.id;
-        const recentMsgs = await adminDB.collection('chat_messages')
-          .where('conversationId', '==', convoId)
-          .orderBy('timestamp', 'desc')
-          .limit(6)
-          .get();
-        history = recentMsgs.docs
-          .reverse()
-          .map(doc => {
-            const d = doc.data();
-            return {
-              role: d.senderType === 'agent' ? 'assistant' as const : 'user' as const,
-              content: String(d.content || ''),
-            };
-          })
-          .filter(m => m.content.length > 0);
-      } catch (e) {
-        // history is optional, continue without it
-      }
-
-      const llmInput = { ...params, history };
+      const llmInput = { ...params, history: conversationHistory };
       console.log('\n==================== LLM INPUT ====================');
       console.log('[query]', llmInput.query);
       console.log('[botName]', llmInput.botName);

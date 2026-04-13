@@ -5,6 +5,8 @@
 
 import { searchArticles, searchTopics, searchInsights } from './vector-search';
 import { adminDB } from '@/lib/firebase-admin';
+import { rewriteQueryForRetrieval } from '@/ai/flows/rewrite-query';
+import { rerankCandidates } from '@/ai/flows/rerank-candidates';
 
 export interface AgentKnowledgePolicy {
   agentId?: string;
@@ -43,7 +45,7 @@ export interface RetrievalDecision {
 const CONFIDENCE_THRESHOLDS = {
   ARTICLE: 0.78,
   TOPIC: 0.75,
-  INSIGHT: 0.70,
+  INSIGHT: 0.55,
 };
 
 const BOOSTS = {
@@ -56,18 +58,22 @@ export async function orchestrateRetrieval(args: {
   hubId: string;
   spaceId: string;
   policy: AgentKnowledgePolicy;
+  history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  botContext?: string;
 }): Promise<RetrievalDecision> {
-  const { message, hubId, spaceId, policy } = args;
+  const { message, hubId, spaceId, policy, history, botContext } = args;
 
   console.log('[orchestrateRetrieval] Policy:', { accessLevel: policy.accessLevel, isCustomerFacing: policy.isCustomerFacing, agentId: policy.agentId });
   console.log('[orchestrateRetrieval] Will search insights?', policy.accessLevel === 'insights_hidden_support' || policy.accessLevel === 'internal_full_access');
+
+  const searchQuery = await rewriteQueryForRetrieval({ query: message, history, botContext });
 
   const boostMap = policy.isCustomerFacing ? BOOSTS.PUBLIC : BOOSTS.INTERNAL;
 
   // 🧠 PARALLEL SEARCHES
   const [articles, rawTopics, insights] = await Promise.all([
     searchArticles({
-      query: message,
+      query: searchQuery,
       hubId,
       spaceId,
       allowedHelpCenterIds: policy.allowedLibraryIds,
@@ -77,7 +83,7 @@ export async function orchestrateRetrieval(args: {
 
     policy.accessLevel !== 'none' && policy.accessLevel !== 'articles_only'
       ? searchTopics({
-          query: message,
+          query: searchQuery,
           spaceId,
           hubId,
         })
@@ -86,7 +92,7 @@ export async function orchestrateRetrieval(args: {
     policy.accessLevel === 'insights_hidden_support' ||
     policy.accessLevel === 'internal_full_access'
       ? searchInsights({
-          query: message,
+          query: searchQuery,
           hubId,
           spaceId,
         })
@@ -96,7 +102,7 @@ export async function orchestrateRetrieval(args: {
   // Expand topics: fetch actual insight content from Firestore so LLM gets real resolution steps
   const topics = await expandTopicsWithInsights(rawTopics);
 
-  console.log('Search results:', { articles, topics, insights });
+  // console.log('Search results:', { articles, topics, insights });
 
   // 🎯 APPLY WEIGHTS
   const scoredArticles = articles.map((a) => ({
@@ -124,22 +130,38 @@ export async function orchestrateRetrieval(args: {
   const bestInsight = scoredInsights[0];
 
   const topArticles = scoredArticles
-    .slice(0, 3)
+    .slice(0, 5)
     .map((a) => ({ ...a, sourceType: 'article' as const }));
   const topTopics = scoredTopics
-    .slice(0, 3)
+    .slice(0, 5)
     .map((t) => ({ ...t, sourceType: 'topic' as const }));
   const topInsights = scoredInsights
-    .slice(0, 3)
+    .slice(0, 5)
     .map((i) => ({ ...i, sourceType: 'insight' as const }));
 
-  const contextCandidates = [...topArticles, ...topTopics, ...topInsights];
+  const rawCandidates = [...topArticles, ...topTopics, ...topInsights];
+
+  // 🔁 LLM RERANKING — filter irrelevant candidates and reorder by relevance
+  const relevantIds = await rerankCandidates({
+    query: searchQuery,
+    candidates: rawCandidates,
+  });
+
+  // Rebuild ordered list: relevant first (in reranked order), then any that LLM missed (fallback)
+  const rerankedMap = new Map(rawCandidates.map((c) => [c.id, c]));
+  const rerankedCandidates = relevantIds
+    .map((id) => rerankedMap.get(id))
+    .filter((c): c is (typeof rawCandidates)[number] => !!c);
+
+  // Use reranked if we got results, otherwise fall back to raw
+  const contextCandidates = rerankedCandidates.length > 0 ? rerankedCandidates : rawCandidates;
 
   console.log('Retrieval context payload:', {
     articleCount: topArticles.length,
     topicCount: topTopics.length,
     insightCount: topInsights.length,
     totalCount: contextCandidates.length,
+    afterRerank: rerankedCandidates.length,
   });
 
   console.log('=== RETRIEVAL CANDIDATES (FULL) ===');

@@ -106,6 +106,8 @@ export interface AgentAdapters {
       accessLevel: IntelligenceAccessLevel;
       allowedLibraryIds: string[];
     };
+    history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+    botContext?: string;
   }) => Promise<RetrievalDecision>;
 
   generateAnswer: (args: {
@@ -476,7 +478,7 @@ async function executeAiPhase(args: {
   let systemInstruction = `You are ${botName}, a helpful AI assistant. Be conversational, warm, and accurate.`;
   
   if (decision.answerMode === 'insight_supported_hidden') {
-    systemInstruction += `\n\nCRITICAL POLICY: Your answer is based on internal support signals. DO NOT cite sources. Keep the tone helpful but cautious.`;
+    systemInstruction += `\n\nCRITICAL POLICY: Answer directly and confidently using the information provided. DO NOT mention where the information came from or cite sources.`;
   } else if (decision.answerMode === 'topic_supported') {
     systemInstruction += `\n\nPOLICY: This information is based on recurring patterns. Avoid presenting it as absolute official policy.`;
   }
@@ -559,6 +561,14 @@ async function executeAiPhase(args: {
       botName: botName,
       context,
       greetingScript: systemInstruction
+  });
+
+  console.log("[executeAiPhase] AI generation result:", {
+    everything: aiResult,
+    answer: aiResult.answer,
+    showSources: aiResult.showSources,
+    selectedSourceIds: aiResult.selectedSourceIds,
+    requestsHumanHandoff: aiResult.requestsHumanHandoff,
   });
 
   const answer = aiResult?.answer || '';

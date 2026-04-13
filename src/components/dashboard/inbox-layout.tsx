@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Conversation, Visitor, ChatMessage, User, Hub, Space, EscalationIntakeRule, Project, Contact, Ticket } from '@/lib/data';
 import InboxConversationList from './inbox-conversation-list';
 import InboxConversationView from './inbox-conversation-view';
@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/use-auth';
 import ContactDetailDialog from './inbox-contact-dailog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSearchParams, useRouter } from 'next/navigation';
+import * as db from '@/lib/db';
 
 interface InboxLayoutProps {
   users: User[];
@@ -56,7 +57,16 @@ export default function InboxLayout({
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isContactPanelOpen, setIsContactPanelOpen] = useState(true);
   const [isContactDailog, setIsContactDailog] = useState(false);
+  const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
+  const messageUnsubRef = useRef<(() => void) | null>(null);
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    if (messageUnsubRef.current) messageUnsubRef.current();
+    if (!selectedConversationId) { setLocalMessages([]); return; }
+    messageUnsubRef.current = db.getMessagesForConversations([selectedConversationId], setLocalMessages);
+    return () => { if (messageUnsubRef.current) messageUnsubRef.current(); };
+  }, [selectedConversationId]);
 
   useEffect(() => {
     const convoIdFromUrl = searchParams.get('conversationId');
@@ -118,7 +128,7 @@ export default function InboxLayout({
             <div className={cn("grid h-full min-h-0 grid-cols-[1fr]", isContactPanelOpen ? "xl:grid-cols-[1fr_380px]" : "grid-cols-[1fr]")}>
               <InboxConversationView
                 conversation={selectedConversation}
-                messages={messages}
+                messages={localMessages}
                 contact={selectedVisitor}
                 users={users}
                 appUser={appUser}
