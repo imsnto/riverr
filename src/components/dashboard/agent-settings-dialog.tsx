@@ -169,7 +169,7 @@ const agentSettingsSchema = z.object({
     trigger: z.enum(captureTriggers).default('before_escalation'),
     leadCaptureMessage: z
       .string()
-      .default('Before I connect you, can I grab your email so our team can follow up?'),
+      .default('Before I connect you, can I grab your contact details so our team can follow up?'),
   }),
 
   // Business context
@@ -337,7 +337,7 @@ const DEFAULT_AGENT_VALUES: AgentSettingsFormValues = {
     askForEmail: true,
     askForPhone: false,
     trigger: 'before_escalation',
-    leadCaptureMessage: 'Before I connect you, can I grab your email so our team can follow up?',
+    leadCaptureMessage: 'Before I connect you, can I grab your contact details so our team can follow up?',
   },
   businessContext: {
     businessName: '',
@@ -378,7 +378,7 @@ const DEFAULT_AGENT_VALUES: AgentSettingsFormValues = {
       enabled: false,
       openingText: 'Hi! How can I help?',
       maxResponseLength: 160,
-      leadCaptureMessage: "If you'd like, I can grab your email and have the team follow up with more details.",
+      leadCaptureMessage: "If you'd like, I can grab your contact details and have the team follow up.",
       handoffKeywords: ['agent', 'human', 'person', 'call me'],
       allowMultiMessageReplies: false,
     },

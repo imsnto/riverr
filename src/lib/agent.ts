@@ -669,14 +669,7 @@ async function initiateHandoff(
     } as any,
   });
 
-  await adapters.persistAssistantMessage({
-    conversationId: conversation.id,
-    hubId: conversation.hubId,
-    text: "Let me check if someone from our team is available.",
-    responderType: 'system',
-  });
-
-  // Step 2: Check availability
+  // Step 2: Check availability (silently — no message yet)
   const onlineAgentIds = await adapters.getOnlineAgentIds?.({ hubId: conversation.hubId });
   const availability = checkHandoffAvailability({ bot, onlineAgentIds, now });
 
@@ -691,25 +684,15 @@ async function initiateHandoff(
     } as any,
   });
 
-  // Step 3: Branch based on availability
-  if (availability.available) {
-    // Branch A: Live handoff
-    await escalateNow(adapters, conversation, reason);
-  } else if (bot.offlineFollowup?.enabled) {
-    // Branch B: Offline followup — collect contact info
-    await beginOfflineCapture(adapters, bot, conversation, availability.businessHoursLabel);
-  } else {
-    // Branch C: No offline followup configured — fallback to current behaviour
-    await escalateNow(adapters, conversation, reason,
-      bot.escalation?.fallbackMessage || "Our team isn't available right now, but we've noted your request. Someone will follow up as soon as possible."
-    );
-  }
+  // Step 3: Always collect contact info first before handoff
+  await beginContactCapture(adapters, bot, conversation, availability.available, availability.businessHoursLabel);
 }
 
-async function beginOfflineCapture(
+async function beginContactCapture(
   adapters: AgentAdapters,
   bot: BotConfig,
   conversation: Conversation,
+  agentsAvailable: boolean,
   businessHoursLabel?: string,
 ) {
   const method = bot.offlineFollowup?.contactMethod || 'email';
@@ -720,26 +703,30 @@ async function beginOfflineCapture(
     patch: {
       status: 'awaiting_contact_capture' as ConversationStatus,
       lastResponderType: 'system',
-      handoff: { status: "offline_capture", reason: "No agents available", offeredAt: new Date().toISOString() },
+      handoff: { status: "contact_capture", reason: agentsAvailable ? "Collecting contact before live handoff" : "No agents available", offeredAt: new Date().toISOString() },
     } as any,
   });
 
-  // Determine the message based on contact method
   let message: string;
-  const customMsg = bot.offlineFollowup?.unavailableMessage;
 
-  if (customMsg) {
-    message = customMsg;
-  } else if (method === 'email') {
-    message = "Our team isn't available right now, but if you share your email, someone will reach out as soon as they're available.";
-  } else if (method === 'phone') {
-    message = "Our team isn't available right now, but if you share your phone number, someone will reach out when they're available.";
+  if (agentsAvailable) {
+    // Agents are online — collect info before connecting
+    message = bot.identityCapture?.leadCaptureMessage || "Before I connect you, can I grab your contact details so our team can follow up?";
   } else {
-    message = "Our team isn't available right now, but I can have someone follow up with you. Would you prefer email or phone?";
-  }
-
-  if (businessHoursLabel) {
-    message += `\n\nOur normal hours are ${businessHoursLabel}.`;
+    // Agents offline — collect info for later followup
+    const customMsg = bot.offlineFollowup?.unavailableMessage;
+    if (customMsg) {
+      message = customMsg;
+    } else if (method === 'email') {
+      message = "Our team isn't available right now, but if you share your email, someone will reach out as soon as they're available.";
+    } else if (method === 'phone') {
+      message = "Our team isn't available right now, but if you share your phone number, someone will reach out when they're available.";
+    } else {
+      message = "Our team isn't available right now, but I can have someone follow up with you. Would you prefer email or phone?";
+    }
+    if (businessHoursLabel) {
+      message += `\n\nOur normal hours are ${businessHoursLabel}.`;
+    }
   }
 
   await adapters.persistAssistantMessage({
@@ -751,30 +738,5 @@ async function beginOfflineCapture(
       type: 'offline_contact_form',
       contactMethod: method,
     },
-  });
-}
-
-async function escalateNow(adapters: AgentAdapters, conversation: Conversation, reason: string, customMessage?: string) {
-  await adapters.updateConversation({
-    conversationId: conversation.id,
-    hubId: conversation.hubId,
-    patch: {
-      status: 'waiting_human',
-      lastResponderType: 'system',
-      handoff: { status: "completed", reason, offeredAt: new Date().toISOString() },
-    },
-  });
-
-  await adapters.escalateToHuman({
-    conversationId: conversation.id,
-    hubId: conversation.hubId,
-    reason,
-  });
-
-  await adapters.persistAssistantMessage({
-    conversationId: conversation.id,
-    hubId: conversation.hubId,
-    text: customMessage || `Connecting you to our team. They will reply here shortly.`,
-    responderType: 'automation',
   });
 }

@@ -516,24 +516,45 @@ export async function submitOfflineContact(args: {
     await adminDB.collection('visitors').doc(convo.visitorId).update(visitorUpdate).catch(() => {});
   }
 
-  // Write confirmation message
-  const displayValue = contactMethod === 'email' ? trimmed : trimmed;
-  await adminDB.collection('chat_messages').add({
-    conversationId,
-    authorId: 'system',
-    type: 'message',
-    senderType: 'bot',
-    responderType: 'system',
-    content: `Thanks! Our team isn't available right now, but we'll reach out to you at ${displayValue} as soon as we can.`,
-    timestamp: now,
-    meta: { type: 'offline_followup_confirmation' },
-  });
+  const liveHandoffAvailable = convo.liveHandoffAvailable === true;
 
-  // Mark as escalated so it appears in the human inbox
-  await convoRef.update({
-    escalated: true,
-    escalationReason: 'Offline followup requested',
-  });
+  if (liveHandoffAvailable) {
+    // Agents were online — escalate to live handoff now
+    await convoRef.update({
+      status: 'waiting_human',
+      escalated: true,
+      escalationReason: 'Contact captured before live handoff',
+      updatedAt: now,
+    });
+    await adminDB.collection('chat_messages').add({
+      conversationId,
+      authorId: 'system',
+      type: 'message',
+      senderType: 'bot',
+      responderType: 'system',
+      content: `Thanks! Connecting you with our team now. They'll reply here shortly.`,
+      timestamp: now,
+      meta: { type: 'offline_followup_confirmation' },
+    });
+  } else {
+    // Agents offline — followup later
+    await convoRef.update({
+      status: 'offline_followup_pending',
+      escalated: true,
+      escalationReason: 'Offline followup requested',
+      updatedAt: now,
+    });
+    await adminDB.collection('chat_messages').add({
+      conversationId,
+      authorId: 'system',
+      type: 'message',
+      senderType: 'bot',
+      responderType: 'system',
+      content: `Thanks! Our team isn't available right now, but we'll reach out to you at ${trimmed} as soon as we can.`,
+      timestamp: now,
+      meta: { type: 'offline_followup_confirmation' },
+    });
+  }
 
   return { success: true };
 }
